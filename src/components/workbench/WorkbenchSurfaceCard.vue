@@ -19,6 +19,10 @@
 </template>
 
 <script lang="ts" setup>
+/**
+ * 工作台操作面容器：表格/筛选/分栏详情的白底分段。
+ * 固定轻阴影，禁止 hover 抬升（操作面非可点击实体；可点卡片用 UiCard hoverable / UiMetricCard clickable）。
+ */
 defineOptions({ name: 'WorkbenchSurfaceCard' })
 
 withDefaults(
@@ -40,21 +44,15 @@ withDefaults(
   display: flex;
   flex-direction: column;
   background: var(--dp-surface);
-  border: 1px solid var(--dp-border);
+  border: 1px solid var(--dp-panel-border);
   border-radius: var(--dp-radius-panel);
-  box-shadow:
-    0 1px 2px color-mix(in srgb, var(--dp-text-primary) 4%, transparent),
-    0 1px 3px color-mix(in srgb, var(--dp-text-primary) 5%, transparent);
+  box-shadow: var(--dp-shadow-card);
   overflow: hidden;
-  transition:
-    border-color var(--dp-duration-normal) cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow var(--dp-duration-normal) cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 0;
 }
 
-.workbench-surface-card:hover {
-  box-shadow:
-    0 2px 4px color-mix(in srgb, var(--dp-text-primary) 5%, transparent),
-    0 4px 12px color-mix(in srgb, var(--dp-text-primary) 6%, transparent);
+.workbench-surface-card:has(.ui-data-table--fill-remaining) {
+  flex: 1 1 auto;
 }
 
 .workbench-surface-card--embedded {
@@ -64,22 +62,14 @@ withDefaults(
   box-shadow: none;
 }
 
-.workbench-surface-card--embedded:hover {
-  box-shadow: none;
-}
-
 .workbench-surface-card__head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
-  padding: var(--dp-space-3) var(--dp-space-4);
-  border-bottom: 1px solid var(--dp-border);
-  background: linear-gradient(
-    180deg,
-    var(--dp-surface-elevated) 0%,
-    color-mix(in srgb, var(--dp-surface-elevated) 60%, var(--dp-surface)) 100%
-  );
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component) var(--dp-space-block);
+  border-bottom: 1px solid var(--ant-color-split);
+  background: var(--dp-surface-chrome);
 }
 
 .workbench-surface-card__head :deep(h2),
@@ -108,26 +98,27 @@ withDefaults(
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
-  padding: var(--dp-space-2) var(--dp-space-4);
-  border-bottom: 1px solid color-mix(in srgb, var(--dp-border) 70%, transparent);
-  background: color-mix(in srgb, var(--dp-surface-elevated) 50%, var(--dp-surface));
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) var(--dp-space-block);
+  border-bottom: 1px solid var(--ant-color-split);
+  background: var(--dp-surface-chrome);
 }
 
 .workbench-surface-card__body {
   flex: 1;
-  padding: var(--dp-space-3) var(--dp-space-4);
+  padding: var(--dp-space-component) var(--dp-space-block);
   min-height: 0;
   min-width: 0;
 }
 
 .workbench-surface-card__body--flush {
   padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .workbench-surface-card {
-    transition: none;
-  }
+.workbench-surface-card__body:has(.ui-data-table--fill-remaining) {
+  display: flex;
+  flex-direction: column;
 }
 </style>

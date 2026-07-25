@@ -1,22 +1,16 @@
 <script setup lang="ts">
 import type {
+  PortfolioTitleEvidenceCandidateVO,
   PortfolioTitleEvidenceItem,
   PortfolioTitlePromotionApplicationVO,
   PortfolioTitlePromotionFlowViewVO,
   PortfolioTitlePromotionTaskVO,
   PortfolioTitleTaskCriteriaVO,
 } from '@/apis/portfolio/title-promotion'
-import type {
-  PortfolioArchiveCategoryTreeNodeVO,
-  PortfolioArchiveRecordSummaryVO,
-} from '@/apis/portfolio/types'
 import type { PortfolioTitleJobCategoryCode } from '@/types/enums/portfolio-title-job-category-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { portfolioArchiveApi } from '@/apis/portfolio/archive'
-import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
-import { PortfolioArchiveRecordStatusCode } from '@/apis/portfolio/enums'
 import { portfolioTitlePromotionApi } from '@/apis/portfolio/title-promotion'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import TitlePromotionFlowPanel from '@/components/portfolio/TitlePromotionFlowPanel.vue'
@@ -37,7 +31,6 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
-import { PortfolioArchiveCategoryStatusCode } from '@/types/enums/portfolio-archive-category-status-enum'
 import {
   PortfolioTitleCriteriaCheckTypeCode,
   PortfolioTitleCriteriaCheckTypeDescription,
@@ -53,7 +46,7 @@ import {
 } from '@/types/enums/portfolio-title-promotion-application-status-enum'
 import { PortfolioTitlePromotionTaskStatusCode } from '@/types/enums/portfolio-title-promotion-task-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -87,8 +80,6 @@ const loading = ref(false)
 const matchLoading = ref(false)
 const draftLoading = ref(false)
 const submitLoading = ref(false)
-const records = ref<PortfolioArchiveRecordSummaryVO[]>([])
-const categoryCodeById = ref<Record<string, string>>({})
 const publishedTasks = ref<PortfolioTitlePromotionTaskVO[]>([])
 const selectedTaskId = ref<string | undefined>()
 const pathCode = ref(PortfolioTitleCriteriaPathCode.NORMAL)
@@ -97,16 +88,23 @@ const commitmentConfirmed = ref(false)
 const selectionConfirmed = ref(false)
 const evidenceByCriteria = ref<Record<string, string[]>>({})
 const manualNoteByCriteria = ref<Record<string, string>>({})
+const evidenceOptionsByCriteria = ref<Record<string, Array<{ value: string, label: string }>>>({})
+const evidenceLoadingByCriteria = ref<Record<string, boolean>>({})
+const evidenceRequestTokenByCriteria = ref<Record<string, number>>({})
 const matchResult = ref<PortfolioTitlePromotionApplicationVO | null>(null)
 const applicationId = ref<string | undefined>()
 const flowView = ref<PortfolioTitlePromotionFlowViewVO | null>(null)
 const flowLoading = ref(false)
 const taskRequestToken = ref(0)
-const recordRequestToken = ref(0)
 const applicationRequestToken = ref(0)
 const flowRequestToken = ref(0)
-/** 职称申报页面批量读取分页资源的单页上限。 */
-const PROMOTION_PAGE_MAX = 100
+/** 教师/任务切换时递增；保存/提交响应必须同代际。 */
+const applicationFormEpoch = ref(0)
+/** 核验预览代际；条件变化使旧预览失效。 */
+const matchPreviewToken = ref(0)
+const formWritePending = computed(
+  () => matchLoading.value || draftLoading.value || submitLoading.value,
+)
 
 const selectedTask = computed(() =>
   publishedTasks.value.find((item) => item.id === selectedTaskId.value),
@@ -168,17 +166,91 @@ const taskOptions = computed(() =>
     label: `${task.taskName}（${task.targetTitleLevel} · ${task.reviewYear}）`,
   })),
 )
-function recordOptionsForCriteria(criteria: PortfolioTitleTaskCriteriaVO) {
-  return records.value
-    .filter(
-      (item) =>
-        !criteria.evidenceCategoryCode
-        || categoryCodeById.value[item.categoryId] === criteria.evidenceCategoryCode,
-    )
-    .map((item) => ({
-      value: item.id,
-      label: (item.categoryName || '正式档案') + '（' + item.id + '）',
-    }))
+function evidenceOptionsForCriteria(criteria: PortfolioTitleTaskCriteriaVO) {
+  return evidenceOptionsByCriteria.value[criteria.id] || []
+}
+
+function isEvidenceLoading(criteriaId: string): boolean {
+  return Boolean(evidenceLoadingByCriteria.value[criteriaId])
+}
+
+function mergeEvidenceOptions(
+  criteriaId: string,
+  candidates: PortfolioTitleEvidenceCandidateVO[],
+): Array<{ value: string, label: string }> {
+  const byValue = new Map<string, { value: string, label: string }>()
+  for (const item of candidates) {
+    byValue.set(item.recordId, {
+      value: item.recordId,
+      label: item.displayLabel,
+    })
+  }
+  for (const selectedId of evidenceByCriteria.value[criteriaId] || []) {
+    if (!byValue.has(selectedId)) {
+      byValue.set(selectedId, {
+        value: selectedId,
+        label: `已选正式档案 · ${selectedId}`,
+      })
+    }
+  }
+  return [...byValue.values()]
+}
+
+/** 按条件分页拉取正式档案证据候选；保留已选项。 */
+async function loadEvidenceCandidates(criteriaId: string, keyword?: string) {
+  if (!targetTeacherId.value) {
+    evidenceOptionsByCriteria.value = {
+      ...evidenceOptionsByCriteria.value,
+      [criteriaId]: mergeEvidenceOptions(criteriaId, []),
+    }
+    return
+  }
+  const nextToken = (evidenceRequestTokenByCriteria.value[criteriaId] || 0) + 1
+  evidenceRequestTokenByCriteria.value = {
+    ...evidenceRequestTokenByCriteria.value,
+    [criteriaId]: nextToken,
+  }
+  evidenceLoadingByCriteria.value = {
+    ...evidenceLoadingByCriteria.value,
+    [criteriaId]: true,
+  }
+  try {
+    const page = await portfolioTitlePromotionApi.pageEvidenceCandidates({
+      pageNum: 1,
+      pageSize: 50,
+      teacherId: targetTeacherId.value,
+      taskCriteriaId: criteriaId,
+      keyword: keyword?.trim() || undefined,
+    })
+    if (evidenceRequestTokenByCriteria.value[criteriaId] !== nextToken) {
+      return
+    }
+    evidenceOptionsByCriteria.value = {
+      ...evidenceOptionsByCriteria.value,
+      [criteriaId]: mergeEvidenceOptions(criteriaId, page.list || []),
+    }
+  } catch (error) {
+    if (evidenceRequestTokenByCriteria.value[criteriaId] !== nextToken) {
+      return
+    }
+    showUserError(error, '加载证据候选失败')
+  } finally {
+    if (evidenceRequestTokenByCriteria.value[criteriaId] === nextToken) {
+      evidenceLoadingByCriteria.value = {
+        ...evidenceLoadingByCriteria.value,
+        [criteriaId]: false,
+      }
+    }
+  }
+}
+
+async function refreshEvidenceForVisibleCriteria() {
+  const selectable = taskCriteria.value.filter(isEvidenceSelectable)
+  await Promise.all(selectable.map((item) => loadEvidenceCandidates(item.id)))
+}
+
+function handleEvidenceSearch(criteriaId: string, keyword: string) {
+  void loadEvidenceCandidates(criteriaId, keyword)
 }
 
 function formatGroupHint(criteria: PortfolioTitleTaskCriteriaVO): string | undefined {
@@ -394,91 +466,59 @@ function buildRequestPayload() {
   }
 }
 
+/** 核验预览指纹：任务/路径/岗位/证据/承诺任一变化即失效旧结果。 */
+function evidenceFingerprint(): string {
+  const evidenceParts = Object.keys(evidenceByCriteria.value)
+    .sort()
+    .map((key) => `${key}:${(evidenceByCriteria.value[key] || []).slice().sort().join(',')}`)
+  const noteParts = Object.keys(manualNoteByCriteria.value)
+    .sort()
+    .map((key) => `${key}:${manualNoteByCriteria.value[key] || ''}`)
+  return [
+    targetTeacherId.value || '',
+    selectedTaskId.value || '',
+    pathCode.value,
+    jobCategory.value || '',
+    commitmentConfirmed.value ? '1' : '0',
+    selectionConfirmed.value ? '1' : '0',
+    applicationId.value || '',
+    evidenceParts.join('|'),
+    noteParts.join('|'),
+  ].join('::')
+}
+
+function bumpApplicationFormEpoch(): void {
+  applicationFormEpoch.value += 1
+  matchPreviewToken.value += 1
+}
+
+/** 单页拉取开放窗口内已发布任务；深链 taskId 走 locate 定位。 */
 async function loadPublishedTasks() {
   const currentToken = ++taskRequestToken.value
   try {
-    const allTasks: PortfolioTitlePromotionTaskVO[] = []
-    for (let pageNum = 1; pageNum <= PROMOTION_PAGE_MAX; pageNum++) {
-      const page = await portfolioTitlePromotionApi.pageTask({
-        pageNum,
-        pageSize: 100,
-        taskStatus: PortfolioTitlePromotionTaskStatusCode.PUBLISHED,
-      })
-      if (taskRequestToken.value !== currentToken) {
-        return
-      }
-      allTasks.push(...(page.list || []))
-      if (pageNum >= page.pages || page.list.length < page.pageSize) {
-        publishedTasks.value = allTasks
-        if (!selectedTaskId.value && allTasks.length > 0) {
-          const deepTaskId = readRouteStringParam(route.query.taskId)
-          if (deepTaskId && allTasks.some((item) => item.id === deepTaskId)) {
-            selectedTaskId.value = deepTaskId
-          } else {
-            selectedTaskId.value = allTasks[0].id
-          }
-        }
-        return
+    const locateTaskId = readRouteStringParam(route.query.taskId) || undefined
+    const page = await portfolioTitlePromotionApi.pageTask({
+      pageNum: 1,
+      pageSize: 50,
+      taskStatus: PortfolioTitlePromotionTaskStatusCode.PUBLISHED,
+      activeWindowOnly: true,
+      locateTaskId,
+    })
+    if (taskRequestToken.value !== currentToken) {
+      return
+    }
+    const list = page.list || []
+    publishedTasks.value = list
+    if (!selectedTaskId.value && list.length > 0) {
+      if (locateTaskId && list.some((item) => item.id === locateTaskId)) {
+        selectedTaskId.value = locateTaskId
+      } else {
+        selectedTaskId.value = list[0].id
       }
     }
-    showUserError(
-      new Error(`已发布职称任务分页超过 ${PROMOTION_PAGE_MAX} 页`),
-      '加载申报任务失败',
-    )
   } catch (error) {
     showUserError(error, '加载申报任务失败')
   }
-}
-
-async function loadRecords() {
-  if (!targetTeacherId.value && canPickTeachers.value) {
-    records.value = []
-    return
-  }
-  const currentToken = ++recordRequestToken.value
-  loading.value = true
-  try {
-    const allRecords: PortfolioArchiveRecordSummaryVO[] = []
-    for (let pageNum = 1; pageNum <= PROMOTION_PAGE_MAX; pageNum++) {
-      const page = await portfolioArchiveApi.pageRecords({
-        pageNum,
-        pageSize: 200,
-        teacherId: targetTeacherId.value,
-        recordStatus: PortfolioArchiveRecordStatusCode.OFFICIAL,
-      })
-      if (recordRequestToken.value !== currentToken) {
-        return
-      }
-      allRecords.push(...(page.list || []))
-      if (pageNum >= page.pages || page.list.length < page.pageSize) {
-        records.value = allRecords
-        return
-      }
-    }
-    showUserError(
-      new Error(`正式档案分页超过 ${PROMOTION_PAGE_MAX} 页`),
-      '加载正式档案失败',
-    )
-  } catch (error) {
-    showUserError(error, '加载正式档案失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadArchiveCategories() {
-  const tree = await portfolioArchiveTemplateApi.listCategoryTree()
-  const next: Record<string, string> = {}
-  const visit = (nodes: PortfolioArchiveCategoryTreeNodeVO[]) => {
-    for (const node of nodes) {
-      if (node.status === PortfolioArchiveCategoryStatusCode.ACTIVE) {
-        next[node.id] = node.categoryCode
-      }
-      visit(node.children || [])
-    }
-  }
-  visit(tree || [])
-  categoryCodeById.value = next
 }
 
 async function previewMatch() {
@@ -486,22 +526,57 @@ async function previewMatch() {
     showFormValidationMessage('申报已进入审核流程，当前仅可查看提交快照')
     return
   }
+  if (formWritePending.value) {
+    return
+  }
+  let payload: ReturnType<typeof buildRequestPayload>
+  try {
+    payload = buildRequestPayload()
+  } catch (error) {
+    if (error instanceof Error) {
+      showFormValidationMessage(error.message)
+    }
+    return
+  }
+  const context = {
+    token: ++matchPreviewToken.value,
+    fingerprint: evidenceFingerprint(),
+    epoch: applicationFormEpoch.value,
+    teacherId: targetTeacherId.value,
+  }
   try {
     matchLoading.value = true
-    matchResult.value = await portfolioTitlePromotionApi.previewMatch(buildRequestPayload())
+    const result = await portfolioTitlePromotionApi.previewMatch(payload)
+    if (
+      matchPreviewToken.value !== context.token
+      || applicationFormEpoch.value !== context.epoch
+      || targetTeacherId.value !== context.teacherId
+      || evidenceFingerprint() !== context.fingerprint
+    ) {
+      return
+    }
+    matchResult.value = result
   } catch (error) {
+    if (
+      matchPreviewToken.value !== context.token
+      || applicationFormEpoch.value !== context.epoch
+    ) {
+      return
+    }
     if (error instanceof Error && !('response' in error)) {
       showFormValidationMessage(error.message)
       return
     }
     showUserError(error, '预览核验失败')
   } finally {
-    matchLoading.value = false
+    if (matchPreviewToken.value === context.token) {
+      matchLoading.value = false
+    }
   }
 }
 
 async function saveDraft() {
-  if (draftLoading.value || submitLoading.value) {
+  if (draftLoading.value || submitLoading.value || matchLoading.value) {
     return
   }
   if (!applicationEditable.value) {
@@ -511,24 +586,59 @@ async function saveDraft() {
   if (!assertArchiveWritable()) {
     return
   }
+  let payload: ReturnType<typeof buildRequestPayload>
+  try {
+    payload = buildRequestPayload()
+  } catch (error) {
+    if (error instanceof Error) {
+      showFormValidationMessage(error.message)
+    }
+    return
+  }
+  const context = {
+    epoch: applicationFormEpoch.value,
+    teacherId: targetTeacherId.value,
+    payload,
+  }
   if (!(await confirmProxyWrite('保存职称申报草稿'))) {
+    return
+  }
+  if (
+    applicationFormEpoch.value !== context.epoch
+    || targetTeacherId.value !== context.teacherId
+  ) {
+    showFormValidationMessage('申报范围已切换，请重新保存草稿')
     return
   }
   try {
     draftLoading.value = true
-    const result = await portfolioTitlePromotionApi.saveDraft(buildRequestPayload())
+    const result = await portfolioTitlePromotionApi.saveDraft(context.payload)
+    if (
+      applicationFormEpoch.value !== context.epoch
+      || targetTeacherId.value !== context.teacherId
+    ) {
+      return
+    }
     matchResult.value = result
     applicationId.value = result.id
     void message.success('草稿已保存并重算核验')
     await loadFlowView()
   } catch (error) {
+    if (
+      applicationFormEpoch.value !== context.epoch
+      || targetTeacherId.value !== context.teacherId
+    ) {
+      return
+    }
     if (error instanceof Error && !('response' in error)) {
       showFormValidationMessage(error.message)
       return
     }
     showUserError(error, '保存草稿失败')
   } finally {
-    draftLoading.value = false
+    if (applicationFormEpoch.value === context.epoch) {
+      draftLoading.value = false
+    }
   }
 }
 
@@ -558,7 +668,7 @@ const canSubmitApplication = computed(() => {
 })
 
 async function submitApplication() {
-  if (submitLoading.value || draftLoading.value) {
+  if (submitLoading.value || draftLoading.value || matchLoading.value) {
     return
   }
   if (!applicationEditable.value) {
@@ -580,12 +690,39 @@ async function submitApplication() {
   if (!assertArchiveWritable()) {
     return
   }
+  let payload: ReturnType<typeof buildRequestPayload>
+  try {
+    payload = buildRequestPayload()
+  } catch (error) {
+    if (error instanceof Error) {
+      showFormValidationMessage(error.message)
+    }
+    return
+  }
+  const context = {
+    epoch: applicationFormEpoch.value,
+    teacherId: targetTeacherId.value,
+    payload,
+  }
   if (!(await confirmProxyWrite('提交职称申报'))) {
+    return
+  }
+  if (
+    applicationFormEpoch.value !== context.epoch
+    || targetTeacherId.value !== context.teacherId
+  ) {
+    showFormValidationMessage('申报范围已切换，请重新提交')
     return
   }
   try {
     submitLoading.value = true
-    const draft = await portfolioTitlePromotionApi.saveDraft(buildRequestPayload())
+    const draft = await portfolioTitlePromotionApi.saveDraft(context.payload)
+    if (
+      applicationFormEpoch.value !== context.epoch
+      || targetTeacherId.value !== context.teacherId
+    ) {
+      return
+    }
     matchResult.value = draft
     applicationId.value = draft.id
     if (!draft.id) {
@@ -596,17 +733,32 @@ async function submitApplication() {
       showFormValidationMessage('当前核验未通过，请按缺口提示补齐后再提交')
       return
     }
-    matchResult.value = await portfolioTitlePromotionApi.submit({ id: draft.id })
+    const draftId = draft.id
+    matchResult.value = await portfolioTitlePromotionApi.submit({ id: draftId })
+    if (
+      applicationFormEpoch.value !== context.epoch
+      || targetTeacherId.value !== context.teacherId
+    ) {
+      return
+    }
     void message.success('申报已提交')
     await loadFlowView()
   } catch (error) {
+    if (
+      applicationFormEpoch.value !== context.epoch
+      || targetTeacherId.value !== context.teacherId
+    ) {
+      return
+    }
     if (error instanceof Error && !('response' in error)) {
       showFormValidationMessage(error.message)
       return
     }
     showUserError(error, '提交申报失败')
   } finally {
-    submitLoading.value = false
+    if (applicationFormEpoch.value === context.epoch) {
+      submitLoading.value = false
+    }
   }
 }
 
@@ -614,8 +766,10 @@ watch(selectedTaskId, async () => {
   if (suppressTaskWatch.value) {
     return
   }
+  bumpApplicationFormEpoch()
   evidenceByCriteria.value = {}
   manualNoteByCriteria.value = {}
+  evidenceOptionsByCriteria.value = {}
   matchResult.value = null
   applicationId.value = undefined
   flowView.value = null
@@ -627,6 +781,7 @@ watch(selectedTaskId, async () => {
     jobCategory.value = undefined
   }
   await loadExistingApplication()
+  await refreshEvidenceForVisibleCriteria()
 })
 
 watch(
@@ -636,6 +791,7 @@ watch(
     readRouteStringParam(route.query.taskId),
   ],
   async () => {
+    bumpApplicationFormEpoch()
     const deepTaskId = readRouteStringParam(route.query.taskId)
     if (
       deepTaskId
@@ -647,10 +803,12 @@ watch(
       suppressTaskWatch.value = false
     }
     await loadExistingApplication()
+    await refreshEvidenceForVisibleCriteria()
   },
 )
 
-watch([pathCode, jobCategory], () => {
+watch([pathCode, jobCategory], async () => {
+  matchPreviewToken.value += 1
   const options = jobOptions.value
   if (options.length === 1 && jobCategory.value !== options[0].value) {
     jobCategory.value = options[0].value
@@ -658,12 +816,27 @@ watch([pathCode, jobCategory], () => {
     jobCategory.value = undefined
   }
   void loadFlowView()
+  await refreshEvidenceForVisibleCriteria()
 })
+
+watch(
+  [evidenceByCriteria, manualNoteByCriteria, commitmentConfirmed, selectionConfirmed],
+  () => {
+    matchPreviewToken.value += 1
+  },
+  { deep: true },
+)
 
 usePortfolioScopedLoader(
   async () => {
-    await Promise.all([loadPublishedTasks(), loadRecords(), loadArchiveCategories()])
-    await loadExistingApplication()
+    loading.value = true
+    try {
+      await loadPublishedTasks()
+      await loadExistingApplication()
+      await refreshEvidenceForVisibleCriteria()
+    } finally {
+      loading.value = false
+    }
   },
   () => targetTeacherId.value,
 )
@@ -703,13 +876,14 @@ usePortfolioScopedLoader(
               v-model="selectedTaskId"
               size="sm"
               :options="taskOptions"
+              :disabled="formWritePending || !applicationEditable"
               placeholder="请选择已发布任务"
             />
             <label class="promotion-scene__label">申报路径</label>
             <UiRadioGroup
               v-model="pathCode"
               size="sm"
-              :disabled="!applicationEditable"
+              :disabled="formWritePending || !applicationEditable"
               :options="pathCodeOptions"
             />
             <template v-if="jobRequired">
@@ -718,18 +892,21 @@ usePortfolioScopedLoader(
                 v-model="jobCategory"
                 size="sm"
                 :options="jobOptions"
-                :disabled="!applicationEditable"
+                :disabled="formWritePending || !applicationEditable"
                 placeholder="请选择岗位类型"
               />
             </template>
             <UiCheckbox
               v-if="commitmentRequired"
               v-model="commitmentConfirmed"
-              :disabled="!applicationEditable"
+              :disabled="formWritePending || !applicationEditable"
             >
               本人确认申报材料真实完整，对材料真实性负责
             </UiCheckbox>
-            <UiCheckbox v-model="selectionConfirmed" :disabled="!applicationEditable">
+            <UiCheckbox
+              v-model="selectionConfirmed"
+              :disabled="formWritePending || !applicationEditable"
+            >
               本包证据已甄选：完整度不等于代表作质量，仅绑定支撑条件的关键材料
             </UiCheckbox>
             <UiAlertStrip
@@ -801,7 +978,7 @@ usePortfolioScopedLoader(
                   portfolioLifecycleTagTone(matchResult.lifecycleStatus)
                 "
               >
-                {{ matchResult.lifecycleStatusLabel || matchResult.lifecycleStatus }}
+                {{ portfolioLifecycleStatusDisplay(matchResult.lifecycleStatus) }}
               </UiTag>
               <UiTag v-if="matchResult.evaluationHeld" size="sm" tone="orange">参评 hold</UiTag>
               <UiTag v-if="matchResult.archiveWriteForbidden" size="sm" tone="red">写禁</UiTag>
@@ -929,10 +1106,13 @@ usePortfolioScopedLoader(
               mode="multiple"
               size="sm"
               allow-clear
-              placeholder="选择正式档案作为证据"
-              :options="recordOptionsForCriteria(criteria)"
-              :loading="loading"
-              :disabled="!applicationEditable"
+              allow-search
+              :filter-option="false"
+              placeholder="搜索学年/分类名选择正式档案"
+              :options="evidenceOptionsForCriteria(criteria)"
+              :loading="loading || isEvidenceLoading(criteria.id)"
+              :disabled="formWritePending || !applicationEditable"
+              @search="(keyword: string) => handleEvidenceSearch(criteria.id, keyword)"
             />
             <UiTextarea
               v-else-if="isManualCheck(criteria)"
@@ -940,7 +1120,7 @@ usePortfolioScopedLoader(
               size="sm"
               :rows="3"
               placeholder="填写人工确认说明（必填）"
-              :disabled="!applicationEditable"
+              :disabled="formWritePending || !applicationEditable"
             />
             <div v-else class="promotion-scene__panel-desc">
               无需绑定档案，预览时将按系统事实自动核验
@@ -960,8 +1140,8 @@ usePortfolioScopedLoader(
 
 <style scoped lang="scss">
 .promotion-scene__select-hint {
-  margin: 0 0 var(--dp-space-2);
-  padding: 6px 10px;
+  margin: 0 0 var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control);
   background: var(--dp-surface-subtle);
@@ -970,10 +1150,10 @@ usePortfolioScopedLoader(
   line-height: 1.45;
 }
 .promotion-scene__select-link {
-  margin-left: 8px;
+  margin-left: var(--dp-space-component-tight);
   border: none;
   background: transparent;
-  color: var(--dp-primary);
+  color: var(--dp-color-primary);
   cursor: pointer;
   padding: 0;
   font: inherit;
@@ -981,7 +1161,7 @@ usePortfolioScopedLoader(
 
 .promotion-scene__grid {
   display: grid;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .promotion-scene__grid--2col {
@@ -995,13 +1175,13 @@ usePortfolioScopedLoader(
 }
 
 .promotion-scene__grid--spaced {
-  margin-top: var(--dp-space-4);
+  margin-top: var(--dp-space-block);
 }
 
 .promotion-scene__stack {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .promotion-scene__label {
@@ -1012,14 +1192,14 @@ usePortfolioScopedLoader(
 .promotion-scene__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .promotion-scene__tag-row {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-3);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
 }
 
@@ -1028,7 +1208,7 @@ usePortfolioScopedLoader(
 }
 
 .promotion-scene__panel {
-  padding: var(--dp-space-3);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control);
 }
@@ -1037,39 +1217,39 @@ usePortfolioScopedLoader(
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-1);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-xs);
 }
 
 .promotion-scene__panel-head--spaced {
-  margin-bottom: var(--dp-space-2);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .promotion-scene__panel-desc,
 .promotion-scene__panel-body {
-  margin-top: var(--dp-space-1);
+  margin-top: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
 .promotion-scene__panel-gap {
-  margin-top: var(--dp-space-1);
+  margin-top: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-danger);
 }
 
 .promotion-scene__group-hint {
-  margin-bottom: var(--dp-space-2);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .promotion-scene__evidence-card {
-  margin-top: var(--dp-space-4);
+  margin-top: var(--dp-space-block);
 }
 
 .promotion-scene__gate-row {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 </style>

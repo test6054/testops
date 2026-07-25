@@ -18,6 +18,8 @@
         :class="{
           'exam-journey-sidebar-nav__item--active': resolvedActiveJourneyKey === 'overview',
         }"
+        :aria-label="collapsed ? '考试概览' : undefined"
+        :aria-current="resolvedActiveJourneyKey === 'overview' ? 'page' : undefined"
         @click="emit('overview-select')"
       >
         <DashboardOutlined class="exam-journey-sidebar-nav__icon" />
@@ -36,6 +38,8 @@
           'exam-journey-sidebar-nav__item--completed': stage.status === 'completed',
           'exam-journey-sidebar-nav__item--suggested': showSuggestionBadge(stage.key),
         }"
+        :aria-label="journeyItemAriaLabel(stage, index)"
+        :aria-current="resolvedActiveJourneyKey === stage.key ? 'page' : undefined"
         :title="collapsed ? stage.title : undefined"
         @click="handleJourneySelect(stage.key)"
       >
@@ -112,6 +116,15 @@ function handleJourneySelect(journeyKey: string): void {
   emit('select', requireExamJourneyKey(journeyKey))
 }
 
+function journeyItemAriaLabel(stage: WorkbenchStage, index: number): string {
+  const statusText = stage.statusText?.trim() || stage.status
+  const suggestion = showSuggestionBadge(stage.key) ? '，建议下一步' : ''
+  if (props.collapsed) {
+    return `${index + 1}. ${stage.title}，${statusText}${suggestion}`
+  }
+  return `${stage.title}，${statusText}${suggestion}`
+}
+
 const resolvedActiveJourneyKey = computed((): ExamWorkspaceJourneyKey => {
   if (!isExamWorkspaceJourneyKey(props.activeJourneyKey)) {
     throw new Error(`未知考试旅程键：${props.activeJourneyKey}`)
@@ -127,7 +140,7 @@ function statusClass(status: WorkbenchStageStatus): string {
 <style lang="scss" scoped>
 .exam-journey-sidebar-nav {
   flex-shrink: 0;
-  padding: 8px;
+  padding: var(--dp-space-component-tight);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -136,15 +149,15 @@ function statusClass(status: WorkbenchStageStatus): string {
 
   &--collapsed {
     align-items: center;
-    padding: 8px 4px;
+    padding: var(--dp-space-component-tight) var(--dp-space-component-xs);
   }
 
   &__skeleton {
-    padding: 4px 8px;
+    padding: var(--dp-space-component-xs) var(--dp-space-component-tight);
   }
 
   &__section-label {
-    margin: 8px 8px 4px;
+    margin: var(--dp-space-component-tight) var(--dp-space-component-xs);
     font-size: var(--dp-font-size-xxs);
     font-weight: 600;
     letter-spacing: 0.02em;
@@ -154,16 +167,16 @@ function statusClass(status: WorkbenchStageStatus): string {
   &__item {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--dp-space-component);
     width: 100%;
-    padding: 8px 10px;
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     border: none;
     border-radius: var(--dp-radius-panel);
     background: transparent;
     cursor: pointer;
     text-align: left;
     color: var(--dp-text-primary);
-    transition: background 0.2s ease;
+    transition: background var(--dp-duration-normal) var(--dp-ease-default);
 
     &:hover {
       background: var(--dp-fill-tertiary);
@@ -183,7 +196,7 @@ function statusClass(status: WorkbenchStageStatus): string {
     }
 
     &--overview {
-      margin-bottom: 4px;
+      margin-bottom: var(--dp-space-component-xs);
     }
   }
 
@@ -250,7 +263,7 @@ function statusClass(status: WorkbenchStageStatus): string {
     flex-shrink: 0;
     font-size: 10px;
     line-height: 18px;
-    padding: 0 6px;
+    padding: 0 var(--dp-space-component-tight);
     border-radius: 9px;
     background: var(--dp-warning-bg);
     color: var(--dp-warning);
@@ -260,7 +273,7 @@ function statusClass(status: WorkbenchStageStatus): string {
   &--collapsed &__item {
     width: 40px;
     justify-content: center;
-    padding: 8px 0;
+    padding: var(--dp-space-component-tight) 0;
   }
 
   &--collapsed &__index {

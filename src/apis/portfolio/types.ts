@@ -1,11 +1,13 @@
-import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
 import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { AiTaskFailurePhaseCode, AiTaskStatusCode } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { QueryDto } from '@/types'
+import type { AiTaskTypeCode } from '@/types/enums/ai-task-type-enum'
+import type { ArchiveMaterialOcrStatusCode } from '@/types/enums/archive-material-ocr-status-enum'
 import type { PortfolioAffiliationChangeTypeCode } from '@/types/enums/portfolio-affiliation-change-type-enum'
 import type { PortfolioAffiliationHistorySourceTypeCode } from '@/types/enums/portfolio-affiliation-history-source-type-enum'
+import type { PortfolioAgeBandCode } from '@/types/enums/portfolio-age-band-enum'
 import type { PortfolioAiAdoptionTargetTypeCode } from '@/types/enums/portfolio-ai-adoption-target-type-enum'
 import type { PortfolioAiAnalysisPriorityCode } from '@/types/enums/portfolio-ai-analysis-priority-enum'
 import type { PortfolioAiAnalysisReviewStatusCode } from '@/types/enums/portfolio-ai-analysis-review-status-enum'
@@ -34,11 +36,14 @@ import type { PortfolioEvaluationTaskStatusEnum } from '@/types/enums/portfolio-
 import type { PortfolioGapTaskStatusCode } from '@/types/enums/portfolio-gap-task-status-enum'
 import type { PortfolioGuidanceTypeCode } from '@/types/enums/portfolio-guidance-type-enum'
 import type { PortfolioIndustryEducationProjectTypeCode } from '@/types/enums/portfolio-industry-education-project-type-enum'
+import type { PortfolioIndustryPackHardGapTypeCode } from '@/types/enums/portfolio-industry-pack-hard-gap-type-enum'
+import type { PortfolioIndustryPackWeightCode } from '@/types/enums/portfolio-industry-pack-weight-code-enum'
 import type { PortfolioIntegrationChannelCodeEnum } from '@/types/enums/portfolio-integration-channel-code-enum'
 import type { PortfolioMaterialRefFreezeStatusCode } from '@/types/enums/portfolio-material-ref-freeze-status-enum'
 import type { PortfolioMaterialRefScopeCode } from '@/types/enums/portfolio-material-ref-scope-enum'
 import type { PortfolioMaterialTypeCode } from '@/types/enums/portfolio-material-type-enum'
 import type { PortfolioMaterialVersionStatusCode } from '@/types/enums/portfolio-material-version-status-enum'
+import type { PortfolioMetricRecomputeStatusCode } from '@/types/enums/portfolio-metric-recompute-status-enum'
 import type { PortfolioOrgAliasTargetTypeCode } from '@/types/enums/portfolio-org-alias-target-type-enum'
 import type { PortfolioOrgUnitStatusCode } from '@/types/enums/portfolio-org-unit-status-enum'
 import type { PortfolioOrgUnitTypeCode } from '@/types/enums/portfolio-org-unit-type-enum'
@@ -47,7 +52,9 @@ import type { PortfolioPortraitCohortTypeCode } from '@/types/enums/portfolio-po
 import type { PortfolioPortraitDimensionCode } from '@/types/enums/portfolio-portrait-dimension-enum'
 import type { PortfolioPortraitIndicatorEvidenceTypeCode } from '@/types/enums/portfolio-portrait-indicator-evidence-type-enum'
 import type { PortfolioPortraitStageCode } from '@/types/enums/portfolio-portrait-stage-code-enum'
+import type { PortfolioPortraitStrengthTagTypeCode } from '@/types/enums/portfolio-portrait-strength-tag-type-enum'
 import type { PortfolioReportSceneCode } from '@/types/enums/portfolio-report-scene-enum'
+import type { PortfolioRetirementWindowCode } from '@/types/enums/portfolio-retirement-window-enum'
 import type { PortfolioReviewActionTypeCode } from '@/types/enums/portfolio-review-action-type-enum'
 import type { PortfolioSourceFixAlertStatusCode } from '@/types/enums/portfolio-source-fix-alert-status-enum'
 import type { PortfolioSourceFixBusinessRefTypeCode } from '@/types/enums/portfolio-source-fix-business-ref-type-enum'
@@ -57,6 +64,7 @@ import type { PortfolioSourceFixTriggerSourceCode } from '@/types/enums/portfoli
 import type { PortfolioSourceFixTriggerTypeCode } from '@/types/enums/portfolio-source-fix-trigger-type-enum'
 import type { PortfolioTeacherIdentityStatusCode } from '@/types/enums/portfolio-teacher-identity-status-enum'
 import type { PortfolioTeacherIdentityTypeCode } from '@/types/enums/portfolio-teacher-identity-type-enum'
+import type { PortfolioTenureBandCode } from '@/types/enums/portfolio-tenure-band-enum'
 import type { PortfolioTextbookTypeCode } from '@/types/enums/portfolio-textbook-type-enum'
 import type { PortfolioTodoTypeCode } from '@/types/enums/portfolio-todo-type-enum'
 import type { PortfolioVirtualTeachingRoomActivityTypeCode } from '@/types/enums/portfolio-virtual-teaching-room-activity-type-enum'
@@ -114,6 +122,7 @@ import {
   PortfolioOrgUnitTypeDescription,
 } from '@/types/enums/portfolio-org-unit-type-enum'
 import { PortfolioPolicyMatchConclusionCode } from '@/types/enums/portfolio-policy-match-conclusion-enum'
+import { PortfolioPolicyCheckModeCode } from '@/types/enums/portfolio-policy-check-mode-enum'
 import { PortfolioPortraitDimensionReadinessCode } from '@/types/enums/portfolio-portrait-dimension-readiness-enum'
 import {
   ALL_PORTFOLIO_REPORT_SCENE_CODES,
@@ -506,6 +515,12 @@ export {
 } from '@/types/enums/portfolio-policy-match-conclusion-enum'
 
 export {
+  ALL_PORTFOLIO_POLICY_CHECK_MODE_CODES,
+  PortfolioPolicyCheckModeCode,
+  PortfolioPolicyCheckModeDescription,
+} from '@/types/enums/portfolio-policy-check-mode-enum'
+
+export {
   ALL_PORTFOLIO_PORTRAIT_COHORT_DISPLAY_MODE_CODES,
   PortfolioPortraitCohortDisplayModeCode,
   PortfolioPortraitCohortDisplayModeDescription,
@@ -856,6 +871,28 @@ export interface PortfolioArchiveTemplateSeedResultVO {
   skippedCategoryCodes: string[]
 }
 
+/** 补采/填报字段枚举选项快照 */
+export interface PortfolioGapFieldEnumOptionVO {
+  value: string
+  label: string
+}
+
+/** 档案字段 schema（缺口补采、分类填报、采集面板共用） */
+export interface PortfolioArchiveFieldSchema {
+  fieldCode?: string
+  fieldLabel?: string
+  fieldType?: PortfolioArchiveFieldTypeCode
+  readonly?: boolean
+  required?: boolean
+  enumRef?: string
+  sourceType?: PortfolioArchiveFieldSourceTypeCode
+  unit?: string
+  formatPattern?: string
+  minValue?: string
+  maxValue?: string
+  enumOptions?: PortfolioGapFieldEnumOptionVO[]
+}
+
 export interface PortfolioTargetFieldDefinition {
   fieldDefId?: string
   fieldCode: string
@@ -863,6 +900,13 @@ export interface PortfolioTargetFieldDefinition {
   fieldType?: PortfolioArchiveFieldTypeCode
   readonly?: boolean
   required?: boolean
+  enumRef?: string
+  sourceType?: PortfolioArchiveFieldSourceTypeCode
+  unit?: string
+  formatPattern?: string
+  minValue?: string
+  maxValue?: string
+  enumOptions?: PortfolioGapFieldEnumOptionVO[]
 }
 
 export interface PortfolioArchiveAuditFlowBindRequest {
@@ -873,6 +917,13 @@ export interface PortfolioArchiveAuditFlowBindRequest {
 export interface PortfolioArchiveAuditFlowBindingVO {
   categoryId: string
   auditFlowCode: string
+}
+
+export interface PortfolioArchiveAuditFlowOptionVO {
+  auditFlowCode: string
+  flowName: string
+  nodeSummary: string
+  sensitive: boolean
 }
 
 export interface PortfolioAiAskRequest {
@@ -921,6 +972,34 @@ export interface PortfolioAiAnalysisSuggestionVO {
   priority?: PortfolioAiAnalysisPriorityCode
 }
 
+/** 指标分布项 - PortfolioMetricDistributionItemVO（自由文本分档 code） */
+export interface PortfolioMetricDistributionItemVO {
+  code: string
+  label: string
+  count: number
+}
+
+/** 年龄分档分布项 */
+export interface PortfolioAgeBandDistributionItemVO {
+  code: PortfolioAgeBandCode
+  label: string
+  count: number
+}
+
+/** 来校年限分档分布项 */
+export interface PortfolioTenureBandDistributionItemVO {
+  code: PortfolioTenureBandCode
+  label: string
+  count: number
+}
+
+/** 退休窗口分档分布项 */
+export interface PortfolioRetirementWindowDistributionItemVO {
+  code: PortfolioRetirementWindowCode
+  label: string
+  count: number
+}
+
 export interface PortfolioCockpitSummaryVO {
   departmentId?: string
   departmentName?: string
@@ -943,6 +1022,18 @@ export interface PortfolioCockpitSummaryVO {
   completenessPendingCount?: number
   completenessSevereCount?: number
   completenessUncalculatedCount?: number
+  teachingWorkloadAvgCoursesPerTeacher?: number
+  metricRecomputeStatus?: PortfolioMetricRecomputeStatusCode
+  metricComputedTime?: string
+  trainingCompletionRatePercent?: number
+  gapTaskOpenCount?: number
+  reviewTaskBacklogCount?: number
+  politicalAffiliationDistribution?: PortfolioMetricDistributionItemVO[]
+  educationDegreeDistribution?: PortfolioMetricDistributionItemVO[]
+  ageBandDistribution?: PortfolioAgeBandDistributionItemVO[]
+  tenureBandDistribution?: PortfolioTenureBandDistributionItemVO[]
+  retirementWindowDistribution?: PortfolioRetirementWindowDistributionItemVO[]
+  postCategoryDistribution?: PortfolioMetricDistributionItemVO[]
 }
 
 /** 驾驶舱问数教师行 - PortfolioCockpitAskTeacherRow */
@@ -1018,6 +1109,10 @@ export interface PortfolioArchiveFieldDefVO {
   readonly?: boolean
   enumRef?: string
   sourceType: PortfolioArchiveFieldSourceTypeCode
+  unit?: string
+  formatPattern?: string
+  minValue?: string
+  maxValue?: string
   sortOrder?: number
 }
 
@@ -1031,7 +1126,37 @@ export interface PortfolioArchiveFieldDefSaveRequest {
   readonly?: boolean
   enumRef?: string
   sourceType?: PortfolioArchiveFieldSourceTypeCode
+  unit?: string
+  formatPattern?: string
+  minValue?: string
+  maxValue?: string
   sortOrder?: number
+}
+
+export interface PortfolioArchiveEnumOptionVO {
+  id: string
+  enumCode: string
+  optionValue: string
+  optionLabel: string
+  sortOrder?: number
+  enabled?: boolean
+}
+
+export interface PortfolioArchiveEnumOptionListRequest {
+  enumCode: string
+}
+
+export interface PortfolioArchiveEnumOptionSaveRequest {
+  id?: string
+  enumCode: string
+  optionValue: string
+  optionLabel: string
+  sortOrder?: number
+  enabled?: boolean
+}
+
+export interface PortfolioArchiveEnumOptionDeleteRequest {
+  id: string
 }
 
 export interface PortfolioArchiveFieldListRequest {
@@ -1179,6 +1304,16 @@ export interface PortfolioCandidateConfirmRequest {
   correctedCandidateValue?: string
 }
 
+/** 档案袋关联 AI 来源结构化引用；展示文案由前端按枚举拼装 */
+export interface PortfolioAiSourceRefVO {
+  /** 正式 AI 分析类型；有正式分析时优先用于展示 */
+  analysisType?: PortfolioAiAnalysisTypeCode
+  /** AI 任务类型；无正式分析时用于展示 */
+  taskType?: AiTaskTypeCode
+  /** 正式分析结果标题；可与 analysisType 组合展示 */
+  resultTitle?: string
+}
+
 export interface PortfolioAiAnalysisSummaryVO {
   id: string
   aiTaskId: string
@@ -1192,6 +1327,8 @@ export interface PortfolioAiAnalysisSummaryVO {
   resultTitle: string
   summary: string
   conclusionCode?: PortfolioPolicyMatchConclusionCode
+  /** 政策核验模式；POLICY_MATCH 时由后端返回 */
+  policyCheckMode?: PortfolioPolicyCheckModeCode
   reportScene?: PortfolioReportSceneCode
   userQuestion?: string
   reportPeriodLabel?: string
@@ -1314,8 +1451,8 @@ export interface PortfolioReviewTaskSummaryVO {
   riskLevel?: PortfolioMaterialRiskLevelCode
   /** 深链用，页面不展示 */
   referenceAiTaskId?: string
-  /** 教师可读：关联智能来源说明 */
-  referenceAiSourceLabel?: string
+  /** 关联智能来源结构化引用 */
+  referenceAiSource?: PortfolioAiSourceRefVO
   singleReviewRequired?: boolean
   escalateAllowed?: boolean
   reviewActionAllowed?: boolean
@@ -1674,9 +1811,10 @@ export interface PortfolioTeacherPortraitGetRequest {
 
 export interface PortfolioPortraitStrengthTagVO {
   tagCode: string
-  tagLabel: string
+  portraitDimension?: PortfolioPortraitDimensionCode
+  indicatorName?: string
   score: number
-  tagType: string
+  tagType: PortfolioPortraitStrengthTagTypeCode
 }
 
 export interface PortfolioPortraitGapItemVO {
@@ -2035,7 +2173,7 @@ export interface PortfolioEducatingOutcomeContributionVO {
 
 /** §8.57 行业包维度得分 */
 export interface PortfolioIndustryPackDimensionScoreVO {
-  dimensionCode: string
+  dimensionCode: PortfolioIndustryPackWeightCode
   dimensionLabel: string
   weight: number
   score: number
@@ -2044,8 +2182,8 @@ export interface PortfolioIndustryPackDimensionScoreVO {
 
 /** §8.57 行业硬性缺口 */
 export interface PortfolioIndustryPackHardGapItemVO {
-  gapType: string
-  dimensionCode?: string
+  gapType: PortfolioIndustryPackHardGapTypeCode
+  dimensionCode?: PortfolioIndustryPackWeightCode
   gapTitle: string
   remediationHint?: string
   hardRequired?: boolean
@@ -2274,8 +2412,8 @@ export interface PortfolioArchiveRecordSummaryVO {
   evaluationIncluded: boolean
   /** 深链用，页面不展示 */
   referenceAiTaskId?: string
-  /** 教师可读：关联智能来源说明 */
-  referenceAiSourceLabel?: string
+  /** 关联智能来源结构化引用 */
+  referenceAiSource?: PortfolioAiSourceRefVO
   createTime?: string
   documentVersionNo?: number
   currentOfficial?: boolean
@@ -2380,8 +2518,8 @@ export interface PortfolioArchiveRecordDetailVO {
   evaluationIncluded: boolean
   /** 深链用，页面不展示 */
   referenceAiTaskId?: string
-  /** 教师可读：关联智能来源说明 */
-  referenceAiSourceLabel?: string
+  /** 关联智能来源结构化引用 */
+  referenceAiSource?: PortfolioAiSourceRefVO
   latestRejectReason?: string
   latestReturnDeadline?: string
   fields: PortfolioArchiveRecordFieldVO[]
@@ -2438,8 +2576,8 @@ export interface PortfolioArchiveTimelineItemVO {
   evaluationIncluded: boolean
   /** 深链用，页面不展示 */
   referenceAiTaskId?: string
-  /** 教师可读：关联智能来源说明 */
-  referenceAiSourceLabel?: string
+  /** 关联智能来源结构化引用 */
+  referenceAiSource?: PortfolioAiSourceRefVO
 }
 
 export interface PortfolioTeacherOneTableGetRequest {
@@ -2642,8 +2780,16 @@ export interface PortfolioCorrectionImpactVO {
 export interface PortfolioGapMissingFieldVO {
   fieldCode: string
   fieldLabel?: string
+  fieldType?: PortfolioArchiveFieldTypeCode
   required?: boolean
   readonly?: boolean
+  enumRef?: string
+  sourceType?: PortfolioArchiveFieldSourceTypeCode
+  unit?: string
+  formatPattern?: string
+  minValue?: string
+  maxValue?: string
+  enumOptions?: PortfolioGapFieldEnumOptionVO[]
   currentValue?: string
   missing?: boolean
 }
@@ -2691,6 +2837,12 @@ export interface PortfolioGapTaskSubmitRequest {
 export interface PortfolioGapTaskSummaryVO {
   id: string
   teacherId: string
+  /** 教师姓名（edu-user nickName） */
+  teacherName?: string
+  /** 教师工号 */
+  teacherNumber?: string
+  /** 院系名称 */
+  departmentName?: string
   categoryId: string
   categoryName?: string
   taskTitle?: string
@@ -2724,6 +2876,8 @@ export interface PortfolioGapTaskPageRequest extends QueryDto {
   departmentId?: string
   taskStatus?: PortfolioGapTaskStatusCode
   openOnly?: boolean
+  /** 深链定位单条补采任务 */
+  gapTaskId?: string
 }
 
 export interface PortfolioGapUrgeRequest {
@@ -3255,6 +3409,33 @@ export interface PortfolioSourceFixBatchRequest {
   departmentOrgId?: string
   majorGroupOrgId?: string
   evaluationTaskId?: string
+}
+
+/** §8.52 批量重算预检请求 */
+export interface PortfolioSourceFixBatchPreviewRequest {
+  triggerReason?: string
+  beforeValue?: string
+  afterValue?: string
+  fieldCode?: string
+  fieldLabel?: string
+  dataSourceCode?: PortfolioSourceFixDataSourceCode
+  teacherIds?: string[]
+  departmentOrgId?: string
+  majorGroupOrgId?: string
+  evaluationTaskId?: string
+}
+
+/** §8.52 批量重算预检结果 */
+export interface PortfolioSourceFixBatchPreviewVO {
+  blocked?: boolean
+  blockers?: string[]
+  warnings?: string[]
+  teacherCount?: number
+  indicatorCount?: number
+  evaluationTaskCount?: number
+  sampleTeacherIds?: string[]
+  scopeSummary?: string
+  estimatedSeconds?: number
 }
 
 /** §8.50 工号/组织归属血缘段 */

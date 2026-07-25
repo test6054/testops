@@ -239,8 +239,8 @@ watch(
 
 <style scoped lang="scss">
 .exam-goal-mapping-card {
-  padding: var(--dp-space-3, 12px);
-  background: var(--dp-bg-container);
+  padding: var(--dp-space-component);
+  background: var(--dp-surface);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
 }
@@ -253,16 +253,16 @@ watch(
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
 }
 .exam-goal-mapping-card__title {
-  margin: 0 0 4px;
+  margin: 0 0 var(--dp-space-component-xs);
   font-size: 15px;
   font-weight: 600;
 }
 .exam-goal-mapping-card__desc {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
   line-height: 1.5;

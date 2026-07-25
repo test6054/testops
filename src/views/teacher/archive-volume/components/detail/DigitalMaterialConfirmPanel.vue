@@ -144,12 +144,12 @@ async function handleConfirm() {
 
 <style scoped lang="scss">
 .digital-confirm-panel {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .digital-confirm-panel__hint {
-  margin: 0 0 12px;
-  padding: 0 16px;
+  margin: 0 0 var(--dp-space-component);
+  padding: 0 var(--dp-space-block);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
@@ -157,23 +157,23 @@ async function handleConfirm() {
 .digital-confirm-panel__all {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 16px 8px;
+  gap: var(--dp-space-component-tight);
+  padding: 0 var(--dp-space-block) var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
 }
 
 .digital-confirm-panel__list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 0 16px 16px;
+  gap: var(--dp-space-component-tight);
+  padding: 0 var(--dp-space-block);
   width: 100%;
 }
 
 .digital-confirm-panel__item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }

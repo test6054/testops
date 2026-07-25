@@ -34,6 +34,8 @@ export function useDispatchQueue() {
   const scannerDeviceId = ref('')
   const scannerStationId = ref('')
   const taskKind = ref<ScanTaskKindCode | undefined>()
+  /** 队列筛选/分页请求代际：丢弃过期响应，失败时保留上次成功列表 */
+  let queueLoadGeneration = 0
 
   const pendingCount = computed(
     () =>
@@ -41,17 +43,26 @@ export function useDispatchQueue() {
   )
 
   async function loadQueue() {
+    const loadGeneration = ++queueLoadGeneration
+    const requestFingerprint = {
+      pageNum: pageNum.value,
+      pageSize: pageSize.value,
+      statusFilter: statusFilter.value,
+      taskKind: taskKind.value,
+      scannerDeviceId: scannerDeviceId.value,
+      scannerStationId: scannerStationId.value,
+    }
     loading.value = true
     errorMessage.value = ''
     try {
-      const filter = statusFilter.value
+      const filter = requestFingerprint.statusFilter
       const page = await pageScanDispatchTickets({
-        pageNum: pageNum.value,
-        pageSize: pageSize.value,
+        pageNum: requestFingerprint.pageNum,
+        pageSize: requestFingerprint.pageSize,
         statusList: STATUS_FILTER_MAP[filter],
-        taskKind: taskKind.value,
-        scannerDeviceId: scannerDeviceId.value || undefined,
-        scannerStationId: scannerStationId.value || undefined,
+        taskKind: requestFingerprint.taskKind,
+        scannerDeviceId: requestFingerprint.scannerDeviceId || undefined,
+        scannerStationId: requestFingerprint.scannerStationId || undefined,
         failureOnly: filter === DispatchQueueStatusFilterCode.FAILED ? true : undefined,
         excludeFailed:
           filter === DispatchQueueStatusFilterCode.ALL
@@ -59,14 +70,20 @@ export function useDispatchQueue() {
             ? true
             : undefined,
       })
+      if (loadGeneration !== queueLoadGeneration) {
+        return
+      }
       tickets.value = page.list
       total.value = page.total
     } catch (error) {
+      if (loadGeneration !== queueLoadGeneration) {
+        return
+      }
       errorMessage.value = getUserErrorMessage(error)
-      tickets.value = []
-      total.value = 0
     } finally {
-      loading.value = false
+      if (loadGeneration === queueLoadGeneration) {
+        loading.value = false
+      }
     }
   }
 

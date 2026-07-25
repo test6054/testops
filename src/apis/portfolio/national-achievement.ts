@@ -40,6 +40,10 @@ export interface PortfolioNationalAchievementCatalogVO {
   indicatorCode?: string
   buildCycleMonths?: number
   enabled: boolean
+  planLinkRefCount?: number
+  officialRecordRefCount?: number
+  canDelete?: boolean
+  deleteBlockReason?: string
   updateTime: string
   requirements: PortfolioNationalAchievementRequirementVO[]
 }
@@ -62,7 +66,13 @@ export interface PortfolioNationalAchievementCatalogSaveRequest {
   indicatorCode?: string
   buildCycleMonths?: number
   enabled: boolean
+  expectedUpdateTime?: string
   requirements: PortfolioNationalAchievementRequirementSaveItem[]
+}
+
+export interface PortfolioNationalAchievementCatalogDeleteRequest {
+  id: string
+  expectedUpdateTime: string
 }
 
 export interface PortfolioPlanningAchievementLinkVO {
@@ -76,7 +86,6 @@ export interface PortfolioPlanningAchievementLinkVO {
   completionRate?: string
   lockedTime?: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -129,9 +138,12 @@ export const portfolioNationalAchievementApi = {
     ),
 
   saveCatalog: (data: PortfolioNationalAchievementCatalogSaveRequest) =>
-    http.post<string>('/api/portfolio/national-achievement/catalog/save', data),
+    http.post<PortfolioNationalAchievementCatalogVO>(
+      '/api/portfolio/national-achievement/catalog/save',
+      data,
+    ),
 
-  deleteCatalog: (data: { id: string }) =>
+  deleteCatalog: (data: PortfolioNationalAchievementCatalogDeleteRequest) =>
     http.post<void>('/api/portfolio/national-achievement/catalog/delete', data),
 
   link: (data: { planItemId: string, catalogId: string }) =>

@@ -18,7 +18,7 @@
         @search="handleSearch"
         @reset="handleReset"
       >
-        <div class="dp-space" style="--dp-space-gap: 8px">
+        <div class="dp-space" style="--dp-space-component: 8px">
           <UiButton size="sm" variant="ghost" @click="refreshTasks">
             <template #icon>
               <ReloadOutlined />
@@ -26,7 +26,7 @@
             刷新
           </UiButton>
           <UiTag v-if="exportTaskStore.runningCount > 0" tone="blue">
-            <LoadingOutlined spin style="margin-right: 4px" />
+            <LoadingOutlined spin style="margin-right: var(--dp-space-component-xs)" />
             进行中：{{ exportTaskStore.runningCount }}
           </UiTag>
         </div>
@@ -94,15 +94,15 @@
                     || record.status === AsyncTaskStatusEnum.PENDING
                 "
                 spin
-                style="margin-right: 4px"
+                style="margin-right: var(--dp-space-component-xs)"
               />
               <CheckCircleOutlined
                 v-else-if="record.status === AsyncTaskStatusEnum.COMPLETED"
-                style="margin-right: 4px"
+                style="margin-right: var(--dp-space-component-xs)"
               />
               <CloseCircleOutlined
                 v-else-if="record.status === AsyncTaskStatusEnum.FAILED"
-                style="margin-right: 4px"
+                style="margin-right: var(--dp-space-component-xs)"
               />
               {{ statusLabel(record.status) }}
             </UiTag>
@@ -154,7 +154,7 @@
 
           <!-- 操作 -->
           <template v-else-if="column.key === 'actions'">
-            <div class="dp-space" style="--dp-space-gap: 8px">
+            <div class="dp-space" style="--dp-space-component: 8px">
               <UiButton
                 v-if="record.status === AsyncTaskStatusEnum.COMPLETED"
                 size="sm"
@@ -535,14 +535,14 @@ const getFormatColor = (format: ExportFormatEnum): string => {
 .task-center {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   height: 100%;
 }
 
 .file-cell {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 
   .file-name {
     overflow: hidden;
@@ -554,7 +554,7 @@ const getFormatColor = (format: ExportFormatEnum): string => {
 .time-cell {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
@@ -563,14 +563,14 @@ const getFormatColor = (format: ExportFormatEnum): string => {
   color: var(--dp-success);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
 }
 
 .text-danger {
   color: var(--dp-danger, var(--dp-error));
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
 }
 
 .text-muted {
@@ -586,7 +586,7 @@ const getFormatColor = (format: ExportFormatEnum): string => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   width: 100%;
 
   .progress-text {

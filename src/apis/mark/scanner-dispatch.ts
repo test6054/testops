@@ -27,11 +27,16 @@ export {
   ScanBatchQualityFlagCode,
   ScanBatchQualityFlagDescription,
 } from '@/types/enums/scan-batch-quality-flag-enum'
+
 export {
   ALL_SCAN_DISPATCH_TICKET_STATUS_CODES,
   ScanDispatchTicketStatusCode,
   ScanDispatchTicketStatusDescription,
 } from '@/types/enums/scan-dispatch-ticket-status-enum'
+export {
+  ScanOperationActionCode,
+  ScanOperationActionDescription,
+} from '@/types/enums/scan-operation-action-enum'
 
 export const SCAN_DISPATCH_TICKET_STATUS_OPTIONS: Array<{
   value: ScanDispatchTicketStatusCode
@@ -42,9 +47,11 @@ export const SCAN_DISPATCH_TICKET_STATUS_OPTIONS: Array<{
 }))
 
 export {
-  ScanOperationActionCode,
-  ScanOperationActionDescription,
-} from '@/types/enums/scan-operation-action-enum'
+  appendUrlQueryParam,
+  buildScanDispatchKioskUrl,
+  resolveMarkVueAppRoot,
+  type ScanDispatchKioskUrlTicket,
+} from '@/utils/scan-dispatch-kiosk-url'
 
 export interface ScanDispatchArchiveSnapshotVO {
   volumeId?: string
@@ -218,42 +225,6 @@ export interface ScannerExceptionDashboardPageRequest extends QueryDto {
 export interface ScanDispatchForceReleaseRequest {
   ticketId: string
   releaseReason: string
-}
-
-export function resolveMarkVueAppRoot(): string {
-  if (typeof window === 'undefined') {
-    return ''
-  }
-  const baseUrl = import.meta.env.BASE_URL || '/'
-  if (baseUrl === '/') {
-    return window.location.origin
-  }
-  const normalized = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
-  return `${window.location.origin}${normalized}`
-}
-
-export function appendUrlQueryParam(url: string, key: string, value: string): string {
-  const separator = url.includes('?') ? '&' : '?'
-  return `${url}${separator}${key}=${encodeURIComponent(value)}`
-}
-
-/** 工位派单 URL 构建字段 - 对应 ScanDispatchTicketVO 的 ticketId 与 kioskDispatchUrl */
-export interface ScanDispatchKioskUrlTicket {
-  ticketId: string
-  kioskDispatchUrl?: string
-}
-
-export function buildScanDispatchKioskUrl(
-  ticket: ScanDispatchKioskUrlTicket,
-  returnTo?: string,
-): string {
-  const path = ticket.kioskDispatchUrl || `/scanner-kiosk/dispatch/${ticket.ticketId}`
-  const url = `${resolveMarkVueAppRoot()}${path}`
-  const trimmedReturnTo = returnTo?.trim()
-  if (!trimmedReturnTo) {
-    return url
-  }
-  return appendUrlQueryParam(url, 'returnTo', trimmedReturnTo)
 }
 
 export function createScanDispatch(request: ScanDispatchCreateRequest) {

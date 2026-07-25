@@ -49,6 +49,7 @@ const courseColumns: ColumnsType = [
 ]
 
 const loading = ref(false)
+const submitting = ref(false)
 const plans = ref<AnnualEvaluationPlanVO[]>([])
 const planTotal = ref(0)
 const planPageNum = ref(1)
@@ -205,6 +206,9 @@ function openEdit(record: AnnualEvaluationPlanVO) {
 }
 
 async function submitPlan() {
+  if (submitting.value) {
+    return
+  }
   if (!form.planYear.trim() || !form.planTitle.trim()) {
     void message.error('请填写年度与计划标题')
     return
@@ -228,6 +232,7 @@ async function submitPlan() {
     remark: form.remark?.trim() || undefined,
     qualityCourseIds: form.qualityCourseIds,
   }
+  submitting.value = true
   try {
     if (form.id) {
       await accreditationApi.annualPlanUpdate(request)
@@ -241,16 +246,22 @@ async function submitPlan() {
     emit('refresh')
   } catch (e) {
     showUserError(e, '年度评价计划保存失败')
+  } finally {
+    submitting.value = false
   }
 }
 
 async function removePlan(id: string) {
+  if (submitting.value) {
+    return
+  }
   if (!canMutatePlan.value) {
     void message.error(annualPlanHint.value)
     return
   }
   const ok = await confirmAsync({ title: '确认删除该年度评价计划？' })
   if (!ok) return
+  submitting.value = true
   try {
     await accreditationApi.annualPlanDelete(id)
     void message.success('已删除')
@@ -259,14 +270,20 @@ async function removePlan(id: string) {
     emit('refresh')
   } catch (e) {
     showUserError(e, '年度评价计划删除失败')
+  } finally {
+    submitting.value = false
   }
 }
 
 async function updateCourseStatus(courseRowId: string, evaluationCompleted: boolean) {
+  if (submitting.value) {
+    return
+  }
   if (!canMutatePlan.value) {
     void message.error(annualPlanHint.value)
     return
   }
+  submitting.value = true
   try {
     await accreditationApi.updateAnnualPlanCourseStatus({ id: courseRowId, evaluationCompleted })
     void message.success(evaluationCompleted ? '已登记课程评价完成' : '已撤销课程评价完成')
@@ -277,6 +294,8 @@ async function updateCourseStatus(courseRowId: string, evaluationCompleted: bool
     emit('refresh')
   } catch (e) {
     showUserError(e, '年度计划课程状态更新失败')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -406,6 +425,7 @@ defineExpose({ openCreate, loadPlans })
       width="480"
       :hide-footer="false"
       ok-text="保存"
+      :confirm-loading="submitting"
       @ok="submitPlan"
     >
       <UiForm layout="vertical">
@@ -437,21 +457,21 @@ defineExpose({ openCreate, loadPlans })
 .annual-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 .toolbar {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .course-block {
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
 }
 .course-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component-tight);
 }
 .course-head h4 {
   margin: 0;
@@ -460,25 +480,25 @@ defineExpose({ openCreate, loadPlans })
 }
 .course-meta {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 .course-progress {
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
   max-width: 360px;
 }
 .coverage-cell {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   min-width: 160px;
 }
 .coverage-text {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 .hint {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
   margin: 0;
 }
 .w-full {

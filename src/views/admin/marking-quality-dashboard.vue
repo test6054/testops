@@ -398,7 +398,7 @@
             class="quality-dashboard__alert"
           >
             <template #default>
-              <span style="display: inline-flex; align-items: center; gap: 8px">
+              <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
                 <UiTag tone="blue" size="sm">未选择组织</UiTag>
                 <span>请选择阅卷组织后查看题组进度汇总</span>
               </span>
@@ -452,7 +452,7 @@
             <span class="quality-dashboard__panel-title">进度快照</span>
           </template>
           <template #toolbar>
-            <div class="dp-space" style="--dp-space-gap: 8px">
+            <div class="dp-space" style="--dp-space-component: 8px">
               <UiButton
                 size="sm"
                 variant="outline"
@@ -487,7 +487,7 @@
             class="quality-dashboard__alert"
           >
             <template #default>
-              <span style="display: inline-flex; align-items: center; gap: 8px">
+              <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
                 <UiTag tone="blue" size="sm">未选择组织</UiTag>
                 <span>请选择阅卷组织后查看质量快照与进度</span>
               </span>
@@ -956,7 +956,7 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
 import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getQualityPanel } from '@/apis/mark/exam-progress'
 import { pageScannerBatches } from '@/apis/mark/exam-scan'
@@ -986,7 +986,7 @@ import {
   SpotCheckStatusDescription,
   takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
-import MarkChart from '@/components/chart/MarkChart.vue'
+const MarkChart = defineAsyncComponent(() => import('@/components/chart/MarkChart.vue'))
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -2121,7 +2121,7 @@ onActivated(() => {
 @use '@/styles/breakpoints' as bp;
 .quality-dashboard {
   &__tabs {
-    padding: 0 16px;
+    padding: 0 var(--dp-space-block);
   }
 
   &__surface {
@@ -2131,7 +2131,7 @@ onActivated(() => {
   &__overview-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: var(--dp-space-4);
+    gap: var(--dp-space-block);
 
     @media (min-width: bp.$ant-grid-lg) {
       grid-template-columns: 1.2fr 0.8fr;
@@ -2142,8 +2142,8 @@ onActivated(() => {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: var(--dp-space-2);
-    margin-bottom: var(--dp-space-4);
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-block);
   }
 
   &__consistency-label {
@@ -2152,7 +2152,7 @@ onActivated(() => {
   }
 
   &__consistency-value {
-    font-size: var(--dp-type-title-size);
+    font-size: var(--dp-font-size-lg);
     color: var(--dp-text-primary);
   }
 
@@ -2171,8 +2171,8 @@ onActivated(() => {
     display: grid;
     grid-template-columns: 72px 1fr 48px;
     align-items: center;
-    gap: var(--dp-space-3);
-    padding: var(--dp-space-2) 0;
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-component-tight) 0;
   }
 
   &__consistency-name {
@@ -2186,7 +2186,7 @@ onActivated(() => {
   &__consistency-track {
     height: 6px;
     border-radius: var(--dp-radius-full);
-    background: var(--dp-surface-soft);
+    background: var(--dp-surface-subtle);
     overflow: hidden;
   }
 
@@ -2196,7 +2196,7 @@ onActivated(() => {
     border-radius: inherit;
     background: var(--dp-blue-500);
     transform-origin: left center;
-    transition: transform 0.2s ease;
+    transition: transform var(--dp-duration-normal) var(--dp-ease-default);
   }
 
   &__consistency-rate {
@@ -2207,7 +2207,7 @@ onActivated(() => {
   }
 
   &__dimension-chart {
-    margin-bottom: var(--dp-space-4);
+    margin-bottom: var(--dp-space-block);
   }
 
   &__form--spot {
@@ -2220,13 +2220,13 @@ onActivated(() => {
   }
 
   &__todo-panel {
-    margin-top: var(--dp-space-4);
+    margin-top: var(--dp-space-block);
   }
 
   &__todo-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
 
     @media (min-width: bp.$ant-grid-lg) {
       grid-template-columns: repeat(4, 1fr);
@@ -2237,19 +2237,19 @@ onActivated(() => {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--dp-space-1);
-    padding: var(--dp-space-3);
+    gap: var(--dp-space-component-xs);
+    padding: var(--dp-space-component);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    background: var(--dp-surface-soft);
+    background: var(--dp-surface-subtle);
     cursor: pointer;
     text-align: left;
     transition:
-      border-color 0.2s ease,
-      background 0.2s ease;
+      border-color var(--dp-duration-normal) var(--dp-ease-default),
+      background var(--dp-duration-normal) var(--dp-ease-default);
 
     &:hover {
-      border-color: var(--dp-blue-300);
+      border-color: var(--dp-blue-200);
       background: var(--dp-surface);
     }
   }
@@ -2260,7 +2260,7 @@ onActivated(() => {
   }
 
   &__todo-value {
-    font-size: var(--dp-type-title-size);
+    font-size: var(--dp-font-size-lg);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     color: var(--dp-text-primary);
@@ -2280,8 +2280,8 @@ onActivated(() => {
   &__charts {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: var(--dp-space-3, 12px);
-    margin-top: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
+    margin-top: var(--dp-space-component);
   }
 
   &__exam-select {
@@ -2309,11 +2309,11 @@ onActivated(() => {
   }
 
   &__alert {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__empty {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-component);
   }
 
   &__num-success {
@@ -2328,7 +2328,7 @@ onActivated(() => {
     margin: 0;
     padding-left: 18px;
     display: grid;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__risk-item {
@@ -2338,7 +2338,7 @@ onActivated(() => {
 }
 
 .quality-dashboard__inner-panel {
-  margin-bottom: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-component);
 }
 
 /* 嵌套 Surface：去双层重阴影/松 padding，保留边框分区 */
@@ -2347,12 +2347,12 @@ onActivated(() => {
 }
 
 .quality-dashboard__surface :deep(.quality-dashboard__inner-panel .workbench-surface-card__head) {
-  padding: 8px 12px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
 }
 
 .quality-dashboard__surface
   :deep(.quality-dashboard__inner-panel .workbench-surface-card__toolbar) {
-  padding: 6px 12px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
 }
 
 .quality-dashboard__surface
@@ -2360,6 +2360,6 @@ onActivated(() => {
     .quality-dashboard__inner-panel
       .workbench-surface-card__body:not(.workbench-surface-card__body--flush)
   ) {
-  padding: 12px;
+  padding: var(--dp-space-component);
 }
 </style>

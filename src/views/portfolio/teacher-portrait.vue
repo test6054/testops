@@ -9,19 +9,26 @@ import type {
 import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
 import type { PortfolioDevelopmentPlanCompletionVO } from '@/apis/portfolio/teacher-platform'
 import type {
+  PortfolioPortraitStrengthTagVO,
   PortfolioTeacherPortraitCohortCompareVO,
   PortfolioTeacherPortraitIndicatorDetailVO,
   PortfolioTeacherPortraitTrendVO,
   PortfolioTeacherPortraitVO,
 } from '@/apis/portfolio/types'
+import type { PortfolioEducatingOutcomeTypeCode } from '@/types/enums/portfolio-educating-outcome-type-enum'
+import type { PortfolioGuidanceTypeCode } from '@/types/enums/portfolio-guidance-type-enum'
+import type { PortfolioIndustryEducationProjectTypeCode } from '@/types/enums/portfolio-industry-education-project-type-enum'
 import type { PortfolioSuggestionTypeCode } from '@/types/enums/portfolio-suggestion-type-enum'
+import type { PortfolioTextbookTypeCode } from '@/types/enums/portfolio-textbook-type-enum'
+import type { PortfolioVirtualTeachingRoomActivityTypeCode } from '@/types/enums/portfolio-virtual-teaching-room-activity-type-enum'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import {
   PortfolioArchiveRecordStatusDescription,
+  PortfolioPortraitDimensionDescription,
   PortfolioPortraitDimensionReadinessCode,
   PortfolioPortraitDimensionReadinessDescription,
   PortfolioPortraitIndicatorEvidenceTypeDescription,
@@ -31,17 +38,21 @@ import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
   PORTFOLIO_PORTRAIT_DIMENSION_READINESS_TONE,
 } from '@/apis/portfolio/types'
-import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
+
+const MarkChart = defineAsyncComponent(() => import('@/components/chart/MarkChart.vue'))
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiAlert from '@/components/ui-guide/ui/Alert.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSegmented from '@/components/ui-guide/ui/UiSegmented.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -51,21 +62,33 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
-import { PortfolioEvaluationSceneCode } from '@/types/enums/portfolio-evaluation-scene-enum'
+import { PortfolioEducatingOutcomeTypeDescription } from '@/types/enums/portfolio-educating-outcome-type-enum'
+import {
+  PortfolioEvaluationSceneCode,
+  PortfolioEvaluationSceneDescription,
+} from '@/types/enums/portfolio-evaluation-scene-enum'
+import { PortfolioGuidanceTypeDescription } from '@/types/enums/portfolio-guidance-type-enum'
+import { PortfolioIndustryEducationProjectTypeDescription } from '@/types/enums/portfolio-industry-education-project-type-enum'
+import { PortfolioIndustryPackHardGapTypeDescription } from '@/types/enums/portfolio-industry-pack-hard-gap-type-enum'
+import { PortfolioIndustryPackWeightCodeDescription } from '@/types/enums/portfolio-industry-pack-weight-code-enum'
 import {
   ALL_PORTFOLIO_PORTRAIT_COHORT_TYPE_CODES,
   PortfolioPortraitCohortTypeCode,
   PortfolioPortraitCohortTypeDescription,
 } from '@/types/enums/portfolio-portrait-cohort-type-enum'
 import { PortfolioPortraitStageDescription } from '@/types/enums/portfolio-portrait-stage-code-enum'
+import { PortfolioPortraitStrengthTagTypeCode } from '@/types/enums/portfolio-portrait-strength-tag-type-enum'
 import { PortfolioSuggestionTypeDescription } from '@/types/enums/portfolio-suggestion-type-enum'
+import { PortfolioTextbookTypeDescription } from '@/types/enums/portfolio-textbook-type-enum'
 import {
   PortfolioTrainingRecommendStatusCode,
   PortfolioTrainingRecommendStatusDescription,
 } from '@/types/enums/portfolio-training-recommend-status-enum'
+import { PortfolioVirtualTeachingRoomActivityTypeDescription } from '@/types/enums/portfolio-virtual-teaching-room-activity-type-enum'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioIdentityTypeDisplay } from '@/utils/portfolio-identity-type'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import {
   buildPortraitCohortRangeChartOption,
   buildPortraitCompositeTrendChartOption,
@@ -78,7 +101,7 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 
 const route = useRoute()
 const router = useRouter()
-const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
 const { archiveWriteForbidden, archiveWriteBlockMessage, reloadLifecycleState }
   = usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
@@ -100,8 +123,40 @@ const appointmentPeriodEval = ref<PortfolioAppointmentPeriodEvaluationVO | null>
 /** §8.66 学分曲线分类：ALL / DIGITAL_LITERACY / NATIONAL_TRAINING / CERTIFICATE / OTHER_TRAINING */
 const creditCategory = ref('ALL')
 const creditCurveLoading = ref(false)
+const creditRequestToken = ref(0)
+const suggestionsLoadFailed = ref(false)
+const trainingLoadFailed = ref(false)
+const portraitBundleLoading = ref(false)
+/** 画像决策面：overview 首屏；evidence 贡献专题；action 发展行动；compare 同群/趋势 */
+type PortraitSurface = 'overview' | 'evidence' | 'action' | 'compare'
+const PORTRAIT_SURFACE_OPTIONS: Array<{ value: PortraitSurface, label: string }> = [
+  { value: 'overview', label: '综合概览' },
+  { value: 'evidence', label: '画像证据' },
+  { value: 'action', label: '发展行动' },
+  { value: 'compare', label: '比较分析' },
+]
+function readPortraitSurface(value: unknown): PortraitSurface {
+  if (
+    value === 'evidence'
+    || value === 'action'
+    || value === 'compare'
+    || value === 'overview'
+  ) {
+    return value
+  }
+  return 'overview'
+}
+const portraitSurface = ref<PortraitSurface>(readPortraitSurface(route.query.tab))
+const actionSurfaceLoaded = ref(false)
+const compareSurfaceLoaded = ref(false)
+const actionSurfaceLoading = ref(false)
+const compareSurfaceLoading = ref(false)
 const planYear = String(new Date().getFullYear())
 const cohortType = ref<PortfolioPortraitCohortTypeCode>(PortfolioPortraitCohortTypeCode.DEPARTMENT)
+
+const canManageOwnPortraitActions = computed(() =>
+  Boolean(currentUserId.value && targetTeacherId.value === currentUserId.value),
+)
 
 const CREDIT_CATEGORY_LABELS: Record<string, string> = {
   ALL: '全部分类合计',
@@ -145,6 +200,65 @@ const stageLabel = computed(() => {
   )
 })
 
+function guidanceTypeDisplay(code: PortfolioGuidanceTypeCode) {
+  return strictEnumLabel(PortfolioGuidanceTypeDescription, code, '指导任务类型')
+}
+
+function outcomeTypeDisplay(code: PortfolioEducatingOutcomeTypeCode | undefined) {
+  if (!code) {
+    throw new Error('枚举合同不同步：育人成果类型缺失')
+  }
+  return strictEnumLabel(PortfolioEducatingOutcomeTypeDescription, code, '育人成果类型')
+}
+
+function textbookTypeDisplay(code: PortfolioTextbookTypeCode) {
+  return strictEnumLabel(PortfolioTextbookTypeDescription, code, '教材类型')
+}
+
+function strengthTagDisplay(tag: PortfolioPortraitStrengthTagVO): string {
+  if (tag.tagType === PortfolioPortraitStrengthTagTypeCode.DIMENSION) {
+    if (!tag.portraitDimension) {
+      throw new Error('枚举合同不同步：维度优势标签缺少画像维度')
+    }
+    return `${strictEnumLabel(
+      PortfolioPortraitDimensionDescription,
+      tag.portraitDimension,
+      '画像维度',
+    )}优势`
+  }
+  if (tag.tagType === PortfolioPortraitStrengthTagTypeCode.INDICATOR) {
+    const name = tag.indicatorName?.trim()
+    if (!name) {
+      throw new Error(`枚举合同不同步：指标优势标签缺少指标名称 tagCode=${tag.tagCode}`)
+    }
+    return name
+  }
+  throw new Error(`枚举合同不同步：画像优势标签类型=${String(tag.tagType)}`)
+}
+
+function activityTypeDisplay(code: PortfolioVirtualTeachingRoomActivityTypeCode) {
+  return strictEnumLabel(
+    PortfolioVirtualTeachingRoomActivityTypeDescription,
+    code,
+    '虚拟教研室活动类型',
+  )
+}
+
+function projectTypeDisplay(code: PortfolioIndustryEducationProjectTypeCode) {
+  return strictEnumLabel(
+    PortfolioIndustryEducationProjectTypeDescription,
+    code,
+    '产教融合项目类型',
+  )
+}
+
+function appointmentCycleSceneDisplay(code: PortfolioEvaluationSceneCode | undefined) {
+  if (!code) {
+    throw new Error('枚举合同不同步：聘期滚动评价缺少周期场景编码')
+  }
+  return strictEnumLabel(PortfolioEvaluationSceneDescription, code, '聘期滚动评价周期场景')
+}
+
 const compositeItems = computed((): SignalMetric[] => {
   if (!portrait.value) {
     return []
@@ -174,6 +288,30 @@ const portraitDataInsufficient = computed(() => {
     (item) => item.readiness === PortfolioPortraitDimensionReadinessCode.PENDING,
   )
 })
+
+const overviewStrengthTags = computed(() => (portrait.value?.strengthTags ?? []).slice(0, 3))
+const overviewGapItems = computed(() => (portrait.value?.gapItems ?? []).slice(0, 3))
+const overviewNextActions = computed(() => {
+  const actions: Array<{ key: string, label: string, surface: PortraitSurface }> = []
+  if ((portrait.value?.gapItems?.length ?? 0) > 0) {
+    actions.push({ key: 'gaps', label: '查看短板与证据', surface: 'evidence' })
+  }
+  if (suggestions.value.length > 0 || trainingRecommendations.value.length > 0) {
+    actions.push({ key: 'action', label: '处理发展建议/培训', surface: 'action' })
+  }
+  actions.push({ key: 'compare', label: '查看同群与趋势', surface: 'compare' })
+  return actions.slice(0, 3)
+})
+
+function setPortraitSurface(surface: PortraitSurface) {
+  if (portraitSurface.value === surface) {
+    return
+  }
+  portraitSurface.value = surface
+  const nextQuery = { ...route.query, tab: surface === 'overview' ? undefined : surface }
+  void router.replace({ query: nextQuery })
+  void ensurePortraitSurfaceData(surface)
+}
 
 const cohortHint = computed(() => {
   if (!cohort.value) {
@@ -349,7 +487,79 @@ function defaultAppointmentPeriodRange(): { periodStart: string, periodEnd: stri
   return { periodStart: fmt(start), periodEnd: fmt(end) }
 }
 
-async function loadSecondaryPortraitData() {
+/** 发展行动面：规划/建议/培训/学分/聘期，与比较面请求隔离。 */
+async function loadActionSurfaceData() {
+  if (!portrait.value) {
+    return
+  }
+  const requestToken = portraitRequestToken.value
+  const creditToken = ++creditRequestToken.value
+  const creditCategorySnapshot = creditCategory.value
+  const teacherId = targetTeacherId.value
+  const appointmentRange = defaultAppointmentPeriodRange()
+  actionSurfaceLoading.value = true
+  try {
+    const settled = await Promise.allSettled([
+      loadPlanCompletion(),
+      teacherId ? portfolioAnalysisApi.listSuggestions({ teacherId }) : Promise.resolve([]),
+      teacherId
+        ? portfolioAnalysisApi.listTrainingRecommendations({ teacherId })
+        : Promise.resolve([]),
+      teacherId
+        ? portfolioAnalysisApi.getCreditCurve({ teacherId, creditCategory: creditCategorySnapshot })
+        : Promise.resolve(null),
+      teacherId
+        ? portfolioAnalysisApi.getAppointmentPeriodEvaluation({
+            teacherId,
+            periodStart: appointmentRange.periodStart,
+            periodEnd: appointmentRange.periodEnd,
+            cycleSceneCode: PortfolioEvaluationSceneCode.APPOINTMENT,
+          })
+        : Promise.resolve(null),
+    ])
+    const [, suggestionSettled, trainingSettled, creditSettled, appointmentSettled] = settled
+    if (portraitRequestToken.value !== requestToken) {
+      return
+    }
+    if (suggestionSettled.status === 'fulfilled') {
+      suggestions.value = suggestionSettled.value
+      suggestionsLoadFailed.value = false
+    } else {
+      suggestionsLoadFailed.value = true
+      showUserError(suggestionSettled.reason, '加载发展建议失败')
+    }
+    if (trainingSettled.status === 'fulfilled') {
+      trainingRecommendations.value = trainingSettled.value
+      trainingLoadFailed.value = false
+    } else {
+      trainingLoadFailed.value = true
+      showUserError(trainingSettled.reason, '加载培训推荐失败')
+    }
+    if (
+      creditRequestToken.value === creditToken
+      && creditCategory.value === creditCategorySnapshot
+    ) {
+      if (creditSettled.status === 'fulfilled') {
+        creditCurve.value = creditSettled.value
+      } else {
+        showUserError(creditSettled.reason, '加载学分曲线失败')
+      }
+    }
+    if (appointmentSettled.status === 'fulfilled') {
+      appointmentPeriodEval.value = appointmentSettled.value
+    } else {
+      showUserError(appointmentSettled.reason, '加载聘期滚动评价失败')
+    }
+    actionSurfaceLoaded.value = true
+  } finally {
+    if (portraitRequestToken.value === requestToken) {
+      actionSurfaceLoading.value = false
+    }
+  }
+}
+
+/** 比较分析面：同群与趋势，进入该面再请求。 */
+async function loadCompareSurfaceData() {
   if (!portrait.value) {
     return
   }
@@ -357,85 +567,58 @@ async function loadSecondaryPortraitData() {
   const cohortToken = cohortRequestToken.value + 1
   cohortRequestToken.value = cohortToken
   const request = buildPortraitRequest()
-  const teacherId = targetTeacherId.value
-  const appointmentRange = defaultAppointmentPeriodRange()
-  const settled = await Promise.allSettled([
-    portfolioAnalysisApi.getPortraitCohortCompare(buildCohortRequest()),
-    portfolioAnalysisApi.getPortraitTrend({ ...request, limit: 12 }),
-    loadPlanCompletion(),
-    teacherId ? portfolioAnalysisApi.listSuggestions({ teacherId }) : Promise.resolve([]),
-    teacherId
-      ? portfolioAnalysisApi.listTrainingRecommendations({ teacherId })
-      : Promise.resolve([]),
-    teacherId
-      ? portfolioAnalysisApi.getCreditCurve({ teacherId, creditCategory: creditCategory.value })
-      : Promise.resolve(null),
-    teacherId
-      ? portfolioAnalysisApi.getAppointmentPeriodEvaluation({
-          teacherId,
-          periodStart: appointmentRange.periodStart,
-          periodEnd: appointmentRange.periodEnd,
-          cycleSceneCode: PortfolioEvaluationSceneCode.APPOINTMENT,
-        })
-      : Promise.resolve(null),
-  ])
-  const [
-    cohortSettled,
-    trendSettled,,    
-    suggestionSettled,
-    trainingSettled,
-    creditSettled,
-    appointmentSettled,
-  ] = settled
-  if (portraitRequestToken.value !== requestToken) {
-    return
-  }
-  if (cohortRequestToken.value === cohortToken) {
-    if (cohortSettled.status === 'fulfilled') {
-      cohort.value = cohortSettled.value
+  compareSurfaceLoading.value = true
+  try {
+    const settled = await Promise.allSettled([
+      portfolioAnalysisApi.getPortraitCohortCompare(buildCohortRequest()),
+      portfolioAnalysisApi.getPortraitTrend({ ...request, limit: 12 }),
+    ])
+    const [cohortSettled, trendSettled] = settled
+    if (portraitRequestToken.value !== requestToken) {
+      return
+    }
+    if (cohortRequestToken.value === cohortToken) {
+      if (cohortSettled.status === 'fulfilled') {
+        cohort.value = cohortSettled.value
+      } else {
+        showUserError(cohortSettled.reason, '加载同群体对比失败')
+      }
+    }
+    if (trendSettled.status === 'fulfilled') {
+      trend.value = trendSettled.value
     } else {
-      cohort.value = null
-      showUserError(cohortSettled.reason, '加载同群体对比失败')
+      showUserError(trendSettled.reason, '加载历史趋势失败')
+    }
+    compareSurfaceLoaded.value = true
+  } finally {
+    if (portraitRequestToken.value === requestToken) {
+      compareSurfaceLoading.value = false
     }
   }
-  if (trendSettled.status === 'fulfilled') {
-    trend.value = trendSettled.value
-  } else {
-    trend.value = null
-    showUserError(trendSettled.reason, '加载历史趋势失败')
+}
+
+async function ensurePortraitSurfaceData(surface: PortraitSurface) {
+  if (!portrait.value) {
+    return
   }
-  if (suggestionSettled.status === 'fulfilled') {
-    suggestions.value = suggestionSettled.value
-  } else {
-    suggestions.value = []
-    showUserError(suggestionSettled.reason, '加载发展建议失败')
+  if (surface === 'action' && !actionSurfaceLoaded.value) {
+    await loadActionSurfaceData()
+    return
   }
-  if (trainingSettled.status === 'fulfilled') {
-    trainingRecommendations.value = trainingSettled.value
-  } else {
-    trainingRecommendations.value = []
-    showUserError(trainingSettled.reason, '加载培训推荐失败')
-  }
-  if (creditSettled.status === 'fulfilled') {
-    creditCurve.value = creditSettled.value
-  } else {
-    creditCurve.value = null
-    showUserError(creditSettled.reason, '加载学分曲线失败')
-  }
-  if (appointmentSettled.status === 'fulfilled') {
-    appointmentPeriodEval.value = appointmentSettled.value
-  } else {
-    appointmentPeriodEval.value = null
-    showUserError(appointmentSettled.reason, '加载聘期滚动评价失败')
+  if (surface === 'compare' && !compareSurfaceLoaded.value) {
+    await loadCompareSurfaceData()
   }
 }
 
 async function loadPortraitBundle() {
   const requestToken = portraitRequestToken.value + 1
   portraitRequestToken.value = requestToken
+  creditRequestToken.value += 1
+  portraitBundleLoading.value = true
   if (!targetTeacherId.value && canPickTeachers.value) {
     resetPortraitBundleContext()
     portraitAbsent.value = true
+    portraitBundleLoading.value = false
     return
   }
   loading.value = true
@@ -449,6 +632,12 @@ async function loadPortraitBundle() {
   trainingRecommendations.value = []
   creditCurve.value = null
   appointmentPeriodEval.value = null
+  suggestionsLoadFailed.value = false
+  trainingLoadFailed.value = false
+  actionSurfaceLoaded.value = false
+  compareSurfaceLoaded.value = false
+  actionSurfaceLoading.value = false
+  compareSurfaceLoading.value = false
   creditCategory.value = 'ALL'
   try {
     const request = buildPortraitRequest()
@@ -458,7 +647,7 @@ async function loadPortraitBundle() {
     }
     portrait.value = nextPortrait
     void reloadLifecycleState()
-    await loadSecondaryPortraitData()
+    await ensurePortraitSurfaceData(portraitSurface.value)
   } catch (error) {
     if (portraitRequestToken.value !== requestToken) {
       return
@@ -471,6 +660,7 @@ async function loadPortraitBundle() {
   } finally {
     if (portraitRequestToken.value === requestToken) {
       loading.value = false
+      portraitBundleLoading.value = false
     }
   }
 }
@@ -525,29 +715,65 @@ usePortfolioScopedLoader(
 )
 
 watch(cohortType, () => {
-  void loadCohortCompare()
+  if (portraitSurface.value === 'compare') {
+    void loadCohortCompare()
+  }
 })
+
+watch(
+  () => route.query.tab,
+  (tab) => {
+    const next = readPortraitSurface(tab)
+    if (next !== portraitSurface.value) {
+      portraitSurface.value = next
+      void ensurePortraitSurfaceData(next)
+    }
+  },
+)
 
 async function reloadCreditCurveByCategory() {
   const teacherId = targetTeacherId.value
-  if (!teacherId || !portrait.value) {
+  if (
+    !teacherId
+    || !portrait.value
+    || portraitBundleLoading.value
+    || portraitSurface.value !== 'action'
+  ) {
     return
   }
+  const creditToken = ++creditRequestToken.value
+  const categorySnapshot = creditCategory.value
   creditCurveLoading.value = true
   try {
-    creditCurve.value = await portfolioAnalysisApi.getCreditCurve({
+    const nextCurve = await portfolioAnalysisApi.getCreditCurve({
       teacherId,
-      creditCategory: creditCategory.value,
+      creditCategory: categorySnapshot,
     })
+    if (
+      creditRequestToken.value !== creditToken
+      || targetTeacherId.value !== teacherId
+      || creditCategory.value !== categorySnapshot
+    ) {
+      return
+    }
+    creditCurve.value = nextCurve
   } catch (error) {
+    if (
+      creditRequestToken.value !== creditToken
+      || creditCategory.value !== categorySnapshot
+    ) {
+      return
+    }
     showUserError(error, '切换学分分类失败')
   } finally {
-    creditCurveLoading.value = false
+    if (creditRequestToken.value === creditToken) {
+      creditCurveLoading.value = false
+    }
   }
 }
 
 watch(creditCategory, (next, prev) => {
-  if (next === prev) {
+  if (next === prev || portraitBundleLoading.value) {
     return
   }
   void reloadCreditCurveByCategory()
@@ -573,7 +799,16 @@ watch(creditCategory, (next, prev) => {
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
     <template v-else>
+      <UiSegmented
+        v-if="portrait || loading"
+        class="teacher-portrait__surface-nav"
+        size="sm"
+        :model-value="portraitSurface"
+        :options="PORTRAIT_SURFACE_OPTIONS"
+        @update:model-value="setPortraitSurface($event as PortraitSurface)"
+      />
       <UiSpin :spinning="loading">
+        <template v-if="portraitSurface === 'overview'">
         <UiCard v-if="portrait" title="综合画像">
           <SignalBand :metrics="compositeItems" variant="panel" compact />
           <p class="teacher-portrait__meta">加权：核心 30% · 教学 25% · 科研/培训/实践各 15%</p>
@@ -584,7 +819,7 @@ watch(creditCategory, (next, prev) => {
             <template v-if="portrait.lifecycleStatus">
               生命周期：
               <UiTag :tone="portfolioLifecycleTagTone(portrait.lifecycleStatus)">
-                {{ portrait.lifecycleStatusLabel || portrait.lifecycleStatus }}
+                {{ portfolioLifecycleStatusDisplay(portrait.lifecycleStatus) }}
               </UiTag>
               <UiTag v-if="portrait.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
               <span v-if="portrait.countsInCurrentFacultyStructure === false">
@@ -617,111 +852,134 @@ watch(creditCategory, (next, prev) => {
           </p>
         </UiCard>
 
-        <UiCard v-if="planCompletion" title="年度规划完成度" style="margin-top: 16px">
-          <UiStatPanel
-            :items="[
-              { key: 'year', label: '统计年度', value: planCompletion.planYear },
-              { key: 'total', label: '规划总数', value: String(planCompletion.totalPlanCount) },
-              {
-                key: 'approved',
-                label: '已通过',
-                value: String(planCompletion.approvedPlanCount),
-                tone: 'green',
-              },
-              {
-                key: 'pending',
-                label: '待审',
-                value: String(planCompletion.pendingPlanCount),
-                tone: 'blue',
-              },
-              {
-                key: 'returned',
-                label: '退回',
-                value: String(planCompletion.returnedPlanCount),
-                tone: 'orange',
-              },
-              {
-                key: 'rate',
-                label: '审批完成率',
-                value: planCompletion.completionRatePercent,
-                unit: '%',
-                tone: 'blue',
-              },
-              {
-                key: 'itemTotal',
-                label: '明细项总数',
-                value: String(planCompletion.totalPlanItemCount),
-              },
-              {
-                key: 'itemDone',
-                label: '已完成明细',
-                value: String(planCompletion.completedPlanItemCount),
-                tone: 'green',
-              },
-              {
-                key: 'itemRate',
-                label: '明细完成率',
-                value: planCompletion.planItemCompletionRatePercent,
-                unit: '%',
-                tone: 'blue',
-              },
-              {
-                key: 'itemAvg',
-                label: '平均完成度',
-                value: planCompletion.averageItemCompletionPercent,
-                unit: '%',
-              },
-            ]"
-            :columns="3"
-            variant="grid"
-            compact
-          />
-        </UiCard>
-
         <UiEmpty size="sm" v-else-if="portraitAbsent && !loading" description="尚未生成画像快照" />
+        </template>
       </UiSpin>
 
-      <div v-if="portrait" class="teacher-portrait__charts">
+      <div
+        v-if="portrait && portraitSurface === 'overview'"
+        class="teacher-portrait__charts"
+      >
         <MarkChartCard title="能力雷达" :loading="loading" chart-min-height="320">
           <MarkChart :option="radarOption" height="320px" aria-label="教师画像能力雷达图" />
         </MarkChartCard>
-
-        <MarkChartCard title="同群体对比" :loading="loading" chart-min-height="320">
-          <UiSectionTabs
-            v-model="cohortType"
-            :items="cohortTabItems"
-            class="teacher-portrait__cohort-tabs"
-          />
-          <UiAlert
-            v-if="cohort?.displayMode === 'INSUFFICIENT' || cohort?.displayMode === 'LIMITED'"
-            type="warning"
-            class="teacher-portrait__cohort-alert"
-          >
-            {{ cohortHint }}
-          </UiAlert>
-          <MarkChart
-            v-if="cohort?.displayMode !== 'INSUFFICIENT'"
-            :option="cohortRangeOption"
-            height="320px"
-            aria-label="教师画像同群体区间对比图"
-          />
-        </MarkChartCard>
+        <UiCard title="下一步" class="teacher-portrait__next-actions">
+          <div class="teacher-portrait__tag-list">
+            <UiButton
+              v-for="action in overviewNextActions"
+              :key="action.key"
+              size="sm"
+              variant="soft"
+              @click="setPortraitSurface(action.surface)"
+            >
+              {{ action.label }}
+            </UiButton>
+          </div>
+        </UiCard>
       </div>
 
-      <MarkChartCard
-        v-if="portrait"
-        title="历史趋势"
-        :loading="loading"
-        chart-min-height="280"
-        class="teacher-portrait__trend"
+      <div
+        v-if="portrait && portraitSurface === 'compare'"
+        class="teacher-portrait__charts"
       >
-        <MarkChart :option="trendOption" height="280px" aria-label="教师画像综合分历史趋势图" />
-      </MarkChartCard>
+        <UiSpin :spinning="compareSurfaceLoading">
+          <MarkChartCard title="同群体对比" :loading="compareSurfaceLoading" chart-min-height="320">
+            <UiSectionTabs
+              v-model="cohortType"
+              :items="cohortTabItems"
+              class="teacher-portrait__cohort-tabs"
+            />
+            <UiAlert
+              v-if="cohort?.displayMode === 'INSUFFICIENT' || cohort?.displayMode === 'LIMITED'"
+              type="warning"
+              class="teacher-portrait__cohort-alert"
+            >
+              {{ cohortHint }}
+            </UiAlert>
+            <MarkChart
+              v-if="cohort?.displayMode !== 'INSUFFICIENT'"
+              :option="cohortRangeOption"
+              height="320px"
+              aria-label="教师画像同群体区间对比图"
+            />
+          </MarkChartCard>
+          <MarkChartCard
+            title="历史趋势"
+            :loading="compareSurfaceLoading"
+            chart-min-height="280"
+            class="teacher-portrait__trend"
+          >
+            <MarkChart :option="trendOption" height="280px" aria-label="教师画像综合分历史趋势图" />
+          </MarkChartCard>
+        </UiSpin>
+      </div>
 
+      <template v-if="portrait && portraitSurface === 'action'">
+      <UiSpin :spinning="actionSurfaceLoading">
+      <UiCard v-if="planCompletion" title="年度规划完成度" style="margin-top: var(--dp-space-block)">
+        <UiStatPanel
+          :items="[
+            { key: 'year', label: '统计年度', value: planCompletion.planYear },
+            { key: 'total', label: '规划总数', value: String(planCompletion.totalPlanCount) },
+            {
+              key: 'approved',
+              label: '已通过',
+              value: String(planCompletion.approvedPlanCount),
+              tone: 'green',
+            },
+            {
+              key: 'pending',
+              label: '待审',
+              value: String(planCompletion.pendingPlanCount),
+              tone: 'blue',
+            },
+            {
+              key: 'returned',
+              label: '退回',
+              value: String(planCompletion.returnedPlanCount),
+              tone: 'orange',
+            },
+            {
+              key: 'rate',
+              label: '审批完成率',
+              value: planCompletion.completionRatePercent,
+              unit: '%',
+              tone: 'blue',
+            },
+            {
+              key: 'itemTotal',
+              label: '明细项总数',
+              value: String(planCompletion.totalPlanItemCount),
+            },
+            {
+              key: 'itemDone',
+              label: '已完成明细',
+              value: String(planCompletion.completedPlanItemCount),
+              tone: 'green',
+            },
+            {
+              key: 'itemRate',
+              label: '明细完成率',
+              value: planCompletion.planItemCompletionRatePercent,
+              unit: '%',
+              tone: 'blue',
+            },
+            {
+              key: 'itemAvg',
+              label: '平均完成度',
+              value: planCompletion.averageItemCompletionPercent,
+              unit: '%',
+            },
+          ]"
+          :columns="3"
+          variant="grid"
+          compact
+        />
+      </UiCard>
       <MarkChartCard
-        v-if="portrait && creditCurve"
+        v-if="creditCurve"
         title="培训学分曲线"
-        :loading="loading || creditCurveLoading"
+        :loading="actionSurfaceLoading || creditCurveLoading"
         chart-min-height="280"
         class="teacher-portrait__credit"
       >
@@ -762,12 +1020,18 @@ watch(creditCategory, (next, prev) => {
 
       <div v-if="portrait" class="teacher-portrait__insight">
         <UiCard title="发展建议" class="teacher-portrait__suggestions">
+          <UiAlertStrip
+            v-if="suggestionsLoadFailed"
+            tone="error"
+            title="发展建议加载失败"
+            class="mb-2"
+          />
           <UiEmpty
             size="sm"
-            v-if="!suggestions.length"
+            v-if="!suggestionsLoadFailed && !suggestions.length"
             description="暂无发展建议，画像重算后将自动生成"
           />
-          <ul v-else class="teacher-portrait__insight-list">
+          <ul v-if="suggestions.length" class="teacher-portrait__insight-list">
             <li v-for="item in suggestions" :key="item.id" class="teacher-portrait__insight-item">
               <div class="teacher-portrait__insight-head">
                 <strong>{{ item.suggestionTitle }}</strong>
@@ -786,8 +1050,18 @@ watch(creditCategory, (next, prev) => {
           </ul>
         </UiCard>
         <UiCard title="培训推荐" class="teacher-portrait__training">
-          <UiEmpty size="sm" v-if="!trainingRecommendations.length" description="暂无培训推荐" />
-          <ul v-else class="teacher-portrait__insight-list">
+          <UiAlertStrip
+            v-if="trainingLoadFailed"
+            tone="error"
+            title="培训推荐加载失败"
+            class="mb-2"
+          />
+          <UiEmpty
+            size="sm"
+            v-if="!trainingLoadFailed && !trainingRecommendations.length"
+            description="暂无培训推荐"
+          />
+          <ul v-if="trainingRecommendations.length" class="teacher-portrait__insight-list">
             <li
               v-for="item in trainingRecommendations"
               :key="item.id"
@@ -809,7 +1083,7 @@ watch(creditCategory, (next, prev) => {
               <div
                 v-if="
                   item.recommendStatus === PortfolioTrainingRecommendStatusCode.PENDING
-                    && !canPickTeachers
+                    && canManageOwnPortraitActions
                 "
                 class="teacher-portrait__insight-actions"
               >
@@ -837,7 +1111,64 @@ watch(creditCategory, (next, prev) => {
       </div>
 
       <UiCard
-        v-if="portrait && (portrait.identityLayers?.length ?? 0) > 0"
+        v-if="appointmentPeriodEval"
+        title="§8.48 聘期滚动评价"
+        class="teacher-portrait__appointment-period"
+      >
+        <p class="teacher-portrait__hint-text">
+          综合 {{ appointmentPeriodEval.compositeScore }} · 年度加权
+          {{ appointmentPeriodEval.weightedAnnualScore }} · 关键成果 +{{
+            appointmentPeriodEval.keyAchievementBonus
+          }}
+          · 风险 -{{ appointmentPeriodEval.riskDeduction }} · 周期
+          {{ appointmentPeriodEval.periodStart }} ~ {{ appointmentPeriodEval.periodEnd }} ·
+          {{ appointmentCycleSceneDisplay(appointmentPeriodEval.cycleSceneCode) }}
+        </p>
+        <p class="teacher-portrait__hint-text">{{ appointmentPeriodEval.formulaLabel }}</p>
+        <PortfolioOwnerIdentityLayersCell
+          :layers="appointmentPeriodEval.ownerIdentityLayers"
+          :note="appointmentPeriodEval.ownerMultiIdentityNote"
+          show-note
+        />
+        <p class="teacher-portrait__hint-text">
+          年度来源场景 {{ appointmentPeriodEval.annualSourceSceneCode }}（与查询周期隔离）
+        </p>
+        <table v-if="appointmentPeriodEval.yearScores?.length" class="teacher-portrait__table">
+          <thead>
+            <tr>
+              <th>年度</th>
+              <th>表现分</th>
+              <th>权重</th>
+              <th>加权贡献</th>
+              <th>引用任务</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in appointmentPeriodEval.yearScores" :key="`year-${row.year}`">
+              <td>{{ row.year }}</td>
+              <td>{{ row.annualScore }}</td>
+              <td>{{ row.weight }}</td>
+              <td>{{ row.weightedContribution }}</td>
+              <td>
+                {{
+                  row.referencedTaskNames?.join('、') || row.referencedTaskIds?.join('、') || '—'
+                }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <ul v-if="appointmentPeriodEval.evidenceNotes?.length" class="teacher-portrait__hint-text">
+          <li v-for="(note, idx) in appointmentPeriodEval.evidenceNotes" :key="`ap-note-${idx}`">
+            {{ note }}
+          </li>
+        </ul>
+      </UiCard>
+      </UiSpin>
+      </template>
+
+      <template v-if="portrait && portraitSurface === 'evidence'">
+      <UiCard
+        v-if="(portrait.identityLayers?.length ?? 0) > 0"
         title="多身份贡献分层"
         class="teacher-portrait__identity-layers"
       >
@@ -865,7 +1196,7 @@ watch(creditCategory, (next, prev) => {
               :key="layer.identityId ?? layer.identityType"
             >
               <td>
-                <div>{{ layer.identityTypeLabel || layer.identityType }}</div>
+                <div>{{ portfolioIdentityTypeDisplay(layer.identityType) }}</div>
                 <div
                   v-if="layer.displayName || layer.appointmentNo || layer.enterpriseName"
                   class="teacher-portrait__hint-text"
@@ -975,7 +1306,7 @@ watch(creditCategory, (next, prev) => {
               v-for="item in portrait.guidanceContribution.items"
               :key="`${item.sourceType}-${item.sourceId ?? item.taskName}`"
             >
-              <td>{{ item.guidanceTypeLabel }}</td>
+              <td>{{ guidanceTypeDisplay(item.guidanceTypeCode) }}</td>
               <td>{{ item.taskName || '—' }}</td>
               <td>{{ item.baseScore }}</td>
               <td>{{ item.roleFactor }}</td>
@@ -1040,7 +1371,7 @@ watch(creditCategory, (next, prev) => {
               v-for="item in portrait.industryPackSceneScore.dimensionScores"
               :key="item.dimensionCode"
             >
-              <td>{{ item.dimensionLabel }}</td>
+              <td>{{ strictEnumLabel(PortfolioIndustryPackWeightCodeDescription, item.dimensionCode, '行业包维度') }}</td>
               <td>{{ item.weight }}</td>
               <td>{{ item.score }}</td>
               <td>{{ item.evidenceNote || '—' }}</td>
@@ -1054,7 +1385,7 @@ watch(creditCategory, (next, prev) => {
           <p>行业达标缺口清单：</p>
           <ul>
             <li v-for="(gap, idx) in portrait.industryPackSceneScore.hardGaps" :key="`gap-${idx}`">
-              [{{ gap.gapType }}] {{ gap.gapTitle }}
+              [{{ strictEnumLabel(PortfolioIndustryPackHardGapTypeDescription, gap.gapType, '行业包硬性缺口类型') }}]<template v-if="gap.dimensionCode"> {{ strictEnumLabel(PortfolioIndustryPackWeightCodeDescription, gap.dimensionCode, '行业包维度') }} ·</template> {{ gap.gapTitle }}
               <span v-if="gap.remediationHint"> — {{ gap.remediationHint }}</span>
             </li>
           </ul>
@@ -1064,60 +1395,6 @@ watch(creditCategory, (next, prev) => {
           class="teacher-portrait__hint-text"
         >
           <li v-for="(note, idx) in portrait.industryPackSceneScore.evidenceNotes" :key="idx">
-            {{ note }}
-          </li>
-        </ul>
-      </UiCard>
-
-      <UiCard
-        v-if="appointmentPeriodEval"
-        title="§8.48 聘期滚动评价"
-        class="teacher-portrait__appointment-period"
-      >
-        <p class="teacher-portrait__hint-text">
-          综合 {{ appointmentPeriodEval.compositeScore }} · 年度加权
-          {{ appointmentPeriodEval.weightedAnnualScore }} · 关键成果 +{{
-            appointmentPeriodEval.keyAchievementBonus
-          }}
-          · 风险 -{{ appointmentPeriodEval.riskDeduction }} · 周期
-          {{ appointmentPeriodEval.periodStart }} ~ {{ appointmentPeriodEval.periodEnd }} ·
-          {{ appointmentPeriodEval.cycleSceneLabel || appointmentPeriodEval.cycleSceneCode }}
-        </p>
-        <p class="teacher-portrait__hint-text">{{ appointmentPeriodEval.formulaLabel }}</p>
-        <PortfolioOwnerIdentityLayersCell
-          :layers="appointmentPeriodEval.ownerIdentityLayers"
-          :note="appointmentPeriodEval.ownerMultiIdentityNote"
-          show-note
-        />
-        <p class="teacher-portrait__hint-text">
-          年度来源场景 {{ appointmentPeriodEval.annualSourceSceneCode }}（与查询周期隔离）
-        </p>
-        <table v-if="appointmentPeriodEval.yearScores?.length" class="teacher-portrait__table">
-          <thead>
-            <tr>
-              <th>年度</th>
-              <th>表现分</th>
-              <th>权重</th>
-              <th>加权贡献</th>
-              <th>引用任务</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in appointmentPeriodEval.yearScores" :key="`year-${row.year}`">
-              <td>{{ row.year }}</td>
-              <td>{{ row.annualScore }}</td>
-              <td>{{ row.weight }}</td>
-              <td>{{ row.weightedContribution }}</td>
-              <td>
-                {{
-                  row.referencedTaskNames?.join('、') || row.referencedTaskIds?.join('、') || '—'
-                }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <ul v-if="appointmentPeriodEval.evidenceNotes?.length" class="teacher-portrait__hint-text">
-          <li v-for="(note, idx) in appointmentPeriodEval.evidenceNotes" :key="`ap-note-${idx}`">
             {{ note }}
           </li>
         </ul>
@@ -1162,7 +1439,7 @@ watch(creditCategory, (next, prev) => {
               v-for="item in portrait.educatingOutcomeContribution.items"
               :key="`${item.sourceType}-${item.sourceId ?? item.taskName}`"
             >
-              <td>{{ item.outcomeTypeLabel }}</td>
+              <td>{{ outcomeTypeDisplay(item.outcomeTypeCode) }}</td>
               <td>{{ item.taskName || '—' }}</td>
               <td>{{ item.baseScore }}</td>
               <td>{{ item.roleFactor }}</td>
@@ -1216,7 +1493,7 @@ watch(creditCategory, (next, prev) => {
               v-for="item in portrait.textbookContribution.items"
               :key="item.sourceId ?? item.textbookName"
             >
-              <td>{{ item.textbookTypeLabel }}</td>
+              <td>{{ textbookTypeDisplay(item.textbookTypeCode) }}</td>
               <td>{{ item.textbookName || '—' }}</td>
               <td>{{ item.typeScore }}</td>
               <td>{{ item.levelFactor }}</td>
@@ -1276,7 +1553,7 @@ watch(creditCategory, (next, prev) => {
               v-for="item in portrait.virtualTeachingRoomContribution.items"
               :key="item.sourceId ?? item.activityName"
             >
-              <td>{{ item.activityTypeLabel }}</td>
+              <td>{{ activityTypeDisplay(item.activityTypeCode) }}</td>
               <td>{{ item.activityName || '—' }}</td>
               <td>{{ item.baseScore }}</td>
               <td>{{ item.roleFactor }}</td>
@@ -1339,7 +1616,7 @@ watch(creditCategory, (next, prev) => {
               v-for="item in portrait.industryEducationProjectContribution.items"
               :key="item.sourceId ?? item.projectName"
             >
-              <td>{{ item.projectTypeLabel }}</td>
+              <td>{{ projectTypeDisplay(item.projectTypeCode) }}</td>
               <td>{{ item.projectName || '—' }}</td>
               <td>{{ item.baseScore }}</td>
               <td>{{ item.roleFactor }}</td>
@@ -1394,7 +1671,7 @@ watch(creditCategory, (next, prev) => {
               v-for="item in portrait.teachingWorkloadByIdentity.identityItems"
               :key="item.identityId ?? item.identityType"
             >
-              <td>{{ item.identityTypeLabel }}</td>
+              <td>{{ portfolioIdentityTypeDisplay(item.identityType) }}</td>
               <td>{{ item.externalIdentity ? '是' : '否' }}</td>
               <td>{{ item.workloadHours }}</td>
               <td>{{ item.taughtCourseCount }}</td>
@@ -1411,8 +1688,10 @@ watch(creditCategory, (next, prev) => {
           </li>
         </ul>
       </UiCard>
+      </template>
 
-      <UiCard v-if="portrait" title="维度明细" class="teacher-portrait__dimensions">
+      <template v-if="portrait && portraitSurface === 'overview'">
+      <UiCard title="维度明细" class="teacher-portrait__dimensions">
         <p class="teacher-portrait__hint-text">点击维度行查看得分依据与关联档案</p>
         <table class="teacher-portrait__table">
           <thead>
@@ -1434,7 +1713,15 @@ watch(creditCategory, (next, prev) => {
               @click="openIndicatorDetail(row.dimensionCode)"
               @keydown.enter="openIndicatorDetail(row.dimensionCode)"
             >
-              <td>{{ row.dimensionLabel }}</td>
+              <td>
+                {{
+                  strictEnumLabel(
+                    PortfolioPortraitDimensionDescription,
+                    row.dimensionCode,
+                    '画像维度',
+                  )
+                }}
+              </td>
               <td>{{ row.score }}</td>
               <td>{{ row.weightPercent }}%</td>
               <td>{{ row.dataSource }}</td>
@@ -1464,19 +1751,25 @@ watch(creditCategory, (next, prev) => {
       </UiCard>
 
       <UiCard
-        v-if="portrait && portrait.strengthTags.length"
+        v-if="overviewStrengthTags.length"
         title="优势标签"
         class="teacher-portrait__tags"
       >
         <div class="teacher-portrait__tag-list">
-          <UiTag v-for="tag in portrait.strengthTags" :key="tag.tagCode" tone="green">
-            {{ tag.tagLabel }} · {{ tag.score }} 分
+          <UiTag v-for="tag in overviewStrengthTags" :key="tag.tagCode" tone="green">
+            {{ strengthTagDisplay(tag) }} · {{ tag.score }} 分
           </UiTag>
         </div>
+        <p
+          v-if="(portrait.strengthTags?.length ?? 0) > overviewStrengthTags.length"
+          class="teacher-portrait__hint-text"
+        >
+          首屏展示前 {{ overviewStrengthTags.length }} 项，完整证据见贡献专题
+        </p>
       </UiCard>
 
       <UiCard
-        v-if="portrait && portrait.gapItems.length"
+        v-if="overviewGapItems.length"
         title="短板清单"
         class="teacher-portrait__gaps"
       >
@@ -1490,7 +1783,7 @@ watch(creditCategory, (next, prev) => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in portrait.gapItems" :key="item.indicatorCode">
+            <tr v-for="item in overviewGapItems" :key="item.indicatorCode">
               <td>{{ item.indicatorName }}</td>
               <td>{{ item.dimensionL1Name || '—' }}</td>
               <td>{{ item.calcScore ?? '—' }}</td>
@@ -1498,14 +1791,25 @@ watch(creditCategory, (next, prev) => {
             </tr>
           </tbody>
         </table>
+        <p
+          v-if="(portrait.gapItems?.length ?? 0) > overviewGapItems.length"
+          class="teacher-portrait__hint-text"
+        >
+          首屏展示前 {{ overviewGapItems.length }} 项，完整证据见贡献专题
+        </p>
       </UiCard>
+      </template>
     </template>
 
     <UiDrawer
       v-model:open="detailOpen"
       :title="
-        indicatorDetail?.dimensionLabel
-          ? `${indicatorDetail.dimensionLabel} · 指标下钻`
+        indicatorDetail
+          ? `${strictEnumLabel(
+            PortfolioPortraitDimensionDescription,
+            indicatorDetail.dimensionCode,
+            '画像维度',
+          )} · 指标下钻`
           : '指标下钻'
       "
       width="640"
@@ -1606,42 +1910,42 @@ watch(creditCategory, (next, prev) => {
 
 <style scoped lang="scss">
 .teacher-portrait__meta {
-  margin: var(--dp-space-4) 0 0;
+  margin: var(--dp-space-block) 0 0;
   font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
 .teacher-portrait__hint-text {
-  margin: 0 0 var(--dp-space-3);
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
 .teacher-portrait__insight-actions {
   display: flex;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .teacher-portrait__charts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-4);
-  margin-top: var(--dp-space-4);
+  gap: var(--dp-space-block);
+  margin-top: var(--dp-space-block);
 }
 
 .teacher-portrait__trend {
-  margin-top: var(--dp-space-4);
+  margin-top: var(--dp-space-block);
 }
 
 .teacher-portrait__credit {
-  margin-top: var(--dp-space-4);
+  margin-top: var(--dp-space-block);
 }
 
 .teacher-portrait__insight {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-4);
-  margin-top: var(--dp-space-4);
+  gap: var(--dp-space-block);
+  margin-top: var(--dp-space-block);
 }
 
 .teacher-portrait__insight-list {
@@ -1651,8 +1955,8 @@ watch(creditCategory, (next, prev) => {
 }
 
 .teacher-portrait__insight-item + .teacher-portrait__insight-item {
-  margin-top: var(--dp-space-3);
-  padding-top: var(--dp-space-3);
+  margin-top: var(--dp-space-component);
+  padding-top: var(--dp-space-component);
   border-top: 1px solid var(--dp-border);
 }
 
@@ -1660,31 +1964,31 @@ watch(creditCategory, (next, prev) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-1);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-xs);
 }
 
 .teacher-portrait__cohort-alert {
-  margin: 0 var(--dp-space-4) var(--dp-space-3);
+  margin: 0 var(--dp-space-block) var(--dp-space-component);
 }
 
 .teacher-portrait__cohort-tabs {
-  margin: 0 var(--dp-space-4) var(--dp-space-3);
+  margin: 0 var(--dp-space-block) var(--dp-space-component);
 }
 
 .teacher-portrait__tags,
 .teacher-portrait__gaps {
-  margin-top: var(--dp-space-4);
+  margin-top: var(--dp-space-block);
 }
 
 .teacher-portrait__tag-list {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .teacher-portrait__dimensions {
-  margin-top: var(--dp-space-4);
+  margin-top: var(--dp-space-block);
 }
 
 .teacher-portrait__table {
@@ -1694,7 +1998,7 @@ watch(creditCategory, (next, prev) => {
 
   th,
   td {
-    padding: var(--dp-space-2) var(--dp-space-3);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     border-bottom: 1px solid var(--dp-border);
     text-align: left;
   }
@@ -1722,8 +2026,8 @@ watch(creditCategory, (next, prev) => {
 .teacher-portrait__detail-meta {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--dp-space-4);
-  margin: 0 0 var(--dp-space-4);
+  gap: var(--dp-space-block);
+  margin: 0 0 var(--dp-space-block);
 
   dt {
     margin: 0;
@@ -1732,7 +2036,7 @@ watch(creditCategory, (next, prev) => {
   }
 
   dd {
-    margin: var(--dp-space-1) 0 0;
+    margin: var(--dp-space-component-xs) 0 0;
     font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
@@ -1740,11 +2044,11 @@ watch(creditCategory, (next, prev) => {
 }
 
 .teacher-portrait__evidence-table {
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .teacher-portrait__hint {
-  padding: var(--dp-space-3, 12px) 0;
+  padding: var(--dp-space-component) 0;
 }
 
 @media (max-width: 960px) {

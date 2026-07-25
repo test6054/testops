@@ -200,12 +200,12 @@ function onNodeTypeChange(nodeType: SelectValue) {
 <style scoped>
 .tree-row {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
   flex-wrap: wrap;
 }
 .tree-children {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
 }
 </style>

@@ -65,7 +65,6 @@
     <UiSkeletonState v-if="historyLoading" variant="card" compact />
     <div v-else-if="historyLoadFailed" class="archive-volume-transfer-panel__load-error">
       <span>移交记录加载失败</span>
-      <UiButton size="sm" variant="outline" @click="loadTransferRecords">重试</UiButton>
     </div>
     <UiEmpty size="sm" v-else-if="transferRecords.length === 0" description="暂无移交流程记录" />
     <div v-else class="archive-volume-transfer-panel__list">
@@ -339,7 +338,7 @@ onMounted(() => {
 .archive-volume-transfer-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-volume-transfer-panel__alert {
@@ -350,14 +349,14 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   width: 100%;
 }
 
 .archive-volume-transfer-panel__head-actions {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-transfer-panel__title {
@@ -369,18 +368,18 @@ onMounted(() => {
 .archive-volume-transfer-panel__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-transfer-panel__list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-transfer-panel__footer-actions {
   display: flex;
-  gap: var(--dp-space-2);
-  margin-top: var(--dp-space-3);
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component);
 }
 </style>

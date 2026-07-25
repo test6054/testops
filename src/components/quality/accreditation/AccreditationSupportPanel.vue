@@ -463,7 +463,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
   <div v-else class="support-panel">
     <UiAlertStrip v-if="!trainingPlanId" tone="info" size="sm" dense inline :show-icon="false">
       <template #default>
-        <span style="display: inline-flex; align-items: center; gap: 8px">
+        <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
           <UiTag tone="blue" size="sm">未选择培养方案</UiTag>
           <span>请先在页面上方选择培养方案后再维护支撑与师资档案</span>
         </span>
@@ -763,14 +763,14 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 .support-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .support-section {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface-subtle);
@@ -781,17 +781,17 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .status-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 .section-kicker {
-  margin: 0 0 4px;
+  margin: 0 0 var(--dp-space-component-xs);
   color: var(--dp-blue-600);
   font-size: var(--dp-font-size-xs);
   font-weight: 600;
@@ -806,7 +806,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 }
 
 .section-desc {
-  margin: 6px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   color: var(--dp-text-muted);
   font-size: var(--dp-font-size-sm);
 }
@@ -823,7 +823,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 
 .actions {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .form-grid {
@@ -834,7 +834,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: var(--dp-space-component);
 }
 
 .faculty-search {
@@ -882,7 +882,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 }
 
 .loading {
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
   color: var(--dp-text-muted);
 }
 

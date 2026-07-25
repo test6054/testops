@@ -612,14 +612,14 @@ onMounted(() => {
 
 <style scoped>
 .archive-volume-ledger__tabs {
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .archive-volume-ledger__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: var(--dp-space-4) 0;
+  margin: var(--dp-space-block) 0;
 }
 
 .archive-volume-ledger__title {
@@ -630,14 +630,14 @@ onMounted(() => {
 .archive-volume-ledger__cards {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-ledger__searcher-filter {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
-  margin: 0 0 var(--dp-space-3);
+  gap: var(--dp-space-component-tight);
+  margin: 0 0 var(--dp-space-component);
 }
 
 .archive-volume-ledger__filter-label {

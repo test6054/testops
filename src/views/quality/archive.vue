@@ -27,6 +27,7 @@ import {
   ExpertPackageTypeDescription,
 } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import ArchiveDestructionConsequenceSummary from '@/components/quality/ArchiveDestructionConsequenceSummary.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import {
@@ -46,6 +47,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
@@ -71,6 +73,8 @@ import {
 } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useUserStore } from '@/stores/modules/user'
 import { ArchiveDestructionDecisionCode } from '@/types/enums/archive-destruction-decision-enum'
@@ -78,6 +82,9 @@ import {
   ALL_ARCHIVE_DIGITAL_STATUS_CODES,
   ArchiveDigitalStatusDescription,
 } from '@/types/enums/archive-digital-status-enum'
+import {
+  QualityArchiveDestructionEventTypeDescription,
+} from '@/types/enums/quality-archive-destruction-event-type-enum'
 import {
   QualityArchiveDestructionLedgerExportDecisionCode,
   QualityArchiveDestructionLedgerExportDecisionDescription,
@@ -104,6 +111,14 @@ function archiveBusinessTypeColor(value: ArchiveBusinessTypeCode): BadgeTone {
 
 function destructionStatusLabel(value: QualityArchiveDestructionStatusCode): string {
   return strictEnumLabel(QualityArchiveDestructionStatusDescription, value, '销毁状态')
+}
+
+function destructionEventTypeLabel(value: ArchiveDestructionFlowRecordVO['eventType']): string {
+  return strictEnumLabel(
+    QualityArchiveDestructionEventTypeDescription,
+    value,
+    '销毁审计事件类型',
+  )
 }
 
 function destructionStatusTone(value: QualityArchiveDestructionStatusCode): BadgeTone {
@@ -241,10 +256,14 @@ const exportCockpit = ref<AccreditationCockpitVO | undefined>()
 const exportActiveCycle = ref<AccreditationCycleVO | undefined>()
 const exportEvidenceCount = ref(0)
 const exportReadinessLoading = ref(false)
+const exportReadinessUnknown = ref(false)
 
 const exportProgramBlockers = computed(() => {
   if (exportForm.packageType !== ExpertPackageTypeCode.PROGRAM_ACCREDITATION) {
     return []
+  }
+  if (exportReadinessUnknown.value) {
+    return ['认证导出就绪状态未知，禁止导出；请切换培养方案或离开再进入后重新校验']
   }
   return expertPackageExportBlockers(
     exportActiveCycle.value,
@@ -256,6 +275,9 @@ const exportProgramBlockers = computed(() => {
 const canSubmitProgramExport = computed(() => {
   if (exportForm.packageType !== ExpertPackageTypeCode.PROGRAM_ACCREDITATION) {
     return true
+  }
+  if (exportReadinessUnknown.value) {
+    return false
   }
   return canExportExpertPackage(
     exportActiveCycle.value,
@@ -269,18 +291,22 @@ async function loadProgramExportReadiness(trainingPlanId: string) {
     exportCockpit.value = undefined
     exportActiveCycle.value = undefined
     exportEvidenceCount.value = 0
+    exportReadinessUnknown.value = false
     return
   }
   exportReadinessLoading.value = true
+  exportReadinessUnknown.value = false
   try {
     const cockpit = await accreditationApi.cockpit({ trainingPlanId: trainingPlanId.trim() })
     exportCockpit.value = cockpit
     exportActiveCycle.value = cockpit.activeCycle
-    exportEvidenceCount.value = cockpit.activeEvidenceCount ?? 0
+    exportEvidenceCount.value = cockpit.activeEvidenceCount
+    exportReadinessUnknown.value = false
   } catch (error) {
     exportCockpit.value = undefined
     exportActiveCycle.value = undefined
     exportEvidenceCount.value = 0
+    exportReadinessUnknown.value = true
     showUserError(error, '认证导出就绪状态加载失败')
   } finally {
     exportReadinessLoading.value = false
@@ -325,31 +351,58 @@ function buildArchiveListQuery(): ArchiveQueryRequest {
 }
 
 const signalSummary = ref<ArchiveSignalSummaryVO | null>(null)
+const {
+  loadError: listLoadError,
+  beginLoad: beginListLoad,
+  failLoad: failListLoad,
+  okLoad: okListLoad,
+} = useUiTableLoadError()
 
 async function loadList() {
+  const scope = beginQualityScopeRequest()
   loading.value = true
+  beginListLoad()
   try {
     const listQuery = buildArchiveListQuery()
     const page = await archiveApi.page(listQuery)
+    if (scope.isStale()) {
+      return
+    }
     list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
     try {
-      signalSummary.value = await archiveApi.signalSummary(listQuery)
+      const summary = await archiveApi.signalSummary(listQuery)
+      if (scope.isStale()) {
+        return
+      }
+      signalSummary.value = summary
     } catch (error) {
+      if (scope.isStale()) {
+        return
+      }
       signalSummary.value = null
       showUserError(error, '归档状态统计加载失败')
     }
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()
+      return
     }
+    okListLoad()
   } catch (error) {
+    if (scope.isStale()) {
+      return
+    }
+    // 失败可见：保留上次成功列表，避免轮询/写后刷新失败把台账抹成空表
     signalSummary.value = null
+    failListLoad()
     showUserError(error, '质量归档材料加载失败')
   } finally {
-    loading.value = false
+    if (!scope.isStale()) {
+      loading.value = false
+    }
   }
 }
 
@@ -442,6 +495,7 @@ function openExport() {
   exportCockpit.value = undefined
   exportActiveCycle.value = undefined
   exportEvidenceCount.value = 0
+  exportReadinessUnknown.value = false
   exportVisible.value = true
 }
 
@@ -728,7 +782,12 @@ const destructionDecision = ref<ArchiveDestructionDecisionCode>(
 const destructionRequestOpen = ref(false)
 const destructionApprovalOpen = ref(false)
 const destructionSuperviseOpen = ref(false)
+const destructionExecuteOpen = ref(false)
+const destructionExecuteMode = ref<'execute' | 'retry'>('execute')
 const destructionSubmitting = ref(false)
+const destructionMutationSettled = ref(false)
+const destructionListSyncFailed = ref(false)
+const destructionMutationMessage = ref('')
 const destructionFlowOpen = ref(false)
 const destructionFlowLoading = ref(false)
 const destructionFlowRecords = ref<ArchiveDestructionFlowRecordVO[]>([])
@@ -750,15 +809,42 @@ const ledgerDecisionOptions = [
   },
 ]
 
+function resetDestructionMutationState() {
+  destructionMutationSettled.value = false
+  destructionListSyncFailed.value = false
+  destructionMutationMessage.value = ''
+}
+
+function upsertArchiveInList(vo: ArchiveVO) {
+  const index = list.value.findIndex((item) => item.id === vo.id)
+  if (index >= 0) {
+    list.value[index] = vo
+  }
+}
+
+async function settleDestructionMutation(messageText: string, vo: ArchiveVO) {
+  destructionTarget.value = vo
+  upsertArchiveInList(vo)
+  destructionMutationSettled.value = true
+  destructionMutationMessage.value = messageText
+  await loadList()
+  destructionListSyncFailed.value = listLoadError.value
+}
+
 function openDestructionRequest(record: ArchiveVO) {
   destructionTarget.value = record
   destructionReason.value = ''
   destructionLedgerDecision.value = undefined
   destructionLedgerSkipReason.value = ''
+  resetDestructionMutationState()
   destructionRequestOpen.value = true
 }
 
 async function submitDestructionRequest() {
+  if (destructionMutationSettled.value) {
+    destructionRequestOpen.value = false
+    return
+  }
   if (!destructionTarget.value) return
   if (!destructionReason.value.trim()) {
     showFormValidationMessage('请填写销毁原因')
@@ -779,16 +865,17 @@ async function submitDestructionRequest() {
   const confirmed = await confirmAsync({
     title: '确认发起销毁申请',
     content:
-      destructionLedgerDecision.value
-      === QualityArchiveDestructionLedgerExportDecisionCode.EXPORT_FIRST
+      `材料 ${destructionTarget.value.archiveCode}：`
+      + (destructionLedgerDecision.value
+        === QualityArchiveDestructionLedgerExportDecisionCode.EXPORT_FIRST
         ? '将先生成并归档本份材料的销毁清册，再提交销毁申请。确认后不可撤销该申请单据。'
-        : '你已确认跳过电子清册导出。确认后将直接提交销毁申请。',
+        : '你已确认跳过电子清册导出。确认后将直接提交销毁申请。'),
     okText: '确认并提交',
   })
   if (!confirmed) return
   destructionSubmitting.value = true
   try {
-    await archiveApi.requestDestruction({
+    const vo = await archiveApi.requestDestruction({
       archiveId: destructionTarget.value.id,
       reason: destructionReason.value.trim(),
       ledgerExportDecision: destructionLedgerDecision.value,
@@ -798,14 +885,13 @@ async function submitDestructionRequest() {
           ? destructionLedgerSkipReason.value.trim()
           : undefined,
     })
-    void message.success(
+    await settleDestructionMutation(
       destructionLedgerDecision.value
       === QualityArchiveDestructionLedgerExportDecisionCode.EXPORT_FIRST
         ? '清册已导出并提交销毁申请'
         : '销毁申请已提交',
+      vo,
     )
-    destructionRequestOpen.value = false
-    await loadList()
   } catch (error) {
     showUserError(error, '销毁申请提交失败')
   } finally {
@@ -817,10 +903,15 @@ function openDestructionApproval(record: ArchiveVO, decision: ArchiveDestruction
   destructionTarget.value = record
   destructionDecision.value = decision
   destructionRemark.value = ''
+  resetDestructionMutationState()
   destructionApprovalOpen.value = true
 }
 
 async function submitDestructionApproval() {
+  if (destructionMutationSettled.value) {
+    destructionApprovalOpen.value = false
+    return
+  }
   if (!destructionTarget.value) return
   if (
     destructionDecision.value === ArchiveDestructionDecisionCode.REJECTED
@@ -831,14 +922,12 @@ async function submitDestructionApproval() {
   }
   destructionSubmitting.value = true
   try {
-    await archiveApi.approveDestruction({
+    const vo = await archiveApi.approveDestruction({
       archiveId: destructionTarget.value.id,
       decision: destructionDecision.value,
       remark: destructionRemark.value.trim() || undefined,
     })
-    void message.success('销毁审批已提交')
-    destructionApprovalOpen.value = false
-    await loadList()
+    await settleDestructionMutation('销毁审批已提交', vo)
   } catch (error) {
     showUserError(error, '销毁审批提交失败')
   } finally {
@@ -846,51 +935,67 @@ async function submitDestructionApproval() {
   }
 }
 
+function openDestructionExecute(record: ArchiveVO, mode: 'execute' | 'retry') {
+  destructionTarget.value = record
+  destructionExecuteMode.value = mode
+  resetDestructionMutationState()
+  destructionExecuteOpen.value = true
+}
+
 function handleDestructionExecute(record: ArchiveVO) {
-  void confirmAsync({
-    title: `确认执行销毁 ${record.archiveCode}？`,
-    content: '执行后将异步物理删除归档文件，操作不可撤销。',
-    type: 'error',
-    okText: '执行销毁',
-    onOk: async () => {
-      await archiveApi.executeDestruction(record.id)
-      void message.success('销毁执行已发起')
-      await loadList()
-    },
-  })
+  openDestructionExecute(record, 'execute')
 }
 
 function handleDestructionRetry(record: ArchiveVO) {
-  void confirmAsync({
-    title: `重新执行销毁 ${record.archiveCode}？`,
-    content: '确认故障已经排除后重新执行物理删除，系统将重新开始失败计数。',
-    type: 'error',
-    okText: '重试销毁',
-    onOk: async () => {
-      await archiveApi.retryDestruction(record.id)
-      void message.success('销毁重试已发起')
-      await loadList()
-    },
-  })
+  openDestructionExecute(record, 'retry')
+}
+
+async function submitDestructionExecute() {
+  if (destructionMutationSettled.value) {
+    destructionExecuteOpen.value = false
+    return
+  }
+  if (!destructionTarget.value) return
+  destructionSubmitting.value = true
+  try {
+    const vo
+      = destructionExecuteMode.value === 'retry'
+        ? await archiveApi.retryDestruction(destructionTarget.value.id)
+        : await archiveApi.executeDestruction(destructionTarget.value.id)
+    await settleDestructionMutation(
+      destructionExecuteMode.value === 'retry' ? '销毁重试已发起' : '销毁执行已发起',
+      vo,
+    )
+  } catch (error) {
+    showUserError(
+      error,
+      destructionExecuteMode.value === 'retry' ? '销毁重试失败' : '销毁执行失败',
+    )
+  } finally {
+    destructionSubmitting.value = false
+  }
 }
 
 function openDestructionSupervise(record: ArchiveVO) {
   destructionTarget.value = record
   destructionRemark.value = ''
+  resetDestructionMutationState()
   destructionSuperviseOpen.value = true
 }
 
 async function submitDestructionSupervise() {
+  if (destructionMutationSettled.value) {
+    destructionSuperviseOpen.value = false
+    return
+  }
   if (!destructionTarget.value) return
   destructionSubmitting.value = true
   try {
-    await archiveApi.superviseDestruction({
+    const vo = await archiveApi.superviseDestruction({
       archiveId: destructionTarget.value.id,
       remark: destructionRemark.value.trim() || undefined,
     })
-    void message.success('监销确认完成')
-    destructionSuperviseOpen.value = false
-    await loadList()
+    await settleDestructionMutation('监销确认完成', vo)
   } catch (error) {
     showUserError(error, '监销确认失败')
   } finally {
@@ -932,11 +1037,13 @@ const signals = computed<SignalMetric[]>(() => {
   if (!summary) {
     return []
   }
-  const confirmed = summary.confirmedCount ?? 0
-  const pending = summary.pendingCount ?? 0
-  const expertCount = summary.expertPackageCount ?? 0
+  // 合同字段必填；缺字段不得用 ??0 伪装成真实业务零值
+  const confirmed = summary.confirmedCount
+  const pending = summary.pendingCount
+  const expertCount = summary.expertPackageCount
+  const reportCount = summary.reportCount
   return [
-    { key: 'total', label: '归档总数', value: summary.totalCount ?? 0, tone: 'blue' },
+    { key: 'total', label: '归档总数', value: summary.totalCount, tone: 'blue' },
     {
       key: 'confirmed',
       label: '已确认',
@@ -964,8 +1071,8 @@ const signals = computed<SignalMetric[]>(() => {
     {
       key: 'report',
       label: '报告归档',
-      value: summary.reportCount ?? 0,
-      tone: (summary.reportCount ?? 0) > 0 ? 'blue' : 'gray',
+      value: reportCount,
+      tone: reportCount > 0 ? 'blue' : 'gray',
     },
   ]
 })
@@ -1045,6 +1152,7 @@ watch(
     exportCockpit.value = undefined
     exportActiveCycle.value = undefined
     exportEvidenceCount.value = 0
+    exportReadinessUnknown.value = false
   },
 )
 
@@ -1058,6 +1166,7 @@ watch(
       exportCockpit.value = undefined
       exportActiveCycle.value = undefined
       exportEvidenceCount.value = 0
+      exportReadinessUnknown.value = false
       return
     }
     await loadProgramExportReadiness(exportState.targetId.trim())
@@ -1127,12 +1236,26 @@ onMounted(async () => {
           @reset="handleResetSearch"
         />
 
+        <UiAlertStrip
+          v-if="listLoadError && list.length > 0"
+          tone="warning"
+          dense
+          inline
+          :show-icon="false"
+          class="archive-page__list-stale"
+        >
+          列表同步失败，当前为上次成功数据
+        </UiAlertStrip>
+
         <UiDataTable
           v-model:current="query.pageNum"
           v-model:page-size="query.pageSize"
           :columns="columns"
           :data-source="list"
           :loading="loading"
+          :load-error="listLoadError"
+          empty-title="暂无归档材料"
+          empty-description="请登记归档材料或导出专家材料包"
           row-key="id"
           size="middle"
           :total="total"
@@ -1519,10 +1642,31 @@ onMounted(async () => {
       :width="520"
       :confirm-loading="destructionSubmitting"
       :hide-footer="false"
-      ok-text="确认后提交申请"
+      :ok-text="destructionMutationSettled ? '关闭' : '确认后提交申请'"
       @ok="submitDestructionRequest"
     >
-      <UiForm layout="vertical">
+      <ArchiveDestructionConsequenceSummary
+        v-if="destructionTarget"
+        :archive="destructionTarget"
+        :pending-ledger-decision="
+          destructionMutationSettled ? undefined : destructionLedgerDecision
+        "
+        :pending-ledger-skip-reason="
+          destructionMutationSettled ? undefined : destructionLedgerSkipReason
+        "
+      />
+      <UiAlertStrip
+        v-if="destructionMutationSettled"
+        :tone="destructionListSyncFailed ? 'warning' : 'success'"
+        dense
+        inline
+        :show-icon="false"
+        class="archive-page__mutation-result"
+      >
+        {{ destructionMutationMessage }}
+        <template v-if="destructionListSyncFailed">；列表同步失败</template>
+      </UiAlertStrip>
+      <UiForm v-else layout="vertical">
         <UiFormItem label="销毁原因" required>
           <UiTextarea
             size="sm"
@@ -1565,13 +1709,28 @@ onMounted(async () => {
       :title="
         destructionDecision === ArchiveDestructionDecisionCode.APPROVED ? '批准销毁' : '驳回销毁'
       "
-      :width="480"
+      :width="520"
       :confirm-loading="destructionSubmitting"
       :hide-footer="false"
-      ok-text="提交审批"
+      :ok-text="destructionMutationSettled ? '关闭' : '提交审批'"
       @ok="submitDestructionApproval"
     >
-      <UiForm layout="vertical">
+      <ArchiveDestructionConsequenceSummary
+        v-if="destructionTarget"
+        :archive="destructionTarget"
+      />
+      <UiAlertStrip
+        v-if="destructionMutationSettled"
+        :tone="destructionListSyncFailed ? 'warning' : 'success'"
+        dense
+        inline
+        :show-icon="false"
+        class="archive-page__mutation-result"
+      >
+        {{ destructionMutationMessage }}
+        <template v-if="destructionListSyncFailed">；列表同步失败</template>
+      </UiAlertStrip>
+      <UiForm v-else layout="vertical">
         <UiFormItem
           label="审批意见"
           :required="destructionDecision === ArchiveDestructionDecisionCode.REJECTED"
@@ -1591,15 +1750,75 @@ onMounted(async () => {
     </UiDrawer>
 
     <UiDrawer
-      v-model:open="destructionSuperviseOpen"
-      title="监销确认"
-      :width="480"
+      v-model:open="destructionExecuteOpen"
+      :title="destructionExecuteMode === 'retry' ? '重试销毁' : '执行销毁'"
+      :width="520"
       :confirm-loading="destructionSubmitting"
       :hide-footer="false"
-      ok-text="确认监销"
+      :ok-text="
+        destructionMutationSettled
+          ? '关闭'
+          : destructionExecuteMode === 'retry'
+            ? '重试销毁'
+            : '执行销毁'
+      "
+      @ok="submitDestructionExecute"
+    >
+      <ArchiveDestructionConsequenceSummary
+        v-if="destructionTarget"
+        :archive="destructionTarget"
+      />
+      <UiAlertStrip
+        v-if="destructionMutationSettled"
+        :tone="destructionListSyncFailed ? 'warning' : 'success'"
+        dense
+        inline
+        :show-icon="false"
+        class="archive-page__mutation-result"
+      >
+        {{ destructionMutationMessage }}
+        <template v-if="destructionListSyncFailed">；列表同步失败</template>
+      </UiAlertStrip>
+      <UiAlertStrip
+        v-else
+        tone="warning"
+        dense
+        inline
+        :show-icon="false"
+      >
+        {{
+          destructionExecuteMode === 'retry'
+            ? '确认故障已排除后重新执行物理删除；系统将基于当前销毁台账继续清理尝试。'
+            : '执行后将异步物理删除归档文件，操作不可撤销。'
+        }}
+      </UiAlertStrip>
+    </UiDrawer>
+
+    <UiDrawer
+      v-model:open="destructionSuperviseOpen"
+      title="监销确认"
+      :width="520"
+      :confirm-loading="destructionSubmitting"
+      :hide-footer="false"
+      :ok-text="destructionMutationSettled ? '关闭' : '确认监销'"
       @ok="submitDestructionSupervise"
     >
-      <UiForm layout="vertical">
+      <ArchiveDestructionConsequenceSummary
+        v-if="destructionTarget"
+        :archive="destructionTarget"
+      />
+      <UiAlertStrip
+        v-if="destructionMutationSettled"
+        :tone="destructionListSyncFailed ? 'warning' : 'success'"
+        dense
+        inline
+        :show-icon="false"
+        class="archive-page__mutation-result"
+      >
+        {{ destructionMutationMessage }}
+        <template v-if="destructionListSyncFailed">；列表同步失败</template>
+      </UiAlertStrip>
+      <UiForm v-else layout="vertical">
         <UiFormItem label="监销备注">
           <UiTextarea size="sm" v-model="destructionRemark" :rows="3" placeholder="可选" />
         </UiFormItem>
@@ -1612,6 +1831,10 @@ onMounted(async () => {
       :width="560"
       :hide-footer="true"
     >
+      <ArchiveDestructionConsequenceSummary
+        v-if="destructionTarget"
+        :archive="destructionTarget"
+      />
       <UiEmpty
         size="sm"
         v-if="!destructionFlowLoading && destructionFlowRecords.length === 0"
@@ -1620,7 +1843,7 @@ onMounted(async () => {
       <UiTimeline v-else>
         <UiTimelineItem v-for="item in destructionFlowRecords" :key="item.id">
           <div class="archive-page__flow-item">
-            <div class="archive-page__flow-title">{{ item.eventTypeLabel }}</div>
+            <div class="archive-page__flow-title">{{ destructionEventTypeLabel(item.eventType) }}</div>
             <div class="archive-page__flow-meta">{{ item.eventTime }}</div>
             <div v-if="item.destructionStatus" class="archive-page__flow-meta">
               <UiTag :tone="destructionStatusTone(item.destructionStatus)" size="sm">
@@ -1647,22 +1870,22 @@ onMounted(async () => {
 <style scoped lang="scss">
 .archive {
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
@@ -1676,7 +1899,7 @@ onMounted(async () => {
   &__panel-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
@@ -1689,7 +1912,7 @@ onMounted(async () => {
   }
 
   &__alert {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   &__number-full {
@@ -1697,7 +1920,7 @@ onMounted(async () => {
   }
 
   &__stacked-control {
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
 
     &--first {
       margin-top: 0;
@@ -1705,14 +1928,14 @@ onMounted(async () => {
   }
 
   &__file-name {
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
     color: var(--dp-text-secondary);
     font-size: var(--dp-font-size-sm);
     line-height: 20px;
   }
 
   &__export-readiness {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   &__export-readiness-text {
@@ -1723,7 +1946,7 @@ onMounted(async () => {
   }
 
   &__export-blockers {
-    margin: 8px 0 0;
+    margin: var(--dp-space-component-tight) 0 0;
     padding-left: 18px;
     color: var(--dp-text-secondary);
     font-size: var(--dp-font-size-sm);
@@ -1739,7 +1962,7 @@ onMounted(async () => {
   &__flow-item {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--dp-space-component-xs);
   }
 
   &__flow-title {
@@ -1753,5 +1976,13 @@ onMounted(async () => {
     line-height: 20px;
     color: var(--dp-text-secondary);
   }
+}
+
+.archive-page__mutation-result {
+  margin-bottom: var(--dp-space-component);
+}
+
+.archive-page__list-stale {
+  margin-bottom: var(--dp-space-component);
 }
 </style>

@@ -61,16 +61,16 @@ const antSize = computed<'small' | 'default'>(() => (resolvedSize.value === 'sm'
 }
 
 .ui-steps :deep(.ant-steps-item-process .ant-steps-item-icon) {
-  background: var(--dp-primary);
-  border-color: var(--dp-primary);
+  background: var(--dp-color-primary);
+  border-color: var(--dp-color-primary);
 }
 
 .ui-steps :deep(.ant-steps-item-finish .ant-steps-item-icon) {
-  border-color: var(--dp-primary);
-  color: var(--dp-primary);
+  border-color: var(--dp-color-primary);
+  color: var(--dp-color-primary);
 }
 
 .ui-steps :deep(.ant-steps-item-finish .ant-steps-item-icon > .ant-steps-icon) {
-  color: var(--dp-primary);
+  color: var(--dp-color-primary);
 }
 </style>

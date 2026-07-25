@@ -8,6 +8,7 @@ import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
+import PortfolioArchiveWriteGuardStrip from '@/components/portfolio/PortfolioArchiveWriteGuardStrip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -32,12 +33,20 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
-  = usePortfolioArchiveWriteGuard()
+const {
+  archiveWriteForbidden,
+  archiveWriteCapabilityUnknown,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+  loading: archiveWriteGuardLoading,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard()
 
 const loading = ref(false)
 const saving = ref(false)
 const loadFailed = ref(false)
+const lastSuccessAt = ref<string | null>(null)
+const refreshError = ref<string | null>(null)
 const rows = ref<PortfolioTeachingPhilosophyVO[]>([])
 const modalOpen = ref(false)
 const editing = ref<PortfolioTeachingPhilosophyVO | null>(null)
@@ -73,6 +82,13 @@ function resetEditorContext() {
   form.philosophyText = ''
 }
 
+function upsertRow(saved: PortfolioTeachingPhilosophyVO) {
+  const next = rows.value.filter(item => item.id !== saved.id)
+  next.unshift(saved)
+  next.sort((left, right) => String(right.academicYear).localeCompare(String(left.academicYear)))
+  rows.value = next
+}
+
 async function loadList() {
   const currentToken = requestToken.value + 1
   requestToken.value = currentToken
@@ -80,6 +96,8 @@ async function loadList() {
     loading.value = false
     saving.value = false
     loadFailed.value = false
+    refreshError.value = null
+    lastSuccessAt.value = null
     rows.value = []
     return
   }
@@ -91,11 +109,12 @@ async function loadList() {
       return
     }
     rows.value = nextRows
+    lastSuccessAt.value = new Date().toISOString()
+    refreshError.value = null
   } catch (error) {
     if (requestToken.value !== currentToken) {
       return
     }
-    rows.value = []
     loadFailed.value = true
     showUserError(error, '加载教学理念失败')
   } finally {
@@ -126,8 +145,9 @@ async function save() {
   }
 
   saving.value = true
+  refreshError.value = null
   try {
-    await portfolioTeachingPhilosophyApi.save({
+    const saved = await portfolioTeachingPhilosophyApi.save({
       id: form.id,
       teacherId: scopeTeacherId(),
       academicYear: form.academicYear.trim(),
@@ -135,11 +155,22 @@ async function save() {
     })
     void message.success('教学理念已保存')
     modalOpen.value = false
-    await loadList()
+    resetEditorContext()
+    upsertRow(saved)
   } catch (error) {
     showUserError(error, '保存教学理念失败')
+    return
   } finally {
     saving.value = false
+  }
+  try {
+    await loadList()
+    if (loadFailed.value) {
+      refreshError.value = '教学理念已保存，但列表刷新失败；下方可能为陈旧数据。'
+    }
+  } catch (error) {
+    refreshError.value = '教学理念已保存，但列表刷新失败；下方可能为陈旧数据。'
+    showUserError(error, '刷新教学理念列表失败')
   }
 }
 
@@ -164,16 +195,27 @@ async function remove(row: PortfolioTeachingPhilosophyVO) {
     return
   }
   deletingId.value = row.id
+  refreshError.value = null
   try {
     await portfolioTeachingPhilosophyApi.delete({ id: row.id, teacherId })
     if (requestToken.value !== operationToken) return
     void message.success('已删除')
-    await loadList()
+    rows.value = rows.value.filter(item => item.id !== row.id)
   } catch (error) {
     if (requestToken.value !== operationToken) return
     showUserError(error, '删除教学理念失败')
+    return
   } finally {
     if (deletingId.value === row.id) deletingId.value = ''
+  }
+  try {
+    await loadList()
+    if (loadFailed.value) {
+      refreshError.value = '教学理念已删除，但列表刷新失败；下方可能为陈旧数据。'
+    }
+  } catch (error) {
+    refreshError.value = '教学理念已删除，但列表刷新失败；下方可能为陈旧数据。'
+    showUserError(error, '刷新教学理念列表失败')
   }
 }
 
@@ -185,6 +227,8 @@ watch(
     saving.value = false
     deletingId.value = ''
     loadFailed.value = false
+    refreshError.value = null
+    lastSuccessAt.value = null
     rows.value = []
     modalOpen.value = false
     resetEditorContext()
@@ -198,55 +242,69 @@ usePortfolioScopedLoader(loadList, () => targetTeacherId.value)
     <template #context>
       <ContextBar layout="workbench" show-title title="教学理念" subtitle="按学年记录与修订" />
     </template>
-    <UiAlertStrip
-      v-if="archiveWriteForbidden"
-      tone="warning"
-      title="档案已封存写禁"
-      :description="archiveWriteBlockMessage"
-      class="mb-3"
+    <PortfolioArchiveWriteGuardStrip
+      :blocked="archiveWriteForbidden"
+      :capability-unknown="archiveWriteCapabilityUnknown"
+      :message="archiveWriteBlockMessage"
+      :loading="archiveWriteGuardLoading"
+      @confirm="() => void reloadLifecycleState()"
     />
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
-    <UiCard v-else-if="loadFailed" title="加载失败">
-      <UiEmpty size="sm" description="教学理念加载失败">
-        <UiButton size="sm" variant="primary" @click="loadList">重试</UiButton>
-      </UiEmpty>
-    </UiCard>
-
-    <UiCard v-else title="教学理念记录" :loading="loading">
-      <template #extra>
-        <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openModal()">
-          新增理念
-        </UiButton>
-      </template>
-      <UiDataTable :columns="columns" :data-source="rows" row-key="id" :pagination="false">
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'identityLayers'">
-            <PortfolioOwnerIdentityLayersCell
-              :layers="record.ownerIdentityLayers"
-              :note="record.ownerMultiIdentityNote"
-            />
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <UiButton size="sm" variant="ghost" @click="openModal(record)">
-              {{ readonlyMode ? '查看' : '编辑' }}
-            </UiButton>
-            <UiButton
-              size="sm"
-              v-if="!readonlyMode"
-              variant="ghost"
-              danger
-              :loading="deletingId === record.id"
-              :disabled="Boolean(deletingId)"
-              @click="remove(record)"
-            >
-              删除
-            </UiButton>
-          </template>
+    <template v-else>
+      <UiAlertStrip
+        v-if="refreshError"
+        tone="warning"
+        :message="refreshError"
+        class="mb-3"
+      />
+      <UiAlertStrip
+        v-if="loadFailed"
+        tone="error"
+        class="mb-3"
+        title="教学理念加载失败"
+      />
+      <UiCard v-if="loadFailed && rows.length === 0" title="加载失败">
+        <UiEmpty
+          size="sm"
+          description="教学理念加载失败"
+        />
+      </UiCard>
+      <UiCard v-else title="教学理念记录" :loading="loading">
+        <template #extra>
+          <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openModal()">
+            新增理念
+          </UiButton>
         </template>
-      </UiDataTable>
-    </UiCard>
+        <UiDataTable :columns="columns" :data-source="rows" row-key="id" :pagination="false">
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'identityLayers'">
+              <PortfolioOwnerIdentityLayersCell
+                :layers="record.ownerIdentityLayers"
+                :note="record.ownerMultiIdentityNote"
+              />
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiButton size="sm" variant="ghost" @click="openModal(record)">
+                {{ readonlyMode ? '查看' : '编辑' }}
+              </UiButton>
+              <UiButton
+                size="sm"
+                v-if="!readonlyMode"
+                variant="ghost"
+                danger
+                :loading="deletingId === record.id"
+                :disabled="Boolean(deletingId)"
+                @click="remove(record)"
+              >
+                删除
+              </UiButton>
+            </template>
+          </template>
+        </UiDataTable>
+      </UiCard>
+    </template>
   </StageWorkbenchShell>
 
   <UiDialog

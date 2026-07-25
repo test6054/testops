@@ -143,9 +143,9 @@ function emitGroupChangeSelect(value: SelectValue): void {
 .mark-quality-scope-bar {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
-  margin-top: var(--dp-space-3);
-  padding: var(--dp-space-3) var(--dp-space-4);
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
@@ -154,7 +154,7 @@ function emitGroupChangeSelect(value: SelectValue): void {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__org-label,
@@ -165,7 +165,7 @@ function emitGroupChangeSelect(value: SelectValue): void {
   }
 
   &__org-label {
-    font-size: var(--dp-type-body-size);
+    font-size: var(--dp-font-size-md);
     color: var(--dp-text-primary);
     font-weight: 500;
   }
@@ -173,7 +173,7 @@ function emitGroupChangeSelect(value: SelectValue): void {
   &__chips {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__org-select {

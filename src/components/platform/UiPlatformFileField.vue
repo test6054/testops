@@ -210,15 +210,15 @@ function remove() {
   &__empty {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__file--after-drag {
-    margin-top: var(--dp-space-3);
-    padding: var(--dp-space-2) var(--dp-space-3);
+    margin-top: var(--dp-space-component);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-control);
-    background: var(--dp-bg-container);
+    background: var(--dp-surface);
   }
 
   &__name {
@@ -251,7 +251,7 @@ function remove() {
   }
 
   &--dragger :deep(.ant-upload-text) {
-    margin: 0 0 var(--dp-space-1);
+    margin: 0 0 var(--dp-space-component-xs);
     color: var(--dp-text-primary);
     font-size: var(--dp-font-size-md);
   }

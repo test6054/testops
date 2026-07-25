@@ -58,6 +58,6 @@ const antSize = computed<'small' | 'middle' | 'large'>(() => {
 .ui-tree-select :deep(.ant-select-selector) {
   border-radius: var(--dp-radius-control) !important;
   border-color: var(--dp-border) !important;
-  background: var(--dp-bg-control) !important;
+  background: var(--dp-surface) !important;
 }
 </style>

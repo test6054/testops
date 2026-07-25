@@ -177,15 +177,6 @@ function goNextPage() {
         {{ workflow.bindExamCandidateLoadIssue.value }}
       </p>
       <p v-else>{{ emptyHint }}</p>
-      <button
-        v-if="workflow.bindExamCandidateLoadIssue.value"
-        type="button"
-        class="exam-pick__retry"
-        :disabled="workflow.bindExamCandidateLoading.value"
-        @click="workflow.refreshBindExamCandidatesByUser"
-      >
-        重新加载
-      </button>
     </div>
     <div v-else class="exam-pick__grid" role="listbox" aria-label="可绑定考试列表">
       <button
@@ -314,6 +305,12 @@ function goNextPage() {
   outline: none;
 }
 
+.exam-pick__search-input:focus-visible {
+  outline: 2px solid var(--kiosk-primary);
+  outline-offset: 2px;
+  border-radius: var(--kiosk-radius-sm);
+}
+
 .exam-pick__refresh {
   display: inline-flex;
   align-items: center;
@@ -330,6 +327,12 @@ function goNextPage() {
   font-weight: var(--kiosk-fw-medium);
   color: var(--kiosk-ink-secondary);
   cursor: pointer;
+  outline: none;
+}
+
+.exam-pick__refresh:focus-visible {
+  border-color: var(--kiosk-primary);
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 
 .exam-pick__state {

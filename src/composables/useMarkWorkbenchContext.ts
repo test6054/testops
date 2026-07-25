@@ -15,9 +15,13 @@ export interface MarkWorkbenchContext {
   loading: Ref<boolean>
   refreshing: Ref<boolean>
   refreshSnapshot: () => Promise<void>
+  /** 快照加载失败时的可读错误；Layout 消费并阻断子路由 */
+  snapshotError?: Ref<string | null>
   /** 布局级加载的考试详情，子页可复用避免重复请求 */
   examDetail?: Ref<ExamDetailResponse | null>
   examDetailLoading?: Ref<boolean>
+  /** 详情加载失败时的可读错误；概览页以 alert 展示，不阻断快照核心区 */
+  detailError?: Ref<string | null>
   /** 阅卷进度：优先 snapshot 内嵌，与布局 Chrome 同源 */
   markingProgress?: Ref<MarkingProgressResponse | null>
   refreshChrome?: () => Promise<void>

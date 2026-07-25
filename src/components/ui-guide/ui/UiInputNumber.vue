@@ -116,7 +116,7 @@ function handleChange(value: number | string | null) {
 .ui-input-number {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   width: 100%;
   min-width: 0;
 }
@@ -139,12 +139,12 @@ function handleChange(value: number | string | null) {
   width: 100%;
   border-radius: var(--dp-radius-control) !important;
   border: 1px solid var(--dp-border) !important;
-  background-color: var(--dp-gray-100) !important;
+  background-color: var(--dp-surface) !important;
   box-shadow: none !important;
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background-color 0.2s ease !important;
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    box-shadow var(--dp-duration-normal) var(--dp-ease-default),
+    background-color var(--dp-duration-normal) ease !important;
 }
 
 .ui-input-number:hover :deep(.ant-input-number:not(.ant-input-number-disabled)) {

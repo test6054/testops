@@ -3,7 +3,9 @@
     <template #context>
       <ContextBar title="考试历史">
         <template #status>
-          <UiTag tone="blue" size="sm">{{ examStats?.totalExamCount ?? 0 }} 场</UiTag>
+          <UiTag tone="blue" size="sm">
+            {{ examStats == null ? '—' : `${examStats.totalExamCount} 场` }}
+          </UiTag>
           <UiTag v-if="(examStats?.publishedCount ?? 0) > 0" tone="green" size="sm">
             已发布 {{ examStats?.publishedCount }}
           </UiTag>
@@ -311,14 +313,14 @@ onActivated(reloadPage)
 .exam-history-page__list-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .link-cell {
   padding: 0;
   border: none;
   background: none;
-  color: var(--dp-primary);
+  color: var(--dp-color-primary);
   cursor: pointer;
   text-align: left;
 }

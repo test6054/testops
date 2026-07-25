@@ -363,7 +363,7 @@ onActivated(() => {
 @use '@/styles/breakpoints' as bp;
 .change-pwd-page {
   min-height: 100vh;
-  padding: var(--dp-space-3, 12px) var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
   background: var(--dp-fill-secondary);
 }
 
@@ -374,15 +374,15 @@ onActivated(() => {
 
 .change-pwd-body {
   display: flex;
-  gap: var(--dp-space-3, 12px);
-  margin-bottom: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
 }
 
 .form-card {
   flex: 1;
 
   :deep(.ant-form-item) {
-    margin-bottom: var(--dp-space-3, 12px);
+    margin-bottom: var(--dp-space-component);
   }
 
   :deep(.ant-input-affix-wrapper) {
@@ -404,8 +404,8 @@ onActivated(() => {
 .password-strength {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-block);
 }
 
 .strength-label {
@@ -428,8 +428,8 @@ onActivated(() => {
   border-radius: var(--dp-radius-full);
   transform-origin: left center;
   transition:
-    transform 0.3s,
-    background-color 0.3s;
+    transform var(--dp-duration-slow),
+    background-color var(--dp-duration-slow);
 
   &.strength-0 {
     background: var(--dp-fill-secondary);
@@ -460,9 +460,9 @@ onActivated(() => {
 
 .form-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--dp-space-component);
   justify-content: flex-end;
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
 
   .ant-btn {
     min-width: 100px;
@@ -472,16 +472,16 @@ onActivated(() => {
 .requirements-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 .req-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
-  transition: color 0.2s;
+  transition: color var(--dp-duration-normal);
 
   .anticon {
     font-size: var(--dp-font-size-lg);
@@ -512,7 +512,7 @@ onActivated(() => {
   font-family: var(--dp-font-family-code);
   font-size: var(--dp-font-size-xs);
   background: var(--dp-fill-tertiary);
-  padding: 2px 6px;
+  padding: 2px var(--dp-space-component-tight);
   border-radius: var(--dp-radius-xs);
 }
 

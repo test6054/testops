@@ -1,56 +1,56 @@
-:global(.dp-btn) {
+.dp-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
   border-radius: var(--dp-radius-control);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background-color var(--dp-duration-normal) ease, color var(--dp-duration-normal) ease, border-color var(--dp-duration-normal) ease, box-shadow var(--dp-duration-normal) ease;
+  transition: background-color var(--dp-duration-normal) var(--dp-ease-default), color var(--dp-duration-normal) var(--dp-ease-default), border-color var(--dp-duration-normal) var(--dp-ease-default), box-shadow var(--dp-duration-normal) var(--dp-ease-default);
 }
 
-:global(.dp-btn:focus-visible) {
+.dp-btn:focus-visible {
   outline: 2px solid var(--dp-color-primary-border);
   outline-offset: 2px;
 }
 
-:global(.dp-btn--md) {
-  padding: var(--dp-space-2) 14px;
+.dp-btn--md {
+  padding: var(--dp-space-component-tight) var(--dp-space-block);
   min-height: 36px;
 }
 
-:global(.dp-btn--sm) {
-  padding: 7px var(--dp-space-3);
+.dp-btn--sm {
+  padding: 7px var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   min-height: 30px;
 }
 
-:global(.dp-btn--primary) {
+.dp-btn--primary {
   background-color: var(--dp-color-primary);
   color: var(--dp-text-inverse);
   border-color: var(--dp-color-primary);
   box-shadow: var(--dp-shadow-sm);
 }
 
-:global(.dp-btn--primary:hover) {
+.dp-btn--primary:hover {
   background-color: var(--dp-color-primary-hover);
   border-color: var(--dp-color-primary-hover);
 }
 
-:global(.dp-btn--outline) {
-  background-color: var(--dp-bg-container);
-  color: var(--dp-text);
+.dp-btn--outline {
+  background-color: var(--dp-surface);
+  color: var(--dp-text-primary);
   border-color: var(--dp-border);
 }
 
-:global(.dp-btn--outline:hover) {
+.dp-btn--outline:hover {
   background-color: var(--dp-fill-tertiary);
   border-color: var(--dp-color-primary-border);
 }
 
-:global(.dp-btn:disabled) {
+.dp-btn:disabled {
   cursor: not-allowed;
   box-shadow: none;
   color: var(--dp-text-disabled);
@@ -58,45 +58,45 @@
   background-color: var(--dp-bg-button-disabled);
 }
 
-:global(.dp-btn--primary:disabled) {
+.dp-btn--primary:disabled {
   color: var(--dp-text-inverse);
   background: var(--dp-color-primary-border);
   border-color: var(--dp-color-primary-border);
 }
 
 // Ant Design Button + dp-btn 叠加（确保在 Ant Design CSS-in-JS 之上生效）
-:global(.ant-btn.dp-btn) {
+.ant-btn.dp-btn {
   border-radius: var(--dp-radius-control);
   font-weight: 600;
   font-size: var(--dp-font-size-md);
   min-height: 36px;
 }
 
-:global(.ant-btn.dp-btn.dp-btn--primary) {
+.ant-btn.dp-btn.dp-btn--primary {
   background-color: var(--dp-color-primary);
   color: var(--dp-text-inverse);
   border-color: var(--dp-color-primary);
   box-shadow: var(--dp-shadow-sm);
 }
 
-:global(.ant-btn.dp-btn.dp-btn--primary:hover) {
+.ant-btn.dp-btn.dp-btn--primary:hover {
   background-color: var(--dp-color-primary-hover);
   border-color: var(--dp-color-primary-hover);
 }
 
-:global(.ant-btn.dp-btn.dp-btn--outline) {
-  background-color: var(--dp-bg-container);
-  color: var(--dp-text);
+.ant-btn.dp-btn.dp-btn--outline {
+  background-color: var(--dp-surface);
+  color: var(--dp-text-primary);
   border-color: var(--dp-border);
 }
 
-:global(.ant-btn.dp-btn.dp-btn--outline:hover) {
+.ant-btn.dp-btn.dp-btn--outline:hover {
   background-color: var(--dp-fill-tertiary);
   border-color: var(--dp-color-primary-border);
 }
 
-:global(.ant-btn.dp-btn:disabled),
-:global(.ant-btn.dp-btn.dp-btn--outline:disabled) {
+.ant-btn.dp-btn:disabled,
+.ant-btn.dp-btn.dp-btn--outline:disabled {
   cursor: not-allowed;
   box-shadow: none;
   color: var(--dp-text-disabled);
@@ -104,7 +104,7 @@
   background-color: var(--dp-bg-button-disabled);
 }
 
-:global(.ant-btn.dp-btn.dp-btn--primary:disabled) {
+.ant-btn.dp-btn.dp-btn--primary:disabled {
   color: var(--dp-text-inverse);
   background: var(--dp-color-primary-border);
   border-color: var(--dp-color-primary-border);

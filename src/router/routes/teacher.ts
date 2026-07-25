@@ -53,6 +53,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           icon: 'unordered-list',
           hideInMenu: false,
           keepAlive: true,
+          layoutWide: true,
           menuGroup: 'marking-workbench',
           menuGroupTitle: '工作台',
           menuGroupIcon: 'dashboard',
@@ -73,6 +74,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           icon: 'container',
           hideInMenu: false,
           keepAlive: true,
+          layoutWide: true,
           menuGroup: 'archive-workbench',
           menuGroupTitle: '课程考核归档',
           menuGroupIcon: 'container',
@@ -109,6 +111,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
         name: 'TeacherArchiveVolumeSearch',
         component: () => import('@/views/teacher/archive-volume-search.vue'),
         meta: {
+          layoutWide: true,
           title: '材料检索',
           roles: TEACHER_ROLES,
           icon: 'search',
@@ -150,6 +153,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
         name: 'TeacherArchiveVolumeReadinessMatrix',
         component: () => import('@/views/teacher/archive-volume/archive-volume-readiness-matrix.vue'),
         meta: {
+          layoutWide: true,
           title: '迎评就绪度矩阵',
           roles: TEACHER_ROLES,
           hideInMenu: true,
@@ -162,6 +166,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
         name: 'TeacherArchiveVolumeLedger',
         component: () => import('@/views/teacher/archive-volume/archive-volume-ledger.vue'),
         meta: {
+          layoutWide: true,
           title: '查阅台账',
           roles: TEACHER_ROLES,
           hideInMenu: true,
@@ -174,6 +179,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
         name: 'TeacherArchiveVolumeAccessPending',
         component: () => import('@/views/teacher/archive-volume/archive-volume-access-pending.vue'),
         meta: {
+          layoutWide: true,
           title: '待审批查阅',
           roles: TEACHER_ROLES,
           hideInMenu: true,
@@ -187,6 +193,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
         component: () =>
           import('@/views/teacher/archive-volume/archive-volume-suspected-mixed-scan.vue'),
         meta: {
+          layoutWide: true,
           title: '混扫复核待办',
           roles: TEACHER_ROLES,
           hideInMenu: true,
@@ -199,6 +206,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
         name: 'TeacherArchiveVolumeAudit',
         component: () => import('@/views/teacher/archive-volume/archive-volume-audit.vue'),
         meta: {
+          layoutWide: true,
           title: '课程考核归档卷审计',
           roles: TEACHER_ROLES,
           hideInMenu: true,
@@ -244,6 +252,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
         name: 'TeacherArchiveScanOps',
         component: () => import('@/views/teacher/archive-volume/archive-scan-ops.vue'),
         meta: {
+          layoutWide: true,
           title: '归档扫描运营',
           roles: TEACHER_ROLES,
           hideInMenu: true,
@@ -334,6 +343,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
         name: 'AdminExamExports',
         component: () => import('@/views/common/exam-export-tasks.vue'),
         meta: {
+          layoutWide: true,
           title: '导出任务',
           roles: TEACHER_ROLES,
           icon: 'cloud-download',

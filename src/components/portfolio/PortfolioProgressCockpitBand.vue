@@ -20,9 +20,14 @@ import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'PortfolioProgressCockpitBand' })
 
-const props = defineProps<{
-  teacherId?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    teacherId?: string
+    /** 为 true 时 teacherId 变化自动拉取；首页由父级 reload 编排时应保持 false */
+    autoLoad?: boolean
+  }>(),
+  { autoLoad: false },
+)
 
 const emit = defineEmits<{
   (e: 'metric-click', key: string, context?: { academicYear?: string }): void
@@ -31,6 +36,10 @@ const emit = defineEmits<{
 const loading = ref(false)
 const cockpit = ref<PortfolioTeacherProgressCockpitVO | null>(null)
 const requestToken = ref(0)
+
+function optionalCount(value: number | undefined | null): string {
+  return value == null ? '—' : String(value)
+}
 
 const metrics = computed((): SignalMetric[] => {
   if (!cockpit.value) {
@@ -73,16 +82,15 @@ const metrics = computed((): SignalMetric[] => {
       clickable: true,
     },
   ]
-  if ((row.courseArchiveTaughtCourseCount ?? 0) > 0) {
+  if (row.courseArchiveTaughtCourseCount != null && row.courseArchiveTaughtCourseCount > 0) {
+    const done = row.courseArchiveFrameworkSlotDone
+    const total = row.courseArchiveFrameworkSlotTotal
     items.push({
       key: 'courseArchive',
       label: '课程五框架',
-      value: String(row.courseArchiveFrameworkSlotDone ?? 0),
-      unit: `/${row.courseArchiveFrameworkSlotTotal ?? 0}`,
-      tone:
-        (row.courseArchiveFrameworkSlotDone ?? 0) >= (row.courseArchiveFrameworkSlotTotal ?? 0)
-          ? 'green'
-          : 'orange',
+      value: optionalCount(done),
+      unit: total == null ? '' : `/${total}`,
+      tone: done != null && total != null && done >= total ? 'green' : 'orange',
       clickable: true,
     })
   }
@@ -104,12 +112,12 @@ const metrics = computed((): SignalMetric[] => {
 })
 
 async function loadCockpit() {
-  const currentToken = requestToken.value
+  const currentToken = ++requestToken.value
   if (!props.teacherId) {
     cockpit.value = null
+    loading.value = false
     return
   }
-  cockpit.value = null
   loading.value = true
   try {
     const nextCockpit = await portfolioAnalysisApi.getProgressCockpit({
@@ -141,7 +149,9 @@ watch(
       loading.value = false
       return
     }
-    void loadCockpit()
+    if (props.autoLoad) {
+      void loadCockpit()
+    }
   },
   { immediate: true },
 )

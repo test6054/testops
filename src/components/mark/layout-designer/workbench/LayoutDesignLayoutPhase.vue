@@ -5,9 +5,8 @@ import type {
   ExamLayoutDocument,
   ExamLayoutQuestionDto,
 } from '@/apis/mark/exam-layout-design'
-import { computed } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 import LayoutBlockLayerPanel from '@/components/mark/layout-designer/LayoutBlockLayerPanel.vue'
-import LayoutCanvas from '@/components/mark/layout-designer/LayoutCanvas.vue'
 import LayoutPropertyDrawer from '@/components/mark/layout-designer/LayoutPropertyDrawer.vue'
 import LayoutQuestionCropStrip from '@/components/mark/layout-designer/LayoutQuestionCropStrip.vue'
 import LayoutQuestionOutlinePanel from '@/components/mark/layout-designer/LayoutQuestionOutlinePanel.vue'
@@ -16,6 +15,8 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import { isFullPaperWorkspace } from '@/utils/layout-design-workspace'
+
+const LayoutCanvas = defineAsyncComponent(() => import('@/components/mark/layout-designer/LayoutCanvas.vue'))
 
 const props = defineProps<{
   document: ExamLayoutDocument | null
@@ -141,14 +142,14 @@ const focusedBlock = computed(
 @use '@/styles/breakpoints' as bp;
 
 .layout-design-layout-phase__gate {
-  margin: var(--dp-space-3) 0;
+  margin: var(--dp-space-component) 0;
   max-width: 100%;
 }
 
 .layout-design-layout-phase__gate-row {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
 }
 
@@ -160,14 +161,14 @@ const focusedBlock = computed(
 .layout-design-layout-phase {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr) 300px;
-  gap: 12px;
+  gap: var(--dp-space-component);
   min-height: calc(100vh - 280px);
 
   &__left,
   &__right {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--dp-space-component);
     min-height: 0;
   }
 
@@ -181,7 +182,7 @@ const focusedBlock = computed(
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   @media (max-width: #{bp.$ant-grid-xl - 1px}) {

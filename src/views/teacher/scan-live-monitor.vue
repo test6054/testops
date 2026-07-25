@@ -5,7 +5,7 @@
         layout="workbench"
         show-title
         title="扫描监控"
-        :subtitle="scanMonitorContextSubtitle"
+        :subtitle="contextBarSubtitle"
       >
         <template #status>
           <UiTag
@@ -68,7 +68,6 @@
         v-if="scanMonitorPanelLoadFailed"
         tone="error"
         title="扫描监控指标加载失败"
-        description="批次汇总与实时指标暂不可用。"
         dense
         class="scan-monitor__panel-alert"
       />
@@ -77,6 +76,7 @@
         class="scan-monitor__devices"
         :devices="scannerDevices"
         :loading="scannerDevicesLoading"
+        :load-failed="scannerDevicesLoadFailed"
         :selected-device-id="filterForm.monitorDeviceId"
         @select="handleMonitorDeviceSelect"
       />
@@ -121,14 +121,22 @@
           </UiFilterBar>
 
           <UiSectionTabs
-            v-model="activeTab"
+            :model-value="activeTab"
             :items="monitorTabs"
             compact
             class="scan-monitor__status-tabs"
+            @update:model-value="onMonitorTabChange"
           />
 
           <section v-if="activeTab === 'normal'" class="scan-monitor__normal-panel">
+            <UiAlertStrip
+              v-if="monitorBatchesLoadFailed"
+              tone="error"
+              title="扫描批次列表加载失败"
+              dense
+            />
             <UiDataTable
+              v-if="!monitorBatchesLoadFailed || monitorBatches.length > 0"
               v-model:current="monitorBatchPagination.current"
               v-model:page-size="monitorBatchPagination.pageSize"
               pagination-mode="server"
@@ -189,7 +197,14 @@
             </UiDataTable>
           </section>
           <section v-else class="scan-monitor__attention-panel">
+            <UiAlertStrip
+              v-if="attentionLoadFailed"
+              tone="error"
+              title="扫描关注列表加载失败"
+              dense
+            />
             <UiDataTable
+              v-if="!attentionLoadFailed || activeAttentionRows.length > 0"
               v-model:current="attentionPagination.current"
               v-model:page-size="attentionPagination.pageSize"
               pagination-mode="server"
@@ -513,19 +528,74 @@
               {{ scanAttentionDiagnosticText(detailRecord.diagnostic) }}
             </div>
           </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="detailRecord.actionDisabledReason" label="处置说明">
+            {{ detailRecord.actionDisabledReason }}
+          </UiDescriptionsItem>
           <UiDescriptionsItem label="更新时间">
             {{ formatDateTimeWithSeconds(detailRecord.updateTime) }}
           </UiDescriptionsItem>
         </UiDescriptions>
+        <div
+          v-if="detailRecord?.primaryActionCode && detailRecord.primaryActionCode !== ScanAttentionPrimaryActionCode.VIEW_DETAIL"
+          class="scan-monitor__detail-action"
+        >
+          <UiButton
+            size="sm"
+            variant="primary"
+            @click="handleAttentionAction('primary', detailRecord)"
+          >
+            {{ detailRecord.primaryActionLabel }}
+          </UiButton>
+        </div>
       </UiDrawer>
 
       <UiDrawer
         v-model:open="pageDiscardModalOpen"
         title="废弃扫描页"
-        :width="480"
+        :width="560"
         hide-footer
         @close="closePageDiscardModal"
       >
+        <UiAlertStrip
+          tone="warning"
+          :closable="false"
+          dense
+          title="仅废弃此页"
+          description="确认后仅将当前扫描页标记为废弃，不联动批次状态；已封存批次不可废弃。"
+          class="scan-monitor__discard-alert"
+        />
+        <div v-if="pageDiscardTarget" class="scan-monitor__discard-evidence">
+          <div class="scan-monitor__discard-meta">
+            <div>页：{{ pageDiscardTarget.pageDisplayName || pageDiscardTarget.pageId }}</div>
+            <div>批次：{{ pageDiscardTarget.scanBatchDisplayName || '—' }}</div>
+            <div>答卷：{{ pageDiscardTarget.paperDisplay?.primaryText || '—' }}</div>
+            <div>
+              考生：{{
+                pageDiscardTarget.studentName
+                  ? `${pageDiscardTarget.studentName}${pageDiscardTarget.studentNo ? `（${pageDiscardTarget.studentNo}）` : ''}`
+                  : '未绑定'
+              }}
+            </div>
+          </div>
+          <UiSkeletonState v-if="pageDiscardPreviewLoading" variant="card" compact />
+          <ScanImageStage
+            v-else-if="pageDiscardPreviewUrl"
+            :src="pageDiscardPreviewUrl"
+            caption="待废弃页影像"
+            :confidential="isExamConfidential"
+            :exam-label="examConfidentialLabel"
+            :watermark-lines="watermarkLines"
+            :min-height="220"
+            empty-text="影像加载失败"
+            class="scan-monitor__discard-image"
+          />
+          <UiEmpty
+            v-else-if="pageDiscardPreviewFailed"
+            size="sm"
+            description="当前页影像加载失败；确认废弃前请先核验页号与答卷锚点"
+          />
+          <UiEmpty v-else size="sm" description="无可用页影像；请核验页号与答卷锚点后再确认废弃" />
+        </div>
         <UiForm layout="vertical">
           <UiFormItem
             label="废弃原因"
@@ -536,6 +606,7 @@
             <UiTextarea
               size="sm"
               v-model="pageDiscardReason"
+              :disabled="Boolean(pageDiscarding)"
               placeholder="请输入废弃原因（必填，1-255 字）"
               :maxlength="255"
               :show-count="true"
@@ -544,14 +615,21 @@
           </UiFormItem>
         </UiForm>
         <template #footer>
-          <UiButton size="sm" variant="outline" @click="closePageDiscardModal">取消</UiButton>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="Boolean(pageDiscarding)"
+            @click="closePageDiscardModal"
+          >
+            取消
+          </UiButton>
           <UiButton
             size="sm"
             status="danger"
             :loading="Boolean(pageDiscarding)"
             @click="confirmDiscardPage"
           >
-            废弃
+            确认仅废弃此页
           </UiButton>
         </template>
       </UiDrawer>
@@ -584,7 +662,7 @@ import type {
 } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onActivated, onBeforeUnmount, onDeactivated, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchStoragePreviewBlobUrl } from '@/apis/edu/file-management'
 import {
@@ -615,8 +693,6 @@ import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
 import { GRADE_STATUS_TONE, GradeStatusDescription } from '@/apis/mark/grade-status'
 import { TASK_STATUS_TONE, TaskStatusDescription } from '@/apis/mark/task-status'
-import ScanDeviceCardGrid from '@/components/mark/ScanDeviceCardGrid.vue'
-import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -662,6 +738,10 @@ import { DEFAULT_LIST_PAGE_SIZE, REMOTE_SEARCH_PAGE_SIZE } from '@/constants/pag
 import { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
 import { CandidateStatusCode } from '@/types/enums/candidate-status-enum'
 import { IncidentSourceTypeCode } from '@/types/enums/incident-source-type-enum'
+import {
+  ScanAttentionPrimaryActionCode,
+  ScanAttentionPrimaryActionDescription,
+} from '@/types/enums/scan-attention-primary-action-enum'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import mittBus from '@/utils/mitt'
@@ -670,6 +750,12 @@ import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanLiveMonitor' })
+
+/** 影像台与设备卡片非首屏 KPI 必需，按需加载 */
+const ScanImageStage = defineAsyncComponent(() => import('@/components/mark/ScanImageStage.vue'))
+const ScanDeviceCardGrid = defineAsyncComponent(
+  () => import('@/components/mark/ScanDeviceCardGrid.vue'),
+)
 
 const router = useRouter()
 const route = useRoute()
@@ -690,14 +776,6 @@ function isScanMonitorTabQuery(value: unknown): value is ScanMonitorTabQuery {
 
 const { selectedExamId } = useMarkExamContext()
 const { contextBarSubtitle } = useExamJourneyContextBar('扫描监控')
-
-const scanMonitorContextSubtitle = computed(() => {
-  const journeySubtitle = contextBarSubtitle.value
-  if (journeySubtitle.includes('/api/')) {
-    return '扫描监控 · 实时批次与异常处置'
-  }
-  return journeySubtitle
-})
 const { refreshSnapshot } = useWorkspaceExamId()
 const { isExamConfidential, examConfidentialLabel, watermarkLines }
   = useWorkspaceConfidentialContext()
@@ -705,7 +783,12 @@ const { isExamConfidential, examConfidentialLabel, watermarkLines }
 /** 扫描链写操作后同步 StageRail 与本页数据。 */
 async function syncScanWorkbenchState(): Promise<void> {
   await refreshSnapshot()
-  mittBus.emit('scan-workbench:refresh')
+  suppressSelfRefresh = true
+  try {
+    mittBus.emit('scan-workbench:refresh')
+  } finally {
+    suppressSelfRefresh = false
+  }
 }
 
 // ─── 列表筛选 + 数据 ─────────────────────────────
@@ -726,8 +809,16 @@ const filterForm = reactive<{
 
 const scannerDevices = ref<ExamScanMonitorDeviceResponse[]>([])
 const scannerDevicesLoading = ref(false)
+const scannerDevicesLoadFailed = ref(false)
 const scanMonitorPanel = ref<ExamWorkbenchScanMonitorPanelResponse | null>(null)
 const scanMonitorPanelLoadFailed = ref(false)
+const attentionLoadFailed = ref(false)
+const monitorBatchesLoadFailed = ref(false)
+/** 切考试时递增，丢弃过期 panel/设备/批次/关注列表响应 */
+let examLoadGeneration = 0
+let refreshListenerActive = false
+/** 本页写后本地刷新时抑制 mitt 自回调，避免双载。 */
+let suppressSelfRefresh = false
 /** MVR-326：仅认 BE scan-monitor-panel.canManageOwnerBatchActions===true */
 const canManageOwnerBatchActions = computed(
   () => scanMonitorPanel.value?.canManageOwnerBatchActions === true,
@@ -786,16 +877,10 @@ function syncAttentionFiltersFromRoute(): void {
   filterForm.paperInstanceId = ''
 }
 
-/** 从路由同步 Tab 与异常筛选，并在需要时刷新异常列表。 */
-function applyScanMonitorRouteState(reloadAttentions: boolean): void {
-  syncAttentionFiltersFromRoute()
-  syncActiveTabFromRoute()
-  if (reloadAttentions && activeTab.value !== 'normal' && selectedExamId.value) {
-    reloadAttentionsFromFirstPage()
-  }
-}
-
 const attentionTableEmptyDescription = computed(() => {
+  if (attentionLoadFailed.value) {
+    return '关注列表加载失败'
+  }
   if (activeTab.value === 'abnormal') {
     return '暂无异常待处理，当前扫描识别正常'
   }
@@ -806,8 +891,11 @@ const attentionTableEmptyDescription = computed(() => {
 })
 
 const normalTableEmptyDescription = computed(() => {
+  if (monitorBatchesLoadFailed.value) {
+    return '扫描批次列表加载失败'
+  }
   if (hasActiveNormalFilters.value) {
-    return '当前筛选条件下无匹配批次，请调整条件后重试'
+    return '当前筛选条件下无匹配批次，请调整条件后查询'
   }
   return '暂无扫描批次，请先在扫描终端完成扫描'
 })
@@ -985,9 +1073,11 @@ function handleMonitorBatchPageChange(pageEvent: { current: number, pageSize: nu
 
 async function loadMonitorBatches(): Promise<void> {
   const examId = selectedExamId.value
+  const loadGeneration = examLoadGeneration
   if (!examId || activeTab.value !== 'normal') {
     monitorBatches.value = []
     monitorBatchPagination.total = 0
+    monitorBatchesLoadFailed.value = false
     return
   }
   monitorBatchLoading.value = true
@@ -1001,14 +1091,22 @@ async function loadMonitorBatches(): Promise<void> {
       status: normalFilterApplied.batchStatus,
       includeDiscarded: false,
     })
+    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    monitorBatchesLoadFailed.value = false
     monitorBatches.value = result.list
     monitorBatchPagination.total = result.total
   } catch (error) {
-    monitorBatches.value = []
-    monitorBatchPagination.total = 0
+    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    monitorBatchesLoadFailed.value = true
     showUserError(error, '扫描批次加载失败')
   } finally {
-    monitorBatchLoading.value = false
+    if (loadGeneration === examLoadGeneration) {
+      monitorBatchLoading.value = false
+    }
   }
 }
 
@@ -1108,6 +1206,9 @@ const connectionTone = computed<BadgeTone>(() => {
 })
 
 const connectionLabel = computed(() => {
+  if (scannerDevicesLoadFailed.value) {
+    return '扫描端列表加载失败'
+  }
   const phase = scanLiveStream.connectionPhase.value
   if (phase === 'ready' && scanLiveStream.ready.value) {
     return '实时同步中'
@@ -1125,8 +1226,9 @@ const connectionLabel = computed(() => {
     : '无在线扫描端'
 })
 
+/** 仅重连中短脉冲；就绪态静态展示，避免无限 pulse */
 const connectionPulsing = computed(
-  () => scanLiveStream.connectionPhase.value === 'ready' && scanLiveStream.ready.value,
+  () => scanLiveStream.connectionPhase.value === 'reconnecting',
 )
 
 watch(
@@ -1144,32 +1246,82 @@ function handleMonitorDeviceSelect(device: ExamScanMonitorDeviceResponse): void 
 }
 
 async function loadScanOverview(examId: string): Promise<void> {
+  const loadGeneration = examLoadGeneration
   scanMonitorPanelLoadFailed.value = false
   try {
-    scanMonitorPanel.value = await getScanMonitorPanel(examId)
+    const panel = await getScanMonitorPanel(examId)
+    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    scanMonitorPanel.value = panel
   } catch (error) {
+    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
     scanMonitorPanel.value = null
     scanMonitorPanelLoadFailed.value = true
     showUserError(error, '扫描监控指标加载失败')
   }
 }
 
-function jumpToAbnormalTab(): void {
-  activeTab.value = 'abnormal'
+/** 路由是 Tab/深链筛选的唯一导航真源；点击只改 query。 */
+function replaceScanMonitorRouteQuery(patch: {
+  tab?: ScanMonitorTabQuery | null
+  paperInstanceId?: string | null
+}): void {
+  const nextQuery: Record<string, string | string[]> = { ...route.query } as Record<
+    string,
+    string | string[]
+  >
+  if (patch.tab === null || patch.tab === ScanMonitorTabQuery.NORMAL) {
+    delete nextQuery.tab
+  } else if (patch.tab !== undefined) {
+    nextQuery.tab = patch.tab
+  }
+  if (patch.paperInstanceId === null || patch.paperInstanceId === '') {
+    delete nextQuery.paperInstanceId
+  } else if (patch.paperInstanceId !== undefined) {
+    nextQuery.paperInstanceId = patch.paperInstanceId
+  }
+  void router.replace({ query: nextQuery })
+}
+
+function onMonitorTabChange(value: string | number): void {
+  const tab = String(value)
+  if (!isScanMonitorTabQuery(tab) || tab === activeTab.value) {
+    return
+  }
   filterForm.attentionType = ''
-  reloadAttentionsFromFirstPage()
+  replaceScanMonitorRouteQuery({ tab })
+}
+
+function jumpToAbnormalTab(): void {
+  filterForm.attentionType = ''
+  if (activeTab.value === 'abnormal') {
+    reloadAttentionsFromFirstPage()
+    return
+  }
+  replaceScanMonitorRouteQuery({ tab: ScanMonitorTabQuery.ABNORMAL })
 }
 
 function jumpToDuplicateTab(): void {
-  activeTab.value = 'duplicate'
   filterForm.attentionType = ''
-  reloadAttentionsFromFirstPage()
+  if (activeTab.value === 'duplicate') {
+    reloadAttentionsFromFirstPage()
+    return
+  }
+  replaceScanMonitorRouteQuery({ tab: ScanMonitorTabQuery.DUPLICATE })
 }
 
 function jumpToMissingCandidateAttention(): void {
-  activeTab.value = 'abnormal'
   filterForm.attentionType = ScanAttentionTypeCode.MISSING_CANDIDATE_ROSTER
-  reloadAttentionsFromFirstPage()
+  attentionPagination.current = 1
+  if (activeTab.value === 'abnormal') {
+    void loadAttentions()
+    return
+  }
+  // 先写筛选再改 Tab 路由；routeScope watch 只负责一次 loadAttentions
+  replaceScanMonitorRouteQuery({ tab: ScanMonitorTabQuery.ABNORMAL })
 }
 
 function goToScanBatchOrphanRecovery(): void {
@@ -1232,14 +1384,21 @@ const monitorTabs = computed<UiSectionTabItem[]>(() => [
 ])
 
 async function loadConnectedScannerDevices(): Promise<void> {
-  if (!selectedExamId.value) {
+  const examId = selectedExamId.value
+  const loadGeneration = examLoadGeneration
+  if (!examId) {
     scannerDevices.value = []
+    scannerDevicesLoadFailed.value = false
     filterForm.monitorDeviceId = ''
     return
   }
   scannerDevicesLoading.value = true
   try {
-    const response = await listExamScanMonitorDevices(selectedExamId.value)
+    const response = await listExamScanMonitorDevices(examId)
+    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    scannerDevicesLoadFailed.value = false
     scannerDevices.value = response.items ?? []
     if (scannerDevices.value.length === 0) {
       filterForm.monitorDeviceId = ''
@@ -1252,11 +1411,15 @@ async function loadConnectedScannerDevices(): Promise<void> {
       filterForm.monitorDeviceId = ''
     }
   } catch (error) {
-    scannerDevices.value = []
-    filterForm.monitorDeviceId = ''
+    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    scannerDevicesLoadFailed.value = true
     showUserError(error, '在线扫描仪加载失败')
   } finally {
-    scannerDevicesLoading.value = false
+    if (loadGeneration === examLoadGeneration) {
+      scannerDevicesLoading.value = false
+    }
   }
 }
 
@@ -1361,14 +1524,6 @@ function goToScanBatchWorkbenchFromAttention(record: ScanAttentionItemResponse):
   })
 }
 
-function openAttentionReviewWorkspace(): void {
-  if (!selectedExamId.value) return
-  void router.push({
-    name: 'TeacherExamWorkspaceReviewBatchConfirm',
-    params: { examId: selectedExamId.value },
-  })
-}
-
 function scanBatchStatusLabel(batch: ExamScannerBatchResponse): string {
   return strictEnumLabel(ScanBatchStatusDescription, batch.status, '扫描批次状态')
 }
@@ -1392,6 +1547,7 @@ async function loadAttentions(): Promise<void> {
   if (!selectedExamId.value) {
     attentions.value = []
     attentionPagination.total = 0
+    attentionLoadFailed.value = false
     return
   }
   loading.value = true
@@ -1400,10 +1556,12 @@ async function loadAttentions(): Promise<void> {
     if (!queryGroup) {
       attentions.value = []
       attentionPagination.total = 0
+      attentionLoadFailed.value = false
       return
     }
     await loadAttentionPage(queryGroup)
   } catch (error) {
+    attentionLoadFailed.value = true
     showUserError(error, '扫描异常列表加载失败')
   } finally {
     loading.value = false
@@ -1426,9 +1584,11 @@ let attentionLoadGeneration = 0
 async function loadAttentionPage(queryGroup: ScanAttentionQueryGroupCode): Promise<void> {
   const loadGeneration = ++attentionLoadGeneration
   const examId = selectedExamId.value
+  const examGeneration = examLoadGeneration
   if (!examId) {
     attentions.value = []
     attentionPagination.total = 0
+    attentionLoadFailed.value = false
     return
   }
   try {
@@ -1441,7 +1601,11 @@ async function loadAttentionPage(queryGroup: ScanAttentionQueryGroupCode): Promi
       scanBatchId: filterForm.scanBatchId?.trim() || undefined,
       paperInstanceId: filterForm.paperInstanceId?.trim() || undefined,
     })
-    if (loadGeneration !== attentionLoadGeneration) {
+    if (
+      loadGeneration !== attentionLoadGeneration
+      || examGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
     const total = result.total
@@ -1451,6 +1615,7 @@ async function loadAttentionPage(queryGroup: ScanAttentionQueryGroupCode): Promi
       await loadAttentionPage(queryGroup)
       return
     }
+    attentionLoadFailed.value = false
     attentionPagination.total = total
     if (result.pageNum != null) {
       attentionPagination.current = result.pageNum
@@ -1460,11 +1625,14 @@ async function loadAttentionPage(queryGroup: ScanAttentionQueryGroupCode): Promi
     }
     attentions.value = rows
   } catch (error) {
-    if (loadGeneration !== attentionLoadGeneration) {
+    if (
+      loadGeneration !== attentionLoadGeneration
+      || examGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
-    attentions.value = []
-    attentionPagination.total = 0
+    attentionLoadFailed.value = true
     showUserError(error, '扫描关注列表加载失败')
   }
 }
@@ -1685,6 +1853,35 @@ const pageDiscardModalOpen = ref(false)
 const pageDiscardTarget = ref<ScanAttentionItemResponse | null>(null)
 const pageDiscardReason = ref('')
 const pageDiscardReasonError = ref('')
+const pageDiscardPreviewUrl = ref('')
+const pageDiscardPreviewLoading = ref(false)
+const pageDiscardPreviewFailed = ref(false)
+
+function releasePageDiscardPreview(): void {
+  if (pageDiscardPreviewUrl.value) {
+    URL.revokeObjectURL(pageDiscardPreviewUrl.value)
+    pageDiscardPreviewUrl.value = ''
+  }
+}
+
+async function loadPageDiscardPreview(record: ScanAttentionItemResponse): Promise<void> {
+  releasePageDiscardPreview()
+  pageDiscardPreviewFailed.value = false
+  if (!selectedExamId.value || !record.pageId) {
+    return
+  }
+  pageDiscardPreviewLoading.value = true
+  try {
+    const previewPath = `/api/mark/exams/scanner-batches/pages/original-image?examId=${selectedExamId.value}&pageId=${record.pageId}`
+    pageDiscardPreviewUrl.value = await fetchStoragePreviewBlobUrl(previewPath)
+  } catch (error) {
+    pageDiscardPreviewFailed.value = true
+    showUserError(error, '废弃页影像加载失败')
+  } finally {
+    pageDiscardPreviewLoading.value = false
+  }
+}
+
 async function onDiscardPage(record: ScanAttentionItemResponse): Promise<void> {
   // MVR-390：打开废弃弹窗与 canManageOwnerBatchActions / BE 主考写门禁同源
   if (!canManageOwnerBatchActions.value) {
@@ -1695,10 +1892,14 @@ async function onDiscardPage(record: ScanAttentionItemResponse): Promise<void> {
     void message.warning('该异常不是扫描页来源，无法废弃')
     return
   }
+  if (pageDiscarding.value) {
+    return
+  }
   pageDiscardTarget.value = record
   pageDiscardReason.value = ''
   pageDiscardReasonError.value = ''
   pageDiscardModalOpen.value = true
+  void loadPageDiscardPreview(record)
 }
 
 function closePageDiscardModal(): void {
@@ -1707,6 +1908,8 @@ function closePageDiscardModal(): void {
   pageDiscardTarget.value = null
   pageDiscardReason.value = ''
   pageDiscardReasonError.value = ''
+  releasePageDiscardPreview()
+  pageDiscardPreviewFailed.value = false
 }
 
 async function confirmDiscardPage(): Promise<void> {
@@ -1738,6 +1941,7 @@ async function confirmDiscardPage(): Promise<void> {
     pageDiscardModalOpen.value = false
     pageDiscardTarget.value = null
     pageDiscardReason.value = ''
+    releasePageDiscardPreview()
     await loadAttentions()
     await syncScanWorkbenchState()
   } catch (error) {
@@ -2034,15 +2238,28 @@ function handleMonitorBatchAction(key: string, batch: ExamScannerBatchResponse):
 
 function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
-  // MVR-263：主考写动作与 BE requireExamOwnerPermission 对齐，非主考仅保留导航/查看
   const canOwnerWrite = canManageOwnerBatchActions.value
-  if (record.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT) {
+  const primaryCode = record.primaryActionCode
+  const primaryLabel
+    = record.primaryActionLabel
+      || strictEnumLabel(
+        ScanAttentionPrimaryActionDescription,
+        primaryCode,
+        '扫描异常主操作',
+      )
+  if (primaryCode === ScanAttentionPrimaryActionCode.VIEW_DETAIL) {
+    actions.push({
+      key: 'primary',
+      label: primaryLabel,
+      tone: 'primary',
+    })
+  } else if (primaryCode === ScanAttentionPrimaryActionCode.BIND_IDENTITY) {
     if (canOwnerWrite) {
       actions.push({
-        key: 'bind',
-        label: '身份绑定',
+        key: 'primary',
+        label: primaryLabel,
         tone: 'primary',
-        disabled: !record.paperInstanceId || !record.scanBatchId,
+        disabled: Boolean(record.actionDisabledReason),
       })
     } else {
       actions.push({
@@ -2051,35 +2268,24 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
         disabled: !record.scanBatchId,
       })
     }
-  } else if (record.attentionType === ScanAttentionTypeCode.UNASSIGNED_PAGE) {
+  } else if (primaryCode) {
     actions.push({
-      key: 'workbench',
-      label: canOwnerWrite ? '去归卷工作台' : '查看批次',
-      tone: canOwnerWrite ? 'primary' : undefined,
-      disabled: !record.scanBatchId,
+      key: 'primary',
+      label: primaryLabel,
+      tone: 'primary',
+      disabled: Boolean(record.actionDisabledReason) || !record.workspaceRouteName,
     })
-  } else if (record.attentionType === ScanAttentionTypeCode.BOUND_INCOMPLETE) {
-    actions.push({
-      key: 'workbench',
-      label: canOwnerWrite ? '去归卷工作台' : '查看批次',
-      tone: canOwnerWrite ? 'primary' : undefined,
-      disabled: !record.scanBatchId,
-    })
-    if (canOwnerWrite && record.paperInstanceId && record.scanBatchId) {
-      actions.push({ key: 'supplement', label: '去补扫' })
-    }
-  } else if (record.attentionType === ScanAttentionTypeCode.RECOGNITION_REVIEW) {
-    actions.push({ key: 'review', label: '文字识别/智能复核', tone: 'primary' })
-  } else if (record.attentionType === ScanAttentionTypeCode.DUPLICATE_PENDING) {
-    actions.push({ key: 'ledger', label: '去影像账本处置', tone: 'primary' })
-  } else if (
-    record.attentionType === ScanAttentionTypeCode.QUALITY_BLOCK
-    || record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK
+  }
+  if (
+    canOwnerWrite
+    && (record.attentionType === ScanAttentionTypeCode.QUALITY_BLOCK
+      || record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK
+      || record.attentionType === ScanAttentionTypeCode.BOUND_INCOMPLETE)
+    && record.paperInstanceId
+    && record.scanBatchId
+    && primaryCode !== ScanAttentionPrimaryActionCode.OPEN_MANUAL_SUPPLEMENT
   ) {
-    actions.push({ key: 'dispose', label: '查看处置', tone: 'primary' })
-    if (canOwnerWrite && record.paperInstanceId && record.scanBatchId) {
-      actions.push({ key: 'supplement', label: '去补扫' })
-    }
+    actions.push({ key: 'supplement', label: '去补扫' })
   }
   if (
     canOwnerWrite
@@ -2096,25 +2302,84 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
   return actions
 }
 
+function executePrimaryAttentionAction(record: ScanAttentionItemResponse): void {
+  if (record.actionDisabledReason && record.primaryActionCode === ScanAttentionPrimaryActionCode.VIEW_DETAIL) {
+    openDetail(record)
+    return
+  }
+  if (record.actionDisabledReason) {
+    void message.warning(record.actionDisabledReason)
+    return
+  }
+  const code = record.primaryActionCode
+  if (code === ScanAttentionPrimaryActionCode.BIND_IDENTITY) {
+    openBindDrawer(record)
+    return
+  }
+  if (code === ScanAttentionPrimaryActionCode.VIEW_DETAIL) {
+    openDetail(record)
+    return
+  }
+  const routeName = record.workspaceRouteName
+  if (!routeName) {
+    void message.error('异常主操作缺少工作台路由，属于前后端合同错误')
+    return
+  }
+  if (!selectedExamId.value) {
+    return
+  }
+  if (code === ScanAttentionPrimaryActionCode.OPEN_BATCH_DETAIL) {
+    if (!record.scanBatchId) {
+      void message.warning(record.actionDisabledReason || '缺少扫描批次，无法进入页轨')
+      return
+    }
+    void router.push({
+      name: routeName,
+      params: {
+        examId: selectedExamId.value,
+        scanBatchId: record.scanBatchId,
+      },
+    })
+    return
+  }
+  if (code === ScanAttentionPrimaryActionCode.OPEN_MANUAL_SUPPLEMENT) {
+    goToManualSupplementFromAttention(record)
+    return
+  }
+  if (code === ScanAttentionPrimaryActionCode.OPEN_IMAGE_LEDGER) {
+    void router.push({
+      name: routeName,
+      params: { examId: selectedExamId.value },
+    })
+    return
+  }
+  if (code === ScanAttentionPrimaryActionCode.OPEN_REVIEW_CONFIRM) {
+    void router.push({
+      name: routeName,
+      params: { examId: selectedExamId.value },
+    })
+    return
+  }
+  if (code === ScanAttentionPrimaryActionCode.OPEN_CANDIDATE_ROSTER) {
+    void router.push({
+      name: routeName,
+      params: { examId: selectedExamId.value },
+    })
+    return
+  }
+  void message.error(`未识别的扫描异常主操作：${String(code)}`)
+}
+
 function handleAttentionAction(key: string, record: ScanAttentionItemResponse): void {
   switch (key) {
     case 'detail':
       openDetail(record)
       break
-    case 'bind':
-      openBindDrawer(record)
+    case 'primary':
+      executePrimaryAttentionAction(record)
       break
     case 'workbench':
       goToScanBatchWorkbenchFromAttention(record)
-      break
-    case 'review':
-      openAttentionReviewWorkspace()
-      break
-    case 'ledger':
-      goToScanLedger()
-      break
-    case 'dispose':
-      openDetail(record)
       break
     case 'supplement':
       goToManualSupplementFromAttention(record)
@@ -2279,7 +2544,17 @@ async function submitBatchBind(): Promise<void> {
       })),
     })
     batchBindResult.value = result
-    void message.success(`批量绑定：成功 ${result.successCount} 条，失败 ${result.failureCount} 条`)
+    if (result.failureCount > 0) {
+      void message.warning(
+        `批量绑定部分失败：成功 ${result.successCount} 条，失败 ${result.failureCount} 条；失败行已保留在抽屉内可继续修正`,
+      )
+      const failedIds = new Set(
+        (result.items ?? []).filter((item) => !item.success).map((item) => item.paperInstanceId),
+      )
+      batchBindRows.value = batchBindRows.value.filter((row) => failedIds.has(row.paperInstanceId))
+    } else {
+      void message.success(`批量绑定成功：${result.successCount} 条`)
+    }
     await loadAttentions()
     await syncScanWorkbenchState()
     if (result.failureCount === 0) {
@@ -2299,6 +2574,8 @@ async function submitBatchBind(): Promise<void> {
 watch(
   selectedExamId,
   (value) => {
+    examLoadGeneration += 1
+    attentionLoadGeneration += 1
     // 切换考试需要重置名册绑定搜索缓存
     candidateCache.value = new Map()
     candidateOptions.value = []
@@ -2307,6 +2584,7 @@ watch(
     paperCandidates.value = []
     paperCandidateKeyword.value = ''
     attentions.value = []
+    attentionLoadFailed.value = false
     selectedRowKeys.value = []
     attentionPagination.current = 1
     attentionPagination.total = 0
@@ -2317,6 +2595,7 @@ watch(
     filterForm.batchStatus = undefined
     filterForm.monitorDeviceId = ''
     monitorBatches.value = []
+    monitorBatchesLoadFailed.value = false
     monitorBatchPagination.current = 1
     monitorBatchPagination.total = 0
     bindPageId.value = ''
@@ -2329,19 +2608,17 @@ watch(
     batchBindResult.value = null
     scanMonitorPanel.value = null
     scanMonitorPanelLoadFailed.value = false
+    scannerDevicesLoadFailed.value = false
     if (value) {
       syncAttentionFiltersFromRoute()
       syncActiveTabFromRoute()
       void loadScanOverview(value)
       void loadScanBatches()
       void loadPaperCandidates()
-      void loadAttentions()
       void loadConnectedScannerDevices()
       startMonitorFallbackPolling()
       void scanLiveStream.start()
-      if (activeTab.value === 'normal') {
-        void loadMonitorBatches()
-      }
+      // attentions / normal batches 由 routeScope watch 按 Tab 单次加载
     } else {
       stopMonitorFallbackPolling()
       scanLiveStream.stop()
@@ -2361,26 +2638,41 @@ watch(
   },
 )
 
-watch(activeTab, (value) => {
-  attentionPagination.current = 1
-  attentionPagination.total = 0
-  selectedRowKeys.value = []
-  attentions.value = []
-  if (value !== 'abnormal') {
-    filterForm.attentionType = ''
-  }
-  if (value === 'normal') {
+/**
+ * 路由 query 是 Tab/深链筛选真源：同步 activeTab 后按范围加载一次，避免 exam/tab/jump 多路重复请求。
+ */
+watch(
+  () =>
+    [selectedExamId.value, route.query.tab, route.query.paperInstanceId] as const,
+  () => {
+    if (!selectedExamId.value) {
+      return
+    }
+    const previousTab = activeTab.value
+    syncAttentionFiltersFromRoute()
+    syncActiveTabFromRoute()
+    attentionPagination.current = 1
+    selectedRowKeys.value = []
+    if (activeTab.value === 'normal') {
+      attentions.value = []
+      attentionLoadFailed.value = false
+      startMonitorFallbackPolling()
+      void loadConnectedScannerDevices()
+      void loadMonitorBatches()
+      return
+    }
+    if (previousTab === 'normal' || previousTab !== activeTab.value) {
+      attentions.value = []
+      attentionLoadFailed.value = false
+    }
     startMonitorFallbackPolling()
-    void loadConnectedScannerDevices()
-    void loadMonitorBatches()
-    return
-  }
-  startMonitorFallbackPolling()
-  void loadAttentions()
-  if (!isScanLiveStreamReady()) {
-    tickMonitorFallbackPoll()
-  }
-})
+    void loadAttentions()
+    if (!isScanLiveStreamReady()) {
+      tickMonitorFallbackPoll()
+    }
+  },
+  { immediate: true },
+)
 
 watch(
   () => scanLiveStream.connectionPhase.value,
@@ -2408,33 +2700,33 @@ watch(bindDrawerOpen, (open) => {
 })
 
 function onWorkbenchRefresh(): void {
-  if (selectedExamId.value) {
-    void handleRefresh()
+  if (suppressSelfRefresh || !selectedExamId.value) {
+    return
   }
+  void handleRefresh()
 }
 
-onMounted(() => {
-  applyScanMonitorRouteState(true)
+onActivated(() => {
+  if (refreshListenerActive) {
+    return
+  }
   mittBus.on('scan-workbench:refresh', onWorkbenchRefresh)
+  refreshListenerActive = true
 })
 
-watch(
-  () => route.query.tab,
-  () => {
-    applyScanMonitorRouteState(true)
-  },
-)
-
-watch(
-  () => route.query.paperInstanceId,
-  () => {
-    applyScanMonitorRouteState(true)
-  },
-  { immediate: true },
-)
+onDeactivated(() => {
+  if (!refreshListenerActive) {
+    return
+  }
+  mittBus.off('scan-workbench:refresh', onWorkbenchRefresh)
+  refreshListenerActive = false
+})
 
 onBeforeUnmount(() => {
-  mittBus.off('scan-workbench:refresh', onWorkbenchRefresh)
+  if (refreshListenerActive) {
+    mittBus.off('scan-workbench:refresh', onWorkbenchRefresh)
+    refreshListenerActive = false
+  }
   stopMonitorFallbackPolling()
   scanLiveStream.stop()
   if (monitorBatchReloadTimer) {
@@ -2442,6 +2734,7 @@ onBeforeUnmount(() => {
   }
   releaseBindIdentitySliceImage()
   releaseBindSourcePageImage()
+  releasePageDiscardPreview()
 })
 </script>
 
@@ -2452,7 +2745,7 @@ onBeforeUnmount(() => {
   }
 
   &__devices {
-    margin-bottom: var(--dp-space-4);
+    margin-bottom: var(--dp-space-block);
   }
 
   &__stats {
@@ -2464,7 +2757,7 @@ onBeforeUnmount(() => {
   }
 
   &__health-card {
-    margin-bottom: var(--dp-space-4);
+    margin-bottom: var(--dp-space-block);
     max-width: 320px;
     min-width: 0;
     display: flex;
@@ -2477,7 +2770,7 @@ onBeforeUnmount(() => {
     align-items: center;
     justify-content: center;
     width: 100%;
-    padding: 14px 16px;
+    padding: var(--dp-space-block);
   }
 
   &__health-card :deep(.mark-gauge-block) {
@@ -2491,8 +2784,8 @@ onBeforeUnmount(() => {
   &__health-meta {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    margin-top: 12px;
+    gap: var(--dp-space-component-tight);
+    margin-top: var(--dp-space-component);
     color: var(--dp-text-secondary);
     font-size: var(--dp-font-size-xs);
   }
@@ -2504,8 +2797,8 @@ onBeforeUnmount(() => {
   &__table-shell {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-4);
-    padding: var(--dp-space-3) var(--dp-space-4) var(--dp-space-4);
+    gap: var(--dp-space-block);
+    padding: var(--dp-space-component) var(--dp-space-block);
   }
 
   &__status-tabs {
@@ -2516,7 +2809,35 @@ onBeforeUnmount(() => {
   }
 
   &__panel-alert {
-    margin-bottom: var(--dp-space-4);
+    margin-bottom: var(--dp-space-block);
+  }
+
+  &__detail-action {
+    margin-top: var(--dp-space-block);
+  }
+
+  &__discard-alert {
+    margin-bottom: var(--dp-space-component);
+  }
+
+  &__discard-evidence {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-block);
+  }
+
+  &__discard-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dp-space-component-xs);
+    color: var(--dp-text-secondary);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  &__discard-image {
+    min-height: 220px;
   }
 
   &__normal-panel,
@@ -2534,15 +2855,15 @@ onBeforeUnmount(() => {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel-title {
@@ -2561,8 +2882,8 @@ onBeforeUnmount(() => {
     margin: 0;
 
     :deep(.ant-form-item) {
-      margin-inline-end: 16px;
-      margin-bottom: 8px;
+      margin-inline-end: var(--dp-space-block);
+      margin-bottom: var(--dp-space-component-tight);
     }
   }
 
@@ -2571,7 +2892,7 @@ onBeforeUnmount(() => {
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__source-cell {
@@ -2596,9 +2917,9 @@ onBeforeUnmount(() => {
   &__identity-evidence {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-2, 8px);
-    margin-bottom: var(--dp-space-3, 12px);
-    padding: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component);
+    padding: var(--dp-space-component);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
     background: var(--dp-surface-subtle);
@@ -2608,7 +2929,7 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--dp-space-component);
   }
 
   &__identity-evidence-title {
@@ -2620,20 +2941,20 @@ onBeforeUnmount(() => {
   }
 
   &__identity-evidence-subtitle {
-    margin: 4px 0 0;
+    margin: var(--dp-space-component-xs) 0 0;
     color: var(--dp-text-secondary);
     font-size: var(--dp-font-size-xs);
     line-height: 1.5;
   }
 
   &__identity-skeleton {
-    padding: 8px 0;
+    padding: var(--dp-space-component-tight) 0;
   }
 
   &__identity-compare {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 12px;
+    gap: var(--dp-space-component);
   }
 
   &__identity-pane {
@@ -2641,7 +2962,7 @@ onBeforeUnmount(() => {
   }
 
   &__identity-pane-title {
-    margin-bottom: 8px;
+    margin-bottom: var(--dp-space-component-tight);
     color: var(--dp-text-primary);
     font-size: var(--dp-font-size-sm);
     font-weight: 600;
@@ -2654,7 +2975,7 @@ onBeforeUnmount(() => {
     overflow: hidden;
     min-height: 120px;
     max-height: 280px;
-    padding: var(--dp-space-2, 8px);
+    padding: var(--dp-space-component-tight);
     border: 1px solid var(--scan-canvas-border);
     border-radius: 6px;
     background: var(--scan-canvas-bg);
@@ -2667,12 +2988,12 @@ onBeforeUnmount(() => {
     height: auto;
     max-height: 336px;
     object-fit: contain;
-    background: var(--dp-bg-container);
+    background: var(--dp-surface);
     box-shadow: var(--scan-paper-shadow, var(--dp-shadow-md));
   }
 
   &__identity-empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
     background: var(--dp-surface);
     border: 1px dashed var(--dp-border);
     border-radius: 6px;
@@ -2681,14 +3002,14 @@ onBeforeUnmount(() => {
   &__batch-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--dp-space-component);
   }
 
   &__batch-row {
     display: grid;
     grid-template-columns: minmax(240px, 1fr) minmax(360px, 1.4fr);
-    gap: var(--dp-space-3, 12px);
-    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
     background: var(--dp-surface);
@@ -2698,7 +3019,7 @@ onBeforeUnmount(() => {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--dp-space-component-xs);
   }
 
   &__batch-diagnostic {
@@ -2711,7 +3032,7 @@ onBeforeUnmount(() => {
   &__batch-form {
     display: grid;
     grid-template-columns: minmax(140px, 0.8fr) minmax(220px, 1.2fr);
-    gap: 12px;
+    gap: var(--dp-space-component);
     align-items: start;
   }
 

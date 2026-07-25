@@ -82,7 +82,8 @@ const queueSummary = ref<ScanDispatchQueueSummaryVO | null>(null)
 const queueSummaryError = ref('')
 const archiveMixedPendingTotal = ref<number | null>(null)
 const QUEUE_SUMMARY_POLL_MS = 30_000
-let queueSummaryTimer: ReturnType<typeof setInterval> | undefined
+let queueSummaryTimer: ReturnType<typeof setTimeout> | undefined
+let queueSummaryPollGeneration = 0
 
 const canActivateOnHub = computed(
   () => !resolveActivationGuardMessage(deviceActivation.health.value),
@@ -343,14 +344,31 @@ async function loadQueueSummary() {
 
 function startQueueSummaryPolling() {
   stopQueueSummaryPolling()
-  queueSummaryTimer = setInterval(() => {
-    void loadQueueSummary()
-  }, QUEUE_SUMMARY_POLL_MS)
+  const generation = queueSummaryPollGeneration
+  const scheduleNext = (delayMs: number) => {
+    if (generation !== queueSummaryPollGeneration) {
+      return
+    }
+    queueSummaryTimer = setTimeout(() => {
+      void (async () => {
+        if (generation !== queueSummaryPollGeneration) {
+          return
+        }
+        await loadQueueSummary()
+        if (generation !== queueSummaryPollGeneration) {
+          return
+        }
+        scheduleNext(QUEUE_SUMMARY_POLL_MS)
+      })()
+    }, delayMs)
+  }
+  scheduleNext(QUEUE_SUMMARY_POLL_MS)
 }
 
 function stopQueueSummaryPolling() {
+  queueSummaryPollGeneration += 1
   if (queueSummaryTimer) {
-    clearInterval(queueSummaryTimer)
+    clearTimeout(queueSummaryTimer)
     queueSummaryTimer = undefined
   }
 }
@@ -565,11 +583,7 @@ onUnmounted(() => {
           size="sm"
           title="工位状态读取失败"
           :description="hubErrorMessage"
-        >
-          <template #action>
-            <button type="button" class="hub-shell__cta" @click="loadHubState">重试</button>
-          </template>
-        </UiEmpty>
+        />
 
         <div v-else-if="hubLoading || deviceActivation.loading.value" class="hub-shell__state">
           <UiSkeletonState :rows="5" compact />
@@ -586,9 +600,8 @@ onUnmounted(() => {
         <section v-else-if="showAgentOfflineHint" class="hub-shell__state">
           <p class="hub-shell__state-title">本地扫描服务暂时不可用</p>
           <p class="hub-shell__state-detail">
-            工位凭证仍有效；扫描服务恢复后会自动重连。请先检查本机扫描服务是否已启动。
+            工位凭证仍有效；扫描服务恢复后会自动重连。请先检查本机扫描服务是否已启动，或离开再进入本页。
           </p>
-          <button type="button" class="hub-shell__cta" @click="loadHubState">重新检测</button>
         </section>
 
         <template v-else-if="showTaskKindCards">

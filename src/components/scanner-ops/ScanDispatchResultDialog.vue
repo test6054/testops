@@ -4,19 +4,24 @@ import AQrcode from 'ant-design-vue/es/qrcode'
 import { computed, ref, watch } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
 import {
-  appendUrlQueryParam,
-  buildScanDispatchKioskUrl,
   cancelScanDispatch,
   pageScanDispatchTickets,
   ScanDispatchTicketStatusCode,
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
-import { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
+import {
+  cancelPortfolioScanDispatch,
+  pagePortfolioScanDispatchTickets,
+} from '@/apis/portfolio/scan-dispatch'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { showUserError } from '@/utils/error-handler'
-
+import {
+  appendUrlQueryParam,
+  buildScanDispatchKioskUrl,
+} from '@/utils/scan-dispatch-kiosk-url'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export interface ScanDispatchResultPayload {
@@ -86,34 +91,53 @@ watch(
 
 async function loadPendingTickets() {
   const generation = ++pendingTicketsLoadGeneration
+  const statusList = [
+    ScanDispatchTicketStatusCode.PENDING,
+    ScanDispatchTicketStatusCode.PROCESSING,
+    ScanDispatchTicketStatusCode.SUSPENDED,
+  ]
   try {
+    if (isPortfolioDispatch.value) {
+      const page = await pagePortfolioScanDispatchTickets({
+        pageNum: 1,
+        pageSize: 10,
+        statusList,
+        gapTaskId: props.payload?.gapTaskId,
+      })
+      if (generation !== pendingTicketsLoadGeneration) {
+        return
+      }
+      pendingTickets.value = page.list
+        .filter((item) => item.ticketId)
+        .map((item) => ({
+          ticketId: item.ticketId!,
+          kioskUrl: buildScanDispatchKioskUrl({
+            ticketId: item.ticketId!,
+            kioskDispatchUrl: item.kioskDispatchUrl,
+          }),
+          traceLabelFileId: item.traceLabelFileId,
+          traceLabelCode: item.traceLabelCode,
+          status: item.status,
+          taskKind: item.taskKind ?? ScanTaskKindCode.PORTFOLIO_COLLECT,
+          canCancelTicket: item.canCancelTicket,
+          contextLabel:
+            item.portfolioSnapshot?.gapTaskTitle ?? item.portfolioSnapshot?.categoryName,
+          gapTaskId: item.portfolioSnapshot?.gapTaskId,
+        }))
+      return
+    }
     const page = await pageScanDispatchTickets({
       pageNum: 1,
       pageSize: 10,
-      volumeId: props.taskKind === ScanTaskKindCode.EXAM_ARCHIVE ? props.volumeId : undefined,
+      volumeId: props.volumeId,
       taskKind: props.taskKind,
-      statusList: [
-        ScanDispatchTicketStatusCode.PENDING,
-        ScanDispatchTicketStatusCode.PROCESSING,
-        ScanDispatchTicketStatusCode.SUSPENDED,
-      ],
+      statusList,
     })
     if (generation !== pendingTicketsLoadGeneration) {
       return
     }
-    const items = page.list
-    pendingTickets.value = items
+    pendingTickets.value = page.list
       .filter((item) => item.ticketId)
-      .filter((item) => {
-        if (props.taskKind !== ScanTaskKindCode.PORTFOLIO_COLLECT) {
-          return true
-        }
-        const gapTaskId = props.payload?.gapTaskId
-        if (!gapTaskId) {
-          return true
-        }
-        return item.portfolioSnapshot?.gapTaskId === gapTaskId
-      })
       .map((item) => ({
         ticketId: item.ticketId!,
         kioskUrl: buildScanDispatchKioskUrl({
@@ -123,7 +147,7 @@ async function loadPendingTickets() {
         traceLabelFileId: item.traceLabelFileId,
         traceLabelCode: item.traceLabelCode,
         status: item.status,
-        taskKind: item.taskKind,
+        taskKind: item.taskKind ?? props.taskKind,
         canCancelTicket: item.canCancelTicket,
         contextLabel:
           item.portfolioSnapshot?.gapTaskTitle
@@ -180,7 +204,11 @@ async function handleCancel() {
   }
   cancelling.value = true
   try {
-    await cancelScanDispatch({ ticketId: props.payload.ticketId })
+    if (isPortfolioDispatch.value) {
+      await cancelPortfolioScanDispatch({ ticketId: props.payload.ticketId })
+    } else {
+      await cancelScanDispatch({ ticketId: props.payload.ticketId })
+    }
     void message.success('派单已取消')
     emit('cancelled')
     emit('update:open', false)
@@ -274,7 +302,7 @@ async function handleCancel() {
 .scan-dispatch-result {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 .scan-dispatch-result__hint {
   margin: 0;
@@ -289,7 +317,7 @@ async function handleCancel() {
 .scan-dispatch-result__status {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
 }
 .scan-dispatch-result__qr {
@@ -304,10 +332,10 @@ async function handleCancel() {
 .scan-dispatch-result__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .scan-dispatch-result__pending h3 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
 }
 .scan-dispatch-result__pending ul {
@@ -316,12 +344,12 @@ async function handleCancel() {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
 }
 .scan-dispatch-result__pending li {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
 }
 </style>

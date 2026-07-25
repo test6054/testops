@@ -8,7 +8,7 @@ import type {
 } from '@/apis/portfolio/teacher'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
@@ -16,18 +16,22 @@ import {
   PortfolioCompletenessLevelDescription,
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
+
+const MarkChart = defineAsyncComponent(() => import('@/components/chart/MarkChart.vue'))
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
 import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -35,9 +39,17 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { useUserStore } from '@/stores/modules/user'
+import { PortfolioDeptTeacherSegmentDescription } from '@/types/enums/portfolio-dept-teacher-segment-code-enum'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { portfolioMetricRecomputeStatusLabel } from '@/utils/portfolio-hr-band'
+import {
+  formatPortfolioNullableCount,
+  formatPortfolioNullableCountPair,
+  formatPortfolioNullablePercent,
+} from '@/utils/portfolio-nullable-count'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioHrMetricDistributionSection from '@/views/portfolio/components/PortfolioHrMetricDistributionSection.vue'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const { loadTree, departmentOptions: loadDepartmentOptions } = usePortfolioOrgTree()
@@ -48,6 +60,8 @@ const userStore = useUserStore()
 const loading = ref(false)
 const teacherLoading = ref(false)
 const exporting = ref(false)
+const exportApplyOpen = ref(false)
+const exportPurpose = ref('')
 const summaryRequestToken = ref(0)
 const teacherRequestToken = ref(0)
 const summary = ref<PortfolioDeptOneTableSummaryVO | null>(null)
@@ -295,11 +309,11 @@ function completenessFilterLabel(level: PortfolioCompletenessLevelCode): string 
 
 function distributionCount(
   key: (typeof completenessDistributionRows)[number]['summaryKey'],
-): number {
-  return summary.value?.[key] ?? 0
+): string {
+  return formatPortfolioNullableCount(summary.value?.[key])
 }
 
-async function exportDeptOneTable() {
+function openExportApply() {
   if (!filter.departmentId) {
     showFormValidationMessage('请先选择院系')
     return
@@ -307,34 +321,47 @@ async function exportDeptOneTable() {
   if (exporting.value) {
     return
   }
-  const departmentId = filter.departmentId
-  const planYear = filter.planYear.trim() || undefined
-  const completenessLevel = completenessLevelFilter.value || undefined
+  exportPurpose.value = ''
+  exportApplyOpen.value = true
+}
+
+async function submitExportApply() {
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return Promise.reject(new Error('导出用途为空'))
+  }
+  if (!filter.departmentId) {
+    showFormValidationMessage('请先选择院系')
+    return Promise.reject(new Error('缺少院系'))
+  }
+  if (exporting.value) {
+    return Promise.reject(new Error('导出申请进行中'))
+  }
   exporting.value = true
   try {
-    const result = await portfolioTeacherApi.exportDeptOneTable({
-      departmentId,
-      planYear,
-      completenessLevel,
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.DEPT_ONE_TABLE,
+      businessRef: {
+        departmentId: filter.departmentId,
+        planYear: filter.planYear.trim() || undefined,
+        completenessLevel: completenessLevelFilter.value || undefined,
+      },
+      exportPurpose: purpose,
     })
-    if (
-      filter.departmentId !== departmentId
-      || (filter.planYear.trim() || undefined) !== planYear
-      || (completenessLevelFilter.value || undefined) !== completenessLevel
-    ) {
-      return
-    }
-    await downloadPortfolioExcelExport(result)
-    void message.success(`已导出 ${result.rowCount} 行`)
+    exportApplyOpen.value = false
+    void message.success('已提交部门一张表导出审批')
+    await router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出部门一张表失败')
+    showUserError(error, '提交部门一张表导出审批失败')
+    return Promise.reject(error)
   } finally {
     exporting.value = false
   }
 }
 
-function structureCount(key: (typeof titleStructureRows)[number]['key']) {
-  return summary.value?.[key] ?? 0
+function structureCount(key: (typeof titleStructureRows)[number]['key']): string {
+  return formatPortfolioNullableCount(summary.value?.[key])
 }
 
 function handleTeacherPageChange(page: { current: number, pageSize: number }) {
@@ -376,11 +403,18 @@ function completenessLabel(record: PortfolioDeptOneTableTeacherRowVO): string {
 }
 
 function courseArchiveLabel(record: PortfolioDeptOneTableTeacherRowVO): string {
-  if ((record.courseArchiveFrameworkSlotTotal ?? 0) <= 0) {
+  if (record.courseArchiveFrameworkSlotTotal == null) {
     return '—'
   }
-  const slot = `${record.courseArchiveFrameworkSlotDone ?? 0}/${record.courseArchiveFrameworkSlotTotal ?? 0}`
-  const complete = record.courseArchiveFullyCompleteCount ?? 0
+  if (record.courseArchiveFrameworkSlotTotal <= 0) {
+    return '未配置'
+  }
+  const slot = formatPortfolioNullableCountPair(
+    record.courseArchiveFrameworkSlotDone,
+    record.courseArchiveFrameworkSlotTotal,
+    '/',
+  )
+  const complete = formatPortfolioNullableCount(record.courseArchiveFullyCompleteCount)
   return `${slot} · 齐备 ${complete} 门`
 }
 
@@ -468,9 +502,9 @@ watch(
             variant="primary"
             :loading="exporting"
             :disabled="!filter.departmentId"
-            @click="exportDeptOneTable"
+            @click="openExportApply"
           >
-            导出部门一张表
+            申请导出
           </UiButton>
         </template>
       </ContextBar>
@@ -512,7 +546,7 @@ watch(
         </UiAlertStrip>
         <UiEmpty size="sm" v-else-if="!loading && !summary" description="暂无该院系汇总数据" />
         <template v-else-if="summary">
-          <UiDescriptions :column="3" size="small" bordered style="margin-top: 16px">
+          <UiDescriptions :column="3" size="small" bordered style="margin-top: var(--dp-space-block)">
             <UiDescriptionsItem label="院系">
               {{ summary.departmentName ?? '—' }}
             </UiDescriptionsItem>
@@ -529,10 +563,10 @@ watch(
               {{ summary.keyTeacherCount }}
             </UiDescriptionsItem>
             <UiDescriptionsItem label="成果总数">
-              {{ summary.achievementTotalCount ?? 0 }}
+              {{ formatPortfolioNullableCount(summary.achievementTotalCount) }}
             </UiDescriptionsItem>
             <UiDescriptionsItem label="荣誉总数">
-              {{ summary.honorTotalCount ?? 0 }}
+              {{ formatPortfolioNullableCount(summary.honorTotalCount) }}
             </UiDescriptionsItem>
             <template v-if="summary.currentAcademicYear">
               <UiDescriptionsItem label="统计学年">
@@ -555,13 +589,17 @@ watch(
                 </span>
               </UiDescriptionsItem>
               <UiDescriptionsItem
-                v-if="(summary.courseArchiveFrameworkSlotTotal ?? 0) > 0"
+                v-if="summary.courseArchiveFrameworkSlotTotal != null && summary.courseArchiveFrameworkSlotTotal > 0"
                 label="五框架槽位"
               >
-                {{ summary.courseArchiveFrameworkSlotDone ?? 0 }}/{{
-                  summary.courseArchiveFrameworkSlotTotal ?? 0
+                {{
+                  formatPortfolioNullableCountPair(
+                    summary.courseArchiveFrameworkSlotDone,
+                    summary.courseArchiveFrameworkSlotTotal,
+                    '/',
+                  )
                 }}
-                · 齐备 {{ summary.courseArchiveFullyCompleteCount ?? 0 }} 门
+                · 齐备 {{ formatPortfolioNullableCount(summary.courseArchiveFullyCompleteCount) }} 门
               </UiDescriptionsItem>
             </template>
             <template v-if="summary.planYear">
@@ -569,18 +607,59 @@ watch(
                 {{ summary.planYear }}
               </UiDescriptionsItem>
               <UiDescriptionsItem label="年度规划">
-                {{ summary.developmentPlanApprovedCount ?? 0 }} /
-                {{ summary.developmentPlanTotalCount ?? 0 }}
+                {{
+                  formatPortfolioNullableCountPair(
+                    summary.developmentPlanApprovedCount,
+                    summary.developmentPlanTotalCount,
+                  )
+                }}
               </UiDescriptionsItem>
               <UiDescriptionsItem label="规划完成率">
-                {{ summary.developmentPlanCompletionRatePercent ?? 0 }}%
+                {{ formatPortfolioNullablePercent(summary.developmentPlanCompletionRatePercent) }}
               </UiDescriptionsItem>
             </template>
+            <UiDescriptionsItem label="培训达标">
+              {{
+                formatPortfolioNullableCountPair(
+                  summary.trainingCompletedTeacherCount,
+                  summary.trainingRequiredTeacherCount,
+                )
+              }}
+              · {{ formatPortfolioNullablePercent(summary.trainingCompletionRatePercent) }}
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="开放补采">
+              {{ formatPortfolioNullableCount(summary.gapTaskOpenCount) }}
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="审核积压">
+              {{ formatPortfolioNullableCount(summary.reviewTaskBacklogCount) }}
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="指标快照">
+              {{
+                summary.metricRecomputeStatus
+                  ? portfolioMetricRecomputeStatusLabel(summary.metricRecomputeStatus)
+                  : '—'
+              }}
+              <template v-if="summary.metricComputedTime">
+                · {{ summary.metricComputedTime }}
+              </template>
+            </UiDescriptionsItem>
+            <UiDescriptionsItem
+              v-if="summary.teachingWorkloadAvgCoursesPerTeacher != null"
+              label="人均讲授门次"
+            >
+              {{ summary.teachingWorkloadAvgCoursesPerTeacher }}
+            </UiDescriptionsItem>
           </UiDescriptions>
           <div v-if="teacherSegments.length" class="teacher-segments" aria-label="教师行动分层">
             <section v-for="segment in teacherSegments" :key="segment.segmentCode">
               <div>
-                <span>{{ segment.segmentLabel }}</span>
+                <span>{{
+                  strictEnumLabel(
+                    PortfolioDeptTeacherSegmentDescription,
+                    segment.segmentCode,
+                    '部门教师分段',
+                  )
+                }}</span>
                 <strong>{{ segment.teacherCount }}</strong>
               </div>
               <div v-if="segment.sampleTeacherUserIds.length" class="teacher-segments__samples">
@@ -620,7 +699,16 @@ watch(
               <MarkChart :option="titleChartOption" height="240px" aria-label="职称结构饼图" />
             </MarkChartCard>
           </div>
-          <UiCard title="教师明细" style="margin-top: 16px">
+          <PortfolioHrMetricDistributionSection
+            class="hr-metric-section"
+            :political-affiliation-distribution="summary.politicalAffiliationDistribution"
+            :education-degree-distribution="summary.educationDegreeDistribution"
+            :age-band-distribution="summary.ageBandDistribution"
+            :tenure-band-distribution="summary.tenureBandDistribution"
+            :retirement-window-distribution="summary.retirementWindowDistribution"
+            :post-category-distribution="summary.postCategoryDistribution"
+          />
+          <UiCard title="教师明细" style="margin-top: var(--dp-space-block)">
             <p v-if="completenessLevelFilter" class="teacher-filter-hint">
               当前筛选：{{ completenessFilterLabel(completenessLevelFilter) }}
               <a class="op-link" @click="applyCompletenessFilter('')">清除筛选</a>
@@ -697,6 +785,21 @@ watch(
         </template>
       </UiSpin>
     </UiCard>
+    <UiDialog
+      v-model:open="exportApplyOpen"
+      title="申请导出部门一张表"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="submitExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="exportPurpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -704,23 +807,26 @@ watch(
 .filter-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--dp-space-3, 12px);
-  margin-top: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-component);
+}
+.hr-metric-section {
+  margin-top: var(--dp-space-block);
 }
 .teacher-segments {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 16px;
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-block);
 }
 .teacher-segments section {
   min-width: 0;
-  padding: 12px;
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: 6px;
 }
@@ -728,7 +834,7 @@ watch(
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .teacher-segments strong {
   font-size: var(--dp-font-size-2xl);
@@ -736,8 +842,8 @@ watch(
 .teacher-segments__samples {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component-tight);
 }
 .teacher-segments__samples button {
   padding: 0;
@@ -749,10 +855,10 @@ watch(
 .completeness-distribution {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .completeness-chip {
-  padding: 2px 8px;
+  padding: 2px var(--dp-space-component-tight);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-xs);
   background: transparent;
@@ -765,7 +871,7 @@ watch(
   background: var(--dp-color-primary-bg);
 }
 .teacher-filter-hint {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
@@ -773,7 +879,7 @@ watch(
 .dept-one-table__gate-row {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);

@@ -231,11 +231,11 @@ defineExpose({ validate })
 
 <style lang="scss" scoped>
 .manual-supplement-form-core__warn {
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
 }
 
 .muted {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
   font-size: var(--dp-font-size-sm);
 }
 </style>

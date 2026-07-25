@@ -13,6 +13,16 @@
     @confirm="handleSave"
   >
     <UiSkeletonState v-if="detailLoading" variant="card" compact />
+    <div v-else-if="detailLoadFailed" class="exam-edit-drawer__load-failed">
+      <UiAlertStrip
+        tone="error"
+        title="考试详情加载失败"
+        :description="detailLoadErrorMessage"
+      />
+      <p class="exam-edit-drawer__identity">
+        考试 ID：{{ examId ?? '—' }}
+      </p>
+    </div>
     <UiForm
       v-else
       ref="formRef"
@@ -90,33 +100,51 @@
 
       <section class="exam-edit-drawer__section">
         <h3 class="exam-edit-drawer__section-title">成绩与策略</h3>
-        <UiFormItem label="阅卷策略" name="gradingStrategy">
-          <UiInput
-            size="sm"
-            :value="
+
+        <div class="exam-edit-drawer__status-row" aria-label="阅卷策略">
+          <div class="exam-edit-drawer__status-row-head">
+            <span class="exam-edit-drawer__status-row-label">阅卷策略</span>
+            <UiTag tone="blue" size="sm">本场固定</UiTag>
+          </div>
+          <p class="exam-edit-drawer__status-row-value">
+            {{
               strictEnumLabel(
                 ExamGradingStrategyDescription,
                 ExamGradingStrategyCode.SINGLE,
                 '阅卷策略',
               )
-            "
-            disabled
-          />
-        </UiFormItem>
-        <UiFormItem label="成绩构成" name="scoreCompositionMode">
-          <UiRadioGroup
-            v-model="examForm.scoreCompositionMode"
-            size="sm"
-            block
-            :options="[
-              { label: '仅计入考试成绩（期末笔试）', value: 'EXAM_ONLY' },
-              { label: '期末考试 + 平时成绩合成', value: 'EXAM_WITH_DAILY' },
-            ]"
-          />
-          <p class="exam-edit-drawer__hint">
-            平时成绩指出勤、作业、课堂表现等；选择合成后，成绩确认时需为每位考生录入平时分，总成绩=考试分+平时分。
+            }}
           </p>
+          <p class="exam-edit-drawer__hint">
+            策略在创建考试时确定，本页只读展示，不是权限不足或暂不可编辑。
+          </p>
+        </div>
+
+        <UiFormItem label="成绩构成" name="scoreCompositionMode">
+          <div
+            class="exam-edit-drawer__composition"
+            role="radiogroup"
+            aria-label="成绩构成"
+          >
+            <button
+              v-for="option in scoreCompositionOptions"
+              :key="option.value"
+              type="button"
+              role="radio"
+              class="exam-edit-drawer__composition-card"
+              :class="{
+                'exam-edit-drawer__composition-card--selected':
+                  examForm.scoreCompositionMode === option.value,
+              }"
+              :aria-checked="examForm.scoreCompositionMode === option.value"
+              @click="handleScoreCompositionSelect(option.value)"
+            >
+              <span class="exam-edit-drawer__composition-card-title">{{ option.title }}</span>
+              <span class="exam-edit-drawer__composition-card-desc">{{ option.consequence }}</span>
+            </button>
+          </div>
         </UiFormItem>
+
         <UiFormItem
           v-if="examForm.scoreCompositionMode === 'EXAM_WITH_DAILY'"
           label="平时成绩满分"
@@ -132,6 +160,7 @@
             placeholder="例如 30（与培养方案中平时分满分一致）"
           />
         </UiFormItem>
+
         <UiFormItem label="备注" name="remark">
           <UiTextarea
             size="sm"
@@ -142,25 +171,52 @@
             :show-count="true"
           />
         </UiFormItem>
+
         <UiFormItem label="涉密场次" name="confidential">
-          <UiSwitch size="sm" v-model="examForm.confidential" :disabled="detailLoading" />
+          <div class="exam-edit-drawer__confidential">
+            <div class="exam-edit-drawer__confidential-control">
+              <UiSwitch
+                size="sm"
+                :model-value="examForm.confidential"
+                :disabled="detailLoading || saving"
+                @update:model-value="handleConfidentialChange"
+              />
+              <span class="exam-edit-drawer__confidential-state">
+                {{ examForm.confidential ? '已开启涉密' : '普通场次' }}
+              </span>
+            </div>
+            <ul class="exam-edit-drawer__consequence-list" aria-label="涉密场次影响范围">
+              <li
+                v-for="item in confidentialConsequenceItems"
+                :key="item"
+              >
+                {{ item }}
+              </li>
+            </ul>
+          </div>
         </UiFormItem>
       </section>
     </UiForm>
     <template #footer>
-      <UiButton size="sm" variant="outline" :disabled="saving" @click="emit('update:open', false)">
-        取消
-      </UiButton>
-      <UiButton
-        v-if="canManageOwnerExamLifecycleWrites"
-        size="sm"
-        variant="primary"
-        :loading="saving"
-        :disabled="detailLoading"
-        @click="handleSave"
-      >
-        保存
-      </UiButton>
+      <template v-if="detailLoadFailed">
+        <UiButton size="sm" variant="outline" @click="emit('update:open', false)">
+          关闭
+        </UiButton>
+      </template>
+      <template v-else-if="!detailLoading">
+        <UiButton size="sm" variant="outline" :disabled="saving" @click="emit('update:open', false)">
+          取消
+        </UiButton>
+        <UiButton
+          v-if="canManageOwnerExamLifecycleWrites"
+          size="sm"
+          variant="primary"
+          :loading="saving"
+          @click="handleSave"
+        >
+          保存
+        </UiButton>
+      </template>
     </template>
   </UiDrawer>
 </template>
@@ -183,14 +239,16 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiRangePicker from '@/components/ui-guide/ui/RangePicker.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
-import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -209,8 +267,35 @@ const emit = defineEmits<{
 
 type ExamScoreCompositionMode = 'EXAM_ONLY' | 'EXAM_WITH_DAILY'
 
+const scoreCompositionOptions: Array<{
+  value: ExamScoreCompositionMode
+  title: string
+  consequence: string
+}> = [
+  {
+    value: 'EXAM_ONLY',
+    title: '仅计入考试成绩',
+    consequence:
+      '总评只含笔试分；确认与发布不要求平时分；学情统计按考试分口径，保存后立即约束本场成绩流程。',
+  },
+  {
+    value: 'EXAM_WITH_DAILY',
+    title: '期末考试 + 平时成绩合成',
+    consequence:
+      '总评=考试分+平时分；确认成绩须为每位考生录入平时分；发布与后续统计按合成分口径，保存后立即生效。',
+  },
+]
+
+const confidentialConsequenceItems = [
+  '卷面预览与导出材料叠加涉密水印',
+  '成绩与影像批量下载、对外导出按涉密策略限制',
+  '影像访问与工作台影像相关入口按涉密规则收紧',
+]
+
 const formRef = ref<FormInstance>()
 const detailLoading = ref(false)
+const detailLoadFailed = ref(false)
+const detailLoadErrorMessage = ref('请关闭后重新打开编辑。')
 const saving = ref(false)
 /** MVR-328：仅认 BE getExamDetail.canManageOwnerExamLifecycleWrites===true */
 const canManageOwnerExamLifecycleWrites = ref(false)
@@ -326,8 +411,17 @@ function resetForm(): void {
   examForm.remark = ''
 }
 
+function resolveDetailLoadErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim()
+  }
+  return '网络或服务异常，详情未加载；抽屉保持打开，可关闭后重新打开编辑。'
+}
+
 async function loadDetail(examId: string): Promise<void> {
   detailLoading.value = true
+  detailLoadFailed.value = false
+  detailLoadErrorMessage.value = '请关闭后重新打开编辑。'
   resetForm()
   try {
     const detail = await getExamDetail(examId)
@@ -353,11 +447,56 @@ async function loadDetail(examId: string): Promise<void> {
     examForm.confidential = detail.confidential === true
   } catch (error) {
     canManageOwnerExamLifecycleWrites.value = false
+    detailLoadFailed.value = true
+    detailLoadErrorMessage.value = resolveDetailLoadErrorMessage(error)
     showUserError(error, '考试详情加载失败')
-    emit('update:open', false)
   } finally {
     detailLoading.value = false
   }
+}
+
+async function handleScoreCompositionSelect(mode: ExamScoreCompositionMode): Promise<void> {
+  if (mode === examForm.scoreCompositionMode || saving.value || detailLoading.value) {
+    return
+  }
+  const option = scoreCompositionOptions.find((item) => item.value === mode)
+  if (!option) {
+    showUserError(null, `未知成绩构成：${mode}`)
+    return
+  }
+  const confirmed = await confirmAsync({
+    title: `切换为「${option.title}」？`,
+    content: `${option.consequence} 保存后立即按新构成约束本场确认、发布与统计。`,
+    type: 'warning',
+    okText: '切换构成',
+    cancelText: '取消',
+  })
+  if (!confirmed) {
+    return
+  }
+  examForm.scoreCompositionMode = mode
+  if (mode === 'EXAM_ONLY') {
+    examForm.dailyScoreFull = undefined
+  }
+}
+
+async function handleConfidentialChange(next: boolean): Promise<void> {
+  if (next === examForm.confidential || saving.value || detailLoading.value) {
+    return
+  }
+  const confirmed = await confirmAsync({
+    title: next ? '开启涉密场次？' : '关闭涉密场次？',
+    content: next
+      ? '开启后将：卷面与导出加水印；限制成绩/影像批量下载与对外导出；影像访问按涉密策略收紧。保存后对当前场次生效。'
+      : '关闭后将恢复普通场次水印与导出规则；已按涉密限制的导出权限与影像访问策略随之放宽。保存后对当前场次生效。',
+    type: 'warning',
+    okText: next ? '开启涉密' : '关闭涉密',
+    cancelText: '取消',
+  })
+  if (!confirmed) {
+    return
+  }
+  examForm.confidential = next
 }
 
 function buildUpdateRequest(): ExamUpdateRequest | null {
@@ -396,8 +535,8 @@ async function handleSave(): Promise<void> {
     void message.warning('仅考试主考可修改考试主信息')
     return
   }
-  if (detailLoading.value) {
-    void message.warning('考试详情加载中，请稍候再保存')
+  if (detailLoading.value || detailLoadFailed.value) {
+    void message.warning('考试详情未就绪，请关闭后重新打开编辑再保存')
     return
   }
   try {
@@ -429,48 +568,44 @@ watch(
     if (open && examId) {
       void loadDetail(examId)
     }
+    if (!open) {
+      detailLoadFailed.value = false
+    }
   },
 )
-
-defineExpose({
-  openForExam: (examId: string) => {
-    emit('update:open', true)
-    void loadDetail(examId)
-  },
-})
 </script>
 
 <style lang="scss" scoped>
 .exam-edit-drawer__form {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-5);
+  gap: var(--dp-space-block);
 }
 
 .exam-edit-drawer__section {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-1);
-  padding: var(--dp-space-4);
-  border: 1px solid var(--dp-border-subtle);
+  gap: var(--dp-space-component-xs);
+  padding: var(--dp-space-block);
+  border: 1px solid var(--dp-panel-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
   box-shadow: var(--dp-shadow-xs);
 }
 
 .exam-edit-drawer__section-title {
-  margin: 0 0 var(--dp-space-2);
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   font-weight: var(--dp-font-weight-title);
   line-height: 1.4;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   color: var(--dp-text-primary);
 }
 
 .exam-edit-drawer__row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .exam-edit-drawer__half {
@@ -478,9 +613,125 @@ defineExpose({
 }
 
 .exam-edit-drawer__hint {
-  margin: var(--dp-space-2) 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   font-size: var(--dp-type-hint-size);
   line-height: var(--dp-type-hint-line-height);
   color: var(--dp-text-muted);
+}
+
+.exam-edit-drawer__status-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-component-xs);
+  margin-bottom: var(--dp-space-component);
+  padding: var(--dp-space-component);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-control-inner);
+  background: var(--dp-surface-chrome);
+}
+
+.exam-edit-drawer__status-row-head {
+  display: flex;
+  align-items: center;
+  gap: var(--dp-space-component-tight);
+}
+
+.exam-edit-drawer__status-row-label {
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+}
+
+.exam-edit-drawer__status-row-value {
+  margin: 0;
+  font-size: var(--dp-font-size-sm);
+  font-weight: 600;
+  color: var(--dp-text-primary);
+}
+
+.exam-edit-drawer__composition {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-component-tight);
+  width: 100%;
+}
+
+.exam-edit-drawer__composition-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dp-space-component-xs);
+  width: 100%;
+  margin: 0;
+  padding: var(--dp-space-component);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-control-inner);
+  background: var(--dp-surface);
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.exam-edit-drawer__composition-card:focus-visible {
+  outline: 2px solid var(--dp-focus-ring);
+  outline-offset: 2px;
+}
+
+.exam-edit-drawer__composition-card--selected {
+  border-color: var(--dp-color-primary-border, var(--dp-color-primary));
+  background: color-mix(in srgb, var(--dp-color-primary) 6%, var(--dp-surface));
+}
+
+.exam-edit-drawer__composition-card-title {
+  font-size: var(--dp-font-size-sm);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--dp-text-primary);
+}
+
+.exam-edit-drawer__composition-card-desc {
+  font-size: var(--dp-type-hint-size);
+  line-height: var(--dp-type-hint-line-height);
+  color: var(--dp-text-secondary);
+}
+
+.exam-edit-drawer__confidential {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-component-tight);
+}
+
+.exam-edit-drawer__confidential-control {
+  display: flex;
+  align-items: center;
+  gap: var(--dp-space-component-tight);
+}
+
+.exam-edit-drawer__confidential-state {
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+}
+
+.exam-edit-drawer__consequence-list {
+  margin: 0;
+  padding: var(--dp-space-component-tight) var(--dp-space-block);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-control-inner);
+  background: var(--dp-surface-chrome);
+  font-size: var(--dp-type-hint-size);
+  line-height: 1.55;
+  color: var(--dp-text-secondary);
+}
+
+.exam-edit-drawer__load-failed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-block);
+}
+
+.exam-edit-drawer__identity {
+  margin: 0;
+  font-family: var(--dp-font-family-code);
+  font-size: var(--dp-font-size-xs);
+  color: var(--dp-text-secondary);
 }
 </style>

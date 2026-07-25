@@ -1,7 +1,6 @@
 import type { InjectionKey } from 'vue'
 import type {
   ArchiveExamFormCode,
-  ArchiveScoreSourceCode,
   ArchiveSecurityLevelCode,
 } from '@/apis/mark/archive-volume'
 import type { ArchiveTaskProvenanceCode } from '@/types/enums/archive-task-provenance-enum'
@@ -23,8 +22,8 @@ export interface ArchiveTaskCreateBasicForm {
   courseName: string
   archiveTitle: string
   archiveNo: string
-  /** 学年起始年（结束年 = 起始年 + 1） */
-  academicYearStartYear: number
+  /** 学年，如 2024-2025，与考试 academicYear 合同一致 */
+  academicYear: string
   semester: SemesterCode
   departmentId: string | null
   departmentName: string
@@ -34,13 +33,11 @@ export interface ArchiveTaskCreateBasicForm {
   relatedExamName: string
 }
 
-/** 归档方案草稿：模板套、密级、成绩与保管策略 */
+/** 归档方案草稿：模板套、密级与保管策略（成绩齐备走材料目录） */
 export interface ArchiveTaskCreatePlanForm {
   templateSetCode: string | null
   templateSetName: string
   examForm?: ArchiveExamFormCode
-  scoreSource: ArchiveScoreSourceCode
-  scoreProofFileId?: string | null
   securityLevel: ArchiveSecurityLevelCode
   retentionYears?: number
   permanentRetention: boolean

@@ -312,14 +312,14 @@ onMounted(() => {
 .student-form {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .login-error {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component) var(--dp-space-block);
   background: var(--dp-red-50);
   border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: var(--dp-radius-control);

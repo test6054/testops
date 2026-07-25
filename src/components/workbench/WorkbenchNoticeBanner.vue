@@ -52,15 +52,15 @@ const iconMap = {
 .workbench-notice-banner {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--dp-space-component);
   min-height: 32px;
-  padding: 4px 10px;
+  padding: var(--dp-space-component-xs) var(--dp-space-component);
   border-radius: var(--dp-radius-panel);
 }
 
 .workbench-notice-banner--warning {
-  border: 1px solid var(--dp-amber-200);
-  background: var(--dp-amber-50);
+  border: 1px solid var(--dp-orange-200);
+  background: var(--dp-orange-50);
 }
 
 .workbench-notice-banner--info {
@@ -74,7 +74,7 @@ const iconMap = {
 }
 
 .workbench-notice-banner--warning .workbench-notice-banner__icon {
-  color: var(--dp-amber-700);
+  color: var(--dp-orange-700);
 }
 
 .workbench-notice-banner--info .workbench-notice-banner__icon {
@@ -85,7 +85,7 @@ const iconMap = {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   margin: 0;
   min-width: 0;
   flex: 1;
@@ -110,6 +110,6 @@ const iconMap = {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 </style>

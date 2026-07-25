@@ -27,6 +27,6 @@ defineProps<{
 .quality-ingest-embedded {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 </style>

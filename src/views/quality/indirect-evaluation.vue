@@ -331,7 +331,7 @@ onActivated(async () => {
 <style scoped lang="scss">
 .ie {
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 }
 </style>

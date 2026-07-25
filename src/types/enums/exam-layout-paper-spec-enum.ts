@@ -1,5 +1,5 @@
 /**
- * 标准答题卡纸张规格
+ * 标准答题纸纸张规格
  */
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -40,7 +40,7 @@ export const ExamLayoutPaperSpecOptions: Array<{ value: ExamLayoutPaperSpecCode,
   },
 ]
 
-/** 高校期末默认空白答题卡规格 - 与 ExamLayoutPaperSpec.defaultBlankSheet() 一致 */
+/** 高校期末默认空白答题纸规格 - 与 ExamLayoutPaperSpec.defaultBlankSheet() 一致 */
 export function defaultBlankSheetPaperSpec(): ExamLayoutPaperSpecCode {
   return ExamLayoutPaperSpecCode.A3_2COL
 }

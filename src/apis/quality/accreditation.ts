@@ -1,5 +1,11 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type {
+  AccreditationCockpitActionKeyCode,
+} from '@/types/enums/accreditation-cockpit-action-key-enum'
+import type {
+  AccreditationStandardClauseStatusCode,
+} from '@/types/enums/accreditation-standard-clause-status-enum'
 import type { AnnualEvaluationPlanStatusCode } from '@/types/enums/annual-evaluation-plan-status-enum'
 import type { OnsiteVisitPlanStatusCode } from '@/types/enums/onsite-visit-plan-status-enum'
 import type { ProgramSupportProfileStatusCode } from '@/types/enums/program-support-profile-status-enum'
@@ -146,8 +152,25 @@ export interface AccreditationConclusionReadinessItemVO {
   message: string
 }
 
+/** 标准条款诊断 — 对齐后端 AccreditationStandardClauseDiagnosisVO */
+export interface AccreditationStandardClauseDiagnosisVO {
+  clauseKey: string
+  clauseTitle: string
+  clauseDescription: string
+  status: AccreditationStandardClauseStatusCode
+  evidenceCount: number
+  blockingReason: string
+  actionKey: AccreditationCockpitActionKeyCode
+  routeName?: string
+}
+
 export interface AccreditationCockpitVO {
   activeCycle?: AccreditationCycleVO
+  /** 无 ACTIVE 周期时可新建 */
+  canCreateCycle: boolean
+  standardCode?: string
+  standardName?: string
+  standardYear?: string
   annualPlanCount: number
   annualCoverageRate: number
   onsiteVisitPlanCount: number
@@ -160,8 +183,9 @@ export interface AccreditationCockpitVO {
   approvedAnnualReportMaterialCount: number
   annualReportMaterialsReady: boolean
   conclusionRegistrationReady: boolean
-  conclusionReadinessItems?: AccreditationConclusionReadinessItemVO[]
-  annualCourseCoverages?: AccreditationAnnualCourseCoverageSnapshot[]
+  conclusionReadinessItems: AccreditationConclusionReadinessItemVO[]
+  standardClauses: AccreditationStandardClauseDiagnosisVO[]
+  annualCourseCoverages: AccreditationAnnualCourseCoverageSnapshot[]
   conditionalDueDaysRemaining?: number
   onsiteReportDueDaysRemaining?: number
   activeEvidenceCount: number

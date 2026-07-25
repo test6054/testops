@@ -253,14 +253,14 @@ function onLayoutQuestionChange(
 <style scoped lang="scss">
 .layout-property-drawer {
   height: 100%;
-  padding: 12px;
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
   overflow: auto;
 
   &__title {
-    margin: 0 0 12px;
+    margin: 0 0 var(--dp-space-component);
     font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
@@ -269,7 +269,7 @@ function onLayoutQuestionChange(
   &__grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 }
 </style>

@@ -125,26 +125,26 @@ function remediationStatusTone(code: ArchiveRemediationStatusCode): BadgeTone {
 
 <style scoped>
 .archive-volume-mine-remediation-banner__list {
-  margin: var(--dp-space-2) 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-mine-remediation-banner__item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .archive-volume-mine-remediation-banner__main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
 }
 

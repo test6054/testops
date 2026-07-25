@@ -17,7 +17,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
@@ -174,7 +174,10 @@ function goEvaluationFill() {
   }
   void router.push({
     path: '/portfolio/expert/evaluation-fill',
-    query: { evaluationTaskId: bundle.value.evaluationTaskId },
+    query: {
+      evaluationTaskId: bundle.value.evaluationTaskId,
+      assignmentId: bundle.value.assignmentId,
+    },
   })
 }
 
@@ -246,7 +249,7 @@ watch(
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
               <UiTag v-if="subjectTeacherRow(record).lifecycleStatus" :tone="subjectLifecycleTone(record)">
-                {{ subjectTeacherRow(record).lifecycleStatusLabel || subjectTeacherRow(record).lifecycleStatus }}
+                {{ portfolioLifecycleStatusDisplay(subjectTeacherRow(record).lifecycleStatus) }}
               </UiTag>
               <UiTag v-if="subjectTeacherRow(record).evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
               <span v-else-if="!subjectTeacherRow(record).lifecycleStatus">—</span>
@@ -281,7 +284,7 @@ watch(
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
               <UiTag v-if="materialRow(record).lifecycleStatus" :tone="materialLifecycleTone(record)">
-                {{ materialRow(record).lifecycleStatusLabel || materialRow(record).lifecycleStatus }}
+                {{ portfolioLifecycleStatusDisplay(materialRow(record).lifecycleStatus) }}
               </UiTag>
               <UiTag v-if="materialRow(record).evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
               <span v-else-if="!materialRow(record).lifecycleStatus">—</span>
@@ -336,12 +339,12 @@ watch(
         size="sm"
         v-else
         :title="errorMessage ? '无法打开审阅包' : '暂无内容'"
-        :description="errorMessage || '当前授权没有可审阅材料。'"
-      >
-        <template #action>
-          <UiButton size="sm" variant="primary" :loading="loading" @click="loadBundle">重试</UiButton>
-        </template>
-      </UiEmpty>
+        :description="
+          errorMessage
+            ? errorMessage
+            : '当前授权没有可审阅材料。'
+        "
+      />
     </UiCard>
   </StageWorkbenchShell>
 </template>
@@ -350,34 +353,34 @@ watch(
 .expert-review__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--dp-space-component);
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-block);
   font-size: var(--dp-font-size-md);
 }
 .expert-review__teachers {
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-block);
 }
 .expert-review__section-title {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .expert-review__hold-hint {
-  margin: 0 0 12px;
-  color: var(--dp-color-warning, #d48806);
+  margin: 0 0 var(--dp-space-component);
+  color: var(--dp-warning, #d48806);
   font-size: var(--dp-font-size-sm);
 }
 .expert-review__ai {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   align-items: flex-start;
 }
 .expert-review__ai-title {
   font-size: var(--dp-font-size-xs);
   font-weight: 600;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
 }
 .expert-review__ai-summary {
   font-size: var(--dp-font-size-xs);

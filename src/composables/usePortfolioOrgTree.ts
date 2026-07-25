@@ -110,15 +110,22 @@ export function isPortfolioUnitNode(
 
 export function usePortfolioOrgTree() {
   const loading = ref(false)
+  const loadFailed = ref(false)
   const treeRoots = ref<PortfolioOrgTreeNodeVO[]>([])
 
-  async function loadTree(includeClasses = false) {
+  /**
+   * 加载组织树；失败保留上次成功树并标记 loadFailed，返回是否成功供写后刷新分离。
+   */
+  async function loadTree(includeClasses = false): Promise<boolean> {
     loading.value = true
     try {
       treeRoots.value = await portfolioOrgApi.tree({ includeClasses })
+      loadFailed.value = false
+      return true
     } catch (error) {
+      loadFailed.value = true
       showUserError(error, '加载组织树失败')
-      treeRoots.value = []
+      return false
     } finally {
       loading.value = false
     }
@@ -126,6 +133,7 @@ export function usePortfolioOrgTree() {
 
   return {
     loading,
+    loadFailed,
     treeRoots,
     loadTree,
     departmentOptions: () => flattenDepartmentOptions(treeRoots.value),

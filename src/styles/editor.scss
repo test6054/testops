@@ -1,6 +1,6 @@
 body {
-  --w-e-textarea-bg-color: var(--dp-bg-container);
-  --w-e-textarea-color: var(--dp-text);
+  --w-e-textarea-bg-color: var(--dp-surface);
+  --w-e-textarea-color: var(--dp-text-primary);
   --w-e-textarea-border-color: var(--dp-border);
   --w-e-textarea-slight-border-color: var(--dp-border-subtle);
   --w-e-textarea-slight-color: var(--dp-text-quaternary);
@@ -8,8 +8,8 @@ body {
   --w-e-textarea-selected-border-color: var(--dp-color-primary-border);
   --w-e-textarea-handler-bg-color: var(--dp-color-primary);
   --w-e-toolbar-color: var(--dp-text-secondary);
-  --w-e-toolbar-bg-color: var(--dp-bg-container);
-  --w-e-toolbar-active-color: var(--dp-text);
+  --w-e-toolbar-bg-color: var(--dp-surface);
+  --w-e-toolbar-active-color: var(--dp-text-primary);
   --w-e-toolbar-active-bg-color: var(--dp-fill-secondary);
   --w-e-toolbar-disabled-color: var(--dp-text-disabled);
   --w-e-toolbar-border-color: var(--dp-border-subtle);

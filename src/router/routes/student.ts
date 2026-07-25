@@ -68,6 +68,7 @@ export const studentRoutes: RouteRecordRaw[] = [
           icon: 'eye',
           hideInMenu: true,
           noCache: true,
+          activeMenu: '/student/score',
         },
       },
     ],

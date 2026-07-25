@@ -53,7 +53,7 @@
           </header>
           <MarkTrendSection
             title=""
-            :point-count="trendPointCount"
+            :point-count="trendChartPointCount"
             :min-points="1"
             :option="dailyTrendOption"
             height="200px"
@@ -173,8 +173,13 @@ const trendPointCount = computed(() => trendPoints.value.length)
 
 const trendHasActivity = computed(() =>
   trendPoints.value.some(
-    (point) => (point.confirmedGradeCount ?? 0) > 0 || (point.publishedScoreCount ?? 0) > 0,
+    (point) => point.confirmedGradeCount > 0 || point.publishedScoreCount > 0,
   ),
+)
+
+/** 无确认/发布活动时按 0 点交给 MarkTrendSection 空壳，禁止用占位点撑成 ready。 */
+const trendChartPointCount = computed(() =>
+  trendHasActivity.value ? trendPointCount.value : 0,
 )
 
 const trendCategories = computed(() =>
@@ -182,11 +187,11 @@ const trendCategories = computed(() =>
 )
 
 const confirmedSeries = computed(() =>
-  trendPoints.value.map((point) => point.confirmedGradeCount ?? 0),
+  trendPoints.value.map((point) => point.confirmedGradeCount),
 )
 
 const publishedSeries = computed(() =>
-  trendPoints.value.map((point) => point.publishedScoreCount ?? 0),
+  trendPoints.value.map((point) => point.publishedScoreCount),
 )
 
 const confirmedTotal = computed(() =>
@@ -196,6 +201,8 @@ const confirmedTotal = computed(() =>
 const publishedTotal = computed(() =>
   publishedSeries.value.reduce((sum, value) => sum + value, 0),
 )
+
+const TREND_EMPTY_DESCRIPTION = '当前筛选下近 14 日暂无确认或发布记录'
 
 const trendHint = computed(() => {
   if (!trendPointCount.value) {
@@ -207,9 +214,12 @@ const trendHint = computed(() => {
   return `确认 ${confirmedTotal.value.toLocaleString('zh-CN')} 题 · 发布 ${publishedTotal.value.toLocaleString('zh-CN')} 份`
 })
 
-const trendAriaLabel = computed(
-  () => `近14日进度趋势，确认题量 ${confirmedTotal.value}，发布成绩 ${publishedTotal.value}`,
-)
+const trendAriaLabel = computed(() => {
+  if (!trendHasActivity.value || !trendPointCount.value) {
+    return '近14日进度趋势，当前筛选范围无记录'
+  }
+  return `近14日进度趋势，确认题量 ${confirmedTotal.value}，发布成绩 ${publishedTotal.value}`
+})
 
 /** 折叠钉条 spark：仅绑真实 confirmed 序列，不编造 */
 const sparkPolyline = computed(() => {
@@ -229,23 +239,15 @@ const sparkPolyline = computed(() => {
 })
 
 const dailyTrendOption = computed((): EChartsCoreOption => {
-  if (!trendPointCount.value || !trendHasActivity.value) {
+  if (!trendHasActivity.value || !trendPointCount.value) {
     return buildDualTrendLineChartOption(
-      trendCategories.value.length ? trendCategories.value : ['—'],
-      {
-        name: '确认题量',
-        values: trendCategories.value.length ? confirmedSeries.value : [0],
-        color: MARK_ECHARTS_PALETTE.primary,
-      },
-      {
-        name: '发布成绩',
-        values: trendCategories.value.length ? publishedSeries.value : [0],
-        color: MARK_ECHARTS_PALETTE.success,
-      },
+      [],
+      { name: '确认题量', values: [], color: MARK_ECHARTS_PALETTE.primary },
+      { name: '发布成绩', values: [], color: MARK_ECHARTS_PALETTE.success },
       {
         yAxisName: '数量',
         area: true,
-        emptyText: '当前筛选下近 14 日暂无确认或发布记录',
+        emptyText: TREND_EMPTY_DESCRIPTION,
       },
     )
   }
@@ -303,8 +305,10 @@ const todoTypeOption = computed((): EChartsCoreOption =>
 )
 
 function formatDayLabel(day: string): string {
-  const raw = (day || '').trim()
-  if (!raw) return '—'
+  const raw = day.trim()
+  if (!raw) {
+    throw new Error('日趋势点缺少 day，不能用占位类目绘制图表')
+  }
   const match = raw.match(/(\d{4})-(\d{2})-(\d{2})/)
   if (match) {
     return `${match[2]}-${match[3]}`
@@ -322,7 +326,7 @@ function formatDayLabel(day: string): string {
 .marking-overview-analytics {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 /* Cloudscape 运营钉条：扁、边框优先、无厚阴影 */
@@ -330,9 +334,9 @@ function formatDayLabel(day: string): string {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   min-height: 44px;
-  padding: var(--dp-space-2) var(--dp-space-3);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   background: var(--dp-surface);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control-inner);
@@ -342,7 +346,7 @@ function formatDayLabel(day: string): string {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2) var(--dp-space-3);
+  gap: var(--dp-space-component-tight) var(--dp-space-component);
   min-width: 0;
   flex: 1;
 }
@@ -391,7 +395,7 @@ function formatDayLabel(day: string): string {
 .marking-overview-analytics__detail {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 /* flush 趋势：浅边框面，非装饰卡墙 */
@@ -399,7 +403,7 @@ function formatDayLabel(day: string): string {
   background: var(--dp-surface);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
-  padding: var(--dp-space-3) var(--dp-space-4);
+  padding: var(--dp-space-component) var(--dp-space-block);
   box-shadow: none;
 }
 
@@ -411,7 +415,7 @@ function formatDayLabel(day: string): string {
   background: var(--dp-surface);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control-inner);
-  padding: var(--dp-space-3) var(--dp-space-4);
+  padding: var(--dp-space-component) var(--dp-space-block);
   box-shadow: none;
 }
 
@@ -419,12 +423,12 @@ function formatDayLabel(day: string): string {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-3);
-  margin-bottom: var(--dp-space-2);
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .marking-overview-analytics__head--compact {
-  margin-bottom: var(--dp-space-1);
+  margin-bottom: var(--dp-space-component-xs);
 }
 
 .marking-overview-analytics__head-main {
@@ -441,7 +445,7 @@ function formatDayLabel(day: string): string {
 
 .marking-overview-analytics__desc,
 .marking-overview-analytics__hint {
-  margin: var(--dp-space-1) 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-type-hint-size);
   line-height: var(--dp-type-hint-line-height);
   color: var(--dp-text-muted);
@@ -450,7 +454,7 @@ function formatDayLabel(day: string): string {
 .marking-overview-analytics__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .marking-overview-analytics__section :deep(.mark-bar-section__head) {

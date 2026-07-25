@@ -117,14 +117,14 @@ function close() {
 
 <style scoped>
 .explain-fields {
-  margin: var(--dp-space-3) 0 0;
+  margin: var(--dp-space-component) 0 0;
   display: grid;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 .explain-fields > div {
   display: grid;
   grid-template-columns: 72px 1fr;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
 }
 .explain-fields dt {

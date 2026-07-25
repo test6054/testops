@@ -802,7 +802,7 @@ onActivated(() => {
 <style lang="scss" scoped>
 .audit-trail {
   &__tabs {
-    padding: 0 16px;
+    padding: 0 var(--dp-space-block);
   }
 
   &__exam-select {
@@ -814,7 +814,7 @@ onActivated(() => {
   }
 
   &__empty {
-    padding: 20px 0;
+    padding: var(--dp-space-block) 0;
   }
 
   &__hint {

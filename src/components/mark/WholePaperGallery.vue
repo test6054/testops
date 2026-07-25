@@ -191,8 +191,8 @@ watch(
   }
 
   &__page {
-    margin-bottom: 16px;
-    padding-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
+    padding-bottom: var(--dp-space-block);
     border-bottom: 1px solid var(--dp-border-subtle);
 
     &--active {
@@ -205,8 +205,8 @@ watch(
   &__page-header {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 8px;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__image {
@@ -223,14 +223,14 @@ watch(
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     min-height: 200px;
     background: var(--dp-fill-quaternary);
     border-radius: var(--dp-radius-control-inner);
   }
 
   &__annotation {
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
   }
 }
 </style>

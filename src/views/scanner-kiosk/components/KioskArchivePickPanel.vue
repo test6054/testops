@@ -226,7 +226,7 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
 
 <style scoped>
 .kiosk-archive-pick__hint {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--kiosk-ink-secondary);
 }
@@ -235,8 +235,8 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
   min-width: 0;
 }
 .kiosk-archive-pick__error {
-  margin: 0 0 12px;
-  padding: 0 var(--dp-space-5);
+  margin: 0 0 var(--dp-space-component);
+  padding: 0 var(--dp-space-block);
   color: var(--kiosk-danger);
 }
 </style>

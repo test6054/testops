@@ -408,7 +408,7 @@ function gotoReview() {
 .field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   font-size: var(--kiosk-fz-caption);
   color: var(--kiosk-ink-tertiary);
 }

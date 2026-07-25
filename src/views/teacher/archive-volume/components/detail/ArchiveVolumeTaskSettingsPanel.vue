@@ -20,7 +20,6 @@ import {
   ARCHIVE_SECURITY_LEVEL_OPTIONS,
   ArchiveMaterialSubmissionStatusCode,
   ArchiveMaterialTypeDescription,
-  ArchiveScoreSourceDescription,
   ArchiveSecurityLevelCode,
   ArchiveVolumeSourceTypeDescription,
   updateArchiveVolumeTaskSettings,
@@ -38,21 +37,15 @@ import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
-import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { ArchiveScoreSourceCode } from '@/types/enums/archive-score-source-enum'
 import { ArchiveVolumeMemberRoleCode } from '@/types/enums/archive-volume-member-role-enum'
 import { ArchiveVolumeSourceTypeCode } from '@/types/enums/archive-volume-source-type-enum'
 import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
 import { SemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
-import {
-  composeAcademicYear,
-  generateAcademicYearStartOptions,
-  parseAcademicYearStart,
-} from '@/utils/academic-year'
-import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
+import { rejectFormValidation, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import {
   nullableStringToSelectValue,
@@ -78,11 +71,10 @@ interface TaskSettingsForm {
   courseId: string | null
   departmentId: string | null
   teachingClassId: string | null
-  academicYearStartYear: number
+  academicYear: string
   semester: SemesterCode
   relatedExamId: string | null
   templateSetCode: string | null
-  scoreSource: ArchiveScoreSourceCode
   examForm: ArchiveExamFormCode | undefined
   securityLevel: ArchiveSecurityLevelCode
   retentionYears: number | undefined
@@ -116,11 +108,10 @@ const form = reactive<TaskSettingsForm>({
   courseId: null,
   departmentId: null,
   teachingClassId: null,
-  academicYearStartYear: new Date().getFullYear(),
+  academicYear: getDefaultAcademicYearAndSemester().academicYear,
   semester: SemesterCode.SPRING,
   relatedExamId: null,
   templateSetCode: null,
-  scoreSource: ArchiveScoreSourceCode.OFFLINE_CONFIRMED,
   examForm: undefined,
   securityLevel: ArchiveSecurityLevelCode.INTERNAL,
   retentionYears: 10,
@@ -141,13 +132,6 @@ const canEditTemplate = computed(
   () => canEdit.value && volume.value.volumeStatus === ArchiveVolumeStatusCode.DRAFT,
 )
 const canEditDue = computed(() => props.canUpdateArchiveDueTime)
-
-const academicYearStartOptions = generateAcademicYearStartOptions().map((year) => ({
-  value: year,
-  label: `${year} 年`,
-}))
-const academicYearEndYear = computed(() => String(form.academicYearStartYear + 1))
-const resolvedAcademicYear = computed(() => composeAcademicYear(form.academicYearStartYear))
 
 const departmentIdSelectValue = computed({
   get: () => nullableStringToSelectValue(form.departmentId),
@@ -172,27 +156,6 @@ const sourceTypeLabel = computed(() =>
   strictEnumLabel(ArchiveVolumeSourceTypeDescription, volume.value.sourceType, 'sourceType'),
 )
 
-const scoreSourceCodes = computed((): ArchiveScoreSourceCode[] => {
-  if (identityLocked.value) {
-    return volume.value.scoreSource ? [volume.value.scoreSource] : []
-  }
-  if (volume.value.sourceType === ArchiveVolumeSourceTypeCode.HISTORY_IMPORT) {
-    return [
-      ArchiveScoreSourceCode.NOT_REQUIRED,
-      ArchiveScoreSourceCode.TEACHING_AFFAIRS,
-      ArchiveScoreSourceCode.OFFLINE_CONFIRMED,
-    ]
-  }
-  return [ArchiveScoreSourceCode.OFFLINE_CONFIRMED, ArchiveScoreSourceCode.TEACHING_AFFAIRS]
-})
-
-const scoreSourceRadioOptions = computed(() =>
-  scoreSourceCodes.value.map((value) => ({
-    value,
-    label: strictEnumLabel(ArchiveScoreSourceDescription, value, '成绩来源'),
-  })),
-)
-
 const organizerFallbackId = computed(() => {
   const organizer = (props.detail.collaborators ?? []).find(
     (m) => m.memberRole === ArchiveVolumeMemberRoleCode.ORGANIZER,
@@ -213,10 +176,23 @@ const formRules: Record<string, Rule[]> = {
   courseId: [{ required: true, message: '请选择课程' }],
   departmentId: [{ required: true, message: '请选择院系' }],
   teachingClassId: [{ required: true, message: '请选择授课班级' }],
-  academicYearStartYear: [{ required: true, message: '请选择学年起始年' }],
+  academicYear: [
+    { required: true, message: '请输入学年' },
+    {
+      validator: async (_rule, value: string): Promise<void> => {
+        const academicYear = value?.trim()
+        if (!academicYear) {
+          return rejectFormValidation('请输入学年')
+        }
+        const match = /^(\d{4})-(\d{4})$/.exec(academicYear)
+        if (!match || Number(match[2]) !== Number(match[1]) + 1) {
+          return rejectFormValidation('学年格式应为 2024-2025')
+        }
+      },
+    },
+  ],
   semester: [{ required: true, message: '请选择学期' }],
   templateSetCode: [{ required: true, message: '请选择目录模板套' }],
-  scoreSource: [{ required: true, message: '请选择成绩事实源' }],
   securityLevel: [{ required: true, message: '请选择密级' }],
   responsibleUserId: [{ required: true, message: '请选择归档责任人' }],
   archiveDueTime: [{ required: true, message: '请选择归档截止时刻' }],
@@ -237,11 +213,10 @@ function syncFormFromDetail(): void {
   form.courseId = v.courseId ?? null
   form.departmentId = v.departmentId ?? null
   form.teachingClassId = v.teachingClassId ?? null
-  form.academicYearStartYear = parseAcademicYearStart(v.academicYear)!
+  form.academicYear = v.academicYear || getDefaultAcademicYearAndSemester().academicYear
   form.semester = v.semester
   form.relatedExamId = v.relatedExamId ?? null
   form.templateSetCode = v.templateSetCode ?? null
-  form.scoreSource = v.scoreSource
   form.examForm = v.examForm
   form.securityLevel = v.securityLevel
   form.permanentRetention = v.permanentRetention === true
@@ -316,7 +291,7 @@ async function loadRelatedExamOptions(keyword?: string): Promise<void> {
       pageNum: 1,
       pageSize: 50,
       courseId: form.courseId,
-      academicYear: resolvedAcademicYear.value,
+      academicYear: form.academicYear.trim(),
       semester: form.semester,
       keyword: keyword?.trim() || undefined,
     })
@@ -373,11 +348,6 @@ function handleResponsibleChange(
   form.responsibleUserId = typeof value === 'string' ? value : null
 }
 
-function onScoreSourceSelect(value: UiOptionValue | boolean | undefined): void {
-  if (value == null || typeof value === 'boolean') return
-  form.scoreSource = String(value) as ArchiveScoreSourceCode
-}
-
 function buildRequest(): ArchiveVolumeTaskSettingsUpdateRequest | null {
   if (!form.courseId || !form.departmentId || !form.teachingClassId) {
     showFormValidationMessage('请完整填写课程、院系与授课班级')
@@ -416,11 +386,10 @@ function buildRequest(): ArchiveVolumeTaskSettingsUpdateRequest | null {
     courseId: form.courseId,
     teachingClassId: form.teachingClassId,
     departmentId: form.departmentId,
-    academicYear: resolvedAcademicYear.value,
+    academicYear: form.academicYear.trim(),
     semester: form.semester,
     relatedExamId: form.relatedExamId,
     templateSetCode: form.templateSetCode,
-    scoreSource: form.scoreSource,
     examForm: form.examForm ?? null,
     securityLevel: form.securityLevel,
     retentionYears: form.permanentRetention ? undefined : form.retentionYears,
@@ -475,16 +444,27 @@ watch(
   },
 )
 
-watch(
-  () => form.permanentRetention,
-  (permanent) => {
-    if (permanent) {
-      form.retentionYears = undefined
-    } else if (form.retentionYears == null) {
-      form.retentionYears = 10
-    }
-  },
-)
+const DEFAULT_RETENTION_YEARS = 10
+
+function onPermanentRetentionChange(checked: boolean): void {
+  form.permanentRetention = checked
+  if (checked) {
+    form.retentionYears = undefined
+    return
+  }
+  if (form.retentionYears == null) {
+    form.retentionYears = DEFAULT_RETENTION_YEARS
+  }
+}
+
+function onRetentionYearsChange(value: number | string | null | undefined): void {
+  if (value == null || value === '') {
+    return
+  }
+  if (form.permanentRetention) {
+    form.permanentRetention = false
+  }
+}
 
 onMounted(() => {
   void loadDepartments()
@@ -581,29 +561,21 @@ onMounted(() => {
         <UiRow :gutter="24" class="create-form__split-row">
           <UiCol :span="12">
             <UiFormItem
-              label="学年起始年"
-              name="academicYearStartYear"
+              label="学年"
+              name="academicYear"
               required
               :label-col="labelCol"
               :wrapper-col="wrapperCol"
             >
-              <UiSelect
+              <UiInput
                 size="sm"
-                v-model="form.academicYearStartYear"
-                :options="academicYearStartOptions"
-                placeholder="请选择起始年"
+                v-model="form.academicYear"
+                placeholder="2024-2025"
+                :maxlength="9"
                 :disabled="!canEdit || identityLocked"
               />
             </UiFormItem>
           </UiCol>
-          <UiCol :span="12">
-            <UiFormItem label="学年结束年" :label-col="labelCol" :wrapper-col="wrapperCol">
-              <UiInput size="sm" :model-value="academicYearEndYear" disabled />
-            </UiFormItem>
-          </UiCol>
-        </UiRow>
-
-        <UiRow :gutter="24" class="create-form__split-row">
           <UiCol :span="12">
             <UiFormItem
               label="学期"
@@ -621,6 +593,9 @@ onMounted(() => {
               />
             </UiFormItem>
           </UiCol>
+        </UiRow>
+
+        <UiRow :gutter="24" class="create-form__split-row">
           <UiCol :span="12">
             <UiFormItem label="档案编号" :label-col="labelCol" :wrapper-col="wrapperCol">
               <UiInput
@@ -664,7 +639,7 @@ onMounted(() => {
           <h3 class="section-title">归档方案</h3>
         </div>
         <p class="section-desc">
-          模板套、密级、保管期限与责任人可在本页维护；更换模板套仅草稿且无已登记材料时允许。
+          模板套决定材料目录（含成绩单等）；密级、保管期限与责任人可在本页维护。更换模板套仅草稿且无已登记材料时允许。
         </p>
 
         <UiFormItem label="目录模板套" name="templateSetCode" required>
@@ -678,17 +653,6 @@ onMounted(() => {
             option-filter-prop="label"
             :disabled="!canEditTemplate"
             @change="handleTemplateChange"
-          />
-        </UiFormItem>
-
-        <UiFormItem label="成绩事实源" name="scoreSource" required>
-          <UiRadioGroup
-            size="sm"
-            block
-            :model-value="form.scoreSource"
-            :options="scoreSourceRadioOptions"
-            :disabled="!canEdit || identityLocked"
-            @update:model-value="onScoreSourceSelect"
           />
         </UiFormItem>
 
@@ -734,7 +698,12 @@ onMounted(() => {
 
         <UiRow :gutter="24" class="create-form__split-row">
           <UiCol :span="12">
-            <UiFormItem label="保管年限" :label-col="labelCol" :wrapper-col="wrapperCol">
+            <UiFormItem
+              label="保管年限"
+              tooltip="填写年限或勾选永久保管，二者择一。"
+              :label-col="labelCol"
+              :wrapper-col="wrapperCol"
+            >
               <div class="retention-field">
                 <UiInputNumber
                   size="sm"
@@ -743,9 +712,14 @@ onMounted(() => {
                   :min="1"
                   :max="100"
                   :disabled="!canEdit || form.permanentRetention"
+                  @update:model-value="onRetentionYearsChange"
                 />
                 <span class="retention-field__unit">年</span>
-                <UiCheckbox v-model="form.permanentRetention" :disabled="!canEdit">
+                <UiCheckbox
+                  :model-value="form.permanentRetention"
+                  :disabled="!canEdit"
+                  @update:model-value="onPermanentRetentionChange"
+                >
                   永久保管
                 </UiCheckbox>
               </div>
@@ -830,14 +804,14 @@ onMounted(() => {
 @use '@/styles/breakpoints' as bp;
 
 .av-task-settings {
-  padding: var(--dp-space-4);
+  padding: var(--dp-space-block);
   max-width: 920px;
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
 }
 
 .form-section {
-  margin-bottom: var(--dp-space-6);
-  padding-bottom: var(--dp-space-4);
+  margin-bottom: var(--dp-space-page);
+  padding-bottom: var(--dp-space-block);
   border-bottom: 1px solid var(--dp-border-subtle);
 
   &:last-child {
@@ -851,22 +825,22 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .section-title {
   margin: 0;
   display: inline-flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-lg);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
 
 .section-desc {
-  margin: 0 0 var(--dp-space-4);
+  margin: 0 0 var(--dp-space-block);
   font-size: var(--dp-font-size-sm);
   line-height: 1.5;
   color: var(--dp-text-secondary);
@@ -883,13 +857,19 @@ onMounted(() => {
 .retention-field {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
-  flex-wrap: wrap;
+  gap: var(--dp-space-component-tight);
+  flex-wrap: nowrap;
+}
+
+.retention-field .ant-input-number {
+  width: auto !important;
+  max-width: 140px;
 }
 
 .retention-field__unit {
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
+  flex: 0 0 auto;
 }
 
 .av-task-settings__control-grow {
@@ -898,7 +878,7 @@ onMounted(() => {
 }
 
 .av-task-settings__actions {
-  margin-top: var(--dp-space-4);
+  margin-top: var(--dp-space-block);
 }
 
 .av-task-settings__count {
@@ -922,8 +902,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
-  padding: 8px 12px;
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   border-bottom: 1px solid var(--dp-border-subtle);
 

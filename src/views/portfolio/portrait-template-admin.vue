@@ -24,6 +24,7 @@ import { message } from '@/utils/feedback'
 import {
   defaultPortraitLayout,
   mergeLayoutWithChartConfig,
+  portraitLayoutHasBlockingIssues,
   toPortraitChartConfigPayload,
   toPortraitLayoutPayload,
 } from '@/utils/portrait-layout'
@@ -130,6 +131,10 @@ async function saveTemplate() {
     showFormValidationMessage('请至少添加一个布局组件')
     return
   }
+  if (portraitLayoutHasBlockingIssues(layoutWidgets.value)) {
+    showFormValidationMessage('布局存在重叠、越界、过小或同类型重复，请修正后再保存')
+    return
+  }
   const templateId = selectedId.value
   if (templateId && !currentTemplateStatus.value) {
     showUserError(null, '当前模板状态未就绪，已禁止保存，请重新加载后再试')
@@ -207,13 +212,14 @@ async function changeTemplateStatus(targetStatus: PortfolioPortraitTemplateStatu
       await portfolioPortraitTemplateApi.deactivate({ id: templateId })
     }
     void message.success(`画像模板已${actionLabel}`)
-    await loadDetail(templateId)
-    await loadList()
   } catch (error) {
     showUserError(error, `${actionLabel}画像模板失败`)
+    return
   } finally {
     statusUpdating.value = false
   }
+  await loadDetail(templateId)
+  await loadList()
 }
 
 onMounted(loadList)
@@ -259,7 +265,7 @@ onMounted(loadList)
         <UiButton
           size="sm"
           variant="primary"
-          style="margin-top: 12px"
+          style="margin-top: var(--dp-space-component)"
           :disabled="saving || statusUpdating"
           @click="newTemplate"
         >
@@ -272,13 +278,7 @@ onMounted(loadList)
           v-else-if="detailState === 'error'"
           size="sm"
           description="模板详情加载失败，当前内容不可编辑"
-        >
-          <template #action>
-            <UiButton v-if="selectedId" size="sm" variant="outline" @click="loadDetail(selectedId)">
-              重新加载
-            </UiButton>
-          </template>
-        </UiEmpty>
+        />
         <template v-else>
           <div class="form-row">
             <input v-model="form.templateName" class="input input--wide" placeholder="模板名称" />
@@ -297,9 +297,9 @@ onMounted(loadList)
           <UiButton
             size="sm"
             variant="primary"
-            style="margin-top: 12px"
+            style="margin-top: var(--dp-space-component)"
             :loading="saving"
-            :disabled="saving || statusUpdating || !editorReady"
+            :disabled="saving || statusUpdating || !editorReady || portraitLayoutHasBlockingIssues(layoutWidgets)"
             @click="saveTemplate"
           >
             保存
@@ -308,7 +308,7 @@ onMounted(loadList)
             v-if="selectedId && currentTemplateStatus !== PortraitTemplateStatus.ACTIVE"
             size="sm"
             variant="outline"
-            style="margin: 12px 0 0 8px"
+            style="margin: var(--dp-space-component) 0 0 var(--dp-space-component-tight)"
             :loading="statusUpdating"
             :disabled="saving || statusUpdating"
             @click="changeTemplateStatus(PortraitTemplateStatus.ACTIVE)"
@@ -319,7 +319,7 @@ onMounted(loadList)
             v-if="selectedId && currentTemplateStatus === PortraitTemplateStatus.ACTIVE"
             size="sm"
             variant="outline"
-            style="margin: 12px 0 0 8px"
+            style="margin: var(--dp-space-component) 0 0 var(--dp-space-component-tight)"
             :loading="statusUpdating"
             :disabled="saving || statusUpdating"
             @click="changeTemplateStatus(PortraitTemplateStatus.INACTIVE)"
@@ -336,7 +336,7 @@ onMounted(loadList)
 .layout {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 .template-list {
   margin: 0;
@@ -344,7 +344,7 @@ onMounted(loadList)
   list-style: none;
 }
 .template-item {
-  padding: 8px;
+  padding: var(--dp-space-component-tight);
   border-radius: var(--dp-radius-xs);
   cursor: pointer;
   font-size: var(--dp-font-size-md);
@@ -359,11 +359,11 @@ onMounted(loadList)
 }
 .form-row {
   display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-tight);
 }
 .input {
-  padding: 6px 8px;
+  padding: var(--dp-space-component-tight);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-xs);
 }

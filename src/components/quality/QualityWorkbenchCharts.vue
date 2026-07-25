@@ -95,8 +95,8 @@ const sectionViews = computed<ChartSectionView[]>(() =>
 .quality-workbench-charts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--dp-space-4);
-  margin-bottom: var(--dp-space-4);
+  gap: var(--dp-space-block);
+  margin-bottom: var(--dp-space-block);
 }
 
 .quality-workbench-charts__section {

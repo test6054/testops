@@ -207,23 +207,23 @@ watch(
   &__item {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--dp-space-component-tight);
     border-radius: 6px;
-    transition: background-color 0.2s ease;
+    transition: background-color var(--dp-duration-normal) var(--dp-ease-default);
   }
 
   &__item--highlight {
     background: color-mix(in srgb, var(--dp-purple-500) 10%, transparent);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-purple-500) 28%, transparent);
-    padding: 8px;
-    margin: -8px;
+    padding: var(--dp-space-component-tight);
+    margin: calc(-1 * var(--dp-space-component-tight));
   }
 
   &__head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__time,

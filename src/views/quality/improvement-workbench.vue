@@ -33,6 +33,7 @@ const iwbTabItems = [
 ]
 const loading = ref(false)
 const signalsLoadFailed = ref(false)
+const signalsLastSuccessAt = ref<string | null>(null)
 const skipFirstActivatedLoad = ref(true)
 let scopeChangeSerial = 0
 
@@ -63,9 +64,19 @@ const { signals } = useImprovementWorkbenchSignals({
   signalSummary,
 })
 
-/** 仅刷新 SignalBand 全量 VO；scope 已过期时不写入并返回 false */
+/** 刷新 SignalBand；失败返回 false 并标记，不抛错打断 mutation settled */
 async function refreshWorkbenchSignals(): Promise<boolean> {
-  return loadSignalSources()
+  try {
+    const applied = await loadSignalSources()
+    if (applied) {
+      signalsLoadFailed.value = false
+      signalsLastSuccessAt.value = new Date().toISOString().replace('T', ' ').slice(0, 19)
+    }
+    return applied
+  } catch (error) {
+    signalsLoadFailed.value = true
+    throw error
+  }
 }
 
 /** 只加载当前已挂载页签，避免要求四个互斥 v-if 页签同时存在。 */
@@ -122,9 +133,10 @@ async function handleScopeChange(): Promise<void> {
       return
     }
     if (!signalsApplied) {
-      signalsLoadFailed.value = true
-      handleTabLoadError(toUserError(null, '工作台指标加载失败'))
+      return
     }
+    signalsLoadFailed.value = false
+    signalsLastSuccessAt.value = new Date().toISOString().replace('T', ' ').slice(0, 19)
     await consumeImprovementDeepLink()
   } catch (error) {
     if (serial !== scopeChangeSerial) {
@@ -133,6 +145,7 @@ async function handleScopeChange(): Promise<void> {
     if (isQualityScopeStaleError(error)) {
       return
     }
+    signalsLoadFailed.value = true
     handleTabLoadError(resolveWorkbenchLoadError(error, '工作台数据加载失败'))
   } finally {
     if (serial === scopeChangeSerial) {
@@ -187,9 +200,27 @@ onActivated(async () => {
     <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="iwb__empty" />
 
     <template v-else>
-      <UiEmpty v-if="signalsLoadFailed" size="sm" title="加载失败" class="iwb__empty" />
-
-      <SignalBand v-else :metrics="signals" variant="panel" compact class="iwb__signals" />
+      <UiEmpty
+        v-if="signalsLoadFailed && !signalSummary"
+        size="sm"
+        title="工作台指标加载失败"
+        class="iwb__empty"
+      />
+      <template v-else>
+        <UiEmpty
+          v-if="signalsLoadFailed"
+          size="sm"
+          title="指标同步失败"
+          class="iwb__empty"
+        />
+        <SignalBand
+          v-if="signalSummary"
+          :metrics="signals"
+          variant="panel"
+          compact
+          class="iwb__signals"
+        />
+      </template>
 
       <UiEmpty
         v-if="
@@ -236,20 +267,20 @@ onActivated(async () => {
 <style scoped lang="scss">
 .iwb {
   &__error {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__empty {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__tabs {
     :deep(.ant-tabs-nav) {
-      margin-bottom: 12px;
+      margin-bottom: var(--dp-space-component);
     }
   }
 }

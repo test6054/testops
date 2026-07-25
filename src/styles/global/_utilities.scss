@@ -23,7 +23,7 @@
 .dp-space {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-gap, 8px);
+  gap: var(--dp-space-component);
   min-width: 0;
 }
 

@@ -27,7 +27,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 /** UiScatterChart 区段色：canvas/SVG 不解析 CSS 变量，故用十六进制单一真源，取值与 --dp/--ant 主题色对齐 */
 const CHART_PALETTE: Record<string, string> = {
-  primary: '#1677ff',
+  primary: '#2B67FF',
   success: '#16a34a',
   warning: '#f59e0b',
   danger: '#dc2626',

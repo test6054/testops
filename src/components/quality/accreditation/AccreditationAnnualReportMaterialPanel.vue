@@ -655,13 +655,13 @@ defineExpose({ loadMaterials, openCreate })
 .annual-report-material-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 .material-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
 }
 
@@ -680,11 +680,11 @@ defineExpose({ loadMaterials, openCreate })
 
 .muted,
 .file-hint {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
   font-size: var(--dp-font-size-xs);
 }
 
 .file-hint {
-  margin: 8px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
 }
 </style>

@@ -14,6 +14,7 @@ import {
   PortfolioArchiveRecordStatusDescription,
 } from '@/apis/portfolio/enums'
 import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
+import PortfolioArchiveFieldControl from '@/components/portfolio/PortfolioArchiveFieldControl.vue'
 import PortfolioArchiveVersionComparePanel from '@/components/portfolio/PortfolioArchiveVersionComparePanel.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -36,6 +37,7 @@ import {
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { validatePortfolioArchiveFields } from '@/utils/portfolio-archive-field-validation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const route = useRoute()
@@ -358,11 +360,9 @@ async function handleSubmit() {
   if (!(await confirmProxyWrite('提交档案审核'))) {
     return
   }
-  const missingRequiredField = editableFields.value.find(
-    (field) => field.required && !fieldValues[field.fieldCode]?.trim(),
-  )
-  if (missingRequiredField) {
-    showFormValidationMessage(`请填写${missingRequiredField.fieldLabel}`)
+  const schemaError = validatePortfolioArchiveFields(editableFields.value, fieldValues)
+  if (schemaError) {
+    showFormValidationMessage(schemaError)
     return
   }
   const requestToken = scopeRequestToken.value
@@ -488,16 +488,15 @@ function onCategoryEditMoreAction(key: string) {
             :label="field.fieldLabel"
             :required="field.required"
           >
-            <UiInput
-              size="sm"
+            <PortfolioArchiveFieldControl
               v-model="fieldValues[field.fieldCode]"
+              :field="field"
               :disabled="!recordEditable || writeInProgress"
-              :placeholder="field.required ? '必填' : '选填'"
             />
             <UiInput
               size="sm"
               v-model="evidenceRefs[field.fieldCode]"
-              :disabled="!recordEditable || writeInProgress"
+              :disabled="!recordEditable || writeInProgress || field.readonly === true"
               class="archive-category-edit__evidence"
               placeholder="证据引用（可选）"
             />
@@ -519,8 +518,8 @@ function onCategoryEditMoreAction(key: string) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
-  margin: 0 0 var(--dp-space-4);
+  gap: var(--dp-space-component-tight);
+  margin: 0 0 var(--dp-space-block);
 }
 
 .archive-category-edit__status-hint {
@@ -529,10 +528,10 @@ function onCategoryEditMoreAction(key: string) {
 }
 
 .archive-category-edit__evidence {
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .archive-category-edit__hint {
-  padding: var(--dp-space-3, 12px) 0;
+  padding: var(--dp-space-component) 0;
 }
 </style>

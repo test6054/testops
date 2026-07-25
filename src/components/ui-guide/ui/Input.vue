@@ -169,20 +169,20 @@ const handleClear = () => {
 .dp-input-wrap {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
   width: 100%;
   box-sizing: border-box;
   border-radius: var(--dp-radius-control);
   border: 1px solid var(--dp-border);
-  background-color: var(--dp-bg-control);
+  background-color: var(--dp-surface);
   font-size: var(--dp-font-size-md);
   line-height: 22px;
   color: var(--dp-text-primary);
   font-family: var(--dp-font-family);
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background-color 0.2s ease;
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    box-shadow var(--dp-duration-normal) var(--dp-ease-default),
+    background-color var(--dp-duration-normal) var(--dp-ease-default);
 }
 
 .dp-input {
@@ -191,7 +191,7 @@ const handleClear = () => {
   min-width: 0;
   height: 100%;
   margin: 0;
-  padding: 0 var(--dp-space-3, 12px);
+  padding: 0 var(--dp-space-component);
   border: none;
   background: transparent;
   font-size: var(--dp-font-size-md);
@@ -223,11 +223,11 @@ const handleClear = () => {
 }
 
 .dp-input-wrap:hover {
-  border-color: var(--dp-blue-600);
+  border-color: var(--dp-border-hover);
 }
 
 .dp-input-wrap:focus-within {
-  border-color: var(--dp-blue-600);
+  border-color: var(--dp-color-primary);
   box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 
@@ -267,11 +267,11 @@ const handleClear = () => {
 }
 
 .dp-input__affix--prefix {
-  padding-left: var(--dp-space-3, 12px);
+  padding-left: var(--dp-space-component);
 }
 
 .dp-input__affix--suffix {
-  padding-right: var(--dp-space-3, 12px);
+  padding-right: var(--dp-space-component);
 }
 
 .dp-input__clear {
@@ -280,15 +280,15 @@ const handleClear = () => {
   justify-content: center;
   width: 22px;
   height: 22px;
-  margin-right: var(--dp-space-2, 8px);
+  margin-right: var(--dp-space-component-tight);
   border: none;
   border-radius: var(--dp-radius-full);
   background: transparent;
   color: var(--dp-text-muted);
   cursor: pointer;
   transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
+    background-color var(--dp-duration-normal) var(--dp-ease-default),
+    color var(--dp-duration-normal) var(--dp-ease-default);
 }
 
 .dp-input__clear:hover {
@@ -297,7 +297,7 @@ const handleClear = () => {
 }
 
 .dp-input__clear:focus-visible {
-  outline: 2px solid var(--dp-blue-600);
+  outline: 2px solid var(--dp-color-primary);
   outline-offset: 1px;
   background: var(--dp-gray-200);
   color: var(--dp-text-primary);

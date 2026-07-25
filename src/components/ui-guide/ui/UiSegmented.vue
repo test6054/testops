@@ -105,38 +105,38 @@ const handleChange = (value: string | number) => {
   border-radius: calc(var(--dp-radius-control) - 2px);
   color: var(--dp-text-secondary);
   transition:
-    color 0.15s ease,
-    background-color 0.15s ease,
-    box-shadow 0.15s ease;
+    color var(--dp-duration-fast) var(--dp-ease-default),
+    background-color var(--dp-duration-fast) var(--dp-ease-default),
+    box-shadow var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .ui-segmented--sm :deep(.ant-segmented-item) {
   min-height: 24px;
   font-size: var(--dp-font-size-xs);
-  padding-inline: var(--dp-space-2, 8px);
+  padding-inline: var(--dp-space-component-tight);
 }
 
 .ui-segmented--md :deep(.ant-segmented-item) {
   font-size: var(--dp-font-size-sm);
-  padding-inline: 10px;
+  padding-inline: var(--dp-space-component);
 }
 
 .ui-segmented--lg :deep(.ant-segmented-item) {
   min-height: 32px;
   font-size: var(--dp-font-size-md);
-  padding-inline: var(--dp-space-3, 12px);
+  padding-inline: var(--dp-space-component);
 }
 
 .ui-segmented :deep(.ant-segmented-item-selected) {
   color: var(--dp-text-primary);
-  background: var(--dp-bg-elevated, var(--dp-surface));
+  background: var(--dp-surface-elevated);
   box-shadow: var(--dp-shadow-xs);
   font-weight: 500;
 }
 
 .ui-segmented :deep(.ant-segmented-thumb) {
   border-radius: calc(var(--dp-radius-control) - 2px);
-  background: var(--dp-bg-elevated, var(--dp-surface));
+  background: var(--dp-surface-elevated);
   box-shadow: var(--dp-shadow-xs);
 }
 

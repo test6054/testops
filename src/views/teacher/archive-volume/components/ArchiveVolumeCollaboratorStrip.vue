@@ -65,9 +65,9 @@ function joinNames(items: ArchiveVolumeMemberDisplayVO[]) {
   margin: 0;
 }
 .collab-strip__manage {
-  margin-left: 4px;
+  margin-left: var(--dp-space-component-xs);
   vertical-align: baseline;
   height: auto;
-  padding-inline: 4px;
+  padding-inline: var(--dp-space-component-xs);
 }
 </style>

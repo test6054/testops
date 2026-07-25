@@ -3,16 +3,19 @@
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
-import type { PrintPackageItemStatusCode } from '@/types/enums/print-package-item-status-enum'
 import http from '@/config/axios'
-
+import {
+  ALL_PRINT_PACKAGE_ITEM_STATUS_CODES,
+  PrintPackageItemStatusCode,
+  PrintPackageItemStatusDescription,
+} from '@/types/enums/print-package-item-status-enum'
 import { PrintPackageStatusCode } from '@/types/enums/print-package-status-enum'
 
 export {
   ALL_PRINT_PACKAGE_ITEM_STATUS_CODES,
   PrintPackageItemStatusCode,
   PrintPackageItemStatusDescription,
-} from '@/types/enums/print-package-item-status-enum'
+}
 
 /** 制卷设计未完成业务码 - 与后端 ResultCodeEnum.EXAM_MARK_LAYOUT_NOT_READY 对齐 */
 export const LAYOUT_NOT_READY_CODE = 20015
@@ -26,12 +29,12 @@ export const PRINT_PACKAGE_STATUS_TONE: Record<PrintPackageStatusCode, BadgeTone
   [PrintPackageStatusCode.GENERATED]: 'green',
 }
 
-/** 印刷包主流程 hint：名册与制卷设计就绪后生成，再预览或下载 PDF */
-export const PRINT_PACKAGE_FLOW_HINT = '名册与制卷设计就绪 → 生成印刷包 → 预览 / 下载送印'
+export const PRINT_PACKAGE_ITEM_STATUS_TONE: Record<PrintPackageItemStatusCode, BadgeTone> = {
+  [PrintPackageItemStatusCode.READY]: 'green',
+}
 
-/** 独立答卷页不适用系统印刷包 */
-export const PRINT_PACKAGE_ANSWER_SHEET_HINT
-  = '本场为教考分离（独立答卷页），试题卷线下印制，系统不生成印刷包。'
+/** 印刷包主流程 hint：制卷母版就绪后生成空白包按座位送印，考生领卷自填身份 */
+export const PRINT_PACKAGE_FLOW_HINT = '制卷设计就绪 → 生成空白印刷母版 → 按座位送印 → 考生自填身份'
 
 /** 外带已印整卷不适用系统印刷包 */
 export const PRINT_PACKAGE_EXTERNAL_PRINT_HINT

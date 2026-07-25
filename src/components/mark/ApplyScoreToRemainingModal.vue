@@ -89,10 +89,10 @@ onBeforeUnmount(clearTimer)
   max-width: 360px;
 
   &__panel {
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
     border: 1px solid var(--dp-border, var(--dp-border-subtle));
     border-radius: var(--dp-radius-panel);
-    background: var(--dp-surface, var(--dp-bg-container));
+    background: var(--dp-surface, var(--dp-surface));
     box-shadow: var(--dp-shadow-md);
   }
 
@@ -103,14 +103,14 @@ onBeforeUnmount(clearTimer)
   }
 
   &__desc {
-    margin: 8px 0 0;
+    margin: var(--dp-space-component-tight) 0 0;
     font-size: var(--dp-font-size-sm);
     line-height: 1.5;
     color: var(--dp-text-secondary);
   }
 
   &__countdown {
-    margin: 8px 0 0;
+    margin: var(--dp-space-component-tight) 0 0;
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
@@ -118,8 +118,8 @@ onBeforeUnmount(clearTimer)
   &__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--dp-space-2, 8px);
-    margin-top: var(--dp-space-2, 8px);
+    gap: var(--dp-space-component-tight);
+    margin-top: var(--dp-space-component-tight);
   }
 }
 </style>

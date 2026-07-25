@@ -301,15 +301,15 @@ watch(
 
 .scan-batch-page-rail__header {
   flex-shrink: 0;
-  padding: 8px 12px 0;
+  padding: var(--dp-space-component-tight) var(--dp-space-component) 0;
 }
 
 .scan-batch-page-rail__strip {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: stretch;
   overflow-x: auto;
-  padding: 8px 12px 12px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   scroll-snap-type: x proximity;
 }
 
@@ -320,11 +320,11 @@ watch(
   flex-shrink: 0;
   width: 148px;
   min-height: 72px;
-  padding: 8px 10px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: 6px;
   border-left-width: 4px;
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
   text-align: left;
   cursor: pointer;
   scroll-snap-align: start;
@@ -445,7 +445,7 @@ watch(
   justify-content: center;
   gap: 2px;
   min-width: 0;
-  padding: 10px 12px;
+  padding: var(--dp-space-component);
 }
 
 .scan-batch-page-rail__order {
@@ -474,7 +474,7 @@ watch(
   flex-shrink: 0;
   align-self: flex-start;
   margin-top: 2px;
-  padding: 0 6px;
+  padding: 0 var(--dp-space-component-tight);
   border-radius: 10px;
   background: var(--dp-error-bg);
   color: var(--dp-danger);
@@ -484,14 +484,14 @@ watch(
 
 .scan-batch-page-rail__row .scan-batch-page-rail__badge {
   align-self: center;
-  margin-right: 12px;
+  margin-right: var(--dp-space-component);
   margin-top: 0;
 }
 
 .scan-batch-page-rail__loading-more {
   flex-shrink: 0;
   align-self: center;
-  padding: 8px 12px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   color: var(--dp-text-muted);
   font-size: var(--dp-font-size-xs);
   text-align: center;
@@ -499,6 +499,6 @@ watch(
 }
 
 .scan-batch-page-rail__empty {
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
 }
 </style>

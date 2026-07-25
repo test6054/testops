@@ -19,6 +19,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -39,6 +40,8 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
 const loadError = ref(false)
+const listRefreshError = ref<string | null>(null)
+const lastSuccessAt = ref<string | null>(null)
 const pageRequestToken = ref(0)
 const previewRequestToken = ref(0)
 const detailRequestToken = ref(0)
@@ -60,8 +63,14 @@ const operationKey = ref('')
 const writing = computed(() => Boolean(operationKey.value))
 const mappingSaving = computed(() => operationKey.value.startsWith('mapping:save:'))
 const detail = ref<PortfolioPolicyDocumentDetailVO | null>(null)
+const canEditMappings = computed(() => {
+  const status = detail.value?.document.documentStatus
+  return status === PortfolioPolicyDocumentStatusCode.DRAFT
+    || status === PortfolioPolicyDocumentStatusCode.PENDING_PUBLISH
+})
 const supersedeSourceId = ref('')
 const editingId = ref<string | undefined>(undefined)
+const editingStatusVersion = ref<number | undefined>(undefined)
 /** 含历史版本筛选：勾选后列表包含被替代/已废止版本。 */
 const includeHistory = ref(false)
 
@@ -141,6 +150,7 @@ const columns: ColumnsType = [
   { title: '层级', key: 'policyLevel', width: 80 },
   { title: '分类', dataIndex: 'topicCategory', key: 'topicCategory', width: 120 },
   { title: '状态', key: 'documentStatus', width: 100 },
+  { title: 'hash', key: 'policyHash', width: 100 },
   { title: '发布日期', dataIndex: 'publishDate', key: 'publishDate', width: 110 },
   { title: '操作', key: 'actions', width: 240 },
 ]
@@ -172,9 +182,10 @@ function statusLabel(code: string) {
   )
 }
 
-async function loadPage() {
+async function loadPage(options?: { asRefresh?: boolean }) {
   const currentToken = pageRequestToken.value + 1
   pageRequestToken.value = currentToken
+  const asRefresh = Boolean(options?.asRefresh)
   const request = {
     pageNum: query.pageNum,
     pageSize: query.pageSize,
@@ -184,26 +195,50 @@ async function loadPage() {
     includeHistory: includeHistory.value || undefined,
   }
   loading.value = true
-  loadError.value = false
+  if (!asRefresh) {
+    loadError.value = false
+  }
+  listRefreshError.value = null
   try {
     const result = await portfolioPolicyApi.page(request)
     if (pageRequestToken.value !== currentToken) return
     rows.value = result.list ?? []
     total.value = result.total ?? 0
+    lastSuccessAt.value = new Date().toISOString()
+    loadError.value = false
   } catch (error) {
     if (pageRequestToken.value !== currentToken) return
-    rows.value = []
-    total.value = 0
-    loadError.value = true
+    if (asRefresh && rows.value.length > 0) {
+      listRefreshError.value = '写入已成功，列表刷新失败；当前仍显示上次成功数据，可能过期'
+      showUserError(error, '政策列表刷新失败')
+      return
+    }
+    if (rows.value.length === 0) {
+      loadError.value = true
+    } else {
+      listRefreshError.value = '政策列表刷新失败，已保留上次成功数据'
+    }
     showUserError(error, '加载政策文件失败')
   } finally {
     if (pageRequestToken.value === currentToken) loading.value = false
   }
 }
 
+/** 将保存/发布/修订返回的 VO 原位 upsert 到列表。 */
+function upsertPolicyRow(vo: PortfolioPolicyDocumentVO) {
+  const index = rows.value.findIndex((item) => item.id === vo.id)
+  if (index >= 0) {
+    rows.value.splice(index, 1, vo)
+    return
+  }
+  rows.value = [vo, ...rows.value]
+  total.value += 1
+}
+
 function openCreate() {
   if (writing.value) return
   editingId.value = undefined
+  editingStatusVersion.value = undefined
   form.documentCode = ''
   form.documentTitle = ''
   form.policyLevel = PortfolioPolicyLevelCode.NATIONAL
@@ -222,6 +257,7 @@ async function openEdit(row: PortfolioPolicyDocumentVO) {
     const result = await portfolioPolicyApi.get({ id: row.id })
     if (editorRequestToken.value !== currentToken) return
     editingId.value = result.document.id
+    editingStatusVersion.value = result.document.statusVersion
     form.documentCode = result.document.documentCode
     form.documentTitle = result.document.documentTitle
     form.policyLevel = result.document.policyLevel as PortfolioPolicyLevelCode
@@ -250,6 +286,10 @@ async function saveDraft() {
     showFormValidationMessage('请完整填写文号、标题、主题分类、发布日期和政策全文')
     return
   }
+  if (editingId.value && editingStatusVersion.value == null) {
+    showFormValidationMessage('缺少 statusVersion，请重新打开草稿')
+    return
+  }
   const operation = `document:save:${editingId.value || 'new'}`
   if (!beginOperation(operation)) return
   const request = {
@@ -261,12 +301,15 @@ async function saveDraft() {
     publishOrg: form.publishOrg.trim() || undefined,
     publishDate: form.publishDate,
     fullTextContent: form.fullTextContent,
+    statusVersion: editingId.value ? editingStatusVersion.value : undefined,
   }
   try {
-    await portfolioPolicyApi.save(request)
+    const saved = await portfolioPolicyApi.save(request)
+    upsertPolicyRow(saved)
+    editingStatusVersion.value = saved.statusVersion
     void message.success('政策草稿已保存')
     editorOpen.value = false
-    await loadPage()
+    await loadPage({ asRefresh: true })
   } catch (error) {
     showUserError(error, '保存政策失败')
   } finally {
@@ -278,20 +321,37 @@ async function publishRow(row: PortfolioPolicyDocumentVO) {
   const documentId = row.id
   const operation = `document:publish:${documentId}`
   if (!beginOperation(operation)) return
-  if (
-    !(await confirmAsync({
-      title: '确认发布政策？',
-      content: `发布「${row.documentTitle}」后将作为有效政策参与指标核验和教师问数。`,
-      type: 'warning',
-    }))
-  ) {
-    endOperation(operation)
-    return
-  }
   try {
-    await portfolioPolicyApi.publish({ id: documentId })
+    const dryRun = await portfolioPolicyApi.publishDryRun({ id: documentId })
+    if (!dryRun.canPublish) {
+      showFormValidationMessage(dryRun.blockReason || '当前政策不可发布')
+      endOperation(operation)
+      return
+    }
+    const sceneText = dryRun.referencedSceneCodes.length
+      ? dryRun.referencedSceneCodes.join('、')
+      : '无场景引用'
+    const confirmed = await confirmAsync({
+      title: '确认发布政策？',
+      content:
+        `发布「${row.documentTitle}」后将作为有效政策参与指标核验。`
+        + `\npolicyHash=${dryRun.policyHash.slice(0, 16)}…`
+        + `\nmappingHash=${dryRun.mappingHash.slice(0, 16)}…（${dryRun.mappingCount} 条映射）`
+        + `\n引用场景：${sceneText}`
+        + `\n将被替代的现行版本：${dryRun.demoteEffectiveCount} 条`,
+      type: 'warning',
+    })
+    if (!confirmed) {
+      endOperation(operation)
+      return
+    }
+    const published = await portfolioPolicyApi.publish({
+      id: documentId,
+      statusVersion: dryRun.statusVersion,
+    })
+    upsertPolicyRow(published)
     void message.success('政策已发布')
-    await loadPage()
+    await loadPage({ asRefresh: true })
   } catch (error) {
     showUserError(error, '发布政策失败')
   } finally {
@@ -415,7 +475,7 @@ async function saveMappings() {
     return
   }
   const policyDocumentId = detail.value.document.id
-  const mappings = mappingRows.value
+  const mappingPayload = mappingRows.value
     .filter((item) => item.clauseCode.trim() && item.indicatorCode.trim())
     .map((item) => ({
       clauseCode: item.clauseCode.trim(),
@@ -426,17 +486,27 @@ async function saveMappings() {
   const operation = `mapping:save:${policyDocumentId}`
   if (!beginOperation(operation)) return
   try {
-    await portfolioPolicyApi.saveMapping({
+    const saved = await portfolioPolicyApi.saveMapping({
       policyDocumentId,
-      mappings,
+      statusVersion: detail.value.document.statusVersion,
+      mappings: mappingPayload,
     })
-    void message.success('指标映射已保存')
-    const refreshed = await portfolioPolicyApi.get({ id: policyDocumentId })
     if (detail.value?.document.id === policyDocumentId) {
-      detail.value = refreshed
-      resetMappingRows(refreshed.mappings ?? [])
+      detail.value = {
+        ...detail.value,
+        mappings: saved.mappings,
+        mappingHash: saved.mappingHash,
+        policyHash: saved.policyHash,
+        document: {
+          ...detail.value.document,
+          statusVersion: saved.statusVersion,
+          policyHash: saved.policyHash,
+        },
+      }
+      resetMappingRows(saved.mappings)
     }
-    await loadPage()
+    void message.success('指标映射已保存')
+    await loadPage({ asRefresh: true })
   } catch (error) {
     showUserError(error, '保存指标映射失败')
   } finally {
@@ -488,10 +558,11 @@ async function submitSupersede() {
     fullTextContent: supersedeForm.fullTextContent,
   }
   try {
-    await portfolioPolicyApi.supersede(request)
-    void message.success('政策修订版已创建')
+    const created = await portfolioPolicyApi.supersede(request)
+    upsertPolicyRow(created)
+    void message.success('政策修订草稿已创建，请审核后发布')
     supersedeOpen.value = false
-    await loadPage()
+    await loadPage({ asRefresh: true })
   } catch (error) {
     showUserError(error, '创建修订版失败')
   } finally {
@@ -520,6 +591,13 @@ onMounted(() => {
     <template #context>
       <ContextBar layout="workbench" show-title title="政策文件库" subtitle="四级政策维护与发布" />
     </template>
+    <UiAlertStrip
+      v-if="listRefreshError"
+      tone="warning"
+      title="列表刷新失败"
+      :description="listRefreshError"
+      class="mb-3"
+    />
     <UiCard>
       <div class="policy-admin__toolbar">
         <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
@@ -553,19 +631,23 @@ onMounted(() => {
           <template v-else-if="column.key === 'documentStatus'">
             <UiTag>{{ statusLabel(record.documentStatus) }}</UiTag>
           </template>
+          <template v-else-if="column.key === 'policyHash'">
+            {{ record.policyHash ? `${record.policyHash.slice(0, 8)}…` : '—' }}
+          </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
               :items="[
                 { key: 'detail', label: '详情', disabled: writing },
                 { key: 'preview', label: '预览', disabled: writing },
                 ...(record.documentStatus === PortfolioPolicyDocumentStatusCode.DRAFT
+                  || record.documentStatus === PortfolioPolicyDocumentStatusCode.PENDING_PUBLISH
                   ? [
                     { key: 'edit', label: '编辑', disabled: writing },
                     { key: 'publish', label: '发布', disabled: writing },
                   ]
                   : []),
                 ...(record.documentStatus === PortfolioPolicyDocumentStatusCode.EFFECTIVE
-                  ? [{ key: 'supersede', label: '修订', disabled: writing }]
+                  ? [{ key: 'supersede', label: '修订草稿', disabled: writing }]
                   : []),
               ]"
               @action="
@@ -670,11 +752,19 @@ onMounted(() => {
             </div>
             <div>
               <dt>版本</dt>
-              <dd>v{{ detail.document.versionNo }}</dd>
+              <dd>v{{ detail.document.versionNo }} · rev {{ detail.document.statusVersion }}</dd>
             </div>
             <div>
               <dt>状态</dt>
               <dd>{{ statusLabel(detail.document.documentStatus) }}</dd>
+            </div>
+            <div>
+              <dt>policyHash</dt>
+              <dd>{{ detail.policyHash || detail.document.policyHash || '—' }}</dd>
+            </div>
+            <div>
+              <dt>mappingHash</dt>
+              <dd>{{ detail.mappingHash || '—' }}</dd>
             </div>
           </dl>
           <h4 class="policy-admin__section-title">指标映射</h4>
@@ -683,45 +773,45 @@ onMounted(() => {
               size="sm"
               v-model="row.clauseCode"
               placeholder="条款编码"
-              :disabled="writing"
+              :disabled="writing || !canEditMappings"
             />
             <UiInput
               size="sm"
               v-model="row.clauseTitle"
               placeholder="条款标题"
-              :disabled="writing"
+              :disabled="writing || !canEditMappings"
             />
             <UiInput
               size="sm"
               v-model="row.indicatorCode"
               placeholder="指标编码"
-              :disabled="writing"
+              :disabled="writing || !canEditMappings"
             />
             <UiInput
               size="sm"
               v-model="row.materialRequirement"
               placeholder="材料要求"
-              :disabled="writing"
+              :disabled="writing || !canEditMappings"
             />
             <UiButton
               size="sm"
               status="danger"
               variant="ghost"
-              :disabled="writing"
+              :disabled="writing || !canEditMappings"
               @click="removeMappingRow(index)"
             >
               删除
             </UiButton>
           </div>
           <div class="policy-admin__mapping-actions">
-            <UiButton variant="primary" size="sm" :disabled="writing" @click="addMappingRow">
+            <UiButton variant="primary" size="sm" :disabled="writing || !canEditMappings" @click="addMappingRow">
               新增映射
             </UiButton>
             <UiButton
               size="sm"
               variant="primary"
               :loading="mappingSaving"
-              :disabled="writing"
+              :disabled="writing || !canEditMappings"
               @click="saveMappings"
             >
               保存映射
@@ -876,9 +966,9 @@ onMounted(() => {
 <style scoped>
 .policy-admin__toolbar {
   display: flex;
-  gap: 12px;
+  gap: var(--dp-space-component);
   align-items: flex-start;
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .policy-admin__history-toggle {
   align-self: center;
@@ -887,7 +977,7 @@ onMounted(() => {
 .policy-admin__field {
   display: block;
   width: 100%;
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 .policy-admin__preview {
   white-space: pre-wrap;
@@ -899,8 +989,8 @@ onMounted(() => {
 .policy-admin__detail-meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 16px;
-  margin: 0 0 16px;
+  gap: var(--dp-space-component-tight) var(--dp-space-block);
+  margin: 0 0 var(--dp-space-block);
 }
 .policy-admin__detail-meta dt {
   margin: 0;
@@ -908,28 +998,28 @@ onMounted(() => {
   color: var(--dp-text-secondary);
 }
 .policy-admin__detail-meta dd {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
 }
 .policy-admin__section-title {
-  margin: 16px 0 8px;
+  margin: var(--dp-space-block) 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .policy-admin__mapping-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-tight);
 }
 .policy-admin__mapping-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component-tight);
 }
 .policy-admin__version-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -938,8 +1028,8 @@ onMounted(() => {
 .policy-admin__version-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control);
 }
@@ -950,7 +1040,7 @@ onMounted(() => {
   flex-shrink: 0;
   min-width: 32px;
   height: 22px;
-  padding: 0 8px;
+  padding: 0 var(--dp-space-component-tight);
   border-radius: var(--dp-radius-full);
   background: var(--dp-blue-50);
   color: var(--dp-blue-600);
@@ -967,12 +1057,12 @@ onMounted(() => {
 .policy-admin__compare-bar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: var(--dp-space-component);
 }
 .policy-admin__compare-summary {
-  margin: 0 0 10px;
+  margin: 0 0 var(--dp-space-component);
   color: var(--dp-text-secondary);
 }
 .policy-admin__diff {
@@ -990,7 +1080,7 @@ onMounted(() => {
   border-bottom: 1px solid var(--dp-border);
 }
 .policy-admin__diff li > * {
-  padding: 5px 8px;
+  padding: 5px var(--dp-space-component-tight);
   overflow-wrap: anywhere;
 }
 .policy-admin__diff--insert {

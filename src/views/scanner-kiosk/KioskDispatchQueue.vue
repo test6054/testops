@@ -210,7 +210,7 @@ async function changePage(page: number) {
       </li>
     </ul>
     <p
-      v-if="!queue.loading.value && queue.tickets.value.length === 0"
+      v-if="!queue.loading.value && !queue.errorMessage.value && queue.tickets.value.length === 0"
       class="dispatch-queue__empty"
     >
       暂无待办派单
@@ -245,66 +245,66 @@ async function changePage(page: number) {
 .dispatch-queue {
   max-width: 960px;
   margin: 0 auto;
-  padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px);
+  padding: var(--dp-space-block) var(--dp-space-component);
 }
 .dispatch-queue__head {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: var(--dp-space-3, 12px);
-  margin-bottom: 12px;
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
 }
 .dispatch-queue__head h1 {
   margin: 0;
   font-size: 22px;
 }
 .dispatch-queue__head p {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   color: var(--kiosk-ink-tertiary);
 }
 .dispatch-queue__head-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .dispatch-queue__tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-block);
 }
 .dispatch-queue__error {
   color: var(--kiosk-danger);
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .dispatch-queue__list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .dispatch-queue__item {
   width: 100%;
   text-align: left;
   border: 1px solid var(--kiosk-divider);
   border-radius: 6px;
-  padding: 12px 16px;
+  padding: var(--dp-space-component) var(--dp-space-block);
   background: var(--kiosk-surface);
   cursor: pointer;
 }
 .dispatch-queue__item-top {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
 }
 .dispatch-queue__meta {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-font-size-xs);
   color: var(--kiosk-ink-tertiary);
 }
 .dispatch-queue__failure {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-font-size-sm);
   color: var(--kiosk-danger);
 }
@@ -312,8 +312,8 @@ async function changePage(page: number) {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  margin-top: 16px;
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-block);
 }
 .dispatch-queue__empty {
   color: var(--kiosk-ink-tertiary);

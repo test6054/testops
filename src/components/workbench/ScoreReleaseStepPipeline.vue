@@ -63,7 +63,7 @@ function handleSelect(step: ScoreReleaseStep): void {
 
 <style scoped lang="scss">
 .score-release-pipeline {
-  margin-top: var(--dp-space-3);
+  margin-top: var(--dp-space-component);
 
   &__title {
     font-size: var(--dp-font-size-md);
@@ -71,7 +71,7 @@ function handleSelect(step: ScoreReleaseStep): void {
   }
 
   &__meta {
-    margin-left: 8px;
+    margin-left: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
     font-weight: 400;
     color: var(--dp-text-secondary);
@@ -80,7 +80,7 @@ function handleSelect(step: ScoreReleaseStep): void {
   &__track {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: var(--dp-space-component);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -98,24 +98,24 @@ function handleSelect(step: ScoreReleaseStep): void {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 6px;
-    padding: 12px;
+    gap: var(--dp-space-component-tight);
+    padding: var(--dp-space-component);
     border: 1px solid var(--dp-border-subtle);
     border-radius: 6px;
-    background: var(--dp-surface-raised);
+    background: var(--dp-surface);
     text-align: left;
     cursor: pointer;
     transition:
-      border-color 0.2s,
-      background 0.2s;
+      border-color var(--dp-duration-normal),
+      background var(--dp-duration-normal);
 
     &:hover {
-      border-color: var(--dp-blue-300);
+      border-color: var(--dp-blue-200);
     }
 
     &--active,
     &--current {
-      border-color: var(--dp-blue-400);
+      border-color: var(--dp-blue-500);
       background: var(--dp-blue-50);
     }
 
@@ -142,7 +142,7 @@ function handleSelect(step: ScoreReleaseStep): void {
     border-radius: 50%;
     font-size: var(--dp-font-size-xs);
     font-weight: 600;
-    background: var(--dp-surface-muted);
+    background: var(--dp-surface-subtle);
     color: var(--dp-text-secondary);
 
     .score-release-pipeline__step--active &,

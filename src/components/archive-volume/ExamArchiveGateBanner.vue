@@ -214,10 +214,10 @@ defineExpose({
 .exam-archive-gate-banner {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .exam-archive-gate-banner__table {
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
 }
 </style>

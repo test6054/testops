@@ -13,6 +13,7 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   ALL_PORTFOLIO_MASK_EXPORT_SCOPE_CODES,
@@ -39,6 +40,8 @@ const saving = ref(false)
 const rows = ref<PortfolioMaskRuleVO[]>([])
 const total = ref(0)
 const editorOpen = ref(false)
+/** 编辑既有规则时携带，供 expectedUpdateTime CAS */
+const editingRule = ref<PortfolioMaskRuleVO | null>(null)
 
 const form = reactive({
   fieldType: PortfolioMaskFieldTypeCode.ID_CARD,
@@ -60,7 +63,15 @@ const columns: ColumnsType = [
   { title: '消费者说明', dataIndex: 'consumerDescription', key: 'consumerDescription', width: 260 },
   { title: '最近应用', dataIndex: 'lastAppliedTime', key: 'lastAppliedTime', width: 170 },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 170 },
+  { title: '操作', key: 'actions', width: 88 },
 ]
+
+const STRATEGY_PROTECTION_RANK: Record<PortfolioMaskStrategyCode, number> = {
+  [PortfolioMaskStrategyCode.FULL]: 0,
+  [PortfolioMaskStrategyCode.SUMMARY]: 1,
+  [PortfolioMaskStrategyCode.LAST_FOUR]: 2,
+  [PortfolioMaskStrategyCode.HIDDEN]: 3,
+}
 
 function fieldLabel(code: string) {
   return strictEnumLabel(
@@ -86,7 +97,21 @@ function strategyLabel(code: string) {
   )
 }
 
-async function loadPage() {
+function isProtectionWeakened(
+  previous: PortfolioMaskRuleVO | null,
+  nextStrategy: PortfolioMaskStrategyCode,
+  nextEnabled: boolean,
+): boolean {
+  if (!previous) {
+    return false
+  }
+  if (previous.enabled && !nextEnabled) {
+    return true
+  }
+  return STRATEGY_PROTECTION_RANK[nextStrategy] < STRATEGY_PROTECTION_RANK[previous.maskStrategy]
+}
+
+async function loadPage(options?: { errorMessage?: string }): Promise<boolean> {
   const currentToken = requestToken.value + 1
   requestToken.value = currentToken
   const request = { pageNum: query.pageNum, pageSize: query.pageSize }
@@ -94,39 +119,77 @@ async function loadPage() {
   loadError.value = false
   try {
     const result = await portfolioSecurityApi.pageMaskRule(request)
-    if (requestToken.value !== currentToken) return
+    if (requestToken.value !== currentToken) return false
     rows.value = result.list ?? []
     total.value = result.total ?? 0
+    return true
   } catch (error) {
-    if (requestToken.value !== currentToken) return
-    rows.value = []
-    total.value = 0
+    if (requestToken.value !== currentToken) return false
     loadError.value = true
-    showUserError(error, '加载脱敏规则失败')
+    showUserError(error, options?.errorMessage ?? '加载脱敏规则失败')
+    return false
   } finally {
     if (requestToken.value === currentToken) loading.value = false
   }
 }
 
+function openCreateModal() {
+  if (saving.value) return
+  editingRule.value = null
+  form.fieldType = PortfolioMaskFieldTypeCode.ID_CARD
+  form.exportScope = PortfolioMaskExportScopeCode.DEPARTMENT
+  form.maskStrategy = PortfolioMaskStrategyCode.LAST_FOUR
+  form.enabled = true
+  editorOpen.value = true
+}
+
+function openEditModal(row: PortfolioMaskRuleVO) {
+  if (saving.value) return
+  editingRule.value = row
+  form.fieldType = row.fieldType
+  form.exportScope = row.exportScope
+  form.maskStrategy = row.maskStrategy
+  form.enabled = row.enabled
+  editorOpen.value = true
+}
+
 async function saveRule() {
   if (saving.value) return
+  const previous
+    = editingRule.value
+      ?? rows.value.find(
+        (row) => row.fieldType === form.fieldType && row.exportScope === form.exportScope,
+      )
+      ?? null
+  if (isProtectionWeakened(previous, form.maskStrategy, form.enabled)) {
+    const confirmed = await confirmAsync({
+      title: '确认降低脱敏保护？',
+      content:
+        '将停用规则或改为更弱策略，导出链路可能暴露更多字段。请确认已评估影响范围。',
+      type: 'error',
+    })
+    if (!confirmed) return
+  }
   saving.value = true
   const request = {
     fieldType: form.fieldType,
     exportScope: form.exportScope,
     maskStrategy: form.maskStrategy,
     enabled: form.enabled,
+    ...(previous?.updateTime ? { expectedUpdateTime: previous.updateTime } : {}),
   }
   try {
     await portfolioSecurityApi.saveMaskRule(request)
     void message.success('脱敏规则已保存')
     editorOpen.value = false
-    await loadPage()
+    editingRule.value = null
   } catch (error) {
     showUserError(error, '保存脱敏规则失败')
+    return
   } finally {
     saving.value = false
   }
+  await loadPage({ errorMessage: '脱敏规则已保存，列表刷新失败' })
 }
 
 function onPageChange(page: { current: number, pageSize: number }) {
@@ -148,14 +211,20 @@ onMounted(() => {
         show-title
         title="脱敏规则"
         subtitle="§8.24 导出字段脱敏策略"
-      />
+      >
+        <template #actions>
+          <UiButton size="sm" :disabled="loading || saving" @click="loadPage()">
+            刷新
+          </UiButton>
+        </template>
+      </ContextBar>
     </template>
     <UiCard>
       <UiButton
         size="sm"
         class="mask-rule-admin__add"
         :disabled="saving"
-        @click="editorOpen = true"
+        @click="openCreateModal"
       >
         配置规则
       </UiButton>
@@ -219,12 +288,17 @@ onMounted(() => {
               }}
             </UiTag>
           </template>
+          <template v-else-if="column.key === 'actions'">
+            <UiButton size="sm" variant="ghost" :disabled="saving" @click="openEditModal(record)">
+              编辑
+            </UiButton>
+          </template>
         </template>
       </UiDataTable>
     </UiCard>
     <UiDialog
       v-model:open="editorOpen"
-      title="配置脱敏规则"
+      :title="editingRule ? '编辑脱敏规则' : '配置脱敏规则'"
       :confirm-loading="saving"
       :closable="!saving"
       :mask-closable="!saving"
@@ -240,7 +314,7 @@ onMounted(() => {
             label: PortfolioMaskFieldTypeDescription[c],
           }))
         "
-        :disabled="saving"
+        :disabled="saving || !!editingRule"
       />
       <UiSelect
         size="sm"
@@ -252,7 +326,7 @@ onMounted(() => {
             label: PortfolioMaskExportScopeDescription[c],
           }))
         "
-        :disabled="saving"
+        :disabled="saving || !!editingRule"
       />
       <UiSelect
         size="sm"
@@ -279,11 +353,11 @@ onMounted(() => {
 
 <style scoped>
 .mask-rule-admin__add {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .mask-rule-admin__field {
   display: block;
   width: 100%;
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 </style>

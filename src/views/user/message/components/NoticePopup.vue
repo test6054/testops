@@ -10,7 +10,7 @@
     <div class="detail">
       <div class="detail_content">
         <div class="info">
-          <div class="dp-space" style="--dp-space-gap: 8px">
+          <div class="dp-space" style="--dp-space-component: 8px">
             <span>
               <UserOutlined class="icon" />
               <span class="label">创建者：</span>
@@ -54,7 +54,7 @@
 
           <!-- 翻页和关闭按钮 -->
           <div class="pagination-controls">
-            <div class="dp-space" style="--dp-space-gap: 8px">
+            <div class="dp-space" style="--dp-space-component: 8px">
               <UiButton v-if="currentIndex > 0" size="sm" variant="outline" @click="previousNotice">
                 上一篇
               </UiButton>
@@ -244,21 +244,21 @@ defineExpose({
     margin: 0;
 
     .info {
-      margin-bottom: 12px; // 减小信息区域下边距
+      margin-bottom: var(--dp-space-component); // 减小信息区域下边距
       color: var(--dp-text-secondary);
       font-size: var(--dp-font-size-md);
       line-height: 1.5715;
       text-align: center;
 
       .icon {
-        margin-right: 4px;
+        margin-right: var(--dp-space-component-xs);
       }
     }
   }
 
   .notice-footer {
-    margin-top: var(--dp-space-4, 16px);
-    padding-top: 16px;
+    margin-top: var(--dp-space-block);
+    padding-top: var(--dp-space-block);
     border-top: 1px solid var(--dp-border-subtle);
 
     .notice-actions {
@@ -274,7 +274,7 @@ defineExpose({
       .pagination-controls {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: var(--dp-space-component);
       }
     }
   }
@@ -292,7 +292,7 @@ defineExpose({
   justify-content: center;
   align-items: center;
   height: 200px;
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
   font-size: var(--dp-font-size-md);
 }
 
@@ -302,30 +302,30 @@ defineExpose({
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
+    margin-bottom: var(--dp-space-block);
+    padding-bottom: var(--dp-space-component);
     border-bottom: 1px solid var(--dp-border-subtle);
 
     .notice-meta {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: var(--dp-space-component);
 
       .notice-time {
         font-size: var(--dp-font-size-xs);
-        color: var(--dp-text-tertiary);
+        color: var(--dp-text-muted);
       }
     }
   }
 
   .notice-body {
-    margin-bottom: var(--dp-space-4, 16px);
+    margin-bottom: var(--dp-space-block);
 
     .notice-title {
       font-size: var(--dp-font-size-xl);
       font-weight: 600;
-      color: var(--dp-text);
-      margin-bottom: var(--dp-space-3, 12px);
+      color: var(--dp-text-primary);
+      margin-bottom: var(--dp-space-component);
       line-height: 1.4;
     }
 
@@ -342,7 +342,7 @@ defineExpose({
       }
 
       :deep(p) {
-        margin-bottom: 12px;
+        margin-bottom: var(--dp-space-component);
 
         &:last-child {
           margin-bottom: 0;

@@ -28,11 +28,9 @@ import type {
   AuditTimelineEvent,
   SignalMetric,
   TaskResultItem,
-  WorkbenchStage,
-  WorkbenchStageStatus,
 } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -77,7 +75,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
-import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -89,11 +86,11 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSegmented from '@/components/ui-guide/ui/UiSegmented.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
-import StageRail from '@/components/workbench/StageRail.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -197,6 +194,9 @@ const query = reactive<AiTaskQueryRequest & Record<string, unknown>>({
   reportId: '',
 })
 
+const STATUS_SEGMENT_ALL = 'ALL'
+const statusSegment = ref<string>(STATUS_SEGMENT_ALL)
+
 const submitVisible = ref(false)
 const submitting = ref(false)
 const materialFileName = ref<string>()
@@ -219,6 +219,11 @@ const detailRecord = ref<AiTaskVO | null>(null)
 const detailTabActive = ref('result')
 const detailTabItems = [{ key: 'result', label: '智能结果' }]
 const detailResult = ref<AiResultVO | null>(null)
+/** 详情抽屉打开代际：taskId + openGeneration，旧响应不得落地 */
+const detailOpenGeneration = ref(0)
+const detailResultLoadFailed = ref(false)
+/** 本页持有的 Store 详情轮询 ownership（列表轮询不再批量 startPolling） */
+const pageOwnedPollingIds = new Set<string>()
 const validationUpdating = ref(false)
 const manualHandleVisible = ref(false)
 const manualHandleSubmitting = ref(false)
@@ -250,7 +255,7 @@ const OBE_AI_TASK_TYPES: readonly AiTaskTypeCode[] = [
   AiTaskTypeCode.INDIRECT_RESPONSE_DOC_PARSE,
 ]
 
-const PORTFOLIO_AI_TASK_TYPES: readonly AiTaskTypeCode[] = [
+const PORTFOLIO_AI_TASK_TYPE_SET: ReadonlySet<string> = new Set([
   AiTaskTypeCode.PORTFOLIO_CERTIFICATE_OCR,
   AiTaskTypeCode.PORTFOLIO_DOCUMENT_PARSE,
   AiTaskTypeCode.PORTFOLIO_POLICY_MATCH,
@@ -262,7 +267,7 @@ const PORTFOLIO_AI_TASK_TYPES: readonly AiTaskTypeCode[] = [
   AiTaskTypeCode.PORTFOLIO_TEACHING_EFFECT_ANALYSIS,
   AiTaskTypeCode.PORTFOLIO_DEVELOPMENT_SUGGEST,
   AiTaskTypeCode.PORTFOLIO_CONTENT_GENERATE,
-]
+])
 
 function mapTaskTypeOptions(
   types: readonly AiTaskTypeCode[],
@@ -273,11 +278,9 @@ function mapTaskTypeOptions(
   }))
 }
 
-/** OBE 主链可提交能力 */
+/** OBE 主链可提交 / 审计筛选能力（本页禁止混入档案袋任务类型） */
 const submitTaskTypeOptions = mapTaskTypeOptions(OBE_AI_TASK_TYPES)
-
-/** 审计台筛选能力（含教学档案袋，只读审计不在此页提交） */
-const auditTaskTypeOptions = mapTaskTypeOptions([...OBE_AI_TASK_TYPES, ...PORTFOLIO_AI_TASK_TYPES])
+const auditTaskTypeOptions = submitTaskTypeOptions
 const statusOptions: Array<{ value: AiTaskStatusCode, label: string }> = [
   { value: AiTaskStatusCode.PENDING, label: AiTaskStatusDescription.PENDING },
   { value: AiTaskStatusCode.PROCESSING, label: AiTaskStatusDescription.PROCESSING },
@@ -302,14 +305,6 @@ const businessTypeOptions: { value: AiTaskBusinessTypeCode, label: string }[] = 
   {
     value: AiTaskBusinessTypeCode.INDIRECT_FORM,
     label: AiTaskBusinessTypeDescription.INDIRECT_FORM,
-  },
-  {
-    value: AiTaskBusinessTypeCode.PORTFOLIO_MATERIAL,
-    label: AiTaskBusinessTypeDescription.PORTFOLIO_MATERIAL,
-  },
-  {
-    value: AiTaskBusinessTypeCode.PORTFOLIO_EVALUATION,
-    label: AiTaskBusinessTypeDescription.PORTFOLIO_EVALUATION,
   },
 ]
 const taskBusinessTypeMap: Record<AiTaskTypeCode, AiTaskBusinessTypeCode> = {
@@ -366,15 +361,6 @@ const filterFields = computed<FilterField[]>(() => {
       allowClear: true,
       width: 180,
       options: auditTaskTypeOptions,
-    },
-    {
-      key: 'status',
-      type: 'select',
-      label: '状态',
-      placeholder: '状态',
-      allowClear: true,
-      width: 130,
-      options: statusOptions,
     },
     {
       key: 'businessType',
@@ -556,6 +542,7 @@ async function loadList() {
         showUserError(error, '智能任务状态统计加载失败')
       }
     }
+    markListSyncOk()
     syncListPolling()
   } catch (error) {
     if (scope.isStale()) {
@@ -569,30 +556,71 @@ async function loadList() {
   }
 }
 
-function syncAiTaskStorePolling(): void {
-  for (const record of list.value) {
-    if (
-      record.status === AiTaskStatusCode.PENDING
-      || record.status === AiTaskStatusCode.PROCESSING
-    ) {
-      aiTaskStore.startPolling(record.id)
-    }
+const LIST_POLL_INTERVALS_MS = [3000, 6000, 12000, 30000] as const
+const LIST_POLL_MAX_FAILURES = 5
+const listSyncAt = ref<string | null>(null)
+const listSyncFailed = ref(false)
+const listPollFailCount = ref(0)
+const listPollStopped = ref(false)
+
+function markListSyncOk(): void {
+  listSyncFailed.value = false
+  listPollFailCount.value = 0
+  listPollStopped.value = false
+  listSyncAt.value = new Date().toISOString().replace('T', ' ').slice(0, 19)
+}
+
+function markListSyncFailed(): void {
+  listSyncFailed.value = true
+  listPollFailCount.value += 1
+  if (listPollFailCount.value >= LIST_POLL_MAX_FAILURES) {
+    listPollStopped.value = true
   }
+}
+
+function currentListPollIntervalMs(): number {
+  const idx = Math.min(listPollFailCount.value, LIST_POLL_INTERVALS_MS.length - 1)
+  return LIST_POLL_INTERVALS_MS[idx]
+}
+
+function startPageOwnedPolling(taskId: string): void {
+  if (!taskId) {
+    return
+  }
+  pageOwnedPollingIds.add(taskId)
+  aiTaskStore.startPolling(taskId)
+}
+
+function stopPageOwnedPolling(taskId: string): void {
+  if (!taskId) {
+    return
+  }
+  pageOwnedPollingIds.delete(taskId)
+  aiTaskStore.stopPolling(taskId)
+}
+
+function releasePageOwnedPolling(): void {
+  for (const taskId of pageOwnedPollingIds) {
+    aiTaskStore.stopPolling(taskId)
+  }
+  pageOwnedPollingIds.clear()
 }
 
 const listPolling = usePolling(() => loadListQuietly(), {
   getOptions: () => ({
-    intervalMs: 3000,
-    when: list.value.some(
-      (record) =>
-        record.status === AiTaskStatusCode.PENDING || record.status === AiTaskStatusCode.PROCESSING,
-    ),
+    intervalMs: currentListPollIntervalMs(),
+    when:
+      !listPollStopped.value
+      && list.value.some(
+        (record) =>
+          record.status === AiTaskStatusCode.PENDING
+          || record.status === AiTaskStatusCode.PROCESSING,
+      ),
   }),
   pauseWhenDocumentHidden: true,
 })
 
 function syncListPolling(): void {
-  syncAiTaskStorePolling()
   listPolling.syncPolling()
 }
 
@@ -626,9 +654,14 @@ async function loadListQuietly(): Promise<void> {
         detailRecord.value = updated
       }
     }
+    markListSyncOk()
     syncListPolling()
   } catch {
-    // 轮询刷新失败时不打断当前页面操作
+    if (scope.isStale()) {
+      return
+    }
+    markListSyncFailed()
+    syncListPolling()
   }
 }
 
@@ -668,6 +701,7 @@ function resetQuery() {
   query.pageNum = 1
   query.taskType = undefined
   query.status = undefined
+  statusSegment.value = STATUS_SEGMENT_ALL
   query.businessType = undefined
   query.businessId = ''
   query.operatorUserId = ''
@@ -766,6 +800,13 @@ function applyAccreditationRoutePrefill() {
   if (typeof taskTypeRaw !== 'string') {
     return
   }
+  if (PORTFOLIO_AI_TASK_TYPE_SET.has(taskTypeRaw)) {
+    void router.replace({
+      name: 'PortfolioAiFourAssistants',
+      query: { ...route.query },
+    })
+    return
+  }
   const routeTaskTypeOption = auditTaskTypeOptions.find((option) => option.value === taskTypeRaw)
   if (!routeTaskTypeOption) {
     return
@@ -795,6 +836,13 @@ async function applyRouteTaskDeepLink() {
   }
   try {
     const task = await aiTaskApi.detail(taskId)
+    if (PORTFOLIO_AI_TASK_TYPE_SET.has(task.taskType)) {
+      void router.replace({
+        name: 'PortfolioAiFourAssistants',
+        query: { taskId },
+      })
+      return
+    }
     await openDetail(task)
   } catch (error) {
     showUserError(error, '智能任务详情加载失败')
@@ -896,8 +944,8 @@ async function submitTask() {
     })
     void message.success('已提交智能任务，系统将按队列执行')
     submitVisible.value = false
-    // 提交后启动轮询：任务达到终态后自动停止，其他页面能同步看到状态跳转
-    if (result.taskId) aiTaskStore.startPolling(result.taskId)
+    // 提交后对本页 ownership 启动详情轮询；列表由单一 list polling 刷新
+    if (result.taskId) startPageOwnedPolling(result.taskId)
     await loadList()
   } finally {
     submitting.value = false
@@ -912,7 +960,7 @@ async function runNow(record: AiTaskVO) {
     onOk: async () => {
       await aiTaskTriggerApi.runNow(record.id)
       void message.success('已触发同步执行')
-      aiTaskStore.startPolling(record.id)
+      startPageOwnedPolling(record.id)
       await loadList()
     },
   })
@@ -997,20 +1045,41 @@ async function submitManualHandle() {
 }
 
 async function openDetail(record: AiTaskVO) {
+  const openGeneration = ++detailOpenGeneration.value
+  const taskId = record.id
   detailVisible.value = true
   detailLoading.value = true
   detailRecord.value = record
   detailResult.value = null
-  // 非终态任务启动轮询，让抽屉实时反映 PROCESSING/COMPLETED/FAILED 状态变化
+  detailResultLoadFailed.value = false
+  // 非终态任务启动本页 ownership 详情轮询
   if (!isTerminalAiStatus(record.status)) {
-    aiTaskStore.startPolling(record.id)
+    startPageOwnedPolling(taskId)
   }
   try {
-    detailResult.value = await aiResultApi.getByTask(record.id)
+    const result = await aiResultApi.getByTask(taskId)
+    if (
+      openGeneration !== detailOpenGeneration.value
+      || detailRecord.value?.id !== taskId
+    ) {
+      return
+    }
+    detailResult.value = result
+    detailResultLoadFailed.value = false
   } catch (error) {
-    showUserError(error, '智能任务详情加载失败')
+    if (
+      openGeneration !== detailOpenGeneration.value
+      || detailRecord.value?.id !== taskId
+    ) {
+      return
+    }
+    detailResultLoadFailed.value = true
+    detailResult.value = null
+    showUserError(error, '智能任务结果加载失败')
   } finally {
-    detailLoading.value = false
+    if (openGeneration === detailOpenGeneration.value) {
+      detailLoading.value = false
+    }
   }
 }
 
@@ -1082,8 +1151,11 @@ function isTerminalAiStatus(status: AiTaskStatusCode | undefined): boolean {
  * 同时在抽屉打开期间同步 store 缓存过来的状态到 detailRecord，UI 能看到状态跳转。
  */
 watch(detailVisible, (open) => {
-  if (!open && detailRecord.value?.id) {
-    aiTaskStore.stopPolling(detailRecord.value.id)
+  if (!open) {
+    detailOpenGeneration.value += 1
+    if (detailRecord.value?.id) {
+      stopPageOwnedPolling(detailRecord.value.id)
+    }
   }
 })
 
@@ -1100,29 +1172,57 @@ watch(
       || cached.failureReason !== detailRecord.value.failureReason
       || cached.finishedTime !== detailRecord.value.finishedTime
     ) {
+      const openGeneration = detailOpenGeneration.value
+      const taskId = cached.id
       detailRecord.value = { ...detailRecord.value, ...cached }
       // 达到终态后重拉一次结果 + 快照，避免抽屉中“状态已成功但 result 为空”的错误
-      if (isTerminalAiStatus(cached.status) && !detailResult.value) {
+      if (isTerminalAiStatus(cached.status) && !detailResult.value && !detailResultLoadFailed.value) {
         void aiResultApi
           .getByTask(cached.id)
           .then((vo) => {
-            if (detailVisible.value && detailRecord.value?.id === cached.id) {
-              detailResult.value = vo
+            if (
+              openGeneration !== detailOpenGeneration.value
+              || !detailVisible.value
+              || detailRecord.value?.id !== taskId
+            ) {
+              return
             }
+            detailResult.value = vo
+            detailResultLoadFailed.value = false
           })
           .catch((error) => {
-            showUserError(error, '智能任务详情加载失败')
+            if (
+              openGeneration !== detailOpenGeneration.value
+              || !detailVisible.value
+              || detailRecord.value?.id !== taskId
+            ) {
+              return
+            }
+            detailResultLoadFailed.value = true
+            showUserError(error, '智能任务结果加载失败')
           })
       }
     }
   },
 )
 
-// 页面卸载时保险地停掉详情轮询
-onBeforeUnmount(() => {
-  if (detailRecord.value?.id) {
-    aiTaskStore.stopPolling(detailRecord.value.id)
+// 页面卸载 / keep-alive 失活时释放本页持有的详情轮询 ownership
+onDeactivated(() => {
+  releasePageOwnedPolling()
+})
+
+onActivated(() => {
+  if (
+    detailVisible.value
+    && detailRecord.value?.id
+    && !isTerminalAiStatus(detailRecord.value.status)
+  ) {
+    startPageOwnedPolling(detailRecord.value.id)
   }
+})
+
+onBeforeUnmount(() => {
+  releasePageOwnedPolling()
 })
 
 async function updateValidation(validation: AiOutputValidationCode) {
@@ -1201,9 +1301,14 @@ function handleTaskResultAction(actionEvent: { item: TaskResultItem, action: { k
 /* ========== 阶段轨与信号指标 ========== */
 
 function buildAiTaskListQuery(): AiTaskQueryRequest {
+  const selectedTaskType = query.taskType || undefined
+  const obeTaskTypes: AiTaskTypeCode[] = selectedTaskType
+    ? [selectedTaskType]
+    : [...OBE_AI_TASK_TYPES]
   return {
     ...query,
-    taskType: query.taskType || undefined,
+    taskType: undefined,
+    taskTypes: obeTaskTypes,
     status: query.status || undefined,
     businessType: query.businessType,
     businessId: query.businessId?.trim() || undefined,
@@ -1238,36 +1343,45 @@ function buildAiTaskStatusBuckets(
 
 const statusBuckets = computed(() => buildAiTaskStatusBuckets(taskStatusCounts.value))
 
-const stages = computed<WorkbenchStage[]>(() => {
+const statusSegmentOptions = computed(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: AiTaskStatusCode, title: string, completed?: boolean }> = [
-    { key: AiTaskStatusCode.PENDING, title: '待处理' },
-    { key: AiTaskStatusCode.PROCESSING, title: '运行中' },
-    { key: AiTaskStatusCode.COMPLETED, title: '已完成', completed: true },
-    { key: AiTaskStatusCode.FAILED, title: '失败' },
-    { key: AiTaskStatusCode.CANCELLED, title: '取消' },
+  const total = taskStatusCounts.value?.totalCount
+  const options: Array<{ label: string, value: string }> = [
+    {
+      label: total == null ? '全部' : `全部 ${total}`,
+      value: STATUS_SEGMENT_ALL,
+    },
   ]
-  return order.map((stage) => {
-    const count = b[stage.key]
-    let status: WorkbenchStageStatus = 'pending'
-    if (stage.key === AiTaskStatusCode.FAILED && count > 0) status = 'error'
-    else if (stage.completed && count > 0) status = 'completed'
-    else if (count > 0) status = 'active'
-    return {
-      key: stage.key,
-      title: stage.title,
-      status,
-      statusText: `${count} 条`,
-    }
-  })
+  for (const option of statusOptions) {
+    options.push({
+      label: `${option.label} ${b[option.value]}`,
+      value: option.value,
+    })
+  }
+  return options
 })
 
+function handleStatusSegmentChange(value: string | number): void {
+  const next = String(value)
+  statusSegment.value = next
+  query.status = next === STATUS_SEGMENT_ALL ? undefined : (next as AiTaskStatusCode)
+  query.pageNum = 1
+  void loadList()
+}
+
 const signals = computed<SignalMetric[]>(() => {
+  if (!taskStatusCounts.value) {
+    return []
+  }
   const b = statusBuckets.value
-  const totalCount = taskStatusCounts.value?.totalCount ?? 0
+  const totalCount = taskStatusCounts.value.totalCount
   return [
-    { key: 'total', label: '任务总数', value: totalCount, tone: 'blue' },
-    { key: 'pending', label: '待处理', value: b.PENDING, tone: b.PENDING > 0 ? 'orange' : 'gray' },
+    {
+      key: 'failed',
+      label: '失败待处置',
+      value: b.FAILED,
+      tone: b.FAILED > 0 ? 'red' : 'gray',
+    },
     {
       key: 'processing',
       label: '运行中',
@@ -1275,13 +1389,12 @@ const signals = computed<SignalMetric[]>(() => {
       tone: b.PROCESSING > 0 ? 'blue' : 'gray',
     },
     {
-      key: 'succeeded',
-      label: '成功',
-      value: b.COMPLETED,
-      tone: b.COMPLETED > 0 ? 'green' : 'gray',
+      key: 'pending',
+      label: '待处理',
+      value: b.PENDING,
+      tone: b.PENDING > 0 ? 'orange' : 'gray',
     },
-    { key: 'failed', label: '失败', value: b.FAILED, tone: b.FAILED > 0 ? 'red' : 'gray' },
-    { key: 'canceled', label: '取消', value: b.CANCELLED, tone: b.CANCELLED > 0 ? 'gray' : 'gray' },
+    { key: 'total', label: '任务总数', value: totalCount, tone: 'blue' },
   ]
 })
 
@@ -1307,8 +1420,25 @@ onMounted(async () => {
     <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="ai-task__empty" />
 
     <template v-else>
-      <StageRail :stages="stages" compact class="ai-task__stages" />
+      <UiSegmented
+        v-model="statusSegment"
+        :options="statusSegmentOptions"
+        size="sm"
+        class="ai-task__status-segment"
+        @change="handleStatusSegmentChange"
+      />
       <SignalBand :metrics="signals" variant="panel" compact class="ai-task__signals" />
+      <UiEmpty
+        v-if="listSyncFailed"
+        size="sm"
+        :title="listPollStopped ? '列表同步已暂停' : '列表同步失败'"
+        :description="
+          listPollStopped
+            ? `连续失败 ${listPollFailCount} 次已停止轮询；最近成功 ${listSyncAt || '尚无'}`
+            : `最近成功 ${listSyncAt || '尚无'}；已退避重试中`
+        "
+        class="ai-task__sync"
+      />
 
       <TaskResultPanel
         v-if="taskResultItems.length > 0"
@@ -1380,23 +1510,6 @@ onMounted(async () => {
               placeholder="业务对象"
               :width="180"
               @change="handleQueryBusinessObjectChange"
-            />
-            <TeacherSelector
-              v-else-if="query.businessType === AiTaskBusinessTypeCode.PORTFOLIO_MATERIAL"
-              :value="query.businessId || null"
-              placeholder="教师用户编号"
-              :width="180"
-              @change="handleQueryBusinessObjectChange"
-            />
-            <UiInput
-              size="sm"
-              v-else-if="query.businessType === AiTaskBusinessTypeCode.PORTFOLIO_EVALUATION"
-              :value="query.businessId || ''"
-              placeholder="评价运行或院系编号"
-              clearable
-              @update:value="
-                (value) => handleQueryBusinessObjectChange(value == null ? null : String(value))
-              "
             />
           </template>
           <template #field-operatorUserId>
@@ -1471,7 +1584,7 @@ onMounted(async () => {
               {{ aiTaskBusinessTypeLabel(record.businessType) }}
             </template>
             <template v-else-if="column.key === 'businessAnchor'">
-              <div class="dp-space dp-space--vertical" style="--dp-space-gap: 8px">
+              <div class="dp-space dp-space--vertical" style="--dp-space-component: 8px">
                 <UiTag v-if="record.businessId" tone="gray" size="sm">
                   {{ record.businessLabel }}
                 </UiTag>
@@ -1586,7 +1699,7 @@ onMounted(async () => {
             />
             <UiAlertStrip v-else tone="info" size="sm" dense inline :show-icon="false">
               <template #default>
-                <span style="display: inline-flex; align-items: center; gap: 8px">
+                <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
                   <UiTag tone="blue" size="sm">未选择</UiTag>
                   <span>请选择分析对象后查看结果</span>
                 </span>
@@ -1739,7 +1852,7 @@ onMounted(async () => {
             <span v-if="detailRecord.businessId"> / {{ detailRecord.businessLabel }} </span>
           </UiDescriptionsItem>
           <UiDescriptionsItem label="业务归属">
-            <div v-if="isSuperAdmin" class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
+            <div v-if="isSuperAdmin" class="dp-space dp-space--wrap" style="--dp-space-component: 8px">
               <UiTag v-if="detailRecord.businessId" tone="gray" size="sm">
                 {{ detailRecord.businessLabel }}
               </UiTag>
@@ -1800,7 +1913,7 @@ onMounted(async () => {
             {{ detailRecord.manualHandlingRemark || '未填写运维备注' }}
           </UiDescriptionsItem>
           <UiDescriptionsItem label="脱敏映射">
-            <div class="dp-space" style="--dp-space-gap: 8px">
+            <div class="dp-space" style="--dp-space-component: 8px">
               <span>{{ detailRecord.maskMappingId ? '已生成脱敏映射' : '未生成脱敏映射' }}</span>
               <UiTextAction
                 v-if="detailRecord.maskMappingId"
@@ -1825,8 +1938,18 @@ onMounted(async () => {
           divided
         />
         <template v-if="detailRecord && detailTabActive === 'result'">
-          <UiEmpty v-if="!detailResult" description="该任务尚无可用结果输出" size="sm" />
-          <template v-else>
+          <UiEmpty
+            v-if="detailResultLoadFailed"
+            title="智能结果加载失败"
+            description="切换任务或关闭再打开详情后将再次拉取；失败态不展示「尚无结果」"
+            size="sm"
+          />
+          <UiEmpty
+            v-else-if="!detailResult && !detailLoading"
+            description="该任务尚无可用结果输出"
+            size="sm"
+          />
+          <template v-else-if="detailResult">
             <UiDescriptions :column="2" size="small" bordered>
               <UiDescriptionsItem label="输出校验">
                 <UiTag :tone="validationColor(detailResult.outputValidation)" size="sm">
@@ -1869,7 +1992,7 @@ onMounted(async () => {
 
             <UiDivider class="ai-task__divider" />
 
-            <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
+            <div class="dp-space dp-space--wrap" style="--dp-space-component: 8px">
               <span class="ai-task__label">校验状态：</span>
               <template v-if="canValidateTaskResult">
                 <UiButton
@@ -1968,31 +2091,35 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .ai-task {
-  &__stages {
-    margin-bottom: 16px;
+  &__status-segment {
+    margin-bottom: var(--dp-space-block);
   }
 
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
+  }
+
+  &__sync {
+    margin-bottom: var(--dp-space-component);
   }
 
   &__result-panel {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
@@ -2006,7 +2133,7 @@ onMounted(async () => {
   &__panel-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
@@ -2031,7 +2158,7 @@ onMounted(async () => {
   }
 
   &__divider {
-    margin: 12px 0;
+    margin: var(--dp-space-component) 0;
   }
 
   &__label {
@@ -2039,14 +2166,14 @@ onMounted(async () => {
   }
 
   &__section-title {
-    margin: 12px 0 8px;
+    margin: var(--dp-space-component) 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-sm);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   &__collapse {
-    margin-top: 12px;
+    margin-top: var(--dp-space-component);
   }
 
   &__text-block,
@@ -2055,13 +2182,13 @@ onMounted(async () => {
     background: var(--dp-gray-50);
     border: 1px solid var(--dp-border);
     border-radius: 6px;
-    padding: 10px 12px;
+    padding: var(--dp-space-component);
   }
 
   &__text-block {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__paragraph,
@@ -2073,7 +2200,7 @@ onMounted(async () => {
   }
 
   &__placeholder {
-    padding: 10px 12px;
+    padding: var(--dp-space-component);
     background: var(--dp-surface-subtle);
     border: 1px dashed var(--dp-border);
     border-radius: 6px;
@@ -2081,7 +2208,7 @@ onMounted(async () => {
 
   &__list {
     margin: 0;
-    padding-left: 28px;
+    padding-left: var(--dp-space-page);
   }
 
   &__list-item {
@@ -2093,21 +2220,21 @@ onMounted(async () => {
   &__prompt-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 12px;
-    margin-top: 12px;
+    gap: var(--dp-space-component);
+    margin-top: var(--dp-space-component);
   }
 
   &__prompt-card {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--dp-space-component);
   }
 
   &__prompt-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__prompt-state {
@@ -2117,7 +2244,7 @@ onMounted(async () => {
 
   &__prompt-metrics {
     display: flex;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
     color: var(--dp-text-secondary);
     font-size: var(--dp-font-size-xs);
@@ -2126,7 +2253,7 @@ onMounted(async () => {
   &__material-upload {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
@@ -2134,7 +2261,7 @@ onMounted(async () => {
     display: inline-flex;
     align-items: center;
     max-width: 360px;
-    padding: 4px 8px;
+    padding: var(--dp-space-component-xs) var(--dp-space-component-tight);
     color: var(--dp-text-secondary);
     background: var(--dp-surface-subtle);
     border: 1px solid var(--dp-border);

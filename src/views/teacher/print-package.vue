@@ -70,8 +70,7 @@
               :disabled="generateBlocked"
               @click="openGenerateModal"
             >
-              <template #icon><ThunderboltOutlined /></template>
-              一键生成印刷包
+              生成印刷包
             </UiButton>
           </UiTooltip>
         </template>
@@ -101,9 +100,24 @@
     <template v-else>
       <ExamWorkspaceJourneySubNav />
 
+      <UiSkeletonState
+        v-if="examDetailLoading && !examDetail"
+        variant="card"
+        compact
+        class="print-package-page__empty"
+      />
+
+      <UiAlertStrip
+        v-else-if="examDetailError"
+        tone="error"
+        title="考试详情加载失败"
+        :closable="false"
+        class="print-package-page__blocking-strip"
+      />
+
       <UiEmpty
         size="sm"
-        v-if="!printPackageApplicable"
+        v-else-if="!printPackageApplicable"
         :description="printPackageSkipHint"
         class="print-package-page__empty"
       >
@@ -119,6 +133,14 @@
           <ExamPrepScenarioPanel :guide="examDetail.prepScenarioGuide" />
         </WorkbenchSurfaceCard>
 
+        <UiAlertStrip
+          v-if="listLoadFailed || panelLoadFailed"
+          tone="error"
+          title="印刷包数据加载失败"
+          :closable="false"
+          class="print-package-page__blocking-strip"
+        />
+
         <WorkbenchSurfaceCard flush>
           <template #toolbar>
             <span class="print-package-page__flow-hint">{{ printPackageFlowHint }}</span>
@@ -130,6 +152,7 @@
             :columns="packageColumns"
             :data-source="packageList"
             :loading="loading"
+            :load-error="listLoadFailed"
             :total="pagination.total"
             row-key="printPackageId"
             size="middle"
@@ -159,18 +182,32 @@
           </UiDataTable>
         </WorkbenchSurfaceCard>
 
-        <!-- 一键生成印刷包 -->
+        <!-- 生成印刷包 -->
         <UiDrawer
           v-model:open="generateModalVisible"
-          title="一键生成印刷包"
+          title="生成印刷包"
           :width="560"
           :hide-footer="false"
-          ok-text="开始生成"
+          ok-text="生成并写入印刷包"
           cancel-text="取消"
           :confirm-loading="generating"
           @ok="handleGenerate"
         >
-          <UiForm layout="vertical" style="margin-top: 8px">
+          <UiAlertStrip
+            tone="info"
+            title="本次生成影响"
+            :closable="false"
+            class="print-package-page__generate-impact"
+          >
+            <ul class="print-package-page__generate-impact-list">
+              <li>将基于当前制卷设计生成空白印刷母版，供考场按座位印制</li>
+              <li>考生领卷后自行填写学号姓名；不读取、不依赖考生名册</li>
+              <li>制卷形态：{{ generateImpactLayoutLabel }}；印刷来源：{{ generateImpactPrintSourceLabel }}</li>
+              <li>将新增印刷包（编号 {{ generateForm.packageNo.trim() || '待填写' }}），不会覆盖已有包</li>
+              <li v-if="generateImpactConfidential">涉密考试：生成文件将附加保密水印，预览与下载受控</li>
+            </ul>
+          </UiAlertStrip>
+          <UiForm layout="vertical" style="margin-top: var(--dp-space-component-tight)">
             <UiFormItem label="印刷包编号" required>
               <UiInput
                 size="sm"
@@ -230,29 +267,19 @@
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'status'">
-                <UiTag :tone="record.status === 'PRINTED' ? 'green' : 'gray'" size="sm">
-                  {{ record.status === 'PRINTED' ? '已印刷' : '待印刷' }}
+                <UiTag :tone="detailItemStatusTone(record.status)" size="sm">
+                  {{ detailItemStatusLabel(record.status) }}
                 </UiTag>
               </template>
             </template>
           </UiDataTable>
         </UiDrawer>
 
-        <!-- PDF 预览 -->
-        <UiDrawer
+        <LayoutPreviewDrawer
           v-model:open="previewModalOpen"
-          title="印刷包便携文档预览"
-          :width="900"
-          hide-footer
-        >
-          <UiSkeletonState v-if="previewLoading" variant="card" compact />
-          <iframe
-            v-else-if="previewPdfUrl"
-            :src="previewPdfUrl"
-            class="print-package__preview-frame"
-          />
-          <UiEmpty size="sm" v-else description="暂无印制包预览" />
-        </UiDrawer>
+          title="印刷包预览"
+          :preview-pdf-file-id="previewPackageFileId"
+        />
 
         <ExamPaperGovernanceDrawer
           v-if="selectedExamId"
@@ -286,15 +313,17 @@ import type { ExamWorkbenchPrintPackagePanelResponse } from '@/apis/mark/exam-pr
 import type { ExamPaperGovernanceResponse } from '@/apis/mark/paper-governance'
 import type { ExamPrintPackageResponse, PrintPackageItemVO } from '@/apis/mark/print-package'
 import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { PrintPackageItemStatusCode } from '@/types/enums/print-package-item-status-enum'
 import type { SignalMetric } from '@/types/workbench'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   ExamMaterialLayoutModeCode,
+  ExamMaterialLayoutModeDescription,
   ExamPrintSourceModeCode,
+  ExamPrintSourceModeDescription,
   getExamDetail,
 } from '@/apis/mark/exam'
 import { getPrintPackagePanel } from '@/apis/mark/exam-progress'
@@ -313,13 +342,15 @@ import {
   isLayoutNotReadyError,
   pagePrintPackageItems,
   pagePrintPackages,
-  PRINT_PACKAGE_ANSWER_SHEET_HINT,
   PRINT_PACKAGE_EXTERNAL_PRINT_HINT,
   PRINT_PACKAGE_FLOW_HINT,
+  PRINT_PACKAGE_ITEM_STATUS_TONE,
   PRINT_PACKAGE_STATUS_TONE,
+  PrintPackageItemStatusDescription,
   PrintPackageStatusDescription,
 } from '@/apis/mark/print-package'
 import ExamPaperGovernanceDrawer from '@/components/mark/ExamPaperGovernanceDrawer.vue'
+import LayoutPreviewDrawer from '@/components/mark/layout-designer/LayoutPreviewDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -341,6 +372,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import WorkflowReadinessPanel from '@/components/workbench/workflow-readiness/WorkflowReadinessPanel.vue'
+import { isExamConfidentialFlag } from '@/composables/useConfidentialWatermark'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
@@ -359,10 +391,10 @@ const workbenchContext = useMarkWorkbenchContext()
 const { examStatusLabel, examStatusTone } = useExamJourneyContextBar('印刷包')
 const { refreshSnapshot } = useWorkspaceExamId()
 
-const prepBlockingReasons = computed(
-  () => workbenchContext.snapshot.value?.prepBlockingReasons ?? [],
-)
 const examDetail = ref<Awaited<ReturnType<typeof getExamDetail>> | null>(null)
+const examDetailLoading = ref(false)
+const examDetailError = ref(false)
+let examLoadGeneration = 0
 
 const prepStepCards = computed(() => {
   const backendSteps = workbenchContext.snapshot.value?.prepSteps
@@ -383,7 +415,6 @@ const printPackageGenerateGate = computed(() => {
   }
   return resolvePrintPackageGenerateGate({
     examId: selectedExamId.value,
-    prepBlockingReasons: prepBlockingReasons.value,
     backendPrepSteps: workbenchContext.snapshot.value?.prepSteps,
     prepStepCards: prepStepCards.value.length > 0 ? prepStepCards.value : undefined,
   })
@@ -392,9 +423,18 @@ const printPackageGenerateGate = computed(() => {
 const governanceApprovedForPrint = computed(
   () => paperGovernance.value?.governance?.status === ExamPaperGovernanceStatusCode.APPROVED_FOR_PRINT,
 )
-const generateBlocked = computed(() => printPackageGenerateGate.value.generateBlocked || !governanceApprovedForPrint.value)
+const generateBlocked = computed(
+  () =>
+    printPackageGenerateGate.value.generateBlocked
+    || !governanceApprovedForPrint.value
+    || panelLoadFailed.value
+    || listLoadFailed.value,
+)
 const printPackagePrepWorkflowSteps = computed(() => printPackageGenerateGate.value.panelSteps)
 const generateDisabledReason = computed(() => {
+  if (panelLoadFailed.value || listLoadFailed.value) {
+    return '印刷包数据加载失败，请切换考试或离开后再进入'
+  }
   if (!governanceApprovedForPrint.value) {
     return '须完成本场指定审核教师及学院政策要求的外审后，方可生成印刷包'
   }
@@ -414,10 +454,8 @@ const printPackageSkipHint = computed(() => {
   if (!detail?.materialLayoutMode) {
     return '请先在工作台保存制卷形态。'
   }
-  if (detail.materialLayoutMode === ExamMaterialLayoutModeCode.ANSWER_SHEET) {
-    return PRINT_PACKAGE_ANSWER_SHEET_HINT
-  }
-  if (detail.printSourceMode === ExamPrintSourceModeCode.EXTERNAL_PRINT) {
+  if (detail.materialLayoutMode === ExamMaterialLayoutModeCode.FULL_PAPER
+    && detail.printSourceMode === ExamPrintSourceModeCode.EXTERNAL_PRINT) {
     return PRINT_PACKAGE_EXTERNAL_PRINT_HINT
   }
   return ''
@@ -425,6 +463,21 @@ const printPackageSkipHint = computed(() => {
 
 const printPackageFlowHint = computed(
   () => examDetail.value?.prepScenarioGuide?.printGuidance ?? PRINT_PACKAGE_FLOW_HINT,
+)
+const generateImpactLayoutLabel = computed(() => {
+  const mode = examDetail.value?.materialLayoutMode
+  return mode
+    ? strictEnumLabel(ExamMaterialLayoutModeDescription, mode, '制卷形态')
+    : '—'
+})
+const generateImpactPrintSourceLabel = computed(() => {
+  const mode = examDetail.value?.printSourceMode
+  return mode
+    ? strictEnumLabel(ExamPrintSourceModeDescription, mode, '印刷来源')
+    : '—'
+})
+const generateImpactConfidential = computed(
+  () => isExamConfidentialFlag(examDetail.value?.confidential),
 )
 
 function goPrepWorkbench(): void {
@@ -440,6 +493,8 @@ function goPrepWorkbench(): void {
 // ─── 印刷包分页列表 ─────────────────────────────────────────────────
 
 const loading = ref(false)
+const listLoadFailed = ref(false)
+const panelLoadFailed = ref(false)
 const packageList = ref<ExamPrintPackageResponse[]>([])
 const printPackagePanel = ref<ExamWorkbenchPrintPackagePanelResponse | null>(null)
 const paperGovernance = ref<ExamPaperGovernanceResponse | null>(null)
@@ -518,29 +573,49 @@ const submitApprovalHint = computed(() =>
 )
 const canApproveCurrentReviewer = computed(() => paperGovernance.value?.currentUserCanApprove === true)
 
-async function loadPaperGovernance(): Promise<void> {
-  if (!selectedExamId.value) {
+async function loadPaperGovernance(expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) {
     paperGovernance.value = null
     return
   }
   try {
-    paperGovernance.value = await getExamPaperGovernance(selectedExamId.value)
+    const governance = await getExamPaperGovernance(examId)
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    paperGovernance.value = governance
   } catch (error) {
-    paperGovernance.value = null
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
     showUserError(error, '命题治理资料加载失败')
   }
 }
 
 async function handleCheckGovernance(): Promise<void> {
-  if (!selectedExamId.value || checkingGovernance.value) return
+  const examId = selectedExamId.value
+  if (!examId || checkingGovernance.value) {
+    return
+  }
+  const generation = examLoadGeneration
   checkingGovernance.value = true
   try {
-    paperGovernance.value = await checkExamPaperGovernance(selectedExamId.value)
+    const governance = await checkExamPaperGovernance(examId)
+    if (generation !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    paperGovernance.value = governance
     void message.success('命题规则核验已完成')
   } catch (error) {
+    if (generation !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
     showUserError(error, '命题规则核验失败')
   } finally {
-    checkingGovernance.value = false
+    if (generation === examLoadGeneration && selectedExamId.value === examId) {
+      checkingGovernance.value = false
+    }
   }
 }
 
@@ -620,7 +695,12 @@ const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 const packageSignalMetrics = computed((): SignalMetric[] => {
   const panel = printPackagePanel.value
   if (!panel) {
-    return [{ key: 'packages', label: '印刷包', value: '—', tone: 'gray' }]
+    return [{
+      key: 'packages',
+      label: '印刷包',
+      value: '—',
+      tone: 'gray',
+    }]
   }
   const metrics: SignalMetric[] = [
     {
@@ -639,14 +719,14 @@ const packageSignalMetrics = computed((): SignalMetric[] => {
     },
     {
       key: 'items',
-      label: '印刷人数',
+      label: '历史明细',
       value: panel.totalItemCount,
-      unit: '人',
-      tone: 'green',
+      unit: '份',
+      tone: 'gray',
     },
     {
       key: 'candidates',
-      label: '名册人数',
+      label: '名册（独立）',
       value: panel.candidateCount,
       unit: '人',
       tone: 'gray',
@@ -679,45 +759,67 @@ const packageColumns: ColumnType<ExamPrintPackageResponse>[] = [
   { title: '操作', key: 'actions', width: 220 },
 ]
 
-async function loadPrintPackagePanel(): Promise<void> {
-  if (!selectedExamId.value) {
+async function loadPrintPackagePanel(expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) {
     printPackagePanel.value = null
     return
   }
+  panelLoadFailed.value = false
   try {
-    printPackagePanel.value = await getPrintPackagePanel(selectedExamId.value)
+    const panel = await getPrintPackagePanel(examId)
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    printPackagePanel.value = panel
+    panelLoadFailed.value = false
   } catch (error) {
-    printPackagePanel.value = null
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    panelLoadFailed.value = true
     showUserError(error, '印刷包看板加载失败')
   }
 }
 
-async function loadPackageList() {
-  if (!selectedExamId.value) return
+async function loadPackageList(expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) {
+    return
+  }
   loading.value = true
+  listLoadFailed.value = false
   try {
     const res = await pagePrintPackages({
-      examId: selectedExamId.value,
+      examId,
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize,
     })
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
     packageList.value = res.list
     pagination.pageNum = res.pageNum
     pagination.pageSize = res.pageSize
     pagination.total = res.total
+    listLoadFailed.value = false
   } catch (e) {
-    packageList.value = []
-    pagination.total = 0
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    listLoadFailed.value = true
     showUserError(e, '印刷包列表加载失败')
   } finally {
-    loading.value = false
+    if (expectedGeneration === examLoadGeneration && selectedExamId.value === examId) {
+      loading.value = false
+    }
   }
 }
 
 function handlePackagePageChange(pageEvent: { current: number, pageSize: number }): void {
   pagination.pageNum = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
-  loadPackageList()
+  void loadPackageList(examLoadGeneration)
 }
 
 // ─── 状态展示 ───────────────────────────────────────────────────────
@@ -730,7 +832,7 @@ function statusLabel(status: ExamPrintPackageResponse['status']): string {
   return strictEnumLabel(PrintPackageStatusDescription, status, '印刷包状态')
 }
 
-// ─── 一键生成印刷包 ──────────────────────────────────────────────────
+// ─── 生成印刷包 ──────────────────────────────────────────────────
 
 const generateModalVisible = ref(false)
 const generating = ref(false)
@@ -781,14 +883,17 @@ async function handleGenerate() {
     void message.success('印刷包生成成功')
     generateModalVisible.value = false
     pagination.pageNum = 1
-    await Promise.all([loadPackageList(), loadPrintPackagePanel()])
+    await Promise.all([
+      loadPackageList(examLoadGeneration),
+      loadPrintPackagePanel(examLoadGeneration),
+    ])
     await refreshSnapshot()
   } catch (error) {
     if (error instanceof Error && isLayoutNotReadyError(error)) {
       showUserError(error, '请先完成制卷设计并生成可打印便携文档，再生成印刷包')
       return
     }
-    showUserError(error, '印刷包生成失败，请确认考生名册已配置且制卷设计可打印便携文档已就绪')
+    showUserError(error, '印刷包生成失败，请确认制卷设计可打印便携文档已就绪')
   } finally {
     generating.value = false
   }
@@ -807,21 +912,11 @@ async function downloadPackagePdf(pkg: ExamPrintPackageResponse) {
 // ─── PDF 预览 ──────────────────────────────────────────────────────
 
 const previewModalOpen = ref(false)
-const previewLoading = ref(false)
-const previewPdfUrl = ref('')
+const previewPackageFileId = ref('')
 
-async function previewPackagePdf(pkg: ExamPrintPackageResponse) {
+function previewPackagePdf(pkg: ExamPrintPackageResponse): void {
+  previewPackageFileId.value = pkg.packageFileId
   previewModalOpen.value = true
-  previewLoading.value = true
-  previewPdfUrl.value = ''
-  try {
-    const buffer = await getFileArrayBuffer({ nodeId: pkg.packageFileId })
-    previewPdfUrl.value = URL.createObjectURL(new Blob([buffer], { type: 'application/pdf' }))
-  } catch (error) {
-    showUserError(error, '印刷包预览加载失败')
-  } finally {
-    previewLoading.value = false
-  }
 }
 
 // ─── 印刷包明细 ──────────────────────────────────────────────────────
@@ -859,12 +954,15 @@ async function viewDetail(pkg: ExamPrintPackageResponse) {
   detailItems.value = []
   detailPagination.pageNum = 1
   detailModalVisible.value = true
-  await loadDetailItems()
+  await loadDetailItems(examLoadGeneration)
 }
 
-async function loadDetailItems(): Promise<void> {
+async function loadDetailItems(expectedGeneration = examLoadGeneration): Promise<void> {
   const pkg = detailPackage.value
-  if (!pkg) return
+  const examId = selectedExamId.value
+  if (!pkg || !examId) {
+    return
+  }
   detailLoading.value = true
   try {
     const page = await pagePrintPackageItems({
@@ -873,6 +971,13 @@ async function loadDetailItems(): Promise<void> {
       pageNum: detailPagination.pageNum,
       pageSize: detailPagination.pageSize,
     })
+    if (
+      expectedGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+      || detailPackage.value?.printPackageId !== pkg.printPackageId
+    ) {
+      return
+    }
     detailItems.value = page.list
     detailPagination.total = page.total
     if (page.pageNum != null) {
@@ -882,18 +987,37 @@ async function loadDetailItems(): Promise<void> {
       detailPagination.pageSize = page.pageSize
     }
   } catch (error) {
-    detailItems.value = []
-    detailPagination.total = 0
+    if (
+      expectedGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+      || detailPackage.value?.printPackageId !== pkg.printPackageId
+    ) {
+      return
+    }
     showUserError(error, '印刷包明细加载失败')
   } finally {
-    detailLoading.value = false
+    if (
+      expectedGeneration === examLoadGeneration
+      && selectedExamId.value === examId
+      && detailPackage.value?.printPackageId === pkg.printPackageId
+    ) {
+      detailLoading.value = false
+    }
   }
 }
 
 function handleDetailPageChange(pageEvent: { current: number, pageSize: number }): void {
   detailPagination.pageNum = pageEvent.current
   detailPagination.pageSize = pageEvent.pageSize
-  void loadDetailItems()
+  void loadDetailItems(examLoadGeneration)
+}
+
+function detailItemStatusTone(status: PrintPackageItemStatusCode): BadgeTone {
+  return strictEnumTone(PRINT_PACKAGE_ITEM_STATUS_TONE, status, '印刷包明细状态')
+}
+
+function detailItemStatusLabel(status: PrintPackageItemStatusCode): string {
+  return strictEnumLabel(PrintPackageItemStatusDescription, status, '印刷包明细状态')
 }
 
 const detailColumns: ColumnType[] = [
@@ -909,35 +1033,85 @@ const detailColumns: ColumnType[] = [
 
 // ─── 初始化 ──────────────────────────────────────────────────────────
 
-async function loadExamDetailForPrep(examId: string): Promise<void> {
+function clearExamScopedState(): void {
+  examDetail.value = null
+  packageList.value = []
+  printPackagePanel.value = null
+  paperGovernance.value = null
+  pagination.pageNum = 1
+  pagination.total = 0
+  examDetailError.value = false
+  listLoadFailed.value = false
+  panelLoadFailed.value = false
+  detailModalVisible.value = false
+  detailPackage.value = null
+  detailItems.value = []
+  detailPagination.pageNum = 1
+  detailPagination.total = 0
+  generateModalVisible.value = false
+  previewModalOpen.value = false
+  previewPackageFileId.value = ''
+  checkingGovernance.value = false
+  submittingApproval.value = false
+  approvingGovernance.value = false
+  generating.value = false
+}
+
+async function loadExamDetailForPrep(
+  examId: string,
+  expectedGeneration = examLoadGeneration,
+): Promise<boolean> {
+  examDetailLoading.value = true
+  examDetailError.value = false
   try {
-    examDetail.value = await getExamDetail(examId)
+    const detail = await getExamDetail(examId)
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return false
+    }
+    examDetail.value = detail
+    return true
   } catch (error) {
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return false
+    }
     examDetail.value = null
+    examDetailError.value = true
     showUserError(error, '考试详情加载失败')
+    return false
+  } finally {
+    if (expectedGeneration === examLoadGeneration && selectedExamId.value === examId) {
+      examDetailLoading.value = false
+    }
   }
 }
 
+async function reloadPrintPackagePage(expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) {
+    return
+  }
+  const detailLoaded = await loadExamDetailForPrep(examId, expectedGeneration)
+  if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    return
+  }
+  if (!detailLoaded || !printPackageApplicable.value) {
+    return
+  }
+  await Promise.all([
+    loadPackageList(expectedGeneration),
+    loadPrintPackagePanel(expectedGeneration),
+    loadPaperGovernance(expectedGeneration),
+  ])
+}
+
 watch(
-  [selectedExamId, printPackageApplicable],
-  ([val, applicable]) => {
-    pagination.pageNum = 1
-    if (!val) {
-      examDetail.value = null
-      packageList.value = []
-      printPackagePanel.value = null
-      paperGovernance.value = null
-      pagination.total = 0
-      return
-    }
-    void loadExamDetailForPrep(val)
-    if (applicable) {
-      void Promise.all([loadPackageList(), loadPrintPackagePanel(), loadPaperGovernance()])
-    } else {
-      packageList.value = []
-      printPackagePanel.value = null
-      paperGovernance.value = null
-      pagination.total = 0
+  selectedExamId,
+  (val) => {
+    const generation = ++examLoadGeneration
+    clearExamScopedState()
+    examDetailLoading.value = Boolean(val)
+    if (val) {
+      void reloadPrintPackagePage(generation)
     }
   },
   { immediate: true },
@@ -947,36 +1121,41 @@ watch(
 <style lang="scss" scoped>
 .print-package-page {
   &__empty {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-component);
   }
 
   :deep(.ui-alert-strip) {
-    margin-bottom: var(--dp-space-4);
+    margin-bottom: var(--dp-space-block);
   }
 
   &__blocking-strip {
-    margin-bottom: var(--dp-space-4);
+    margin-bottom: var(--dp-space-block);
   }
 
   &__flow-hint {
     font-size: var(--dp-font-size-xs);
-    color: var(--dp-text-tertiary);
+    color: var(--dp-text-muted);
     line-height: 1.5;
   }
 
   &__scenario {
-    margin-bottom: var(--dp-space-4);
+    margin-bottom: var(--dp-space-block);
+  }
+
+  &__generate-impact {
+    margin-bottom: var(--dp-space-component);
+  }
+
+  &__generate-impact-list {
+    margin: 0;
+    padding-left: 1.25em;
+    font-size: var(--dp-font-size-sm);
+    color: var(--dp-text-secondary);
+    line-height: 1.6;
   }
 
   &__list-card {
-    margin-top: 8px;
-  }
-
-  &__preview-frame {
-    min-height: 140px;
-    border: 1px solid var(--dp-border-subtle);
-    border-radius: var(--dp-radius-md);
-    overflow: hidden;
+    margin-top: var(--dp-space-component-tight);
   }
 }
 </style>

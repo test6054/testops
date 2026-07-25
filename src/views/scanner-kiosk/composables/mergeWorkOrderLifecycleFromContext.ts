@@ -56,6 +56,7 @@ export function mergeWorkOrderLifecycleFromContext(
     status,
     taskKind: snapshot?.taskKind ?? preserve?.taskKind ?? taskKind,
     diagnostic,
+    examId: snapshot?.examId ?? preserve?.examId,
     reportId: snapshot?.reportId ?? preserve?.reportId,
     pageCount: snapshot?.pageCount ?? preserve?.pageCount,
     resolvedScanConfig: snapshot?.resolvedScanConfig ?? preserve?.resolvedScanConfig,

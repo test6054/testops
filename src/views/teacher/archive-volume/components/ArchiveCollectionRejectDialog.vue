@@ -97,7 +97,7 @@ async function submit() {
 
 <style scoped>
 .archive-collection-reject__hint {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-md);
   line-height: 1.5;
   color: var(--dp-text-secondary);

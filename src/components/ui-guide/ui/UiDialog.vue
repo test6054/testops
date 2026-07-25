@@ -30,7 +30,13 @@
           <UiButton size="sm" v-if="!props.hideCancel" variant="outline" @click="handleCancel">
             {{ props.cancelText }}
           </UiButton>
-          <UiButton variant="primary" size="sm" :loading="props.confirmLoading" @click="handleOk">
+          <UiButton
+            v-if="!props.hideOk"
+            variant="primary"
+            size="sm"
+            :loading="props.confirmLoading"
+            @click="handleOk"
+          >
             {{ props.okText }}
           </UiButton>
         </slot>
@@ -60,6 +66,7 @@ const props = withDefaults(
     cancelText?: string
     hideFooter?: boolean
     hideCancel?: boolean
+    hideOk?: boolean
   }>(),
   {
     title: '',
@@ -71,6 +78,7 @@ const props = withDefaults(
     cancelText: '取消',
     hideFooter: false,
     hideCancel: false,
+    hideOk: false,
   },
 )
 
@@ -100,11 +108,11 @@ const handleOk = () => {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-4, 16px) var(--dp-space-4, 16px) var(--dp-space-3, 12px);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-block) var(--dp-space-component);
   background: linear-gradient(
     180deg,
-    var(--dp-surface-elevated) 0%,
+    var(--dp-surface-chrome) 0%,
     var(--dp-surface) 100%
   );
   border-bottom: 1px solid var(--dp-border);
@@ -135,9 +143,9 @@ const handleOk = () => {
   color: var(--dp-text-secondary);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    transform 0.15s ease;
+    background-color var(--dp-duration-fast) var(--dp-ease-default),
+    color var(--dp-duration-fast) var(--dp-ease-default),
+    transform var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .ui-dialog__close:hover {
@@ -151,14 +159,14 @@ const handleOk = () => {
 }
 
 .ui-dialog__body {
-  padding: var(--dp-space-4, 16px);
+  padding: var(--dp-space-block);
 }
 
 .ui-dialog__footer {
   display: flex;
   justify-content: flex-end;
-  gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) var(--dp-space-4, 16px);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border-top: 1px solid color-mix(in srgb, var(--dp-border) 60%, transparent);
 }
 </style>

@@ -1,63 +1,74 @@
-// Ant Design Vue 4.x 默认主题 CSS 变量声明
-// 用途：帮助 WebStorm 解析 --ant-* 自定义属性，运行时由 Ant Design Vue ConfigProvider 注入实际值覆盖
+// ============================================================================
+// ui-tokens.scss — 教学质量中心 Design Token 真源（Academic Modern SaaS）
+// 全量覆写 · 无兼容短名别名 · 业务路径只允许引用本文件声明的规范 token
+// 气质对标：Linear / Raycast / Vercel Dashboard —— 安静、有层级、有生命
+// ============================================================================
 @layer dp-tokens {
 :root {
-  --ant-border-radius: 6px;
-  --ant-padding: 16px;
-  --ant-font-family-code: 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', 'Courier New', monospace;
-  --ant-color-primary: #1677ff;
-  --ant-color-primary-hover: #4096ff;
-  --ant-color-primary-active: #0958d9;
-  --ant-color-primary-bg: #e6f4ff;
-  --ant-color-primary-bg-hover: #bae0ff;
-  --ant-color-primary-border: #91caff;
-  --ant-color-primary-border-hover: #69b1ff;
-  --ant-color-success: #52c41a;
-  --ant-color-success-hover: #95de64;
-  --ant-color-success-bg: #f6ffed;
-  --ant-color-success-bg-hover: #d9f7be;
-  --ant-color-success-border: #b7eb8f;
-  --ant-color-warning: #faad14;
-  --ant-color-warning-hover: #ffc53d;
-  --ant-color-warning-bg: #fffbe6;
-  --ant-color-warning-bg-hover: #fff1b8;
-  --ant-color-warning-border: #ffe58f;
-  --ant-color-warning-border-hover: #ffd666;
-  --ant-color-error: #ff4d4f;
-  --ant-color-error-hover: #ff7875;
-  --ant-color-error-bg: #fff2f0;
-  --ant-color-error-bg-hover: #fff1f0;
-  --ant-color-error-border: #ffccc7;
-  --ant-color-error-border-hover: #ffa39e;
-  --ant-color-info: #1677ff;
-  --ant-color-link: #1677ff;
-  --ant-color-text: rgba(0, 0, 0, 0.88);
-  --ant-color-text-secondary: rgba(0, 0, 0, 0.65);
-  --ant-color-text-tertiary: rgba(0, 0, 0, 0.45);
-  --ant-color-text-quaternary: rgba(0, 0, 0, 0.25);
+  // ── Ant Design Vue 4.x 基线（运行时由 ConfigProvider 覆盖，此处供 IDE 解析） ──
+  --ant-border-radius: 8px;
+  --ant-padding: var(--dp-space-block);
+  --ant-font-family-code: 'SF Mono', 'JetBrains Mono', 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
+  /* 品牌主色：超星现代教务蓝 #2B67FF（与 App.vue colorPrimary 同步，现场唯一主色） */
+  --ant-color-primary: #2b67ff;
+  --ant-color-primary-hover: #4d82ff;
+  --ant-color-primary-active: #1a4fd6;
+  --ant-color-primary-bg: #eef4ff;
+  --ant-color-primary-bg-hover: #d6e4ff;
+  --ant-color-primary-border: #adc6ff;
+  --ant-color-primary-border-hover: #85a5ff;
+  --ant-color-success: #16a34a;
+  --ant-color-success-hover: #4ade80;
+  --ant-color-success-bg: #f0fdf4;
+  --ant-color-success-bg-hover: #dcfce7;
+  --ant-color-success-border: #bbf7d0;
+  --ant-color-warning: #d97706;
+  --ant-color-warning-hover: #f59e0b;
+  --ant-color-warning-bg: #fffbeb;
+  --ant-color-warning-bg-hover: #fef3c7;
+  --ant-color-warning-border: #fde68a;
+  --ant-color-warning-border-hover: #fcd34d;
+  --ant-color-error: #dc2626;
+  --ant-color-error-hover: #ef4444;
+  --ant-color-error-bg: #fef2f2;
+  --ant-color-error-bg-hover: #fee2e2;
+  --ant-color-error-border: #fecaca;
+  --ant-color-error-border-hover: #fca5a5;
+  --ant-color-info: #2b67ff;
+  --ant-color-link: #2b67ff;
+  /* 文字：slate 墨色基底，比纯黑透明更干净冷峻 */
+  --ant-color-text: rgba(15, 23, 42, 0.92);
+  --ant-color-text-secondary: rgba(15, 23, 42, 0.68);
+  --ant-color-text-tertiary: rgba(15, 23, 42, 0.48);
+  --ant-color-text-quaternary: rgba(15, 23, 42, 0.28);
   --ant-color-white: #ffffff;
-  --ant-color-border: #d9d9d9;
-  --ant-color-border-secondary: #f0f0f0;
-  --ant-color-split: rgba(5, 5, 5, 0.06);
-  --ant-color-fill: rgba(0, 0, 0, 0.15);
-  --ant-color-fill-secondary: rgba(0, 0, 0, 0.06);
-  --ant-color-fill-tertiary: rgba(0, 0, 0, 0.04);
-  --ant-color-fill-quaternary: rgba(0, 0, 0, 0.02);
+  --ant-color-border: #e2e8f0;
+  --ant-color-border-secondary: #f1f5f9;
+  --ant-color-split: rgba(15, 23, 42, 0.05);
+  --ant-color-fill: rgba(15, 23, 42, 0.12);
+  --ant-color-fill-secondary: rgba(15, 23, 42, 0.06);
+  --ant-color-fill-tertiary: rgba(15, 23, 42, 0.04);
+  --ant-color-fill-quaternary: rgba(15, 23, 42, 0.02);
   --ant-color-bg-container: #ffffff;
   --ant-color-bg-elevated: #ffffff;
-  --ant-color-bg-layout: #f5f5f5;
-  --ant-color-fill-alter: #fafafa;
-  --ant-color-text-disabled: rgba(0, 0, 0, 0.25);
-  --ant-control-item-bg-hover: rgba(0, 0, 0, 0.04);
-  --ant-control-item-bg-active: #e6f4ff;
+  --ant-color-bg-layout: #f6f7f9;
+  --ant-color-fill-alter: #f8fafc;
+  --ant-color-text-disabled: rgba(15, 23, 42, 0.25);
+  --ant-control-item-bg-hover: rgba(15, 23, 42, 0.04);
+  --ant-control-item-bg-active: #eef4ff;
 }
 
+// ═══════════════════════════════════════════════════════════
 // 项目自定义 Design Tokens
+// ═══════════════════════════════════════════════════════════
 :root {
+  // ── 字体族 ──
   --dp-font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei',
     'Helvetica Neue', Helvetica, Arial, sans-serif;
-  --dp-font-family-code: 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', 'Courier New', monospace;
+  --dp-font-family-code: 'SF Mono', 'JetBrains Mono', 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
 
+  // ── 字号阶梯 ──
+  --dp-font-size-xxs: 12px; /* 学术极简：中文最小可读 12px，禁止 11px */
   --dp-font-size-xs: 12px;
   --dp-font-size-sm: 13px;
   --dp-font-size-md: 14px;
@@ -65,16 +76,16 @@
   --dp-font-size-xl: 18px;
   --dp-font-size-2xl: 20px;
   --dp-font-size-3xl: 24px;
+  --dp-font-size-4xl: 30px;
 
-  --dp-font-size-xxs: 11px;
-
+  // ── 字重 ──
   --dp-font-weight-body: 400;
   --dp-font-weight-emphasis: 500;
   --dp-font-weight-title: 600;
   --dp-font-weight-metric: 700;
 
-  /* 角色字阶（Phase 2 契约） */
-  --dp-type-sidebar-size: 14px;
+  // ── 角色字阶契约 ──
+  --dp-type-sidebar-size: 13.5px;
   --dp-type-sidebar-line-height: 20px;
   --dp-type-sidebar-weight: 500;
   --dp-type-sidebar-weight-active: 600;
@@ -82,16 +93,23 @@
   --dp-type-context-size: 13px;
   --dp-type-context-line-height: 18px;
   --dp-type-context-weight: 400;
+  --dp-type-context-subtitle-size: 14px;
+  --dp-type-context-subtitle-line-height: 20px;
+  --dp-type-context-subtitle-weight: 500;
 
-  --dp-type-h1-size: 20px;
-  --dp-type-h1-line-height: 28px;
-  --dp-type-h1-weight: 600;
+  --dp-type-h1-size: 22px;
+  --dp-type-h1-line-height: 30px;
+  --dp-type-h1-weight: 700;
+
+  --dp-type-h2-size: 16px;
+  --dp-type-h2-line-height: 24px;
+  --dp-type-h2-weight: 600;
 
   --dp-type-table-body-size: 13px;
   --dp-type-table-body-line-height: 1.5;
   --dp-type-table-body-weight: 400;
 
-  --dp-type-table-head-size: 13px;
+  --dp-type-table-head-size: 12px;
   --dp-type-table-head-line-height: 1.5;
   --dp-type-table-head-weight: 600;
 
@@ -99,23 +117,24 @@
   --dp-type-hint-line-height: 18px;
   --dp-type-hint-weight: 400;
 
-  /* KPI / 大数字角色字阶 */
   --dp-type-metric-size: 28px;
   --dp-type-metric-line-height: 36px;
   --dp-type-metric-weight: var(--dp-font-weight-metric);
 
-  /* 标签角色字阶（表单 label、卡片副标题、元信息 key） */
   --dp-type-label-size: 12px;
   --dp-type-label-line-height: 16px;
   --dp-type-label-weight: 500;
 
-  /* 质量评价域长文正文行高（Phase 3） */
   --dp-type-quality-body-line-height: 1.6;
 
   --dp-line-height-tight: 1.25;
   --dp-line-height-normal: 1.5;
   --dp-line-height-relaxed: 1.75;
 
+  /* 数字等宽：KPI / 表格数值列必备，避免数字跳动 */
+  --dp-font-feature-numeric: 'tnum' 1, 'lnum' 1;
+
+  // ── 间距 foundation：4px 网格，仅供语义层引用 ──
   --dp-space-0: 0;
   --dp-space-1: 4px;
   --dp-space-2: 8px;
@@ -129,56 +148,104 @@
   --dp-space-12: 48px;
   --dp-space-16: 64px;
 
-  /* 语义间距别名 */
-  --dp-space-section: var(--dp-space-8);
+  /*
+   * 三级语义间距（产品路径真源，禁止业务文件混用裸 12/16/20/24px）：
+   * 1) component* — 组件内：图标旁/行内/表单项/chip
+   * 2) block      — 区块：卡片内边距、工作台块间距、同级面板
+   * 3) page/section — 页面：组间呼吸、页面内边距、大段落分隔
+   */
+  --dp-space-component-xs: var(--dp-space-1);    /* 4px  组件内微距 */
+  --dp-space-component-tight: var(--dp-space-2); /* 8px  组件内紧 */
+  --dp-space-component: var(--dp-space-3);       /* 12px 组件内默认 */
+  --dp-space-block: var(--dp-space-4);           /* 16px 区块/卡片内边距 */
+  --dp-space-page: var(--dp-space-6);            /* 24px 页面内边距与组间 */
+  --dp-space-section: var(--dp-space-8);         /* 32px 页面大段落 */
+  --dp-space-section-loose: var(--dp-space-10);  /* 40px 特大段/空态纵向 */
 
-  /* 图表区高度 */
+  // ── 应用壳尺寸 ──
+  --dp-shell-sidebar-width: 220px;
+  --dp-shell-sidebar-collapsed-width: 64px;
+  --dp-shell-header-height: 48px;
+  --dp-content-max-width: 1400px;
+  --dp-content-max-width-wide: 1800px;
+  --dp-content-padding: var(--dp-space-page);
+
+  // ── 图表区高度 ──
   --dp-chart-height-md: 220px;
   --dp-chart-height-sm: 200px;
   --dp-chart-empty-min-height: 180px;
 
-  /* SaaS 画布：Cloudscape 中性灰，与白 panel 形成清晰层级 */
-  --dp-bg-muted: #f2f3f3;
-  --dp-surface: var(--ant-color-bg-container);
+  // ── 表面与背景 ──
+  --dp-bg-muted: #f6f7f9;                        /* 嵌套沉陷/对比面；壳画布用 --dp-surface 纯白 */
+  --dp-surface: #ffffff;                         /* 面板/卡片唯一白面 */
   --dp-surface-subtle: var(--ant-color-fill-quaternary);
-  /* 可感知 elevated：略深于白底，打破 head/toolbar 与 body 白对白 */
-  --dp-surface-elevated: #f6f8fb;
-  /* Brand 面氛围光（仅登录/公开；禁止 Trust 沉浸滥用） */
-  --dp-brand-glow-primary: color-mix(in srgb, var(--dp-blue-500) 18%, transparent);
-  --dp-brand-glow-soft: color-mix(in srgb, var(--dp-blue-500) 8%, transparent);
-  --dp-bg-control: var(--ant-color-fill-tertiary);
+  --dp-surface-chrome: #f6f8fb;                  /* 表头/卡片头/工具条衬底 */
+  --dp-surface-elevated: #ffffff;                /* 抬升面：高度靠阴影，不用深灰冒充 */
+  --dp-brand-glow-primary: color-mix(in srgb, #5b9fd4 22%, transparent);
+  --dp-brand-glow-soft: color-mix(in srgb, var(--dp-color-primary) 12%, transparent);
+  --dp-bg-control: var(--ant-color-fill-tertiary); /* 非文本控件填充（勾选框等）；可编辑输入用 --dp-surface */
   --dp-bg-control-disabled: var(--ant-color-fill-quaternary);
   --dp-bg-button-disabled: var(--ant-color-fill-tertiary);
+
+  // ── 边框 ──
   --dp-border: var(--ant-color-border);
-  --dp-border-strong: var(--ant-color-border);
+  --dp-border-strong: #cbd5e1;
+  --dp-border-subtle: var(--ant-color-border-secondary);
   --dp-border-hover: var(--ant-color-primary-border-hover);
+  --dp-panel-border: color-mix(in srgb, var(--dp-border-subtle) 55%, transparent);
 
-  /* 圆角仅两档语义：控件 4px、面板/容器 8px；禁止 sm/md/lg/xl 尺度别名 */
-  --dp-radius-xs: 4px;
-  --dp-radius-control: 4px;
-  --dp-radius-control-inner: 4px;
-  --dp-radius-panel: 8px;
-  --dp-radius-overlay: 8px;
-  --dp-radius-full: 999px;
+  /*
+   * 圆角现代梯度（升级：原 4/8 两档 → 控件 6 / 面板 10 / 卡片 12 / 弹层 14）。
+   * 更大圆角是脱离「模板感」的关键，但仍克制（不用 20px+ 过度圆润）。
+   * 命名只保留真源档位，禁止 sm/md 历史短名。
+   */
+  --dp-radius-xs: 4px;       /* 极小元素：进度条端点、徽标内角、控件内嵌 */
+  --dp-radius-control: 6px;  /* 控件：按钮、输入、选择器、Tag、菜单项 */
+  --dp-radius-control-inner: 6px; /* 控件内嵌：输入框/选择器/日期选择本体 */
+  --dp-radius-panel: 10px;   /* 面板：工作台面板、Alert、下拉容器 */
+  --dp-radius-card: 12px;    /* 卡片：实体卡片、表格容器 */
+  --dp-radius-overlay: 14px; /* 弹层：Modal、Drawer、Popover */
+  --dp-radius-lg: 16px;      /* 大容器：Brand 面英雄卡 */
+  --dp-radius-full: 999px;   /* 全圆：头像、圆形按钮、pill */
 
-  --dp-control-height-sm: 32px;
+  // ── 控件尺寸 ──
+  --dp-control-height-sm: 30px;
   --dp-control-height-md: 36px;
   --dp-control-height-lg: 40px;
-  --dp-button-height-sm: 32px;
+  --dp-button-height-sm: 30px;
   --dp-button-height-md: 36px;
   --dp-button-height-lg: 40px;
 
-  /* SaaS 面板抬升：Cloudscape 克制阴影，不替代边框 */
-  --dp-shadow-xs: 0 1px 2px rgba(26, 35, 50, 0.04);
-  --dp-shadow-sm: 0 1px 3px rgba(26, 35, 50, 0.06), 0 1px 2px rgba(26, 35, 50, 0.04);
-  --dp-shadow-md: 0 4px 8px rgba(26, 35, 50, 0.06), 0 2px 4px rgba(26, 35, 50, 0.04);
-  --dp-shadow-card: 0 8px 24px rgba(26, 35, 50, 0.06);
-  --dp-shadow-card-hover: 0 12px 28px rgba(26, 35, 50, 0.08);
-  --dp-shadow-soft: 0 6px 16px rgba(26, 35, 50, 0.05);
-  --dp-shadow-lg: 0 12px 32px rgba(26, 35, 50, 0.10);
-  --dp-shadow-dropdown: 0 18px 40px rgba(26, 35, 50, 0.12);
-  --dp-shadow-modal: 0 24px 60px rgba(26, 35, 50, 0.16);
+  /*
+   * 阴影体系（核心升级：多层 + slate 色调 + 品牌色阴影 + 交互抬升）。
+   * 阴影是「层级」而非「装饰」；用 slate(#0f172a) 而非纯黑，多层叠加创造真实光学深度。
+   */
+  --dp-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --dp-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --dp-shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+  --dp-shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.07), 0 4px 6px -4px rgba(15, 23, 42, 0.05);
+  --dp-shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  --dp-shadow-2xl: 0 25px 50px -12px rgba(15, 23, 42, 0.18);
+  /* 语义阴影 */
+  --dp-shadow-card: 0 1px 3px rgba(15, 23, 42, 0.05), 0 4px 12px rgba(15, 23, 42, 0.03);
+  --dp-shadow-card-hover: 0 4px 8px rgba(15, 23, 42, 0.06), 0 12px 24px rgba(15, 23, 42, 0.06);
+  --dp-shadow-soft: 0 4px 14px rgba(15, 23, 42, 0.05);
+  --dp-shadow-dropdown: 0 12px 32px -4px rgba(15, 23, 42, 0.12), 0 4px 8px -2px rgba(15, 23, 42, 0.06);
+  --dp-shadow-popover: 0 8px 24px -4px rgba(15, 23, 42, 0.12), 0 2px 8px -2px rgba(15, 23, 42, 0.06);
+  --dp-shadow-modal: 0 24px 48px -12px rgba(15, 23, 42, 0.2), 0 8px 16px -8px rgba(15, 23, 42, 0.08);
+  /* 交互态阴影（hover 抬升配套） */
+  --dp-shadow-interactive: 0 4px 12px -2px rgba(15, 23, 42, 0.1), 0 2px 4px -2px rgba(15, 23, 42, 0.06);
+  --dp-shadow-interactive-hover: 0 8px 20px -4px rgba(15, 23, 42, 0.12), 0 4px 8px -4px rgba(15, 23, 42, 0.06);
+  /* 品牌色阴影（主按钮、选中态、品牌焦点） */
+  --dp-shadow-primary: 0 2px 8px -2px rgba(43, 103, 255, 0.32);
+  --dp-shadow-primary-hover: 0 4px 16px -2px rgba(43, 103, 255, 0.38);
 
+  // ── 焦点环颜色（现代光晕；用法 box-shadow: 0 0 0 3px var(--dp-focus-ring)） ──
+  --dp-focus-ring: rgba(43, 103, 255, 0.16);
+  --dp-focus-ring-strong: rgba(43, 103, 255, 0.28);
+  --dp-focus-ring-color: rgba(43, 103, 255, 0.16);
+
+  // ── z-index ──
   --dp-z-sticky: 1020;
   --dp-z-fixed: 1030;
   --dp-z-dropdown: 1040;
@@ -187,56 +254,66 @@
   --dp-z-popover: 1060;
   --dp-z-tooltip: 1080;
 
-  --dp-table-header-bg: var(--dp-surface-elevated);
+  // ── 表格 ──
+  --dp-table-header-bg: var(--dp-surface-chrome);
   --dp-table-header-height: 40px;
-  --dp-table-header-padding: 0 16px;
-  --dp-table-cell-padding: 12px 16px;
-  --dp-table-cell-padding-sm: 8px 12px;
+  --dp-table-header-padding: 0 var(--dp-space-block);
+  --dp-table-cell-padding: var(--dp-space-component) var(--dp-space-block);
+  --dp-table-cell-padding-sm: var(--dp-space-component-tight) var(--dp-space-component);
   --dp-table-border: var(--ant-color-border-secondary);
   --dp-table-row-hover-bg: var(--dp-gray-50);
-  --dp-table-row-selected-bg: var(--dp-gray-50);
+  --dp-table-row-selected-bg: var(--dp-blue-50);
 
+  // ── 文字语义 ──
   --dp-text-primary: var(--ant-color-text);
   --dp-text-secondary: var(--ant-color-text-secondary);
   --dp-text-muted: var(--ant-color-text-tertiary);
   --dp-text-disabled: var(--ant-color-text-disabled);
+  --dp-text-quaternary: var(--ant-color-text-quaternary);
+  --dp-text-inverse: #ffffff;
 
+  /*
+   * 灰阶（完整 slate 11 档，冷调偏蓝，学术气质）：
+   * 业务路径取色一律走灰阶 token，禁止裸 hex / rgba(0,0,0,x)。
+   */
   --dp-gray-50: #f8fafc;
-  --dp-gray-100: #f3f4f6;
-  --dp-gray-200: #e5e7eb;
+  --dp-gray-100: #f1f5f9;
+  --dp-gray-200: #e2e8f0;
   --dp-gray-300: #cbd5e1;
   --dp-gray-400: #94a3b8;
   --dp-gray-600: #475569;
   --dp-gray-900: #0f172a;
+  --dp-gray-950: #020617;
 
+  // ── 色阶（语义色权威源为 Ant；色阶供需要梯度时引用） ──
   --dp-blue-50: var(--ant-color-primary-bg);
   --dp-blue-100: var(--ant-color-primary-bg-hover);
   --dp-blue-200: var(--ant-color-primary-border);
-  /* Ant 语义色为权威源；--dp-blue-* 色阶：500 基色 / 600 悬停 / 700 按下（600 不再与 500 重复） */
   --dp-blue-500: var(--ant-color-primary);
   --dp-blue-600: var(--ant-color-primary-active);
-  --dp-blue-700: var(--ant-color-primary-active);
+  --dp-blue-700: #1e40af;
 
   --dp-green-50: var(--ant-color-success-bg);
   --dp-green-100: var(--ant-color-success-bg-hover);
   --dp-green-200: var(--ant-color-success-border);
   --dp-green-300: #86efac;
   --dp-green-500: var(--ant-color-success);
-  --dp-green-600: #389e0d;
-  --dp-green-700: #15803d;
+  --dp-green-600: #15803d;
+  --dp-green-700: #166534;
 
-  --dp-orange-50: #fff7ed;
-  --dp-orange-200: #fed7aa;
+  --dp-orange-50: var(--ant-color-warning-bg);
+  --dp-orange-100: var(--ant-color-warning-bg-hover);
+  --dp-orange-200: var(--ant-color-warning-border);
   --dp-orange-500: var(--ant-color-warning);
-  --dp-orange-600: #d48806;
-  --dp-orange-700: #c2410c;
+  --dp-orange-600: #b45309;
+  --dp-orange-700: #92400e;
 
   --dp-red-50: var(--ant-color-error-bg);
   --dp-red-100: var(--ant-color-error-bg-hover);
   --dp-red-200: var(--ant-color-error-border);
   --dp-red-500: var(--ant-color-error);
-  --dp-red-600: #cf1322;
-  --dp-red-700: #b91c1c;
+  --dp-red-600: #b91c1c;
+  --dp-red-700: #991b1b;
 
   --dp-yellow-50: #fefce8;
   --dp-yellow-200: #fef08a;
@@ -244,26 +321,20 @@
   --dp-yellow-600: #ca8a04;
   --dp-yellow-700: #a16207;
 
-  --dp-purple-50: #f5f3ff;
-  --dp-purple-200: #ddd6fe;
-  --dp-purple-500: #8b5cf6;
-  --dp-purple-700: #7c3aed;
+  --dp-purple-50: #faf5ff;
+  --dp-purple-100: #f3e8ff;
+  --dp-purple-200: #e9d5ff;
+  --dp-purple-500: #7c3aed;
+  --dp-purple-600: #6d28d9;
+  --dp-purple-700: #5b21b6;
 
-  --dp-focus-ring: rgba(22, 119, 255, 0.18);
-
-  /* 语义色别名：产品路径统一走 --dp-*，禁止业务文件直接写 ant-color */
+  // ── 语义色（产品路径真源命名，禁止兼容短名桥接，禁止业务文件直接写 ant-color） ──
   --dp-color-primary: var(--dp-blue-500);
   --dp-color-primary-hover: var(--ant-color-primary-hover);
   --dp-color-primary-active: var(--dp-blue-600);
   --dp-color-primary-bg: var(--dp-blue-50);
   --dp-color-primary-bg-hover: var(--dp-blue-100);
   --dp-color-primary-border: var(--dp-blue-200);
-  /* 历史短名：多处业务/壳层仍用 --dp-primary*，统一桥到语义 primary */
-  --dp-primary: var(--dp-color-primary);
-  --dp-primary-hover: var(--dp-color-primary-hover);
-  --dp-primary-active: var(--dp-color-primary-active);
-  --dp-primary-light: var(--dp-color-primary-border);
-  --dp-primary-50: var(--dp-color-primary-bg);
   --dp-success: var(--dp-green-500);
   --dp-success-bg: var(--dp-green-50);
   --dp-success-bg-hover: var(--dp-green-100);
@@ -280,78 +351,46 @@
   --dp-info: var(--dp-blue-500);
   --dp-info-bg: var(--dp-blue-50);
   --dp-info-border: var(--dp-blue-200);
-  --dp-text: var(--dp-text-primary);
-  --dp-text-tertiary: var(--dp-text-muted);
-  --dp-text-quaternary: var(--ant-color-text-quaternary);
-  --dp-text-inverse: #ffffff;
-  --dp-border-subtle: var(--ant-color-border-secondary);
-  --dp-bg-container: var(--dp-surface);
-  --dp-bg-layout: var(--dp-bg-muted);
+
+  // ── 填充语义 ──
   --dp-fill: var(--ant-color-fill);
   --dp-fill-secondary: var(--ant-color-fill-secondary);
   --dp-fill-tertiary: var(--ant-color-fill-tertiary);
   --dp-fill-quaternary: var(--dp-surface-subtle);
 
-  /* 兼容短名 / 历史命名：产品路径已写的别名统一桥到真源，禁止再发明裸 hex */
-  --dp-border-light: var(--dp-border-subtle);
-  --dp-border-secondary: var(--dp-border-subtle);
-  --dp-border-default: var(--dp-border);
-  --dp-surface-sunken: var(--dp-bg-muted);
-  --dp-surface-soft: var(--dp-surface-subtle);
-  --dp-surface-muted: var(--dp-surface-subtle);
-  --dp-surface-strong: var(--dp-surface);
-  --dp-surface-raised: var(--dp-surface);
-  --dp-bg-elevated: var(--dp-surface-elevated);
-  --dp-bg-secondary: var(--dp-surface-subtle);
-  --dp-bg-subtle: var(--dp-surface-subtle);
-  --dp-fill-muted: var(--dp-fill-tertiary);
-  --dp-hover-bg: var(--dp-fill-secondary);
-  --dp-font-mono: var(--dp-font-family-code);
-  --dp-font-body: var(--dp-font-size-md);
-  --dp-font-hint: var(--dp-font-size-xs);
-  --dp-font-subtitle: var(--dp-font-size-sm);
-  --dp-font-weight-medium: var(--dp-font-weight-emphasis);
-  --dp-font-weight-semibold: var(--dp-font-weight-title);
-  --dp-radius-sm: var(--dp-radius-xs);
-  --dp-radius-md: var(--dp-radius-control);
-  --dp-type-body-size: var(--dp-font-size-md);
-  --dp-type-title-size: var(--dp-font-size-lg);
-  --dp-color-text-secondary: var(--dp-text-secondary);
-  --dp-color-text-tertiary: var(--dp-text-tertiary);
-  --dp-color-text-quaternary: var(--dp-text-quaternary);
-  --dp-color-warning: var(--dp-warning);
-  --dp-color-error: var(--dp-error);
-  --dp-color-success: var(--dp-success);
-  --dp-color-danger: var(--dp-danger);
-  --dp-warning-hover: var(--dp-orange-600);
-  --dp-warning-text: var(--dp-warning);
-  --dp-text-3: var(--dp-text-tertiary);
-  --dp-text-4: var(--dp-text-quaternary);
-  --dp-text-light-solid: var(--dp-text-inverse);
-  --dp-gray-500: var(--dp-text-muted);
-  --dp-gray-700: var(--dp-text-secondary);
-  --dp-blue-300: var(--dp-blue-200);
-  --dp-blue-400: var(--dp-blue-500);
-  --dp-primary-500: var(--dp-color-primary);
-  --dp-amber-50: var(--dp-orange-50);
-  --dp-amber-200: var(--dp-orange-200);
-  --dp-amber-700: var(--dp-orange-700);
-  --dp-type-h1-lh: 1.25;
-  --dp-card-border: var(--dp-border);
-  --dp-error-hover: var(--dp-red-600);
-  --dp-font-label: var(--dp-font-size-sm);
-  --dp-surface-base: var(--dp-surface);
-  --dp-space-gap: var(--dp-space-3);
+  /*
+   * 动效体系（升级：弹簧曲线 + 抬升 + stagger，让界面「有生命」而非「机械」）。
+   * 时长：微交互 → 控件 → 面板 → 页面级 → 强调性 → 注意态落定。
+   */
+  --dp-duration-instant: 100ms;
+  --dp-duration-fast: 150ms;     /* hover / focus / 色变微交互 */
+  --dp-duration-normal: 200ms;   /* 按钮、输入、行态等控件过渡 */
+  --dp-duration-slow: 300ms;     /* 抽屉、折叠、局部面板展开 */
+  --dp-duration-page: 150ms;     /* 路由 / 视图进出、整页淡入淡出（3.7.2 感知速度） */
+  --dp-duration-emphasis: 500ms; /* 进度填充、阶段性强调；禁止 bounce / flash */
+  --dp-duration-linger: 2000ms;  /* 行高亮消退等注意态落定 */
 
+  /* 缓动曲线 */
+  --dp-ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --dp-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --dp-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --dp-ease-spring: cubic-bezier(0.16, 1, 0.3, 1);  /* 入场/抬升签名曲线 */
+  --dp-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1); /* 仅用于微强调，禁用于面板 */
 
-  --dp-duration-fast: 150ms;
-  --dp-duration-normal: 200ms;
-  --dp-duration-slow: 300ms;
+  /* 入场动画与编排 */
+  --dp-enter-duration: var(--dp-duration-page);
+  --dp-enter-easing: var(--dp-ease-spring);
+  --dp-stagger-step: 50ms;
 
-  // 扫描看片台（mark 域专用，浅色画布；影像优先、控件让位，对齐一体机结构而非深色化）
-  --scan-canvas-bg: #f1f3f7;
-  --scan-canvas-border: #dde2ea;
-  --scan-paper-shadow: 0 6px 24px rgba(15, 23, 42, 0.12);
+  /* hover 抬升位移（与 shadow-interactive-hover 配套） */
+  --dp-lift-sm: translateY(-1px);
+  --dp-lift-md: translateY(-2px);
+  --dp-lift-lg: translateY(-4px);
+
+  // ── 扫描看片台（mark 域专用，浅色画布；影像优先、控件让位） ──
+  --scan-canvas-bg: #f1f5f9;
+  --scan-canvas-border: #e2e8f0;
+  --scan-paper-shadow: 0 8px 32px rgba(15, 23, 42, 0.12);
   --scan-toolbar-bg: var(--dp-surface);
   --scan-toolbar-border: var(--dp-border);
 }

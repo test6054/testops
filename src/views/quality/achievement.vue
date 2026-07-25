@@ -20,7 +20,7 @@ import type {
 import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 
 import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ExportBusinessType } from '@/apis/edu/export'
 import { achievementApi } from '@/apis/quality/achievement'
@@ -42,7 +42,6 @@ import {
   ClassSelector,
   CourseGoalSelector,
   CourseSelector,
-  ProgramSelector,
   TrainingObjectiveSelector,
 } from '@/components/quality/selectors'
 import { loadBoundedPlanAggregate } from '@/components/quality/selectors/page-contract'
@@ -64,9 +63,11 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityTableExport } from '@/composables/useQualityTableExport'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
 import {
@@ -160,7 +161,6 @@ interface AchievementTriggerForm {
   trainingObjectiveId: string
   schoolYear: string
   semester: SemesterCode | undefined
-  programId: string
 }
 
 const triggerForm = reactive<AchievementTriggerForm>({
@@ -170,16 +170,11 @@ const triggerForm = reactive<AchievementTriggerForm>({
   trainingObjectiveId: '',
   schoolYear: qualityStore.currentSchoolYear || '',
   semester: qualityStore.currentSemester,
-  programId: qualityStore.currentProgramId,
 })
 
 function handleQualityCourseChange(value: string | null) {
   triggerForm.qualityCourseId = value ?? ''
   triggerForm.courseGoalId = ''
-}
-
-function handleProgramChange(value: string | null) {
-  triggerForm.programId = value ?? ''
 }
 
 function handleQueryQualityCourseChange(value: string | null) {
@@ -196,6 +191,26 @@ function handleCourseGoalChange(value: string | null) {
 
 function handleTrainingObjectiveChange(value: string | null) {
   triggerForm.trainingObjectiveId = value ?? ''
+}
+
+/** 计算合同专业 ID：仅取质量工作范围，禁止表单/培养方案反推兜底 */
+function requireScopeProgramId(): string {
+  const programId = qualityStore.currentProgramId?.trim()
+  if (!programId) {
+    showFormValidationMessage('请先在顶部选择专业')
+    throw new Error('missing programId')
+  }
+  return programId
+}
+
+/** 计算合同培养方案 ID：仅取质量工作范围 */
+function requireScopeTrainingPlanId(): string {
+  const trainingPlanId = qualityStore.currentTrainingPlanId?.trim()
+  if (!trainingPlanId) {
+    showFormValidationMessage('请先在顶部选择培养方案')
+    throw new Error('missing trainingPlanId')
+  }
+  return trainingPlanId
 }
 
 const targetTypeOptions: Array<{ value: AchievementTargetTypeCode, label: string }> = [
@@ -346,16 +361,18 @@ const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
   }
   return null
 })
-const programRequired = computed(
-  () => !qualityStore.currentProgramId && !triggerForm.programId.trim(),
-)
+const programRequired = computed(() => !qualityStore.currentProgramId?.trim())
 
 async function loadList() {
   if (!qualityStore.currentTrainingPlanId) return
+  const scope = beginQualityScopeRequest()
   loading.value = true
   beginLoad()
   try {
     const page = await achievementResultApi.page(buildAchievementListQuery())
+    if (scope.isStale()) {
+      return
+    }
     list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
@@ -367,12 +384,15 @@ async function loadList() {
     }
     okLoad()
   } catch (error) {
-    list.value = []
-    total.value = 0
+    if (scope.isStale()) {
+      return
+    }
     failLoad()
     showUserError(error, '达成度结果加载失败')
   } finally {
-    loading.value = false
+    if (!scope.isStale()) {
+      loading.value = false
+    }
   }
 }
 
@@ -396,16 +416,26 @@ async function applyRouteScopeQuery(): Promise<void> {
   }
 }
 
-useQualityScopedLoader(handleScopeChange, {
+async function bootstrapAchievementPage(): Promise<void> {
+  await applyRouteScopeQuery()
+  triggerForm.trainingPlanId = qualityStore.currentTrainingPlanId
+  query.trainingPlanId = qualityStore.currentTrainingPlanId
+  if (!qualityStore.currentTrainingPlanId) {
+    return
+  }
+  await handleScopeChange()
+}
+
+useQualityScopedLoader(bootstrapAchievementPage, {
   watchScope: true,
-  immediate: false,
-  reloadOnActivated: false,
+  immediate: true,
+  reloadOnActivated: true,
 })
 
 function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
-  loadList()
+  void loadList()
 }
 
 const columns: ColumnsType = [
@@ -516,8 +546,8 @@ const triggerButtons: Array<{
     label: '毕业要求 / 观测点',
     handler: () =>
       achievementApi.computeRequirement({
-        programId: triggerForm.programId || qualityStore.currentProgramId,
-        trainingPlanId: qualityStore.currentTrainingPlanId,
+        programId: requireScopeProgramId(),
+        trainingPlanId: requireScopeTrainingPlanId(),
         schoolYear: triggerForm.schoolYear,
         semester: triggerForm.semester || undefined,
       }),
@@ -531,8 +561,8 @@ const triggerButtons: Array<{
         return Promise.reject(new Error('missing trainingObjectiveId'))
       }
       return achievementApi.computeTrainingObjective({
-        programId: triggerForm.programId || qualityStore.currentProgramId,
-        trainingPlanId: qualityStore.currentTrainingPlanId,
+        programId: requireScopeProgramId(),
+        trainingPlanId: requireScopeTrainingPlanId(),
         trainingObjectiveId: triggerForm.trainingObjectiveId,
         schoolYear: triggerForm.schoolYear,
         semester: triggerForm.semester || undefined,
@@ -544,8 +574,8 @@ const triggerButtons: Array<{
     label: '专业汇总',
     handler: () =>
       achievementApi.computeProgram({
-        trainingPlanId: qualityStore.currentTrainingPlanId,
-        programId: triggerForm.programId || qualityStore.currentProgramId,
+        trainingPlanId: requireScopeTrainingPlanId(),
+        programId: requireScopeProgramId(),
         schoolYear: triggerForm.schoolYear,
         semester: triggerForm.semester || undefined,
       }),
@@ -555,8 +585,8 @@ const triggerButtons: Array<{
     label: '课程思政',
     handler: () =>
       achievementApi.computeCivicGoalAggregate({
-        programId: triggerForm.programId || qualityStore.currentProgramId,
-        trainingPlanId: qualityStore.currentTrainingPlanId,
+        programId: requireScopeProgramId(),
+        trainingPlanId: requireScopeTrainingPlanId(),
         schoolYear: triggerForm.schoolYear,
         semester: triggerForm.semester || undefined,
       }),
@@ -566,26 +596,81 @@ const triggerButtons: Array<{
     label: '复杂工程',
     handler: () =>
       achievementApi.computeComplexEngineeringAggregate({
-        programId: triggerForm.programId || qualityStore.currentProgramId,
-        trainingPlanId: qualityStore.currentTrainingPlanId,
+        programId: requireScopeProgramId(),
+        trainingPlanId: requireScopeTrainingPlanId(),
         schoolYear: triggerForm.schoolYear,
         semester: triggerForm.semester || undefined,
       }),
   },
 ]
 
+async function confirmComputeImpact(
+  key: string,
+  readiness: AchievementComputeReadinessItemVO,
+): Promise<boolean> {
+  const lockedTotal
+    = readiness.lockedSubmittedCount
+      + readiness.lockedConfirmedCount
+      + readiness.lockedArchivedCount
+  const aggregateKind
+    = key === 'PROGRAM'
+      || key === 'CIVIC_GOAL_AGGREGATE'
+      || key === 'COMPLEX_ENGINEERING'
+      || key === 'REQUIREMENT'
+  const needsConfirm
+    = aggregateKind
+      || readiness.expectedCoverCount > 1
+      || readiness.replaceableResultCount > 0
+      || lockedTotal > 0
+  if (!needsConfirm) {
+    return true
+  }
+  const lines = [
+    `目标：${readiness.targetScopeLabel}`,
+    `期间：${readiness.dataPeriodLabel}`,
+    `口径：${readiness.algorithmProfileLabel}`,
+    `预计覆盖 ${readiness.expectedCoverCount} 条结果`,
+    `将覆盖删除未锁定结果 ${readiness.replaceableResultCount} 条（已计算 / 已退回 / 已过期）`,
+    `已提交锁定 ${readiness.lockedSubmittedCount}、已确认锁定 ${readiness.lockedConfirmedCount}、已归档锁定 ${readiness.lockedArchivedCount}（未过期时禁止重算）`,
+  ]
+  if (aggregateKind) {
+    lines.unshift('本步骤为汇总级计算，与单课程目标计算影响面不同，请确认范围后再执行。')
+  }
+  return confirmAsync({
+    title: `确认计算：${readiness.stageTitle}`,
+    content: lines.join('\n'),
+    type: lockedTotal > 0 || aggregateKind ? 'warning' : 'info',
+    okText: '确认计算',
+    width: 520,
+  })
+}
+
 async function handleTrigger(key: string, handler: () => Promise<AchievementComputeResult>) {
-  if (!qualityStore.currentTrainingPlanId) {
-    showFormValidationMessage('请先在顶部选择培养方案')
+  try {
+    requireScopeTrainingPlanId()
+    requireScopeProgramId()
+  } catch {
     return
   }
-  if (programRequired.value) {
-    showFormValidationMessage('请先在顶部选择专业')
+  if (readinessPhase.value === 'loading' || readinessPhase.value === 'idle') {
+    showFormValidationMessage('计算就绪检查尚未完成，请稍候')
+    return
+  }
+  if (readinessPhase.value === 'error') {
+    showFormValidationMessage('计算就绪检查失败；切换范围或关闭抽屉后重新打开再计算')
     return
   }
   const readiness = readinessByKind.value.get(key)
-  if (readiness && !readiness.ready) {
+  if (!readiness) {
+    showFormValidationMessage('当前计算步骤缺少就绪合同，禁止放行')
+    return
+  }
+  if (!readiness.ready) {
     void message.warning(readiness.blockingReasons[0] || '当前步骤尚未就绪')
+    return
+  }
+  const confirmed = await confirmComputeImpact(key, readiness)
+  if (!confirmed) {
     return
   }
   triggerLoading.value = key
@@ -607,7 +692,9 @@ async function handleTrigger(key: string, handler: () => Promise<AchievementComp
       err instanceof Error
       && (err.message === 'cancelled'
         || err.message === 'missing courseGoalId'
-        || err.message === 'missing trainingObjectiveId')
+        || err.message === 'missing trainingObjectiveId'
+        || err.message === 'missing programId'
+        || err.message === 'missing trainingPlanId')
     ) {
       return
     }
@@ -712,16 +799,30 @@ function countAchievementStatus(
 }
 
 const signalSummary = ref<AchievementResultSignalSummaryVO | null>(null)
+const signalSummaryLoadFailed = ref(false)
 
 async function loadSignalSummary() {
   if (!qualityStore.currentTrainingPlanId) {
     signalSummary.value = null
+    signalSummaryLoadFailed.value = false
     return
   }
+  const scope = beginQualityScopeRequest()
   try {
-    signalSummary.value = await achievementResultApi.signalSummary(buildAchievementListQuery())
+    const summary = await achievementResultApi.signalSummary(buildAchievementListQuery())
+    if (scope.isStale()) {
+      return
+    }
+    if (summary.achievementStatusCounts == null || summary.auditStatusCounts == null) {
+      throw new Error('达成度 SignalBand 合同缺分组计数')
+    }
+    signalSummary.value = summary
+    signalSummaryLoadFailed.value = false
   } catch (error) {
-    signalSummary.value = null
+    if (scope.isStale()) {
+      return
+    }
+    signalSummaryLoadFailed.value = true
     showUserError(error, '达成度工作台指标加载失败')
   }
 }
@@ -753,19 +854,19 @@ const stages = computed<WorkbenchStage[]>(() => {
 
 const signals = computed<SignalMetric[]>(() => {
   const summary = signalSummary.value
-  if (!summary) {
+  if (!summary || signalSummaryLoadFailed.value) {
     return []
   }
   const b = auditBuckets.value
   const achieved = countAchievementStatus(summary, AchievementStatusCode.ACHIEVED)
   const partial = countAchievementStatus(summary, AchievementStatusCode.PARTIALLY_ACHIEVED)
   const notAchieved = countAchievementStatus(summary, AchievementStatusCode.NOT_ACHIEVED)
-  const stale = summary.staleCount ?? 0
+  const stale = summary.staleCount
   return [
     {
       key: 'total',
       label: '结果总数',
-      value: summary.totalCount ?? 0,
+      value: summary.totalCount,
       tone: 'blue',
       trendPolarity: 'neutral',
     },
@@ -822,6 +923,8 @@ const signals = computed<SignalMetric[]>(() => {
 const triggerVisible = ref(false)
 const computeReadinessItems = ref<AchievementComputeReadinessItemVO[]>([])
 const readinessLoading = ref(false)
+/** idle=未拉；loading=请求中；ready=合同就绪；error=失败（禁止空数组 fail-open） */
+const readinessPhase = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
 
 const readinessByKind = computed(() => {
   const map = new Map<string, AchievementComputeReadinessItemVO>()
@@ -837,36 +940,106 @@ const orderedTriggerSteps = computed(() =>
       ...btn,
       readiness: readinessByKind.value.get(btn.key),
     }))
-    .sort((a, b) => (a.readiness?.stageOrder ?? 99) - (b.readiness?.stageOrder ?? 99)),
+    .sort((a, b) => {
+      if (a.readiness == null || b.readiness == null) {
+        return 0
+      }
+      return a.readiness.stageOrder - b.readiness.stageOrder
+    }),
 )
 
+function requireReadinessContract(items: AchievementComputeReadinessItemVO[]): void {
+  if (!Array.isArray(items)) {
+    throw new TypeError('达成度计算就绪合同必须返回数组')
+  }
+  for (const item of items) {
+    if (!item.computeKind?.trim()) {
+      throw new TypeError('达成度计算就绪合同缺字段：computeKind')
+    }
+    if (!item.stageTitle?.trim()) {
+      throw new TypeError(`达成度计算就绪合同缺字段：stageTitle（${item.computeKind}）`)
+    }
+    if (typeof item.stageOrder !== 'number' || Number.isNaN(item.stageOrder)) {
+      throw new TypeError(`达成度计算就绪合同缺字段：stageOrder（${item.computeKind}）`)
+    }
+    if (typeof item.ready !== 'boolean') {
+      throw new TypeError(`达成度计算就绪合同缺字段：ready（${item.computeKind}）`)
+    }
+    if (!Array.isArray(item.blockingReasons)) {
+      throw new TypeError(`达成度计算就绪合同缺字段：blockingReasons（${item.computeKind}）`)
+    }
+    if (!item.targetScopeLabel?.trim()) {
+      throw new TypeError(`达成度计算就绪合同缺字段：targetScopeLabel（${item.computeKind}）`)
+    }
+    if (!item.dataPeriodLabel?.trim()) {
+      throw new TypeError(`达成度计算就绪合同缺字段：dataPeriodLabel（${item.computeKind}）`)
+    }
+    if (!item.algorithmProfileLabel?.trim()) {
+      throw new TypeError(`达成度计算就绪合同缺字段：algorithmProfileLabel（${item.computeKind}）`)
+    }
+    for (const field of [
+      'expectedCoverCount',
+      'replaceableResultCount',
+      'lockedSubmittedCount',
+      'lockedConfirmedCount',
+      'lockedArchivedCount',
+    ] as const) {
+      if (typeof item[field] !== 'number' || Number.isNaN(item[field])) {
+        throw new TypeError(`达成度计算就绪合同缺字段：${field}（${item.computeKind}）`)
+      }
+    }
+  }
+}
+
 async function loadComputeReadiness() {
-  if (!qualityStore.currentTrainingPlanId) {
+  let programId: string
+  let trainingPlanId: string
+  try {
+    programId = requireScopeProgramId()
+    trainingPlanId = requireScopeTrainingPlanId()
+  } catch {
     computeReadinessItems.value = []
+    readinessPhase.value = 'idle'
     return
   }
+  const scope = beginQualityScopeRequest()
   readinessLoading.value = true
+  readinessPhase.value = 'loading'
   try {
-    computeReadinessItems.value = await achievementApi.computeReadiness({
-      programId: triggerForm.programId || qualityStore.currentProgramId,
-      trainingPlanId: qualityStore.currentTrainingPlanId,
+    const items = await achievementApi.computeReadiness({
+      programId,
+      trainingPlanId,
       qualityCourseId: triggerForm.qualityCourseId || undefined,
       courseGoalId: triggerForm.courseGoalId || undefined,
       trainingObjectiveId: triggerForm.trainingObjectiveId || undefined,
       schoolYear: triggerForm.schoolYear || undefined,
       semester: triggerForm.semester || undefined,
     })
+    if (scope.isStale()) {
+      return
+    }
+    requireReadinessContract(items)
+    computeReadinessItems.value = items
+    readinessPhase.value = 'ready'
   } catch (error) {
+    if (scope.isStale()) {
+      return
+    }
     computeReadinessItems.value = []
+    readinessPhase.value = 'error'
     showUserError(error, '达成度计算就绪检查加载失败')
   } finally {
-    readinessLoading.value = false
+    if (!scope.isStale()) {
+      readinessLoading.value = false
+    }
   }
 }
 
 function openTriggerDrawer() {
-  if (!qualityStore.currentTrainingPlanId) {
-    showFormValidationMessage('请先在顶部选择培养方案')
+  try {
+    requireScopeTrainingPlanId()
+    requireScopeProgramId()
+  } catch {
     return
   }
   triggerVisible.value = true
@@ -889,8 +1062,24 @@ async function handleRecomputeRecord(record: AchievementResultVO) {
     void message.warning('当前目标类型不支持在此页重算')
     return
   }
-  if (record.programId) {
-    triggerForm.programId = record.programId
+  let scopeProgramId: string
+  try {
+    scopeProgramId = requireScopeProgramId()
+    requireScopeTrainingPlanId()
+  } catch {
+    return
+  }
+  if (!record.programId?.trim()) {
+    showFormValidationMessage('该达成度结果缺少专业合同字段，禁止重算')
+    return
+  }
+  if (record.programId !== scopeProgramId) {
+    showFormValidationMessage('当前工作范围专业与该结果不一致，请先切换专业后再重算')
+    return
+  }
+  if (record.trainingPlanId && record.trainingPlanId !== qualityStore.currentTrainingPlanId) {
+    showFormValidationMessage('当前工作范围培养方案与该结果不一致，请先切换培养方案后再重算')
+    return
   }
   if (record.qualityCourseId) {
     triggerForm.qualityCourseId = record.qualityCourseId
@@ -1050,9 +1239,10 @@ watch(
     triggerForm.qualityCourseId,
     triggerForm.courseGoalId,
     triggerForm.trainingObjectiveId,
-    triggerForm.programId,
     triggerForm.schoolYear,
     triggerForm.semester,
+    qualityStore.currentProgramId,
+    qualityStore.currentTrainingPlanId,
   ],
   () => {
     if (triggerVisible.value) {
@@ -1066,33 +1256,12 @@ watch(
   (value) => {
     triggerForm.trainingPlanId = value
     query.trainingPlanId = value
-    triggerForm.programId = qualityStore.currentProgramId
     triggerForm.qualityCourseId = ''
     triggerForm.courseGoalId = ''
     triggerForm.trainingObjectiveId = ''
     query.qualityCourseId = ''
-    void Promise.all([loadList(), loadSignalSummary()])
   },
 )
-
-onMounted(async () => {
-  await applyRouteScopeQuery()
-  triggerForm.trainingPlanId = qualityStore.currentTrainingPlanId
-  triggerForm.programId = qualityStore.currentProgramId
-  query.trainingPlanId = qualityStore.currentTrainingPlanId
-  if (qualityStore.currentTrainingPlanId) {
-    await Promise.all([loadList(), loadSignalSummary(), loadComputeReadiness()])
-  }
-})
-
-onActivated(async () => {
-  if (!qualityStore.currentTrainingPlanId) {
-    return
-  }
-  query.trainingPlanId = qualityStore.currentTrainingPlanId
-  triggerForm.trainingPlanId = qualityStore.currentTrainingPlanId
-  await Promise.all([loadList(), loadSignalSummary(), loadComputeReadiness()])
-})
 </script>
 
 <template>
@@ -1117,7 +1286,19 @@ onActivated(async () => {
 
     <template v-else>
       <StageRail :stages="stages" compact class="achievement__stages" />
-      <SignalBand :metrics="signals" variant="panel" compact class="achievement__signals" />
+      <UiEmpty
+        v-if="signalSummaryLoadFailed"
+        size="sm"
+        title="达成度指标加载失败"
+        class="achievement__signals"
+      />
+      <SignalBand
+        v-else
+        :metrics="signals"
+        variant="panel"
+        compact
+        class="achievement__signals"
+      />
 
       <TaskResultPanel
         v-if="achievementResultItems.length > 0"
@@ -1130,7 +1311,7 @@ onActivated(async () => {
       <UiCard class="detail-table-card achievement__table-card">
         <template #title>达成度结果</template>
         <template #extra>
-          <div class="dp-space" style="--dp-space-gap: 8px">
+          <div class="dp-space" style="--dp-space-component: 8px">
             <UiButton
               variant="outline"
               size="sm"
@@ -1270,116 +1451,185 @@ onActivated(async () => {
     </template>
 
     <UiDrawer v-model:open="triggerVisible" title="触发达成度计算" :width="720" :hide-footer="true">
-      <UiForm layout="vertical" :model="triggerForm">
-        <UiRow :gutter="12">
-          <UiCol :span="12">
-            <UiFormItem label="质量评价课程（课程目标计算需要）">
-              <CourseSelector
-                :value="triggerForm.qualityCourseId || null"
-                :training-plan-id="qualityStore.currentTrainingPlanId || null"
-                placeholder="选择质量评价课程"
-                @change="handleQualityCourseChange"
-              />
-            </UiFormItem>
-          </UiCol>
-          <UiCol :span="12">
-            <UiFormItem label="专业（与上下文不一致时覆盖）">
-              <ProgramSelector
-                :value="triggerForm.programId || null"
-                placeholder="选择专业覆盖上下文"
-                @change="handleProgramChange"
-              />
-            </UiFormItem>
-          </UiCol>
-        </UiRow>
-        <UiRow :gutter="12">
-          <UiCol :span="12">
-            <UiFormItem label="学年">
-              <UiInput size="sm" v-model="triggerForm.schoolYear" placeholder="例：2024-2025" />
-            </UiFormItem>
-          </UiCol>
-          <UiCol :span="12">
-            <UiFormItem label="学期">
-              <UiSelect
+      <section class="achievement__drawer-section">
+        <h4 class="achievement__section-title">1. 范围</h4>
+        <p class="achievement__drawer-hint">
+          专业与培养方案取自顶部质量工作范围（合同必填，禁止本页覆盖或反推）；学年学期决定计算期间。
+        </p>
+        <p class="achievement__drawer-algo">
+          专业：{{
+            qualityStore.currentProgram?.majorCategoryName
+              || qualityStore.currentProgramId
+              || '未选择'
+          }}
+          · 培养方案：{{ qualityStore.currentPlan?.planName || qualityStore.currentTrainingPlanId || '未选择' }}
+        </p>
+        <UiForm layout="vertical" :model="triggerForm">
+          <UiRow :gutter="12">
+            <UiCol :span="12">
+              <UiFormItem label="学年">
+                <UiInput size="sm" v-model="triggerForm.schoolYear" placeholder="例：2024-2025" />
+              </UiFormItem>
+            </UiCol>
+            <UiCol :span="12">
+              <UiFormItem label="学期">
+                <UiSelect
+                  size="sm"
+                  v-model="triggerForm.semester"
+                  :options="SemesterOptions"
+                  placeholder="学期"
+                  allow-clear
+                />
+              </UiFormItem>
+            </UiCol>
+          </UiRow>
+        </UiForm>
+      </section>
+
+      <section class="achievement__drawer-section">
+        <h4 class="achievement__section-title">2. 输入</h4>
+        <p class="achievement__drawer-hint">
+          课程目标计算需选质量评价课程与课程目标；培养目标计算需选培养目标。
+        </p>
+        <UiForm layout="vertical" :model="triggerForm">
+          <UiRow :gutter="12">
+            <UiCol :span="12">
+              <UiFormItem label="质量评价课程">
+                <CourseSelector
+                  :value="triggerForm.qualityCourseId || null"
+                  :training-plan-id="qualityStore.currentTrainingPlanId || null"
+                  placeholder="选择质量评价课程"
+                  @change="handleQualityCourseChange"
+                />
+              </UiFormItem>
+            </UiCol>
+            <UiCol :span="12">
+              <UiFormItem label="课程目标">
+                <CourseGoalSelector
+                  :value="triggerForm.courseGoalId || null"
+                  :quality-course-id="triggerForm.qualityCourseId || null"
+                  placeholder="选择课程目标"
+                  @change="handleCourseGoalChange"
+                />
+              </UiFormItem>
+            </UiCol>
+          </UiRow>
+          <UiRow :gutter="12">
+            <UiCol :span="12">
+              <UiFormItem label="培养目标">
+                <TrainingObjectiveSelector
+                  :value="triggerForm.trainingObjectiveId || null"
+                  :training-plan-id="qualityStore.currentTrainingPlanId || null"
+                  placeholder="选择培养目标"
+                  @change="handleTrainingObjectiveChange"
+                />
+              </UiFormItem>
+            </UiCol>
+          </UiRow>
+        </UiForm>
+      </section>
+
+      <section class="achievement__drawer-section">
+        <h4 class="achievement__section-title">3. 算法口径</h4>
+        <p v-if="readinessLoading" class="achievement__readiness-hint">正在解析算法口径…</p>
+        <p v-else-if="readinessPhase === 'error'" class="achievement__readiness-hint">
+          就绪检查失败，无法展示算法口径；关闭抽屉后重新打开或切换范围后再试
+        </p>
+        <p v-else-if="orderedTriggerSteps[0]?.readiness" class="achievement__drawer-algo">
+          {{ orderedTriggerSteps[0].readiness.algorithmProfileLabel }}
+        </p>
+        <p v-else class="achievement__drawer-hint">选择范围后将显示专业算法实例口径。</p>
+      </section>
+
+      <section class="achievement__drawer-section">
+        <h4 class="achievement__section-title">4. 计算影响与执行</h4>
+        <p class="achievement__drawer-hint">
+          按依赖顺序执行；汇总级步骤与单课程目标不同权，执行前须确认影响面。
+        </p>
+        <p v-if="readinessLoading" class="achievement__readiness-hint">正在检查计算就绪状态…</p>
+        <p v-else-if="readinessPhase === 'error'" class="achievement__readiness-hint">
+          计算就绪检查失败；关闭抽屉后重新打开或切换范围后再计算，禁止在失败态放行计算
+        </p>
+        <div v-else class="achievement__trigger-chain">
+          <div
+            v-for="step in orderedTriggerSteps"
+            :key="step.key"
+            class="achievement__trigger-step"
+            :class="{
+              'achievement__trigger-step--blocked': step.readiness && !step.readiness.ready,
+              'achievement__trigger-step--aggregate':
+                step.key === 'PROGRAM'
+                || step.key === 'CIVIC_GOAL_AGGREGATE'
+                || step.key === 'COMPLEX_ENGINEERING'
+                || step.key === 'REQUIREMENT',
+            }"
+          >
+            <div class="achievement__trigger-step-head">
+              <span class="achievement__trigger-step-title">
+                {{ step.readiness?.stageTitle || step.label }}
+              </span>
+              <UiTag
+                v-if="step.readiness"
+                :tone="step.readiness.ready ? 'green' : 'orange'"
                 size="sm"
-                v-model="triggerForm.semester"
-                :options="SemesterOptions"
-                placeholder="学期"
-                allow-clear
-              />
-            </UiFormItem>
-          </UiCol>
-        </UiRow>
-        <UiRow :gutter="12">
-          <UiCol :span="12">
-            <UiFormItem label="课程目标">
-              <CourseGoalSelector
-                :value="triggerForm.courseGoalId || null"
-                :quality-course-id="triggerForm.qualityCourseId || null"
-                placeholder="选择课程目标"
-                @change="handleCourseGoalChange"
-              />
-            </UiFormItem>
-          </UiCol>
-          <UiCol :span="12">
-            <UiFormItem label="培养目标">
-              <TrainingObjectiveSelector
-                :value="triggerForm.trainingObjectiveId || null"
-                :training-plan-id="qualityStore.currentTrainingPlanId || null"
-                placeholder="选择培养目标"
-                @change="handleTrainingObjectiveChange"
-              />
-            </UiFormItem>
-          </UiCol>
-        </UiRow>
-      </UiForm>
-      <h4 class="achievement__section-title">计算入口（按依赖顺序）</h4>
-      <p v-if="readinessLoading" class="achievement__readiness-hint">正在检查计算就绪状态…</p>
-      <div class="achievement__trigger-chain">
-        <div
-          v-for="step in orderedTriggerSteps"
-          :key="step.key"
-          class="achievement__trigger-step"
-          :class="{ 'achievement__trigger-step--blocked': step.readiness && !step.readiness.ready }"
-        >
-          <div class="achievement__trigger-step-head">
-            <span class="achievement__trigger-step-title">
-              {{ step.readiness?.stageTitle || step.label }}
-            </span>
-            <UiTag
-              v-if="step.readiness"
-              :tone="step.readiness.ready ? 'green' : 'orange'"
-              size="sm"
+              >
+                {{ step.readiness.ready ? '可计算' : '未就绪' }}
+              </UiTag>
+            </div>
+            <dl v-if="step.readiness" class="achievement__impact">
+              <div>
+                <dt>目标</dt>
+                <dd>{{ step.readiness.targetScopeLabel }}</dd>
+              </div>
+              <div>
+                <dt>期间</dt>
+                <dd>{{ step.readiness.dataPeriodLabel }}</dd>
+              </div>
+              <div>
+                <dt>预计覆盖</dt>
+                <dd>{{ step.readiness.expectedCoverCount }} 条</dd>
+              </div>
+              <div>
+                <dt>将覆盖未锁定</dt>
+                <dd>{{ step.readiness.replaceableResultCount }} 条</dd>
+              </div>
+              <div>
+                <dt>锁定（禁重算）</dt>
+                <dd>
+                  提交 {{ step.readiness.lockedSubmittedCount }} /
+                  确认 {{ step.readiness.lockedConfirmedCount }} /
+                  归档 {{ step.readiness.lockedArchivedCount }}
+                </dd>
+              </div>
+            </dl>
+            <ul
+              v-if="step.readiness && !step.readiness.ready && step.readiness.blockingReasons.length"
+              class="achievement__trigger-blockers"
             >
-              {{ step.readiness.ready ? '可计算' : '未就绪' }}
-            </UiTag>
+              <li v-for="(reason, idx) in step.readiness.blockingReasons.slice(0, 3)" :key="idx">
+                {{ reason }}
+              </li>
+              <li v-if="step.readiness.blockingReasons.length > 3">
+                另有 {{ step.readiness.blockingReasons.length - 3 }} 项依赖未满足
+              </li>
+            </ul>
+            <UiButton
+              :variant="step.key === 'COURSE_GOAL' ? 'primary' : 'outline'"
+              size="sm"
+              :loading="triggerLoading === step.key"
+              :disabled="
+                trainingPlanRequired
+                  || programRequired
+                  || readinessPhase !== 'ready'
+                  || (step.readiness != null && !step.readiness.ready)
+              "
+              @click="handleTrigger(step.key, step.handler)"
+            >
+              {{ step.key === 'COURSE_GOAL' ? '计算课程目标' : `计算${step.label}` }}
+            </UiButton>
           </div>
-          <ul
-            v-if="step.readiness && !step.readiness.ready && step.readiness.blockingReasons.length"
-            class="achievement__trigger-blockers"
-          >
-            <li v-for="(reason, idx) in step.readiness.blockingReasons.slice(0, 3)" :key="idx">
-              {{ reason }}
-            </li>
-            <li v-if="step.readiness.blockingReasons.length > 3">
-              另有 {{ step.readiness.blockingReasons.length - 3 }} 项依赖未满足
-            </li>
-          </ul>
-          <UiButton
-            variant="outline"
-            size="sm"
-            :loading="triggerLoading === step.key"
-            :disabled="
-              trainingPlanRequired
-                || programRequired
-                || (step.readiness != null && !step.readiness.ready)
-            "
-            @click="handleTrigger(step.key, step.handler)"
-          >
-            计算{{ step.label }}
-          </UiButton>
         </div>
-      </div>
+      </section>
     </UiDrawer>
 
     <AuditTimelineDrawer
@@ -1394,34 +1644,34 @@ onActivated(async () => {
 <style scoped lang="scss">
 .achievement {
   &__empty {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-component);
   }
 
   &__stages {
-    margin-bottom: var(--dp-space-4);
+    margin-bottom: var(--dp-space-block);
   }
 
   &__signals {
-    margin-bottom: var(--dp-space-3);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__result-panel {
-    margin-bottom: var(--dp-space-4);
+    margin-bottom: var(--dp-space-block);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-3);
-    margin-bottom: var(--dp-space-3);
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
@@ -1435,7 +1685,7 @@ onActivated(async () => {
   &__panel-actions {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
@@ -1464,11 +1714,11 @@ onActivated(async () => {
   }
 
   &__editor-alert {
-    margin-bottom: var(--dp-space-3);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__section-title {
-    margin: var(--dp-space-4) 0 var(--dp-space-2);
+    margin: var(--dp-space-block) 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
@@ -1477,17 +1727,63 @@ onActivated(async () => {
   &__trigger-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__trigger-chain {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
+  }
+
+  &__drawer-section {
+    margin-bottom: var(--dp-space-block);
+  }
+
+  &__drawer-hint {
+    margin: 0 0 var(--dp-space-component-tight);
+    font-size: var(--dp-font-size-xs);
+    color: var(--dp-text-muted);
+    line-height: 1.5;
+  }
+
+  &__drawer-algo {
+    margin: 0;
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
+    border: 1px solid var(--dp-border);
+    border-radius: var(--dp-radius-panel);
+    background: var(--dp-surface-subtle, var(--dp-surface));
+    font-size: var(--dp-font-size-sm);
+    color: var(--dp-text-primary);
+  }
+
+  &__impact {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--dp-space-component-xs);
+    margin: 0 0 var(--dp-space-component-tight);
+    font-size: var(--dp-font-size-xs);
+    color: var(--dp-text-secondary);
+
+    div {
+      display: grid;
+      grid-template-columns: 88px 1fr;
+      gap: var(--dp-space-component-tight);
+    }
+
+    dt {
+      margin: 0;
+      color: var(--dp-text-muted);
+    }
+
+    dd {
+      margin: 0;
+      color: var(--dp-text-primary);
+    }
   }
 
   &__trigger-step {
-    padding: var(--dp-space-3);
+    padding: var(--dp-space-component);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
     background: var(--dp-surface);
@@ -1496,14 +1792,18 @@ onActivated(async () => {
       border-color: var(--dp-warning-border);
       background: var(--dp-warning-bg);
     }
+
+    &--aggregate {
+      border-left: 3px solid var(--dp-color-primary);
+    }
   }
 
   &__trigger-step-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-2);
-    margin-bottom: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__trigger-step-title {
@@ -1513,7 +1813,7 @@ onActivated(async () => {
   }
 
   &__trigger-blockers {
-    margin: 0 0 var(--dp-space-2);
+    margin: 0 0 var(--dp-space-component-tight);
     padding-left: 18px;
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
@@ -1521,7 +1821,7 @@ onActivated(async () => {
   }
 
   &__readiness-hint {
-    margin: 0 0 var(--dp-space-2);
+    margin: 0 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
@@ -1554,14 +1854,14 @@ onActivated(async () => {
     display: inline-flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--dp-space-1);
+    gap: var(--dp-space-component-xs);
   }
 
   &__validity {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 4px;
+    gap: var(--dp-space-component-xs);
   }
 
   &__validity-time {

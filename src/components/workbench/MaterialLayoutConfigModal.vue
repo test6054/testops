@@ -42,16 +42,19 @@ const emit = defineEmits<{
 const formReadonly = computed(() => props.layoutModeLocked || !props.canManageOwnerWrites)
 
 const printSourceHint = computed(() => {
+  if (draftLayoutMode.value === ExamMaterialLayoutModeCode.ANSWER_SHEET) {
+    return '试题卷与答题页分册；可生成空白答题页母版按座位送印；考后试卷与答题页一起扫描，不阻断开扫。'
+  }
   if (draftLayoutMode.value !== ExamMaterialLayoutModeCode.FULL_PAPER) {
     return ''
   }
   if (draftPrintSource.value === ExamPrintSourceModeCode.SYSTEM_PRINT) {
-    return '按考生名册生成个性化印刷包，送指定保密印刷厂加印个人信息与防伪码。'
+    return '生成空白单独试卷母版，送指定保密印刷厂按考场座位印制；考生领卷后自行填写学号姓名与答案。'
   }
   if (draftPrintSource.value === ExamPrintSourceModeCode.EXTERNAL_PRINT) {
     return '试卷已线下印制完成，系统只上传同款 PDF 母版用于扫描对齐，不生成印刷包。'
   }
-  return '整卷作答须选择系统制卷或外带已印试卷。'
+  return '单独试卷须选择系统制卷或外带已印试卷。'
 })
 
 function handleSave(): void {
@@ -76,9 +79,9 @@ function handleSave(): void {
         :disabled="formReadonly"
         @click="draftLayoutMode = ExamMaterialLayoutModeCode.ANSWER_SHEET"
       >
-        <span class="material-layout-modal__mode-option-title">独立答卷页（教考分离）</span>
+        <span class="material-layout-modal__mode-option-title">试卷+答题页</span>
         <span class="material-layout-modal__mode-option-desc">
-          试题卷教研室命题、教务处审核后外印；系统只配置答题卡，考后仅扫描答题卡入库。
+          试题卷与答题页分册；可配置答题页密封线与作答区。考生自填身份与答案，考后试卷与答题页一起扫描。
         </span>
       </button>
       <button
@@ -91,12 +94,18 @@ function handleSave(): void {
         :disabled="formReadonly"
         @click="draftLayoutMode = ExamMaterialLayoutModeCode.FULL_PAPER"
       >
-        <span class="material-layout-modal__mode-option-title">整卷作答</span>
+        <span class="material-layout-modal__mode-option-title">单独试卷</span>
         <span class="material-layout-modal__mode-option-desc">
-          试题与作答在同一卷面；上传整卷 PDF 母版，配置身份区与客观填涂区后扫描或送印。
+          题干与作答同面；上传整卷 PDF 母版，配置身份区与作答区后扫描或空白送印。
         </span>
       </button>
     </div>
+    <p
+      v-if="draftLayoutMode === ExamMaterialLayoutModeCode.ANSWER_SHEET"
+      class="material-layout-modal__hint"
+    >
+      {{ printSourceHint }}
+    </p>
     <UiForm
       v-if="draftLayoutMode === ExamMaterialLayoutModeCode.FULL_PAPER"
       layout="inline"
@@ -113,7 +122,12 @@ function handleSave(): void {
         />
       </UiFormItem>
     </UiForm>
-    <p v-if="printSourceHint" class="material-layout-modal__hint">{{ printSourceHint }}</p>
+    <p
+      v-if="draftLayoutMode === ExamMaterialLayoutModeCode.FULL_PAPER && printSourceHint"
+      class="material-layout-modal__hint"
+    >
+      {{ printSourceHint }}
+    </p>
     <p v-if="layoutModeLocked" class="material-layout-modal__hint">
       已开印或已扫描，制卷形态不可修改
     </p>
@@ -121,7 +135,7 @@ function handleSave(): void {
       仅考试主考可修改制卷形态
     </p>
     <p v-else-if="!materialLayoutSaved" class="material-layout-modal__hint">
-      保存形态后解锁名册、制卷设计与印刷包配置
+      保存形态后可配置制卷设计与空白印刷；未保存也可先扫描登记
     </p>
     <p v-if="advisoryReason" class="material-layout-modal__advisory">{{ advisoryReason }}</p>
     <template #footer>
@@ -143,7 +157,7 @@ function handleSave(): void {
 <style scoped lang="scss">
 .material-layout-modal {
   &__desc {
-    margin: 0 0 12px;
+    margin: 0 0 var(--dp-space-component);
     font-size: var(--dp-font-size-sm);
     line-height: 1.6;
     color: var(--dp-text-muted);
@@ -152,24 +166,24 @@ function handleSave(): void {
   &__mode-options {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__mode-option {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--dp-space-component-tight);
     min-height: 88px;
-    padding: 12px 16px;
+    padding: var(--dp-space-component) var(--dp-space-block);
     text-align: left;
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
     cursor: pointer;
     transition:
-      border-color 0.2s ease,
-      background-color 0.2s ease;
+      border-color var(--dp-duration-normal) var(--dp-ease-default),
+      background-color var(--dp-duration-normal) var(--dp-ease-default);
 
     &:hover:not(:disabled) {
       border-color: var(--dp-color-primary);
@@ -200,7 +214,7 @@ function handleSave(): void {
   }
 
   &__print-form {
-    margin-bottom: 8px;
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__hint {
@@ -210,8 +224,8 @@ function handleSave(): void {
   }
 
   &__advisory {
-    margin: 8px 0 0;
-    padding: 8px 10px;
+    margin: var(--dp-space-component-tight) 0 0;
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     font-size: var(--dp-font-size-xs);
     line-height: 1.5;
     color: var(--dp-warning);

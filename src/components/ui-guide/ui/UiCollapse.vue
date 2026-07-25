@@ -36,19 +36,19 @@ const props = withDefaults(
 
 <style lang="scss" scoped>
 .ui-collapse {
-  background: var(--dp-bg-elevated, var(--dp-surface));
+  background: var(--dp-surface-elevated);
   border-radius: var(--dp-radius-control);
 }
 
 .ui-collapse :deep(.ant-collapse-header) {
-  padding: 10px 12px !important;
+  padding: var(--dp-space-component) !important;
   color: var(--dp-text-primary);
   font-weight: 600;
   font-size: var(--dp-font-size-sm);
 }
 
 .ui-collapse :deep(.ant-collapse-content-box) {
-  padding: 12px !important;
+  padding: var(--dp-space-component) !important;
 }
 
 .ui-collapse :deep(.ant-collapse-item) {

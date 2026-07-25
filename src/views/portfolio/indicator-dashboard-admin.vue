@@ -9,19 +9,21 @@ import type {
   PortfolioIndicatorUsageFrequencyVO,
 } from '@/apis/portfolio/indicator-types'
 import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, defineAsyncComponent } from 'vue'
 import { portfolioIndicatorDashboardApi } from '@/apis/portfolio/indicator'
 import { PF_SCENE_CODE_OPTIONS, PfSceneCodeDescription } from '@/apis/portfolio/indicator-types'
-import MarkChart from '@/components/chart/MarkChart.vue'
+const MarkChart = defineAsyncComponent(() => import('@/components/chart/MarkChart.vue'))
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { PortfolioTeacherIdentityTypeDescription } from '@/types/enums/portfolio-teacher-identity-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import {
   buildCategoryBarChartOption,
@@ -37,6 +39,14 @@ const usageFrequency = ref<PortfolioIndicatorUsageFrequencyVO | null>(null)
 const trend = ref<PortfolioIndicatorTrendVO | null>(null)
 const collegeCompare = ref<PortfolioIndicatorCollegeCompareVO | null>(null)
 const teacherTypeCompare = ref<PortfolioIndicatorTeacherTypeCompareVO | null>(null)
+const sectionError = reactive({
+  summary: false,
+  usage: false,
+  trend: false,
+  college: false,
+  teacherType: false,
+})
+const lastSuccessAt = ref<string | null>(null)
 
 interface DashboardQuery {
   sceneCode?: PfSceneCode
@@ -46,6 +56,15 @@ interface DashboardQuery {
 const query = reactive<DashboardQuery>({
   topLimit: 15,
 })
+
+const hasSectionFailure = computed(
+  () =>
+    sectionError.summary
+    || sectionError.usage
+    || sectionError.trend
+    || sectionError.college
+    || sectionError.teacherType,
+)
 
 const signals = computed<SignalMetric[]>(() => {
   if (!summary.value) {
@@ -154,7 +173,11 @@ const teacherTypeChartOption = computed<EChartsCoreOption>(() =>
   buildCategoryBarChartOption(
     (teacherTypeCompare.value?.items ?? []).map((item) => ({
       key: item.teacherTypeCode,
-      label: item.teacherTypeLabel,
+      label: strictEnumLabel(
+        PortfolioTeacherIdentityTypeDescription,
+        item.teacherTypeCode,
+        '教师身份类型',
+      ),
       value: item.usageCount,
       tone: 'orange',
     })),
@@ -165,18 +188,25 @@ const teacherTypeChartOption = computed<EChartsCoreOption>(() =>
 async function loadDashboard() {
   const currentToken = ++dashboardRequestToken.value
   loading.value = true
+  sectionError.summary = false
+  sectionError.usage = false
+  sectionError.trend = false
+  sectionError.college = false
+  sectionError.teacherType = false
   const requestQuery: DashboardQuery = {
     sceneCode: sceneCode.value,
     topLimit: query.topLimit,
   }
+  let anySuccess = false
   try {
     try {
       summary.value = await portfolioIndicatorDashboardApi.summary(requestQuery)
+      anySuccess = true
     } catch (error) {
       if (currentToken !== dashboardRequestToken.value) {
         return
       }
-      summary.value = null
+      sectionError.summary = true
       showUserError(error, '指标汇总加载失败')
     }
     if (currentToken !== dashboardRequestToken.value) {
@@ -184,11 +214,12 @@ async function loadDashboard() {
     }
     try {
       usageFrequency.value = await portfolioIndicatorDashboardApi.usageFrequency(requestQuery)
+      anySuccess = true
     } catch (error) {
       if (currentToken !== dashboardRequestToken.value) {
         return
       }
-      usageFrequency.value = null
+      sectionError.usage = true
       showUserError(error, '指标使用频次加载失败')
     }
     if (currentToken !== dashboardRequestToken.value) {
@@ -196,11 +227,12 @@ async function loadDashboard() {
     }
     try {
       trend.value = await portfolioIndicatorDashboardApi.trend(requestQuery)
+      anySuccess = true
     } catch (error) {
       if (currentToken !== dashboardRequestToken.value) {
         return
       }
-      trend.value = null
+      sectionError.trend = true
       showUserError(error, '指标趋势加载失败')
     }
     if (currentToken !== dashboardRequestToken.value) {
@@ -208,11 +240,12 @@ async function loadDashboard() {
     }
     try {
       collegeCompare.value = await portfolioIndicatorDashboardApi.collegeCompare(requestQuery)
+      anySuccess = true
     } catch (error) {
       if (currentToken !== dashboardRequestToken.value) {
         return
       }
-      collegeCompare.value = null
+      sectionError.college = true
       showUserError(error, '学院对比加载失败')
     }
     if (currentToken !== dashboardRequestToken.value) {
@@ -220,12 +253,16 @@ async function loadDashboard() {
     }
     try {
       teacherTypeCompare.value = await portfolioIndicatorDashboardApi.teacherTypeCompare(requestQuery)
+      anySuccess = true
     } catch (error) {
       if (currentToken !== dashboardRequestToken.value) {
         return
       }
-      teacherTypeCompare.value = null
+      sectionError.teacherType = true
       showUserError(error, '教师类型对比加载失败')
+    }
+    if (anySuccess && currentToken === dashboardRequestToken.value) {
+      lastSuccessAt.value = new Date().toISOString()
     }
   } finally {
     if (currentToken === dashboardRequestToken.value) {
@@ -269,7 +306,26 @@ onMounted(loadDashboard)
       <SignalBand v-if="summary" :metrics="signals" variant="panel" compact />
     </template>
     <UiSpin :spinning="loading">
-      <UiEmpty size="sm" v-if="!loading && !summary" description="当前范围无指标看板数据" />
+      <UiAlertStrip
+        v-if="hasSectionFailure"
+        tone="error"
+        title="部分看板区块加载失败"
+        :description="
+          lastSuccessAt
+            ? `最近成功加载 ${lastSuccessAt}；失败区块保留上次成功数据。`
+            : '看板区块加载失败，当前不能判定为无数据。'
+        "
+      />
+      <UiEmpty
+        size="sm"
+        v-if="!loading && !summary && !hasSectionFailure"
+        description="当前范围无指标看板数据"
+      />
+      <UiEmpty
+        size="sm"
+        v-else-if="!loading && !summary && hasSectionFailure"
+        description="指标汇总加载失败"
+      />
       <div v-else-if="summary" class="chart-grid">
         <UiCard title="一级维度分布">
           <MarkChart
@@ -317,17 +373,17 @@ onMounted(loadDashboard)
 @use '@/styles/breakpoints' as bp;
 .toolbar {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-block);
   flex-wrap: wrap;
 }
 .dashboard__signals {
-  margin-bottom: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-component);
 }
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 @media (max-width: #{bp.$ant-grid-xl - 1px}) {
   .chart-grid {

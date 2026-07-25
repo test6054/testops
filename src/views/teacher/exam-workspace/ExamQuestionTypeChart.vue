@@ -59,7 +59,7 @@ function barWidth(score: number): string {
   &__head {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__title {
@@ -71,14 +71,14 @@ function barWidth(score: number): string {
 
   &__meta {
     font-size: var(--dp-font-size-xs);
-    color: var(--dp-text-tertiary);
+    color: var(--dp-text-muted);
   }
 
   &__row {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
-    padding: var(--dp-space-2) 0;
+    gap: var(--dp-space-component-tight);
+    padding: var(--dp-space-component-tight) 0;
   }
 
   &__label {
@@ -104,7 +104,7 @@ function barWidth(score: number): string {
     height: 100%;
     border-radius: inherit;
     background: color-mix(in srgb, var(--dp-color-primary) 40%, transparent);
-    transition: width var(--dp-duration-normal) ease;
+    transition: width var(--dp-duration-normal) var(--dp-ease-default);
 
     &--lead {
       background: var(--dp-color-primary);
@@ -133,8 +133,8 @@ function barWidth(score: number): string {
   &__foot {
     display: flex;
     justify-content: space-between;
-    margin-top: var(--dp-space-3);
-    padding-top: var(--dp-space-3);
+    margin-top: var(--dp-space-component);
+    padding-top: var(--dp-space-component);
     border-top: 1px solid var(--dp-border);
     font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);

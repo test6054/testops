@@ -127,17 +127,17 @@ function handleChange(value: Key) {
 .ui-section-tabs {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 .ui-section-tabs--compact {
-  gap: 10px;
+  gap: var(--dp-space-component);
 }
 
 .ui-section-tabs__head {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .ui-section-tabs__nav {
@@ -145,8 +145,8 @@ function handleChange(value: Key) {
   align-self: flex-start;
   max-width: 100%;
   flex-wrap: wrap;
-  gap: var(--dp-space-1);
-  padding: var(--dp-space-1);
+  gap: var(--dp-space-component-xs);
+  padding: var(--dp-space-component-xs);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-gray-50);
@@ -156,8 +156,8 @@ function handleChange(value: Key) {
 .ui-section-tabs__tab {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2);
-  padding: var(--dp-space-2) var(--dp-space-3);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border: 0;
   border-radius: calc(var(--dp-radius-panel) - 2px);
   background: transparent;
@@ -167,10 +167,10 @@ function handleChange(value: Key) {
   line-height: 1.4;
   cursor: pointer;
   transition:
-    background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color var(--dp-duration-normal) cubic-bezier(0.4, 0, 0.2, 1),
+    color var(--dp-duration-normal) cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow var(--dp-duration-normal) cubic-bezier(0.4, 0, 0.2, 1),
+    transform var(--dp-duration-fast) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .ui-section-tabs__tab:hover:not(:disabled):not(.ui-section-tabs__tab--active) {
@@ -206,7 +206,7 @@ function handleChange(value: Key) {
   justify-content: center;
   min-width: 20px;
   height: 18px;
-  padding: 0 6px;
+  padding: 0 var(--dp-space-component-tight);
   border-radius: var(--dp-radius-full);
   font-size: var(--dp-font-size-xxs);
   font-weight: 600;
@@ -283,11 +283,11 @@ function handleChange(value: Key) {
 }
 
 .ui-section-tabs__content {
-  padding-top: 12px;
+  padding-top: var(--dp-space-component);
 }
 
 .ui-section-tabs--compact .ui-section-tabs__tab {
-  padding: 6px 12px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
 }
 
@@ -299,6 +299,6 @@ function handleChange(value: Key) {
 }
 
 .ui-section-tabs--compact .ui-section-tabs__content {
-  padding-top: 10px;
+  padding-top: var(--dp-space-component);
 }
 </style>

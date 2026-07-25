@@ -98,7 +98,7 @@ const selectOptions = computed<ArchiveVolumeSwitcherOption[]>(() => props.option
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   width: 100%;
   min-width: 0;
 }
@@ -108,7 +108,7 @@ const selectOptions = computed<ArchiveVolumeSwitcherOption[]>(() => props.option
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
   font-weight: 600;
 }
 
@@ -121,8 +121,8 @@ const selectOptions = computed<ArchiveVolumeSwitcherOption[]>(() => props.option
 .archive-volume-switcher.mark-exam-select .ant-select-selector .ant-select-selection-item,
 .archive-volume-switcher.mark-exam-select .ant-select-selector .ant-select-selection-search-input,
 .archive-volume-switcher.mark-exam-select .ant-select-selector input {
-  color: var(--dp-text) !important;
+  color: var(--dp-text-primary) !important;
   font-weight: 700 !important;
-  -webkit-text-fill-color: var(--dp-text) !important;
+  -webkit-text-fill-color: var(--dp-text-primary) !important;
 }
 </style>

@@ -72,6 +72,7 @@ const columns: ColumnsType = [
 ]
 
 const loading = ref(false)
+const submitting = ref(false)
 const exporting = ref(false)
 const evidences = ref<AccreditationEvidenceVO[]>([])
 const evidenceQuery = reactive({ pageNum: 1, pageSize: 10 })
@@ -243,6 +244,9 @@ watch(evidenceFileName, (name) => {
 })
 
 async function submitEvidence() {
+  if (submitting.value) {
+    return
+  }
   if (!evidenceForm.storageFileId) {
     void message.error('请先上传证据文件')
     return
@@ -274,6 +278,7 @@ async function submitEvidence() {
     markScannedPageId: evidenceForm.markScannedPageId || undefined,
     markPaperInstanceId: evidenceForm.markPaperInstanceId || undefined,
   }
+  submitting.value = true
   try {
     if (evidenceForm.id) {
       await accreditationApi.evidenceUpdate(request)
@@ -286,6 +291,8 @@ async function submitEvidence() {
     await loadEvidences()
   } catch (e) {
     showUserError(e, '认证证据保存失败')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -297,17 +304,23 @@ async function downloadEvidence(record: AccreditationEvidenceVO) {
 }
 
 async function deleteEvidence(id: string) {
+  if (submitting.value) {
+    return
+  }
   if (!canMutateEvidence.value) {
     void message.error(evidenceMutationHint.value || '当前不可删除认证证据')
     return
   }
   const ok = await confirmAsync({ title: '确认删除该证据？' })
   if (!ok) return
+  submitting.value = true
   try {
     await accreditationApi.evidenceDelete(id)
     await loadEvidences()
   } catch (e) {
     showUserError(e, '认证证据删除失败')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -328,10 +341,14 @@ async function openMarkImport() {
 }
 
 async function submitMarkImport() {
+  if (submitting.value) {
+    return
+  }
   if (selectedExamIds.value.length === 0) {
     showFormValidationMessage('请选择至少一场已关联阅卷考试的考试')
     return
   }
+  submitting.value = true
   try {
     const count = await accreditationApi.importMarkExamEvidence({
       programId: props.programId,
@@ -343,6 +360,8 @@ async function submitMarkImport() {
     await loadEvidences()
   } catch (e) {
     showUserError(e, '扫描页证据同步失败')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -481,6 +500,7 @@ defineExpose({ loadEvidences })
       width="520"
       :hide-footer="false"
       ok-text="保存"
+      :confirm-loading="submitting"
       @ok="submitEvidence"
     >
       <UiForm layout="vertical">
@@ -544,6 +564,7 @@ defineExpose({ loadEvidences })
       width="520"
       :hide-footer="false"
       ok-text="同步"
+      :confirm-loading="submitting"
       @ok="submitMarkImport"
     >
       <p v-if="linkedExams.length === 0" class="hint">
@@ -562,32 +583,32 @@ defineExpose({ loadEvidences })
 .evidence-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 .toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--dp-space-component);
   align-items: center;
   justify-content: space-between;
 }
 .toolbar-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   flex-wrap: wrap;
 }
 .exam-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .hint {
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 .file-hint {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
-  margin: 8px 0 0;
+  color: var(--dp-text-muted);
+  margin: var(--dp-space-component-tight) 0 0;
 }
 </style>

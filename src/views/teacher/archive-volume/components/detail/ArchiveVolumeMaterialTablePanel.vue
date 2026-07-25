@@ -35,12 +35,7 @@
       v-if="materialStatsLoadFailed"
       tone="warning"
       title="材料统计加载失败"
-      description="列表仍可使用，就绪数量暂不可用。"
-    >
-      <template #actions>
-        <UiButton size="sm" variant="outline" @click="loadMaterialStats">重新加载</UiButton>
-      </template>
-    </UiAlertStrip>
+    />
     <UiDataTable
       v-model:current="pageNum"
       v-model:page-size="pageSize"
@@ -146,12 +141,7 @@
         v-if="sharedRefsLoadFailed"
         tone="warning"
         title="合用材料引用加载失败"
-        description="可重试加载；已登记引用在加载失败时暂不可见。"
-      >
-        <template #actions>
-          <UiButton size="sm" variant="outline" @click="loadSharedRefs">重新加载</UiButton>
-        </template>
-      </UiAlertStrip>
+      />
       <UiDataTable
         :columns="sharedRefColumns"
         :data-source="sharedRefsLoadFailed ? [] : sharedRefs"
@@ -320,7 +310,7 @@
       :volume-id="volumeId"
       :payload="scanDispatchResult"
     />
-    <FilePreviewDialog :api="filePreview" />
+    <FilePreviewDialog v-if="filePreview.filePreviewOpen.value" :api="filePreview" />
   </WorkbenchSurfaceCard>
 </template>
 
@@ -333,10 +323,10 @@ import type {
   ArchiveVolumeMaterialStatsResponse,
   ArchiveVolumeSharedMaterialRefResponse,
 } from '@/apis/mark/archive-volume'
+import type { ScanDispatchResultPayload } from '@/components/scanner-ops/ScanDispatchResultDialog.vue'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import {
@@ -364,8 +354,8 @@ import {
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import FilePreviewDialog from '@/components/FilePreviewDialog.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import ScanDispatchResultDialog from '@/components/scanner-ops/ScanDispatchResultDialog.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -392,9 +382,10 @@ import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/
 import ArchiveVolumeMaterialOcrDetailModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue'
 import ArchiveVolumeMaterialTagModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTagModal.vue'
 import ScanDispatchDialog from '@/views/teacher/archive-volume/components/ScanDispatchDialog.vue'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 defineOptions({ name: 'ArchiveVolumeMaterialTablePanel' })
+
+const FilePreviewDialog = defineAsyncComponent(() => import('@/components/FilePreviewDialog.vue'))
 
 const props = defineProps<{
   volumeId: string
@@ -1141,37 +1132,37 @@ async function submitSharedRef() {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-volume-material-table__shared-refs {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
-  padding: var(--dp-space-3);
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel, 8px);
-  background: var(--dp-surface-subtle, var(--dp-bg-layout));
+  background: var(--dp-surface-subtle, var(--dp-bg-muted));
 }
 
 .archive-volume-material-table__shared-head {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-material-table__shared-title {
   margin: 0;
   font-size: var(--dp-font-size-sm);
   font-weight: 600;
-  color: var(--dp-color-text-primary);
+  color: var(--dp-text-primary);
 }
 
 .archive-volume-material-table__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   width: 100%;
 }
 
@@ -1183,12 +1174,12 @@ async function submitSharedRef() {
 
 .archive-volume-material-table__meta {
   margin-left: auto;
-  font-family: var(--dp-font-mono);
+  font-family: var(--dp-font-family-code);
   font-size: var(--dp-type-hint-size);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--dp-text-secondary);
-  padding: 2px 8px;
+  padding: 2px var(--dp-space-component-tight);
   border-radius: var(--dp-radius-xs);
   background: color-mix(in srgb, var(--dp-text-muted) 7%, transparent);
 }
@@ -1196,34 +1187,34 @@ async function submitSharedRef() {
 .archive-volume-material-table__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-material-table__ocr-failure {
   display: block;
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 
 .archive-volume-material-table__mapping-hint {
   margin: 0;
-  padding: var(--dp-space-2) var(--dp-space-3);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
-  border: 1px solid color-mix(in srgb, var(--dp-primary) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dp-color-primary) 18%, transparent);
   border-radius: var(--dp-radius-control-inner, 4px);
-  background: color-mix(in srgb, var(--dp-primary) 4%, transparent);
+  background: color-mix(in srgb, var(--dp-color-primary) 4%, transparent);
 }
 
 .archive-volume-material-table__mapping-link {
-  margin-left: 8px;
+  margin-left: var(--dp-space-component-tight);
 }
 
 .archive-volume-material-table__status {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-1);
+  gap: var(--dp-space-component-xs);
 }
 
 .archive-volume-material-table__status-icon {
@@ -1234,7 +1225,7 @@ async function submitSharedRef() {
 }
 
 .archive-volume-material-table__status-icon--gray {
-  background: var(--dp-color-text-quaternary);
+  background: var(--dp-text-quaternary);
 }
 
 .archive-volume-material-table__status-icon--blue {
@@ -1242,15 +1233,15 @@ async function submitSharedRef() {
 }
 
 .archive-volume-material-table__status-icon--green {
-  background: var(--dp-color-success);
+  background: var(--dp-success);
 }
 
 .archive-volume-material-table__status-icon--red {
-  background: var(--dp-color-error);
+  background: var(--dp-error);
 }
 
 .archive-volume-material-table__status-icon--orange {
-  background: var(--dp-color-warning);
+  background: var(--dp-warning);
 }
 
 .archive-volume-material-table__status-icon--purple {
@@ -1258,13 +1249,13 @@ async function submitSharedRef() {
 }
 
 .archive-volume-material-table__tip {
-  margin: 0 var(--dp-space-4) var(--dp-space-3);
+  margin: 0 var(--dp-space-block) var(--dp-space-component);
 }
 
 .material-status {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-1);
+  gap: var(--dp-space-component-xs);
 }
 
 .material-status-icon {

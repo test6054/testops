@@ -73,7 +73,7 @@
       <UiSkeletonState v-if="loading && !matrixMeta" variant="card" compact />
       <UiAlertStrip v-else-if="!matrixMeta" tone="info" size="sm" dense inline :show-icon="false">
         <template #default>
-          <span style="display: inline-flex; align-items: center; gap: 8px">
+          <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
             <UiTag tone="blue" size="sm">未选择范围</UiTag>
             <span>请选择截止学年与学期后查询就绪矩阵</span>
           </span>
@@ -161,6 +161,7 @@ import { formatAcademicYearSemester, SemesterOptions } from '@/types/enums/semes
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
+  applyTripleSemesterChange,
   createAcademicYearSemesterTripleDefaults,
   ensureTriplePeriodPair,
   resolveAcademicYearFromTriple,
@@ -382,6 +383,15 @@ watch(
   },
 )
 
+watch(
+  () => filterForm.semester,
+  (semester) => {
+    if (semester == null && filterForm.academicYearStartYear != null) {
+      applyTripleSemesterChange(filterForm, undefined)
+    }
+  },
+)
+
 onMounted(() => {
   void loadCampaignOptions()
   void loadMatrix()
@@ -415,16 +425,16 @@ async function loadCampaignOptions(): Promise<void> {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component) var(--dp-space-block);
 }
 
 .archive-readiness-matrix__legend {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-4);
-  padding: var(--dp-space-2) var(--dp-space-4);
+  gap: var(--dp-space-block);
+  padding: var(--dp-space-component-tight) var(--dp-space-block);
   background: var(--dp-surface);
   border-bottom: 1px solid var(--dp-border-subtle);
   font-size: var(--dp-font-size-xs);
@@ -434,7 +444,7 @@ async function loadCampaignOptions(): Promise<void> {
 .archive-readiness-matrix__legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   white-space: nowrap;
 }
 
@@ -462,7 +472,7 @@ async function loadCampaignOptions(): Promise<void> {
 }
 
 .archive-readiness-matrix__table {
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
 }
 
 .archive-readiness-matrix__cell {

@@ -2,8 +2,11 @@ import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-typ
 import type { PortfolioExportApprovalVO } from '@/apis/portfolio/governance'
 import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type {
+  PortfolioAgeBandDistributionItemVO,
   PortfolioCompletenessLevelCode,
+  PortfolioMetricDistributionItemVO,
   PortfolioMultiIdentityLayerVO,
+  PortfolioRetirementWindowDistributionItemVO,
   PortfolioTeacherDetailVO,
   PortfolioTeacherIdentitySaveRequest,
   PortfolioTeacherIdentityTypeCode,
@@ -11,9 +14,12 @@ import type {
   PortfolioTeacherOneTableGetRequest,
   PortfolioTeacherPageRequest,
   PortfolioTeacherSummaryVO,
+  PortfolioTenureBandDistributionItemVO,
 } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { PortfolioDeptTeacherSegmentCode } from '@/types/enums/portfolio-dept-teacher-segment-code-enum'
 import type { PortfolioDevelopmentPlanStatusCode } from '@/types/enums/portfolio-development-plan-status-enum'
+import type { PortfolioMetricRecomputeStatusCode } from '@/types/enums/portfolio-metric-recompute-status-enum'
 import type { PortfolioTitleTierCode } from '@/types/enums/portfolio-title-tier-enum'
 import http from '@/config/axios'
 
@@ -39,7 +45,6 @@ export interface PortfolioTeacherOneTableSummaryVO {
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
-  lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -80,6 +85,20 @@ export interface PortfolioDeptOneTableSummaryVO {
   courseArchiveFullyCompleteCount?: number
   courseArchiveFrameworkSlotDone?: number
   courseArchiveFrameworkSlotTotal?: number
+  teachingWorkloadAvgCoursesPerTeacher?: number
+  metricRecomputeStatus?: PortfolioMetricRecomputeStatusCode
+  metricComputedTime?: string
+  trainingRequiredTeacherCount?: number
+  trainingCompletedTeacherCount?: number
+  trainingCompletionRatePercent?: number
+  gapTaskOpenCount?: number
+  reviewTaskBacklogCount?: number
+  politicalAffiliationDistribution?: PortfolioMetricDistributionItemVO[]
+  educationDegreeDistribution?: PortfolioMetricDistributionItemVO[]
+  ageBandDistribution?: PortfolioAgeBandDistributionItemVO[]
+  tenureBandDistribution?: PortfolioTenureBandDistributionItemVO[]
+  retirementWindowDistribution?: PortfolioRetirementWindowDistributionItemVO[]
+  postCategoryDistribution?: PortfolioMetricDistributionItemVO[]
 }
 
 export interface PortfolioDeptOneTableTeacherRowVO {
@@ -105,7 +124,6 @@ export interface PortfolioDeptOneTableTeacherRowVO {
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
-  lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -119,8 +137,7 @@ export interface PortfolioDeptOneTableTeacherRowVO {
 }
 
 export interface PortfolioDeptTeacherSegmentItemVO {
-  segmentCode: 'NEEDS_SUPPORT' | 'HIGH_POTENTIAL' | 'DATA_ANOMALY'
-  segmentLabel: string
+  segmentCode: PortfolioDeptTeacherSegmentCode
   teacherCount: number
   sampleTeacherUserIds: string[]
 }
@@ -168,6 +185,8 @@ export interface PortfolioDeptOneTableTeacherPageRequest extends QueryDto {
 export interface PortfolioDepartmentReportExportApplyRequest extends PortfolioDeptOneTableExportRequest {
   constructionPeriodLabel?: string
   baselinePeriodLabel?: string
+  /** 是否纳入双高监测；false 时仅院系一表通 */
+  includeDoubleHigh: boolean
   exportPurpose: string
 }
 
@@ -186,16 +205,10 @@ export const portfolioTeacherApi = {
     ),
   getOneTableSummary: (data: PortfolioTeacherOneTableGetRequest = {}) =>
     http.post<PortfolioTeacherOneTableSummaryVO>(`${BASE}/one-table/summary/get`, data),
-  exportOneTable: (data: PortfolioTeacherOneTableGetRequest = {}) =>
-    http.post<PortfolioArchiveBagExportResultVO>(`${BASE}/one-table/export`, data),
-  exportRoster: (data: PortfolioTeacherPageRequest = { pageNum: 1, pageSize: 5000 }) =>
-    http.post<PortfolioArchiveBagExportResultVO>(`${BASE}/export-roster`, data),
   deptStructureStats: () =>
     http.post<PortfolioDeptStructureStatVO>(`${BASE}/dept-structure/stats`, {}),
   getDeptOneTableSummary: (data: PortfolioDeptOneTableGetRequest) =>
     http.post<PortfolioDeptOneTableSummaryVO>(`${BASE}/dept-one-table/summary/get`, data),
-  exportDeptOneTable: (data: PortfolioDeptOneTableExportRequest) =>
-    http.post<PortfolioArchiveBagExportResultVO>(`${BASE}/dept-one-table/export`, data),
   applyDeptReportExport: (data: PortfolioDepartmentReportExportApplyRequest) =>
     http.post<PortfolioExportApprovalVO>(`${BASE}/dept-report/export/apply`, data),
   pageDeptOneTableTeachers: (data: PortfolioDeptOneTableTeacherPageRequest) =>

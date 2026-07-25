@@ -10,10 +10,11 @@ import { PortfolioCompletenessLevelDescription } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
-import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import {
   flattenPortfolioOrgOptionsUnderDepartment,
@@ -32,6 +33,11 @@ const deptSummary = ref<PortfolioDeptOneTableSummaryVO | null>(null)
 const doubleHighMonitor = ref<PortfolioDoubleHighMonitorVO | null>(null)
 const reportContextToken = ref(0)
 const previewRequestToken = ref(0)
+/** 最近一次成功一表预览绑定的筛选代际；筛选变化后必须重新预览才能提交 */
+const previewBoundToken = ref(-1)
+const previewBoundPayloadKey = ref('')
+const doubleHighFailed = ref(false)
+const excludeDoubleHigh = ref(false)
 const filter = reactive({
   departmentId: undefined as string | undefined,
   planYear: String(new Date().getFullYear()),
@@ -66,6 +72,48 @@ const completenessOptions = computed(() =>
 
 const busy = computed(() => applying.value || previewLoading.value)
 
+function buildExportPayload() {
+  const includeDoubleHigh = !excludeDoubleHigh.value
+  return {
+    departmentId: filter.departmentId!,
+    planYear: filter.planYear || undefined,
+    portfolioOrgId: filter.portfolioOrgId || undefined,
+    teachingGroupId: filter.teachingGroupId || undefined,
+    completenessLevel: filter.completenessLevel || undefined,
+    includeDoubleHigh,
+    constructionPeriodLabel: includeDoubleHigh
+      ? (filter.constructionPeriodLabel.trim() || undefined)
+      : undefined,
+    baselinePeriodLabel: includeDoubleHigh
+      ? (filter.baselinePeriodLabel.trim() || undefined)
+      : undefined,
+  }
+}
+
+function payloadKeyOf(payload: ReturnType<typeof buildExportPayload>): string {
+  return JSON.stringify(payload)
+}
+
+const previewReady = computed(() => {
+  if (!deptSummary.value || !filter.departmentId) {
+    return false
+  }
+  if (previewBoundToken.value !== reportContextToken.value) {
+    return false
+  }
+  return previewBoundPayloadKey.value === payloadKeyOf(buildExportPayload())
+})
+
+const canApplyExport = computed(() => {
+  if (!previewReady.value || busy.value) {
+    return false
+  }
+  if (doubleHighFailed.value && !excludeDoubleHigh.value) {
+    return false
+  }
+  return Boolean(filter.exportPurpose.trim())
+})
+
 watch(
   () => filter.departmentId,
   () => {
@@ -90,6 +138,10 @@ watch(
     previewLoading.value = false
     deptSummary.value = null
     doubleHighMonitor.value = null
+    previewBoundToken.value = -1
+    previewBoundPayloadKey.value = ''
+    doubleHighFailed.value = false
+    excludeDoubleHigh.value = false
   },
 )
 
@@ -106,39 +158,52 @@ const previewStats = computed(() => {
     { label: '完整度达标', value: String(summary.completenessCompleteCount ?? 0) },
     { label: '规划完成率', value: `${summary.developmentPlanCompletionRatePercent ?? 0}%` },
   ]
-  if (doubleHighMonitor.value) {
+  if (excludeDoubleHigh.value) {
+    items.push({ label: '数据口径', value: '仅院系一表通（不含双高监测）' })
+  } else if (doubleHighMonitor.value) {
     items.push(
-      { label: '建设指数', value: doubleHighMonitor.value.constructionIndex },
+      { label: '建设指数', value: String(doubleHighMonitor.value.constructionIndex ?? '—') },
       { label: '双高任务完成率', value: `${doubleHighMonitor.value.taskCompletionRatePercent}%` },
     )
     if (doubleHighMonitor.value.baselineConstructionIndex) {
-      items.push({ label: '基线指数', value: doubleHighMonitor.value.baselineConstructionIndex })
+      items.push({
+        label: '基线指数',
+        value: String(doubleHighMonitor.value.baselineConstructionIndex),
+      })
     }
     if (doubleHighMonitor.value.periodValueAdded) {
-      items.push({ label: '周期增值', value: doubleHighMonitor.value.periodValueAdded })
+      items.push({
+        label: '周期增值',
+        value: String(doubleHighMonitor.value.periodValueAdded),
+      })
     }
   }
   return items
 })
 
-function buildExportPayload() {
-  return {
-    departmentId: filter.departmentId!,
-    planYear: filter.planYear || undefined,
-    portfolioOrgId: filter.portfolioOrgId || undefined,
-    teachingGroupId: filter.teachingGroupId || undefined,
-    completenessLevel: filter.completenessLevel || undefined,
-    constructionPeriodLabel: filter.constructionPeriodLabel.trim() || undefined,
-    baselinePeriodLabel: filter.baselinePeriodLabel.trim() || undefined,
+watch(excludeDoubleHigh, (excluded) => {
+  reportContextToken.value += 1
+  if (excluded && deptSummary.value) {
+    doubleHighMonitor.value = null
+    doubleHighFailed.value = false
+    previewBoundToken.value = reportContextToken.value
+    previewBoundPayloadKey.value = payloadKeyOf(buildExportPayload())
+    return
   }
-}
+  doubleHighMonitor.value = null
+  doubleHighFailed.value = false
+  previewBoundToken.value = -1
+  previewBoundPayloadKey.value = ''
+})
 
 async function loadPreview() {
   if (!filter.departmentId) {
     showFormValidationMessage('请选择院系')
     return
   }
-  if (filter.baselinePeriodLabel.trim() && !filter.constructionPeriodLabel.trim()) {
+  if (!excludeDoubleHigh.value
+    && filter.baselinePeriodLabel.trim()
+    && !filter.constructionPeriodLabel.trim()) {
     showFormValidationMessage('填写基线周期时必须同时指定建设周期')
     return
   }
@@ -150,6 +215,7 @@ async function loadPreview() {
   previewRequestToken.value = requestToken
   const payload = buildExportPayload()
   previewLoading.value = true
+  doubleHighFailed.value = false
   try {
     const summary = await portfolioTeacherApi.getDeptOneTableSummary({
       departmentId: payload.departmentId,
@@ -162,6 +228,13 @@ async function loadPreview() {
       return
     }
     deptSummary.value = summary
+    previewBoundToken.value = contextToken
+    previewBoundPayloadKey.value = payloadKeyOf(payload)
+    if (!payload.includeDoubleHigh) {
+      doubleHighMonitor.value = null
+      doubleHighFailed.value = false
+      return
+    }
     try {
       doubleHighMonitor.value = await portfolioDoubleHighApi.getMonitor({
         departmentId: payload.departmentId,
@@ -169,11 +242,16 @@ async function loadPreview() {
         constructionPeriodLabel: payload.constructionPeriodLabel,
         baselinePeriodLabel: payload.baselinePeriodLabel,
       })
+      if (reportContextToken.value !== contextToken || previewRequestToken.value !== requestToken) {
+        return
+      }
+      doubleHighFailed.value = false
     } catch (error) {
       if (reportContextToken.value !== contextToken || previewRequestToken.value !== requestToken) {
         return
       }
       doubleHighMonitor.value = null
+      doubleHighFailed.value = true
       showUserError(error, '双高监测预览加载失败')
     }
   } catch (error) {
@@ -182,6 +260,9 @@ async function loadPreview() {
     }
     deptSummary.value = null
     doubleHighMonitor.value = null
+    previewBoundToken.value = -1
+    previewBoundPayloadKey.value = ''
+    doubleHighFailed.value = false
     showUserError(error, '院系一表预览加载失败')
   } finally {
     if (reportContextToken.value === contextToken && previewRequestToken.value === requestToken) {
@@ -199,8 +280,18 @@ async function applyExport() {
     showFormValidationMessage('请填写导出用途')
     return
   }
-  if (filter.baselinePeriodLabel.trim() && !filter.constructionPeriodLabel.trim()) {
+  if (!excludeDoubleHigh.value
+    && filter.baselinePeriodLabel.trim()
+    && !filter.constructionPeriodLabel.trim()) {
     showFormValidationMessage('填写基线周期时必须同时指定建设周期')
+    return
+  }
+  if (!previewReady.value) {
+    showFormValidationMessage('请先预览与当前筛选一致的报告摘要，再提交审批')
+    return
+  }
+  if (doubleHighFailed.value && !excludeDoubleHigh.value) {
+    showFormValidationMessage('双高监测预览失败：请勾选排除双高口径，或重新预览成功后再提交')
     return
   }
   if (busy.value) {
@@ -208,12 +299,15 @@ async function applyExport() {
   }
   const contextToken = reportContextToken.value
   const payload = buildExportPayload()
-  const exportPurpose = filter.exportPurpose.trim()
+  if (payloadKeyOf(payload) !== previewBoundPayloadKey.value) {
+    showFormValidationMessage('筛选已变化，请重新预览摘要后再提交审批')
+    return
+  }
   applying.value = true
   try {
     await portfolioTeacherApi.applyDeptReportExport({
       ...payload,
-      exportPurpose,
+      exportPurpose: filter.exportPurpose.trim(),
     })
     if (reportContextToken.value !== contextToken) {
       return
@@ -243,11 +337,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <StageWorkbenchShell title="院系报告">
-    <template #context>
-      <ContextBar layout="workbench" show-title title="院系师资发展报告" subtitle="须经导出审批" />
-    </template>
-    <UiCard title="导出范围">
+  <StageWorkbenchShell title="院系师资发展报告">
+    <UiCard title="导出范围（须经导出审批）">
       <div class="report-filter">
         <label class="report-filter__field">
           <span>院系</span>
@@ -299,7 +390,7 @@ onMounted(() => {
           <span>建设周期</span>
           <UiInput
             v-model="filter.constructionPeriodLabel"
-            :disabled="busy"
+            :disabled="busy || excludeDoubleHigh"
             placeholder="如 2025-2026"
           />
         </label>
@@ -307,7 +398,7 @@ onMounted(() => {
           <span>双高基线周期</span>
           <UiInput
             v-model="filter.baselinePeriodLabel"
-            :disabled="busy"
+            :disabled="busy || excludeDoubleHigh"
             placeholder="如 2024-2025"
           />
         </label>
@@ -329,13 +420,29 @@ onMounted(() => {
             size="sm"
             variant="primary"
             :loading="applying"
-            :disabled="busy"
+            :disabled="!canApplyExport"
             @click="applyExport"
           >
             提交审批
           </UiButton>
         </div>
       </div>
+      <UiAlertStrip
+        v-if="!previewReady"
+        tone="info"
+        class="report-preview-gate"
+        description="提交审批前须先完成与当前筛选一致的摘要预览；筛选变更后需重新预览。"
+      />
+      <UiAlertStrip
+        v-if="doubleHighFailed && !excludeDoubleHigh"
+        tone="warning"
+        class="report-preview-gate"
+        description="双高监测预览失败。可重新预览，或勾选排除双高口径后仅按院系一表提交审批。"
+      />
+      <label class="report-exclude-double-high">
+        <UiSwitch v-model="excludeDoubleHigh" size="sm" :disabled="busy" />
+        <span>排除双高监测口径（产物不含双高 Sheet，仅院系一表通）</span>
+      </label>
     </UiCard>
     <UiCard v-if="previewStats.length" title="报告摘要预览">
       <UiStatPanel title="院系报告口径" :items="previewStats" compact />
@@ -347,14 +454,14 @@ onMounted(() => {
 .report-filter {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px 16px;
+  gap: var(--dp-space-component) var(--dp-space-block);
   align-items: end;
 }
 
 .report-filter__field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
 }
 
@@ -364,8 +471,20 @@ onMounted(() => {
 
 .report-filter__actions {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
+}
+
+.report-preview-gate {
+  margin-top: var(--dp-space-component);
+}
+
+.report-exclude-double-high {
+  display: flex;
+  align-items: center;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component-tight);
+  font-size: var(--dp-font-size-sm);
 }
 
 @media (max-width: 1100px) {

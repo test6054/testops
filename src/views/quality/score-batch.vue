@@ -26,7 +26,6 @@ import type {
   AuditTimelineEvent,
   SignalMetric,
   TaskResultItem,
-  WorkbenchStage,
 } from '@/types/workbench'
 import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import message from 'ant-design-vue/es/message'
@@ -47,6 +46,7 @@ import {
   DataSourceModeCode,
   DataSourceModeDescription,
   SCORE_BATCH_STATUS_COLOR,
+  ScoreBatchFailurePhaseDescription,
   ScoreBatchStatusCode,
   ScoreBatchStatusDescription,
 } from '@/apis/quality/types'
@@ -60,9 +60,11 @@ import {
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
@@ -75,7 +77,6 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
-import StageRail from '@/components/workbench/StageRail.vue'
 import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
 import { submitPlatformExcelImport } from '@/composables/platform/usePlatformExcelImport'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -83,6 +84,7 @@ import { usePolling } from '@/composables/usePolling'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import {
@@ -98,6 +100,7 @@ const batches = ref<ScoreBatchVO[]>([])
 const total = ref(0)
 const batchStatusCounts = ref<QualityStatusCountsResponse | null>(null)
 const loading = ref(false)
+const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const { exporting: scoreBatchExporting, exportExcel: exportScoreBatchExcel }
   = useQualityTableExport()
 const uploading = ref(false)
@@ -258,6 +261,13 @@ function statusLabel(value: ScoreBatchStatusCode): string {
   return strictEnumLabel(ScoreBatchStatusDescription, value, '成绩批次状态')
 }
 
+function failurePhaseLabel(value: ScoreBatchVO['failurePhase']): string {
+  if (!value) {
+    return ''
+  }
+  return strictEnumLabel(ScoreBatchFailurePhaseDescription, value, '成绩批次失败阶段')
+}
+
 function statusColor(value: ScoreBatchStatusCode): BadgeTone {
   return strictEnumTone(SCORE_BATCH_STATUS_COLOR, value, '成绩批次状态')
 }
@@ -293,7 +303,7 @@ function scoreBatchRowStatisticsText(record: ScoreBatchVO): string {
   return `${record.successRows} / ${record.errorRows} / ${record.totalRows}`
 }
 
-// ─── 阶段状态分布（用于 StageRail） ─────────────────────────────
+// ─── 批次状态桶与配置状态信号 ───────────────────────────────────
 function buildBatchListQuery(): ScoreBatchQueryRequest {
   return {
     ...query,
@@ -328,42 +338,120 @@ function buildScoreBatchStatusBuckets(
 }
 
 const statusBuckets = computed(() => buildScoreBatchStatusBuckets(batchStatusCounts.value))
+const distributionExpanded = ref(false)
+const countsLastSuccessAt = ref<string | null>(null)
 
-const stages = computed<WorkbenchStage[]>(() => {
+function markCountsSuccessAt(): void {
+  countsLastSuccessAt.value = new Date().toISOString().replace('T', ' ').slice(0, 19)
+}
+
+const configStatusStrip = computed(() => {
+  if (!batchStatusCounts.value) {
+    return null
+  }
   const b = statusBuckets.value
-  const stageOrder: Array<{ key: ScoreBatchStatusCode, title: string }> = [
-    { key: ScoreBatchStatusCode.PENDING, title: '待处理' },
-    { key: ScoreBatchStatusCode.PARSING, title: '解析中' },
-    { key: ScoreBatchStatusCode.PREVIEW_READY, title: '预览就绪' },
-    { key: ScoreBatchStatusCode.VALIDATED, title: '已校验' },
-    { key: ScoreBatchStatusCode.CONFIRMED, title: '已确认' },
-  ]
-  return stageOrder.map((stage) => {
-    const count = b[stage.key]
-    let status: WorkbenchStage['status'] = 'pending'
-    if (stage.key === ScoreBatchStatusCode.CONFIRMED && count > 0) status = 'completed'
-    else if (count > 0) status = 'active'
+  const totalCount = batchStatusCounts.value.totalCount ?? 0
+  if (b.FAILED > 0) {
     return {
-      key: stage.key,
-      title: stage.title,
-      status,
-      statusText: `${count} 个批次`,
+      tone: 'error' as const,
+      tag: '失败待处置',
+      description: `有 ${b.FAILED} 个批次失败，请先查看待关注批次与失败阶段`,
     }
-  })
+  }
+  if (b.PARSING > 0) {
+    return {
+      tone: 'warning' as const,
+      tag: '解析中',
+      description: `有 ${b.PARSING} 个批次正在解析，完成后可预览校验`,
+    }
+  }
+  if (b.PREVIEW_READY > 0) {
+    return {
+      tone: 'warning' as const,
+      tag: '下一动作',
+      description: `有 ${b.PREVIEW_READY} 个批次预览就绪，请校验后确认`,
+    }
+  }
+  if (b.VALIDATED > 0) {
+    return {
+      tone: 'info' as const,
+      tag: '下一动作',
+      description: `有 ${b.VALIDATED} 个批次已校验，请确认写入成绩`,
+    }
+  }
+  if (totalCount === 0) {
+    return {
+      tone: 'info' as const,
+      tag: '未配置',
+      description: '当前范围尚无成绩批次，请先上传 Excel 并完成解析',
+    }
+  }
+  return {
+    tone: 'success' as const,
+    tag: '配置就绪',
+    description: '当前范围无待处置失败或预览队列；可继续导入或核对已确认批次',
+  }
 })
 
 const signals = computed<SignalMetric[]>(() => {
+  const b = statusBuckets.value
+  return [
+    {
+      key: 'failed',
+      label: '失败',
+      value: b.FAILED,
+      tone: b.FAILED > 0 ? 'red' : 'gray',
+      clickable: b.FAILED > 0,
+    },
+    {
+      key: 'previewReady',
+      label: '预览就绪',
+      value: b.PREVIEW_READY,
+      tone: b.PREVIEW_READY > 0 ? 'orange' : 'gray',
+      clickable: b.PREVIEW_READY > 0,
+    },
+    {
+      key: 'validated',
+      label: '已校验',
+      value: b.VALIDATED,
+      tone: b.VALIDATED > 0 ? 'blue' : 'gray',
+      clickable: b.VALIDATED > 0,
+    },
+    {
+      key: 'parsing',
+      label: '解析中',
+      value: b.PARSING,
+      tone: b.PARSING > 0 ? 'orange' : 'gray',
+      clickable: b.PARSING > 0,
+    },
+  ]
+})
+
+const distributionSignals = computed<SignalMetric[]>(() => {
   const b = statusBuckets.value
   const totalCount = batchStatusCounts.value?.totalCount ?? 0
   return [
     { key: 'total', label: '批次总数', value: totalCount, tone: 'blue' },
     { key: 'confirmed', label: '已确认', value: b.CONFIRMED, tone: 'green' },
-    { key: 'validated', label: '已校验', value: b.VALIDATED, tone: 'blue' },
-    { key: 'previewReady', label: '预览就绪', value: b.PREVIEW_READY, tone: 'orange' },
-    { key: 'failed', label: '失败', value: b.FAILED, tone: 'red' },
     { key: 'cancelled', label: '已取消', value: b.CANCELLED, tone: 'gray' },
   ]
 })
+
+function handleSignalMetricClick(key: string): void {
+  const statusMap: Record<string, ScoreBatchStatusCode> = {
+    failed: ScoreBatchStatusCode.FAILED,
+    previewReady: ScoreBatchStatusCode.PREVIEW_READY,
+    validated: ScoreBatchStatusCode.VALIDATED,
+    parsing: ScoreBatchStatusCode.PARSING,
+  }
+  const status = statusMap[key]
+  if (!status) {
+    return
+  }
+  query.status = status
+  query.pageNum = 1
+  void loadBatches()
+}
 
 const courseSelectOptions = computed(() =>
   courseOptions.value.map((item) => ({
@@ -452,6 +540,7 @@ async function loadBatches() {
   }
   const scope = beginQualityScopeRequest()
   loading.value = true
+  beginLoad()
   try {
     const listQuery = buildBatchListQuery()
     const page = await scoreBatchApi.page(listQuery)
@@ -471,17 +560,23 @@ async function loadBatches() {
       const counts = await scoreBatchApi.statusCounts(listQuery)
       if (!scope.isStale()) {
         batchStatusCounts.value = counts
+        markCountsSuccessAt()
       }
     } catch (error) {
       if (!scope.isStale()) {
         showUserError(error, '成绩批次状态统计加载失败')
       }
     }
+    markListSyncOk()
+    okLoad()
     batchPolling.syncPolling()
   } catch (error) {
     if (scope.isStale()) {
       return
     }
+    batches.value = []
+    total.value = 0
+    failLoad()
     showUserError(error, '成绩批次加载失败')
   } finally {
     if (!scope.isStale()) {
@@ -490,10 +585,43 @@ async function loadBatches() {
   }
 }
 
+const LIST_POLL_INTERVALS_MS = [3000, 6000, 12000, 30000] as const
+const LIST_POLL_MAX_FAILURES = 5
+const listSyncAt = ref<string | null>(null)
+const listSyncFailed = ref(false)
+const listPollFailCount = ref(0)
+const listPollStopped = ref(false)
+
+function markListSyncOk(): void {
+  listSyncFailed.value = false
+  listPollFailCount.value = 0
+  listPollStopped.value = false
+  listSyncAt.value = new Date().toISOString().replace('T', ' ').slice(0, 19)
+}
+
+function markListSyncFailed(): void {
+  listSyncFailed.value = true
+  listPollFailCount.value += 1
+  if (listPollFailCount.value >= LIST_POLL_MAX_FAILURES) {
+    listPollStopped.value = true
+  }
+}
+
+function currentListPollIntervalMs(): number {
+  const idx = Math.min(listPollFailCount.value, LIST_POLL_INTERVALS_MS.length - 1)
+  return LIST_POLL_INTERVALS_MS[idx]
+}
+
 const batchPolling = usePolling(() => loadBatchesQuietly(), {
   getOptions: () => ({
-    intervalMs: 3000,
-    when: batches.value.some((batch) => batch.status === ScoreBatchStatusCode.PARSING),
+    intervalMs: currentListPollIntervalMs(),
+    when:
+      !listPollStopped.value
+      && batches.value.some(
+        (batch) =>
+          batch.status === ScoreBatchStatusCode.PENDING
+          || batch.status === ScoreBatchStatusCode.PARSING,
+      ),
   }),
   pauseWhenDocumentHidden: true,
 })
@@ -518,13 +646,19 @@ async function loadBatchesQuietly(): Promise<void> {
       const counts = await scoreBatchApi.statusCounts(listQuery, quiet)
       if (!scope.isStale()) {
         batchStatusCounts.value = counts
+        markCountsSuccessAt()
       }
     } catch {
       // 轮询：统计失败不覆盖列表
     }
+    markListSyncOk()
     batchPolling.syncPolling()
   } catch {
-    // 轮询刷新失败时不打断当前页面操作
+    if (scope.isStale()) {
+      return
+    }
+    markListSyncFailed()
+    batchPolling.syncPolling()
   }
 }
 
@@ -561,7 +695,8 @@ const batchListColumns: ColumnsType = [
   { title: '接入模式', dataIndex: 'sourceMode', key: 'sourceMode', width: 160 },
   { title: '行数（成功/错误/总）', key: 'rowsBreakdown', width: 180 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
-  { title: '提交时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
+  { title: '失败阶段', key: 'failurePhase', width: 140 },
+  { title: '最近更新', dataIndex: 'updateTime', key: 'updateTime', width: 170 },
   { title: '操作', key: 'actions', width: 360 },
 ]
 
@@ -884,16 +1019,25 @@ const batchResultItems = computed<TaskResultItem[]>(() => {
       (b) => b.status === ScoreBatchStatusCode.FAILED || b.status === ScoreBatchStatusCode.PARSING,
     )
     .slice(0, 5)
-    .map((b) => ({
-      id: b.id,
-      title: `${b.batchCode} - ${b.batchName}`,
-      statusLabel: statusLabel(b.status),
-      statusTone: b.status === ScoreBatchStatusCode.FAILED ? 'red' : 'blue',
-      description:
-        b.status === ScoreBatchStatusCode.FAILED ? scoreBatchRowStatisticsText(b) : `解析中…`,
-      time: b.createTime || undefined,
-      actions: canPreview(b.status) ? [{ key: 'preview', label: '预览' }] : [],
-    }))
+    .map((b) => {
+      const phase = failurePhaseLabel(b.failurePhase)
+      const failedDesc = [
+        phase ? `失败阶段：${phase}` : '',
+        b.errorSummary?.trim() || '',
+        scoreBatchRowStatisticsText(b),
+      ]
+        .filter(Boolean)
+        .join('；')
+      return {
+        id: b.id,
+        title: `${b.batchCode} - ${b.batchName}`,
+        statusLabel: statusLabel(b.status),
+        statusTone: b.status === ScoreBatchStatusCode.FAILED ? 'red' : 'blue',
+        description: b.status === ScoreBatchStatusCode.FAILED ? failedDesc : '解析中…',
+        time: b.updateTime || b.createTime || undefined,
+        actions: canPreview(b.status) ? [{ key: 'preview', label: '预览' }] : [],
+      }
+    })
 })
 
 function handleBatchResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
@@ -1066,8 +1210,61 @@ onMounted(async () => {
     <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="score-batch__empty" />
 
     <template v-else>
-      <StageRail :stages="stages" compact class="score-batch__stages" />
-      <SignalBand :metrics="signals" variant="panel" compact class="score-batch__signals" />
+      <UiAlertStrip
+        v-if="configStatusStrip"
+        :tone="configStatusStrip.tone"
+        dense
+        inline
+        :show-icon="false"
+        class="score-batch__config-status"
+      >
+        <template #default>
+          <span class="score-batch__gate-row">
+            <UiTag
+              :tone="
+                configStatusStrip.tone === 'error'
+                  ? 'red'
+                  : configStatusStrip.tone === 'warning'
+                    ? 'orange'
+                    : configStatusStrip.tone === 'success'
+                      ? 'green'
+                      : 'blue'
+              "
+              size="sm"
+            >
+              {{ configStatusStrip.tag }}
+            </UiTag>
+            <span>{{ configStatusStrip.description }}</span>
+          </span>
+        </template>
+      </UiAlertStrip>
+      <SignalBand
+        :metrics="signals"
+        variant="panel"
+        compact
+        class="score-batch__signals"
+        @metric-click="handleSignalMetricClick"
+      />
+      <p v-if="countsLastSuccessAt" class="score-batch__sync-hint">
+        指标最近同步：{{ countsLastSuccessAt }}
+      </p>
+      <div v-if="distributionSignals.length" class="score-batch__charts-fold">
+        <UiButton
+          variant="ghost"
+          size="sm"
+          class="score-batch__charts-toggle"
+          @click="distributionExpanded = !distributionExpanded"
+        >
+          {{ distributionExpanded ? '收起状态统计' : '展开状态统计' }}
+        </UiButton>
+        <SignalBand
+          v-if="distributionExpanded"
+          :metrics="distributionSignals"
+          variant="panel"
+          compact
+          class="score-batch__signals-secondary"
+        />
+      </div>
 
       <TaskResultPanel
         v-if="batchResultItems.length > 0"
@@ -1075,6 +1272,18 @@ onMounted(async () => {
         :items="batchResultItems"
         class="score-batch__result-panel"
         @action="handleBatchResultAction"
+      />
+
+      <UiEmpty
+        v-if="listSyncFailed"
+        size="sm"
+        :title="listPollStopped ? '列表同步已暂停' : '列表同步失败'"
+        :description="
+          listPollStopped
+            ? `连续失败 ${listPollFailCount} 次已停止轮询；最近成功 ${listSyncAt || '尚无'}`
+            : `最近成功 ${listSyncAt || '尚无'}；已退避重试中`
+        "
+        class="score-batch__list-sync"
       />
 
       <div class="score-batch__upload">
@@ -1207,6 +1416,9 @@ onMounted(async () => {
           :columns="batchListColumns"
           :data-source="batches"
           :loading="loading"
+          :load-error="loadError"
+          empty-title="暂无成绩导入批次"
+          empty-description="请在上方上传 Excel 完成解析接入"
           row-key="id"
           size="middle"
           :total="total"
@@ -1230,7 +1442,7 @@ onMounted(async () => {
               v-else-if="
                 column.key === 'schoolYear'
                   || column.key === 'semester'
-                  || column.key === 'createTime'
+                  || column.key === 'updateTime'
               "
             >
               <template v-if="column.key === 'schoolYear'">
@@ -1240,8 +1452,17 @@ onMounted(async () => {
                 {{ formatSemester(record.semester) }}
               </template>
               <template v-else>
-                {{ record.createTime }}
+                {{ record.updateTime || record.createTime || '-' }}
               </template>
+            </template>
+            <template v-else-if="column.key === 'failurePhase'">
+              <template v-if="record.status === ScoreBatchStatusCode.FAILED">
+                <div>{{ failurePhaseLabel(record.failurePhase) || '-' }}</div>
+                <div v-if="record.errorSummary" class="score-batch__sub-text">
+                  {{ record.errorSummary }}
+                </div>
+              </template>
+              <span v-else class="score-batch__sub-text">-</span>
             </template>
             <template v-else-if="column.key === 'sourceMode'">
               {{ sourceModeLabel(record.sourceMode) }}
@@ -1335,7 +1556,7 @@ onMounted(async () => {
           <template v-else-if="column.key === 'errorInfo'">
             <div
               class="dp-space dp-space--vertical dp-space--block"
-              style="width: 100%; --dp-space-gap: 8px"
+              style="width: 100%; --dp-space-component: 8px"
             >
               <div
                 v-for="(errorMessage, idx) in previewErrorMessages(record)"
@@ -1449,39 +1670,63 @@ onMounted(async () => {
   }
 
   &__empty {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-component);
   }
 
-  &__stages {
-    margin-bottom: 16px;
+  &__config-status {
+    margin-bottom: var(--dp-space-component);
+  }
+
+  &__gate-row {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--dp-space-component-tight);
   }
 
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component-xs);
+  }
+
+  &__signals-secondary {
+    margin-top: var(--dp-space-component-tight);
+  }
+
+  &__sync-hint {
+    margin: 0 0 var(--dp-space-component-tight);
+    color: var(--dp-text-secondary, #666);
+    font-size: var(--dp-font-size-sm, 12px);
+  }
+
+  &__charts-fold {
+    margin-bottom: var(--dp-space-component-tight);
+  }
+
+  &__charts-toggle {
+    padding-inline: 0;
   }
 
   &__result-panel {
-    margin-bottom: var(--dp-space-3, 12px);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__upload {
-    margin-bottom: var(--dp-space-3, 12px);
-    padding: var(--dp-space-3, 12px);
+    margin-bottom: var(--dp-space-component);
+    padding: var(--dp-space-component);
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
   }
 
   &__upload-header {
-    margin-bottom: var(--dp-space-2, 8px);
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__upload-heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 6px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__upload-title {
@@ -1498,7 +1743,7 @@ onMounted(async () => {
     line-height: 1.6;
 
     code {
-      padding: 1px 6px;
+      padding: 1px var(--dp-space-component-tight);
       margin: 0 2px;
       font-size: var(--dp-font-size-xs);
       background: var(--dp-gray-100);
@@ -1507,7 +1752,7 @@ onMounted(async () => {
   }
 
   &__upload-form {
-    row-gap: 12px;
+    row-gap: var(--dp-space-component);
   }
 
   &__table {
@@ -1533,15 +1778,15 @@ onMounted(async () => {
   }
 
   &__preview-descriptions {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__preview-error {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__editor-alert {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 }
 </style>

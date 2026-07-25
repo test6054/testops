@@ -9,9 +9,15 @@ import { showUserError } from '@/utils/error-handler'
 
 const open = defineModel<boolean>('open', { default: false })
 
-const props = defineProps<{
-  previewPdfFileId?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    previewPdfFileId?: string
+    title?: string
+  }>(),
+  {
+    title: '制卷预览',
+  },
+)
 
 const loading = ref(false)
 const previewUrl = ref('')
@@ -55,7 +61,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <UiDrawer v-model:open="open" title="制卷预览" width="min(920px, 96vw)" destroy-on-close>
+  <UiDrawer v-model:open="open" :title="title" width="min(920px, 96vw)" destroy-on-close>
     <UiSpin :spinning="loading">
       <UiAlertStrip
         v-if="!previewPdfFileId"
@@ -101,14 +107,14 @@ onBeforeUnmount(() => {
 
 <style scoped lang="scss">
 .layout-preview-drawer__gate {
-  margin: var(--dp-space-2) 0;
+  margin: var(--dp-space-component-tight) 0;
   max-width: 100%;
 }
 
 .layout-preview-drawer__gate-row {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
 }
 
@@ -122,6 +128,6 @@ onBeforeUnmount(() => {
   min-height: 72vh;
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control);
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
 }
 </style>

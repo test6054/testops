@@ -659,7 +659,7 @@ defineExpose({
 <style scoped lang="scss">
 .ie {
   &__workflow-card {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__workflow-line {
@@ -674,7 +674,7 @@ defineExpose({
   }
 
   &__progress-pending-confirm {
-    margin: 0 0 8px;
+    margin: 0 0 var(--dp-space-component-tight);
     color: var(--dp-warning);
     font-size: var(--dp-font-size-sm);
   }
@@ -691,7 +691,7 @@ defineExpose({
   &__panel-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
@@ -702,29 +702,29 @@ defineExpose({
   &__stats-actions {
     display: flex;
     justify-content: flex-end;
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__target-scores {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__target-score-card {
-    padding: 10px 12px;
+    padding: var(--dp-space-component);
     border: 1px solid var(--dp-border);
     border-radius: 6px;
-    background: var(--dp-surface-muted);
+    background: var(--dp-surface-subtle);
   }
 
   &__target-score-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 4px;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component-xs);
   }
 
   &__target-score-label {
@@ -749,17 +749,17 @@ defineExpose({
   }
 
   &__target-score-warn {
-    margin: 4px 0 0;
+    margin: var(--dp-space-component-xs) 0 0;
     color: var(--dp-warning);
     font-size: var(--dp-font-size-xs);
   }
 
   &__target-score-error {
-    margin-top: 4px;
+    margin-top: var(--dp-space-component-xs);
   }
 
   &__target-score-synthesis {
-    margin: 4px 0 0;
+    margin: var(--dp-space-component-xs) 0 0;
     color: var(--dp-text-muted);
     font-size: var(--dp-font-size-xs);
   }

@@ -55,11 +55,3 @@ export function resolveMarkingOrganizationFormalHubRoute(examId: string): RouteL
     params: { examId },
   }
 }
-
-/** 兼容旧入口，默认进入试评定标 */
-export function resolveMarkingOrganizationSessionsRoute(
-  organizationId: string,
-  examId: string,
-): RouteLocationRaw {
-  return resolveMarkingOrganizationTrialSessionsRoute(organizationId, examId)
-}

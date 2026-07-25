@@ -13,7 +13,7 @@
         <UiButton size="sm" variant="outline" @click="previewPage(page)"> 查看影像 </UiButton>
       </div>
     </div>
-    <FilePreviewDialog :api="filePreview" />
+    <FilePreviewDialog v-if="filePreview.filePreviewOpen.value" :api="filePreview" />
   </UiDrawer>
 </template>
 
@@ -22,9 +22,8 @@ import type {
   ExamCandidateRosterPaperScannedPageItemResponse,
   ExamCandidateRosterWorkbenchItemResponse,
 } from '@/apis/mark/exam-candidate-roster'
-import { computed, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { listCandidateRosterPaperScannedPages } from '@/apis/mark/exam-candidate-roster'
-import FilePreviewDialog from '@/components/FilePreviewDialog.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -39,6 +38,8 @@ import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ExamCandidatePaperImagesDrawer' })
+
+const FilePreviewDialog = defineAsyncComponent(() => import('@/components/FilePreviewDialog.vue'))
 
 const open = defineModel<boolean>('open', { default: false })
 
@@ -110,14 +111,14 @@ watch(
 .candidate-paper-images {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 
   &__item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 12px 16px;
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-component) var(--dp-space-block);
     border: 1px solid var(--dp-border-subtle);
     border-radius: 6px;
   }
@@ -125,7 +126,7 @@ watch(
   &__meta {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     min-width: 0;
   }
 

@@ -581,22 +581,22 @@ onActivated(() => {
 <style scoped lang="scss">
 .scr {
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
@@ -610,7 +610,7 @@ onActivated(() => {
   &__panel-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
@@ -625,8 +625,8 @@ onActivated(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
@@ -638,18 +638,18 @@ onActivated(() => {
   &__item-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--dp-space-component);
   }
 
   &__item-row {
     display: grid;
     grid-template-columns: 48px minmax(180px, 1.5fr) minmax(140px, 0.9fr) minmax(120px, 0.8fr) 88px;
-    gap: 10px;
+    gap: var(--dp-space-component);
     align-items: center;
-    padding: 12px;
+    padding: var(--dp-space-component);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    background: var(--dp-surface-elevated);
+    background: var(--dp-surface-chrome);
   }
 
   &__item-cell {
@@ -671,11 +671,11 @@ onActivated(() => {
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
     border: 1px dashed var(--dp-border);
     border-radius: var(--dp-radius-panel);
     color: var(--dp-text-secondary);
-    background: var(--dp-surface-elevated);
+    background: var(--dp-surface-chrome);
   }
 }
 </style>

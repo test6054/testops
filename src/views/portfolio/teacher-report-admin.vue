@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { PortfolioAiAnalysisDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
+import type {
+  PortfolioAiAnalysisReviewStatusCode} from '@/types/enums/portfolio-ai-analysis-review-status-enum';
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
@@ -19,18 +21,23 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import {
+  PortfolioAiAnalysisReviewStatusDescription,
+} from '@/types/enums/portfolio-ai-analysis-review-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import {
   formatPortfolioTeacherDisplay,
   portfolioTeacherSelectOptionsFromSummaries,
   resolvePortfolioTeacherDisplayName,
 } from '@/utils/portfolio-teacher-display'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 function readRouteStringParam(value: unknown): string {
@@ -72,10 +79,53 @@ const pageSubtitle = computed(() => {
     return reportDetail.value.reportPeriodLabel
   }
   if (deepLinkedTaskId.value) {
-    return '按年度报告任务查看智能结果'
+    return '按年度报告任务查看智能草稿'
   }
-  return '按教师场景生成教学档案袋文本分析结果'
+  return '按教师场景生成教学档案袋文本分析草稿（非正式结论）'
 })
+
+function reviewStatusLabel(status?: PortfolioAiAnalysisReviewStatusCode): string {
+  if (!status) {
+    return '—'
+  }
+  return strictEnumLabel(
+    PortfolioAiAnalysisReviewStatusDescription,
+    status,
+    'AI 分析审核状态',
+  )
+}
+
+function sanitizeDraftFileName(title: string | undefined): string {
+  const raw = (title || '教学报告AI草稿').trim() || '教学报告AI草稿'
+  const illegalNameChars = new Set(['<', '>', ':', '"', '/', '\\', '|', '?', '*'])
+  let cleaned = ''
+  for (const ch of raw) {
+    const code = ch.charCodeAt(0)
+    if (code < 32 || illegalNameChars.has(ch) || /\s/.test(ch)) {
+      cleaned += '_'
+    } else {
+      cleaned += ch
+    }
+  }
+  cleaned = cleaned.replace(/_+/g, '_').replace(/^_|_$/g, '').slice(0, 80)
+  if (!cleaned) {
+    cleaned = '教学报告AI草稿'
+  }
+  return cleaned.endsWith('.md') ? cleaned : `${cleaned}.md`
+}
+
+function buildDraftDownloadContent(detail: PortfolioAiAnalysisDetailVO): string {
+  const lines = [
+    '<!-- AI 生成草稿 · 非正式结论 · 须人工审核后方可用于正式报告/报送 -->',
+    `<!-- resultTitle: ${detail.resultTitle || ''} -->`,
+    `<!-- reviewStatus: ${detail.reviewStatus || ''} -->`,
+    `<!-- generatedTime: ${detail.generatedTime || detail.createTime || ''} -->`,
+    `<!-- modelName: ${detail.modelName || ''} -->`,
+    '',
+    detail.draftMarkdown || '',
+  ]
+  return lines.join('\n')
+}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -265,13 +315,16 @@ function downloadMarkdown() {
     showFormValidationMessage('暂无可下载内容')
     return
   }
-  const blob = new Blob([reportDetail.value.draftMarkdown], { type: 'text/markdown;charset=utf-8' })
+  const blob = new Blob([buildDraftDownloadContent(reportDetail.value)], {
+    type: 'text/markdown;charset=utf-8',
+  })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = `${reportDetail.value.resultTitle || '教学报告'}.md`
+  anchor.download = sanitizeDraftFileName(reportDetail.value.resultTitle)
   anchor.click()
   URL.revokeObjectURL(url)
+  void message.info('已下载 AI 草稿文稿（非正式结论）')
 }
 
 async function bootstrapPage() {
@@ -383,10 +436,24 @@ watch(
       </div>
       <p v-if="polling" class="hint">任务执行中，请稍候…</p>
     </UiCard>
-    <UiCard v-if="reportDetail" title="报告预览">
+    <UiCard v-if="reportDetail" title="AI 草稿预览">
+      <UiAlertStrip
+        tone="warning"
+        class="report-draft-notice"
+        description="当前为 AI 生成草稿，非正式结论；须人工审核通过后方可用于正式报告或报送。本地下载仅保留草稿副本。"
+      />
       <div class="report-meta">
         <div class="report-meta__summary">
           <span>{{ reportDetail.resultTitle }}</span>
+          <span class="report-meta__extra">
+            审核状态：{{ reviewStatusLabel(reportDetail.reviewStatus) }}
+            <template v-if="reportDetail.generatedTime || reportDetail.createTime">
+              · 生成时间 {{ reportDetail.generatedTime || reportDetail.createTime }}
+            </template>
+            <template v-if="reportDetail.modelName">
+              · 模型 {{ reportDetail.modelName }}
+            </template>
+          </span>
           <span
             v-if="reportDetail.reportScene || reportDetail.reportPeriodLabel"
             class="report-meta__extra"
@@ -413,7 +480,7 @@ watch(
                 portfolioLifecycleTagTone(reportDetail.lifecycleStatus)
               "
             >
-              {{ reportDetail.lifecycleStatusLabel || reportDetail.lifecycleStatus }}
+              {{ portfolioLifecycleStatusDisplay(reportDetail.lifecycleStatus) }}
             </UiTag>
             <UiTag v-if="reportDetail.evaluationHeld" size="sm" tone="orange">参评 hold</UiTag>
             <PortfolioOwnerIdentityLayersCell
@@ -425,7 +492,7 @@ watch(
             />
           </div>
         </div>
-        <UiButton size="sm" @click="downloadMarkdown"> 下载文稿 </UiButton>
+        <UiButton size="sm" @click="downloadMarkdown">下载 AI 草稿</UiButton>
       </div>
       <pre class="markdown">{{ reportDetail.draftMarkdown }}</pre>
     </UiCard>
@@ -435,26 +502,29 @@ watch(
 <style scoped>
 .toolbar {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
   flex-wrap: wrap;
 }
 .hint {
-  margin: 12px 0 0;
+  margin: var(--dp-space-component) 0 0;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
+}
+.report-draft-notice {
+  margin-bottom: var(--dp-space-component);
 }
 .report-meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 .report-meta__summary {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
 }
 .report-meta__extra {
   font-size: var(--dp-font-size-sm);
@@ -464,12 +534,12 @@ watch(
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component-tight);
 }
 .markdown {
   margin: 0;
-  padding: 12px;
+  padding: var(--dp-space-component);
   max-height: 480px;
   overflow: auto;
   white-space: pre-wrap;

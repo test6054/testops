@@ -24,7 +24,15 @@
         @reset="handleFilterReset"
       />
 
+      <UiAlertStrip
+        v-if="listLoadFailed"
+        tone="error"
+        title="批量更正计划加载失败"
+        dense
+      />
+
       <UiDataTable
+        v-if="!listLoadFailed || rows.length > 0"
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
         pagination-mode="server"
@@ -117,7 +125,7 @@
             v-if="makeupCap60Hint"
             tone="info"
             :title="makeupCap60AlertMessage"
-            style="margin-bottom: 12px"
+            style="margin-bottom: var(--dp-space-component)"
           />
           <UiFormItem label="更正原因" required>
             <UiTextarea
@@ -218,7 +226,7 @@
         <UiAlertStrip
           tone="warning"
           title="执行后会写入当前成绩并刷新统计，此操作不可撤销。"
-          style="margin-bottom: 12px"
+          style="margin-bottom: var(--dp-space-component)"
         />
         <UiTextarea
           size="sm"
@@ -228,6 +236,78 @@
           :show-count="true"
           placeholder="请输入执行说明（不少于 5 字，将写入审计记录）"
         />
+      </UiDrawer>
+
+      <UiDrawer
+        v-model:open="detailOpen"
+        title="批量更正计划详情"
+        :width="640"
+        hide-footer
+        @close="closePlanDetail"
+      >
+        <template v-if="detailPlan">
+          <UiForm layout="vertical">
+            <UiFormItem label="计划 ID">
+              <UiInput size="sm" :value="detailPlan.id" disabled />
+            </UiFormItem>
+            <UiFormItem label="计划名称">
+              <UiInput size="sm" :value="detailPlan.planName" disabled />
+            </UiFormItem>
+            <UiRow :gutter="12">
+              <UiCol :span="12">
+                <UiFormItem label="更正类型">
+                  <UiInput size="sm" :value="correctionTypeLabel(detailPlan)" disabled />
+                </UiFormItem>
+              </UiCol>
+              <UiCol :span="12">
+                <UiFormItem label="审批状态">
+                  <UiInput size="sm" :value="approvalStatusLabel(detailPlan)" disabled />
+                </UiFormItem>
+              </UiCol>
+            </UiRow>
+            <UiFormItem label="影响范围">
+              <UiTextarea
+                size="sm"
+                :value="`${affectedQuestionSummary(detailPlan)} · ${detailPlan.affectedStudentCount} 名考生`"
+                :rows="2"
+                disabled
+              />
+            </UiFormItem>
+            <UiFormItem label="更正原因">
+              <UiTextarea size="sm" :value="detailPlan.reason || '—'" :rows="2" disabled />
+            </UiFormItem>
+            <UiFormItem label="审批意见 / 驳回原因">
+              <UiTextarea size="sm" :value="detailPlan.decisionReason || '—'" :rows="2" disabled />
+            </UiFormItem>
+            <UiFormItem label="执行说明">
+              <UiTextarea size="sm" :value="detailPlan.executeReason || '—'" :rows="2" disabled />
+            </UiFormItem>
+            <UiFormItem label="执行失败原因">
+              <UiTextarea size="sm" :value="detailPlan.failureReason || '—'" :rows="2" disabled />
+            </UiFormItem>
+            <UiRow :gutter="12">
+              <UiCol :span="12">
+                <UiFormItem label="创建人">
+                  <UiInput size="sm" :value="detailPlan.createUser || '—'" disabled />
+                </UiFormItem>
+              </UiCol>
+              <UiCol :span="12">
+                <UiFormItem label="提交/更新人">
+                  <UiInput size="sm" :value="detailPlan.updateUser || '—'" disabled />
+                </UiFormItem>
+              </UiCol>
+            </UiRow>
+            <UiFormItem label="审批人">
+              <UiInput size="sm" :value="detailPlan.approvedUserId || '—'" disabled />
+            </UiFormItem>
+            <UiAlertStrip
+              tone="info"
+              dense
+              title="学生可见性"
+              description="执行成功后成绩仍须在成绩确认与发布页重新发布，学生端才会看到更正结果。"
+            />
+          </UiForm>
+        </template>
       </UiDrawer>
     </template>
   </WorkbenchSurfaceCard>
@@ -319,6 +399,7 @@ interface PlanItemForm {
 
 const rows = ref<ExamBatchGradeCorrectionPlan[]>([])
 const loading = ref(false)
+const listLoadFailed = ref(false)
 
 const pagination = reactive({
   current: 1,
@@ -370,6 +451,8 @@ const rejectReason = ref('')
 const executeModalOpen = ref(false)
 const executePlanId = ref('')
 const executeReason = ref('')
+const detailOpen = ref(false)
+const detailPlan = ref<ExamBatchGradeCorrectionPlan | null>(null)
 const nextLocalId = ref(1)
 const reviewRequestOptions = ref<{ value: string, label: string }[]>([])
 const reviewRequestCache = ref<Map<string, GradeReviewRequestItemResponse>>(new Map())
@@ -377,6 +460,10 @@ const reviewRequestLoading = ref(false)
 const questionOptions = ref<{ value: string, label: string }[]>([])
 const questionOptionsLoading = ref(false)
 let reviewRequestSearchTimer: ReturnType<typeof setTimeout> | undefined
+/** 列表请求代际 */
+let batchPlanLoadGeneration = 0
+/** 远程搜索请求代际 */
+let reviewRequestSearchGeneration = 0
 
 const form = reactive<{
   planName: string
@@ -529,42 +616,61 @@ const columns: ColumnType<ExamBatchGradeCorrectionPlan>[] = [
   { title: '操作', key: 'actions', width: 210 },
 ]
 
-async function loadWriteCapability(): Promise<void> {
-  if (!props.examId) {
+async function loadWriteCapability(examId: string, loadGeneration: number): Promise<void> {
+  if (!examId) {
     canManageReviewerWrites.value = false
     return
   }
   try {
-    const summary = await getExamLayoutQuestionSummary(props.examId)
+    const summary = await getExamLayoutQuestionSummary(examId)
+    if (loadGeneration !== batchPlanLoadGeneration || props.examId !== examId) {
+      return
+    }
     canManageReviewerWrites.value = summary.canManageReviewerWrites === true
   } catch {
+    if (loadGeneration !== batchPlanLoadGeneration || props.examId !== examId) {
+      return
+    }
     canManageReviewerWrites.value = false
   }
 }
 
 async function reload(): Promise<void> {
-  if (!props.examId) return
+  const examId = props.examId
+  if (!examId) return
+  const loadGeneration = ++batchPlanLoadGeneration
   loading.value = true
   try {
-    await loadWriteCapability()
+    await loadWriteCapability(examId, loadGeneration)
+    if (loadGeneration !== batchPlanLoadGeneration || props.examId !== examId) {
+      return
+    }
     const keyword = filterForm.keyword.trim() || undefined
     const result = await listBatchCorrectionPlans({
-      examId: props.examId,
+      examId,
       approvalStatus: filterForm.status,
       keyword,
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
+    if (loadGeneration !== batchPlanLoadGeneration || props.examId !== examId) {
+      return
+    }
+    listLoadFailed.value = false
     rows.value = result.list
     pagination.total = result.total
     pagination.current = result.pageNum ?? pagination.current
     pagination.pageSize = result.pageSize ?? pagination.pageSize
   } catch (e) {
-    rows.value = []
-    pagination.total = 0
+    if (loadGeneration !== batchPlanLoadGeneration || props.examId !== examId) {
+      return
+    }
+    listLoadFailed.value = true
     showUserError(e, '批量成绩更正计划加载失败')
   } finally {
-    loading.value = false
+    if (loadGeneration === batchPlanLoadGeneration) {
+      loading.value = false
+    }
   }
 }
 
@@ -615,24 +721,30 @@ async function loadApprovedQuestionOptions(): Promise<void> {
 }
 
 async function loadReviewRequestOptions(keyword?: string): Promise<void> {
-  if (!props.examId) return
+  const examId = props.examId
+  if (!examId) return
   if (form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION && !form.layoutQuestionId) {
     reviewRequestOptions.value = []
     return
   }
+  const searchKeyword = keyword?.trim() || ''
+  const searchGeneration = ++reviewRequestSearchGeneration
   reviewRequestLoading.value = true
   try {
     const result = await listReviewRequests({
-      examId: props.examId,
+      examId,
       requestStatus: GradeReviewRequestStatusCode.APPROVED,
       layoutQuestionId:
         form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION
           ? form.layoutQuestionId
           : undefined,
-      keyword: keyword?.trim() || undefined,
+      keyword: searchKeyword || undefined,
       pageNum: 1,
       pageSize: APPROVED_REVIEW_REQUEST_PAGE_SIZE,
     })
+    if (searchGeneration !== reviewRequestSearchGeneration || props.examId !== examId) {
+      return
+    }
     const correctable = filterCorrectableReviewRequests(result.list)
     cacheReviewRequests(correctable)
     reviewRequestOptions.value = correctable.map((request) => buildReviewRequestOption(request))
@@ -642,10 +754,14 @@ async function loadReviewRequestOptions(keyword?: string): Promise<void> {
       }
     }
   } catch (e) {
-    reviewRequestOptions.value = []
+    if (searchGeneration !== reviewRequestSearchGeneration || props.examId !== examId) {
+      return
+    }
     showUserError(e, '已通过复核申请加载失败')
   } finally {
-    reviewRequestLoading.value = false
+    if (searchGeneration === reviewRequestSearchGeneration) {
+      reviewRequestLoading.value = false
+    }
   }
 }
 
@@ -1017,10 +1133,14 @@ function canDecideBatchCorrectionPlan(row: ExamBatchGradeCorrectionPlan): boolea
 function buildBatchCorrectionPlanActions(
   row: ExamBatchGradeCorrectionPlan,
 ): UiTableRowActionItem[] {
-  // 行内仅 1 个 primary：提交 > 通过 > 执行
+  // 行内仅 1 个 primary：提交 > 通过 > 执行；详情始终可读
   const operating = (action: OperationAction) => isOperating(row.id, action)
   const canDecide = canDecideBatchCorrectionPlan(row)
   const actions: UiTableRowActionItem[] = [
+    {
+      key: 'detail',
+      label: '详情',
+    },
     {
       key: 'submit',
       label: '提交',
@@ -1063,12 +1183,26 @@ function buildBatchCorrectionPlanActions(
   )
 }
 
+function openPlanDetail(row: ExamBatchGradeCorrectionPlan): void {
+  detailPlan.value = row
+  detailOpen.value = true
+}
+
+function closePlanDetail(): void {
+  detailOpen.value = false
+  detailPlan.value = null
+}
+
 function handleBatchCorrectionPlanAction(key: string, row: ExamBatchGradeCorrectionPlan): void {
   switch (key) {
+    case 'detail':
+      openPlanDetail(row)
+      break
     case 'submit':
       if (!canSubmit(row)) return
       void confirmAsync({
         title: '确认提交审批？',
+        content: `计划：${row.planName}\n计划 ID：${row.id}\n影响 ${row.affectedStudentCount} 名考生。`,
         okText: '提交',
         cancelText: '取消',
         type: 'warning',
@@ -1079,6 +1213,7 @@ function handleBatchCorrectionPlanAction(key: string, row: ExamBatchGradeCorrect
       if (row.approvalStatus !== BatchCorrectionApprovalStatusCode.PENDING_APPROVAL) return
       void confirmAsync({
         title: '确认审批通过？',
+        content: `计划：${row.planName}\n计划 ID：${row.id}`,
         okText: '通过',
         cancelText: '取消',
         type: 'warning',
@@ -1141,6 +1276,16 @@ function approvalStatusColor(row: ExamBatchGradeCorrectionPlan): BadgeTone {
 watch(
   () => [props.examId, props.reloadToken],
   () => {
+    if (reviewRequestSearchTimer) {
+      clearTimeout(reviewRequestSearchTimer)
+      reviewRequestSearchTimer = undefined
+    }
+    reviewRequestSearchGeneration += 1
+    reviewRequestCache.value = new Map()
+    reviewRequestOptions.value = []
+    questionOptions.value = []
+    detailOpen.value = false
+    detailPlan.value = null
     if (props.examId) {
       pagination.current = 1
       void reload()
@@ -1154,7 +1299,7 @@ watch(
 .batch-plan-items {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 .batch-plan-items__header {
@@ -1164,7 +1309,7 @@ watch(
 }
 
 .batch-plan-item {
-  padding: 12px;
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface-subtle);
@@ -1175,7 +1320,7 @@ watch(
 }
 
 .batch-plan-item__hint {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }

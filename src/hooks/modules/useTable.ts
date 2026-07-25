@@ -28,8 +28,12 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
   const loading = ref(false)
   const tableData: Ref<U[]> = ref([])
   const tableError = ref<Error | null>(null)
+  /** 是否至少成功加载过一次；用于筛选失败时保留旧表数据（乐观更新回滚语义） */
+  const hasLoadedOnce = ref(false)
+  let requestSeq = 0
 
   async function getTableData() {
+    const seq = ++requestSeq
     loading.value = true
     tableError.value = null
     try {
@@ -39,27 +43,41 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
       }
       // 直接使用响应数据（HTTP客户端已经解包了ResultInfo）
       const actualData = await api(params)
+      if (seq !== requestSeq) {
+        return
+      }
 
       if (Array.isArray(actualData)) {
         const contractError = new TypeError('列表接口必须返回 PageResult，禁止返回裸数组')
         tableError.value = contractError
-        tableData.value = []
-        setTotal(0)
+        if (!hasLoadedOnce.value) {
+          tableData.value = []
+          setTotal(0)
+        }
         showUserError(contractError, '数据加载失败')
         return
       }
       const data = actualData.list
       tableData.value = formatResult ? formatResult(data) : data
       setTotal(actualData.total)
+      hasLoadedOnce.value = true
 
       onSuccess && onSuccess()
     } catch (err) {
+      if (seq !== requestSeq) {
+        return
+      }
       tableError.value = err instanceof Error ? err : new Error(String(err))
-      tableData.value = []
-      setTotal(0)
+      // 首屏失败清空；筛选/翻页失败保留旧数据，避免「空白闪烁」
+      if (!hasLoadedOnce.value) {
+        tableData.value = []
+        setTotal(0)
+      }
       showUserError(err, '数据加载失败')
     } finally {
-      loading.value = false
+      if (seq === requestSeq) {
+        loading.value = false
+      }
     }
   }
 
@@ -187,6 +205,8 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
     tableData,
     /** 表格加载错误 */
     tableError,
+    /** 是否已成功加载过数据 */
+    hasLoadedOnce,
     /** 获取表格数据 */
     getTableData,
     /** 搜索，页码会重置为1 */

@@ -76,48 +76,48 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
 .archive-next-steps__head {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-3);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 
 .archive-next-steps__head-icon {
   font-size: var(--dp-font-size-md);
   line-height: 1;
-  color: var(--dp-primary);
+  color: var(--dp-color-primary);
 }
 
 .archive-next-steps__title {
   margin: 0;
   font-size: var(--dp-font-size-md);
   font-weight: 600;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
 }
 
 .archive-next-steps__grid {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .archive-next-steps__item {
   flex: 1 1 160px;
   min-width: 0;
-  padding: var(--dp-space-3);
-  border: 1px solid var(--dp-border-light);
-  border-radius: var(--dp-radius-sm);
+  padding: var(--dp-space-component);
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-xs);
   background: var(--dp-surface);
   text-align: left;
   cursor: pointer;
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.15s ease;
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    box-shadow var(--dp-duration-normal) var(--dp-ease-default),
+    transform var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .archive-next-steps__item:hover {
-  border-color: var(--dp-primary);
+  border-color: var(--dp-color-primary);
   box-shadow: var(--dp-shadow-sm);
-  transform: translateY(-1px);
+  transform: var(--dp-lift-sm);
 }
 
 .archive-next-steps__item--primary {
@@ -133,8 +133,8 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
 .archive-next-steps__item-head {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
-  margin-bottom: 4px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-xs);
 }
 
 .archive-next-steps__item-icon {
@@ -144,8 +144,8 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
   width: 22px;
   height: 22px;
   border-radius: var(--dp-radius-xs);
-  background: color-mix(in srgb, var(--dp-primary) 10%, transparent);
-  color: var(--dp-primary);
+  background: color-mix(in srgb, var(--dp-color-primary) 10%, transparent);
+  color: var(--dp-color-primary);
   font-size: var(--dp-font-size-xxs);
   font-weight: 700;
   flex-shrink: 0;
@@ -154,7 +154,7 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
 .archive-next-steps__item-label {
   font-size: var(--dp-font-size-md);
   font-weight: 600;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
 }
 
 .archive-next-steps__item-desc {
@@ -162,7 +162,7 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
   padding-left: 30px;
   font-size: var(--dp-font-size-xs);
   line-height: 1.5;
-  color: var(--dp-text-4);
+  color: var(--dp-text-quaternary);
 }
 
 @media (prefers-reduced-motion: reduce) {

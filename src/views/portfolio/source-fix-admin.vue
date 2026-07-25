@@ -1,21 +1,44 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  PortfolioOrgTreeNodeVO,
+  PortfolioSourceFixBatchPreviewVO,
   PortfolioSourceFixBatchRequest,
   PortfolioSourceFixEventVO,
+  PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
+import {
+  portfolioEvaluationTaskApi,
+  type PortfolioEvaluationTaskVO,
+} from '@/apis/portfolio/teacher-platform'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioSourceFixApi } from '@/apis/portfolio/source-fix'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import {
+  QUALITY_SELECTOR_PAGE_SIZE,
+  QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
+} from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { PortfolioOrgUnitTypeCode } from '@/types/enums/portfolio-org-unit-type-enum'
 import {
   PORTFOLIO_SOURCE_FIX_ALERT_STATUS_LABEL,
   PortfolioSourceFixAlertStatusCode,
@@ -33,20 +56,33 @@ import {
   PORTFOLIO_SOURCE_FIX_TRIGGER_TYPE_LABEL,
   PortfolioSourceFixTriggerTypeCode,
 } from '@/types/enums/portfolio-source-fix-trigger-type-enum'
-import { showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioTeacherSelectOptionsFromSummaries } from '@/utils/portfolio-teacher-display'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
+const { loadTree, treeRoots, loadFailed: orgTreeLoadFailed } = usePortfolioOrgTree()
 
 const loading = ref(false)
+const listLoadError = ref(false)
 const acting = ref(false)
+const previewing = ref(false)
 const requestToken = ref(0)
 const rows = ref<PortfolioSourceFixEventVO[]>([])
 const total = ref(0)
 const detailOpen = ref(false)
 const detail = ref<PortfolioSourceFixEventVO | null>(null)
 const batchOpen = ref(false)
+const batchPreview = ref<PortfolioSourceFixBatchPreviewVO | null>(null)
+const lastBatchResult = ref<PortfolioSourceFixEventVO | null>(null)
+
+const teachers = ref<PortfolioTeacherSummaryVO[]>([])
+const evaluationTasks = ref<PortfolioEvaluationTaskVO[]>([])
+const teacherSearchToken = ref(0)
+const taskSearchToken = ref(0)
+let teacherSearchTimer: ReturnType<typeof setTimeout> | undefined
 
 const filterForm = reactive({
   eventStatus: undefined as PortfolioSourceFixEventStatusCode | undefined,
@@ -104,10 +140,10 @@ const dataSourceCodeOptions = Object.values(PortfolioSourceFixDataSourceCode).ma
 
 const batchForm = reactive({
   triggerReason: '',
-  teacherIdsText: '',
-  departmentOrgId: '',
-  majorGroupOrgId: '',
-  evaluationTaskId: '',
+  teacherIds: [] as string[],
+  departmentOrgId: undefined as string | undefined,
+  majorGroupOrgId: undefined as string | undefined,
+  evaluationTaskId: undefined as string | undefined,
   beforeValue: '',
   afterValue: '',
   fieldCode: '',
@@ -115,21 +151,60 @@ const batchForm = reactive({
   dataSourceCode: undefined as PortfolioSourceFixDataSourceCode | undefined,
 })
 
+const teacherSelectOptions = computed(() => portfolioTeacherSelectOptionsFromSummaries(teachers.value))
+const evaluationTaskOptions = computed(() =>
+  evaluationTasks.value.map((task: PortfolioEvaluationTaskVO) => ({
+    value: task.id,
+    label: task.taskName,
+  })),
+)
+
+function walkOrgOptions(
+  nodes: PortfolioOrgTreeNodeVO[],
+  match: (node: PortfolioOrgTreeNodeVO) => boolean,
+  prefix = '',
+  result: Array<{ value: string, label: string }> = [],
+): Array<{ value: string, label: string }> {
+  for (const node of nodes) {
+    const label = prefix ? `${prefix} / ${node.name}` : node.name
+    if (match(node) && node.portfolioOrgId) {
+      result.push({ value: node.portfolioOrgId, label })
+    }
+    if (node.children?.length) {
+      walkOrgOptions(node.children, match, label, result)
+    }
+  }
+  return result
+}
+
+const majorGroupOptions = computed(() =>
+  walkOrgOptions(
+    treeRoots.value,
+    (node) => node.nodeType === PortfolioOrgUnitTypeCode.MAJOR_GROUP,
+  ),
+)
+
+const departmentOrgOptions = computed(() =>
+  walkOrgOptions(
+    treeRoots.value,
+    (node) => node.nodeType === PortfolioOrgUnitTypeCode.TEACHING_RESEARCH_OFFICE,
+  ),
+)
+
 const columns: ColumnsType = [
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
   { title: '触发', key: 'triggerType', width: 110 },
   { title: '原因', dataIndex: 'triggerReason', key: 'triggerReason', ellipsis: true },
-  { title: '字段', dataIndex: 'fieldCode', key: 'fieldCode', width: 100, ellipsis: true },
-  { title: '前值', dataIndex: 'beforeValue', key: 'beforeValue', width: 120, ellipsis: true },
-  { title: '后值', dataIndex: 'afterValue', key: 'afterValue', width: 120, ellipsis: true },
+  { title: '字段', dataIndex: 'fieldLabel', key: 'fieldLabel', width: 120, ellipsis: true },
+  { title: '变更', key: 'change', width: 160, ellipsis: true },
   { title: '状态', key: 'eventStatus', width: 100 },
   { title: '告警', key: 'alertStatus', width: 90 },
-  { title: '教师/指标/任务', key: 'counts', width: 140 },
+  { title: '影响规模', key: 'counts', width: 180 },
   { title: '操作', key: 'actions', width: 220, fixed: 'right' },
 ]
 
 const itemColumns: ColumnsType = [
-  { title: '教师', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
+  { title: '教师 ID', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
   { title: '状态', dataIndex: 'itemStatus', key: 'itemStatus', width: 100 },
   { title: '生命周期', key: 'lifecycleStatus', width: 140 },
   { title: '身份层', key: 'identityLayers', width: 160 },
@@ -141,17 +216,17 @@ const itemColumns: ColumnsType = [
 
 function triggerLabel(code?: string) {
   if (!code) return '—'
-  return PORTFOLIO_SOURCE_FIX_TRIGGER_TYPE_LABEL[code as PortfolioSourceFixTriggerTypeCode] || code
+  return strictEnumLabel(PORTFOLIO_SOURCE_FIX_TRIGGER_TYPE_LABEL, code as PortfolioSourceFixTriggerTypeCode, '源修复触发类型')
 }
 
 function statusLabel(code?: string) {
   if (!code) return '—'
-  return PORTFOLIO_SOURCE_FIX_EVENT_STATUS_LABEL[code as PortfolioSourceFixEventStatusCode] || code
+  return strictEnumLabel(PORTFOLIO_SOURCE_FIX_EVENT_STATUS_LABEL, code as PortfolioSourceFixEventStatusCode, '源修复事件状态')
 }
 
 function alertLabel(code?: string) {
   if (!code) return '—'
-  return PORTFOLIO_SOURCE_FIX_ALERT_STATUS_LABEL[code as PortfolioSourceFixAlertStatusCode] || code
+  return strictEnumLabel(PORTFOLIO_SOURCE_FIX_ALERT_STATUS_LABEL, code as PortfolioSourceFixAlertStatusCode, '源修复告警状态')
 }
 
 function alertTone(code?: string) {
@@ -169,7 +244,60 @@ function statusTone(code?: string) {
   return 'gray' as const
 }
 
-/** 明细行生命周期 Tag 色（US-MI：读模型仅标注，不默认过滤）。 */
+function impactCountsText(row: PortfolioSourceFixEventVO): string {
+  const teacher = row.affectedTeacherCount
+  const indicator = row.affectedIndicatorCount
+  const task = row.affectedEvaluationTaskCount
+  if (teacher == null && indicator == null && task == null) {
+    return '—'
+  }
+  return `教师 ${teacher ?? '—'} · 指标 ${indicator ?? '—'} · 任务 ${task ?? '—'}`
+}
+
+function buildBatchPayload(): PortfolioSourceFixBatchRequest {
+  return {
+    triggerReason: batchForm.triggerReason.trim(),
+    beforeValue: batchForm.beforeValue.trim() || undefined,
+    afterValue: batchForm.afterValue.trim() || undefined,
+    fieldCode: batchForm.fieldCode.trim() || undefined,
+    fieldLabel: batchForm.fieldLabel.trim() || undefined,
+    dataSourceCode: batchForm.dataSourceCode,
+    teacherIds: batchForm.teacherIds.length ? batchForm.teacherIds : undefined,
+    departmentOrgId: batchForm.departmentOrgId || undefined,
+    majorGroupOrgId: batchForm.majorGroupOrgId || undefined,
+    evaluationTaskId: batchForm.evaluationTaskId || undefined,
+  }
+}
+
+function hasBatchScopeSelected(): boolean {
+  return Boolean(
+    batchForm.teacherIds.length
+      || batchForm.departmentOrgId
+      || batchForm.majorGroupOrgId
+      || batchForm.evaluationTaskId,
+  )
+}
+
+function resetBatchForm() {
+  batchForm.triggerReason = ''
+  batchForm.teacherIds = []
+  batchForm.departmentOrgId = undefined
+  batchForm.majorGroupOrgId = undefined
+  batchForm.evaluationTaskId = undefined
+  batchForm.beforeValue = ''
+  batchForm.afterValue = ''
+  batchForm.fieldCode = ''
+  batchForm.fieldLabel = ''
+  batchForm.dataSourceCode = undefined
+  batchPreview.value = null
+  lastBatchResult.value = null
+}
+
+async function openBatchModal() {
+  resetBatchForm()
+  batchOpen.value = true
+  await Promise.all([loadTeachers(), loadEvaluationTasks(), loadTree()])
+}
 
 async function loadPage() {
   const currentToken = ++requestToken.value
@@ -185,10 +313,10 @@ async function loadPage() {
     if (requestToken.value !== currentToken) return
     rows.value = result.list ?? []
     total.value = result.total ?? 0
+    listLoadError.value = false
   } catch (error) {
     if (requestToken.value !== currentToken) return
-    rows.value = []
-    total.value = 0
+    listLoadError.value = true
     showUserError(error, '加载源修复重算事件失败')
   } finally {
     if (requestToken.value === currentToken) loading.value = false
@@ -210,9 +338,6 @@ function readRouteStringParam(value: unknown): string {
   return ''
 }
 
-/**
- * PF-P0-285 / §8.52：源修复重算站内信 jumpUrl 携带 eventId 时打开对应事件详情。
- */
 async function applyEventIdDeepLink() {
   const eventId = readRouteStringParam(route.query.eventId)
   if (!eventId) {
@@ -243,11 +368,14 @@ async function executeEvent(row: PortfolioSourceFixEventVO) {
   if (!row.id || acting.value) return
   acting.value = true
   try {
-    await portfolioSourceFixApi.execute(row.id)
-    void message.success('已触发重算')
-    await loadPage()
-    if (detailOpen.value && detail.value?.id === row.id) {
-      detail.value = await portfolioSourceFixApi.get(row.id)
+    const event = await portfolioSourceFixApi.execute(row.id)
+    void message.success(`重算完成：${statusLabel(event.eventStatus)}`)
+    lastBatchResult.value = event
+    detail.value = event
+    detailOpen.value = true
+    const refreshed = await loadPageQuiet()
+    if (!refreshed) {
+      void message.warning('重算已完成，事件列表刷新失败；请以详情结果为准')
     }
   } catch (error) {
     showUserError(error, '执行重算失败')
@@ -259,14 +387,17 @@ async function executeEvent(row: PortfolioSourceFixEventVO) {
 async function ackAlert(row: PortfolioSourceFixEventVO) {
   if (!row.id || acting.value) return
   if (row.alertStatus !== PortfolioSourceFixAlertStatusCode.OPEN) {
-    void message.warning('仅 OPEN 告警可确认')
+    showFormValidationMessage('仅待处理告警可确认')
     return
   }
   acting.value = true
   try {
     await portfolioSourceFixApi.ackAlert(row.id)
     void message.success('告警已确认')
-    await loadPage()
+    const refreshed = await loadPageQuiet()
+    if (!refreshed) {
+      void message.warning('告警已确认，事件列表刷新失败')
+    }
   } catch (error) {
     showUserError(error, '确认告警失败')
   } finally {
@@ -274,37 +405,113 @@ async function ackAlert(row: PortfolioSourceFixEventVO) {
   }
 }
 
+async function loadPageQuiet(): Promise<boolean> {
+  try {
+    await loadPage()
+    return !listLoadError.value
+  } catch {
+    return false
+  }
+}
+
+async function loadTeachers(keyword?: string) {
+  const currentToken = ++teacherSearchToken.value
+  try {
+    const page = await portfolioTeacherApi.page({
+      pageNum: 1,
+      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+      searchText: keyword?.trim() || undefined,
+    })
+    if (teacherSearchToken.value !== currentToken) return
+    teachers.value = page.list ?? []
+  } catch (error) {
+    if (teacherSearchToken.value !== currentToken) return
+    showUserError(error, '加载教师名册失败')
+  }
+}
+
+function handleTeacherSearch(value: string) {
+  if (teacherSearchTimer) clearTimeout(teacherSearchTimer)
+  teacherSearchTimer = setTimeout(() => {
+    void loadTeachers(value.trim())
+  }, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS)
+}
+
+async function loadEvaluationTasks() {
+  const currentToken = ++taskSearchToken.value
+  try {
+    const page = await portfolioEvaluationTaskApi.page({
+      pageNum: 1,
+      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+    })
+    if (taskSearchToken.value !== currentToken) return
+    evaluationTasks.value = page.list ?? []
+  } catch (error) {
+    if (taskSearchToken.value !== currentToken) return
+    showUserError(error, '加载评价任务失败')
+  }
+}
+
+async function runBatchPreview() {
+  if (!hasBatchScopeSelected()) {
+    showFormValidationMessage('请至少选择教师、院系组织、专业群或评价任务之一')
+    return
+  }
+  previewing.value = true
+  batchPreview.value = null
+  try {
+    batchPreview.value = await portfolioSourceFixApi.previewBatch(buildBatchPayload())
+  } catch (error) {
+    showUserError(error, '预检批量重算范围失败')
+  } finally {
+    previewing.value = false
+  }
+}
+
 async function submitBatch() {
   if (acting.value) return
   const reason = batchForm.triggerReason.trim()
   if (!reason) {
-    void message.warning('请填写触发原因')
+    showFormValidationMessage('请填写触发原因')
     return
   }
-  const teacherIds = batchForm.teacherIdsText
-    .split(/[,，\s]+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-  const payload: PortfolioSourceFixBatchRequest = {
-    triggerReason: reason,
-    beforeValue: batchForm.beforeValue.trim() || undefined,
-    afterValue: batchForm.afterValue.trim() || undefined,
-    fieldCode: batchForm.fieldCode.trim() || undefined,
-    fieldLabel: batchForm.fieldLabel.trim() || undefined,
-    dataSourceCode: batchForm.dataSourceCode,
-    teacherIds: teacherIds.length ? teacherIds : undefined,
-    departmentOrgId: batchForm.departmentOrgId.trim() || undefined,
-    majorGroupOrgId: batchForm.majorGroupOrgId.trim() || undefined,
-    evaluationTaskId: batchForm.evaluationTaskId.trim() || undefined,
+  if (!hasBatchScopeSelected()) {
+    showFormValidationMessage('请至少选择教师、院系组织、专业群或评价任务之一')
+    return
+  }
+  if (!batchPreview.value) {
+    showFormValidationMessage('请先预检范围后再执行')
+    return
+  }
+  if (batchPreview.value.blocked) {
+    showFormValidationMessage(batchPreview.value.blockers?.[0] || '预检未通过，无法执行')
+    return
+  }
+  const confirmed = await confirmAsync({
+    title: '确认执行批量重算？',
+    content: `${batchPreview.value.scopeSummary || ''}；预计约 ${batchPreview.value.estimatedSeconds ?? '—'} 秒。本操作同步执行，完成后将展示 SUCCESS/PARTIAL/FAILED。`,
+    type: 'warning',
+  })
+  if (!confirmed) {
+    return
   }
   acting.value = true
   try {
-    const event = await portfolioSourceFixApi.batch(payload)
-    void message.success(`批量重算已提交，事件 #${event.id ?? ''}`)
+    const event = await portfolioSourceFixApi.batch({
+      ...buildBatchPayload(),
+      triggerReason: reason,
+    })
+    lastBatchResult.value = event
     batchOpen.value = false
-    await loadPage()
+    detail.value = event
+    detailOpen.value = true
+    void message.success(`批量重算已完成：${statusLabel(event.eventStatus)}`)
+    const refreshed = await loadPageQuiet()
+    if (!refreshed) {
+      void message.warning('批量重算已完成，事件列表刷新失败；请以详情结果为准')
+    }
   } catch (error) {
-    showUserError(error, '提交批量重算失败')
+    showUserError(error, '执行批量重算失败')
   } finally {
     acting.value = false
   }
@@ -326,19 +533,37 @@ watch(
     }
   },
 )
+
+watch(
+  () => [
+    batchForm.teacherIds.join(','),
+    batchForm.departmentOrgId,
+    batchForm.majorGroupOrgId,
+    batchForm.evaluationTaskId,
+  ],
+  () => {
+    batchPreview.value = null
+  },
+)
 </script>
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="源修复回流与批量重算" subtitle="§8.52 统一事件 · 失败告警 · 变更前后值" />
+    <ContextBar title="源修复回流与批量重算" subtitle="统一事件 · 范围预检 · 同步结果可追踪" />
 
     <UiCard class="mb-4">
       <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p class="m-0 text-sm text-[var(--dp-text-secondary)]">
           承接纠错关闭、源系统修复、导入回滚与管理端批量范围；失败进入 OPEN 告警，禁止静默。
         </p>
-        <UiButton tone="primary" :disabled="acting" @click="batchOpen = true">批量重算</UiButton>
+        <UiButton tone="primary" :disabled="acting" @click="openBatchModal">批量重算</UiButton>
       </div>
+      <UiAlertStrip
+        v-if="listLoadError"
+        tone="error"
+        title="事件列表加载失败"
+        class="mb-3"
+      />
       <UiFilterBar
         v-model="filterModel"
         :fields="filterFields"
@@ -352,6 +577,7 @@ watch(
         :columns="columns"
         :data-source="rows"
         :loading="loading"
+        :load-error="listLoadError"
         :pagination="{
           current: query.pageNum,
           pageSize: query.pageSize,
@@ -368,24 +594,21 @@ watch(
           <template v-if="column.key === 'triggerType'">
             {{ triggerLabel(record.triggerType) }}
           </template>
+          <template v-else-if="column.key === 'change'">
+            {{ record.beforeValue || '空' }} → {{ record.afterValue || '空' }}
+          </template>
           <template v-else-if="column.key === 'eventStatus'">
             <UiTag :tone="statusTone(record.eventStatus)">
-              {{
-                statusLabel(record.eventStatus)
-              }}
+              {{ statusLabel(record.eventStatus) }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'alertStatus'">
             <UiTag :tone="alertTone(record.alertStatus)">
-              {{
-                alertLabel(record.alertStatus)
-              }}
+              {{ alertLabel(record.alertStatus) }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'counts'">
-            {{ record.affectedTeacherCount ?? 0 }}/{{ record.affectedIndicatorCount ?? 0 }}/{{
-              record.affectedEvaluationTaskCount ?? 0
-            }}
+            {{ impactCountsText(record) }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="flex flex-wrap gap-2">
@@ -415,10 +638,21 @@ watch(
       </UiDataTable>
     </UiCard>
 
-    <a-drawer v-model:open="detailOpen" title="源修复重算事件详情" width="720" destroy-on-close>
+    <UiDrawer v-model:open="detailOpen" title="源修复重算事件详情" :width="720">
       <template v-if="detail">
         <div class="mb-4 space-y-2 text-sm">
-          <div>触发：{{ triggerLabel(detail.triggerType) }} · {{ detail.triggerSource ? (PORTFOLIO_SOURCE_FIX_TRIGGER_SOURCE_LABEL[detail.triggerSource] ?? detail.triggerSource) : '-' }}</div>
+          <div>
+            触发：{{ triggerLabel(detail.triggerType) }} ·
+            {{
+              detail.triggerSource
+                ? strictEnumLabel(
+                  PORTFOLIO_SOURCE_FIX_TRIGGER_SOURCE_LABEL,
+                  detail.triggerSource,
+                  '源修复触发来源',
+                )
+                : '—'
+            }}
+          </div>
           <div>原因：{{ detail.triggerReason }}</div>
           <div>
             字段：{{ detail.fieldLabel || detail.fieldCode || '—' }}（{{
@@ -426,19 +660,19 @@ watch(
             }}）
           </div>
           <div>变更：{{ detail.beforeValue || '空' }} → {{ detail.afterValue || '空' }}</div>
-          <div v-if="detail.dataSourceCode">数据源：{{ detail.dataSourceCode ? PortfolioSourceFixDataSourceCodeDescription[detail.dataSourceCode] : '' }}</div>
+          <div v-if="detail.dataSourceCode">
+            数据源：{{
+              PortfolioSourceFixDataSourceCodeDescription[detail.dataSourceCode]
+            }}
+          </div>
           <div>
             状态：
             <UiTag :tone="statusTone(detail.eventStatus)">
-              {{
-                statusLabel(detail.eventStatus)
-              }}
+              {{ statusLabel(detail.eventStatus) }}
             </UiTag>
             告警：
             <UiTag :tone="alertTone(detail.alertStatus)">
-              {{
-                alertLabel(detail.alertStatus)
-              }}
+              {{ alertLabel(detail.alertStatus) }}
             </UiTag>
           </div>
           <div>影响摘要：{{ detail.impactSummary || '—' }}</div>
@@ -457,7 +691,7 @@ watch(
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
               <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+                {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
               </UiTag>
               <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
               <span v-else-if="!record.lifecycleStatus">-</span>
@@ -472,43 +706,131 @@ watch(
           </template>
         </UiDataTable>
       </template>
-    </a-drawer>
+    </UiDrawer>
 
-    <a-modal
+    <UiDialog
       v-model:open="batchOpen"
-      title="提交批量源修复重算"
-      ok-text="提交并执行"
-      :confirm-loading="acting"
-      destroy-on-close
-      @ok="submitBatch"
+      title="批量源修复重算"
+      :ok-text="batchPreview && !batchPreview.blocked ? '确认执行' : '先预检'"
+      :confirm-loading="acting || previewing"
+      :closable="!acting"
+      :mask-closable="!acting"
+      @ok="batchPreview && !batchPreview.blocked ? submitBatch() : runBatchPreview()"
     >
-      <div class="space-y-3">
-        <a-textarea
-          v-model:value="batchForm.triggerReason"
-          :rows="2"
-          placeholder="触发原因（必填）"
-        />
-        <a-input
-          v-model:value="batchForm.teacherIdsText"
-          placeholder="教师 ID 列表，逗号/空格分隔（可选）"
-        />
-        <a-input v-model:value="batchForm.departmentOrgId" placeholder="院系组织 ID（可选）" />
-        <a-input v-model:value="batchForm.majorGroupOrgId" placeholder="专业群组织 ID（可选）" />
-        <a-input v-model:value="batchForm.evaluationTaskId" placeholder="评价任务 ID（可选）" />
+      <UiAlertStrip
+        v-if="orgTreeLoadFailed"
+        tone="warning"
+        size="sm"
+        dense
+        title="组织树加载失败"
+        description="院系/专业群选择可能不完整；可仅用教师或评价任务范围。"
+        class="mb-3"
+      />
+      <UiForm layout="vertical">
+        <UiFormItem label="触发原因" required>
+          <UiTextarea
+            v-model="batchForm.triggerReason"
+            size="sm"
+            :rows="2"
+            placeholder="说明本次批量重算原因"
+            :disabled="acting"
+          />
+        </UiFormItem>
+        <UiFormItem label="教师">
+          <UiSelect
+            v-model="batchForm.teacherIds"
+            size="sm"
+            mode="multiple"
+            allow-clear
+            allow-search
+            :options="teacherSelectOptions"
+            placeholder="搜索并选择教师"
+            :disabled="acting"
+            :filter-option="false"
+            @search="handleTeacherSearch"
+          />
+        </UiFormItem>
+        <UiFormItem label="院系组织（教研室锚点）">
+          <UiSelect
+            v-model="batchForm.departmentOrgId"
+            size="sm"
+            allow-clear
+            allow-search
+            :options="departmentOrgOptions"
+            placeholder="选择院系/教研室档案组织"
+            :disabled="acting"
+          />
+        </UiFormItem>
+        <UiFormItem label="专业群">
+          <UiSelect
+            v-model="batchForm.majorGroupOrgId"
+            size="sm"
+            allow-clear
+            allow-search
+            :options="majorGroupOptions"
+            placeholder="选择专业群"
+            :disabled="acting"
+          />
+        </UiFormItem>
+        <UiFormItem label="评价任务">
+          <UiSelect
+            v-model="batchForm.evaluationTaskId"
+            size="sm"
+            allow-clear
+            allow-search
+            :options="evaluationTaskOptions"
+            placeholder="选择评价任务"
+            :disabled="acting"
+          />
+        </UiFormItem>
         <div class="grid grid-cols-2 gap-2">
-          <a-input v-model:value="batchForm.beforeValue" placeholder="变更前值" />
-          <a-input v-model:value="batchForm.afterValue" placeholder="变更后值" />
-          <a-input v-model:value="batchForm.fieldCode" placeholder="字段编码" />
-          <a-input v-model:value="batchForm.fieldLabel" placeholder="字段名称" />
+          <UiFormItem label="变更前值">
+            <UiInput v-model="batchForm.beforeValue" size="sm" :disabled="acting" />
+          </UiFormItem>
+          <UiFormItem label="变更后值">
+            <UiInput v-model="batchForm.afterValue" size="sm" :disabled="acting" />
+          </UiFormItem>
+          <UiFormItem label="字段编码">
+            <UiInput v-model="batchForm.fieldCode" size="sm" :disabled="acting" />
+          </UiFormItem>
+          <UiFormItem label="字段名称">
+            <UiInput v-model="batchForm.fieldLabel" size="sm" :disabled="acting" />
+          </UiFormItem>
         </div>
-        <a-select
-          v-model:value="batchForm.dataSourceCode"
-          allow-clear
-          placeholder="数据源编码"
-          :options="dataSourceCodeOptions"
-          style="width: 100%"
-        />
-      </div>
-    </a-modal>
+        <UiFormItem label="数据源">
+          <UiSelect
+            v-model="batchForm.dataSourceCode"
+            size="sm"
+            allow-clear
+            :options="dataSourceCodeOptions"
+            placeholder="数据源编码"
+            :disabled="acting"
+          />
+        </UiFormItem>
+      </UiForm>
+
+      <UiAlertStrip
+        v-if="batchPreview?.blocked"
+        tone="error"
+        title="预检未通过"
+        :description="(batchPreview.blockers ?? []).join('；')"
+        class="mt-3"
+      />
+      <UiAlertStrip
+        v-else-if="batchPreview"
+        tone="info"
+        title="范围预检"
+        :description="`${batchPreview.scopeSummary || ''}；预计约 ${batchPreview.estimatedSeconds ?? '—'} 秒。${
+          (batchPreview.warnings ?? []).length ? `警告：${(batchPreview.warnings ?? []).join('；')}` : ''
+        }`"
+        class="mt-3"
+      />
+      <p
+        v-if="batchPreview?.sampleTeacherIds?.length"
+        class="mt-2 mb-0 text-xs text-[var(--dp-text-muted)]"
+      >
+        样例教师 ID：{{ batchPreview.sampleTeacherIds.join('、') }}
+      </p>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>

@@ -153,7 +153,7 @@ watch(
 
 <style lang="scss" scoped>
 .binding-modal__meta {
-  margin: 0 0 var(--dp-space-3);
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-gray-600);
 }
@@ -161,22 +161,22 @@ watch(
 .binding-modal__list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   max-height: 360px;
   overflow: auto;
 }
 
 .binding-modal__item {
   display: flex;
-  gap: var(--dp-space-2);
-  padding: var(--dp-space-3);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-gray-200);
   border-radius: 6px;
   cursor: pointer;
 
   &:has(input:checked) {
-    border-color: var(--dp-primary-500);
-    background: var(--dp-primary-50);
+    border-color: var(--dp-color-primary);
+    background: var(--dp-color-primary-bg);
   }
 }
 
@@ -188,21 +188,21 @@ watch(
 .binding-modal__item-head {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   font-weight: 600;
 }
 
 .binding-modal__summary {
-  margin: var(--dp-space-1) 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-gray-700);
+  color: var(--dp-text-secondary);
 }
 
 .binding-modal__rate {
   display: inline-block;
-  margin-top: var(--dp-space-1);
+  margin-top: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-gray-500);
+  color: var(--dp-text-muted);
 }
 </style>

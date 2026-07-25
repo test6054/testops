@@ -38,8 +38,8 @@ function handleScopeChange(): void {
   flex: 1;
 
   &__scope {
-    padding: var(--dp-space-4) var(--dp-space-6, 24px) var(--dp-space-3);
-    background: var(--dp-bg-layout);
+    padding: var(--dp-space-block) var(--dp-space-page) var(--dp-space-component);
+    background: var(--dp-bg-muted);
     border-bottom: none;
   }
 }

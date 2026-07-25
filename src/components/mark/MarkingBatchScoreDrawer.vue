@@ -49,7 +49,7 @@
     />
 
     <template #footer>
-      <div class="dp-space" style="--dp-space-gap: 8px">
+      <div class="dp-space" style="--dp-space-component: 8px">
         <UiButton
           size="sm"
           variant="outline"

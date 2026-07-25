@@ -58,7 +58,7 @@ const props = withDefaults(
 }
 
 .ui-tree :deep(.ant-tree-checkbox-checked .ant-tree-checkbox-inner) {
-  background: var(--dp-primary);
-  border-color: var(--dp-primary);
+  background: var(--dp-color-primary);
+  border-color: var(--dp-color-primary);
 }
 </style>

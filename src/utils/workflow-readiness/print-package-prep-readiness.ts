@@ -2,9 +2,11 @@ import type { ExamWorkbenchPrepStepResponse } from '@/apis/mark/exam-progress'
 import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
 import { resolvePrintPackagePrepWorkflowSteps } from '@/utils/workflow-readiness/prep-steps-readiness'
 
+/** 印刷包生成依赖制卷形态与制卷设计（扩展能力门禁）；名册独立，不参与阻断。 */
+const PRINT_PACKAGE_GATE_STEP_KEYS = new Set(['materialLayout', 'layoutDesign'])
+
 export interface ResolvePrintPackageGenerateGateInput {
   examId: string
-  prepBlockingReasons: string[]
   backendPrepSteps?: ExamWorkbenchPrepStepResponse[] | null
   prepStepCards?: PrepStepCard[]
 }
@@ -15,7 +17,7 @@ export interface PrintPackageGenerateGateViewModel {
   disabledTooltip?: string
 }
 
-/** 印刷包生成门禁：未完成名册/制卷设计等前置步骤时禁用；硬阻断 prepBlockingReasons 仍生效。 */
+/** 印刷包生成门禁：仅制卷形态/制卷设计；名册独立，不得阻断空白母版送印。 */
 export function resolvePrintPackageGenerateGate(
   input: ResolvePrintPackageGenerateGateInput,
 ): PrintPackageGenerateGateViewModel {
@@ -23,12 +25,11 @@ export function resolvePrintPackageGenerateGate(
     examId: input.examId,
     backendPrepSteps: input.backendPrepSteps,
     prepStepCards: input.prepStepCards,
-  })
-  const blockingPrepSteps = panelSteps.filter((step) => step.code !== 'printPackage')
-  const generateBlocked = input.prepBlockingReasons.length > 0 || blockingPrepSteps.length > 0
-  const firstStep = blockingPrepSteps[0]
+  }).filter((step) => PRINT_PACKAGE_GATE_STEP_KEYS.has(step.code))
+  const generateBlocked = panelSteps.length > 0
+  const firstStep = panelSteps[0]
   const disabledTooltip = generateBlocked
-    ? (input.prepBlockingReasons[0] ?? firstStep?.description ?? firstStep?.label)
+    ? (firstStep?.description ?? firstStep?.label)
     : undefined
   return {
     generateBlocked,

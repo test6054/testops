@@ -22,8 +22,8 @@ const visible = computed(() => isPortfolioRoute(route.path))
 
 <style lang="scss" scoped>
 .portfolio-layout-context {
-  padding: var(--dp-space-3) var(--dp-space-4, 16px) var(--dp-space-3);
-  background: var(--dp-bg-layout);
+  padding: var(--dp-space-component) var(--dp-space-block) var(--dp-space-component);
+  background: var(--dp-bg-muted);
   border-bottom: none;
   /* 单行 Scope 挂载层：禁扩 KPI/身份大卡/黄提示带 */
 }

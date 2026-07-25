@@ -63,9 +63,7 @@
       size="sm"
       v-else-if="loadFailed"
       description="教务同步数据加载失败"
-      action-label="重试"
       class="sync-page__empty"
-      @action="loadAll"
     />
 
     <template v-else>
@@ -239,7 +237,7 @@
           size="sm"
           :options="CREATABLE_SYNC_TYPE_OPTIONS"
         />
-        <div class="hint-text" style="margin-top: 4px">
+        <div class="hint-text" style="margin-top: var(--dp-space-component-xs)">
           当前仅开放成绩回写；名单导入、成绩更正与撤销将在后端能力开放后启用。
           {{ GRADE_EXPORT_PASSBACK_PRECONDITION_HINT }}
         </div>
@@ -313,7 +311,7 @@
             {{ detailProgress.withdrawnCount }}
           </UiTag>
         </div>
-        <div v-if="detailProgress.totalCount === 0" class="hint-text" style="margin-top: 8px">
+        <div v-if="detailProgress.totalCount === 0" class="hint-text" style="margin-top: var(--dp-space-component-tight)">
           该任务尚未生成回写记录，可能仍在等待执行。
         </div>
       </template>
@@ -353,7 +351,7 @@
         <span class="error-text">{{ detailTask.lastErrorMessage }}</span>
       </UiDescriptionsItem>
       <UiDescriptionsItem label="操作" :span="1">
-        <div class="dp-space" style="--dp-space-gap: 8px">
+        <div class="dp-space" style="--dp-space-component: 8px">
           <UiButton
             v-if="detailTask.id && canManageOwnerTeachingAffairsWrites"
             size="sm"
@@ -1074,14 +1072,14 @@ onBeforeUnmount(() => {
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__card-head {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 12px;
+    gap: var(--dp-space-component);
     width: 100%;
   }
 
@@ -1095,7 +1093,7 @@ onBeforeUnmount(() => {
   &__card-title {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__section + &__section {
@@ -1104,7 +1102,7 @@ onBeforeUnmount(() => {
 }
 
 .empty-block {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-component);
 }
 
 .error-text {
@@ -1113,26 +1111,26 @@ onBeforeUnmount(() => {
 }
 
 .hint-text {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
   font-size: var(--dp-font-size-xs);
 }
 
 .progress-card {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .progress-card__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--dp-space-component);
   width: 100%;
 }
 
 .progress-card__title {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-lg);
   font-weight: var(--dp-font-weight-title);
 }
@@ -1140,7 +1138,7 @@ onBeforeUnmount(() => {
 .progress-counts {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component);
 }
 </style>

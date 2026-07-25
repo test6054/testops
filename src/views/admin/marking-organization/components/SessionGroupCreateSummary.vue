@@ -140,6 +140,6 @@ const items = computed((): UiDescriptionItem[] => {
 
 <style lang="scss" scoped>
 .session-group-create-summary {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
 }
 </style>

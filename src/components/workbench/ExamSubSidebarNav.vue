@@ -80,7 +80,7 @@ function onMenuClick(info: MenuInfo): void {
 .exam-sub-sidebar-nav {
   flex: 1;
   overflow: auto;
-  padding: 8px;
+  padding: var(--dp-space-component-tight);
 
   :deep(.ant-menu-item) {
     border-radius: var(--dp-radius-panel);
@@ -98,13 +98,13 @@ function onMenuClick(info: MenuInfo): void {
   }
 
   :deep(.ant-menu-inline-collapsed > .ant-menu-item) {
-    padding-inline: calc(50% - 14px);
+    padding-inline: calc(50% - var(--dp-space-block));
   }
 
   &__badge {
     margin-left: auto;
     min-width: 18px;
-    padding: 0 6px;
+    padding: 0 var(--dp-space-component-tight);
     border-radius: 9px;
     background: var(--dp-warning-bg);
     color: var(--dp-warning);

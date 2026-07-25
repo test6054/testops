@@ -36,7 +36,6 @@
         :readiness="archiveSetupReadiness"
         :loading="archiveSetupReadinessLoading"
         :load-failed="archiveSetupReadinessLoadFailed"
-        @retry="loadArchiveSetupReadiness"
       />
 
       <UiAlertStrip
@@ -62,15 +61,6 @@
             @click="goExamListForArchive"
           >
             考试列表
-          </UiButton>
-          <UiButton
-            v-if="s1AttentionLoadFailed"
-            size="sm"
-            variant="outline"
-            :loading="s1AttentionLoading"
-            @click="loadS1AutoCreateAttention"
-          >
-            重试
           </UiButton>
         </template>
       </UiAlertStrip>
@@ -159,7 +149,7 @@
           v-model:page-size="pagination.pageSize"
           pagination-mode="server"
           :columns="tableColumns"
-          :data-source="listLoadFailed ? [] : volumes"
+          :data-source="volumes"
           :loading="loading"
           :total="pagination.total"
           :row-selection="rowSelection"
@@ -326,7 +316,7 @@ import type { ArchiveVolumeScenarioKey } from '@/composables/useArchiveVolumeFil
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_VOLUME_SOURCE_TYPE_OPTIONS,
@@ -386,6 +376,10 @@ import {
   buildOptionalAcademicYearSemesterQuery,
   ensureAcademicYearSemesterPair,
 } from '@/utils/academic-year-semester-query'
+import {
+  applyAcademicYearStartYearChange,
+  applyTripleSemesterChange,
+} from '@/utils/academic-year-semester-triple-filter'
 import { buildArchiveVolumeDimPills } from '@/utils/archive-dimension-pill'
 import { isSecurityRemediationDiagnostic } from '@/utils/archive-remediation-diagnostic'
 import { fetchArchiveSuspectedMixedPendingTotal } from '@/utils/archive-suspected-mixed-navigation'
@@ -398,11 +392,18 @@ import {
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import ArchiveVolumeRemediationPanel from '@/views/teacher/archive-volume/archive-volume-remediation-panel.vue'
-import ArchiveVolumeSupervisionPanel from '@/views/teacher/archive-volume/archive-volume-supervision-panel.vue'
 import ArchiveSetupGuideBanner from '@/views/teacher/archive-volume/components/ArchiveSetupGuideBanner.vue'
 import ArchiveVolumeMineRemediationBanner from '@/views/teacher/archive-volume/components/ArchiveVolumeMineRemediationBanner.vue'
-import DepartmentReviewListDrawer from '@/views/teacher/archive-volume/components/DepartmentReviewListDrawer.vue'
+
+const ArchiveVolumeRemediationPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/archive-volume-remediation-panel.vue'),
+)
+const ArchiveVolumeSupervisionPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/archive-volume-supervision-panel.vue'),
+)
+const DepartmentReviewListDrawer = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/DepartmentReviewListDrawer.vue'),
+)
 
 defineOptions({ name: 'TeacherArchiveVolumeList' })
 
@@ -749,16 +750,15 @@ function buildListOverviewMetric(
 ): SignalMetric {
   const failed = listOverviewKpisFailed.value
   const isActive = activeArchiveSignalKey.value === key
+  /* iconTone 仅分区装饰；红/橙告警只走 tone（数值色） */
   const iconTone
     = tone === 'green'
       ? 'green'
-      : tone === 'red'
-        ? 'red'
-        : tone === 'orange'
-          ? 'orange'
-          : tone === 'blue'
-            ? 'blue'
-            : 'gray'
+      : tone === 'blue'
+        ? 'blue'
+        : tone === 'purple'
+          ? 'purple'
+          : 'gray'
   return {
     key,
     label,
@@ -766,7 +766,7 @@ function buildListOverviewMetric(
     unit: '卷',
     tone,
     iconTone,
-    helper: failed ? '计数暂不可用' : isActive ? '当前筛选' : '点击筛选',
+    helper: failed ? undefined : isActive ? '当前筛选' : '点击筛选',
     clickable:
       !failed && (countForClick > 0 || isActive || (key === 'total' && hasActiveListFilters.value)),
     active: isActive,
@@ -853,13 +853,13 @@ const listOverviewSignalMetrics = computed<SignalMetric[]>(() => {
     value: s1Failed ? '—' : s1Count,
     unit: '场',
     tone: s1Failed || s1HasAttention ? 'orange' : 'gray',
-    iconTone: s1Failed || s1HasAttention ? 'orange' : 'gray',
+    iconTone: 'gray',
     helper: s1Failed
-      ? '计数暂不可用，点击重试'
+      ? undefined
       : s1HasAttention
         ? '点击前往处理'
         : '暂无待建袋考试',
-    clickable: s1Failed || s1HasAttention,
+    clickable: s1HasAttention,
     active: false,
   })
 
@@ -931,7 +931,7 @@ const filterFields = computed<FilterField[]>(() => [
     key: 'academicYearStartYear',
     label: '学年',
     type: 'select',
-    placeholder: '全部学年',
+    placeholder: '全部（不限）',
     options: academicYearStartOptions.value,
     allowClear: true,
   },
@@ -939,7 +939,7 @@ const filterFields = computed<FilterField[]>(() => [
     key: 'semester',
     label: '学期',
     type: 'select',
-    placeholder: '全部学期',
+    placeholder: '全部（不限）',
     options: semesterOptions.value,
     allowClear: true,
   },
@@ -1336,10 +1336,72 @@ function buildVolumeFilterRequest(): ArchiveVolumePageRequest {
   return request
 }
 
-async function loadVolumes() {
-  if (!showVolumeFilter.value) return
+
+type ArchiveListFilterSnapshot = {
+  keyword: string
+  courseId: string | undefined
+  departmentId: string | undefined
+  academicYearStartYear: number | undefined
+  academicYearEndYear: number | undefined
+  semester: typeof filterForm.semester
+  sourceType: typeof filterForm.sourceType
+  volumeStatus: typeof filterForm.volumeStatus
+  integrityStatus: typeof filterForm.integrityStatus
+  transferStatus: typeof filterForm.transferStatus
+  appraisalStatus: typeof filterForm.appraisalStatus
+  integrityFailedOnly: boolean
+  archiveOverdueOnly: boolean
+  collectingPhaseOnly: boolean
+  archiveListQuickFilter: ArchiveListQuickFilter | null
+}
+
+let lastSuccessfulArchiveFilter: ArchiveListFilterSnapshot | null = null
+
+function snapshotArchiveListFilter(): ArchiveListFilterSnapshot {
+  return {
+    keyword: filterForm.keyword,
+    courseId: filterForm.courseId,
+    departmentId: filterForm.departmentId,
+    academicYearStartYear: filterForm.academicYearStartYear,
+    academicYearEndYear: filterForm.academicYearEndYear,
+    semester: filterForm.semester,
+    sourceType: filterForm.sourceType,
+    volumeStatus: filterForm.volumeStatus,
+    integrityStatus: filterForm.integrityStatus,
+    transferStatus: filterForm.transferStatus,
+    appraisalStatus: filterForm.appraisalStatus,
+    integrityFailedOnly: filterExtras.integrityFailedOnly,
+    archiveOverdueOnly: filterExtras.archiveOverdueOnly,
+    collectingPhaseOnly: filterExtras.collectingPhaseOnly,
+    archiveListQuickFilter: archiveListQuickFilter.value,
+  }
+}
+
+function restoreArchiveListFilter(snapshot: ArchiveListFilterSnapshot): void {
+  filterForm.keyword = snapshot.keyword
+  filterForm.courseId = snapshot.courseId
+  filterForm.departmentId = snapshot.departmentId
+  filterForm.academicYearStartYear = snapshot.academicYearStartYear
+  filterForm.academicYearEndYear = snapshot.academicYearEndYear
+  filterForm.semester = snapshot.semester
+  filterForm.sourceType = snapshot.sourceType
+  filterForm.volumeStatus = snapshot.volumeStatus
+  filterForm.integrityStatus = snapshot.integrityStatus
+  filterForm.transferStatus = snapshot.transferStatus
+  filterForm.appraisalStatus = snapshot.appraisalStatus
+  filterExtras.integrityFailedOnly = snapshot.integrityFailedOnly
+  filterExtras.archiveOverdueOnly = snapshot.archiveOverdueOnly
+  filterExtras.collectingPhaseOnly = snapshot.collectingPhaseOnly
+  archiveListQuickFilter.value = snapshot.archiveListQuickFilter
+}
+
+function rememberArchiveListFilter(): void {
+  lastSuccessfulArchiveFilter = snapshotArchiveListFilter()
+}
+async function loadVolumes(): Promise<boolean> {
+  if (!showVolumeFilter.value) return false
   if (!ensurePeriodFilterPair()) {
-    return
+    return false
   }
   loading.value = true
   try {
@@ -1378,14 +1440,17 @@ async function loadVolumes() {
     pagination.pageNum = result.pageNum
     pagination.pageSize = result.pageSize
     listLoadFailed.value = false
+    rememberArchiveListFilter()
     if (showVolumeListPanel.value) {
       void loadListOverviewKpis()
       void loadS1AutoCreateAttention()
     }
+    return true
   } catch (error) {
     showUserError(error, '加载课程考核袋列表失败')
     listLoadFailed.value = true
     selectedVolumeIds.value = []
+    return false
   } finally {
     loading.value = false
   }
@@ -1410,7 +1475,14 @@ function handleSearch() {
     return
   }
   pagination.pageNum = 1
-  void loadVolumes()
+  const previous = lastSuccessfulArchiveFilter ?? snapshotArchiveListFilter()
+  void loadVolumes().then((ok) => {
+    if (!ok) {
+      restoreArchiveListFilter(previous)
+    } else {
+      rememberArchiveListFilter()
+    }
+  })
 }
 
 function clearArchiveQuickFilter() {
@@ -1441,7 +1513,14 @@ function handleReset() {
   filterExtras.collectingPhaseOnly = false
   pagination.pageNum = 1
   selectedVolumeIds.value = []
-  void loadVolumes()
+  const previous = lastSuccessfulArchiveFilter ?? snapshotArchiveListFilter()
+  void loadVolumes().then((ok) => {
+    if (!ok) {
+      restoreArchiveListFilter(previous)
+    } else {
+      rememberArchiveListFilter()
+    }
+  })
 }
 
 function openBatchReject() {
@@ -1799,11 +1878,7 @@ function reloadArchiveListAfterSignalFilter() {
 
 function handleSignalMetricClick(key: string) {
   if (key === 's1AutoCreate') {
-    if (s1AttentionLoadFailed.value) {
-      void loadS1AutoCreateAttention()
-      return
-    }
-    if (s1AttentionExamCount.value <= 0) {
+    if (s1AttentionLoadFailed.value || s1AttentionExamCount.value <= 0) {
       return
     }
     goS1PrimaryAction()
@@ -1909,9 +1984,15 @@ function handleSignalMetricClick(key: string) {
 watch(
   () => filterForm.academicYearStartYear,
   (startYear) => {
-    filterForm.academicYearEndYear = startYear != null ? startYear + 1 : undefined
-    if (startYear == null) {
-      filterForm.semester = undefined
+    applyAcademicYearStartYearChange(filterForm, startYear)
+  },
+)
+
+watch(
+  () => filterForm.semester,
+  (semester) => {
+    if (semester == null && filterForm.academicYearStartYear != null) {
+      applyTripleSemesterChange(filterForm, undefined)
     }
   },
 )
@@ -1985,13 +2066,13 @@ onMounted(async () => {
 .archive-volume-list__root {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-volume-list__scenario-row {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-list__role-tabs :deep(.ui-section-tabs__content) {
@@ -2001,11 +2082,11 @@ onMounted(async () => {
 .archive-volume-list__panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-volume-list__batch {
-  margin-bottom: var(--dp-space-2);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .archive-volume-list__filter {
@@ -2015,7 +2096,7 @@ onMounted(async () => {
 .archive-volume-list__quick-filter {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-list__scope-bar {
@@ -2029,31 +2110,31 @@ onMounted(async () => {
 }
 
 .archive-volume-list__urgent-tag {
-  margin-left: 4px;
+  margin-left: var(--dp-space-component-xs);
   vertical-align: middle;
 }
 
 .archive-volume-list__due--danger {
-  color: var(--dp-color-error);
+  color: var(--dp-error);
   font-weight: 600;
 }
 
 .archive-volume-list__due--warn {
-  color: var(--dp-color-warning);
+  color: var(--dp-warning);
   font-weight: 600;
 }
 
 :deep(.archive-volume-list__table) {
   .ant-table-tbody > tr.archive-volume-list__row--error > td {
-    background: color-mix(in srgb, var(--dp-color-error) 7%, transparent);
+    background: color-mix(in srgb, var(--dp-error) 7%, transparent);
   }
 
   .ant-table-tbody > tr.archive-volume-list__row--warning > td {
-    background: color-mix(in srgb, var(--dp-color-warning) 8%, transparent);
+    background: color-mix(in srgb, var(--dp-warning) 8%, transparent);
   }
 
   .ant-table-tbody > tr.archive-volume-list__row--info > td {
-    background: color-mix(in srgb, var(--dp-blue-400) 8%, transparent);
+    background: color-mix(in srgb, var(--dp-blue-500) 8%, transparent);
   }
 }
 </style>

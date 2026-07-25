@@ -35,6 +35,7 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
   const router = useRouter()
   const examDetail = ref<ExamDetailResponse | null>(null)
   const detailLoading = ref(false)
+  const detailError = ref<string | null>(null)
 
   const markingProgress = computed<MarkingProgressResponse | null>(
     () => options.snapshot.value?.markingProgress ?? null,
@@ -211,7 +212,6 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
         void router.push({ name: 'TeacherExamWorkspaceMarkingArbitration', params: { examId } })
         break
       case 'prep-done':
-      case 'prep-block':
         navigateToJourneyStep(router, MarkTeacherDashboardJourneyKeyCode.PREP, examId, scanOpts)
         break
       case 'org-pending':
@@ -236,21 +236,25 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
   async function loadExamDetail(): Promise<void> {
     if (!options.examId.value) {
       examDetail.value = null
+      detailError.value = null
       return
     }
     detailLoading.value = true
+    detailError.value = null
     try {
       examDetail.value = await getExamDetail(options.examId.value)
     } catch (error) {
       examDetail.value = null
-      showUserError(error, '考试详情加载失败')
+      detailError.value = '考试详情加载失败'
+      showUserError(error, detailError.value)
     } finally {
       detailLoading.value = false
     }
   }
 
   async function refreshChrome(): Promise<void> {
-    await Promise.all([options.refreshSnapshot(), loadExamDetail()])
+    // 快照与详情分段失败互不阻断；各自内部已负责错误可见
+    await Promise.allSettled([options.refreshSnapshot(), loadExamDetail()])
   }
 
   watch(
@@ -264,6 +268,7 @@ export function useExamWorkspaceChrome(options: UseExamWorkspaceChromeOptions) {
   return {
     examDetail,
     detailLoading,
+    detailError,
     markingProgress,
     contextTitle,
     contextSubtitle,

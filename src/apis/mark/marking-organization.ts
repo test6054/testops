@@ -414,6 +414,10 @@ export interface QuestionMarkingGroupResponse {
    * （主考∧ACTIVE∧草稿∧无运行态引用）
    */
   canDeleteQuestionGroup?: boolean
+  /**
+   * 是否整卷题组 - 对应后端 wholePaperGroup（题目关联为空）
+   */
+  wholePaperGroup: boolean
 }
 
 /** 阅卷组织详情响应 - 对应后端 MarkingOrganizationResponse */
@@ -1047,6 +1051,14 @@ export interface TeacherGroupClaimContextResponse {
   activeSessions: FormalSessionResponse[]
   /** 该题组下当前可领取的试评会话（session_status = TRIAL_ASSIGNED） */
   activeTrialSessions: TrialSessionResponse[]
+  /** 单次领取批次上限；与 claimTasks 分配策略同源 */
+  claimBatchSize: number
+  /** 在手任务负载上限 */
+  loadLimit: number
+  /** 当前评阅人在本考试本题组下已领取未提交任务数 */
+  reviewerInProgressCount: number
+  /** 超时回收窗口（分钟）；无策略时为空 */
+  recycleTimeoutMinutes?: number
 }
 
 /** 教师任务池状态汇总 - 对应 TeacherMarkingTaskPoolSummaryResponse */

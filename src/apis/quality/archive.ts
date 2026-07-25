@@ -7,6 +7,7 @@ import type { ArchiveBusinessTypeCode, ExpertPackageTypeCode } from './types'
 import type { PageResult, QueryDto } from '@/types'
 import type { ArchiveDestructionDecisionCode } from '@/types/enums/archive-destruction-decision-enum'
 import type { ArchiveDigitalStatusCode } from '@/types/enums/archive-digital-status-enum'
+import type { QualityArchiveDestructionEventTypeCode } from '@/types/enums/quality-archive-destruction-event-type-enum'
 import type { QualityArchiveDestructionLedgerExportDecisionCode } from '@/types/enums/quality-archive-destruction-ledger-export-decision-enum'
 import type { QualityArchiveDestructionStatusCode } from '@/types/enums/quality-archive-destruction-status-enum'
 import http from '@/config/axios'
@@ -32,6 +33,15 @@ export interface ArchiveVO {
   destructionRequestUserId?: string
   destructionExecuteUserId?: string
   destructionHistoryPresent?: boolean
+  destructionRecordId?: string
+  destructionTargetFileCount?: number
+  ledgerExportDecision?: QualityArchiveDestructionLedgerExportDecisionCode
+  ledgerSkipReason?: string
+  ledgerFileId?: string
+  ledgerExportTime?: string
+  storageCleanupAttempts?: number
+  storageCleanupError?: string
+  destructionWitnessUserId?: string
   retentionDueTime?: string
   retentionExpired?: boolean
   archivedTime?: string
@@ -108,8 +118,7 @@ export interface ArchiveDestructionFlowRecordVO {
   id: string
   archiveId: string
   destructionRecordId?: string
-  eventType: string
-  eventTypeLabel: string
+  eventType: QualityArchiveDestructionEventTypeCode
   destructionStatus?: QualityArchiveDestructionStatusCode
   beforeStatus?: QualityArchiveDestructionStatusCode
   afterStatus?: QualityArchiveDestructionStatusCode

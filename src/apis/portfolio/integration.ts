@@ -102,9 +102,9 @@ export interface PortfolioIntegrationSyncTaskVO {
   pathwayCode: PortfolioIntegrationPathwayCodeEnum
   taskStatus: PortfolioSyncTaskStatusEnum
   triggerType: PortfolioSyncTriggerTypeCode
-  successCount: number
-  failedCount: number
-  skippedCount: number
+  successCount?: number | null
+  failedCount?: number | null
+  skippedCount?: number | null
   errorSummary?: string
   startedTime?: string
   finishedTime?: string
@@ -129,14 +129,12 @@ export interface PortfolioIntegrationHealthDashboardVO {
 
 export interface PortfolioIntegrationChannelPathwayOption {
   pathwayCode: PortfolioIntegrationPathwayCodeEnum
-  pathwayLabel: string
   configurable?: boolean
   executable?: boolean
 }
 
 export interface PortfolioIntegrationChannelPathwayMatrixChannelRow {
   channelCode: PortfolioIntegrationChannelCodeEnum
-  channelLabel: string
   teacherCvChannel?: boolean
   pathways?: PortfolioIntegrationChannelPathwayOption[]
 }
@@ -241,14 +239,11 @@ export interface PortfolioNationalReportIssueVO {
   issueCodes?: string
   issueDetails?: string[]
   status: PortfolioNationalReportIssueStatusCode
-  statusLabel?: string
   fixedTime?: string
   fixRemark?: string
   createTime?: string
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  /** 生命周期状态中文标签 */
-  lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -265,8 +260,8 @@ export interface PortfolioNationalReportIssueVO {
 export interface PortfolioNationalReportBatchVO {
   id: string
   syncTaskId: string
-  successCount: number
-  failedCount: number
+  successCount?: number | null
+  failedCount?: number | null
   packageJson?: string
   reportStatus?: PortfolioNationalReportStatusCode
   artifactFileNodeId?: string
@@ -453,12 +448,6 @@ export const portfolioIntegrationApi = {
   },
   getNationalReportBatch(id: string) {
     return http.post<PortfolioNationalReportBatchVO>(`${BASE}/national-report/batch/get`, { id })
-  },
-  exportNationalReportPackage(data: { syncTaskId: string, maskMode?: boolean }) {
-    return http.post<PortfolioArchiveBagExportResultVO>(
-      `${BASE}/national-report/package/export`,
-      data,
-    )
   },
   retransmitNationalReportIssues(data: { datasourceConfigId: string, sourceSyncTaskId?: string }) {
     return http.post<PortfolioNationalReportBatchVO>(

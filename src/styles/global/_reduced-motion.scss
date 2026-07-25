@@ -19,4 +19,11 @@
   #nprogress .peg {
     transition: none !important;
   }
+
+  .exam-status-card__progress-fill,
+  .exam-sub-sidebar__progress-fill,
+  .exam-overview-dash__quality-fill,
+  .journey-mini__bar {
+    transition: none !important;
+  }
 }

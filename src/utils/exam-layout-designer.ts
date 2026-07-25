@@ -52,7 +52,7 @@ export {
 } from '@/types/enums/exam-layout-paper-spec-enum'
 
 export const EXAM_LAYOUT_BLOCK_TYPE_COLOR: Record<ExamLayoutBlockTypeCode, string> = {
-  [ExamLayoutBlockTypeCode.IDENTITY_BUBBLE]: 'rgba(22, 119, 255, 0.14)',
+  [ExamLayoutBlockTypeCode.IDENTITY_BUBBLE]: 'rgba(31, 90, 154, 0.14)',
   [ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX]: 'rgba(82, 196, 26, 0.14)',
   [ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER]: 'rgba(250, 173, 20, 0.16)',
   [ExamLayoutBlockTypeCode.QUESTION_STEM]: 'rgba(114, 46, 209, 0.12)',
@@ -60,7 +60,7 @@ export const EXAM_LAYOUT_BLOCK_TYPE_COLOR: Record<ExamLayoutBlockTypeCode, strin
 }
 
 export const EXAM_LAYOUT_BLOCK_TYPE_STROKE: Record<ExamLayoutBlockTypeCode, string> = {
-  [ExamLayoutBlockTypeCode.IDENTITY_BUBBLE]: '#1677ff',
+  [ExamLayoutBlockTypeCode.IDENTITY_BUBBLE]: '#2B67FF',
   [ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX]: '#52c41a',
   [ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER]: '#faad14',
   [ExamLayoutBlockTypeCode.QUESTION_STEM]: '#722ed1',
@@ -97,7 +97,7 @@ export function resolveBlockFill(blockType: string): string {
   if (code) {
     return EXAM_LAYOUT_BLOCK_TYPE_COLOR[code]
   }
-  return 'rgba(22, 119, 255, 0.08)'
+  return 'rgba(31, 90, 154, 0.08)'
 }
 
 export function resolveBlockStroke(blockType: string): string {
@@ -360,7 +360,7 @@ export function computeLayoutRoiStats(document: ExamLayoutDocument | null): Layo
 export function validateLayoutDocumentForSave(document: ExamLayoutDocument | null): string[] {
   const reasons: string[] = []
   if (!document) {
-    return ['请先生成答题卡或自动预划区后再保存']
+    return ['请先生成答题纸或自动预划区后再保存']
   }
   if (!document.layoutName?.trim()) {
     reasons.push('请填写制卷名称')

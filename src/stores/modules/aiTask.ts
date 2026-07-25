@@ -96,16 +96,21 @@ export const useAiTaskStore = defineStore('aiTask', () => {
 
   /**
    * 启动轮询；若任务已是终态会立即 fetch 并停止。
+   * tick 捕获异常，避免 setInterval 产生未处理 Promise。
    */
   function startPolling(taskId: string, intervalMs: number = DEFAULT_POLL_INTERVAL_MS): void {
     if (!taskId) return
     if (pollingHandles.has(taskId)) return
 
     const tick = async () => {
-      const detail = await fetchTask(taskId)
-      if (!detail) return
-      if (isTerminal(detail.status)) {
-        stopPolling(taskId)
+      try {
+        const detail = await fetchTask(taskId)
+        if (!detail) return
+        if (isTerminal(detail.status)) {
+          stopPolling(taskId)
+        }
+      } catch {
+        // 详情轮询失败由调用方通过缓存未更新感知；禁止未处理 rejection
       }
     }
 

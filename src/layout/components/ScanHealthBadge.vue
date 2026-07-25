@@ -158,8 +158,8 @@ onMounted(() => {
   cursor: pointer;
   padding: 0;
   transition:
-    background var(--dp-duration-fast, 150ms) ease,
-    color var(--dp-duration-fast, 150ms) ease;
+    background var(--dp-duration-fast) var(--dp-ease-default),
+    color var(--dp-duration-fast) var(--dp-ease-default);
 
   &:hover {
     background: var(--dp-fill-tertiary);
@@ -178,7 +178,7 @@ onMounted(() => {
     height: 7px;
     border-radius: 50%;
     border: 1.5px solid var(--dp-surface);
-    transition: background var(--dp-duration-fast, 150ms) ease;
+    transition: background var(--dp-duration-fast) var(--dp-ease-default);
   }
 
   &--green .scan-health-badge__dot {
@@ -218,28 +218,28 @@ onMounted(() => {
   &__loading {
     display: flex;
     justify-content: center;
-    padding: var(--dp-space-10, 40px) 0;
+    padding: var(--dp-space-section-loose) 0;
   }
 
   &__empty {
-    padding: var(--dp-space-10, 40px) 0;
+    padding: var(--dp-space-section-loose) 0;
   }
 
   &__list {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-component-tight);
   }
 
   &__item {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-3, 12px);
-    padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-component) var(--dp-space-block);
     border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-panel, 8px);
     background: var(--dp-surface);
-    transition: border-color var(--dp-duration-fast, 150ms) ease;
+    transition: border-color var(--dp-duration-fast) var(--dp-ease-default);
 
     &:hover {
       border-color: var(--dp-border-hover);

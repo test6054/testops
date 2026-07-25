@@ -44,7 +44,7 @@ const displayPercent = computed(() => {
 .archive-readiness-rate {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-readiness-rate__track {
@@ -61,7 +61,7 @@ const displayPercent = computed(() => {
   transform-origin: left center;
   border-radius: 2px;
   background: var(--dp-warning);
-  transition: transform 200ms ease;
+  transition: transform var(--dp-duration-normal) var(--dp-ease-default);
 }
 
 .archive-readiness-rate__fill--done {

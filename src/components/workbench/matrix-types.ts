@@ -32,4 +32,6 @@ export interface MatrixCell {
   secondary?: string
   tone?: BadgeTone
   warning?: string
+  /** 本地未提交编辑，矩阵需可见标脏 */
+  dirty?: boolean
 }

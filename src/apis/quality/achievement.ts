@@ -176,10 +176,10 @@ export interface ComplexEngineeringGoalAchievementSummaryVO {
   complexEngineeringGoalCount?: number
 }
 
-/** 计算就绪查询 - 严格对齐 AchievementComputeReadinessRequest */
+/** 计算就绪查询 - 严格对齐 AchievementComputeReadinessRequest；programId / trainingPlanId 合同必填 */
 export interface AchievementComputeReadinessRequest extends QueryDto {
-  programId?: string
-  trainingPlanId?: string
+  programId: string
+  trainingPlanId: string
   qualityCourseId?: string
   courseGoalId?: string
   trainingObjectiveId?: string
@@ -190,10 +190,28 @@ export interface AchievementComputeReadinessRequest extends QueryDto {
 /** 计算就绪项 - 严格对齐 AchievementComputeReadinessItemVO */
 export interface AchievementComputeReadinessItemVO {
   computeKind: string
+  /** 链式步骤序号，后端必填 int */
   stageOrder: number
   stageTitle: string
+  /** 是否可执行计算，后端必填 boolean */
   ready: boolean
   blockingReasons: string[]
+  /** 目标对象 / 计算范围说明 */
+  targetScopeLabel: string
+  /** 数据期间说明 */
+  dataPeriodLabel: string
+  /** 算法口径说明 */
+  algorithmProfileLabel: string
+  /** 预计覆盖结果数 */
+  expectedCoverCount: number
+  /** 将被覆盖的未锁定结果数 */
+  replaceableResultCount: number
+  /** 已提交锁定结果数 */
+  lockedSubmittedCount: number
+  /** 已确认锁定结果数 */
+  lockedConfirmedCount: number
+  /** 已归档锁定结果数 */
+  lockedArchivedCount: number
 }
 
 export const achievementApi = {

@@ -35,7 +35,6 @@ export interface PortfolioExpertAssignmentSubjectTeacherVO {
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
-  lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -83,7 +82,6 @@ export interface PortfolioExpertReviewMaterialItemVO {
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
-  lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -109,6 +107,37 @@ export interface PortfolioExpertAssignmentReviewBundleVO {
   materials: PortfolioExpertReviewMaterialItemVO[]
 }
 
+export interface PortfolioExpertAssignmentCategoryOptionVO {
+  categoryCode: string
+  categoryName: string
+}
+
+/** 对齐后端 PortfolioExpertAssignmentCreateOptionsVO */
+export interface PortfolioExpertAssignmentCreateOptionsVO {
+  evaluationTaskId: string
+  evaluationTaskName?: string
+  expertOptions: Array<{
+    userId: string
+    userCode?: string
+    userName?: string
+    role?: string
+  }>
+  subjectTeacherOptions: Array<{
+    teacherUserId: string
+    fullName: string
+    lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
+    archiveWriteForbidden?: boolean
+    evaluationHeld?: boolean
+    countsInCurrentFacultyStructure?: boolean
+  }>
+  categoryOptions: PortfolioExpertAssignmentCategoryOptionVO[]
+  externalExpertCount: number
+  subjectTeacherCount: number
+  participableSubjectTeacherCount: number
+  heldSubjectTeacherCount: number
+  activeCategoryCount: number
+}
+
 export const portfolioExpertAssignmentApi = {
   create: (data: {
     evaluationTaskId: string
@@ -117,6 +146,11 @@ export const portfolioExpertAssignmentApi = {
     materialScope: PortfolioExpertMaterialScope
     expireDays: number
   }) => http.post<PortfolioExpertAssignmentVO>('/api/portfolio/expert-assignment/create', data),
+  createOptions: (data: { id: string }) =>
+    http.post<PortfolioExpertAssignmentCreateOptionsVO>(
+      '/api/portfolio/expert-assignment/create-options',
+      data,
+    ),
   page: (data: {
     pageNum: number
     pageSize: number

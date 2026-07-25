@@ -1,5 +1,5 @@
 <template>
-  <AiAnalysisSection title="AI 校级质量分析">
+  <AiAnalysisSection title="AI 考试质量横向分析">
     <template #actions>
       <AiAnalysisHistorySelect v-model="historySelectedId" :rows="historyRows" :loading="loading" />
       <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
@@ -84,7 +84,7 @@
       <AiAnalysisMetaCollapse
         v-if="record"
         :record="record"
-        failure-fallback="AI 校级质量分析未完成，请核对考试范围后重新生成"
+        failure-fallback="AI 考试质量横向分析未完成，请核对考试范围后重新生成"
         :extra-items="metaExtraItems"
       />
     </div>
@@ -386,11 +386,11 @@ function examScopeSummary(value: SchoolQualityAnalysisResponse): string {
 }
 
 function qualityRatingLabel(rating: SchoolQualityRatingCode): string {
-  return strictEnumLabel(SchoolQualityRatingDescription, rating, '校级质量评价等级')
+  return strictEnumLabel(SchoolQualityRatingDescription, rating, '考试质量评价等级')
 }
 
 function qualityRatingColor(rating: SchoolQualityRatingCode): BadgeTone {
-  return strictEnumTone(SCHOOL_QUALITY_RATING_TONE, rating, '校级质量评价等级')
+  return strictEnumTone(SCHOOL_QUALITY_RATING_TONE, rating, '考试质量评价等级')
 }
 
 function qualityItemTitle(item: SchoolQualityItemResponse): string {
@@ -428,7 +428,7 @@ watch(
 )
 
 function schoolQualityDimensionLabel(value: SchoolQualityDimensionCode): string {
-  return strictEnumLabel(SchoolQualityDimensionDescription, value, '校级质量分析维度')
+  return strictEnumLabel(SchoolQualityDimensionDescription, value, '考试质量分析维度')
 }
 
 function syncDimensionFromPageScope(): void {
@@ -497,7 +497,7 @@ async function reload(): Promise<void> {
     const count = applyLoadedList(list)
     if (count === 0) void message.info('暂无历史记录')
   } catch (e) {
-    showUserError(e, '校级质量分析加载失败')
+    showUserError(e, '考试质量横向分析加载失败')
   } finally {
     loading.value = false
   }
@@ -551,9 +551,9 @@ async function handleGenerate(): Promise<void> {
       examIds,
     })
     adoptGenerated(generated)
-    void message.success('已生成校级质量分析')
+    void message.success('已生成考试质量横向分析')
   } catch (e) {
-    showUserError(e, '校级质量分析生成失败')
+    showUserError(e, '考试质量横向分析生成失败')
   } finally {
     generating.value = false
   }
@@ -564,7 +564,7 @@ async function handleGenerate(): Promise<void> {
 .diagnosis-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .diagnosis-rate {
   margin-left: auto;
@@ -576,7 +576,7 @@ async function handleGenerate(): Promise<void> {
   font-weight: 600;
 }
 .diagnosis-text {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);

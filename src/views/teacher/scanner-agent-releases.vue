@@ -465,9 +465,9 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .scanner-agent-releases__sub {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .scanner-agent-releases__hint {
@@ -478,6 +478,6 @@ onMounted(() => {
 }
 
 .muted {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 </style>

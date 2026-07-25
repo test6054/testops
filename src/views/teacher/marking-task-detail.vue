@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { FormInstance } from 'ant-design-vue/es/form'
 import ApplyScoreToRemainingModal from '@/components/mark/ApplyScoreToRemainingModal.vue'
+import GradingSessionProgressBand from '@/components/mark/GradingSessionProgressBand.vue'
 import GradingWorkspaceLayout from '@/components/mark/GradingWorkspaceLayout.vue'
 import MarkingAiAssistDrawer from '@/components/mark/MarkingAiAssistDrawer.vue'
 import MarkingQuestionViewCard from '@/components/mark/MarkingQuestionViewCard.vue'
@@ -212,6 +213,11 @@ const {
           @reveal="openRevealDialog"
           @withdraw-entry="handleWithdrawEntry"
         />
+        <GradingSessionProgressBand
+          :progress="navigation.batchProgress.value"
+          :recent-submits="recentList"
+          :unit-label="isWholePaperTask ? '份' : '题'"
+        />
       </template>
 
       <template #main>
@@ -339,7 +345,9 @@ const {
           </span>
           <span class="marking-task-detail-page__footer-progress">
             第 {{ navigation.batchProgress.value.current }} /
-            {{ navigation.batchProgress.value.total }} 份
+            {{ navigation.batchProgress.value.total }}
+            · 已完成 {{ navigation.batchProgress.value.completed }}
+            · 剩余 {{ navigation.batchProgress.value.remaining }}
           </span>
         </div>
         <div class="marking-task-detail-page__footer-actions">
@@ -399,17 +407,17 @@ const {
 .marking-task-detail-page {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__footer-main {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px 16px;
+    gap: var(--dp-space-component-tight) var(--dp-space-block);
     flex: 1;
     min-width: 0;
     font-size: var(--dp-font-size-sm);
@@ -429,7 +437,7 @@ const {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 }
 </style>

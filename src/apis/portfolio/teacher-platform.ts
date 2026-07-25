@@ -21,6 +21,7 @@ import type {
   PortfolioKeyTeacherRegistryStatusCode,
   PortfolioKeyTeacherRegistryTypeCode,
   PortfolioPortraitDimensionCode,
+  PortfolioTeacherRecommendEvidenceTypeCode,
   PortfolioTeacherRecommendRunModeCode,
   PortfolioTeacherRecommendRunStatusCode,
   PortfolioTeacherRecommendSceneCode,
@@ -35,6 +36,8 @@ import type { PortfolioDualTeacherCertLevelCode } from '@/types/enums/portfolio-
 import type { PortfolioExternalTeacherContractStatusCode } from '@/types/enums/portfolio-external-teacher-contract-status-enum'
 import type { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
 import type { PortfolioImportQualityGradeCode } from '@/types/enums/portfolio-import-quality-grade-enum'
+import type { PortfolioDevelopmentRecordEntryFieldTypeCode } from '@/types/enums/portfolio-development-record-entry-field-type-enum'
+import type { PortfolioDevelopmentRecordEvidenceStatusCode } from '@/types/enums/portfolio-development-record-evidence-status-enum'
 import type { PortfolioMultiSourceEvaluatorTypeEnum } from '@/types/enums/portfolio-multi-source-evaluator-type-enum'
 import type { PortfolioPlanningSyncConflictStrategyCode } from '@/types/enums/portfolio-planning-sync-conflict-strategy-enum'
 import type { PortfolioPlanningSyncOrgScopeCode } from '@/types/enums/portfolio-planning-sync-org-scope-enum'
@@ -54,8 +57,6 @@ export const portfolioArchiveBagApi = {
     http.post<PortfolioArchiveBagAssembleVO>('/api/portfolio/archive/bag/assemble', data),
   preview: (data: PortfolioArchiveBagTeacherRequest = {}) =>
     http.post<PortfolioArchiveBagPreviewVO>('/api/portfolio/archive/bag/preview', data),
-  buildMaterialPackage: (data: PortfolioArchiveBagTeacherRequest = {}) =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/material-package/build', data),
   computeScore: (data: PortfolioArchiveScoreComputeRequest = {}) =>
     http.post<PortfolioArchiveScoreResultVO>('/api/portfolio/archive-score/compute', data),
 }
@@ -83,11 +84,13 @@ export const PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_OPTIONS: Array<{
 export interface PortfolioArchiveScoreRuleVO {
   id: string
   categoryId?: string
+  categoryName?: string
   ruleType: PortfolioArchiveScoreRuleTypeCode
   ruleName: string
   scorePoints: number
   weight?: number
   officialOnly?: number
+  updateTime?: string
 }
 
 export interface PortfolioArchiveScoreRuleSaveRequest {
@@ -98,6 +101,7 @@ export interface PortfolioArchiveScoreRuleSaveRequest {
   scorePoints: number
   weight?: number
   officialOnly?: number
+  expectedUpdateTime?: string
 }
 
 export interface PortfolioArchiveScoreComputeRequest {
@@ -128,6 +132,12 @@ export interface PortfolioDualTeacherEligibilityFreezeVO {
 export interface PortfolioDualTeacherApplicationVO {
   id: string
   teacherUserId: string
+  /** 教师姓名（edu-user nickName 快照） */
+  teacherName?: string
+  /** 教师工号 */
+  teacherNumber?: string
+  /** 院系名称 */
+  departmentName?: string
   applicationNo: string
   applicationStatus: PortfolioDualTeacherApplicationStatusCode
   certLevel?: PortfolioDualTeacherCertLevelCode
@@ -141,7 +151,6 @@ export interface PortfolioDualTeacherApplicationVO {
   eligibilityFreeze?: PortfolioDualTeacherEligibilityFreezeVO
   /** 生命周期状态编码 ACTIVE/SEALED/... */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -204,8 +213,6 @@ export const portfolioDualTeacherApi = {
     http.post<void>('/api/portfolio/dual-teacher/academic-reject', data),
   academicReturn: (data: PortfolioDualTeacherWorkflowRequest) =>
     http.post<void>('/api/portfolio/dual-teacher/academic-return', data),
-  exportRoster: (data: PortfolioDualTeacherExportRequest = {}) =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/dual-teacher/export-roster', data),
   analyticsStats: () =>
     http.post<PortfolioDualTeacherAnalyticsVO>('/api/portfolio/dual-teacher/analytics/stats', {}),
 }
@@ -423,11 +430,6 @@ export const portfolioExternalTeacherApi = {
       '/api/portfolio/external-teacher/import-batch/get',
       data,
     ),
-  exportRoster: (data: PortfolioExternalTeacherExportRequest = {}) =>
-    http.post<PortfolioArchiveBagExportResultVO>(
-      '/api/portfolio/external-teacher/export-roster',
-      data,
-    ),
 }
 
 export interface PortfolioDevelopmentPlanVO {
@@ -440,7 +442,6 @@ export interface PortfolioDevelopmentPlanVO {
   ownerUserId?: string
   planSummary?: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -633,11 +634,6 @@ export const portfolioDevelopmentPlanApi = {
       '/api/portfolio/development-plan/achievement-attainment',
       data,
     ),
-  exportExcel: (data: PortfolioDevelopmentPlanStatsRequest) =>
-    http.post<PortfolioArchiveBagExportResultVO>(
-      '/api/portfolio/development-plan/export-excel',
-      data,
-    ),
   getHistorySyncConfig: () =>
     http.post<PortfolioPlanningSyncConfigVO | null>(
       '/api/portfolio/development-plan/history-import/config/get',
@@ -674,6 +670,8 @@ export interface PortfolioDevelopmentRecordVO {
   categoryCode?: string
   levelCode?: PortfolioHonorLevelCode
   awardUnit?: string
+  resourceForm?: string
+  applicableScope?: string
   recordDate?: string
   teacherUserId?: string
   /** edu-user 教师姓名 */
@@ -682,9 +680,10 @@ export interface PortfolioDevelopmentRecordVO {
   teacherNumber?: string
   descriptionText?: string
   fileId?: string
+  /** 资源证据完备状态 */
+  evidenceStatus?: PortfolioDevelopmentRecordEvidenceStatusCode
   createTime?: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -756,10 +755,40 @@ export interface PortfolioDevelopmentRecordSaveRequest {
   categoryCode?: string
   levelCode?: PortfolioHonorLevelCode
   awardUnit?: string
+  resourceForm?: string
+  applicableScope?: string
   recordDate?: string
   descriptionText?: string
   fileId?: string
   recordStatus?: PortfolioDevelopmentRecordStatusCode
+}
+
+export interface PortfolioDevelopmentRecordEntryOptionVO {
+  value: string
+  label: string
+}
+
+export interface PortfolioDevelopmentRecordEntryFieldVO {
+  fieldCode: string
+  fieldLabel: string
+  fieldType: PortfolioDevelopmentRecordEntryFieldTypeCode
+  required?: boolean
+  placeholder?: string
+  options?: PortfolioDevelopmentRecordEntryOptionVO[]
+}
+
+export interface PortfolioDevelopmentRecordEntrySchemaVO {
+  recordType: PortfolioDevelopmentRecordTypeCode
+  categoryCode?: string
+  libraryName?: string
+  teacherRequired?: boolean
+  evidenceRequired?: boolean
+  fields: PortfolioDevelopmentRecordEntryFieldVO[]
+}
+
+export interface PortfolioDevelopmentRecordEntrySchemaRequest {
+  recordType: PortfolioDevelopmentRecordTypeCode
+  categoryCode?: string
 }
 
 export interface PortfolioDevelopmentRecordExportRequest {
@@ -791,22 +820,17 @@ export const portfolioDevelopmentRecordApi = {
       '/api/portfolio/development-record/page',
       data,
     ),
+  entrySchema: (data: PortfolioDevelopmentRecordEntrySchemaRequest) =>
+    http.post<PortfolioDevelopmentRecordEntrySchemaVO>(
+      '/api/portfolio/development-record/entry-schema/get',
+      data,
+    ),
   save: (data: PortfolioDevelopmentRecordSaveRequest) =>
     http.post<string>('/api/portfolio/development-record/save', data),
   delete: (data: { id: string }) =>
     http.post<void>('/api/portfolio/development-record/delete', data),
-  exportExcel: (data: PortfolioDevelopmentRecordExportRequest) =>
-    http.post<PortfolioArchiveBagExportResultVO>(
-      '/api/portfolio/development-record/export-excel',
-      data,
-    ),
   honorStats: (data: PortfolioHonorExportRequest = {}) =>
     http.post<PortfolioHonorStatsVO>('/api/portfolio/development-record/honor/stats', data),
-  honorExport: (data: PortfolioHonorExportRequest = {}) =>
-    http.post<PortfolioArchiveBagExportResultVO>(
-      '/api/portfolio/development-record/honor/export',
-      data,
-    ),
   achievementStats: (data: PortfolioHonorExportRequest = {}) =>
     http.post<PortfolioAchievementStatsVO>(
       '/api/portfolio/development-record/achievement/stats',
@@ -837,7 +861,6 @@ export interface PortfolioKeyTeacherRegistryVO {
   updateTime?: string
   /** 生命周期状态编码 ACTIVE/SEALED/... */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -915,8 +938,6 @@ export const portfolioKeyTeacherApi = {
   save: (data: PortfolioKeyTeacherSaveRequest) =>
     http.post<string>('/api/portfolio/key-teacher/save', data),
   revoke: (data: { id: string }) => http.post<void>('/api/portfolio/key-teacher/revoke', data),
-  exportRoster: (data: PortfolioKeyTeacherExportRequest = {}) =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/key-teacher/export-roster', data),
   analyticsStats: () =>
     http.post<PortfolioKeyTeacherAnalyticsVO>('/api/portfolio/key-teacher/analytics/stats', {}),
 }
@@ -934,7 +955,6 @@ export interface PortfolioDoubleDutyRegistryVO {
   remark?: string
   registryStatus: PortfolioKeyTeacherRegistryStatusCode
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -1005,8 +1025,6 @@ export const portfolioDoubleDutyApi = {
   save: (data: PortfolioDoubleDutySaveRequest) =>
     http.post<string>('/api/portfolio/double-duty/save', data),
   revoke: (data: { id: string }) => http.post<void>('/api/portfolio/double-duty/revoke', data),
-  exportRoster: (data: PortfolioDoubleDutyExportRequest = {}) =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/double-duty/export-roster', data),
   analyticsStats: () =>
     http.post<PortfolioDoubleDutyAnalyticsVO>('/api/portfolio/double-duty/analytics/stats', {}),
 }
@@ -1029,7 +1047,6 @@ export interface PortfolioTeacherSalaryVO {
   remark?: string
   createTime?: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -1066,8 +1083,6 @@ export const portfolioTeacherSalaryApi = {
     http.post<PageResult<PortfolioTeacherSalaryVO>>('/api/portfolio/teacher-salary/page', data),
   save: (data: PortfolioTeacherSalarySaveRequest) =>
     http.post<string>('/api/portfolio/teacher-salary/save', data),
-  export: (data: PortfolioTeacherSalaryExportRequest = {}) =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/teacher-salary/export', data),
 }
 
 export interface PortfolioTeacherLibraryBorrowVO {
@@ -1089,7 +1104,6 @@ export interface PortfolioTeacherLibraryBorrowVO {
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
-  lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -1143,8 +1157,6 @@ export const portfolioTeacherLibraryApi = {
     ),
   save: (data: PortfolioTeacherLibraryBorrowSaveRequest) =>
     http.post<string>('/api/portfolio/teacher-library/save', data),
-  export: (data: PortfolioTeacherLibraryBorrowExportRequest = {}) =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/teacher-library/export', data),
   stats: (data: PortfolioTeacherLibraryBorrowStatsRequest = {}) =>
     http.post<PortfolioTeacherLibraryBorrowStatsVO>('/api/portfolio/teacher-library/stats', data),
 }
@@ -1160,8 +1172,7 @@ export interface PortfolioTeacherRecommendFilterSnapshot {
 }
 
 export interface PortfolioTeacherRecommendEvidenceItem {
-  evidenceType: string
-  evidenceLabel: string
+  evidenceType: PortfolioTeacherRecommendEvidenceTypeCode
   evidenceValue: string
 }
 
@@ -1191,7 +1202,6 @@ export interface PortfolioTeacherRecommendCandidateVO {
   reasonText?: string
   evidenceSummary?: PortfolioTeacherRecommendEvidenceSummary
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -1220,7 +1230,6 @@ export interface PortfolioTeacherRecommendExplainCandidateItemVO {
   teacherNumber: string
   reasonText: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -1246,7 +1255,6 @@ export interface PortfolioTeacherRecommendExplainSubmitVO {
 
 export interface PortfolioTeacherPkCompareDimensionRowVO {
   dimensionCode: PortfolioPortraitDimensionCode
-  dimensionLabel: string
   dimensionScore: number
   evidenceSummary?: string
 }
@@ -1268,7 +1276,6 @@ export interface PortfolioTeacherPkCompareTeacherVO {
   /** 归属教师生命周期状态编码（台账可见不默认过滤；结构态仅标注） */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 归属教师生命周期状态标签 */
-  lifecycleStatusLabel?: string
   /** 档案写禁 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -1430,7 +1437,6 @@ export interface PortfolioEvaluationSubjectTeacherOptionVO {
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
-  lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -1537,8 +1543,6 @@ export const portfolioEvaluationTaskApi = {
     ),
   page: (data: PortfolioEvaluationTaskPageRequest) =>
     http.post<PageResult<PortfolioEvaluationTaskVO>>('/api/portfolio/evaluation-task/page', data),
-  exportExcel: () =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/evaluation-task/export-excel', {}),
 }
 
 export interface PortfolioEvaluationEntryVO {
@@ -1550,7 +1554,6 @@ export interface PortfolioEvaluationEntryVO {
   commentText?: string
   evaluatorUserId: string
   evaluatorSourceType?: PortfolioMultiSourceEvaluatorTypeEnum
-  evaluatorSourceTypeLabel?: string
   createTime?: string
   updateTime?: string
 }
@@ -1594,15 +1597,12 @@ export interface PortfolioEvaluationComprehensiveTeacherRowVO {
   subjectTeacherNumber?: string
   /** 涉及业务场景编码（多场景 / 拼接） */
   involvedSceneCodes?: string
-  /** 涉及业务场景名称（多场景 / 拼接） */
-  involvedSceneLabels?: string
   involvedTaskCount: number
   entryCount: number
   averageScore: number
   /** 归属教师生命周期状态编码 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 归属教师生命周期状态标签 */
-  lifecycleStatusLabel?: string
   /** 档案写禁 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -1652,19 +1652,9 @@ export const portfolioEvaluationEntryApi = {
     http.post<PageResult<PortfolioEvaluationEntryVO>>('/api/portfolio/evaluation-entry/page', data),
   summary: (data: { id: string }) =>
     http.post<PortfolioEvaluationEntrySummaryVO>('/api/portfolio/evaluation-entry/summary', data),
-  exportSummary: (data: { id: string }) =>
-    http.post<PortfolioArchiveBagExportResultVO>(
-      '/api/portfolio/evaluation-entry/export-summary',
-      data,
-    ),
   comprehensiveAnalysis: (data: PortfolioEvaluationComprehensiveAnalysisRequest) =>
     http.post<PortfolioEvaluationComprehensiveAnalysisVO>(
       '/api/portfolio/evaluation-entry/comprehensive-analysis',
-      data,
-    ),
-  exportComprehensiveAnalysis: (data: PortfolioEvaluationComprehensiveAnalysisRequest) =>
-    http.post<PortfolioArchiveBagExportResultVO>(
-      '/api/portfolio/evaluation-entry/export-comprehensive-analysis',
       data,
     ),
 }

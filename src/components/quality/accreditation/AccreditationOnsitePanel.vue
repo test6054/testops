@@ -73,6 +73,7 @@ const CATEGORY_TABS: { key: '' | OnsiteChecklistCategoryCode, label: string }[] 
 ]
 
 const loading = ref(false)
+const submitting = ref(false)
 const plans = ref<OnsiteVisitPlanVO[]>([])
 const planTotal = ref(0)
 const planPageNum = ref(1)
@@ -239,6 +240,9 @@ function openEdit(record: OnsiteVisitPlanVO) {
 }
 
 async function submitPlan() {
+  if (submitting.value) {
+    return
+  }
   if (!canMutateOnsitePlan.value) {
     void message.error('仅现场考查阶段可维护考查计划')
     return
@@ -261,6 +265,7 @@ async function submitPlan() {
     auditSupervisionId: form.auditSupervisionId,
     remark: form.remark?.trim() || undefined,
   }
+  submitting.value = true
   try {
     if (form.id) {
       await accreditationApi.updateOnsitePlan(request)
@@ -276,16 +281,22 @@ async function submitPlan() {
     emit('refresh')
   } catch (e) {
     showUserError(e, '现场考查计划保存失败')
+  } finally {
+    submitting.value = false
   }
 }
 
 async function removePlan(id: string) {
+  if (submitting.value) {
+    return
+  }
   if (!canMutateOnsitePlan.value) {
     void message.error('仅现场考查阶段可删除考查计划')
     return
   }
   const ok = await confirmAsync({ title: '确认删除该现场考查计划？' })
   if (!ok) return
+  submitting.value = true
   try {
     await accreditationApi.deleteOnsitePlan(id)
     if (selectedPlan.value?.id === id) selectedPlan.value = undefined
@@ -293,6 +304,8 @@ async function removePlan(id: string) {
     emit('refresh')
   } catch (e) {
     showUserError(e, '现场考查计划删除失败')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -312,6 +325,9 @@ function openChecklistItem(item: OnsiteChecklistItemVO) {
 }
 
 async function submitChecklistItem() {
+  if (submitting.value) {
+    return
+  }
   if (!canMutateOnsitePlan.value) {
     void message.error('仅现场考查阶段可更新检查项')
     return
@@ -330,6 +346,7 @@ async function submitChecklistItem() {
     void message.error('不适用检查项必须填写说明')
     return
   }
+  submitting.value = true
   try {
     const request: OnsiteChecklistItemUpdateRequest = {
       id: checklistForm.id,
@@ -345,6 +362,8 @@ async function submitChecklistItem() {
     emit('refresh')
   } catch (e) {
     showUserError(e, '现场考查检查项更新失败')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -482,6 +501,7 @@ defineExpose({ openCreate, loadPlans })
       width="480"
       :hide-footer="false"
       ok-text="保存"
+      :confirm-loading="submitting"
       @ok="submitPlan"
     >
       <UiForm layout="vertical">
@@ -522,6 +542,7 @@ defineExpose({ openCreate, loadPlans })
       width="480"
       :hide-footer="false"
       ok-text="保存"
+      :confirm-loading="submitting"
       @ok="submitChecklistItem"
     >
       <template v-if="editingItem">
@@ -562,27 +583,27 @@ defineExpose({ openCreate, loadPlans })
 .onsite-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 .toolbar {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .hint {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
   margin: 0;
 }
 .checklist-block {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .checklist-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 .checklist-head h4 {
   margin: 0;
@@ -591,27 +612,27 @@ defineExpose({ openCreate, loadPlans })
 }
 .checklist-meta {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 .checklist-progress {
   max-width: 360px;
 }
 .cat-filter {
-  margin-bottom: 4px;
+  margin-bottom: var(--dp-space-component-xs);
 }
 .checklist-count {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
-  margin-left: 8px;
+  color: var(--dp-text-muted);
+  margin-left: var(--dp-space-component-tight);
 }
 .item-title {
   font-weight: 600;
-  margin: 0 0 4px;
+  margin: 0 0 var(--dp-space-component-xs);
 }
 .item-desc {
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-text-tertiary);
-  margin: 0 0 12px;
+  color: var(--dp-text-muted);
+  margin: 0 0 var(--dp-space-component);
 }
 .w-full {
   width: 100%;

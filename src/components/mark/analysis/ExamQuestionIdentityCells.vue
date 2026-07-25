@@ -33,7 +33,7 @@ defineProps<{
 
 <style scoped lang="scss">
 .exam-question-identity__stem {
-  font-size: var(--dp-font-body);
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-primary);
   line-height: 1.4;
 }

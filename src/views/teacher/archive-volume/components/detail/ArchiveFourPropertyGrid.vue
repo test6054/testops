@@ -43,8 +43,8 @@ const dimensionViews = computed(() => buildFourPropertyDimensionViews(props.chec
   display: grid;
   grid-template-columns: 20px 72px 52px minmax(0, 1fr);
   align-items: center;
-  gap: var(--dp-space-2);
-  padding: 8px 12px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border-top: 1px solid var(--dp-border-subtle);
   font-size: var(--dp-font-size-sm);
   line-height: 1.4;
@@ -96,7 +96,7 @@ const dimensionViews = computed(() => buildFourPropertyDimensionViews(props.chec
 
 .archive-fp-rows__empty {
   margin: 0;
-  padding: var(--dp-space-3);
+  padding: var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
   border: 1px dashed var(--dp-border);

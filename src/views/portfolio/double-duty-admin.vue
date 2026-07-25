@@ -3,14 +3,17 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDoubleDutyAnalyticsVO } from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioDoubleDutyApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
@@ -18,15 +21,16 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
+import { usePortfolioReviewAccess } from '@/composables/usePortfolioReviewAccess'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { useUserStore } from '@/stores/modules/user'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import {
   PortfolioKeyTeacherRegistryStatusCode,
   PortfolioKeyTeacherRegistryStatusDescription,
 } from '@/types/enums/portfolio-key-teacher-registry-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -35,13 +39,19 @@ const saving = ref(false)
 const revokingId = ref('')
 const exporting = ref(false)
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
+const { accessScope, ensureLoaded } = usePortfolioReviewAccess()
 /** PF-P0-423：院系读；写控件仅校管默认可见（BE 仍允许院系 manage） */
 const isDepartmentScoped = computed(
   () => route.path.includes('/department/') || !userStore.isTenantAdmin,
 )
 const pageTitle = computed(() => (isDepartmentScoped.value ? '院系双肩挑台账' : '双肩挑台账'))
 const canWriteRegistry = computed(() => true)
+const exportApplyModal = reactive({
+  open: false,
+  purpose: '',
+})
 const analyticsLoading = ref(false)
 const analyticsFailed = ref(false)
 const analytics = ref<PortfolioDoubleDutyAnalyticsVO | null>(null)
@@ -78,6 +88,7 @@ async function loadAnalytics() {
 }
 
 onMounted(() => {
+  void ensureLoaded()
   void loadAnalytics()
 })
 const form = reactive({
@@ -177,16 +188,39 @@ async function revokeRegistry(id: string, teacherUserId?: string) {
 }
 
 async function exportRoster() {
+  exportApplyModal.purpose = ''
+  exportApplyModal.open = true
+}
+
+async function confirmExportApply() {
+  const exportPurpose = exportApplyModal.purpose.trim()
+  if (!exportPurpose) {
+    showFormValidationMessage('请填写导出用途')
+    return Promise.reject(new Error('导出用途为空'))
+  }
+  const scope = accessScope.value
+  const tenantWide = Boolean(scope?.tenantWide)
+  const departmentId = scope?.reviewerDepartmentId
+  if (!tenantWide && !departmentId) {
+    showFormValidationMessage('当前账号缺少院系范围，无法申请导出双肩挑台账')
+    return Promise.reject(new Error('缺少院系范围'))
+  }
   if (exporting.value) {
-    return
+    return Promise.reject(new Error('导出进行中'))
   }
   exporting.value = true
   try {
-    const result = await portfolioDoubleDutyApi.exportRoster({})
-    await downloadPortfolioExcelExport(result)
-    void message.success(`已导出 ${result.rowCount} 条`)
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.DOUBLE_DUTY_ROSTER,
+      businessRef: tenantWide ? {} : { departmentId },
+      exportPurpose,
+    })
+    exportApplyModal.open = false
+    void message.success('已提交双肩挑台账导出审批')
+    void router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出双肩挑台账失败')
+    showUserError(error, '提交双肩挑台账导出审批失败')
+    return Promise.reject(error)
   } finally {
     exporting.value = false
   }
@@ -287,7 +321,7 @@ async function exportRoster() {
           登记
         </UiButton>
         <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportRoster">
-          导出台账
+          申请导出台账
         </UiButton>
       </div>
       <UiEmpty
@@ -305,7 +339,7 @@ async function exportRoster() {
         :loading="loading"
         :load-error="loadError"
         row-key="id"
-        style="margin-top: 16px"
+        style="margin-top: var(--dp-space-block)"
         @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
@@ -318,7 +352,7 @@ async function exportRoster() {
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
             </UiTag>
 
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -352,6 +386,21 @@ async function exportRoster() {
         </template>
       </UiDataTable>
     </UiCard>
+    <UiDialog
+      v-model:open="exportApplyModal.open"
+      title="申请导出双肩挑台账"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="confirmExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="exportApplyModal.purpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -359,12 +408,12 @@ async function exportRoster() {
 .form-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .analytics-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 .dept-hint {
   display: block;

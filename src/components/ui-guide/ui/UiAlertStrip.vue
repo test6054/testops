@@ -131,28 +131,32 @@ const handleClose = () => {
   --alert-icon: var(--dp-info);
   display: flex;
   align-items: flex-start;
-  gap: var(--dp-space-3, 10px);
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border: 1px solid var(--alert-border);
   border-radius: var(--dp-radius-control, 4px);
   background: var(--alert-surface);
   min-height: 0;
+  /* 禁止被列表填满布局的 flex 子项规则撑成半屏 */
+  flex: 0 0 auto;
+  height: auto;
+  align-self: stretch;
 }
 
 .ui-alert-strip--sm {
-  padding: var(--dp-space-2, 8px) 10px;
-  gap: var(--dp-space-2, 8px);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
+  gap: var(--dp-space-component-tight);
 }
 
 .ui-alert-strip--dense {
-  gap: var(--dp-space-2, 8px);
-  padding: 6px 10px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
 }
 
 .ui-alert-strip--inline {
   align-items: center;
-  gap: var(--dp-space-2, 8px);
-  padding: 4px 10px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-xs) var(--dp-space-component);
   min-height: 32px;
 }
 
@@ -219,7 +223,7 @@ const handleClose = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   min-width: 0;
   width: 100%;
 }
@@ -228,7 +232,7 @@ const handleClose = () => {
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
-  gap: 6px 8px;
+  gap: var(--dp-space-component-tight);
   min-width: 0;
   width: 100%;
 }
@@ -266,7 +270,7 @@ const handleClose = () => {
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   flex-shrink: 0;
 }
 
@@ -282,7 +286,7 @@ const handleClose = () => {
   align-items: center;
   justify-content: flex-end;
   flex-wrap: nowrap;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   flex-shrink: 0;
 }
 

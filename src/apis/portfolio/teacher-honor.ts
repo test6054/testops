@@ -29,7 +29,6 @@ export interface PortfolioTeacherHonorVO {
   /** 归属教师生命周期状态编码（台账可见不默认过滤；结构态仅标注） */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 归属教师生命周期状态标签 */
-  lifecycleStatusLabel?: string
   /** 档案写禁 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */

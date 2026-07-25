@@ -47,7 +47,8 @@ import {
 } from '@/types/enums/portfolio-double-high-task-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioIdentityTypeDisplay } from '@/utils/portfolio-identity-type'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 interface TaskFilterModel extends Record<string, unknown> {
@@ -62,6 +63,18 @@ interface CreateStageFormItem {
   stageIndex: number
   stageName: string
   stageDeadline?: string
+}
+
+/** 打开动作时固定的任务快照，提交不再读可变列表行 */
+interface DoubleHighActionSnapshot {
+  taskId: string
+  taskCode: string
+  taskTitle: string
+  stageIndex: number
+  totalStageCount: number
+  taskStatus: PortfolioDoubleHighTaskStatusCode
+  createTime: string
+  actionGeneration: number
 }
 
 const route = useRoute()
@@ -88,6 +101,8 @@ const actionOpen = ref(false)
 const actionMode = ref<'submit' | 'review' | 'void'>('submit')
 const voidReason = ref('')
 const activeTask = ref<PortfolioDoubleHighTaskVO | null>(null)
+const actionSnapshot = ref<DoubleHighActionSnapshot | null>(null)
+const actionGenerationSeq = ref(0)
 const reviewApproved = ref<'true' | 'false'>('true')
 const reviewComment = ref('')
 const evidenceArchives = ref<PortfolioDoubleHighEvidenceArchiveVO[]>([])
@@ -197,7 +212,9 @@ const evidenceOptions = computed(() =>
       item.categoryName || '分类',
       item.recordTitle || item.archiveRecordId,
       item.academicYear,
-      item.lifecycleStatusLabel || item.lifecycleStatus,
+      item.lifecycleStatus
+        ? portfolioLifecycleStatusDisplay(item.lifecycleStatus)
+        : undefined,
       item.evaluationHeld ? '参评 hold' : undefined,
       item.archiveWriteForbidden ? '档案写禁' : undefined,
       item.hasDownloadableFile ? undefined : '缺附件',
@@ -266,63 +283,71 @@ function isTaskResponsible(row: PortfolioDoubleHighTaskVO): boolean {
   return Boolean(currentUserId.value && row.responsibleUserId === currentUserId.value)
 }
 
-/** 按责任人/治理角色裁剪操作：责任人不可见审核入口，非责任人不可见实施动作。 */
-function rowActions(row: PortfolioDoubleHighTaskVO) {
-  const items: Array<{ key: string, label: string, tone?: 'danger' }> = [
-    { key: 'detail', label: '阶段明细' },
-  ]
+/** 按责任人/治理角色裁剪；主列表仅「阶段明细 + 一个主动作」，作废/归档/下载进明细。 */
+function resolvePrimaryAction(row: PortfolioDoubleHighTaskVO): {
+  key: string
+  label: string
+  tone?: 'danger'
+} | null {
   const responsible = isTaskResponsible(row)
   if (row.taskStatus === PortfolioDoubleHighTaskStatusCode.PUBLISHED) {
-    items.push({
+    return {
       key: 'claim',
       label: operatorArchiveWriteForbidden.value ? '认领（写禁）' : '认领',
-    })
+    }
   }
   if (row.taskStatus === PortfolioDoubleHighTaskStatusCode.CLAIMED && responsible) {
-    items.push({
+    return {
       key: 'start',
       label:
         row.archiveWriteForbidden || operatorArchiveWriteForbidden.value
           ? '开始建设（写禁）'
           : '开始建设',
-    })
+    }
   }
   if (row.taskStatus === PortfolioDoubleHighTaskStatusCode.IN_PROGRESS && responsible) {
-    items.push({
+    return {
       key: 'submit',
       label:
         row.archiveWriteForbidden || operatorArchiveWriteForbidden.value
           ? '提交阶段（写禁）'
           : '提交阶段',
-    })
+    }
   }
   if (
     isGovernanceShell.value
-    && (row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED
-      || row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_REVIEWING)
+    && row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED
     && !responsible
   ) {
-    if (row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED) {
-      items.push({ key: 'enterReview', label: '进入审核' })
-    }
-    items.push({ key: 'review', label: '审核阶段' })
+    return { key: 'enterReview', label: '进入审核' }
+  }
+  if (
+    isGovernanceShell.value
+    && row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_REVIEWING
+    && !responsible
+  ) {
+    return { key: 'review', label: '审核阶段' }
   }
   if (
     isGovernanceShell.value
     && row.taskStatus === PortfolioDoubleHighTaskStatusCode.ACCEPTANCE
     && !responsible
   ) {
-    items.push({ key: 'archive', label: '归档' })
+    return { key: 'archive', label: '归档' }
   }
   if (row.acceptanceFileNodeId) {
-    items.push({ key: 'downloadAcceptance', label: '下载验收包' })
+    return { key: 'downloadAcceptance', label: '下载验收包' }
   }
-  if (
-    isGovernanceShell.value
-    && row.taskStatus !== PortfolioDoubleHighTaskStatusCode.ARCHIVED
-    && row.taskStatus !== PortfolioDoubleHighTaskStatusCode.VOID
-  ) {
-    items.push({ key: 'void', label: '作废', tone: 'danger' })
+  return null
+}
+
+function rowActions(row: PortfolioDoubleHighTaskVO) {
+  const items: Array<{ key: string, label: string, tone?: 'danger' }> = [
+    { key: 'detail', label: '阶段明细' },
+  ]
+  const primary = resolvePrimaryAction(row)
+  if (primary) {
+    items.push(primary)
   }
   return items.map((item) => {
     const writeAction = item.key === 'claim' || item.key === 'start' || item.key === 'submit'
@@ -334,7 +359,39 @@ function rowActions(row: PortfolioDoubleHighTaskVO) {
   })
 }
 
-async function loadPage() {
+function detailSecondaryActions(row: PortfolioDoubleHighTaskVO) {
+  const items: Array<{ key: string, label: string, tone?: 'danger', disabled?: boolean }> = []
+  const primaryKey = resolvePrimaryAction(row)?.key
+  if (
+    isGovernanceShell.value
+    && row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED
+    && !isTaskResponsible(row)
+    && primaryKey !== 'review'
+  ) {
+    items.push({ key: 'review', label: '审核阶段', disabled: busy.value })
+  }
+  if (row.acceptanceFileNodeId && primaryKey !== 'downloadAcceptance') {
+    items.push({ key: 'downloadAcceptance', label: '下载验收包', disabled: busy.value })
+  }
+  if (
+    isGovernanceShell.value
+    && row.taskStatus === PortfolioDoubleHighTaskStatusCode.ACCEPTANCE
+    && !isTaskResponsible(row)
+    && primaryKey !== 'archive'
+  ) {
+    items.push({ key: 'archive', label: '归档', disabled: busy.value })
+  }
+  if (
+    isGovernanceShell.value
+    && row.taskStatus !== PortfolioDoubleHighTaskStatusCode.ARCHIVED
+    && row.taskStatus !== PortfolioDoubleHighTaskStatusCode.VOID
+  ) {
+    items.push({ key: 'void', label: '作废', tone: 'danger', disabled: busy.value })
+  }
+  return items
+}
+
+async function loadPage(options?: { errorMessage?: string }) {
   const currentToken = pageRequestToken.value + 1
   pageRequestToken.value = currentToken
   const request = {
@@ -370,7 +427,7 @@ async function loadPage() {
     failLoad()
     rows.value = []
     total.value = 0
-    showUserError(error, '加载双高任务失败')
+    showUserError(error, options?.errorMessage || '加载双高任务失败')
   } finally {
     if (pageRequestToken.value === currentToken) {
       loading.value = false
@@ -465,6 +522,25 @@ function removeCreateStage(index: number) {
   })
 }
 
+function bindActionSnapshot(row: PortfolioDoubleHighTaskVO) {
+  actionGenerationSeq.value += 1
+  activeTask.value = row
+  actionSnapshot.value = {
+    taskId: row.id,
+    taskCode: row.taskCode,
+    taskTitle: row.taskTitle,
+    stageIndex: row.currentStageIndex,
+    totalStageCount: row.totalStageCount,
+    taskStatus: row.taskStatus,
+    createTime: row.createTime,
+    actionGeneration: actionGenerationSeq.value,
+  }
+}
+
+async function refreshTasksAfterWrite(settledLabel: string) {
+  await loadPage({ errorMessage: `${settledLabel}，列表刷新失败` })
+}
+
 async function handleAction(key: string, row: PortfolioDoubleHighTaskVO) {
   if (busy.value) {
     return
@@ -479,94 +555,131 @@ async function handleAction(key: string, row: PortfolioDoubleHighTaskVO) {
       return
     }
   }
-  actionLoading.value = true
-  try {
-    if (key === 'detail') {
+  if (key === 'detail') {
+    actionLoading.value = true
+    try {
       await openTaskDetailById(row.id)
+    } catch (error) {
+      showUserError(error, '操作失败')
+    } finally {
+      actionLoading.value = false
+    }
+    return
+  }
+  if (key === 'downloadAcceptance') {
+    if (!row.acceptanceFileNodeId) {
+      showFormValidationMessage('验收包尚未生成')
       return
-    } else if (key === 'claim') {
-      await portfolioDoubleHighApi.claimTask({ id: row.id })
-      void message.success('已认领任务')
-    } else if (key === 'start') {
-      await portfolioDoubleHighApi.startTask({ id: row.id })
-      void message.success('已进入实施')
-    } else if (key === 'enterReview') {
-      await portfolioDoubleHighApi.enterStageReview({ id: row.id })
-      void message.success('已进入阶段审核')
-    } else if (key === 'submit') {
-      activeTask.value = row
-      actionMode.value = 'submit'
-      selectedArchiveIds.value = []
-      actionOpen.value = true
-      evidenceLoading.value = true
-      const evidenceToken = evidenceRequestToken.value + 1
-      evidenceRequestToken.value = evidenceToken
-      try {
-        const nextArchives
-          = (await portfolioDoubleHighApi.listEvidenceArchives({ id: row.id })) ?? []
-        if (evidenceRequestToken.value !== evidenceToken || activeTask.value?.id !== row.id) {
-          return
-        }
-        evidenceArchives.value = nextArchives
-      } catch (error) {
-        if (evidenceRequestToken.value !== evidenceToken || activeTask.value?.id !== row.id) {
-          return
-        }
-        evidenceArchives.value = []
-        showUserError(error, '加载失败')
-      } finally {
-        evidenceLoading.value = false
-      }
-      return
-    } else if (key === 'downloadAcceptance') {
-      if (!row.acceptanceFileNodeId) {
-        showFormValidationMessage('验收包尚未生成')
-        return
-      }
+    }
+    actionLoading.value = true
+    try {
       await handleDownloadFile({
         fileId: row.acceptanceFileNodeId,
         fileName: row.acceptanceFileName || `双高验收包-${row.taskCode}.zip`,
       })
-      return
-    } else if (key === 'review') {
-      activeTask.value = row
-      actionMode.value = 'review'
-      reviewApproved.value = 'true'
-      reviewComment.value = ''
-      actionOpen.value = true
-      return
-    } else if (key === 'archive') {
-      const confirmed = await confirmAsync({
-        title: '确认归档双高任务',
-        content: `确认归档「${row.taskTitle}」？归档后任务进入终态，不再接受阶段材料。`,
-        type: 'warning',
-        okText: '确认归档',
-      })
-      if (!confirmed) {
+    } catch (error) {
+      showUserError(error, '操作失败')
+    } finally {
+      actionLoading.value = false
+    }
+    return
+  }
+  if (key === 'submit') {
+    bindActionSnapshot(row)
+    actionMode.value = 'submit'
+    selectedArchiveIds.value = []
+    actionOpen.value = true
+    evidenceLoading.value = true
+    const evidenceToken = evidenceRequestToken.value + 1
+    evidenceRequestToken.value = evidenceToken
+    const snapshotGeneration = actionSnapshot.value?.actionGeneration
+    try {
+      const nextArchives
+        = (await portfolioDoubleHighApi.listEvidenceArchives({ id: row.id })) ?? []
+      if (
+        evidenceRequestToken.value !== evidenceToken
+        || actionSnapshot.value?.actionGeneration !== snapshotGeneration
+      ) {
         return
       }
-      await portfolioDoubleHighApi.archiveTask({ id: row.id })
-      void message.success('任务已归档')
-    } else if (key === 'void') {
-      activeTask.value = row
-      actionMode.value = 'void'
-      voidReason.value = ''
-      actionOpen.value = true
+      evidenceArchives.value = nextArchives
+    } catch (error) {
+      if (
+        evidenceRequestToken.value !== evidenceToken
+        || actionSnapshot.value?.actionGeneration !== snapshotGeneration
+      ) {
+        return
+      }
+      evidenceArchives.value = []
+      showUserError(error, '加载失败')
+    } finally {
+      evidenceLoading.value = false
+    }
+    return
+  }
+  if (key === 'review') {
+    bindActionSnapshot(row)
+    actionMode.value = 'review'
+    reviewApproved.value = 'true'
+    reviewComment.value = ''
+    actionOpen.value = true
+    return
+  }
+  if (key === 'void') {
+    bindActionSnapshot(row)
+    actionMode.value = 'void'
+    voidReason.value = ''
+    actionOpen.value = true
+    return
+  }
+  if (key === 'archive') {
+    const confirmed = await confirmAsync({
+      title: '确认归档双高任务',
+      content: `确认归档「${row.taskTitle}」？归档后任务进入终态，不再接受阶段材料。`,
+      type: 'warning',
+      okText: '确认归档',
+    })
+    if (!confirmed) {
       return
     }
-    await loadPage()
+  }
+  actionLoading.value = true
+  let settledLabel = ''
+  try {
+    if (key === 'claim') {
+      await portfolioDoubleHighApi.claimTask({ id: row.id })
+      settledLabel = '已认领任务'
+    } else if (key === 'start') {
+      await portfolioDoubleHighApi.startTask({ id: row.id })
+      settledLabel = '已进入实施'
+    } else if (key === 'enterReview') {
+      await portfolioDoubleHighApi.enterStageReview({ id: row.id })
+      settledLabel = '已进入阶段审核'
+    } else if (key === 'archive') {
+      await portfolioDoubleHighApi.archiveTask({ id: row.id })
+      settledLabel = '任务已归档'
+    } else {
+      showFormValidationMessage('未知操作')
+      return
+    }
+    void message.success(settledLabel)
   } catch (error) {
     showUserError(error, '操作失败')
+    return
   } finally {
     actionLoading.value = false
   }
+  await refreshTasksAfterWrite(settledLabel)
 }
 
 async function submitActionModal() {
-  if (!activeTask.value || actionLoading.value) {
+  const snapshot = actionSnapshot.value
+  if (!snapshot || actionLoading.value) {
     return
   }
+  const generation = snapshot.actionGeneration
   actionLoading.value = true
+  let settledLabel = ''
   try {
     if (actionMode.value === 'submit') {
       if (selectedArchiveIds.value.length === 0) {
@@ -582,11 +695,11 @@ async function submitActionModal() {
         return
       }
       await portfolioDoubleHighApi.submitStage({
-        id: activeTask.value.id,
-        stageIndex: activeTask.value.currentStageIndex,
+        id: snapshot.taskId,
+        stageIndex: snapshot.stageIndex,
         materialRef: { archiveRecordIds: selectedArchiveIds.value },
       })
-      void message.success('阶段材料已提交')
+      settledLabel = '阶段材料已提交'
     } else if (actionMode.value === 'void') {
       const reason = voidReason.value.trim()
       if (!reason) {
@@ -594,30 +707,37 @@ async function submitActionModal() {
         return
       }
       await portfolioDoubleHighApi.voidTask({
-        id: activeTask.value.id,
+        id: snapshot.taskId,
         voidReason: reason,
       })
-      void message.success('任务已作废')
+      settledLabel = '任务已作废'
     } else {
       if (reviewApproved.value === 'false' && !reviewComment.value.trim()) {
         showFormValidationMessage('阶段退回须填写原因')
         return
       }
       await portfolioDoubleHighApi.reviewStage({
-        id: activeTask.value.id,
-        stageIndex: activeTask.value.currentStageIndex,
+        id: snapshot.taskId,
+        stageIndex: snapshot.stageIndex,
         approved: reviewApproved.value === 'true',
         reviewComment: reviewComment.value.trim() || undefined,
       })
-      void message.success(reviewApproved.value === 'true' ? '阶段已通过' : '阶段已退回')
+      settledLabel = reviewApproved.value === 'true' ? '阶段已通过' : '阶段已退回'
     }
+    if (actionSnapshot.value?.actionGeneration !== generation) {
+      return
+    }
+    void message.success(settledLabel)
     actionOpen.value = false
-    await loadPage()
+    actionSnapshot.value = null
+    activeTask.value = null
   } catch (error) {
     showUserError(error, '提交失败')
+    return
   } finally {
     actionLoading.value = false
   }
+  await refreshTasksAfterWrite(settledLabel)
 }
 
 async function submitCreate() {
@@ -676,12 +796,13 @@ async function submitCreate() {
     })
     void message.success('双高任务已发布')
     createOpen.value = false
-    await loadPage()
   } catch (error) {
     showUserError(error, '创建失败')
+    return
   } finally {
     actionLoading.value = false
   }
+  await refreshTasksAfterWrite('双高任务已发布')
 }
 
 onMounted(() => {
@@ -786,16 +907,16 @@ watch(
                 v-for="(layer, idx) in record.responsibleIdentityLayers"
                 :key="layer.identityId || `${layer.identityType}-${idx}`"
                 :tone="layer.externalIdentity ? 'orange' : 'blue'"
-                style="margin-right: 4px; margin-bottom: 4px"
+                style="margin-right: var(--dp-space-component-xs); margin-bottom: var(--dp-space-component-xs)"
               >
-                {{ layer.identityTypeLabel }}
+                {{ portfolioIdentityTypeDisplay(layer.identityType) }}
               </UiTag>
             </template>
             <span v-else class="shuanggao-tasks__cell-muted">—</span>
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
             </UiTag>
 
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -931,7 +1052,7 @@ watch(
           <div v-if="detailTask.lifecycleStatus" class="shuanggao-tasks__lifecycle">
             责任人生命周期：
             <UiTag :tone="portfolioLifecycleTagTone(detailTask.lifecycleStatus)">
-              {{ detailTask.lifecycleStatusLabel || detailTask.lifecycleStatus }}
+              {{ portfolioLifecycleStatusDisplay(detailTask.lifecycleStatus) }}
             </UiTag>
             <span v-if="detailTask.countsInCurrentFacultyStructure === false">（不计入当前在岗结构）</span>
             <span v-if="detailTask.archiveWriteForbidden">（档案写禁，禁止认领/实施/阶段提交）</span>
@@ -945,9 +1066,9 @@ watch(
               v-for="(layer, idx) in detailTask.responsibleIdentityLayers"
               :key="layer.identityId || `${layer.identityType}-${idx}`"
               :tone="layer.externalIdentity ? 'orange' : 'blue'"
-              style="margin-right: 4px"
+              style="margin-right: var(--dp-space-component-xs)"
             >
-              {{ layer.identityTypeLabel }} · {{ layer.workloadHours ?? 0 }} 学时
+              {{ portfolioIdentityTypeDisplay(layer.identityType) }} · {{ layer.workloadHours ?? 0 }} 学时
             </UiTag>
             <p v-if="detailTask.responsibleMultiIdentityNote" class="shuanggao-tasks__cell-muted">
               {{ detailTask.responsibleMultiIdentityNote }}
@@ -974,6 +1095,16 @@ watch(
               </p>
             </li>
           </ul>
+          <div
+            v-if="detailSecondaryActions(detailTask).length"
+            class="shuanggao-tasks__detail-actions"
+          >
+            <UiTableActions
+              :items="detailSecondaryActions(detailTask)"
+              split
+              @action="(key) => handleAction(key, detailTask!)"
+            />
+          </div>
         </template>
         <UiEmpty size="sm" v-else description="暂无明细" />
       </UiSpin>
@@ -986,6 +1117,18 @@ watch(
       :confirm-loading="actionLoading"
       @ok="submitActionModal"
     >
+      <p v-if="actionSnapshot" class="shuanggao-tasks__action-snapshot">
+        {{ actionSnapshot.taskTitle }}（{{ actionSnapshot.taskCode }}）· 第
+        {{ actionSnapshot.stageIndex }}/{{ actionSnapshot.totalStageCount }} 阶段 ·
+        {{
+          strictEnumLabel(
+            PortfolioDoubleHighTaskStatusDescription,
+            actionSnapshot.taskStatus,
+            '双高任务状态',
+          )
+        }}
+        · 打开时创建时间 {{ actionSnapshot.createTime }}
+      </p>
       <template v-if="actionMode === 'submit'">
         <div class="shuanggao-tasks__action-body">
           <span>选择正式档案作为阶段举证材料</span>
@@ -1019,13 +1162,13 @@ watch(
 .create-form {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px 16px;
+  gap: var(--dp-space-component) var(--dp-space-block);
 }
 
 .create-form__field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
 }
 
@@ -1038,16 +1181,16 @@ watch(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
 }
 
 .create-form__stage-row {
   display: grid;
   grid-template-columns: 64px 1fr 160px auto;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .create-form__stage-index {
@@ -1056,13 +1199,13 @@ watch(
 }
 
 .shuanggao-tasks__row--focus td {
-  background: color-mix(in srgb, var(--dp-primary, #1677ff) 10%, transparent) !important;
+  background: color-mix(in srgb, var(--dp-color-primary) 10%, transparent) !important;
 }
 
 .shuanggao-tasks__toolbar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .shuanggao-tasks__cell-text {
@@ -1076,26 +1219,26 @@ watch(
 }
 
 .shuanggao-tasks__detail-title {
-  margin: 0 0 var(--dp-space-2);
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   color: var(--dp-text-primary);
 }
 
 .shuanggao-tasks__detail-meta {
-  margin: 0 0 var(--dp-space-1);
+  margin: 0 0 var(--dp-space-component-xs);
   font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
 }
 
 .shuanggao-tasks__detail-meta--spaced {
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .shuanggao-tasks__stage-list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1103,37 +1246,49 @@ watch(
 }
 
 .shuanggao-tasks__stage-item {
-  padding: var(--dp-space-2) var(--dp-space-3);
-  border: 1px solid var(--dp-border-light);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
+  border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control);
   background: var(--dp-surface-subtle);
 }
 
 .shuanggao-tasks__stage-name {
-  font-weight: var(--dp-font-weight-medium);
+  font-weight: var(--dp-font-weight-emphasis);
   color: var(--dp-text-primary);
 }
 
 .shuanggao-tasks__stage-meta {
-  margin-top: var(--dp-space-1);
+  margin-top: var(--dp-space-component-xs);
   color: var(--dp-text-secondary);
 }
 
 .shuanggao-tasks__stage-comment {
-  margin: var(--dp-space-1) 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   color: var(--dp-text-primary);
+}
+
+.shuanggao-tasks__action-snapshot {
+  margin: 0 0 var(--dp-space-component);
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+}
+
+.shuanggao-tasks__detail-actions {
+  margin-top: var(--dp-space-block);
+  padding-top: var(--dp-space-component);
+  border-top: 1px solid var(--dp-border);
 }
 
 .shuanggao-tasks__action-body {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
 .shuanggao-tasks__review-options {
   display: block;
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 </style>

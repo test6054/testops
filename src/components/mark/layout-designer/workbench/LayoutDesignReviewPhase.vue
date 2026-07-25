@@ -97,17 +97,17 @@ function resolveNavigatePhase(reason: string): LayoutDesignPhaseCode | null {
 
 <style scoped lang="scss">
 .layout-design-review-phase {
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: var(--dp-surface, var(--dp-bg-container));
+  background: var(--dp-surface, var(--dp-surface));
 
   &__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-2, 8px);
-    margin-bottom: var(--dp-space-2, 8px);
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__title {
@@ -118,7 +118,7 @@ function resolveNavigatePhase(reason: string): LayoutDesignPhaseCode | null {
 
   &__actions {
     display: flex;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__list {
@@ -127,14 +127,14 @@ function resolveNavigatePhase(reason: string): LayoutDesignPhaseCode | null {
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 0;
+    gap: var(--dp-space-component-tight);
+    padding: var(--dp-space-component-tight) 0;
     border-bottom: 1px solid var(--dp-border-subtle);
   }
 

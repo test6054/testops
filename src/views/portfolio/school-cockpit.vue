@@ -11,6 +11,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -23,12 +24,22 @@ import {
 } from '@/types/enums/portfolio-alert-status-enum'
 import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import { PortfolioComplianceScopeTypeDescription } from '@/types/enums/portfolio-compliance-scope-type-enum'
+import {
+  PortfolioMetricRecomputeStatusCode,
+} from '@/types/enums/portfolio-metric-recompute-status-enum'
 import { showUserError } from '@/utils/error-handler'
+import { portfolioMetricRecomputeStatusLabel } from '@/utils/portfolio-hr-band'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioCockpitAskPanel from '@/views/portfolio/components/PortfolioCockpitAskPanel.vue'
+import PortfolioHrMetricDistributionSection from '@/views/portfolio/components/PortfolioHrMetricDistributionSection.vue'
 
 function readRouteStringParam(value: unknown): string {
   return typeof value === 'string' ? value : ''
+}
+
+/** 可选计数字段缺失显示 —，禁止冒充 0 */
+function optionalMetric(value: number | null | undefined): string | number {
+  return value == null ? '—' : value
 }
 
 const route = useRoute()
@@ -64,43 +75,70 @@ const signals = computed<SignalMetric[]>(() => {
   }
   const summary = cockpit.value.summary
   const items: SignalMetric[] = [
-    { key: 'teacher', label: '教师总数', value: summary.teacherCount ?? 0, tone: 'blue' },
-    { key: 'dual', label: '双师认定', value: summary.dualTeacherCount ?? 0, tone: 'green' },
-    { key: 'key', label: '骨干教师', value: summary.keyTeacherCount ?? 0, tone: 'purple' },
+    { key: 'teacher', label: '教师总数', value: optionalMetric(summary.teacherCount), tone: 'blue' },
+    { key: 'dual', label: '双师认定', value: optionalMetric(summary.dualTeacherCount), tone: 'green' },
+    { key: 'key', label: '骨干教师', value: optionalMetric(summary.keyTeacherCount), tone: 'purple' },
     {
       key: 'achievement',
       label: '成果合计',
-      value: summary.achievementTotalCount ?? 0,
+      value: optionalMetric(summary.achievementTotalCount),
       tone: 'orange',
     },
-    { key: 'honor', label: '荣誉合计', value: summary.honorTotalCount ?? 0, tone: 'gray' },
+    { key: 'honor', label: '荣誉合计', value: optionalMetric(summary.honorTotalCount), tone: 'gray' },
     {
       key: 'indicator',
       label: '启用指标',
-      value: summary.tenantEnabledIndicatorCount ?? 0,
+      value: optionalMetric(summary.tenantEnabledIndicatorCount),
       tone: 'blue',
     },
   ]
-  if ((summary.crossCampusAppointmentTeacherCount ?? 0) > 0) {
+  if (summary.trainingCompletionRatePercent != null) {
+    items.push({
+      key: 'training',
+      label: '培训达标率',
+      value: summary.trainingCompletionRatePercent,
+      unit: '%',
+      tone: summary.trainingCompletionRatePercent >= 100 ? 'green' : 'orange',
+    })
+  }
+  if (summary.gapTaskOpenCount != null && summary.gapTaskOpenCount > 0) {
+    items.push({
+      key: 'gap',
+      label: '开放补采',
+      value: summary.gapTaskOpenCount,
+      tone: 'orange',
+    })
+  }
+  if (summary.reviewTaskBacklogCount != null && summary.reviewTaskBacklogCount > 0) {
+    items.push({
+      key: 'reviewBacklog',
+      label: '审核积压',
+      value: summary.reviewTaskBacklogCount,
+      tone: 'red',
+    })
+  }
+  if (summary.crossCampusAppointmentTeacherCount != null
+    && summary.crossCampusAppointmentTeacherCount > 0) {
     items.push({
       key: 'crossCampus',
       label: '跨校区兼课',
-      value: summary.crossCampusAppointmentTeacherCount ?? 0,
+      value: summary.crossCampusAppointmentTeacherCount,
       tone: 'purple',
       helper: summary.campusName
         ? `当前校区「${summary.campusName}」内兼课教师`
         : '绑定两个及以上校区身份的教师',
     })
   }
-  if ((summary.courseArchiveFrameworkSlotTotal ?? 0) > 0) {
+  if (summary.courseArchiveFrameworkSlotTotal != null
+    && summary.courseArchiveFrameworkSlotTotal > 0) {
     items.push({
       key: 'courseArchive',
       label: `${summary.currentAcademicYear ?? '本学年'} 五框架`,
-      value: summary.courseArchiveFrameworkSlotDone ?? 0,
-      unit: `/${summary.courseArchiveFrameworkSlotTotal ?? 0}`,
+      value: optionalMetric(summary.courseArchiveFrameworkSlotDone),
+      unit: `/${summary.courseArchiveFrameworkSlotTotal}`,
       tone:
-        (summary.courseArchiveFrameworkSlotDone ?? 0)
-        >= (summary.courseArchiveFrameworkSlotTotal ?? 0)
+        summary.courseArchiveFrameworkSlotDone != null
+        && summary.courseArchiveFrameworkSlotDone >= summary.courseArchiveFrameworkSlotTotal
           ? 'green'
           : 'orange',
       clickable: true,
@@ -112,7 +150,7 @@ const signals = computed<SignalMetric[]>(() => {
       {
         key: 'completenessComplete',
         label: '完整',
-        value: summary.completenessCompleteCount ?? 0,
+        value: optionalMetric(summary.completenessCompleteCount),
         tone: 'green',
         clickable: true,
         helper: '查看全校完整度分布',
@@ -120,7 +158,7 @@ const signals = computed<SignalMetric[]>(() => {
       {
         key: 'completenessBasic',
         label: '基本完整',
-        value: summary.completenessBasicCount ?? 0,
+        value: optionalMetric(summary.completenessBasicCount),
         tone: 'blue',
         clickable: true,
         helper: '查看全校完整度分布',
@@ -128,7 +166,7 @@ const signals = computed<SignalMetric[]>(() => {
       {
         key: 'completenessPending',
         label: '待补充',
-        value: summary.completenessPendingCount ?? 0,
+        value: optionalMetric(summary.completenessPendingCount),
         tone: 'orange',
         clickable: true,
         helper: '查看全校完整度分布',
@@ -136,7 +174,7 @@ const signals = computed<SignalMetric[]>(() => {
       {
         key: 'completenessSevere',
         label: '严重缺失',
-        value: summary.completenessSevereCount ?? 0,
+        value: optionalMetric(summary.completenessSevereCount),
         tone: 'red',
         clickable: true,
         helper: '查看全校完整度分布',
@@ -147,7 +185,11 @@ const signals = computed<SignalMetric[]>(() => {
 })
 
 function goTeacherAnalytics() {
-  void router.push({ path: '/portfolio/admin/teacher-analytics' })
+  const query: Record<string, string> = {}
+  if (campusOrgId.value) {
+    query.campusOrgId = campusOrgId.value
+  }
+  void router.push({ path: '/portfolio/admin/teacher-analytics', query })
 }
 
 function handleSignalMetricClick(key: string) {
@@ -264,6 +306,32 @@ onMounted(async () => {
         :description="loadError ? '学校驾驶舱加载失败，请重试' : '暂无学校驾驶舱数据'"
       />
       <template v-else-if="cockpit">
+        <UiAlertStrip
+          v-if="
+            cockpit.summary.metricRecomputeStatus
+              && cockpit.summary.metricRecomputeStatus !== PortfolioMetricRecomputeStatusCode.READY
+          "
+          tone="warning"
+          size="sm"
+          dense
+          inline
+          :show-icon="false"
+          class="school-cockpit__metric-status"
+        >
+          指标快照{{ portfolioMetricRecomputeStatusLabel(cockpit.summary.metricRecomputeStatus) }}
+          <template v-if="cockpit.summary.metricComputedTime">
+            · 最近计算 {{ cockpit.summary.metricComputedTime }}
+          </template>
+        </UiAlertStrip>
+        <PortfolioHrMetricDistributionSection
+          class="school-cockpit__hr"
+          :political-affiliation-distribution="cockpit.summary.politicalAffiliationDistribution"
+          :education-degree-distribution="cockpit.summary.educationDegreeDistribution"
+          :age-band-distribution="cockpit.summary.ageBandDistribution"
+          :tenure-band-distribution="cockpit.summary.tenureBandDistribution"
+          :retirement-window-distribution="cockpit.summary.retirementWindowDistribution"
+          :post-category-distribution="cockpit.summary.postCategoryDistribution"
+        />
         <UiCard
           v-if="openComplianceAlerts.length"
           title="结构合规预警"
@@ -307,8 +375,10 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.school-cockpit__compliance {
-  margin-bottom: 16px;
+.school-cockpit__compliance,
+.school-cockpit__hr,
+.school-cockpit__metric-status {
+  margin-bottom: var(--dp-space-block);
 }
 
 .school-cockpit__alert-list {
@@ -318,8 +388,8 @@ onMounted(async () => {
 }
 
 .school-cockpit__alert-item + .school-cockpit__alert-item {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: var(--dp-space-component);
+  padding-top: var(--dp-space-component);
   border-top: 1px solid var(--dp-border);
 }
 
@@ -327,19 +397,19 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-xs);
 }
 
 .school-cockpit__alert-title {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .school-cockpit__alert-meta {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }

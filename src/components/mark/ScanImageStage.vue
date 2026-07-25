@@ -273,7 +273,7 @@ watch(
 .scan-stage {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .scan-stage__canvas {
@@ -317,13 +317,13 @@ watch(
   display: block;
   max-width: 100%;
   max-height: 100%;
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
   box-shadow: var(--scan-paper-shadow);
   user-select: none;
   transform-origin: center center;
   transition:
-    transform var(--dp-duration-fast) ease,
-    filter var(--dp-duration-fast) ease;
+    transform var(--dp-duration-fast) var(--dp-ease-default),
+    filter var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .scan-stage__canvas--confidential .scan-stage__image {
@@ -331,7 +331,7 @@ watch(
 }
 
 .scan-stage__canvas--panning .scan-stage__image {
-  transition: filter var(--dp-duration-fast) ease;
+  transition: filter var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .scan-stage__roi {
@@ -349,8 +349,8 @@ watch(
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   background: var(--scan-toolbar-bg);
   border: 1px solid var(--scan-toolbar-border);
   border-radius: var(--dp-radius-panel);
@@ -372,7 +372,7 @@ watch(
 .scan-stage__btn {
   min-width: 34px;
   height: 34px;
-  padding: 0 8px;
+  padding: 0 var(--dp-space-component-tight);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -382,7 +382,7 @@ watch(
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-md);
   cursor: pointer;
-  transition: background var(--dp-duration-fast) ease;
+  transition: background var(--dp-duration-fast) var(--dp-ease-default);
 }
 .scan-stage__btn:hover:not(:disabled) {
   background: var(--dp-surface-subtle);
@@ -403,7 +403,7 @@ watch(
 
 .scan-stage__info {
   min-width: 48px;
-  padding: 0 4px;
+  padding: 0 var(--dp-space-component-xs);
   text-align: center;
   font-variant-numeric: tabular-nums;
   font-size: var(--dp-font-size-sm);

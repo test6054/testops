@@ -94,8 +94,10 @@ declare module 'vue-router' {
      * 未声明视为 primary。
      */
     menuTier?: 'primary' | 'secondary'
-    /** 批阅页宽布局：Main 容器放宽至全宽（上限 1680px） */
+    /** 列表/表格宽布局：Main 上限 1800px，利用横向空间 */
     layoutWide?: boolean
+    /** Trust 沉浸布局：Main 全宽且无内边距（阅卷/复核工作台） */
+    layoutImmersive?: boolean
     /** 创建页全屏表单：取消 Main 内边距与宽度限制，使用 CreateFormPageShell */
     layoutCreatePage?: boolean
     /** 考试 / 归档卷详情工作台布局标识 */

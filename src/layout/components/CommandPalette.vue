@@ -41,6 +41,24 @@
           <span class="command-palette__item-label">{{ item.label }}</span>
           <span class="command-palette__item-hint">{{ item.hint }}</span>
         </button>
+        <div class="command-palette__group-label">快捷键</div>
+        <div
+          v-for="item in helpShortcuts"
+          :key="item.id"
+          class="command-palette__shortcut"
+        >
+          <div class="command-palette__shortcut-main">
+            <span class="command-palette__item-label">{{ item.title }}</span>
+            <span class="command-palette__item-hint">{{ item.description }}</span>
+          </div>
+          <span class="command-palette__shortcut-keys">
+            <kbd
+              v-for="keyLabel in item.keys"
+              :key="`${item.id}-${keyLabel}`"
+              class="command-palette__key"
+            >{{ keyLabel }}</kbd>
+          </span>
+        </div>
       </template>
 
       <template v-else>
@@ -72,18 +90,39 @@
 
 <script lang="ts" setup>
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import { nextTick, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { pageExams } from '@/apis/mark/exam'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import {
+  shortcutsForScopes,
+  type KeyboardShortcutScope,
+} from '@/constants/app-keyboard-shortcuts'
 
 defineOptions({ name: 'CommandPalette' })
 
 const visible = defineModel<boolean>('open', { default: false })
 
 const router = useRouter()
+const route = useRoute()
 const inputRef = ref<HTMLInputElement>()
+
+/** 帮助目录：全局 + 当前路由 scope，禁止展示无关键位 */
+const helpShortcuts = computed(() => {
+  const scopes: KeyboardShortcutScope[] = ['global']
+  const name = String(route.name || '')
+  if (name === 'TeacherExamList') {
+    scopes.push('exam-list')
+  }
+  if (name === 'TeacherExamWorkspaceMarkingTaskDetail') {
+    scopes.push('grading')
+  }
+  if (name === 'TeacherExamWorkspaceReviewWorkspace') {
+    scopes.push('review')
+  }
+  return shortcutsForScopes(scopes)
+})
 const query = ref('')
 const activeIndex = ref(0)
 const searchLoading = ref(false)
@@ -193,8 +232,8 @@ function handleAfterOpenChange(open: boolean) {
 .command-palette__input-wrap {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-3, 12px);
-  padding: var(--dp-space-4, 16px) var(--dp-space-5, 20px);
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-block);
   border-bottom: 1px solid var(--dp-border-subtle);
 }
 
@@ -219,12 +258,12 @@ function handleAfterOpenChange(open: boolean) {
 }
 
 .command-palette__esc {
-  padding: 2px 6px;
+  padding: 2px var(--dp-space-component-tight);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-xs, 4px);
   font-size: var(--dp-font-size-xxs);
   color: var(--dp-text-muted);
-  background: var(--dp-surface-elevated);
+  background: var(--dp-surface-chrome);
   font-family: var(--dp-font-family-code);
   line-height: 1.4;
 }
@@ -232,11 +271,11 @@ function handleAfterOpenChange(open: boolean) {
 .command-palette__results {
   max-height: 360px;
   overflow-y: auto;
-  padding: var(--dp-space-2, 8px);
+  padding: var(--dp-space-component-tight);
 }
 
 .command-palette__group-label {
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px) var(--dp-space-1, 4px);
+  padding: var(--dp-space-component-tight) var(--dp-space-component) var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xs, 12px);
   font-weight: var(--dp-font-weight-title, 600);
   color: var(--dp-text-muted);
@@ -249,13 +288,13 @@ function handleAfterOpenChange(open: boolean) {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border: none;
   border-radius: var(--dp-radius-control, 4px);
   background: transparent;
   cursor: pointer;
   text-align: left;
-  transition: background var(--dp-duration-fast, 150ms) ease;
+  transition: background var(--dp-duration-fast) var(--dp-ease-default);
 
   &:hover,
   &--active {
@@ -281,13 +320,49 @@ function handleAfterOpenChange(open: boolean) {
 .command-palette__loading {
   display: flex;
   justify-content: center;
-  padding: var(--dp-space-6, 24px) 0;
+  padding: var(--dp-space-page) 0;
 }
 
 .command-palette__empty {
-  padding: var(--dp-space-6, 24px) 0;
+  padding: var(--dp-space-page) 0;
   text-align: center;
   color: var(--dp-text-muted);
   font-size: var(--dp-font-size-md, 14px);
+}
+
+.command-palette__shortcut {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--dp-space-component);
+  width: 100%;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
+  border-radius: var(--dp-radius-control, 4px);
+}
+
+.command-palette__shortcut-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.command-palette__shortcut-keys {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--dp-space-component-xs);
+  flex-shrink: 0;
+}
+
+.command-palette__key {
+  padding: 2px var(--dp-space-component-tight);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-xs, 4px);
+  font-size: var(--dp-font-size-xxs);
+  color: var(--dp-text-secondary);
+  background: var(--dp-surface-chrome);
+  font-family: var(--dp-font-family-code);
+  line-height: 1.4;
 }
 </style>

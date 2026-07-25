@@ -1,13 +1,14 @@
-import type { ExamCandidateResponse, ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
 /**
  * 阅卷考试主记录 API - 对接 edu-mark 模块 ExamMarkController 的考试主对象接口。
  *
  * 仅保留考试主记录、详情、状态与制卷形态字段；考试范围、模板、扫描、成绩、复核等
  * 后端对象分别由同目录具体 API 文件承接。
  */
+import type { ExamCandidateResponse, ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { ExamRosterScopeModeCode } from '@/types/enums/exam-roster-scope-mode-enum'
+import type { ExamWorkbenchPriorityReasonCode } from '@/types/enums/exam-workbench-priority-reason-code-enum'
 import type { MarkingOrganizationStatusCode } from '@/types/enums/marking-organization-status-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
@@ -215,6 +216,8 @@ export interface ExamSummaryResponse {
 export interface ExamWorkbenchPageQueryRequest extends ExamPageQueryRequest {
   /** 列表范围 */
   listScope: ExamListScopeCode
+  /** 优先推进原因；KPI/原因深链的唯一过滤真源，由服务端 EXISTS 在分页前执行。 */
+  priorityReasonCode?: ExamWorkbenchPriorityReasonCode
 }
 
 /** 考试工作台范围计数 - 对应 ExamWorkbenchScopeCountResponse */
@@ -275,6 +278,16 @@ export interface ExamWorkbenchSummaryResponse {
   openProcessingTaskCount: number
   scanAttentionCount: number
   needReviewGradeResultCount: number
+  /** 是否命中优先推进集合 - 对应 ExamWorkbenchSummaryResponse.hasPrioritySignal */
+  hasPrioritySignal: boolean
+  /** 优先推进原因编码列表 - 对应 ExamWorkbenchSummaryResponse.priorityReasonCodes */
+  priorityReasonCodes: ExamWorkbenchPriorityReasonCode[]
+  /** 最紧急优先原因编码 */
+  primaryPriorityReasonCode?: ExamWorkbenchPriorityReasonCode
+  /** 最紧急优先原因文案 */
+  primaryPriorityReasonMessage?: string
+  /** 最紧急优先对应工作台路由 name */
+  workspaceRouteName?: string
 }
 
 /** 考试范围班级引用 - 对应 ExamClassRefVO */
@@ -379,8 +392,6 @@ export interface ExamDetailResponse {
   scanPaperStyleText?: string
   /** 准备建议项（提示能力缺口，不阻断扫描） */
   prepAdvisoryReasons: string[]
-  /** 准备硬阻断项（当前为空列表；扫描登记不依赖制卷形态硬阻断） */
-  prepBlockingReasons: string[]
   /** 按制卷形态与印刷来源生成的教务场景引导 */
   prepScenarioGuide?: ExamPrepScenarioGuideResponse
   /** 涉密 / 统考涉密场次；为 true 时前端启用强制水印与警示条 */
@@ -642,6 +653,46 @@ export function deleteExam(request: ExamDeleteRequest): Promise<boolean> {
 /** 归档关闭考试（状态 ACTIVE -> CLOSED）。 */
 export function closeExam(request: ExamCloseRequest): Promise<boolean> {
   return http.post<boolean>('/api/mark/exams/close', request)
+}
+
+/** 考试生命周期批量上限，与后端 ExamBatchLifecycleRequest.@Size(max=50) 一致 */
+export const EXAM_BATCH_LIFECYCLE_MAX = 50
+
+/** 考试生命周期批量请求 - 对应 ExamBatchLifecycleRequest */
+export interface ExamBatchLifecycleRequest {
+  /** 考试 ID 列表（字符串 Long）；单次最多 50 */
+  examIds: string[]
+}
+
+/** 考试生命周期批量失败明细 - 对应 ExamBatchLifecycleFailureResponse */
+export interface ExamBatchLifecycleFailureResponse {
+  examId: string
+  examName?: string
+  code?: number
+  message?: string
+}
+
+/** 考试生命周期批量响应 - 对应 ExamBatchLifecycleResponse */
+export interface ExamBatchLifecycleResponse {
+  totalCount: number
+  successCount: number
+  failureCount: number
+  successExamIds: string[]
+  failures: ExamBatchLifecycleFailureResponse[]
+}
+
+/** 批量关闭考试；部分失败不回滚已成功场次。 */
+export function batchCloseExams(
+  request: ExamBatchLifecycleRequest,
+): Promise<ExamBatchLifecycleResponse> {
+  return http.post<ExamBatchLifecycleResponse>('/api/mark/exams/batch-close', request)
+}
+
+/** 批量删除考试；部分失败不回滚已成功场次。 */
+export function batchDeleteExams(
+  request: ExamBatchLifecycleRequest,
+): Promise<ExamBatchLifecycleResponse> {
+  return http.post<ExamBatchLifecycleResponse>('/api/mark/exams/batch-delete', request)
 }
 
 /** DISTINCT 学期查询请求 - 对应 ExamDistinctTermQueryRequest */

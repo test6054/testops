@@ -177,14 +177,14 @@ const signalMetrics = computed((): SignalMetric[] => {
       label: '阻断项',
       value: blockingCount.value,
       tone: blockingCount.value > 0 ? 'red' : 'green',
-      iconTone: blockingCount.value > 0 ? 'red' : 'green',
+      iconTone: blockingCount.value > 0 ? 'gray' : 'green',
     },
     {
       key: 'warn',
       label: '建议项',
       value: warnCount.value,
       tone: warnCount.value > 0 ? 'orange' : 'gray',
-      iconTone: warnCount.value > 0 ? 'orange' : 'gray',
+      iconTone: 'gray',
     },
     {
       key: 'catalog',
@@ -195,7 +195,7 @@ const signalMetrics = computed((): SignalMetric[] => {
           ? `必交 ${requiredCatalogCount.value} · 选交 ${optionalCatalogCount.value}`
           : undefined,
       tone: catalogRows.value.length > 0 ? 'blue' : 'orange',
-      iconTone: catalogRows.value.length > 0 ? 'blue' : 'orange',
+      iconTone: catalogRows.value.length > 0 ? 'blue' : 'gray',
     },
     {
       key: 'ready',
@@ -372,8 +372,8 @@ async function saveTaskSettings(): Promise<void> {
     showFormValidationMessage('学年学期缺失或非法，请到任务设置完整维护')
     return
   }
-  if (!v.scoreSource || !v.securityLevel || !v.responsibleUserId) {
-    showFormValidationMessage('成绩源/密级/责任人缺失，请到任务设置完整维护')
+  if (!v.securityLevel || !v.responsibleUserId) {
+    showFormValidationMessage('密级/责任人缺失，请到任务设置完整维护')
     return
   }
 
@@ -388,7 +388,6 @@ async function saveTaskSettings(): Promise<void> {
     semester: v.semester,
     relatedExamId: v.relatedExamId ?? null,
     templateSetCode: nextTemplate,
-    scoreSource: v.scoreSource,
     examForm: v.examForm ?? null,
     securityLevel: v.securityLevel,
     retentionYears: v.permanentRetention ? undefined : v.retentionYears,
@@ -712,22 +711,22 @@ async function handleStart(): Promise<void> {
 .av-start {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
-  padding: var(--dp-space-4);
+  gap: var(--dp-space-block);
+  padding: var(--dp-space-block);
   max-width: 960px;
 }
 
 .av-start__header {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .av-start__title-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .av-start__title {
@@ -745,25 +744,25 @@ async function handleStart(): Promise<void> {
 .av-start__section {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
-  padding: var(--dp-space-3);
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control, 6px);
-  background: var(--dp-surface-subtle, var(--dp-bg-layout));
+  background: var(--dp-surface-subtle, var(--dp-bg-muted));
 }
 
 .av-start__heading-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .av-start__heading-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-1);
+  gap: var(--dp-space-component-xs);
 }
 
 .av-start__heading {
@@ -776,7 +775,7 @@ async function handleStart(): Promise<void> {
 .av-start__field {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .av-start__label {
@@ -789,7 +788,7 @@ async function handleStart(): Promise<void> {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .av-start__meta-text {
@@ -805,7 +804,7 @@ async function handleStart(): Promise<void> {
 .av-start__catalog {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .av-start__checklist {
@@ -821,8 +820,8 @@ async function handleStart(): Promise<void> {
   display: grid;
   grid-template-columns: 10px minmax(96px, 128px) 1fr auto;
   align-items: center;
-  gap: var(--dp-space-2);
-  padding: 8px 10px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border-radius: var(--dp-radius-xs);
   background: var(--dp-surface);
   font-size: var(--dp-font-size-sm);
@@ -867,7 +866,7 @@ async function handleStart(): Promise<void> {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
 }
 
 .av-start__required {
@@ -896,8 +895,8 @@ async function handleStart(): Promise<void> {
 .av-start__summary-row {
   display: grid;
   grid-template-columns: 88px 1fr;
-  gap: var(--dp-space-2);
-  padding: 8px 10px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border-radius: var(--dp-radius-xs);
   background: var(--dp-surface);
   font-size: var(--dp-font-size-sm);
@@ -917,15 +916,15 @@ async function handleStart(): Promise<void> {
 .av-start__links {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-1);
+  gap: var(--dp-space-component-xs);
 }
 
 .av-start__commit {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--dp-space-3);
-  padding: var(--dp-space-4);
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-block);
   border: 1px solid color-mix(in srgb, var(--ant-color-primary) 22%, transparent);
   border-radius: var(--dp-radius-control, 6px);
   background: color-mix(in srgb, var(--ant-color-primary) 5%, var(--dp-surface));

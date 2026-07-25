@@ -25,6 +25,7 @@ import {
 } from '@/types/enums/portfolio-export-approval-status-enum'
 import { PortfolioExportTypeDescription } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleStatusDisplay } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -182,8 +183,7 @@ async function loadPage() {
     }
   } catch (error) {
     if (requestToken.value !== currentToken) return
-    rows.value = []
-    total.value = 0
+    // 保留上次成功列表，避免写后刷新失败把已审批结果清空
     loadError.value = true
     showUserError(error, '加载导出审批失败')
   } finally {
@@ -232,9 +232,20 @@ async function approveRow(row: PortfolioExportApprovalVO) {
     return
   }
   try {
-    await portfolioSecurityApi.approveExport({ id: approvalId, approved: true })
+    const result = await portfolioSecurityApi.approveExport({ id: approvalId, approved: true })
+    const idx = rows.value.findIndex((item) => item.id === approvalId)
+    if (idx >= 0) {
+      rows.value[idx] = result
+    }
     void message.success('已批准导出申请')
-    await loadPage()
+    // 批准后锁定该行并放开 PENDING 默认筛，避免写后列表“消失”
+    focusedApprovalId.value = String(approvalId)
+    filterForm.approvalStatus = undefined
+    try {
+      await loadPage()
+    } catch (error) {
+      showUserError(error, '批准已生效，列表同步失败')
+    }
   } catch (error) {
     showUserError(error, '批准失败')
   } finally {
@@ -262,15 +273,25 @@ async function submitReject() {
   const operation = `reject:${approvalId}`
   if (!beginOperation(operation)) return
   try {
-    await portfolioSecurityApi.approveExport({
+    const result = await portfolioSecurityApi.approveExport({
       id: approvalId,
       approved: false,
       rejectReason: reason,
     })
+    const idx = rows.value.findIndex((item) => item.id === approvalId)
+    if (idx >= 0) {
+      rows.value[idx] = result
+    }
     void message.success('已驳回导出申请')
     rejectModalOpen.value = false
     pendingRow.value = null
-    await loadPage()
+    focusedApprovalId.value = String(approvalId)
+    filterForm.approvalStatus = undefined
+    try {
+      await loadPage()
+    } catch (error) {
+      showUserError(error, '驳回已生效，列表同步失败')
+    }
   } catch (error) {
     showUserError(error, '驳回失败')
   } finally {
@@ -335,7 +356,7 @@ watch(
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" tone="gray">
-              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
             </UiTag>
             <span v-else>—</span>
           </template>

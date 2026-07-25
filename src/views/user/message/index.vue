@@ -662,29 +662,29 @@ onActivated(() => {
 .message-page {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
-  padding: 8px 10px;
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
 }
 
 .tab-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
 }
 
 .message-tab__mark-all {
-  margin: -4px 0 12px;
+  margin: calc(-1 * var(--dp-space-component-xs)) 0 var(--dp-space-component);
 }
 
 .msg-list {
   :deep(.ant-list-item) {
-    padding: 14px 16px;
+    padding: var(--dp-space-block);
     border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-panel);
-    margin-bottom: 10px;
+    margin-bottom: var(--dp-space-component);
     transition:
-      border-color 0.2s ease,
-      background 0.2s ease;
+      border-color var(--dp-duration-normal) var(--dp-ease-default),
+      background var(--dp-duration-normal) var(--dp-ease-default);
   }
 
   :deep(.ant-list-item:last-child) {
@@ -706,13 +706,13 @@ onActivated(() => {
     border: none;
     padding: 0;
     cursor: pointer;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
     font-size: var(--dp-font-size-md);
     font-weight: 600;
     text-align: left;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
 
     &:hover {
       color: var(--dp-color-primary);
@@ -722,11 +722,11 @@ onActivated(() => {
   &__meta {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--dp-space-component);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
     flex-wrap: wrap;
-    margin-top: 4px;
+    margin-top: var(--dp-space-component-xs);
   }
 }
 
@@ -746,7 +746,7 @@ onActivated(() => {
   &__meta {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--dp-space-component);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
     flex-wrap: wrap;
@@ -755,10 +755,10 @@ onActivated(() => {
   &__content {
     font-size: var(--dp-font-size-md);
     line-height: 1.7;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
 
     :deep(p) {
-      margin: 0 0 12px;
+      margin: 0 0 var(--dp-space-component);
     }
 
     :deep(a) {
@@ -767,11 +767,11 @@ onActivated(() => {
   }
 
   &__jump {
-    margin-top: 16px;
+    margin-top: var(--dp-space-block);
   }
 }
 
 .muted {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 </style>

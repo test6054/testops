@@ -40,13 +40,13 @@ withDefaults(defineProps<{
 .ui-form-field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .ui-form-field__label {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text-primary);

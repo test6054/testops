@@ -8,7 +8,6 @@ export interface PortfolioTeacherCohortProfileVO {
   majorGroupCode?: string
   majorGroupName?: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean

@@ -309,7 +309,7 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .archive-ext-fonds-retry__hint {
-  margin: 0 0 16px;
+  margin: 0 0 var(--dp-space-block);
   font-size: var(--dp-font-size-sm);
   line-height: 1.5;
   color: var(--dp-text-muted);
@@ -318,28 +318,28 @@ onMounted(() => {
 .archive-ext-fonds-retry__filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
   max-width: 960px;
 }
 
 .archive-ext-fonds-retry__pager {
-  margin: 12px 0 24px;
+  margin: var(--dp-space-component) 0 var(--dp-space-page);
 }
 
 .archive-ext-fonds-retry__form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
   max-width: 480px;
-  padding-top: 8px;
-  border-top: 1px solid var(--dp-border-secondary);
+  padding-top: var(--dp-space-component-tight);
+  border-top: 1px solid var(--dp-border-subtle);
 }
 
 .archive-ext-fonds-retry__row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
 }
 
 .archive-ext-fonds-retry__label {
@@ -348,7 +348,7 @@ onMounted(() => {
 }
 
 .archive-ext-fonds-retry__actions {
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
 }
 
 .archive-ext-fonds-retry__error {

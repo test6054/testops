@@ -41,9 +41,55 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useUserStore } from '@/stores/modules/user'
-import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  isPortfolioEvaluationAdvanceBlockingCode,
+  PortfolioEvaluationAdvanceBlockingCode,
+  PortfolioEvaluationAdvanceBlockingDescription,
+} from '@/types/enums/portfolio-evaluation-advance-blocking-code-enum'
+import { ResultCode } from '@/types/enums/result-code'
+import {
+  getUserErrorMessage,
+  readBusinessResultCode,
+  readBusinessResultData,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
+import { portfolioLifecycleStatusDisplay } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+
+function readScoreVarianceBlocking(error: unknown): {
+  groupCount?: number
+  threshold?: string
+  samples: string[]
+} | null {
+  if (readBusinessResultCode(error) !== ResultCode.CONFLICT) {
+    return null
+  }
+  const data = readBusinessResultData(error)
+  if (data == null || typeof data !== 'object') {
+    return null
+  }
+  const blockingCode = Object.getOwnPropertyDescriptor(data, 'blockingCode')?.value
+  if (!isPortfolioEvaluationAdvanceBlockingCode(blockingCode)
+    || blockingCode !== PortfolioEvaluationAdvanceBlockingCode.SCORE_VARIANCE_EXCEEDED) {
+    return null
+  }
+  const forceAllowed = Object.getOwnPropertyDescriptor(data, 'forceAllowed')?.value
+  if (forceAllowed === false) {
+    return null
+  }
+  const groupCountRaw = Object.getOwnPropertyDescriptor(data, 'highVarianceGroupCount')?.value
+  const thresholdRaw = Object.getOwnPropertyDescriptor(data, 'scoreVarianceThreshold')?.value
+  const samplesRaw = Object.getOwnPropertyDescriptor(data, 'highVarianceSamples')?.value
+  return {
+    groupCount: typeof groupCountRaw === 'number' ? groupCountRaw : undefined,
+    threshold: thresholdRaw == null ? undefined : String(thresholdRaw),
+    samples: Array.isArray(samplesRaw)
+      ? samplesRaw.filter((item): item is string => typeof item === 'string')
+      : [],
+  }
+}
 
 const ADVANCE_ACTIONS: Partial<
   Record<PortfolioEvaluationTaskStatusEnum, PortfolioEvaluationTaskAdvanceActionCode>
@@ -389,15 +435,24 @@ async function advanceTask(
     void message.success('任务状态已推进')
     await loadPage()
   } catch (error) {
-    const errText = error instanceof Error ? error.message : String(error ?? '')
-    if (
-      action === PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY
+    const variance = action === PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY
       && !forceDespiteScoreVariance
-      && (errText.includes('评分 max-min') || errText.includes('forceDespiteScoreVariance'))
-    ) {
+      ? readScoreVarianceBlocking(error)
+      : null
+    if (variance) {
+      const sampleText = variance.samples.length
+        ? `\n样例：${variance.samples.join('；')}`
+        : ''
+      const countText = variance.groupCount != null ? `${variance.groupCount} 组` : '若干组'
+      const thresholdText = variance.threshold != null ? `阈值 ${variance.threshold} 分` : '既定阈值'
       const confirmed = await confirmAsync({
-        title: '评分离散过大，是否强制进入结果汇总？',
-        content: `${errText}\n\n请先确认已完成追加评审；强制汇总将写入审计日志，不替代评委会判断。`,
+        title: PortfolioEvaluationAdvanceBlockingDescription[
+          PortfolioEvaluationAdvanceBlockingCode.SCORE_VARIANCE_EXCEEDED
+        ],
+        content:
+          `${countText}被评对象评分分差超过${thresholdText}。${sampleText}\n\n`
+          + '请先确认已完成追加评审；强制汇总将写入审计日志，不替代评委会判断。\n'
+          + getUserErrorMessage(error, ''),
         type: 'warning',
         okText: '强制汇总',
       })
@@ -567,9 +622,10 @@ async function submitCompleteRereview() {
     return
   }
   const task = completeRereviewTarget.value
-  const openOrders = completeRereviewOrders.value
+  const openOrders = [...completeRereviewOrders.value]
   completeRereviewSubmitting.value = true
   advancingId.value = task.id
+  let completedCount = 0
   try {
     if (openOrders.length === 0) {
       // 无开放工单：任务可能已全部完成工单但状态残留，走推进回写
@@ -583,6 +639,7 @@ async function submitCompleteRereview() {
           orderId: order.id,
           conclusionSummary: conclusion,
         })
+        completedCount += 1
       }
     }
     void message.success('更正复核已完成并回写归档')
@@ -592,7 +649,29 @@ async function submitCompleteRereview() {
     completeRereviewForm.conclusionSummary = ''
     await loadPage()
   } catch (error) {
-    showUserError(error, '完成更正复核失败')
+    try {
+      const orders = await portfolioEvaluationPublicityApi.listRereview({
+        evaluationTaskId: task.id,
+      })
+      if (completeRereviewTarget.value?.id === task.id) {
+        completeRereviewOrders.value = (orders ?? []).filter((item) => item.orderStatus === 'OPEN')
+      }
+    } catch (reloadError) {
+      showUserError(reloadError, '已写入部分工单，开放工单同步失败')
+    }
+    if (completedCount > 0) {
+      showUserError(
+        error,
+        `已完成 ${completedCount} 条工单，后续失败；请仅处理剩余开放工单，勿重复完成已结案项`,
+      )
+    } else {
+      showUserError(error, '完成更正复核失败')
+    }
+    try {
+      await loadPage()
+    } catch (pageError) {
+      showUserError(pageError, '任务列表同步失败')
+    }
   } finally {
     completeRereviewSubmitting.value = false
     advancingId.value = ''
@@ -1008,8 +1087,8 @@ void loadPage()
             }}
           </template>
           <template v-else> · 整任务</template>
-          <template v-if="order.lifecycleStatusLabel || order.lifecycleStatus">
-            · {{ order.lifecycleStatusLabel || order.lifecycleStatus }}
+          <template v-if="order.lifecycleStatus">
+            · {{ portfolioLifecycleStatusDisplay(order.lifecycleStatus) }}
           </template>
           <template v-if="order.evaluationHeld"> · 参评 hold</template>
           <UiButton
@@ -1043,16 +1122,16 @@ void loadPage()
 .school-evaluation__field {
   display: block;
   width: 100%;
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .school-evaluation__cancel-order {
-  margin-left: var(--dp-space-2);
+  margin-left: var(--dp-space-component-tight);
 }
 
 .school-evaluation__suspended-from {
   display: block;
-  margin-top: var(--dp-space-1);
+  margin-top: var(--dp-space-component-xs);
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-xs);
 }

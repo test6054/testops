@@ -58,7 +58,7 @@
 }
 
 .exam-sub-sidebar__progress {
-  padding: 8px 16px 0;
+  padding: var(--dp-space-component-tight) var(--dp-space-block) 0;
   flex-shrink: 0;
 }
 
@@ -66,10 +66,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-xxs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .exam-sub-sidebar__progress-bar {
@@ -85,5 +85,5 @@
   border-radius: 2px;
   background: var(--dp-success);
   transform-origin: left center;
-  transition: transform 0.2s ease;
+  transition: transform var(--dp-duration-normal) var(--dp-ease-default);
 }

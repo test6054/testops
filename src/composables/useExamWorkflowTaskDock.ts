@@ -24,7 +24,7 @@ export type {
   ExamWorkflowTaskDockView,
 } from '@/types/exam-workflow-task-dock'
 
-/** 从工作台快照 pendingTodos 读取试评经验定标待办数（兼容旧调用方）。 */
+/** 从 nextActions 优先、pendingTodos 回退读取试评经验定标待办数。 */
 export function resolveExperienceAssistPendingCount(
   pendingTodos: { todoType: string, count?: number }[] | null | undefined,
   nextActions?: ExamWorkbenchNextActionResponse[] | null | undefined,
@@ -83,7 +83,6 @@ export interface UseExamWorkflowTaskDockOptions {
   route: RouteLocationNormalizedLoaded
   isImmersiveWorkspace: ComputedRef<boolean>
   nextActions: ComputedRef<ExamWorkbenchNextActionResponse[]>
-  prepBlockingReasons: ComputedRef<string[]>
   suggestedStageKey: ComputedRef<MarkStageKey | null | undefined>
   activeMarkStageKey: ComputedRef<MarkStageKey | null>
   stageSuggestionDescription: ComputedRef<string>
@@ -158,9 +157,6 @@ export function useExamWorkflowTaskDock(options: UseExamWorkflowTaskDockOptions)
     if (options.isImmersiveWorkspace.value) {
       return null
     }
-    if (options.prepBlockingReasons.value.length > 0) {
-      return null
-    }
     const action = calibrationAction.value
     if (!isExperienceAssistCalibrationActionPending(action)) {
       return null
@@ -180,9 +176,6 @@ export function useExamWorkflowTaskDock(options: UseExamWorkflowTaskDockOptions)
 
   const stageSuggestionTask = computed((): ExamWorkflowTaskDockView | null => {
     if (options.isImmersiveWorkspace.value) {
-      return null
-    }
-    if (options.prepBlockingReasons.value.length > 0) {
       return null
     }
     if (!showStageSuggestion.value) {

@@ -9,6 +9,7 @@ import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/
 import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
 import message from 'ant-design-vue/es/message'
 import { reactive, ref, watch } from 'vue'
+import QualityFormDraftStatusStrip from '@/components/quality/QualityFormDraftStatusStrip.vue'
 import { aiTaskApi } from '@/apis/quality/ai-task'
 import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
 import { improvementTaskApi } from '@/apis/quality/improvement-task'
@@ -49,6 +50,11 @@ import {
   selectedId,
 } from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import {
+  buildQualityLongFormDraftKey,
+  clearQualityLongFormDraft,
+} from '@/composables/useQualityLongFormDraftPersist'
+import { useQualityLongFormDraftSession } from '@/composables/useQualityLongFormDraftSession'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import {
   assertQualityScopeFresh,
@@ -58,6 +64,7 @@ import {
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
+import { useUserStore } from '@/stores/modules/user'
 import { ImprovementTaskReviewDecisionCode } from '@/types/enums/improvement-task-review-decision-enum'
 import { showFormValidationMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
@@ -166,7 +173,220 @@ const improvementEditor = reactive<ImprovementTaskSaveRequest>({
   dueDate: '',
 })
 const improvementEditorSubmitting = ref(false)
+const improvementDraftSaving = ref(false)
+const improvementCreateSessionKey = ref('')
+let improvementDraftHydrating = false
+const userStore = useUserStore()
 const submitAiSuggestionDraft = ref(false)
+
+interface ImprovementTaskDraftSnapshot {
+  id?: string
+  taskCode?: string
+  taskTitle: string
+  problemSummary: string
+  proposedAction: string
+  programId: string
+  trainingPlanId?: string
+  qualityCourseId?: string
+  achievementResultId?: string
+  reportId?: string
+  ownerUserId: string
+  ownerRole?: string
+  dueDate: string
+}
+
+function snapshotImprovementEditor(): ImprovementTaskDraftSnapshot {
+  return {
+    id: improvementEditor.id,
+    taskCode: improvementEditor.taskCode || '',
+    taskTitle: improvementEditor.taskTitle || '',
+    problemSummary: improvementEditor.problemSummary || '',
+    proposedAction: improvementEditor.proposedAction || '',
+    programId: improvementEditor.programId || '',
+    trainingPlanId: improvementEditor.trainingPlanId || undefined,
+    qualityCourseId: improvementEditor.qualityCourseId || undefined,
+    achievementResultId: improvementEditor.achievementResultId || undefined,
+    reportId: improvementEditor.reportId || undefined,
+    ownerUserId: improvementEditor.ownerUserId || '',
+    ownerRole: improvementEditor.ownerRole || undefined,
+    dueDate: improvementEditor.dueDate || '',
+  }
+}
+
+function applyImprovementEditorDraft(snapshot: ImprovementTaskDraftSnapshot): void {
+  improvementDraftHydrating = true
+  try {
+    Object.assign(improvementEditor, {
+      id: snapshot.id,
+      taskCode: snapshot.taskCode || '',
+      taskTitle: snapshot.taskTitle || '',
+      problemSummary: snapshot.problemSummary || '',
+      proposedAction: snapshot.proposedAction || '',
+      programId: snapshot.programId || '',
+      trainingPlanId: snapshot.trainingPlanId || '',
+      qualityCourseId: snapshot.qualityCourseId || '',
+      achievementResultId: snapshot.achievementResultId || '',
+      reportId: snapshot.reportId || '',
+      ownerUserId: snapshot.ownerUserId || '',
+      ownerRole: snapshot.ownerRole || '',
+      dueDate: snapshot.dueDate || '',
+    })
+    if (snapshot.id) {
+      improvementCreateSessionKey.value = ''
+    }
+  } finally {
+    improvementDraftHydrating = false
+  }
+}
+
+function canServerAutosaveImprovement(snapshot: ImprovementTaskDraftSnapshot): boolean {
+  return Boolean(
+    snapshot.taskTitle?.trim()
+    && snapshot.problemSummary?.trim()
+    && snapshot.proposedAction?.trim()
+    && snapshot.programId
+    && snapshot.ownerUserId
+    && snapshot.dueDate,
+  )
+}
+
+function buildImprovementSaveRequest(snapshot: ImprovementTaskDraftSnapshot): ImprovementTaskSaveRequest {
+  return {
+    id: snapshot.id,
+    programId: snapshot.programId,
+    trainingPlanId: snapshot.trainingPlanId || qualityStore.currentTrainingPlanId || undefined,
+    taskCode: snapshot.taskCode?.trim() || undefined,
+    taskTitle: snapshot.taskTitle.trim(),
+    problemSummary: snapshot.problemSummary.trim(),
+    proposedAction: snapshot.proposedAction.trim(),
+    qualityCourseId: snapshot.qualityCourseId || undefined,
+    achievementResultId: snapshot.achievementResultId || undefined,
+    reportId: snapshot.reportId || undefined,
+    ownerUserId: snapshot.ownerUserId,
+    ownerRole: snapshot.ownerRole || undefined,
+    dueDate: snapshot.dueDate,
+  }
+}
+
+const improvementDraft = useQualityLongFormDraftSession<ImprovementTaskDraftSnapshot>({
+  kind: 'improvement-task',
+  kindLabel: '持续改进任务',
+  getTenantId: () => String(userStore.userInfo.tenantId || ''),
+  getEntityKey: () => {
+    if (improvementEditor.id) return 'task:' + improvementEditor.id
+    if (improvementCreateSessionKey.value) return improvementCreateSessionKey.value
+    return null
+  },
+  getSnapshot: snapshotImprovementEditor,
+  isEditable: () => {
+    if (!improvementEditorVisible.value) return false
+    if (improvementEditorMode.value === 'create') return true
+    if (!improvementEditor.id) return false
+    const current = improvementList.value.find((item) => item.id === improvementEditor.id)
+    if (current) return canEditImprovementTask(current.status)
+    return true
+  },
+  canServerAutosave: canServerAutosaveImprovement,
+  serverAutosave: async (snapshot) => {
+    const request = buildImprovementSaveRequest(snapshot)
+    if (snapshot.id) {
+      await improvementTaskApi.update(request)
+      return
+    }
+    const tenantId = String(userStore.userInfo.tenantId || '')
+    const oldKey = improvementCreateSessionKey.value
+      ? buildQualityLongFormDraftKey(tenantId, 'improvement-task', improvementCreateSessionKey.value)
+      : null
+    const createdId = await improvementTaskApi.create(request)
+    improvementDraftHydrating = true
+    try {
+      improvementEditor.id = String(createdId)
+      // 保留 create 模式，便于继续勾选「创建后生成 AI 改进建议草稿」
+      improvementCreateSessionKey.value = ''
+    } finally {
+      improvementDraftHydrating = false
+    }
+    if (oldKey) {
+      await clearQualityLongFormDraft(oldKey)
+    }
+  },
+})
+
+const improvementDraftStatus = improvementDraft.status
+const improvementDraftStatusVisible = improvementDraft.statusVisible
+const improvementDraftLocalSavedAt = improvementDraft.localSavedAt
+const improvementDraftServerSavedAt = improvementDraft.serverSavedAt
+const improvementDraftErrorMessage = improvementDraft.errorMessage
+
+async function startImprovementDraftSession(): Promise<void> {
+  const baseline = snapshotImprovementEditor()
+  const result = await improvementDraft.beginSession(baseline)
+  if (result.restored && result.draft?.payloadJson) {
+    applyImprovementEditorDraft(JSON.parse(result.draft.payloadJson) as ImprovementTaskDraftSnapshot)
+  }
+}
+
+async function handleImprovementDraftSaveNow(): Promise<void> {
+  improvementDraftSaving.value = true
+  try {
+    const ok = await improvementDraft.saveNow()
+    if (ok) {
+      void message.success('改进任务草稿已保存到服务端')
+      await loadList({ refreshSignals: true, settleAfterMutation: true })
+    } else if (improvementDraft.status.value === 'local_saved') {
+      void message.warning(
+        improvementDraft.errorMessage.value
+        || '仅本机暂存，请补齐标题/问题概述/改进措施/专业/负责人/截止日期后同步服务端',
+      )
+    }
+  } finally {
+    improvementDraftSaving.value = false
+  }
+}
+
+async function handleImprovementEditorOpenChange(open: boolean): Promise<void> {
+  if (open) {
+    improvementEditorVisible.value = true
+    return
+  }
+  if (improvementDraft.needsLeaveConfirm()) {
+    const ok = await confirmAsync({
+      title: '关闭改进任务编辑？',
+      content:
+        '未确认同步到服务端的内容已暂存在本机，下次打开同一任务可断点续填。关闭不会丢弃本机草稿。',
+      type: 'warning',
+      okText: '关闭并保留草稿',
+      cancelText: '继续编辑',
+    })
+    if (!ok) return
+    await improvementDraft.endSession({ discardLocal: false })
+  } else {
+    await improvementDraft.endSession()
+  }
+  improvementEditorVisible.value = false
+}
+
+watch(
+  () => [
+    improvementEditor.id,
+    improvementEditor.taskCode,
+    improvementEditor.taskTitle,
+    improvementEditor.problemSummary,
+    improvementEditor.proposedAction,
+    improvementEditor.programId,
+    improvementEditor.trainingPlanId,
+    improvementEditor.qualityCourseId,
+    improvementEditor.achievementResultId,
+    improvementEditor.reportId,
+    improvementEditor.ownerUserId,
+    improvementEditor.ownerRole,
+    improvementEditor.dueDate,
+  ],
+  () => {
+    if (improvementDraftHydrating || !improvementEditorVisible.value) return
+    improvementDraft.notifyChanged()
+  },
+)
 const improvementDetailVisible = ref(false)
 const improvementDetailRecord = ref<ImprovementTaskVO | null>(null)
 const improvementDetailLoading = ref(false)
@@ -257,7 +477,10 @@ function handleImprovementReportChange(value: string | null | undefined): void {
   improvementEditor.reportId = selectedId(value)
 }
 
-async function loadList(options?: { refreshSignals?: boolean }): Promise<void> {
+async function loadList(options?: {
+  refreshSignals?: boolean
+  settleAfterMutation?: boolean
+}): Promise<'applied' | 'failed' | 'stale'> {
   const scope = beginQualityScopeRequest()
   improvementLoading.value = true
   beginLoad()
@@ -267,7 +490,7 @@ async function loadList(options?: { refreshSignals?: boolean }): Promise<void> {
       improvementTotal.value = 0
       assertQualityScopeFresh(scope)
       okLoad()
-      return
+      return 'applied'
     }
     const page = await improvementTaskApi.page({
       ...improvementQuery,
@@ -288,75 +511,96 @@ async function loadList(options?: { refreshSignals?: boolean }): Promise<void> {
       && improvementQuery.pageNum > 1
     ) {
       improvementQuery.pageNum -= 1
-      await loadList(options)
-      return
+      return await loadList(options)
     }
     if (options?.refreshSignals) {
-      await refreshWorkbenchSignalsAfterMutation(
+      const signalOutcome = await refreshWorkbenchSignalsAfterMutation(
         scope,
         props.onWorkbenchRefresh,
         props.onLoadError,
         '工作台指标加载失败',
       )
+      if (signalOutcome !== 'applied') {
+        okLoad()
+        return signalOutcome
+      }
     }
     okLoad()
+    return 'applied'
   } catch (error) {
     if (isQualityScopeStaleError(error) || scope.isStale()) {
-      return
+      return 'stale'
     }
     failLoad()
     const err = toUserError(error, '持续改进任务加载失败')
     props.onLoadError?.(err)
     showUserError(error, '持续改进任务加载失败')
+    if (options?.settleAfterMutation) {
+      return 'failed'
+    }
     throw err
   } finally {
     improvementLoading.value = false
   }
 }
 
-function openImprovementCreate(): void {
+async function openImprovementCreate(): Promise<void> {
   improvementEditorMode.value = 'create'
+  improvementCreateSessionKey.value = 'create-active:' + (userStore.userInfo.userId || 'anon')
   submitAiSuggestionDraft.value = false
-  Object.assign(improvementEditor, {
-    id: undefined,
-    taskCode: '',
-    taskTitle: '',
-    problemSummary: '',
-    proposedAction: '',
-    programId: qualityStore.currentProgramId || '',
-    trainingPlanId: qualityStore.currentTrainingPlanId || '',
-    qualityCourseId: '',
-    achievementResultId: '',
-    reportId: '',
-    ownerUserId: '',
-    ownerRole: '',
-    dueDate: '',
-  })
+  improvementDraftHydrating = true
+  try {
+    Object.assign(improvementEditor, {
+      id: undefined,
+      taskCode: '',
+      taskTitle: '',
+      problemSummary: '',
+      proposedAction: '',
+      programId: qualityStore.currentProgramId || '',
+      trainingPlanId: qualityStore.currentTrainingPlanId || '',
+      qualityCourseId: '',
+      achievementResultId: '',
+      reportId: '',
+      ownerUserId: '',
+      ownerRole: '',
+      dueDate: '',
+    })
+  } finally {
+    improvementDraftHydrating = false
+  }
   improvementEditorVisible.value = true
+  await startImprovementDraftSession()
 }
 
-function openImprovementEdit(record: ImprovementTaskVO): void {
+async function openImprovementEdit(record: ImprovementTaskVO): Promise<void> {
   if (!canEditImprovementTask(record.status)) {
     void message.error('当前状态不允许编辑改进任务')
     return
   }
   improvementEditorMode.value = 'edit'
-  Object.assign(improvementEditor, {
-    id: record.id,
-    taskCode: record.taskCode,
-    taskTitle: record.taskTitle,
-    problemSummary: record.problemSummary,
-    proposedAction: record.proposedAction,
-    programId: record.programId,
-    trainingPlanId: record.trainingPlanId || '',
-    qualityCourseId: record.qualityCourseId || '',
-    achievementResultId: record.achievementResultId || '',
-    reportId: record.reportId || '',
-    ownerUserId: record.ownerUserId,
-    ownerRole: record.ownerRole || '',
-    dueDate: record.dueDate,
-  })
+  improvementCreateSessionKey.value = ''
+  improvementDraftHydrating = true
+  try {
+    Object.assign(improvementEditor, {
+      id: record.id,
+      taskCode: record.taskCode,
+      taskTitle: record.taskTitle,
+      problemSummary: record.problemSummary,
+      proposedAction: record.proposedAction,
+      programId: record.programId,
+      trainingPlanId: record.trainingPlanId || '',
+      qualityCourseId: record.qualityCourseId || '',
+      achievementResultId: record.achievementResultId || '',
+      reportId: record.reportId || '',
+      ownerUserId: record.ownerUserId,
+      ownerRole: record.ownerRole || '',
+      dueDate: record.dueDate,
+    })
+  } finally {
+    improvementDraftHydrating = false
+  }
   improvementEditorVisible.value = true
+  await startImprovementDraftSession()
 }
 
 async function sleep(ms: number): Promise<void> {
@@ -429,7 +673,13 @@ async function submitImprovementEditor(): Promise<void> {
       dueDate: improvementEditor.dueDate,
     }
     if (improvementEditorMode.value === 'create') {
-      const improvementTaskId = await improvementTaskApi.create(request)
+      let improvementTaskId = improvementEditor.id
+      if (!improvementTaskId) {
+        improvementTaskId = String(await improvementTaskApi.create(request))
+        improvementEditor.id = improvementTaskId
+      } else {
+        await improvementTaskApi.update({ ...request, id: improvementTaskId })
+      }
       if (submitAiSuggestionDraft.value && improvementTaskId) {
         const achievementResultId = request.achievementResultId
         if (!achievementResultId) {
@@ -446,21 +696,23 @@ async function submitImprovementEditor(): Promise<void> {
           achievementResultId,
           reportId: improvementTaskId,
         })
-        void message.success('改进任务已创建，智能改进草稿已排队生成')
+        void message.success('改进任务已保存，智能改进草稿已排队生成')
         if (res.taskId) {
           aiTaskStore.startPolling(res.taskId)
         } else {
           void startPollingImprovementAiTask(String(improvementTaskId))
         }
       } else {
-        void message.success('改进任务已创建')
+        void message.success(improvementTaskId ? '改进任务已保存' : '改进任务已创建')
       }
     } else {
-      await improvementTaskApi.update(request)
+      await improvementTaskApi.update({ ...request, id: improvementEditor.id || request.id })
       void message.success('已保存修改')
     }
+    await improvementDraft.markCleanAfterServerSuccess()
+    await improvementDraft.endSession()
     improvementEditorVisible.value = false
-    await loadList({ refreshSignals: true })
+    await loadList({ refreshSignals: true, settleAfterMutation: true })
   } finally {
     improvementEditorSubmitting.value = false
   }
@@ -500,7 +752,7 @@ async function handleImprovementTransit(
       reviewRemark: reviewRemark || undefined,
     })
     void message.success(to === ImprovementTaskStatusCode.CLOSED ? '已闭环' : '已退回')
-    await loadList({ refreshSignals: true })
+    await loadList({ refreshSignals: true, settleAfterMutation: true })
     return
   }
   const remark = await promptInputAsync({
@@ -533,7 +785,7 @@ async function handleImprovementTransit(
     rectificationEvidenceItems,
   })
   void message.success('流转成功')
-  await loadList({ refreshSignals: true })
+  await loadList({ refreshSignals: true, settleAfterMutation: true })
 }
 
 async function handleImprovementAiSuggestion(record: ImprovementTaskVO): Promise<void> {
@@ -571,7 +823,7 @@ async function handleImprovementDelete(record: ImprovementTaskVO): Promise<void>
     onOk: async () => {
       await improvementTaskApi.delete(record.id)
       void message.success('已删除')
-      await loadList({ refreshSignals: true })
+      await loadList({ refreshSignals: true, settleAfterMutation: true })
     },
   })
 }
@@ -737,14 +989,24 @@ defineExpose({
   </ImprovementWorkbenchPanel>
 
   <UiDrawer
-    v-model:open="improvementEditorVisible"
+    :open="improvementEditorVisible"
     :title="improvementEditorMode === 'create' ? '新建改进任务' : '编辑改进任务'"
     :width="760"
     :confirm-loading="improvementEditorSubmitting"
     :hide-footer="false"
     ok-text="保存"
+    @update:open="handleImprovementEditorOpenChange"
     @ok="submitImprovementEditor"
   >
+    <QualityFormDraftStatusStrip
+      :status="improvementDraftStatus"
+      :visible="improvementDraftStatusVisible"
+      :local-saved-at="improvementDraftLocalSavedAt"
+      :server-saved-at="improvementDraftServerSavedAt"
+      :error-message="improvementDraftErrorMessage"
+      :saving="improvementDraftSaving"
+      @save-now="handleImprovementDraftSaveNow"
+    />
     <UiForm layout="vertical" :model="improvementEditor">
       <UiRow :gutter="12">
         <UiCol :span="8">
@@ -832,20 +1094,23 @@ defineExpose({
           </UiFormItem>
         </UiCol>
       </UiRow>
-      <UiFormItem label="问题概述">
+      <UiFormItem label="问题概述（支持断点续填）">
+        <p class="iwb-tab__draft-hint">
+          长文填写支持本机暂存与服务端自动保存草稿；刷新或误关后可续填。
+        </p>
         <UiTextarea
           size="sm"
           v-model="improvementEditor.problemSummary"
-          :rows="3"
-          placeholder="为什么达成度低于阈值 / 暴露了什么问题"
+          :rows="6"
+          placeholder="为什么达成度低于阈值 / 暴露了什么问题。输入后约 2.5 秒自动保存草稿。"
         />
       </UiFormItem>
-      <UiFormItem label="改进措施">
+      <UiFormItem label="改进措施（支持断点续填）">
         <UiTextarea
           size="sm"
           v-model="improvementEditor.proposedAction"
-          :rows="3"
-          placeholder="具体改进动作"
+          :rows="6"
+          placeholder="具体改进动作、责任边界与预期效果。输入后约 2.5 秒自动保存草稿。"
         />
       </UiFormItem>
       <UiFormItem v-if="improvementEditorMode === 'create'" label="AI 辅助">
@@ -940,13 +1205,20 @@ defineExpose({
   }
 
   &__evidence-item {
-    margin-bottom: 4px;
+    margin-bottom: var(--dp-space-component-xs);
+  }
+
+  &__draft-hint {
+    margin: 0 0 var(--dp-space-component-tight);
+    color: var(--dp-text-secondary);
+    font-size: var(--dp-font-size-sm);
+    line-height: 1.5;
   }
 
   &__ai-hint {
-    margin: 4px 0 0;
+    margin: var(--dp-space-component-xs) 0 0;
     font-size: var(--dp-font-size-xs);
-    color: var(--dp-text-tertiary);
+    color: var(--dp-text-muted);
   }
 }
 </style>

@@ -4,50 +4,28 @@ import type {
   SessionListQueryRequest,
   TrialSessionResponse,
 } from '@/apis/mark/marking-organization'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { FormalSessionStatusCode } from '@/types/enums/formal-session-status-enum'
-import type { TrialSessionStatusCode } from '@/types/enums/trial-session-status-enum'
+import type {MarkingSessionFilterModel, MarkingSessionListPhase} from '@/utils/marking-session-list-contract';
 import { computed, ref, watch } from 'vue'
 import {
   getOrganizationById,
   pageFormalSessions,
   pageTrialSessions,
 } from '@/apis/mark/marking-organization'
-import {
-  ALL_FORMAL_SESSION_STATUS_CODES,
-  FormalSessionStatusDescription,
-} from '@/types/enums/formal-session-status-enum'
-import {
-  ALL_TRIAL_SESSION_STATUS_CODES,
-  TrialSessionStatusDescription,
-} from '@/types/enums/trial-session-status-enum'
 import { showUserError } from '@/utils/error-handler'
-import { strictEnumLabel } from '@/utils/strict-enum'
+import {
+  applySessionFilterToListQuery,
+  buildMarkingSessionFilterFields,
+  
+  
+  parseSessionFilterModel,
+  resolveSessionPageAfterReload,
+  resolveSessionTableEmptyDescription
+} from '@/utils/marking-session-list-contract'
 
-export type ExamMarkingProgressSessionPhase = 'trial' | 'formal'
-
-export interface ExamMarkingProgressSessionFilterModel {
-  keyword: string
-  status?: TrialSessionStatusCode | FormalSessionStatusCode
-  groupId?: string
-}
+export type ExamMarkingProgressSessionPhase = MarkingSessionListPhase
+export type ExamMarkingProgressSessionFilterModel = MarkingSessionFilterModel
 
 const DEFAULT_PAGE_SIZE = 10
-
-function resolveSessionPageAfterReload(
-  requestedPageNum: number,
-  pageSize: number,
-  total: number,
-): number {
-  if (total <= 0) {
-    return 1
-  }
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  if (requestedPageNum > totalPages) {
-    return totalPages
-  }
-  return requestedPageNum
-}
 
 /**
  * 考试工作台试评 / 正评进度页的会话分页列表；真源为 organization/trial|formal/list。
@@ -60,6 +38,8 @@ export function useExamMarkingProgressSessionList(
   const formalSessions = ref<FormalSessionResponse[]>([])
   const groupOptions = ref<Array<{ value: string, label: string }>>([])
   const sessionsLoading = ref(false)
+  const sessionsLoadFailed = ref(false)
+  const groupOptionsLoadFailed = ref(false)
   const sessionPagination = ref({
     current: 1,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -71,71 +51,32 @@ export function useExamMarkingProgressSessionList(
     groupId: undefined,
   })
 
+  let groupOptionsLoadGeneration = 0
+  let sessionsLoadGeneration = 0
+
   const sessionRows = computed(() =>
     phase.value === 'trial' ? trialSessions.value : formalSessions.value,
   )
 
-  const hasActiveFilter = computed(
-    () =>
-      Boolean(sessionFilterModel.value.keyword.trim())
-      || Boolean(sessionFilterModel.value.status)
-      || Boolean(sessionFilterModel.value.groupId),
+  const filterFields = computed(() =>
+    buildMarkingSessionFilterFields(phase.value, groupOptions.value),
   )
 
-  const statusFilterOptions = computed(() => {
-    if (phase.value === 'trial') {
-      return ALL_TRIAL_SESSION_STATUS_CODES.map((status) => ({
-        value: status,
-        label: strictEnumLabel(TrialSessionStatusDescription, status, '试评会话状态'),
-      }))
-    }
-    return ALL_FORMAL_SESSION_STATUS_CODES.map((status) => ({
-      value: status,
-      label: strictEnumLabel(FormalSessionStatusDescription, status, '正评会话状态'),
-    }))
-  })
-
-  const filterFields = computed((): FilterField[] => [
-    {
-      key: 'keyword',
-      type: 'input',
-      inputPrefixIcon: 'search',
-      placeholder: phase.value === 'trial' ? '搜索题组、状态、校准结论' : '搜索题组、状态',
-      width: 260,
-      triggerSearchOnChange: false,
-    },
-    {
-      key: 'status',
-      type: 'select',
-      placeholder: '全部状态',
-      options: statusFilterOptions.value,
-      width: 140,
-      triggerSearchOnChange: false,
-    },
-    {
-      key: 'groupId',
-      type: 'select',
-      placeholder: '全部题组',
-      options: groupOptions.value.map((item) => ({ label: item.label, value: item.value })),
-      width: 160,
-      triggerSearchOnChange: false,
-    },
-  ])
-
-  const sessionTableEmptyDescription = computed(() => {
-    if (sessionPagination.value.total === 0 && !hasActiveFilter.value) {
-      return phase.value === 'trial' ? '暂无试评会话' : '暂无正评会话'
-    }
-    if (sessionPagination.value.total === 0 && hasActiveFilter.value) {
-      return '未找到匹配会话，请调整筛选条件'
-    }
-    return phase.value === 'trial' ? '暂无试评会话' : '暂无正评会话'
-  })
+  const sessionTableEmptyDescription = computed(() =>
+    resolveSessionTableEmptyDescription({
+      phase: phase.value,
+      loadFailed: sessionsLoadFailed.value,
+      total: sessionPagination.value.total,
+      filter: sessionFilterModel.value,
+    }),
+  )
 
   function resetSessionState(): void {
     trialSessions.value = []
     formalSessions.value = []
     groupOptions.value = []
+    sessionsLoadFailed.value = false
+    groupOptionsLoadFailed.value = false
     sessionPagination.value = {
       current: 1,
       pageSize: DEFAULT_PAGE_SIZE,
@@ -148,6 +89,18 @@ export function useExamMarkingProgressSessionList(
     }
   }
 
+  function bumpLoadGenerations(): void {
+    groupOptionsLoadGeneration += 1
+    sessionsLoadGeneration += 1
+  }
+
+  function isSessionsRequestCurrent(
+    generation: number,
+    expectedOrgId: string | undefined,
+  ): boolean {
+    return generation === sessionsLoadGeneration && organizationId.value === expectedOrgId
+  }
+
   function buildListQuery(pageNum: number): SessionListQueryRequest {
     const orgId = organizationId.value
     if (!orgId) {
@@ -158,64 +111,64 @@ export function useExamMarkingProgressSessionList(
       pageNum,
       pageSize: sessionPagination.value.pageSize,
     }
-    const keyword = sessionFilterModel.value.keyword.trim()
-    if (keyword) {
-      query.keyword = keyword
-    }
-    if (sessionFilterModel.value.groupId) {
-      query.groupId = sessionFilterModel.value.groupId
-    }
-    if (phase.value === 'trial' && sessionFilterModel.value.status) {
-      for (const code of ALL_TRIAL_SESSION_STATUS_CODES) {
-        if (code === sessionFilterModel.value.status) {
-          query.trialSessionStatus = code
-          break
-        }
-      }
-    }
-    if (phase.value === 'formal' && sessionFilterModel.value.status) {
-      for (const code of ALL_FORMAL_SESSION_STATUS_CODES) {
-        if (code === sessionFilterModel.value.status) {
-          query.formalSessionStatus = code
-          break
-        }
-      }
-    }
+    applySessionFilterToListQuery(query, phase.value, sessionFilterModel.value)
     return query
   }
 
-  async function loadGroupOptions(): Promise<void> {
-    const orgId = organizationId.value
-    if (!orgId) {
-      groupOptions.value = []
+  async function loadGroupOptions(
+    generation = ++groupOptionsLoadGeneration,
+    expectedOrgId = organizationId.value,
+  ): Promise<void> {
+    if (!expectedOrgId) {
+      if (generation === groupOptionsLoadGeneration && organizationId.value === expectedOrgId) {
+        groupOptions.value = []
+        groupOptionsLoadFailed.value = false
+      }
       return
     }
     try {
-      const organization = await getOrganizationById({ organizationId: orgId })
+      const organization = await getOrganizationById({ organizationId: expectedOrgId })
+      if (generation !== groupOptionsLoadGeneration || organizationId.value !== expectedOrgId) {
+        return
+      }
       groupOptions.value = (organization.groups ?? []).map((group) => ({
         value: group.id,
         label: group.groupName,
       }))
+      groupOptionsLoadFailed.value = false
     } catch (error) {
-      groupOptions.value = []
+      if (generation !== groupOptionsLoadGeneration || organizationId.value !== expectedOrgId) {
+        return
+      }
+      groupOptionsLoadFailed.value = true
       showUserError(error, '题组列表加载失败')
     }
   }
 
-  async function loadTrialSessions(pageNum = sessionPagination.value.current): Promise<void> {
-    if (!organizationId.value) {
-      trialSessions.value = []
-      sessionPagination.value.total = 0
+  async function loadTrialSessions(
+    pageNum = sessionPagination.value.current,
+    generation = ++sessionsLoadGeneration,
+    expectedOrgId = organizationId.value,
+  ): Promise<void> {
+    if (!expectedOrgId) {
+      if (isSessionsRequestCurrent(generation, expectedOrgId)) {
+        trialSessions.value = []
+        sessionPagination.value.total = 0
+        sessionsLoadFailed.value = false
+      }
       return
     }
     const page = await pageTrialSessions(buildListQuery(pageNum))
+    if (!isSessionsRequestCurrent(generation, expectedOrgId)) {
+      return
+    }
     const resolvedPageNum = resolveSessionPageAfterReload(
       page.pageNum ?? pageNum,
       page.pageSize ?? sessionPagination.value.pageSize,
       page.total ?? 0,
     )
     if (resolvedPageNum !== pageNum) {
-      await loadTrialSessions(resolvedPageNum)
+      await loadTrialSessions(resolvedPageNum, generation, expectedOrgId)
       return
     }
     trialSessions.value = page.list
@@ -224,22 +177,33 @@ export function useExamMarkingProgressSessionList(
       pageSize: page.pageSize ?? sessionPagination.value.pageSize,
       total: page.total ?? 0,
     }
+    sessionsLoadFailed.value = false
   }
 
-  async function loadFormalSessions(pageNum = sessionPagination.value.current): Promise<void> {
-    if (!organizationId.value) {
-      formalSessions.value = []
-      sessionPagination.value.total = 0
+  async function loadFormalSessions(
+    pageNum = sessionPagination.value.current,
+    generation = ++sessionsLoadGeneration,
+    expectedOrgId = organizationId.value,
+  ): Promise<void> {
+    if (!expectedOrgId) {
+      if (isSessionsRequestCurrent(generation, expectedOrgId)) {
+        formalSessions.value = []
+        sessionPagination.value.total = 0
+        sessionsLoadFailed.value = false
+      }
       return
     }
     const page = await pageFormalSessions(buildListQuery(pageNum))
+    if (!isSessionsRequestCurrent(generation, expectedOrgId)) {
+      return
+    }
     const resolvedPageNum = resolveSessionPageAfterReload(
       page.pageNum ?? pageNum,
       page.pageSize ?? sessionPagination.value.pageSize,
       page.total ?? 0,
     )
     if (resolvedPageNum !== pageNum) {
-      await loadFormalSessions(resolvedPageNum)
+      await loadFormalSessions(resolvedPageNum, generation, expectedOrgId)
       return
     }
     formalSessions.value = page.list
@@ -248,68 +212,65 @@ export function useExamMarkingProgressSessionList(
       pageSize: page.pageSize ?? sessionPagination.value.pageSize,
       total: page.total ?? 0,
     }
+    sessionsLoadFailed.value = false
   }
 
-  async function loadSessions(pageNum = sessionPagination.value.current): Promise<void> {
-    if (!organizationId.value) {
+  async function loadSessions(
+    pageNum = sessionPagination.value.current,
+    generation = ++sessionsLoadGeneration,
+    expectedOrgId = organizationId.value,
+  ): Promise<void> {
+    if (!expectedOrgId) {
+      bumpLoadGenerations()
       resetSessionState()
       return
     }
     sessionsLoading.value = true
     try {
       if (phase.value === 'trial') {
-        await loadTrialSessions(pageNum)
+        await loadTrialSessions(pageNum, generation, expectedOrgId)
       } else {
-        await loadFormalSessions(pageNum)
+        await loadFormalSessions(pageNum, generation, expectedOrgId)
       }
     } catch (error) {
-      trialSessions.value = []
-      formalSessions.value = []
-      sessionPagination.value.total = 0
+      if (!isSessionsRequestCurrent(generation, expectedOrgId)) {
+        return
+      }
+      sessionsLoadFailed.value = true
       showUserError(
         error,
         phase.value === 'trial' ? '试评会话列表加载失败' : '正评会话列表加载失败',
       )
     } finally {
-      sessionsLoading.value = false
+      if (generation === sessionsLoadGeneration) {
+        sessionsLoading.value = false
+      }
     }
   }
 
   async function reloadSessions(): Promise<void> {
-    if (!organizationId.value) {
+    const expectedOrgId = organizationId.value
+    if (!expectedOrgId) {
+      bumpLoadGenerations()
       resetSessionState()
       return
     }
-    await Promise.all([loadGroupOptions(), loadSessions(sessionPagination.value.current)])
+    const groupGeneration = ++groupOptionsLoadGeneration
+    const sessionsGeneration = ++sessionsLoadGeneration
+    await Promise.all([
+      loadGroupOptions(groupGeneration, expectedOrgId),
+      loadSessions(sessionPagination.value.current, sessionsGeneration, expectedOrgId),
+    ])
   }
 
   function applySessionFilter(model: Record<string, unknown>): void {
-    let status: TrialSessionStatusCode | FormalSessionStatusCode | undefined
-    const rawStatus = model.status
-    if (typeof rawStatus === 'string' && rawStatus) {
-      if (phase.value === 'trial') {
-        for (const code of ALL_TRIAL_SESSION_STATUS_CODES) {
-          if (code === rawStatus) {
-            status = code
-            break
-          }
-        }
-      } else {
-        for (const code of ALL_FORMAL_SESSION_STATUS_CODES) {
-          if (code === rawStatus) {
-            status = code
-            break
-          }
-        }
-      }
-    }
-    sessionFilterModel.value = {
-      keyword: String(model.keyword ?? '').trim(),
-      status,
-      groupId: model.groupId ? String(model.groupId) : undefined,
-    }
+    sessionFilterModel.value = parseSessionFilterModel(phase.value, model)
     sessionPagination.value.current = 1
-    void loadSessions(1)
+    const expectedOrgId = organizationId.value
+    if (!expectedOrgId) {
+      return
+    }
+    void loadSessions(1, ++sessionsLoadGeneration, expectedOrgId)
   }
 
   function resetSessionFilter(): void {
@@ -319,22 +280,43 @@ export function useExamMarkingProgressSessionList(
       groupId: undefined,
     }
     sessionPagination.value.current = 1
-    void loadSessions(1)
+    const expectedOrgId = organizationId.value
+    if (!expectedOrgId) {
+      return
+    }
+    void loadSessions(1, ++sessionsLoadGeneration, expectedOrgId)
   }
 
   function handleSessionPageChange(page: { current: number, pageSize: number }): void {
     sessionPagination.value.current = page.current
     sessionPagination.value.pageSize = page.pageSize
-    void loadSessions(page.current)
+    const expectedOrgId = organizationId.value
+    if (!expectedOrgId) {
+      return
+    }
+    void loadSessions(page.current, ++sessionsLoadGeneration, expectedOrgId)
   }
 
   watch(
     () => ({ organizationId: organizationId.value, phase: phase.value }),
-    () => {
+    (next, prev) => {
       sessionPagination.value.current = 1
-      if (!organizationId.value) {
+      if (!next.organizationId) {
+        bumpLoadGenerations()
         resetSessionState()
         return
+      }
+      if (
+        prev
+        && (prev.organizationId !== next.organizationId || prev.phase !== next.phase)
+      ) {
+        bumpLoadGenerations()
+        trialSessions.value = []
+        formalSessions.value = []
+        groupOptions.value = []
+        sessionsLoadFailed.value = false
+        groupOptionsLoadFailed.value = false
+        sessionPagination.value.total = 0
       }
       void reloadSessions()
     },
@@ -344,6 +326,8 @@ export function useExamMarkingProgressSessionList(
   return {
     sessionRows,
     sessionsLoading,
+    sessionsLoadFailed,
+    groupOptionsLoadFailed,
     sessionPagination,
     sessionFilterModel,
     filterFields,

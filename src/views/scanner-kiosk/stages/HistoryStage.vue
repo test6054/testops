@@ -343,141 +343,152 @@ watch(
       >
         加载历史批次中…
       </div>
-      <div v-else-if="workflow.batchHistoryList.value.length === 0" class="history-empty">
-        <p>本一体机暂无历史批次</p>
-        <small>选择考试并完成首次扫描后，批次将出现在此处</small>
-      </div>
-
-      <ul v-else class="history-list">
-        <li
-          v-for="item in workflow.batchHistoryList.value"
-          :key="item.scanBatchId"
-          class="history-item"
-          :class="{ active: expandedHistoryId === item.scanBatchId }"
+      <template v-else>
+        <div v-if="workflow.batchHistoryLoadFailed.value" class="history-empty history-empty--error">
+          <p>历史批次加载失败</p>
+          <small>
+            已保留上次成功列表（若有），不能视为本一体机暂无批次
+          </small>
+        </div>
+        <div
+          v-else-if="workflow.batchHistoryList.value.length === 0"
+          class="history-empty"
         >
-          <button type="button" class="history-row" @click="toggleHistoryDetail(item.scanBatchId)">
-            <div class="history-cell history-cell--main">
-              <strong>{{ item.batchNo || item.batchExternalNo }}</strong>
-              <span>{{ item.batchExternalNo }}</span>
+          <p>本一体机暂无历史批次</p>
+          <small>选择考试并完成首次扫描后，批次将出现在此处</small>
+        </div>
+
+        <ul v-if="workflow.batchHistoryList.value.length > 0" class="history-list">
+          <li
+            v-for="item in workflow.batchHistoryList.value"
+            :key="item.scanBatchId"
+            class="history-item"
+            :class="{ active: expandedHistoryId === item.scanBatchId }"
+          >
+            <button type="button" class="history-row" @click="toggleHistoryDetail(item.scanBatchId)">
+              <div class="history-cell history-cell--main">
+                <strong>{{ item.batchNo || item.batchExternalNo }}</strong>
+                <span>{{ item.batchExternalNo }}</span>
+              </div>
+              <div class="history-cell">
+                <small>模式</small>
+                <span>{{ historyModeText(item) }}</span>
+              </div>
+              <div class="history-cell">
+                <small>页数</small>
+                <span>{{ item.pageCount }}</span>
+              </div>
+              <div class="history-cell">
+                <small>扫描时间</small>
+                <span>{{ workflow.formatTime(item.scanStartTime) }}</span>
+              </div>
+              <div class="history-cell history-cell--badge">
+                <span class="history-badge" :class="`tone-${historyBadgeTone(item)}`">
+                  {{ historyBadgeText(item) }}
+                </span>
+              </div>
+            </button>
+
+            <div v-if="expandedHistoryId === item.scanBatchId" class="history-detail">
+              <dl class="detail-kv detail-kv--inline">
+                <div>
+                  <dt>状态</dt>
+                  <dd>{{ historyBadgeText(item) }}</dd>
+                </div>
+                <div>
+                  <dt>扫描结束</dt>
+                  <dd>{{ workflow.formatTime(item.scanEndTime) }}</dd>
+                </div>
+                <div v-if="item.receivedPageCount !== undefined">
+                  <dt>已落库页</dt>
+                  <dd>{{ item.receivedPageCount }} / {{ item.pageCount }}</dd>
+                </div>
+                <div
+                  v-if="item.pendingUploadCount !== undefined && item.pendingUploadCount > 0"
+                  class="warn"
+                >
+                  <dt>待上传</dt>
+                  <dd>{{ item.pendingUploadCount }}</dd>
+                </div>
+                <div
+                  v-if="item.attentionItemCount !== undefined && item.attentionItemCount > 0"
+                  class="warn"
+                >
+                  <dt>异常项</dt>
+                  <dd>{{ item.attentionItemCount }}</dd>
+                </div>
+                <div v-if="item.eventCount !== undefined">
+                  <dt>事件数</dt>
+                  <dd>{{ item.eventCount }}</dd>
+                </div>
+                <div v-if="item.sealedTime">
+                  <dt>封存时间</dt>
+                  <dd>
+                    {{ workflow.formatTime(item.sealedTime) }}
+                    <template v-if="item.sealedUserId"> · 操作人 {{ item.sealedUserId }}</template>
+                  </dd>
+                </div>
+                <div v-if="item.discardedTime">
+                  <dt>废弃时间</dt>
+                  <dd class="danger">
+                    {{ workflow.formatTime(item.discardedTime) }}
+                    <template v-if="item.discardedUserId">
+                      · 操作人 {{ item.discardedUserId }}
+                    </template>
+                  </dd>
+                </div>
+                <div v-if="item.discardReason" class="detail-kv-full">
+                  <dt>废弃原因</dt>
+                  <dd class="danger">{{ item.discardReason }}</dd>
+                </div>
+                <div v-if="item.diagnostic" class="detail-kv-full">
+                  <dt>处理说明</dt>
+                  <dd class="danger">{{ workflow.scannerDiagnosticText(item.diagnostic) }}</dd>
+                </div>
+                <div v-if="item.supplementReason" class="detail-kv-full">
+                  <dt>补扫原因</dt>
+                  <dd>{{ item.supplementReason }}</dd>
+                </div>
+              </dl>
+              <div class="detail-actions">
+                <button type="button" class="detail-cta" @click="ui.viewHistoryLedger(item)">
+                  <EyeOutlined />
+                  <span>查看页级账本</span>
+                </button>
+              </div>
             </div>
-            <div class="history-cell">
-              <small>模式</small>
-              <span>{{ historyModeText(item) }}</span>
-            </div>
-            <div class="history-cell">
-              <small>页数</small>
-              <span>{{ item.pageCount }}</span>
-            </div>
-            <div class="history-cell">
-              <small>扫描时间</small>
-              <span>{{ workflow.formatTime(item.scanStartTime) }}</span>
-            </div>
-            <div class="history-cell history-cell--badge">
-              <span class="history-badge" :class="`tone-${historyBadgeTone(item)}`">
-                {{ historyBadgeText(item) }}
-              </span>
-            </div>
+          </li>
+        </ul>
+
+        <!-- 分页 -->
+        <footer
+          v-if="workflow.batchHistoryTotal.value > workflow.batchHistoryFilter.pageSize"
+          class="history-pager"
+        >
+          <button
+            type="button"
+            class="pager-btn"
+            :disabled="workflow.batchHistoryFilter.pageNum <= 1 || workflow.batchHistoryLoading.value"
+            @click="workflow.changeBatchHistoryPage(workflow.batchHistoryFilter.pageNum - 1)"
+          >
+            上一页
           </button>
-
-          <div v-if="expandedHistoryId === item.scanBatchId" class="history-detail">
-            <dl class="detail-kv detail-kv--inline">
-              <div>
-                <dt>状态</dt>
-                <dd>{{ historyBadgeText(item) }}</dd>
-              </div>
-              <div>
-                <dt>扫描结束</dt>
-                <dd>{{ workflow.formatTime(item.scanEndTime) }}</dd>
-              </div>
-              <div v-if="item.receivedPageCount !== undefined">
-                <dt>已落库页</dt>
-                <dd>{{ item.receivedPageCount }} / {{ item.pageCount }}</dd>
-              </div>
-              <div
-                v-if="item.pendingUploadCount !== undefined && item.pendingUploadCount > 0"
-                class="warn"
-              >
-                <dt>待上传</dt>
-                <dd>{{ item.pendingUploadCount }}</dd>
-              </div>
-              <div
-                v-if="item.attentionItemCount !== undefined && item.attentionItemCount > 0"
-                class="warn"
-              >
-                <dt>异常项</dt>
-                <dd>{{ item.attentionItemCount }}</dd>
-              </div>
-              <div v-if="item.eventCount !== undefined">
-                <dt>事件数</dt>
-                <dd>{{ item.eventCount }}</dd>
-              </div>
-              <div v-if="item.sealedTime">
-                <dt>封存时间</dt>
-                <dd>
-                  {{ workflow.formatTime(item.sealedTime) }}
-                  <template v-if="item.sealedUserId"> · 操作人 {{ item.sealedUserId }}</template>
-                </dd>
-              </div>
-              <div v-if="item.discardedTime">
-                <dt>废弃时间</dt>
-                <dd class="danger">
-                  {{ workflow.formatTime(item.discardedTime) }}
-                  <template v-if="item.discardedUserId">
-                    · 操作人 {{ item.discardedUserId }}
-                  </template>
-                </dd>
-              </div>
-              <div v-if="item.discardReason" class="detail-kv-full">
-                <dt>废弃原因</dt>
-                <dd class="danger">{{ item.discardReason }}</dd>
-              </div>
-              <div v-if="item.diagnostic" class="detail-kv-full">
-                <dt>处理说明</dt>
-                <dd class="danger">{{ workflow.scannerDiagnosticText(item.diagnostic) }}</dd>
-              </div>
-              <div v-if="item.supplementReason" class="detail-kv-full">
-                <dt>补扫原因</dt>
-                <dd>{{ item.supplementReason }}</dd>
-              </div>
-            </dl>
-            <div class="detail-actions">
-              <button type="button" class="detail-cta" @click="ui.viewHistoryLedger(item)">
-                <EyeOutlined />
-                <span>查看页级账本</span>
-              </button>
-            </div>
-          </div>
-        </li>
-      </ul>
-
-      <!-- 分页 -->
-      <footer
-        v-if="workflow.batchHistoryTotal.value > workflow.batchHistoryFilter.pageSize"
-        class="history-pager"
-      >
-        <button
-          type="button"
-          class="pager-btn"
-          :disabled="workflow.batchHistoryFilter.pageNum <= 1 || workflow.batchHistoryLoading.value"
-          @click="workflow.changeBatchHistoryPage(workflow.batchHistoryFilter.pageNum - 1)"
-        >
-          上一页
-        </button>
-        <span class="pager-info">
-          第 <strong>{{ workflow.batchHistoryFilter.pageNum }}</strong> / {{ historyTotalPages }} 页
-        </span>
-        <button
-          type="button"
-          class="pager-btn"
-          :disabled="
-            workflow.batchHistoryFilter.pageNum >= historyTotalPages
-              || workflow.batchHistoryLoading.value
-          "
-          @click="workflow.changeBatchHistoryPage(workflow.batchHistoryFilter.pageNum + 1)"
-        >
-          下一页
-        </button>
-      </footer>
+          <span class="pager-info">
+            第 <strong>{{ workflow.batchHistoryFilter.pageNum }}</strong> / {{ historyTotalPages }} 页
+          </span>
+          <button
+            type="button"
+            class="pager-btn"
+            :disabled="
+              workflow.batchHistoryFilter.pageNum >= historyTotalPages
+                || workflow.batchHistoryLoading.value
+            "
+            @click="workflow.changeBatchHistoryPage(workflow.batchHistoryFilter.pageNum + 1)"
+          >
+            下一页
+          </button>
+        </footer>
+      </template>
     </article>
   </section>
 </template>
@@ -716,7 +727,7 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding-top: 6px;
+  padding-top: var(--dp-space-component-tight);
   flex: 1;
 }
 .event-text strong {
@@ -745,7 +756,7 @@ watch(
 .detail-kv > div {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   padding: var(--kiosk-space-3);
   background: var(--kiosk-surface-alt);
   border-radius: var(--kiosk-radius-sm);
@@ -898,10 +909,13 @@ watch(
   font-size: var(--kiosk-fz-label);
   color: var(--kiosk-ink-primary);
   outline: none;
-  transition: border-color var(--kiosk-dur-fast) var(--kiosk-easing);
+  transition:
+    border-color var(--kiosk-dur-fast) var(--kiosk-easing),
+    box-shadow var(--kiosk-dur-fast) var(--kiosk-easing);
 }
-.time-input input:focus {
+.time-input input:focus-visible {
   border-color: var(--kiosk-primary);
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 .time-input input:disabled {
   background: var(--kiosk-neutral-soft);
@@ -911,7 +925,7 @@ watch(
   font-size: var(--kiosk-fz-caption);
   color: var(--kiosk-ink-tertiary);
   align-self: flex-end;
-  padding-bottom: 8px;
+  padding-bottom: var(--dp-space-component-tight);
 }
 .time-apply,
 .time-clear {
@@ -992,6 +1006,20 @@ watch(
   border: 1px dashed var(--kiosk-divider-strong);
   border-radius: var(--kiosk-radius-md);
 }
+
+.history-retry {
+  margin-top: var(--kiosk-space-2);
+  padding: var(--kiosk-space-2) var(--kiosk-space-3);
+  border: 1px solid var(--kiosk-primary);
+  border-radius: var(--kiosk-radius-sm);
+  background: transparent;
+  color: var(--kiosk-primary);
+  font: inherit;
+  font-size: var(--kiosk-fz-label);
+  font-weight: var(--kiosk-fw-medium);
+  cursor: pointer;
+}
+
 .history-empty p {
   margin: 0;
   font-size: var(--kiosk-fz-body);
@@ -1063,7 +1091,7 @@ watch(
 }
 
 .history-cell--main {
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
 }
 .history-cell--main span {
   font-size: var(--kiosk-fz-caption);

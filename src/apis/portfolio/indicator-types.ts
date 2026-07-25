@@ -14,6 +14,10 @@ import type { PfModelStatusCode } from '@/types/enums/pf-model-status-enum'
 import type { PfRuleChangeLevelCode } from '@/types/enums/pf-rule-change-level-enum'
 import type { PfScoreRuleTypeCode } from '@/types/enums/pf-score-rule-type-enum'
 import type { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
+import type { PortfolioIndustryPackAssessmentSectionCode } from '@/types/enums/portfolio-industry-pack-assessment-section-code-enum'
+import type { PortfolioIndustryPackDictSectionCode } from '@/types/enums/portfolio-industry-pack-dict-section-code-enum'
+import type { PortfolioIndustryPackWeightCode } from '@/types/enums/portfolio-industry-pack-weight-code-enum'
+import type { PortfolioTeacherIdentityTypeCode } from '@/types/enums/portfolio-teacher-identity-type-enum'
 import {
   ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES,
   PfEligibilityAuditStatusDescription,
@@ -253,6 +257,7 @@ export interface PortfolioIndicatorRuleTemplateSaveRequest {
 }
 
 export interface PortfolioIndicatorIndustryPackDictionarySectionDto {
+  sectionCode: PortfolioIndustryPackDictSectionCode
   categories?: string[]
   requiredFields?: string[]
   levels?: string[]
@@ -260,24 +265,22 @@ export interface PortfolioIndicatorIndustryPackDictionarySectionDto {
 }
 
 export interface PortfolioIndicatorIndustryPackDictionaryDto {
-  enterprisePractice?: PortfolioIndicatorIndustryPackDictionarySectionDto
-  qualification?: PortfolioIndicatorIndustryPackDictionarySectionDto
-  industryProject?: PortfolioIndicatorIndustryPackDictionarySectionDto
+  sections: PortfolioIndicatorIndustryPackDictionarySectionDto[]
 }
 
 export interface PortfolioIndicatorIndustryPackWeightsDto {
-  enterprisePractice?: number
-  qualification?: number
-  industryProject?: number
-  teachingContribution?: number
-  socialService?: number
-  trainingDevelopment?: number
+  enterprisePractice: number
+  qualification: number
+  industryProject: number
+  teachingContribution: number
+  socialService: number
+  trainingDevelopment: number
 }
 
 export interface PortfolioIndicatorIndustryPackAssessmentSectionDto {
-  sectionId?: string
+  sectionCode: PortfolioIndustryPackAssessmentSectionCode
   title?: string
-  fieldRefs?: string[]
+  fieldRefs: PortfolioIndustryPackWeightCode[]
 }
 
 export interface PortfolioIndicatorIndustryPackAssessmentTemplateDto {
@@ -518,7 +521,6 @@ export interface PortfolioIndicatorComputeLogVO {
   explainText?: string
   computedTime?: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -544,7 +546,6 @@ export interface PortfolioEligibilityEvalLogVO {
   explainText?: string
   evaluatedTime?: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -757,7 +758,6 @@ export interface PortfolioIndicatorAutoCollectSummaryResponse {
   collectedCount: number
   skippedCount: number
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -958,8 +958,7 @@ export interface PortfolioIndicatorCollegeCompareVO {
 }
 
 export interface PortfolioIndicatorTeacherTypeCompareItemVO {
-  teacherTypeCode: string
-  teacherTypeLabel: string
+  teacherTypeCode: PortfolioTeacherIdentityTypeCode
   usageCount: number
   distinctIndicatorCount: number
   distinctTeacherCount: number

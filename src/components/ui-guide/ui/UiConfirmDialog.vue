@@ -104,7 +104,7 @@ const handleCancel = () => {
 <style scoped>
 .ui-confirm-dialog {
   display: flex;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   align-items: flex-start;
 }
 

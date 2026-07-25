@@ -4,18 +4,21 @@ import type { PortfolioHonorStatsVO } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { PortfolioDevelopmentRecordTypeCode } from '@/apis/portfolio/enums'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
+import PortfolioArchiveWriteGuardStrip from '@/components/portfolio/PortfolioArchiveWriteGuardStrip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
@@ -26,13 +29,14 @@ import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchive
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { useUserStore } from '@/stores/modules/user'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 /** 院系路由或非租户管理员：本院系荣誉库口径（PF-P0-420） */
 const isDepartmentScoped = computed(
@@ -45,6 +49,9 @@ const importModalOpen = ref(false)
 const stats = ref<PortfolioHonorStatsVO | null>(null)
 const statsRequestToken = ref(0)
 const operationKey = ref('')
+const exportApplyOpen = ref(false)
+const exportPurpose = ref('')
+const applyingExport = ref(false)
 const writing = computed(() => Boolean(operationKey.value) || importModalOpen.value)
 const honorImportContext = { defaultRecordType: PortfolioDevelopmentRecordTypeCode.HONOR }
 const honorImportRequirements = [
@@ -75,8 +82,14 @@ const form = reactive({
   descriptionText: '',
 })
 const formTeacherId = computed(() => form.teacherUserId || undefined)
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
-  = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
+const {
+  archiveWriteForbidden,
+  archiveWriteCapabilityUnknown,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+  loading: archiveWriteGuardLoading,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 const {
   loading,
@@ -189,23 +202,42 @@ async function removeRecord(id: string, title: string) {
   }
 }
 
-async function exportHonor() {
-  if (writing.value) return
-  operationKey.value = 'export'
+function openExportApply() {
+  exportPurpose.value = ''
+  exportApplyOpen.value = true
+}
+
+async function submitExportApply() {
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return Promise.reject(new Error('导出用途为空'))
+  }
+  if (applyingExport.value) {
+    return Promise.reject(new Error('导出申请进行中'))
+  }
+  applyingExport.value = true
   try {
-    const result = await portfolioDevelopmentRecordApi.honorExport({
-      levelCode: (query.value.levelCode || undefined) as PortfolioHonorLevelCode | undefined,
-      awardUnit: query.value.awardUnit || undefined,
-      recordDateFrom: query.value.recordDateFrom || undefined,
-      recordDateTo: query.value.recordDateTo || undefined,
-      categoryCode: query.value.categoryCode || undefined,
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.DEVELOPMENT_RECORD,
+      businessRef: {
+        developmentRecordType: PortfolioDevelopmentRecordTypeCode.HONOR,
+        categoryCode: query.value.categoryCode || undefined,
+        levelCode: (query.value.levelCode || undefined) as PortfolioHonorLevelCode | undefined,
+        awardUnit: query.value.awardUnit || undefined,
+        recordDateFrom: query.value.recordDateFrom || undefined,
+        recordDateTo: query.value.recordDateTo || undefined,
+      },
+      exportPurpose: purpose,
     })
-    await downloadPortfolioExcelExport(result)
-    void message.success(`已导出 ${result.rowCount} 条`)
+    exportApplyOpen.value = false
+    void message.success('已提交荣誉库导出审批')
+    await router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出荣誉库失败')
+    showUserError(error, '提交荣誉库导出审批失败')
+    return Promise.reject(error)
   } finally {
-    if (operationKey.value === 'export') operationKey.value = ''
+    applyingExport.value = false
   }
 }
 </script>
@@ -216,11 +248,12 @@ async function exportHonor() {
       <ContextBar show-title layout="workbench" :title="pageTitle" />
     </template>
     <UiCard>
-      <UiAlertStrip
-        v-if="archiveWriteForbidden"
-        tone="warning"
+      <PortfolioArchiveWriteGuardStrip
+        :blocked="archiveWriteForbidden"
+        :capability-unknown="archiveWriteCapabilityUnknown"
         :message="archiveWriteBlockMessage || '该教师档案当前禁止写入，无法保存荣誉记录'"
-        class="mb-3"
+        :loading="archiveWriteGuardLoading"
+        @confirm="() => void reloadLifecycleState()"
       />
       <div v-if="stats" class="stats">
         <span v-for="item in stats.levelCounts" :key="item.levelCode">
@@ -247,7 +280,15 @@ async function exportHonor() {
           placeholder="截止日期"
         />
         <UiButton size="sm" :disabled="writing" @click="search"> 查询 </UiButton>
-        <UiButton v-if="!isDepartmentScoped" size="sm" :disabled="writing" @click="exportHonor"> 导出 </UiButton>
+        <UiButton
+          v-if="!isDepartmentScoped"
+          size="sm"
+          :loading="applyingExport"
+          :disabled="writing"
+          @click="openExportApply"
+        >
+          申请导出
+        </UiButton>
         <UiButton
           v-if="!isDepartmentScoped"
           variant="primary"
@@ -304,7 +345,7 @@ async function exportHonor() {
         :loading="loading"
         :load-error="loadError"
         row-key="id"
-        style="margin-top: 16px"
+        style="margin-top: var(--dp-space-block)"
         @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
@@ -316,7 +357,7 @@ async function exportHonor() {
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
             </UiTag>
 
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -365,8 +406,23 @@ async function exportHonor() {
       entity-label="荣誉库"
       :context="honorImportContext"
       :requirements="honorImportRequirements"
-      @success="loadPage"
+      @success="() => void loadPage()"
     />
+    <UiDialog
+      v-model:open="exportApplyOpen"
+      title="申请导出荣誉库台账"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="applyingExport"
+      @ok="submitExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="exportPurpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -376,8 +432,8 @@ async function exportHonor() {
 .stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-tight);
 }
 .stats span {
   font-size: var(--dp-font-size-sm);

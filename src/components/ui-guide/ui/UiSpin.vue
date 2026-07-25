@@ -61,6 +61,6 @@ const antSize = computed<'small' | 'default' | 'large'>(() => {
 }
 
 .ui-spin :deep(.ant-spin-dot-item) {
-  background-color: var(--dp-primary);
+  background-color: var(--dp-color-primary);
 }
 </style>

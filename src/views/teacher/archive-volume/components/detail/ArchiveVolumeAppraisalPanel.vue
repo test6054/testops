@@ -111,7 +111,6 @@
       <UiSkeletonState v-if="flowLoading" variant="card" compact />
       <div v-else-if="flowLoadFailed" class="archive-volume-appraisal-panel__load-error">
         <span>鉴定流程刷新失败，当前仍显示上次成功结果</span>
-        <UiButton size="sm" variant="outline" @click="loadAppraisalFlowRecords">重试</UiButton>
       </div>
       <UiEmpty
         size="sm"
@@ -196,7 +195,6 @@
       <UiSkeletonState v-if="destructionFlowLoading" variant="card" compact />
       <div v-else-if="destructionFlowLoadFailed" class="archive-volume-appraisal-panel__load-error">
         <span>销毁流程刷新失败，当前仍显示上次成功结果</span>
-        <UiButton size="sm" variant="outline" @click="loadDestructionFlowRecords">重试</UiButton>
       </div>
       <UiEmpty
         v-if="
@@ -1105,23 +1103,23 @@ onUnmounted(() => {
 .archive-volume-appraisal-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-volume-appraisal-panel__head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-appraisal-panel__load-error {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   min-height: 48px;
-  color: var(--dp-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 
 .archive-volume-appraisal-panel__title {
@@ -1131,21 +1129,21 @@ onUnmounted(() => {
 }
 
 .archive-volume-appraisal-panel__guide {
-  margin-bottom: var(--dp-space-2);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .archive-volume-appraisal-panel__section-head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .archive-volume-appraisal-panel__section-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   margin-left: auto;
 }
 
@@ -1162,16 +1160,16 @@ onUnmounted(() => {
 }
 
 .archive-volume-appraisal-panel__destruction-steps {
-  margin: var(--dp-space-2) 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-appraisal-panel__destruction-step {
   display: flex;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   font-size: var(--dp-font-size-xs);
 }
 
@@ -1188,17 +1186,17 @@ onUnmounted(() => {
 .archive-volume-appraisal-panel__list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-appraisal-panel__section {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .archive-volume-appraisal-panel__section--destruction {
-  padding-top: var(--dp-space-3);
+  padding-top: var(--dp-space-component);
   border-top: 1px solid var(--dp-border-subtle);
 }
 
@@ -1210,13 +1208,13 @@ onUnmounted(() => {
 }
 
 .archive-volume-appraisal-panel__pipe {
-  margin-bottom: var(--dp-space-4);
+  margin-bottom: var(--dp-space-block);
 }
 
 .archive-volume-appraisal-panel__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   width: 100%;
 }
 </style>

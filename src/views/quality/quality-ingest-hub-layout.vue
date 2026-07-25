@@ -82,7 +82,7 @@ const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
 .ingest-hub-layout {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .ingest-hub-layout__tabs {

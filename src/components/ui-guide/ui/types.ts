@@ -71,6 +71,8 @@ export interface FilterField {
   minWidth?: string | number
   maxWidth?: string | number
   inputPrefixIcon?: 'search'
+  /** 快捷键聚焦锚点：渲染到字段容器 data-shortcut-target */
+  shortcutTarget?: string
   disabled?: boolean
   size?: UiComponentSize
   status?: UiFieldStatus

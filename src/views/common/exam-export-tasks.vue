@@ -1172,28 +1172,28 @@ onBeforeUnmount(() => {
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__active-sync-strip {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .export-page {
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__card-head {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 12px;
+    gap: var(--dp-space-component);
     width: 100%;
   }
 
@@ -1207,7 +1207,7 @@ onBeforeUnmount(() => {
   &__card-title {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__active-sync-strip {
@@ -1216,11 +1216,11 @@ onBeforeUnmount(() => {
 }
 
 .empty-block {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-component);
 }
 
 .hint-text {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
   font-size: var(--dp-font-size-xs);
 }
 
@@ -1232,6 +1232,6 @@ onBeforeUnmount(() => {
 .scope-items {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 </style>

@@ -211,8 +211,8 @@ onMounted(async () => {
 .archive-suspected-mixed-scan__filter {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
-  padding: var(--dp-space-3) var(--dp-space-3) 0;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component) 0;
 }
 
 .archive-suspected-mixed-scan__filter-label {

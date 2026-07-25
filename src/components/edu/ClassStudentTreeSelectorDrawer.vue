@@ -10,7 +10,7 @@
   >
     <div
       class="tree-selector-container"
-      style="height: 100%; display: flex; flex-direction: row; gap: 12px; overflow: hidden"
+      style="height: 100%; display: flex; flex-direction: row; gap: var(--dp-space-component); overflow: hidden"
     >
       <!-- 左侧：课程设计配置 -->
       <div
@@ -38,7 +38,7 @@
         style="flex: 1; display: flex; flex-direction: column; overflow: hidden"
       >
         <!-- 搜索框 -->
-        <div class="search-box" style="margin-bottom: 16px">
+        <div class="search-box" style="margin-bottom: var(--dp-space-block)">
           <UiSearchBox
             v-model="searchKey"
             placeholder="搜索院系、班级或学生名称/学号"
@@ -91,7 +91,7 @@
                     <UiTag
                       v-if="disabledKeys.includes(nodeData.id)"
                       tone="orange"
-                      style="margin-left: 8px"
+                      style="margin-left: var(--dp-space-component-tight)"
                     >
                       所有班级已被选中
                     </UiTag>
@@ -114,7 +114,7 @@
                     <UiTag
                       v-if="disabledKeys.includes(nodeData.id)"
                       tone="orange"
-                      style="margin-left: 8px"
+                      style="margin-left: var(--dp-space-component-tight)"
                     >
                       所有学生已被选中
                     </UiTag>
@@ -137,7 +137,7 @@
                     <UiTag
                       v-if="disabledKeys.includes(nodeData.id)"
                       tone="orange"
-                      style="margin-left: 8px"
+                      style="margin-left: var(--dp-space-component-tight)"
                     >
                       已被其他规则选中
                     </UiTag>
@@ -161,7 +161,7 @@
     </div>
 
     <template #footer>
-      <div class="dp-space" style="--dp-space-gap: 8px">
+      <div class="dp-space" style="--dp-space-component: 8px">
         <UiButton size="sm" variant="ghost" @click="handleCancel">取消</UiButton>
         <UiButton
           size="sm"
@@ -631,7 +631,7 @@ defineExpose({
 .tree-selector-container {
   .selector-left-panel {
     border-right: 1px solid var(--dp-border);
-    padding-right: 16px;
+    padding-right: var(--dp-space-block);
     overflow-y: auto;
   }
 
@@ -640,13 +640,13 @@ defineExpose({
   }
 
   .search-box {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   .selection-stats {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
     font-size: var(--dp-font-size-sm);
-    color: var(--dp-text-tertiary);
+    color: var(--dp-text-muted);
 
     .selection-count {
       color: var(--dp-color-primary);
@@ -656,38 +656,38 @@ defineExpose({
 
   .custom-tree-node {
     .icon-department {
-      margin-right: 8px;
+      margin-right: var(--dp-space-component-tight);
       color: var(--dp-color-primary);
     }
 
     .icon-class {
-      margin-right: 8px;
+      margin-right: var(--dp-space-component-tight);
       color: var(--dp-success);
     }
 
     .icon-student {
-      margin-right: 8px;
+      margin-right: var(--dp-space-component-tight);
       color: var(--dp-text-secondary);
     }
     display: flex;
     align-items: center;
     flex: 1;
-    padding-right: 8px;
+    padding-right: var(--dp-space-component-tight);
 
     .node-name {
       font-weight: 500;
-      color: var(--dp-text);
+      color: var(--dp-text-primary);
 
       &.disabled-student {
-        color: var(--dp-text-tertiary);
+        color: var(--dp-text-muted);
         text-decoration: line-through;
       }
     }
 
     .node-stats {
-      margin-left: 8px;
+      margin-left: var(--dp-space-component-tight);
       font-size: var(--dp-font-size-xs);
-      color: var(--dp-text-tertiary);
+      color: var(--dp-text-muted);
     }
   }
 

@@ -16,6 +16,7 @@ import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { PortfolioExternalTeacherContractStatusCode } from '@/types/enums/portfolio-external-teacher-contract-status-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
@@ -23,6 +24,7 @@ import {
   PortfolioExternalTeacherDataStatusDescription,
   PortfolioExternalTeacherImportBatchStatusDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -31,7 +33,9 @@ import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
@@ -47,12 +51,13 @@ import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGa
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQueryTable } from '@/composables/useQueryTable'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { PortfolioImportQualityGradeDescription } from '@/types/enums/portfolio-import-quality-grade-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
+const router = useRouter()
 const activeTab = ref('roster')
 const externalTabItems = [
   { key: 'roster', label: '名册' },
@@ -66,6 +71,10 @@ const statsRequestToken = ref(0)
 const saving = ref(false)
 const revokingId = ref('')
 const exporting = ref(false)
+const exportApplyModal = reactive({
+  open: false,
+  purpose: '',
+})
 const editLoading = ref(false)
 const stats = ref<PortfolioExternalTeacherStatsVO | null>(null)
 const detailContribution = ref<PortfolioIndustryMentorContributionVO | null>(null)
@@ -541,16 +550,41 @@ async function openBatchDetail(id: string) {
 }
 
 async function exportRoster() {
-  if (exporting.value || saving.value) {
+  if (saving.value) {
     return
   }
+  exportApplyModal.purpose = ''
+  exportApplyModal.open = true
+}
+
+async function confirmExportApply() {
+  const exportPurpose = exportApplyModal.purpose.trim()
+  if (!exportPurpose) {
+    showFormValidationMessage('请填写导出用途')
+    return Promise.reject(new Error('导出用途为空'))
+  }
+  if (exporting.value || saving.value) {
+    return Promise.reject(new Error('操作进行中'))
+  }
+  const filters = buildRosterFilters()
   exporting.value = true
   try {
-    const result = await portfolioExternalTeacherApi.exportRoster(buildRosterFilters())
-    await downloadPortfolioExcelExport(result)
-    void message.success(`已导出 ${result.rowCount} 条`)
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.EXTERNAL_TEACHER_ROSTER,
+      businessRef: {
+        externalDataStatus: filters.dataStatus,
+        teachSubject: filters.teachSubject,
+        teacherSource: filters.teacherSource,
+        externalContractStatus: filters.contractStatus,
+      },
+      exportPurpose,
+    })
+    exportApplyModal.open = false
+    void message.success('已提交外聘教师台账导出审批')
+    void router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出外聘教师名册失败')
+    showUserError(error, '提交外聘教师台账导出审批失败')
+    return Promise.reject(error)
   } finally {
     exporting.value = false
   }
@@ -620,7 +654,7 @@ onMounted(async () => {
             style="width: 120px"
             @press-enter="searchRoster"
           />
-          <UiButton size="sm" @click="loadPage"> 刷新 </UiButton>
+          <UiButton size="sm" @click="() => void loadPage()"> 刷新 </UiButton>
           <UiButton
             size="sm"
             variant="outline"
@@ -628,7 +662,7 @@ onMounted(async () => {
             :disabled="exporting || saving"
             @click="exportRoster"
           >
-            导出台账
+            申请导出台账
           </UiButton>
         </div>
         <WorkbenchContextGateStrip
@@ -735,8 +769,6 @@ onMounted(async () => {
             size="sm"
             v-else-if="statsLoadError"
             title="统计数据加载失败"
-            action-label="重试"
-            @action="loadStats"
           />
           <UiEmpty size="sm" v-else-if="!statsLoading" description="暂无统计数据" />
         </UiSpin>
@@ -744,7 +776,7 @@ onMounted(async () => {
     </template>
     <template v-else-if="activeTab === 'import-batch'">
       <UiCard>
-        <UiButton size="sm" :loading="batchLoading" @click="loadImportBatches"> 刷新批次 </UiButton>
+        <UiButton size="sm" :loading="batchLoading" @click="() => void loadImportBatches()"> 刷新批次 </UiButton>
         <UiDataTable
           v-model:current="batchPageNum"
           v-model:page-size="batchPageSize"
@@ -755,7 +787,7 @@ onMounted(async () => {
           :loading="batchLoading"
           :load-error="batchLoadError"
           row-key="id"
-          style="margin-top: 16px"
+          style="margin-top: var(--dp-space-block)"
           @page-change="handleBatchPageChange"
         >
           <template
@@ -907,7 +939,7 @@ onMounted(async () => {
               <li v-for="(note, idx) in detailContribution.evidenceNotes" :key="idx">{{ note }}</li>
             </ul>
           </div>
-          <UiButton size="sm" variant="primary" :loading="saving" @click="saveRecord">
+          <UiButton size="sm" variant="primary" :loading="saving" :disabled="saving" @click="saveRecord">
             保存
           </UiButton>
         </UiForm>
@@ -941,6 +973,21 @@ onMounted(async () => {
         />
       </template>
     </UiDrawer>
+    <UiDialog
+      v-model:open="exportApplyModal.open"
+      title="申请导出外聘教师台账"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="confirmExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="exportApplyModal.purpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -948,7 +995,7 @@ onMounted(async () => {
 .analytics-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 .analytics-summary .hint {
   font-size: var(--dp-font-size-xs);
@@ -956,24 +1003,24 @@ onMounted(async () => {
 }
 .toolbar {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
   flex-wrap: wrap;
 }
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--dp-space-3, 12px);
-  margin-top: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-component);
 }
 .stats-grid h4 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
 }
 .error-report {
-  margin-top: 12px;
-  padding: 8px;
+  margin-top: var(--dp-space-component);
+  padding: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-xs);
   background: var(--dp-fill-quaternary);
   border-radius: var(--dp-radius-xs);
@@ -981,26 +1028,26 @@ onMounted(async () => {
   word-break: break-all;
 }
 .attachment-list {
-  margin: 8px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   padding: 0;
   list-style: none;
 }
 .attachment-list li {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
   font-size: var(--dp-font-size-sm);
 }
 
 .contribution-panel {
-  margin: 12px 0;
-  padding: 12px;
+  margin: var(--dp-space-component) 0;
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle, #e5e7eb);
   border-radius: var(--dp-radius-panel);
 }
 .contribution-panel__title {
   font-weight: 600;
-  margin-bottom: 6px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 .contribution-panel__hint {
   color: var(--dp-text-secondary, #6b7280);

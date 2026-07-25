@@ -8,5 +8,5 @@ export const ALL_PRINT_PACKAGE_ITEM_STATUS_CODES: readonly PrintPackageItemStatu
 ]
 
 export const PrintPackageItemStatusDescription: Record<PrintPackageItemStatusCode, string> = {
-  [PrintPackageItemStatusCode.READY]: '待印刷',
+  [PrintPackageItemStatusCode.READY]: '已就绪',
 }

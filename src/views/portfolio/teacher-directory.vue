@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  PortfolioAffiliationChangeTypeCode} from '@/apis/portfolio/enums';
+import type {
   PortfolioTeacherLifecycleChangeTypeCode,
   PortfolioTeacherLifecycleEventVO,
   PortfolioTeacherLifecycleStateVO,
@@ -24,16 +26,17 @@ import {
   ALL_PORTFOLIO_COMPLETENESS_LEVEL_CODES,
   PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS,
   PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS,
+  PortfolioAffiliationChangeTypeDescription,
   PortfolioCompletenessLevelDescription,
   PortfolioTeacherIdentityStatusCode,
   PortfolioTeacherIdentityStatusDescription,
   PortfolioTeacherIdentityTypeCode,
   PortfolioTeacherIdentityTypeDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS,
-  PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL,
   portfolioTeacherLifecycleApi,
 } from '@/apis/portfolio/teacher-lifecycle'
 import {
@@ -47,6 +50,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
 import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
@@ -60,10 +64,10 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleChangeTypeDisplay, portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -222,12 +226,24 @@ const pageRequestToken = ref(0)
 const operationKey = ref('')
 const writing = computed(() => Boolean(operationKey.value))
 const exporting = computed(() => operationKey.value === 'roster:export')
+/** 迁出数据包导出审批用途 */
+const transferExportModal = reactive({
+  open: false,
+  teacherUserId: '',
+  purpose: '',
+})
+/** 教师名册导出审批用途 */
+const rosterExportModal = reactive({
+  open: false,
+  purpose: '',
+})
 
 const detailVisible = ref(false)
 const detail = ref<PortfolioTeacherDetailVO | null>(null)
 const salarySummary = ref('')
 const librarySummary = ref('')
-const extensionLoadError = ref(false)
+const salaryLoadError = ref(false)
+const libraryLoadError = ref(false)
 const industryMentorContribution = ref<PortfolioIndustryMentorContributionVO | null>(null)
 const industryMentorContributionError = ref('')
 const detailRequestToken = ref(0)
@@ -272,6 +288,13 @@ function identityTypeLabel(type?: PortfolioTeacherIdentityVO['identityType']) {
   return strictEnumLabel(PortfolioTeacherIdentityTypeDescription, type, '教师身份类型')
 }
 
+function affiliationChangeTypeLabel(changeType?: PortfolioAffiliationChangeTypeCode) {
+  if (!changeType) {
+    throw new Error('枚举合同不同步：归属变更类型缺失')
+  }
+  return strictEnumLabel(PortfolioAffiliationChangeTypeDescription, changeType, '归属变更类型')
+}
+
 function identityStatusLabel(status?: PortfolioTeacherIdentityVO['identityStatus']) {
   if (!status) {
     return '—'
@@ -295,10 +318,17 @@ function completenessRowLabel(record: PortfolioTeacherSummaryVO): string {
 }
 
 function courseArchiveRowLabel(record: PortfolioTeacherSummaryVO): string {
-  if ((record.courseArchiveFrameworkSlotTotal ?? 0) <= 0) {
+  if (
+    record.courseArchiveFrameworkSlotTotal == null
+    || record.courseArchiveFrameworkSlotDone == null
+    || record.courseArchiveFullyCompleteCount == null
+  ) {
     return '—'
   }
-  return `${record.courseArchiveFrameworkSlotDone ?? 0}/${record.courseArchiveFrameworkSlotTotal ?? 0} · 齐备 ${record.courseArchiveFullyCompleteCount ?? 0} 门`
+  if (record.courseArchiveFrameworkSlotTotal <= 0) {
+    return '未配置'
+  }
+  return `${record.courseArchiveFrameworkSlotDone}/${record.courseArchiveFrameworkSlotTotal} · 齐备 ${record.courseArchiveFullyCompleteCount} 门`
 }
 
 function syncCompletenessRouteQuery() {
@@ -315,7 +345,8 @@ function resetDetailContext() {
   detail.value = null
   salarySummary.value = ''
   librarySummary.value = ''
-  extensionLoadError.value = false
+  salaryLoadError.value = false
+  libraryLoadError.value = false
   lifecycleState.value = null
   lifecycleLoadError.value = ''
   lifecycleChangeType.value = undefined
@@ -450,7 +481,8 @@ async function openDetail(row: PortfolioTeacherSummaryVO) {
   detail.value = null
   salarySummary.value = ''
   librarySummary.value = ''
-  extensionLoadError.value = false
+  salaryLoadError.value = false
+  libraryLoadError.value = false
   industryMentorContribution.value = null
   industryMentorContributionError.value = ''
   try {
@@ -506,19 +538,30 @@ async function loadIndustryMentorContribution(
 async function loadTeacherExtensions(userId: string, requestToken = detailRequestToken.value) {
   salarySummary.value = ''
   librarySummary.value = ''
+  salaryLoadError.value = false
+  libraryLoadError.value = false
   try {
     const salaryPage = await portfolioTeacherSalaryApi.page({
       teacherUserId: userId,
       pageNum: 1,
       pageSize: 1,
     })
-    const latest = salaryPage.list?.[0]
     if (detailRequestToken.value !== requestToken) {
       return
     }
-    if (latest) {
-      salarySummary.value = `${latest.salaryMonth} 基本 ${latest.baseAmountDisplay ?? '—'}`
+    const latest = salaryPage.list?.[0]
+    salarySummary.value = latest
+      ? `${latest.salaryMonth} 基本 ${latest.baseAmountDisplay ?? '—'}`
+      : '暂无工资记录'
+  } catch (error) {
+    if (detailRequestToken.value !== requestToken) {
+      return
     }
+    salarySummary.value = ''
+    salaryLoadError.value = true
+    showUserError(error, '加载教师工资摘要失败')
+  }
+  try {
     const libStats = await portfolioTeacherLibraryApi.stats({ teacherUserId: userId })
     if (detailRequestToken.value !== requestToken) {
       return
@@ -528,10 +571,9 @@ async function loadTeacherExtensions(userId: string, requestToken = detailReques
     if (detailRequestToken.value !== requestToken) {
       return
     }
-    salarySummary.value = ''
     librarySummary.value = ''
-    extensionLoadError.value = true
-    showUserError(error, '加载教师工资与借阅摘要失败')
+    libraryLoadError.value = true
+    showUserError(error, '加载教师借阅摘要失败')
   }
 }
 
@@ -681,16 +723,12 @@ const lifecycleChangeOptions = computed(() => {
   ).map((item) => ({ label: item.label, value: item.value }))
 })
 
-const lifecycleStatusLabel = computed(() => {
+const lifecycleStatusDisplay = computed(() => {
   const status = lifecycleState.value?.lifecycleStatus
   if (!status) {
     return '—'
   }
-  return (
-    lifecycleState.value?.lifecycleStatusLabel
-    || PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL[status]
-    || status
-  )
+  return portfolioLifecycleStatusDisplay(status)
 })
 
 /** 详情抽屉已加载的生命周期写禁预检；后端 assertArchiveWritable 仍是权威 */
@@ -698,7 +736,13 @@ function assertCurrentTeacherArchiveWritable(actionLabel: string): boolean {
   if (!lifecycleState.value?.archiveWriteForbidden) {
     return true
   }
-  const status = lifecycleStatusLabel.value || '非在职'
+  const status = lifecycleStatusDisplay.value
+  if (status === '—') {
+    showFormValidationMessage(
+      `教师生命周期状态缺失，禁止档案填报与改写。历史档案只读可查。（${actionLabel}）`,
+    )
+    return false
+  }
   showFormValidationMessage(
     `教师生命周期为「${status}」，禁止档案填报与改写。历史档案只读可查。（${actionLabel}）`,
   )
@@ -759,7 +803,7 @@ async function applyLifecycleChange() {
     )
     lifecycleChangeType.value = options[0]?.value
     lifecycleReason.value = ''
-    void message.success(`已更新为${next.lifecycleStatusLabel || next.lifecycleStatus}`)
+    void message.success(`已更新为${portfolioLifecycleStatusDisplay(next.lifecycleStatus)}`)
     const eventPage = await portfolioTeacherLifecycleApi.pageEvents({
       teacherUserId: detail.value.userId,
       pageNum: 1,
@@ -778,36 +822,45 @@ async function exportTransferPackage() {
     return
   }
   if (lifecycleState.value?.lifecycleStatus !== 'TRANSFER_FROZEN') {
-    void message.warning('仅迁出冻结态可导出迁出数据包')
+    void message.warning('仅迁出冻结态可申请导出迁出数据包')
     return
   }
-  const operation = `lifecycle:export:${detail.value.userId}`
+  transferExportModal.teacherUserId = String(detail.value.userId)
+  transferExportModal.purpose = ''
+  transferExportModal.open = true
+}
+
+async function confirmTransferExportApply() {
+  const teacherUserId = transferExportModal.teacherUserId
+  const exportPurpose = transferExportModal.purpose.trim()
+  if (!teacherUserId) {
+    showFormValidationMessage('缺少目标教师')
+    return Promise.reject(new Error('缺少目标教师'))
+  }
+  if (!exportPurpose) {
+    showFormValidationMessage('请填写导出用途')
+    return Promise.reject(new Error('导出用途为空'))
+  }
+  if (detail.value?.userId && String(detail.value.userId) !== teacherUserId) {
+    showFormValidationMessage('当前详情教师已切换，请重新申请')
+    return Promise.reject(new Error('教师上下文已切换'))
+  }
+  const operation = `lifecycle:export:${teacherUserId}`
   if (!beginOperation(operation)) {
-    return
+    return Promise.reject(new Error('操作进行中'))
   }
   try {
-    const result = await portfolioTeacherLifecycleApi.exportTransferPackage({
-      teacherUserId: detail.value.userId,
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.TEACHER_TRANSFER_PACKAGE,
+      businessRef: { teacherId: teacherUserId },
+      exportPurpose,
     })
-    lifecycleState.value = {
-      teacherUserId: result.teacherUserId,
-      lifecycleStatus: result.lifecycleStatus || 'TRANSFERRED',
-      lifecycleStatusLabel: result.lifecycleStatusLabel,
-      archiveWriteForbidden: true,
-      evaluationHeld: true,
-    }
-    lifecycleChangeType.value = undefined
-    if (result.fileNodeId) {
-      await downloadPortfolioExcelExport({
-        fileName: result.fileName || `teacher-transfer-${detail.value.userId}.zip`,
-        fileNodeId: String(result.fileNodeId),
-      })
-    }
-    void message.success(
-      `迁出数据包已生成（正式档 ${result.officialRecordCount ?? 0} 条，附件 ${result.attachmentCount ?? 0}）`,
-    )
+    transferExportModal.open = false
+    void message.success('已提交迁出数据包导出审批；审批通过后生成包并推进生命周期')
+    void router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出迁出数据包失败')
+    showUserError(error, '提交迁出数据包导出审批失败')
+    return Promise.reject(error)
   } finally {
     endOperation(operation)
   }
@@ -863,15 +916,36 @@ async function importTransferPackageFromFile(event: Event): Promise<void> {
 }
 
 async function exportRoster() {
+  rosterExportModal.purpose = ''
+  rosterExportModal.open = true
+}
+
+async function confirmRosterExportApply() {
+  const exportPurpose = rosterExportModal.purpose.trim()
+  if (!exportPurpose) {
+    showFormValidationMessage('请填写导出用途')
+    return Promise.reject(new Error('导出用途为空'))
+  }
   const operation = 'roster:export'
-  if (!beginOperation(operation)) return
-  const request = { ...query }
+  if (!beginOperation(operation)) {
+    return Promise.reject(new Error('操作进行中'))
+  }
   try {
-    const result = await portfolioTeacherApi.exportRoster(request)
-    await downloadPortfolioExcelExport(result)
-    void message.success(`已导出 ${result.rowCount} 条`)
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.TEACHER_ROSTER,
+      businessRef: {
+        departmentId: query.departmentId || undefined,
+        portfolioOrgId: query.portfolioOrgId || undefined,
+        completenessLevel: query.completenessLevel || undefined,
+      },
+      exportPurpose,
+    })
+    rosterExportModal.open = false
+    void message.success('已提交教师名册导出审批')
+    void router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出教师名册失败')
+    showUserError(error, '提交教师名册导出审批失败')
+    return Promise.reject(error)
   } finally {
     endOperation(operation)
   }
@@ -937,7 +1011,7 @@ watch(
           :disabled="interactionLocked"
           @click="exportRoster"
         >
-          导出名册
+          申请导出名册
         </UiButton>
       </div>
       <UiDataTable
@@ -964,7 +1038,7 @@ watch(
               v-for="tag in record.identityTags ?? []"
               :key="tag"
               tone="gray"
-              style="margin-right: 4px"
+              style="margin-right: var(--dp-space-component-xs)"
             >
               {{ identityTypeLabel(tag) }}
             </UiTag>
@@ -984,7 +1058,7 @@ watch(
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus, { archiveWriteForbidden: record.archiveWriteForbidden })">
-              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
             </UiTag>
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <span v-else-if="!record.lifecycleStatus">—</span>
@@ -1048,11 +1122,11 @@ watch(
           </UiDescriptionsItem>
         </UiDescriptions>
         <UiDescriptions
-          v-if="salarySummary || librarySummary"
+          v-if="salarySummary || librarySummary || salaryLoadError || libraryLoadError"
           :column="1"
           size="small"
           bordered
-          style="margin-top: 16px"
+          style="margin-top: var(--dp-space-block)"
         >
           <UiDescriptionsItem v-if="salarySummary" label="工资摘要">
             {{ salarySummary }}
@@ -1061,8 +1135,11 @@ watch(
             {{ librarySummary }}
           </UiDescriptionsItem>
         </UiDescriptions>
-        <p v-if="extensionLoadError" class="teacher-directory__extension-error">
-          工资与借阅摘要加载失败，主档案信息不受影响。
+        <p v-if="salaryLoadError" class="teacher-directory__extension-error">
+          工资摘要加载失败，主档案与借阅摘要不受影响。
+        </p>
+        <p v-if="libraryLoadError" class="teacher-directory__extension-error">
+          借阅摘要加载失败，主档案与工资摘要不受影响。
         </p>
 
         <div class="teacher-directory__lifecycle">
@@ -1072,10 +1149,10 @@ watch(
           </p>
           <UiDescriptions v-else :column="2" size="small" bordered>
             <UiDescriptionsItem label="当前状态">
-              {{ lifecycleStatusLabel }}
+              {{ lifecycleStatusDisplay }}
             </UiDescriptionsItem>
             <UiDescriptionsItem label="最近变更">
-              {{ lifecycleState?.changeTypeLabel || lifecycleState?.changeType || '—' }}
+              {{ portfolioLifecycleChangeTypeDisplay(lifecycleState?.changeType) || '—' }}
             </UiDescriptionsItem>
             <UiDescriptionsItem label="档案写禁">
               {{ lifecycleState?.archiveWriteForbidden ? '是' : '否' }}
@@ -1119,7 +1196,7 @@ watch(
               :loading="operationKey.startsWith('lifecycle:export:')"
               @click="exportTransferPackage"
             >
-              导出迁出数据包
+              申请导出迁出数据包
             </UiButton>
             <label class="teacher-directory__import-transfer">
               <span class="teacher-directory__import-transfer-btn">
@@ -1145,9 +1222,9 @@ watch(
             <h5>最近变更事件</h5>
             <ul>
               <li v-for="item in lifecycleEvents" :key="String(item.id)">
-                {{ item.changeTypeLabel || item.changeType }}：
-                {{ item.fromStatusLabel || item.fromStatus || '—' }}
-                → {{ item.toStatusLabel || item.toStatus }}
+                {{ portfolioLifecycleChangeTypeDisplay(item.changeType) || '—' }}：
+                {{ item.fromStatus ? portfolioLifecycleStatusDisplay(item.fromStatus) : '—' }}
+                → {{ item.toStatus ? portfolioLifecycleStatusDisplay(item.toStatus) : '—' }}
                 <span v-if="item.effectiveTime">（{{ item.effectiveTime }}）</span>
               </li>
             </ul>
@@ -1164,11 +1241,11 @@ watch(
               v-for="row in affiliationHistory"
               :key="row.id || `${row.effectiveFrom}-${row.changeType}`"
             >
-              <strong>{{ row.changeTypeLabel || row.changeType }}</strong>
+              <strong>{{ affiliationChangeTypeLabel(row.changeType) }}</strong>
               <span v-if="row.openSegment"> · 当前</span>
               <span v-if="row.staffNo"> · 工号 {{ row.staffNo }}</span>
               <span v-if="row.appointmentNo"> · 聘任 {{ row.appointmentNo }}</span>
-              <span v-if="row.identityTypeLabel"> · {{ row.identityTypeLabel }}</span>
+              <span v-if="row.identityType"> · {{ identityTypeLabel(row.identityType) }}</span>
               <div class="teacher-directory__muted">
                 {{ row.effectiveFrom || '-' }}
                 <template v-if="row.effectiveTo"> → {{ row.effectiveTo }}</template>
@@ -1267,6 +1344,36 @@ watch(
       </template>
     </UiDrawer>
     <UiDialog
+      v-model:open="rosterExportModal.open"
+      title="申请导出教师名册"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="operationKey === 'roster:export'"
+      @ok="confirmRosterExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="rosterExportModal.purpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
+      />
+    </UiDialog>
+    <UiDialog
+      v-model:open="transferExportModal.open"
+      title="申请导出迁出数据包"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="operationKey.startsWith('lifecycle:export:')"
+      @ok="confirmTransferExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="transferExportModal.purpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
+      />
+    </UiDialog>
+    <UiDialog
       v-model:open="identityVisible"
       :title="identityMode === 'edit' ? '编辑教师身份' : '新增教师身份'"
       :confirm-loading="operationKey.startsWith('identity:save:')"
@@ -1352,13 +1459,13 @@ watch(
 
 <style scoped lang="scss">
 .list-toolbar {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .teacher-directory__identity-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 16px 0 8px;
+  margin: var(--dp-space-block) 0 var(--dp-space-component-tight);
 
   h4 {
     margin: 0;
@@ -1367,14 +1474,14 @@ watch(
   }
 }
 .teacher-directory__extension-error {
-  margin: 12px 0 0;
+  margin: var(--dp-space-component) 0 0;
   color: var(--dp-error);
   font-size: var(--dp-font-size-sm);
 }
 .teacher-directory__lifecycle {
-  margin-top: 16px;
+  margin-top: var(--dp-space-block);
   h4 {
-    margin: 0 0 8px;
+    margin: 0 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
@@ -1382,14 +1489,14 @@ watch(
 .teacher-directory__lifecycle-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component);
   align-items: center;
 }
 .teacher-directory__lifecycle-events {
-  margin-top: 12px;
+  margin-top: var(--dp-space-component);
   h5 {
-    margin: 0 0 6px;
+    margin: 0 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-sm);
     font-weight: 600;
   }
@@ -1416,9 +1523,9 @@ watch(
   cursor: not-allowed;
 }
 .teacher-directory__affiliation {
-  margin-top: 16px;
+  margin-top: var(--dp-space-block);
   h4 {
-    margin: 0 0 8px;
+    margin: 0 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
@@ -1430,22 +1537,22 @@ watch(
   font-size: var(--dp-font-size-xs);
 }
 .teacher-directory__contribution {
-  margin: 0 0 12px;
-  padding: 8px 12px;
+  margin: 0 0 var(--dp-space-component);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: 6px;
-  background: var(--dp-bg-subtle, #fafafa);
+  background: var(--dp-surface-subtle, #fafafa);
   h5 {
-    margin: 0 0 6px;
+    margin: 0 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-sm);
     font-weight: 600;
   }
   p {
-    margin: 0 0 4px;
+    margin: 0 0 var(--dp-space-component-xs);
     font-size: var(--dp-font-size-xs);
   }
   ul {
-    margin: 4px 0 0;
+    margin: var(--dp-space-component-xs) 0 0;
     padding-left: 18px;
     color: var(--dp-text-secondary);
     font-size: var(--dp-font-size-xs);

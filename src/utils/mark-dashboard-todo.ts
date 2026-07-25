@@ -199,11 +199,28 @@ export function resolvePendingTodoScopeByTab(
   return MarkTeacherDashboardPendingTodoScopeCode.ALL
 }
 
-export function resolveDefaultPendingTodoTab(
-  todos: MarkTeacherDashboardPendingTodoItemVO[],
+/** 将后端待办 scope 还原为概览 Tab；与 resolvePendingTodoScopeByTab 互逆。 */
+export function resolvePendingTodoTabByScope(
+  scope: MarkTeacherDashboardPendingTodoScopeCode,
 ): MarkDashboardPendingTodoTabKey {
-  if (countUrgentTodos(todos) > 0) return 'urgent'
-  if (countAttentionTodos(todos) > 0) return 'attention'
+  if (scope === MarkTeacherDashboardPendingTodoScopeCode.URGENT) return 'urgent'
+  if (scope === MarkTeacherDashboardPendingTodoScopeCode.ATTENTION) return 'attention'
+  return 'all'
+}
+
+/**
+ * 首次进入或未选手动 Tab 时的默认档位。
+ * 计数优先用 signalMetrics 全量 totals，禁止只用 TopN 列表推断优先级。
+ */
+export function resolveDefaultPendingTodoTab(
+  totals?: MarkDashboardPendingTodoTotals,
+  todos: MarkTeacherDashboardPendingTodoItemVO[] = [],
+): MarkDashboardPendingTodoTabKey {
+  const urgent = totals?.urgentTodoCount ?? countUrgentTodos(todos)
+  if (urgent > 0) return 'urgent'
+  const attention = totals?.attentionTodoCount
+    ?? todos.filter((todo) => !isUrgentTodo(todo) && isAttentionTodo(todo)).length
+  if (attention > 0) return 'attention'
   return 'all'
 }
 

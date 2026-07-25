@@ -135,7 +135,10 @@ export interface MarkTeacherDashboardOverviewVO {
   publishedExamInsights: MarkTeacherDashboardPublishedExamInsightItemVO[]
 }
 
-export interface MarkTeacherDashboardOngoingExamPageQuery extends QueryDto {}
+export interface MarkTeacherDashboardOngoingExamPageQuery extends QueryDto {
+  /** 六步旅程筛选键；缺省表示不过滤 */
+  journeyKey?: MarkTeacherDashboardJourneyKeyCode
+}
 
 export interface MarkTeacherDashboardPendingTodoPageQuery extends QueryDto {
   todoScope?: MarkTeacherDashboardPendingTodoScopeCode

@@ -505,7 +505,7 @@ onActivated(() => {
       <div
         v-else
         class="ai-model__active-list dp-space dp-space--vertical dp-space--block"
-        style="--dp-space-gap: 12px"
+        style="--dp-space-component: 12px"
       >
         <UiDescriptions
           v-for="profile in activeProfiles"
@@ -515,7 +515,7 @@ onActivated(() => {
           bordered
         >
           <template #title>
-            <div class="dp-space" style="--dp-space-gap: 8px">
+            <div class="dp-space" style="--dp-space-component: 8px">
               <span>{{ providerTypeLabel(profile.providerType) }}</span>
               <UiTag :tone="healthColor(profile.healthStatus)" size="sm">
                 {{ healthLabel(profile.healthStatus) }}
@@ -587,7 +587,7 @@ onActivated(() => {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'profileName'">
-            <div class="dp-space" style="--dp-space-gap: 8px">
+            <div class="dp-space" style="--dp-space-component: 8px">
               <span>{{ record.profileName }}</span>
               <UiTag v-if="record.enabled" tone="green" size="sm"> 启用 </UiTag>
             </div>
@@ -738,17 +738,17 @@ onActivated(() => {
 <style scoped lang="scss">
 .ai-model {
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
 
     & + & {
-      margin-top: var(--dp-space-3, 12px);
+      margin-top: var(--dp-space-component);
     }
   }
 
@@ -756,8 +756,8 @@ onActivated(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
@@ -771,17 +771,17 @@ onActivated(() => {
   &__panel-meta {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__editor-alert {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__api-key {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 

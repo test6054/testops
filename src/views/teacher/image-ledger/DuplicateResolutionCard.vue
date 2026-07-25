@@ -46,7 +46,6 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { watch } from 'vue'
 import {
   DUPLICATE_RESOLUTION_STATUS_TONE,
   DuplicateResolutionStatusDescription,
@@ -69,7 +68,8 @@ const props = defineProps<{
 
 defineEmits<{ (e: 'resolve', record: ExamPaperDuplicateResolutionVO): void }>()
 
-const { rows, loading, pageNum, pageSize, pageTotal, filters, loadError, loadPage, search, handlePageChange }
+/** 列表加载由父页 examLoadGeneration 编排；本卡不自拉，避免与 loadAll 双请求。 */
+const { rows, loading, pageNum, pageSize, pageTotal, filters, loadError, loadPage, handlePageChange }
   = useQueryTable<ExamPaperDuplicateResolutionVO, { examId: string }>(
     (params) => pagePendingDuplicates(params),
     {
@@ -81,26 +81,44 @@ const { rows, loading, pageNum, pageSize, pageTotal, filters, loadError, loadPag
 
 const columns: ColumnType<ExamPaperDuplicateResolutionVO>[] = [
   {
-    title: '页面哈希',
-    dataIndex: 'pageHash',
-    key: 'pageHash',
-    width: 220,
+    title: '基准答卷',
+    key: 'firstPaper',
+    width: 180,
     ellipsis: true,
-    fixed: 'left',
-  },
-  { title: '基准扫描页', dataIndex: 'firstPageId', key: 'firstPageId', width: 120 },
-  { title: '重复扫描页', dataIndex: 'secondPageId', key: 'secondPageId', width: 120 },
-  {
-    title: '基准试卷',
-    dataIndex: 'firstPaperInstanceId',
-    key: 'firstPaperInstanceId',
-    width: 140,
+    customRender: ({ record }) => record.firstPageEvidence?.paperDisplay?.primaryText || '—',
   },
   {
-    title: '重复试卷',
-    dataIndex: 'secondPaperInstanceId',
-    key: 'secondPaperInstanceId',
-    width: 140,
+    title: '重复答卷',
+    key: 'secondPaper',
+    width: 180,
+    ellipsis: true,
+    customRender: ({ record }) => record.secondPageEvidence?.paperDisplay?.primaryText || '—',
+  },
+  {
+    title: '批次',
+    key: 'batch',
+    width: 160,
+    ellipsis: true,
+    customRender: ({ record }) =>
+      record.firstPageEvidence?.scanBatchDisplayName
+      || record.secondPageEvidence?.scanBatchDisplayName
+      || '—',
+  },
+  {
+    title: '模板页',
+    key: 'templatePage',
+    width: 90,
+    customRender: ({ record }) =>
+      record.firstPageEvidence?.templatePageNo
+      ?? record.secondPageEvidence?.templatePageNo
+      ?? '—',
+  },
+  {
+    title: '扫描时间',
+    key: 'scannedTime',
+    width: 170,
+    customRender: ({ record }) =>
+      record.firstPageEvidence?.scannedTime || record.secondPageEvidence?.scannedTime || '—',
   },
   { title: '状态', key: 'resolutionStatus', width: 100 },
   { title: '操作', key: 'actions', width: 100 },
@@ -118,19 +136,18 @@ function duplicateStatusLabel(row: ExamPaperDuplicateResolutionVO): string {
   )
 }
 
-async function reload(): Promise<void> {
-  if (!props.examId) return
+/**
+ * 按当前 examId 重置到第 1 页并拉取待处置重复列表。
+ * 必须 await 真实分页请求，供父页世代隔离与写后刷新编排。
+ */
+async function reload(): Promise<boolean> {
+  if (!props.examId) {
+    return false
+  }
   filters.value = { examId: props.examId }
-  search()
+  pageNum.value = 1
+  return loadPage()
 }
-
-watch(
-  () => props.examId,
-  () => {
-    void reload()
-  },
-  { immediate: true },
-)
 
 defineExpose({ reload })
 </script>
@@ -138,14 +155,14 @@ defineExpose({ reload })
 <style lang="scss" scoped>
 .duplicate-resolution {
   border-top: 1px solid var(--dp-border);
-  padding-top: var(--dp-space-4);
+  padding-top: var(--dp-space-block);
 }
 
 .duplicate-resolution__head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: var(--dp-space-3);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 
 .duplicate-resolution__title {

@@ -1,5 +1,20 @@
 <template>
   <StageWorkbenchShell>
+    <template v-if="selectedExamId" #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="扫描批次"
+        :subtitle="contextBarSubtitle"
+      >
+        <template #status>
+          <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
+            {{ examStatusLabel }}
+          </UiTag>
+        </template>
+      </ContextBar>
+    </template>
+
     <template #signal>
       <SignalBand
         v-if="selectedExamId"
@@ -61,6 +76,22 @@
         @recovered="handleOrphanRecovered"
       />
 
+      <UiAlertStrip
+        v-if="summaryLoadFailed"
+        tone="error"
+        title="扫描批次关键指标加载失败"
+        dense
+        class="scan-batch-workbench__summary-alert"
+      />
+
+      <UiAlertStrip
+        v-if="devicesLoadFailed"
+        tone="error"
+        title="扫描设备列表加载失败"
+        dense
+        class="scan-batch-workbench__devices-alert"
+      />
+
       <WorkbenchSurfaceCard flush>
         <template #head>
           <UiSectionTabs
@@ -117,15 +148,21 @@
               size="sm"
               v-if="batchListLoadFailed"
               description="扫描批次列表加载失败"
-              action-label="重试"
-              @action="() => loadBatches()"
             />
             <UiEmpty size="sm" v-else description="暂无扫描批次" />
           </template>
 
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'batchNo'">
-              <UiTypographyText strong :content="record.batchNo" />
+              <RouterLink
+                v-if="record.scanBatchId"
+                :to="batchDetailRoute(record)"
+                class="scan-batch-workbench__batch-link"
+                @click.stop
+              >
+                <UiTypographyText strong :content="record.batchNo" />
+              </RouterLink>
+              <UiTypographyText v-else strong :content="record.batchNo" />
               <div v-if="record.batchExternalNo" class="muted">{{ record.batchExternalNo }}</div>
             </template>
             <template v-else-if="column.key === 'status'">
@@ -197,8 +234,8 @@ import type {
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, nextTick, onActivated, onDeactivated, reactive, ref, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { listActiveScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import {
@@ -220,6 +257,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -245,14 +283,6 @@ const route = useRoute()
 const router = useRouter()
 const { selectedExamId } = useMarkExamContext()
 const { contextBarSubtitle, examStatusLabel, examStatusTone } = useExamJourneyContextBar('扫描批次')
-
-const scanBatchContextSubtitle = computed(() => {
-  const journeySubtitle = contextBarSubtitle.value
-  if (journeySubtitle.includes('/api/')) {
-    return '扫描批次 · 批次汇总与异常处置'
-  }
-  return journeySubtitle
-})
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const summary = ref<ExamScannerBatchWorkbenchSummaryResponse | null>(null)
@@ -262,8 +292,14 @@ const canManageOwnerBatchActions = computed(
   () => summary.value?.canManageOwnerBatchActions === true,
 )
 const batchListLoadFailed = ref(false)
+const devicesLoadFailed = ref(false)
 const markingProgress = ref<MarkingProgressResponse | null>(null)
 const orphanAlertRef = ref<InstanceType<typeof ScanOrphanRecoveryAlert> | null>(null)
+/** 考试切换与并发请求代际；失活页不得写回当前考试面。 */
+let examLoadGeneration = 0
+let refreshListenerActive = false
+/** 本页写后本地刷新时抑制 mitt 自回调，避免双载。 */
+let suppressSelfRefresh = false
 
 const scanAttentionAlertVisible = computed(() => (summary.value?.attentionCount ?? 0) > 0)
 
@@ -334,7 +370,7 @@ const filterFields = computed<FilterField[]>(() => [
     key: 'scannerDeviceId',
     label: '扫描设备',
     type: 'select',
-    placeholder: '全部设备',
+    placeholder: devicesLoadFailed.value ? '设备列表加载失败' : '全部设备',
     allowClear: true,
     allowSearch: true,
     options: devices.value
@@ -354,7 +390,7 @@ const summaryMetrics = computed((): SignalMetric[] => {
   const data = summary.value
   if (!data) {
     if (summaryLoadFailed.value) {
-      return [{ key: 'kpi-error', label: '批次关键指标', value: '加载失败', tone: 'red' }]
+      return [{ key: 'kpi-error', label: '批次关键指标', value: '—', tone: 'red' }]
     }
     return [{ key: 'kpi-pending', label: '批次关键指标', value: '—', tone: 'gray' }]
   }
@@ -531,7 +567,7 @@ async function retryBatchPageRegister(batch: ExamScannerBatchResponse): Promise<
       return
     }
     void message.success('页登记重试成功')
-    await Promise.all([loadSummary(), loadBatches()])
+    await refreshScanWorkbenchAfterWrite()
   } catch (error) {
     showUserError(error, '页登记重试失败')
   } finally {
@@ -589,37 +625,54 @@ function buildBatchQuery(): ExamScannerBatchQueryRequest {
   }
 }
 
-async function loadMarkingProgress(): Promise<void> {
-  if (!selectedExamId.value) {
+async function loadMarkingProgress(expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) {
     markingProgress.value = null
     return
   }
   try {
-    markingProgress.value = await getMarkingProgress(selectedExamId.value)
+    const progress = await getMarkingProgress(examId)
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    markingProgress.value = progress
   } catch (error) {
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
     markingProgress.value = null
     showUserError(error, '卷面绑定率加载失败')
   }
 }
 
-async function loadSummary(): Promise<void> {
-  if (!selectedExamId.value) {
+async function loadSummary(expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) {
     summary.value = null
     summaryLoadFailed.value = false
     return
   }
   summaryLoadFailed.value = false
   try {
-    summary.value = await getScannerBatchWorkbenchSummary({ examId: selectedExamId.value })
+    const next = await getScannerBatchWorkbenchSummary({ examId })
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    summary.value = next
   } catch (error) {
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
     summary.value = null
     summaryLoadFailed.value = true
     showUserError(error, '扫描批次关键指标加载失败')
   }
 }
 
-async function loadBatches(pageNum?: number): Promise<void> {
-  if (!selectedExamId.value) {
+async function loadBatches(pageNum?: number, expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) {
     batches.value = []
     batchTotal.value = 0
     return
@@ -631,34 +684,64 @@ async function loadBatches(pageNum?: number): Promise<void> {
   batchListLoadFailed.value = false
   try {
     const result = await pageScannerBatches(buildBatchQuery())
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
     batches.value = result.list
     batchTotal.value = result.total
   } catch (error) {
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
     batches.value = []
     batchTotal.value = 0
     batchListLoadFailed.value = true
     showUserError(error, '扫描批次列表加载失败')
   } finally {
-    batchLoading.value = false
+    if (expectedGeneration === examLoadGeneration && selectedExamId.value === examId) {
+      batchLoading.value = false
+    }
   }
 }
 
-async function loadDevices(): Promise<void> {
+async function loadDevices(expectedGeneration = examLoadGeneration): Promise<void> {
   try {
-    devices.value = await listActiveScannerDevices()
+    const next = await listActiveScannerDevices()
+    if (expectedGeneration !== examLoadGeneration) {
+      return
+    }
+    devicesLoadFailed.value = false
+    devices.value = next
+    if (
+      filterForm.scannerDeviceId
+      && !next.some((device) => device.scannerDeviceId === filterForm.scannerDeviceId)
+    ) {
+      filterForm.scannerDeviceId = undefined
+    }
   } catch (error) {
-    devices.value = []
+    if (expectedGeneration !== examLoadGeneration) {
+      return
+    }
+    devicesLoadFailed.value = true
     showUserError(error, '扫描设备列表加载失败')
   }
 }
 
-async function loadAllForExam(): Promise<void> {
-  await Promise.all([loadSummary(), loadMarkingProgress(), loadBatches(), loadDevices()])
+async function loadAllForExam(expectedGeneration = examLoadGeneration): Promise<void> {
+  await Promise.all([
+    loadSummary(expectedGeneration),
+    loadMarkingProgress(expectedGeneration),
+    loadBatches(undefined, expectedGeneration),
+    loadDevices(expectedGeneration),
+  ])
 }
 
-async function syncScanWorkbenchState(): Promise<void> {
-  await refreshSnapshot()
-  mittBus.emit('scan-workbench:refresh')
+/** 写操作成功后由调用方本地刷新；mitt 仅通知其他活跃扫描页，避免本页自重复加载。 */
+function handleScanWorkbenchRefreshEvent(): void {
+  if (suppressSelfRefresh || !selectedExamId.value) {
+    return
+  }
+  void loadAllForExam(examLoadGeneration)
 }
 
 function handleSearch(): void {
@@ -685,17 +768,45 @@ function onBatchPageChange(page: { current: number, pageSize: number }): void {
   void loadBatches()
 }
 
+function batchDetailRoute(batch: ExamScannerBatchResponse) {
+  return {
+    name: 'TeacherExamWorkspaceScanBatchDetail' as const,
+    params: {
+      examId: selectedExamId.value!,
+      scanBatchId: batch.scanBatchId!,
+    },
+  }
+}
+
 function openBatchDetail(batch: ExamScannerBatchResponse): void {
   if (!selectedExamId.value || !batch.scanBatchId) {
     return
   }
-  void router.push({
-    name: 'TeacherExamWorkspaceScanBatchDetail',
-    params: {
-      examId: selectedExamId.value,
-      scanBatchId: batch.scanBatchId,
-    },
-  })
+  void router.push(batchDetailRoute(batch))
+}
+
+/** 写操作成功后刷新本页并通知扫描链其它页失效。 */
+async function refreshScanWorkbenchAfterWrite(): Promise<void> {
+  let refreshFailed = false
+  suppressSelfRefresh = true
+  try {
+    try {
+      await Promise.all([loadSummary(), loadBatches()])
+    } catch {
+      refreshFailed = true
+    }
+    try {
+      await refreshSnapshot()
+    } catch {
+      refreshFailed = true
+    }
+    mittBus.emit('scan-workbench:refresh')
+  } finally {
+    suppressSelfRefresh = false
+  }
+  if (refreshFailed) {
+    void message.warning('操作已成功、状态刷新失败')
+  }
 }
 
 function batchTableCustomRow(record: ExamScannerBatchResponse) {
@@ -777,8 +888,27 @@ function goScanMonitorAbnormal(): void {
 }
 
 async function handleOrphanRecovered(): Promise<void> {
-  await loadAllForExam()
-  await syncScanWorkbenchState()
+  const generation = examLoadGeneration
+  let refreshFailed = false
+  suppressSelfRefresh = true
+  try {
+    try {
+      await loadAllForExam(generation)
+    } catch {
+      refreshFailed = true
+    }
+    try {
+      await refreshSnapshot()
+    } catch {
+      refreshFailed = true
+    }
+    mittBus.emit('scan-workbench:refresh')
+  } finally {
+    suppressSelfRefresh = false
+  }
+  if (refreshFailed) {
+    void message.warning('操作已成功、状态刷新失败')
+  }
 }
 
 function goScanMonitor(): void {
@@ -794,18 +924,25 @@ function goScanMonitor(): void {
 watch(
   selectedExamId,
   (examId) => {
+    const generation = ++examLoadGeneration
     statusTab.value = 'ALL'
+    summary.value = null
+    summaryLoadFailed.value = false
+    batchListLoadFailed.value = false
+    devicesLoadFailed.value = false
+    markingProgress.value = null
+    batches.value = []
+    batchTotal.value = 0
+    batchLoading.value = Boolean(examId)
+    if (!examId) {
+      devices.value = []
+    }
     if (examId) {
-      void loadAllForExam().then(() => {
-        tryFocusOrphanFromRoute()
+      void loadAllForExam(generation).then(() => {
+        if (generation === examLoadGeneration) {
+          tryFocusOrphanFromRoute()
+        }
       })
-    } else {
-      summary.value = null
-      summaryLoadFailed.value = false
-      batchListLoadFailed.value = false
-      markingProgress.value = null
-      batches.value = []
-      batchTotal.value = 0
     }
   },
   { immediate: true },
@@ -820,28 +957,46 @@ watch(
   },
 )
 
-onMounted(() => {
-  mittBus.on('scan-workbench:refresh', loadAllForExam)
+onActivated(() => {
+  if (refreshListenerActive) {
+    return
+  }
+  mittBus.on('scan-workbench:refresh', handleScanWorkbenchRefreshEvent)
+  refreshListenerActive = true
 })
 
-onBeforeUnmount(() => {
-  mittBus.off('scan-workbench:refresh', loadAllForExam)
+onDeactivated(() => {
+  if (!refreshListenerActive) {
+    return
+  }
+  mittBus.off('scan-workbench:refresh', handleScanWorkbenchRefreshEvent)
+  refreshListenerActive = false
 })
 </script>
 
 <style lang="scss" scoped>
 .scan-batch-workbench__empty {
-  padding: 20px 0;
+  padding: var(--dp-space-block) 0;
 }
 
 .scan-batch-workbench__attention-alert,
 .scan-batch-workbench__orphan-alert,
-.scan-batch-workbench__template-alert {
-  margin-bottom: 12px;
+.scan-batch-workbench__template-alert,
+.scan-batch-workbench__summary-alert {
+  margin-bottom: var(--dp-space-component);
+}
+
+.scan-batch-workbench__batch-link {
+  color: inherit;
+  text-decoration: none;
+
+  &:hover :deep(.ui-typography-text) {
+    color: var(--dp-color-primary);
+  }
 }
 
 .scan-batch-workbench__register-tag {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
 }
 
 .scan-batch-workbench__warn {
@@ -849,7 +1004,7 @@ onBeforeUnmount(() => {
 }
 
 .muted {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
   font-size: var(--dp-font-size-xs);
 }
 </style>

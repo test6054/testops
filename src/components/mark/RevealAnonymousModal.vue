@@ -108,7 +108,7 @@ watch(open, (value) => {
       title="解匿名仅开放 5 分钟临时查看"
       description="按 R7 规则：仅考试主考老师本人可解匿名，且需登录密码二次验证。每次解匿名理由都会写入操作审计。"
       :inline="false"
-      style="margin-bottom: 12px"
+      style="margin-bottom: var(--dp-space-component)"
     />
     <UiForm ref="formRef" :model="form" :rules="rules" layout="vertical">
       <UiFormItem label="登录密码" name="currentPassword" required>

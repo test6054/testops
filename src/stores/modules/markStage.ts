@@ -107,7 +107,6 @@ export const useMarkStageStore = defineStore('markStage', () => {
   })
 
   const prepAdvisoryReasons = computed(() => snapshot.value?.prepAdvisoryReasons ?? [])
-  const prepBlockingReasons = computed(() => snapshot.value?.prepBlockingReasons ?? [])
   const manualFinalScoreConfirmRequired = computed(
     () => snapshot.value?.manualFinalScoreConfirmRequired,
   )
@@ -162,7 +161,6 @@ export const useMarkStageStore = defineStore('markStage', () => {
     orderedStages,
     suggestedStageKey,
     prepAdvisoryReasons,
-    prepBlockingReasons,
     manualFinalScoreConfirmRequired,
     delayedFinalScoreConfirmMinutes,
     isExamConfidential,

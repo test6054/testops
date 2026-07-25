@@ -15,7 +15,7 @@
       <img src="/logo.svg" alt="教学质量中心" class="login-brand__logo" />
       <div class="login-brand__mark">
         <div class="login-brand__name">教学质量中心</div>
-        <div class="login-brand__sub">TEACHING QUALITY</div>
+        <div class="login-brand__sub">让每一次评价都有据可依</div>
       </div>
     </div>
 
@@ -226,10 +226,15 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
-/* 底色对齐 web-vue 登录氛围；动作色锁定 mark 主色 --dp-color-primary (#1677ff) */
+/* Brand 层：与主色 #2B67FF / 插画同温的清透教务蓝 */
 .login-page {
-  --login-bg: #eaf3ff;
-  --login-surface: rgba(255, 255, 255, 0.94);
+  --login-sky: #eaf3fb;
+  --login-sky-mid: #f3f8fd;
+  --login-sky-deep: #dceaf6;
+  --login-glow-a: color-mix(in srgb, #5b9fd4 26%, transparent);
+  --login-glow-b: color-mix(in srgb, var(--dp-color-primary) 16%, transparent);
+  --login-glow-c: color-mix(in srgb, #7eb6e3 18%, transparent);
+  --login-surface: #ffffff;
   --login-text: var(--dp-text-primary);
   --login-muted: var(--dp-text-secondary);
   --login-accent: var(--dp-color-primary);
@@ -239,43 +244,37 @@ onMounted(async () => {
   flex-direction: column;
   height: 100vh;
   min-height: 100vh;
-  padding: var(--dp-space-6) var(--dp-space-8) var(--dp-space-4);
+  padding: var(--dp-space-page) var(--dp-space-section) var(--dp-space-block);
   overflow: hidden;
   background:
-    radial-gradient(
-      circle at 15% 18%,
-      color-mix(in srgb, var(--dp-color-primary) 18%, transparent) 0%,
-      transparent 26%
-    ),
-    radial-gradient(
-      circle at 86% 22%,
-      color-mix(in srgb, var(--dp-blue-100) 70%, transparent) 0%,
-      transparent 24%
-    ),
-    linear-gradient(180deg, var(--dp-surface-elevated) 0%, var(--dp-blue-50) 100%);
+    radial-gradient(circle at 16% 18%, var(--login-glow-a) 0%, transparent 42%),
+    radial-gradient(circle at 86% 14%, var(--login-glow-b) 0%, transparent 36%),
+    radial-gradient(circle at 72% 82%, var(--login-glow-c) 0%, transparent 40%),
+    linear-gradient(165deg, var(--login-sky) 0%, var(--login-sky-mid) 52%, #f8fafc 100%);
 }
 
 .login-page__glow {
   position: absolute;
   border-radius: var(--dp-radius-full);
-  filter: blur(12px);
+  filter: blur(28px);
   pointer-events: none;
+  opacity: 0.9;
 }
 
 .login-page__glow--left {
-  top: 90px;
-  left: 120px;
-  width: 280px;
-  height: 280px;
-  background: color-mix(in srgb, var(--dp-color-primary) 16%, transparent);
+  top: 72px;
+  left: 80px;
+  width: 360px;
+  height: 360px;
+  background: var(--login-glow-a);
 }
 
 .login-page__glow--right {
-  right: 100px;
-  bottom: 140px;
-  width: 320px;
-  height: 320px;
-  background: color-mix(in srgb, var(--dp-blue-100) 55%, transparent);
+  right: 60px;
+  bottom: 100px;
+  width: 380px;
+  height: 380px;
+  background: var(--login-glow-b);
 }
 
 .login-stage {
@@ -295,27 +294,29 @@ onMounted(async () => {
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  padding: var(--dp-space-2) var(--dp-space-1) 0;
+  padding: var(--dp-space-component-tight) var(--dp-space-component-xs) 0;
   overflow: hidden;
 }
 
+/* 极淡天蓝网格，承接插画结构线，不抢主体 */
 .login-brand::before {
   content: '';
   position: absolute;
   inset: 10px 0 84px;
   background:
     linear-gradient(
-      color-mix(in srgb, var(--dp-color-primary) 8%, transparent) 1px,
+      color-mix(in srgb, #9ab5d2 22%, transparent) 1px,
       transparent 1px
     ),
     linear-gradient(
       90deg,
-      color-mix(in srgb, var(--dp-color-primary) 8%, transparent) 1px,
+      color-mix(in srgb, #9ab5d2 22%, transparent) 1px,
       transparent 1px
     );
   background-size: 56px 56px;
-  opacity: 0.45;
+  opacity: 0.18;
   pointer-events: none;
+  mask-image: radial-gradient(ellipse at 40% 45%, #000 20%, transparent 72%);
 }
 
 .login-brand__top,
@@ -335,7 +336,7 @@ onMounted(async () => {
   z-index: 10;
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .login-brand__logo {
@@ -346,23 +347,25 @@ onMounted(async () => {
 .login-brand__mark {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-1);
+  gap: 2px;
 }
 
 .login-brand__name {
-  font-size: clamp(28px, 3.2vw, 36px);
-  line-height: 1.1;
+  font-size: clamp(26px, 2.8vw, 32px);
+  line-height: 1.15;
   font-weight: var(--dp-font-weight-title);
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   color: var(--login-text);
   text-wrap: balance;
 }
 
 .login-brand__sub {
-  font-size: var(--dp-type-hint-size);
-  font-weight: var(--dp-font-weight-emphasis);
-  letter-spacing: 0.14em;
-  color: var(--dp-text-muted);
+  max-width: 20em;
+  font-size: var(--dp-font-size-sm);
+  line-height: 1.5;
+  font-weight: var(--dp-font-weight-body);
+  letter-spacing: 0.01em;
+  color: var(--login-muted);
 }
 
 .login-brand__layout {
@@ -379,9 +382,9 @@ onMounted(async () => {
 
 .login-brand__content-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px;
-  gap: var(--dp-space-10);
-  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 400px);
+  gap: var(--dp-space-section-loose);
+  align-items: center;
   flex: 1;
   min-height: 0;
 }
@@ -396,8 +399,8 @@ onMounted(async () => {
 .login-brand__hero {
   display: flex;
   flex: 1;
-  align-items: stretch;
-  justify-content: stretch;
+  align-items: center;
+  justify-content: center;
   min-height: 0;
 }
 
@@ -411,17 +414,20 @@ onMounted(async () => {
   min-height: 0;
 }
 
+/* 与插画同色温的环境光，消掉「白底贴图」感 */
 .login-brand__visual::before {
   content: '';
   position: absolute;
-  inset: 8% 4% 10%;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--dp-color-primary) 16%, transparent) 0%,
-    transparent 70%
-  );
-  filter: blur(24px);
+  inset: 6% 2% 8%;
+  border-radius: 48% 52% 50% 50%;
+  background:
+    radial-gradient(
+      circle at 50% 48%,
+      color-mix(in srgb, #ffffff 88%, transparent) 0%,
+      color-mix(in srgb, #cfe4f7 55%, transparent) 42%,
+      transparent 72%
+    );
+  filter: blur(8px);
   pointer-events: none;
 }
 
@@ -433,7 +439,7 @@ onMounted(async () => {
   height: 100%;
   object-fit: contain;
   object-position: center center;
-  filter: drop-shadow(0 24px 40px color-mix(in srgb, var(--dp-color-primary) 12%, transparent));
+  filter: drop-shadow(0 18px 34px color-mix(in srgb, #3d7eb8 16%, transparent));
 }
 
 .login-panel {
@@ -443,32 +449,35 @@ onMounted(async () => {
   flex-direction: column;
   align-self: center;
   width: 100%;
-  border-radius: var(--dp-radius-panel);
-  background: transparent;
-  box-shadow: none;
-  overflow: visible;
+  border: 1px solid color-mix(in srgb, var(--dp-color-primary-border) 42%, transparent);
+  border-radius: calc(var(--dp-radius-panel) + 2px);
+  background: var(--login-surface);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 16px 40px color-mix(in srgb, var(--dp-color-primary) 9%, transparent);
+  overflow: hidden;
 }
 
 .login-panel__header {
   margin: 0;
-  padding: var(--dp-space-5) var(--dp-space-5) var(--dp-space-3);
-  border-radius: var(--dp-radius-panel) var(--dp-radius-panel) 0 0;
-  background: var(--login-surface);
-  box-shadow: 0 18px 40px color-mix(in srgb, var(--dp-color-primary) 10%, transparent);
+  padding: var(--dp-space-block) var(--dp-space-block) var(--dp-space-component);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .login-panel__eyebrow {
-  margin: 0 0 var(--dp-space-2);
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-type-hint-size);
   font-weight: var(--dp-font-weight-title);
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   color: var(--login-accent);
 }
 
 .login-panel__title {
   margin: 0;
-  font-size: clamp(24px, 2.4vw, 30px);
-  line-height: 1.15;
+  font-size: clamp(22px, 2.2vw, 28px);
+  line-height: 1.2;
   font-weight: var(--dp-font-weight-title);
   letter-spacing: -0.02em;
   color: var(--login-text);
@@ -476,28 +485,29 @@ onMounted(async () => {
 }
 
 .login-panel__subtitle {
-  margin: var(--dp-space-2) 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--login-muted);
 }
 
 .login-panel__surface {
-  margin-top: -2px;
-  padding: var(--dp-space-5);
-  border-radius: 0 0 var(--dp-radius-panel) var(--dp-radius-panel);
-  background: var(--login-surface);
-  box-shadow: 0 18px 40px color-mix(in srgb, var(--dp-color-primary) 10%, transparent);
+  margin-top: 0;
+  padding: var(--dp-space-component) var(--dp-space-block) var(--dp-space-block);
+  border-top: 1px solid color-mix(in srgb, var(--dp-border-subtle) 80%, transparent);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .login-body {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .login-tab-content {
-  margin-top: var(--dp-space-1);
+  margin-top: var(--dp-space-component-xs);
 
   :deep(.ui-radio-group :where(.ant-radio-group)) {
     gap: 3px;
@@ -508,7 +518,7 @@ onMounted(async () => {
 
   :deep(.ui-radio-group .ant-radio-button-wrapper) {
     min-height: 34px;
-    padding: 0 var(--dp-space-3);
+    padding: 0 var(--dp-space-component);
     font-size: var(--dp-font-size-sm);
     font-weight: var(--dp-font-weight-emphasis);
     line-height: 34px;
@@ -516,7 +526,7 @@ onMounted(async () => {
   }
 
   :deep(.ui-radio-group .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled)) {
-    background: var(--dp-bg-container);
+    background: var(--dp-surface);
     color: var(--dp-text-primary);
     box-shadow: var(--dp-shadow-sm);
   }
@@ -526,7 +536,7 @@ onMounted(async () => {
   }
 
   :deep(.ant-form-item) {
-    margin-bottom: var(--dp-space-4);
+    margin-bottom: var(--dp-space-block);
   }
 
   :deep(.ui-radio-group) {
@@ -555,7 +565,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: flex-end;
   width: min(1360px, 100%);
-  margin: var(--dp-space-2) auto 0;
+  margin: var(--dp-space-component-tight) auto 0;
 }
 
 .login-footer__copy {
@@ -579,17 +589,17 @@ onMounted(async () => {
     position: relative;
     top: auto;
     left: auto;
-    margin-bottom: var(--dp-space-4);
+    margin-bottom: var(--dp-space-block);
   }
 
   .login-brand__layout {
     width: 100%;
-    gap: var(--dp-space-6);
+    gap: var(--dp-space-page);
   }
 
   .login-brand__content-row {
     grid-template-columns: 1fr;
-    gap: var(--dp-space-6);
+    gap: var(--dp-space-page);
     flex: none;
   }
 
@@ -616,7 +626,7 @@ onMounted(async () => {
   .login-page {
     height: auto;
     min-height: 100vh;
-    padding: var(--dp-space-5) var(--dp-space-4) var(--dp-space-6);
+    padding: var(--dp-space-block) var(--dp-space-page);
     overflow: visible;
   }
 
@@ -625,7 +635,7 @@ onMounted(async () => {
   }
 
   .login-brand__content-row {
-    gap: var(--dp-space-5);
+    gap: var(--dp-space-block);
   }
 
   .login-brand__visual {
@@ -637,7 +647,7 @@ onMounted(async () => {
   }
 
   .login-panel__header {
-    padding: var(--dp-space-4);
+    padding: var(--dp-space-block);
   }
 
   .login-panel__title {
@@ -645,7 +655,7 @@ onMounted(async () => {
   }
 
   .login-panel__surface {
-    padding: var(--dp-space-4);
+    padding: var(--dp-space-block);
   }
 
   .login-footer {

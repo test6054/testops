@@ -373,21 +373,21 @@ async function handleSubmit() {
    PC 端问卷 — 全页展示模式
    ============================================================ */
 .d-survey {
-  --survey-page-bg: var(--dp-bg-layout);
+  --survey-page-bg: var(--dp-bg-muted);
   --survey-border: var(--dp-border-subtle);
   --survey-border-light: var(--dp-border-subtle);
-  --survey-surface: var(--dp-bg-container);
+  --survey-surface: var(--dp-surface);
   --survey-surface-muted: var(--dp-fill-quaternary);
   --survey-text: var(--dp-text-primary);
   --survey-text-secondary: var(--dp-text-secondary);
-  --survey-text-muted: var(--dp-text-tertiary);
+  --survey-text-muted: var(--dp-text-muted);
   --survey-text-placeholder: var(--dp-text-quaternary);
   --survey-warning-bg: var(--dp-warning-bg);
   --survey-warning-text: var(--dp-warning);
   --survey-success-bg: var(--dp-success-bg);
   --survey-success-text: var(--dp-success);
   --survey-danger: var(--dp-error);
-  --survey-on-primary: var(--dp-text-light-solid);
+  --survey-on-primary: var(--dp-text-inverse);
   --survey-primary: var(--dp-color-primary);
   --survey-primary-bg: var(--dp-color-primary-bg);
   --survey-primary-border: var(--dp-color-primary-border);
@@ -434,7 +434,7 @@ async function handleSubmit() {
   justify-content: center;
   font-size: 32px;
   font-weight: 700;
-  margin-bottom: var(--dp-space-4, 16px);
+  margin-bottom: var(--dp-space-block);
 }
 
 .d-survey__icon--warn {
@@ -456,25 +456,25 @@ async function handleSubmit() {
   font-size: 22px;
   font-weight: 600;
   color: var(--survey-text);
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
 }
 
 .d-survey__status-text {
   font-size: 15px;
   color: var(--survey-text-secondary);
-  margin: 8px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
 }
 
 .d-survey__status-hint {
   font-size: var(--dp-font-size-sm);
   color: var(--survey-text-muted);
-  margin-top: 12px;
+  margin-top: var(--dp-space-component);
 }
 
 /* --- 横幅 --- */
 .d-survey__banner {
   background: var(--survey-surface);
-  padding: 28px 20px 24px;
+  padding: var(--dp-space-page) var(--dp-space-block) var(--dp-space-page);
   text-align: center;
   border-bottom: 1px solid var(--survey-border-light);
 }
@@ -486,21 +486,21 @@ async function handleSubmit() {
 
 .d-survey__banner-badge {
   display: inline-block;
-  padding: 4px 16px;
+  padding: var(--dp-space-component-xs) var(--dp-space-block);
   background: var(--survey-primary-bg);
   border-radius: 20px;
   color: var(--survey-primary);
   font-size: var(--dp-font-size-sm);
   font-weight: 500;
   letter-spacing: 2px;
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-block);
 }
 
 .d-survey__banner-title {
   font-size: 28px;
   font-weight: 700;
   color: var(--dp-text-primary);
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   line-height: 1.3;
 }
 
@@ -518,11 +518,11 @@ async function handleSubmit() {
   top: 0;
   z-index: 20;
   background: var(--survey-surface);
-  padding: 10px 24px;
+  padding: var(--dp-space-component) var(--dp-space-page);
   border-bottom: 1px solid var(--survey-border-light);
   display: flex;
   align-items: center;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   box-shadow: var(--dp-shadow-xs);
 }
 
@@ -540,7 +540,7 @@ async function handleSubmit() {
   transform-origin: left center;
   background: var(--survey-primary);
   border-radius: 3px;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--dp-duration-page) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .d-survey__progress-label {
@@ -552,7 +552,7 @@ async function handleSubmit() {
 
 /* --- 内容区 --- */
 .d-survey__body {
-  padding: var(--dp-space-4, 16px) var(--dp-space-4, 16px) var(--dp-space-8, 32px);
+  padding: var(--dp-space-block) var(--dp-space-section);
 }
 
 .d-survey__container {
@@ -562,11 +562,11 @@ async function handleSubmit() {
 
 .d-survey__welcome {
   background: var(--survey-surface);
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border-radius: var(--dp-radius-panel);
   border: 1px solid var(--survey-primary-border);
   background: color-mix(in srgb, var(--survey-primary) 6%, var(--survey-surface));
-  margin-bottom: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-component);
   font-size: 15px;
   color: var(--survey-text);
   line-height: 1.6;
@@ -577,38 +577,38 @@ async function handleSubmit() {
 .d-survey__meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   color: var(--survey-text-muted);
-  margin-bottom: var(--dp-space-3, 12px);
-  padding: 0 4px;
+  margin-bottom: var(--dp-space-component);
+  padding: 0 var(--dp-space-component-xs);
 }
 
 /* --- 身份信息 --- */
 .d-survey__identity {
   background: var(--survey-surface);
   border-radius: var(--dp-radius-panel);
-  padding: var(--dp-space-3, 12px);
-  margin-bottom: var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
   box-shadow: var(--dp-shadow-xs);
 }
 
 .d-survey__identity-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   font-size: 15px;
   font-weight: 600;
   color: var(--survey-text);
-  margin-bottom: 20px;
-  padding-bottom: 12px;
+  margin-bottom: var(--dp-space-block);
+  padding-bottom: var(--dp-space-component);
   border-bottom: 1px solid var(--survey-border-light);
 }
 
 .d-survey__identity-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .d-survey__field {
@@ -620,7 +620,7 @@ async function handleSubmit() {
   font-size: var(--dp-font-size-md);
   font-weight: 500;
   color: var(--survey-text);
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .d-survey__required-dot {
@@ -629,14 +629,14 @@ async function handleSubmit() {
 
 .d-survey__input {
   height: 44px;
-  padding: 0 14px;
+  padding: 0 var(--dp-space-block);
   border: 1.5px solid var(--survey-border);
   border-radius: 10px;
   font-size: var(--dp-font-size-md);
   color: var(--survey-text);
   background: var(--survey-surface-muted);
   outline: none;
-  transition: all 0.2s;
+  transition: all var(--dp-duration-normal);
 
   &:focus {
     border-color: var(--survey-primary);
@@ -652,13 +652,13 @@ async function handleSubmit() {
 /* --- 题目卡片 --- */
 .d-survey__item {
   display: flex;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   background: var(--survey-surface);
   border-radius: var(--dp-radius-panel);
-  padding: var(--dp-space-3, 12px);
-  margin-bottom: var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
   box-shadow: var(--dp-shadow-xs);
-  transition: all 0.2s;
+  transition: all var(--dp-duration-normal);
   border: 1.5px solid transparent;
 
   &:hover {
@@ -671,7 +671,7 @@ async function handleSubmit() {
 }
 
 .d-survey__item--shake {
-  animation: item-shake 0.5s ease;
+  animation: item-shake var(--dp-duration-emphasis) var(--dp-ease-default);
   border-color: var(--survey-danger);
 }
 
@@ -710,7 +710,7 @@ async function handleSubmit() {
   font-weight: 600;
   border: 2px solid var(--survey-border);
   color: var(--survey-text-muted);
-  transition: all 0.2s;
+  transition: all var(--dp-duration-normal);
 }
 
 .d-survey__item-dot--done {
@@ -733,7 +733,7 @@ async function handleSubmit() {
 .d-survey__item-header {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   margin-bottom: 18px;
 }
 
@@ -749,7 +749,7 @@ async function handleSubmit() {
   font-size: var(--dp-font-size-xxs);
   color: var(--survey-on-primary);
   background: var(--survey-danger);
-  padding: 2px 8px;
+  padding: 2px var(--dp-space-component-tight);
   border-radius: var(--dp-radius-panel);
   font-weight: 500;
   flex-shrink: 0;
@@ -760,7 +760,7 @@ async function handleSubmit() {
   font-size: var(--dp-font-size-xs);
   color: var(--survey-text-placeholder);
   flex-shrink: 0;
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
 }
 
 /* --- 量表题 --- */
@@ -769,12 +769,12 @@ async function handleSubmit() {
   justify-content: space-between;
   font-size: var(--dp-font-size-xs);
   color: var(--survey-text-muted);
-  margin-bottom: 10px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .d-survey__scale-btns {
   display: flex;
-  gap: 10px;
+  gap: var(--dp-space-component);
 }
 
 .d-survey__scale-btn {
@@ -787,7 +787,7 @@ async function handleSubmit() {
   font-weight: 600;
   color: var(--survey-text);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--dp-duration-fast);
 
   &:hover {
     border-color: var(--survey-border);
@@ -807,21 +807,21 @@ async function handleSubmit() {
 .d-survey__choices {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--dp-space-component);
 }
 
 .d-survey__choice {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border: 1.5px solid var(--survey-border);
   border-radius: 10px;
   background: var(--survey-surface-muted);
   font-size: var(--dp-font-size-md);
   color: var(--survey-text);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--dp-duration-fast);
   text-align: left;
   width: 100%;
 
@@ -854,7 +854,7 @@ async function handleSubmit() {
   font-weight: 600;
   color: var(--survey-text-secondary);
   flex-shrink: 0;
-  transition: all 0.15s;
+  transition: all var(--dp-duration-fast);
 }
 
 .d-survey__choice-text {
@@ -871,13 +871,13 @@ async function handleSubmit() {
 .d-survey__hint {
   font-size: var(--dp-font-size-xs);
   color: var(--survey-text-muted);
-  margin: 4px 0 0 4px;
+  margin: var(--dp-space-component-xs) 0 0 var(--dp-space-component-xs);
 }
 
 /* --- 开放文本 --- */
 .d-survey__textarea {
   width: 100%;
-  padding: 14px 16px;
+  padding: var(--dp-space-block) var(--dp-space-block);
   border: 1.5px solid var(--survey-border);
   border-radius: 10px;
   font-size: var(--dp-font-size-md);
@@ -904,13 +904,13 @@ async function handleSubmit() {
   text-align: right;
   font-size: var(--dp-font-size-xs);
   color: var(--survey-text-placeholder);
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
 }
 
 /* --- 提交 --- */
 .d-survey__submit {
   text-align: center;
-  padding: var(--dp-space-4, 16px) 0 var(--dp-space-5, 20px);
+  padding: var(--dp-space-block) 0 var(--dp-space-block);
 }
 
 .d-survey__btn--submit {
@@ -919,7 +919,7 @@ async function handleSubmit() {
   justify-content: center;
   min-width: 200px;
   height: 48px;
-  padding: 0 40px;
+  padding: 0 var(--dp-space-section-loose);
   border: none;
   border-radius: 24px;
   font-size: var(--dp-font-size-lg);
@@ -928,11 +928,11 @@ async function handleSubmit() {
   background: var(--survey-primary);
   box-shadow: var(--dp-shadow-md);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--dp-duration-normal);
 
   &:hover {
     box-shadow: var(--dp-shadow-md);
-    transform: translateY(-1px);
+    transform: var(--dp-lift-sm);
   }
 
   &:active {

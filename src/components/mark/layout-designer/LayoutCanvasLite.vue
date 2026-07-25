@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
-import LayoutCanvas from '@/components/mark/layout-designer/LayoutCanvas.vue'
+import { defineAsyncComponent } from 'vue'
+
+const LayoutCanvas = defineAsyncComponent(() => import('@/components/mark/layout-designer/LayoutCanvas.vue'))
 
 /**
  * 轻量画布包装（复核微调等）。

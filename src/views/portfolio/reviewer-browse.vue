@@ -249,7 +249,7 @@ onMounted(async () => {
       <ContextBar layout="workbench" show-title title="评审工作台 · 档案浏览" />
     </template>
 
-    <UiAlertStrip tone="info" :message="scopeHint" style="margin-bottom: 12px" />
+    <UiAlertStrip tone="info" :message="scopeHint" style="margin-bottom: var(--dp-space-component)" />
     <p class="reviewer-browse__note">
       本页仅支持按权限只读查看教师教学档案袋内容，审核通过/退回请使用「院系审核台」。
     </p>
@@ -266,7 +266,7 @@ onMounted(async () => {
         :load-error="loadError"
         pagination-mode="server"
         :total="total"
-        style="margin-top: 12px"
+        style="margin-top: var(--dp-space-component)"
         @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
@@ -297,7 +297,7 @@ onMounted(async () => {
 
 <style scoped>
 .reviewer-browse__note {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-sm);
 }

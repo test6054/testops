@@ -317,21 +317,21 @@ function navigateTab(tabKey: string) {
 
 <style scoped lang="scss">
 .dept-review-panel {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .dept-review-panel__body {
-  padding: 12px 16px 16px;
+  padding: var(--dp-space-component) var(--dp-space-block);
 }
 
 .dept-review-panel__summary {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .dept-review-panel__reject {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-color-error);
+  color: var(--dp-error);
 }
 
 .dept-review-panel__input {

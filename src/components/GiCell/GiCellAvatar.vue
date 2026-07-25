@@ -224,7 +224,7 @@ const hasImageAvatar = computed(() => isAvatarUrl(imageAvatarSrc.value))
  * 确保全站视觉统一
  */
 const avatarColor = computed(() => {
-  return 'color-mix(in srgb, var(--dp-color-primary) 16%, var(--dp-bg-container))'
+  return 'color-mix(in srgb, var(--dp-color-primary) 16%, var(--dp-surface))'
 })
 
 /**
@@ -281,7 +281,7 @@ watch(
 .gi-cell-avatar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--dp-space-component);
 
   &__content {
     display: flex;
@@ -293,7 +293,7 @@ watch(
   &__name {
     font-size: var(--dp-font-size-md);
     font-weight: 500;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
     line-height: 1.5;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -302,7 +302,7 @@ watch(
 
   &__sub {
     font-size: var(--dp-font-size-xs);
-    color: var(--dp-text-tertiary);
+    color: var(--dp-text-muted);
     line-height: 1.4;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -347,11 +347,11 @@ watch(
       display: flex;
       align-items: center;
       justify-content: center;
-      background: color-mix(in srgb, var(--dp-text) 40%, transparent);
+      background: color-mix(in srgb, var(--dp-text-primary) 40%, transparent);
       border-radius: var(--dp-radius-full);
       opacity: 0;
-      transition: opacity 0.2s;
-      color: var(--dp-bg-container);
+      transition: opacity var(--dp-duration-normal);
+      color: var(--dp-surface);
       font-size: var(--dp-font-size-lg);
     }
 

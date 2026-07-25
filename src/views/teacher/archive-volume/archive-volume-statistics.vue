@@ -132,7 +132,7 @@
 
         <UiAlertStrip v-else tone="info" size="sm" dense inline :show-icon="false">
           <template #default>
-            <span style="display: inline-flex; align-items: center; gap: 8px">
+            <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
               <UiTag tone="blue" size="sm">未筛选</UiTag>
               <span>请选择筛选条件后查询统计结果</span>
             </span>
@@ -237,6 +237,7 @@ import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   applyAcademicYearStartYearChange,
+  applyTripleSemesterChange,
   buildAcademicYearSemesterTripleFilterFields,
   buildTriplePeriodQuery,
   createAcademicYearSemesterTripleDefaults,
@@ -485,7 +486,7 @@ function completionRateView(rate: number): { pct: number, color: string } {
     = pct >= 90
       ? 'var(--dp-success)'
       : pct >= 70
-        ? 'var(--dp-primary)'
+        ? 'var(--dp-color-primary)'
         : pct >= 50
           ? 'var(--dp-warning)'
           : 'var(--dp-error)'
@@ -753,6 +754,15 @@ watch(
   },
 )
 
+watch(
+  () => filterForm.semester,
+  (semester) => {
+    if (semester == null && filterForm.academicYearStartYear != null) {
+      applyTripleSemesterChange(filterForm, undefined)
+    }
+  },
+)
+
 async function initPage() {
   await loadGrants()
   if (grantsLoadFailed.value) {
@@ -786,26 +796,26 @@ onMounted(() => {
 <style lang="scss" scoped>
 @use '@/styles/breakpoints' as bp;
 .archive-volume-statistics__tabs {
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .archive-volume-statistics__export {
   display: flex;
   justify-content: flex-end;
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .archive-volume-statistics__rate {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-statistics__rate-track {
   flex: 1;
   height: 6px;
   border-radius: var(--dp-radius-full);
-  background: var(--dp-surface-sunken);
+  background: var(--dp-bg-muted);
   overflow: hidden;
 }
 
@@ -822,14 +832,14 @@ onMounted(() => {
 }
 
 .archive-volume-statistics__error {
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .archive-volume-statistics__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-4);
-  margin-top: var(--dp-space-4);
+  gap: var(--dp-space-block);
+  margin-top: var(--dp-space-block);
 }
 
 @media (max-width: bp.$shell-tablet-max) {

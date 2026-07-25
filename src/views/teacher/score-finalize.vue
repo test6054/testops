@@ -82,116 +82,21 @@
         inline
         class="score-finalize__alert"
       />
-      <UiAlertStrip
-        v-if="delayedAutoConfirmNotice"
-        tone="info"
-        title="延迟自动确认进行中"
-        :description="delayedAutoConfirmNotice"
-        dense
-        inline
-        class="score-finalize__alert"
+
+      <ScoreConfirmReadinessPanel
+        :overview="effectiveRiskOverview"
+        :score-panel="scorePanel"
+        :action-loading-code="readinessActionLoading"
+        :exam-title="examDetail?.examName || ''"
+        :candidate-count="effectiveRiskOverview?.totalCandidateCount ?? 0"
+        :can-bulk-publish="canBulkPublish"
+        :can-batch-confirm-safe="canBatchConfirmSafe"
+        :batch-confirming="batchConfirming"
+        :bulk-publishing="bulkRunning"
+        @action="handleReadinessAction"
+        @bulk-publish="openBulkPublishModal"
+        @safe-confirm="handleBatchConfirmSafe"
       />
-
-      <UiAlertStrip
-        v-if="isPublishGateVisible('delayedAutoConfirm')"
-        tone="error"
-        title="延迟自动确认已失败"
-        :description="blockedDelayedAutoConfirmNotice ?? undefined"
-        dense
-        inline
-        class="score-finalize__alert"
-      >
-        <template #actions>
-          <UiButton variant="primary" size="sm" @click="goDelayedConfirmTasks">
-            查看失败任务
-          </UiButton>
-        </template>
-      </UiAlertStrip>
-
-      <UiAlertStrip
-        v-if="isPublishGateVisible('pendingAbsence')"
-        tone="warning"
-        title="仍有缺考记录待确认"
-        :description="`当前还有 ${pendingAbsenceCountForDisplay} 条待确认缺考，发布前须完成核对。`"
-        dense
-        inline
-        class="score-finalize__alert"
-      >
-        <template #actions>
-          <UiButton variant="outline" size="sm" @click="goAbsenceConfirm"> 前往缺考确认 </UiButton>
-        </template>
-      </UiAlertStrip>
-
-      <UiAlertStrip
-        v-if="isPublishGateVisible('scoreZero')"
-        tone="warning"
-        title="缺考计零终分待补齐"
-        :description="`本场有 ${missingAbsenceScoreZeroFinalCount} 名已确认计零的缺考生尚未写入正式零分终分，全场发布前须先补齐；补齐后列表会标记「缺考计零」，无扫描影像。`"
-        dense
-        inline
-        class="score-finalize__alert"
-      >
-        <template #actions>
-          <UiButton
-            v-if="canRepairAbsenceScoreZeroFinal"
-            variant="primary"
-            size="sm"
-            :loading="repairingScoreZero"
-            @click="handleRepairScoreZero"
-          >
-            一键补齐计零终分
-          </UiButton>
-          <UiButton variant="ghost" size="sm" @click="goAbsenceConfirm"> 前往缺考确认 </UiButton>
-        </template>
-      </UiAlertStrip>
-
-      <UiAlertStrip
-        v-if="isPublishGateVisible('risk')"
-        tone="warning"
-        title="仍有成绩风险未复核"
-        :description="`当前有 ${effectiveRiskOverview?.blockedCount ?? 0} 项成绩风险未处置，须先完成集中复核后再全场发布。`"
-        dense
-        inline
-        class="score-finalize__alert"
-      >
-        <template #actions>
-          <UiButton variant="outline" size="sm" @click="openRiskReviewDrawer">
-            集中复核异常成绩
-          </UiButton>
-        </template>
-      </UiAlertStrip>
-
-      <UiAlertStrip
-        v-if="isPublishGateVisible('corrected')"
-        tone="warning"
-        title="存在已更正未重发布成绩"
-        :description="correctedRepublishNotice"
-        dense
-        inline
-        class="score-finalize__alert"
-      >
-        <template #actions>
-          <UiButton variant="outline" size="sm" @click="filterCorrectedOnly"> 仅看已更正 </UiButton>
-        </template>
-      </UiAlertStrip>
-
-      <div v-if="publishSecondaryGateKeys.length > 0" class="score-finalize__more-gates">
-        <button
-          type="button"
-          class="score-finalize__more-gates-toggle"
-          @click="publishSecondaryGatesExpanded = !publishSecondaryGatesExpanded"
-        >
-          {{
-            publishSecondaryGatesExpanded
-              ? '收起其余发布条件'
-              : `还有 ${publishSecondaryGateKeys.length} 项发布条件`
-          }}
-        </button>
-        <span v-if="!publishSecondaryGatesExpanded" class="score-finalize__more-gates-summary">
-          {{ publishSecondaryGateSummary }}
-        </span>
-      </div>
-
       <ExamArchiveGateBanner
         ref="gateBannerRef"
         :exam-id="selectedExamId"
@@ -249,6 +154,39 @@
             </div>
           </div>
 
+          <UiAlertStrip
+            v-if="candidatesLoadFailed"
+            tone="error"
+            dense
+            title="成绩确认名单加载失败"
+            class="score-finalize__alert"
+          />
+          <UiAlertStrip
+            v-if="riskOverviewLoadFailed"
+            tone="error"
+            dense
+            title="成绩风险概览刷新失败"
+            class="score-finalize__alert"
+          />
+
+          <UiAlertStrip
+            v-if="continueConfirmHint"
+            tone="info"
+            dense
+            title="继续核对下一份"
+            :description="continueConfirmHint.description"
+            class="score-finalize__alert"
+          >
+            <template #actions>
+              <UiButton variant="primary" size="sm" @click="handleContinueConfirmHint">
+                确认下一份
+              </UiButton>
+              <UiButton variant="ghost" size="sm" @click="closeContinueConfirmHint">
+                稍后
+              </UiButton>
+            </template>
+          </UiAlertStrip>
+
           <UiDataTable
             v-model:current="pagination.current"
             v-model:page-size="pagination.pageSize"
@@ -257,6 +195,7 @@
             :data-source="candidates"
             :loading="loading"
             :total="pagination.total"
+            :empty-description="candidatesLoadFailed ? '成绩确认名单加载失败' : undefined"
             row-key="candidateRosterId"
             size="middle"
             flat
@@ -382,7 +321,7 @@
           dense
           inline
           class="score-finalize__detail-absence-alert"
-          style="margin-bottom: 12px"
+          style="margin-bottom: var(--dp-space-component)"
         />
         <UiDescriptions :column="2" size="small" bordered class="score-finalize__detail-summary">
           <UiDescriptionsItem label="答卷">
@@ -428,7 +367,7 @@
           dense
           inline
           class="score-finalize__detail-correction-alert"
-          style="margin: 12px 0"
+          style="margin: var(--dp-space-component) 0"
         />
 
         <h4 class="score-finalize__detail-section-title">题目得分明细</h4>
@@ -679,43 +618,34 @@
       </UiForm>
     </UiDrawer>
 
-    <!-- D-3 下一步动作：确认成功后引导继续核对或打开全场发布 -->
+    <!-- 仅全场具备发布条件时升级为抽屉；单卷确认后用列表上方就地提示承接下一份 -->
     <UiDrawer
-      :open="nextStep.visible"
-      :title="nextStep.title"
+      :open="publishReadyStep.visible"
+      :title="publishReadyStep.title"
       :width="480"
       :mask-closable="false"
       hide-footer
       @update:open="
         (v: boolean) => {
-          if (!v) closeNextStep()
+          if (!v) closePublishReadyStep()
         }
       "
-      @close="closeNextStep"
+      @close="closePublishReadyStep"
     >
       <div class="score-finalize__next-step">
         <UiTypographyParagraph class="score-finalize__next-step-desc">
-          {{ nextStep.description }}
+          {{ publishReadyStep.description }}
         </UiTypographyParagraph>
         <div class="score-finalize__next-step-actions">
           <UiButton
-            v-if="nextStep.kind === 'all-confirmed'"
             variant="primary"
             size="md"
             :disabled="!canBulkPublish"
-            @click="handleNextStepGoPublish"
+            @click="handlePublishReadyGoPublish"
           >
             全场发布
           </UiButton>
-          <UiButton
-            v-else-if="nextStep.kind === 'continue-next' && nextStep.nextCandidate"
-            variant="outline"
-            size="md"
-            @click="handleNextStepConfirmContinue"
-          >
-            继续确认下一份
-          </UiButton>
-          <UiButton variant="outline" size="md" @click="closeNextStep"> 稍后处理 </UiButton>
+          <UiButton variant="outline" size="md" @click="closePublishReadyStep"> 稍后处理 </UiButton>
         </div>
       </div>
     </UiDrawer>
@@ -757,20 +687,39 @@
           全场已发布 {{ bulkResult.alreadyPublishedCount }} / {{ bulkResult.totalCandidateCount }}
         </div>
       </div>
-      <UiList v-if="bulkResult?.failures.length" size="small" class="score-finalize__bulk-list">
-        <UiListItem v-for="(item, index) in bulkResult.failures" :key="item.paperInstanceId">
-          <UiListItemMeta>
-            <template #title> 试卷实例 {{ item.paperInstanceId }} </template>
-            <template #description>
-              <UiTag tone="red" size="sm" class="score-finalize__bulk-error-tag">
-                {{ item.code }}
-              </UiTag>
-              {{ item.message }}
-            </template>
-          </UiListItemMeta>
-          <UiTag tone="red" size="sm">失败 {{ index + 1 }}</UiTag>
-        </UiListItem>
-      </UiList>
+      <div
+        v-if="bulkResult?.failureGroups?.length"
+        class="score-finalize__bulk-fail-groups"
+        role="list"
+        aria-label="发布失败分组"
+      >
+        <p class="score-finalize__bulk-fail-intro">
+          按原因汇总 {{ bulkResult.failureGroups.length }} 类失败（禁止逐卷罗列）：
+        </p>
+        <div
+          v-for="(group, index) in bulkResult.failureGroups"
+          :key="`${group.code}-${group.message}-${index}`"
+          class="score-finalize__bulk-fail-group"
+          role="listitem"
+        >
+          <div class="score-finalize__bulk-fail-main">
+            <span class="score-finalize__bulk-fail-title">
+              {{ index + 1 }}. {{ group.message || '发布失败' }}
+            </span>
+            <span class="score-finalize__bulk-group-count">{{ group.count }} 份</span>
+          </div>
+          <div class="score-finalize__bulk-fail-meta">
+            <UiTag tone="red" size="sm">{{ group.code }}</UiTag>
+            <span v-if="group.sampleLabels?.length" class="score-finalize__bulk-fail-hint">
+              样例：{{ group.sampleLabels.join('、') }}
+              <template v-if="group.count > group.sampleLabels.length"> 等</template>
+            </span>
+            <span v-else class="score-finalize__bulk-fail-hint">
+              请在列表中按状态筛选后逐份处理
+            </span>
+          </div>
+        </div>
+      </div>
       <template #footer>
         <UiButton variant="outline" size="md" :disabled="bulkRunning" @click="bulkOpen = false">
           取消
@@ -801,6 +750,8 @@ import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
 import type {
   ExamScoreSummaryItemResponse,
   FinalScoreBatchPublishResponse,
+  FinalScoreReadinessActionCode,
+  FinalScoreReadinessItemResponse,
   FinalScoreRiskOverviewResponse,
 } from '@/apis/mark/exam-score'
 import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
@@ -815,7 +766,7 @@ import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { repairScoreZeroFinalScores } from '@/apis/mark/absence'
 import {
@@ -852,7 +803,6 @@ import {
   ScoreBiasLevelDescription,
 } from '@/apis/mark/score-bias'
 import ExamArchiveGateBanner from '@/components/archive-volume/ExamArchiveGateBanner.vue'
-import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -870,14 +820,12 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
-import UiList from '@/components/ui-guide/ui/UiList.vue'
-import UiListItem from '@/components/ui-guide/ui/UiListItem.vue'
-import UiListItemMeta from '@/components/ui-guide/ui/UiListItemMeta.vue'
 import UiProgressBar from '@/components/ui-guide/ui/UiProgressBar.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
+import ScoreConfirmReadinessPanel from '@/components/workbench/ScoreConfirmReadinessPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
@@ -901,6 +849,7 @@ import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
 import { formatTrendAriaLabel, MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
 import { buildTrendChartInsight } from '@/utils/mark-chart-insights'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
+import { formatFinalScoreFailureGroups } from '@/utils/score-confirm-readiness'
 import { isExamScoresFullyPublished } from '@/utils/score-release-readiness'
 import {
   buildScoreBulkPublishModalStatItems,
@@ -911,6 +860,11 @@ import { buildScoreFinalizeSignalMetrics } from '@/utils/score-workbench-signal'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScoreFinalize' })
+
+/** 历次成绩趋势仅明细抽屉需要，延迟加载避免成绩页首包带入 ECharts */
+const MarkTrendSection = defineAsyncComponent(
+  () => import('@/components/chart/MarkTrendSection.vue'),
+)
 
 function finalScoreStatusTone(value: FinalScoreStatusCode) {
   return strictEnumTone(FINAL_SCORE_STATUS_TONE, value, '最终成绩状态')
@@ -1017,15 +971,26 @@ const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const examDetail = ref<ExamDetailResponse | null>(null)
+/** 成绩页考试代际：详情/风险/面板/名单/抽屉共享，切考试时失效旧响应 */
+let scorePageGeneration = 0
 
 async function loadExamDetail(): Promise<void> {
-  if (!selectedExamId.value) {
+  const examId = selectedExamId.value
+  if (!examId) {
     examDetail.value = null
     return
   }
+  const loadGeneration = scorePageGeneration
   try {
-    examDetail.value = await getExamDetail(selectedExamId.value)
+    const detail = await getExamDetail(examId)
+    if (loadGeneration !== scorePageGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    examDetail.value = detail
   } catch (error) {
+    if (loadGeneration !== scorePageGeneration || selectedExamId.value !== examId) {
+      return
+    }
     examDetail.value = null
     showUserError(error, '考试详情加载失败')
   }
@@ -1034,17 +999,22 @@ async function loadExamDetail(): Promise<void> {
 // ─── 考生名单（服务端分页） ─────────────────────────────
 const candidates = ref<ExamScoreSummaryItemResponse[]>([])
 const loading = ref(false)
+const candidatesLoadFailed = ref(false)
 let candidatesRequestSequence = 0
 const riskOverview = ref<FinalScoreRiskOverviewResponse | null>(null)
-/** MVR-278：确认/发布写动作；与 BE requireExamReviewerPermission 对齐 */
-const canManageReviewerWrites = computed(() => riskOverview.value?.canManageReviewerWrites === true)
+const riskOverviewLoadFailed = ref(false)
+/** MVR-278：确认/发布写动作；与 BE requireExamReviewerPermission 对齐；风险概览失败 fail-closed */
+const canManageReviewerWrites = computed(
+  () => !riskOverviewLoadFailed.value && riskOverview.value?.canManageReviewerWrites === true,
+)
 
 /**
  * MVR-368：补齐缺考计零终分不叠 ACTIVE；仅认 riskOverview.canRepairAbsenceScoreZeroFinal===true。
  * 与 BE repairScoreZeroFinalScores / Absence 页 stats.canManageReviewerWrites 同源。
  */
 const canRepairAbsenceScoreZeroFinal = computed(
-  () => riskOverview.value?.canRepairAbsenceScoreZeroFinal === true,
+  () =>
+    !riskOverviewLoadFailed.value && riskOverview.value?.canRepairAbsenceScoreZeroFinal === true,
 )
 const scorePanel = ref<ExamWorkbenchScorePanelResponse | null>(null)
 const riskOverviewLoading = ref(false)
@@ -1089,20 +1059,12 @@ const {
   scorePanel,
 })
 
-const pendingAbsenceCountForDisplay = computed(() => pendingAbsenceCount.value ?? 0)
+const pendingAbsenceCountForDisplay = computed(() => effectiveRiskOverview.value?.pendingAbsenceCount ?? pendingAbsenceCount.value ?? 0)
 const hasPendingAbsence = computed(() => pendingAbsenceCountForDisplay.value > 0)
 
 const scoresFullyPublished = computed(() =>
   isExamScoresFullyPublished(effectiveRiskOverview.value, examArchiveGate.value),
 )
-
-const correctedRepublishNotice = computed(() => {
-  const count = riskOverview.value?.correctedCount ?? 0
-  if (count <= 0) {
-    return undefined
-  }
-  return `有 ${count} 名考生成绩处于「已更正」状态，学生端不可见。请筛选后逐份重新发布。`
-})
 
 /** 全场可发布人数：已确认 + 已撤回 + 已更正（与 BE 全场发布筛选口径对齐） */
 const publishableOverviewCount = computed(() => {
@@ -1146,12 +1108,14 @@ const hasDailyScoreConfig = computed(() => examDetail.value?.dailyScoreFull != n
 const dailyScoreFull = computed(() => examDetail.value?.dailyScoreFull ?? null)
 
 async function loadCandidates(): Promise<void> {
-  if (!selectedExamId.value) return
+  const examId = selectedExamId.value
+  if (!examId) return
   const requestSequence = ++candidatesRequestSequence
+  const loadGeneration = scorePageGeneration
   loading.value = true
   try {
     const result = await pageExamScoreSummary({
-      examId: selectedExamId.value,
+      examId,
       keyword: scoreFilterForm.keyword.trim() || undefined,
       finalScoreStatus:
         statusTabKey.value === SCORE_STATUS_TAB_ALL ? undefined : statusTabKey.value,
@@ -1160,11 +1124,16 @@ async function loadCandidates(): Promise<void> {
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? DEFAULT_LIST_PAGE_SIZE,
     })
-    if (requestSequence !== candidatesRequestSequence) {
+    if (
+      requestSequence !== candidatesRequestSequence
+      || loadGeneration !== scorePageGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
     candidates.value = result.list
     pagination.total = result.total
+    candidatesLoadFailed.value = false
     if (result.pageNum != null) {
       pagination.current = result.pageNum
     }
@@ -1172,27 +1141,44 @@ async function loadCandidates(): Promise<void> {
       pagination.pageSize = result.pageSize
     }
   } catch (error) {
-    if (requestSequence !== candidatesRequestSequence) {
+    if (
+      requestSequence !== candidatesRequestSequence
+      || loadGeneration !== scorePageGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
+    candidatesLoadFailed.value = true
     showUserError(error, '成绩确认名单加载失败')
   } finally {
-    if (requestSequence === candidatesRequestSequence) {
+    if (
+      requestSequence === candidatesRequestSequence
+      && loadGeneration === scorePageGeneration
+    ) {
       loading.value = false
     }
   }
 }
 
 async function loadRiskOverview(): Promise<void> {
-  if (!selectedExamId.value) {
+  const examId = selectedExamId.value
+  if (!examId) {
     riskOverview.value = null
+    riskOverviewLoadFailed.value = false
     panelLoadError.value = ''
     return
   }
+  const loadGeneration = scorePageGeneration
+  const hadOverviewForExam = riskOverview.value != null
   riskOverviewLoading.value = true
-  panelLoadError.value = ''
   try {
-    riskOverview.value = await getFinalScoreRiskOverview({ examId: selectedExamId.value })
+    const overview = await getFinalScoreRiskOverview({ examId })
+    if (loadGeneration !== scorePageGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    riskOverview.value = overview
+    riskOverviewLoadFailed.value = false
+    panelLoadError.value = ''
     const validReasonCodes = new Set(blockingRiskReasons.value.map((reason) => reason.reasonCode))
     reviewedRiskReasonCodes.value = new Set(
       (riskOverview.value.reviewedReasonCodes ?? []).filter((reasonCode) =>
@@ -1200,22 +1186,39 @@ async function loadRiskOverview(): Promise<void> {
       ),
     )
   } catch (error) {
-    riskOverview.value = null
-    scorePanel.value = null
+    if (loadGeneration !== scorePageGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    riskOverviewLoadFailed.value = true
     panelLoadError.value = getUserErrorMessage(error, '成绩风险概览加载失败')
+    // 首次失败清空；刷新失败保留 stale 指标，写能力由 riskOverviewLoadFailed fail-closed
+    if (!hadOverviewForExam) {
+      riskOverview.value = null
+    }
   } finally {
-    riskOverviewLoading.value = false
+    if (loadGeneration === scorePageGeneration) {
+      riskOverviewLoading.value = false
+    }
   }
 }
 
 async function loadScorePanel(): Promise<void> {
-  if (!selectedExamId.value) {
+  const examId = selectedExamId.value
+  if (!examId) {
     scorePanel.value = null
     return
   }
+  const loadGeneration = scorePageGeneration
   try {
-    scorePanel.value = await getScorePanel(selectedExamId.value)
+    const panel = await getScorePanel(examId)
+    if (loadGeneration !== scorePageGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    scorePanel.value = panel
   } catch (error) {
+    if (loadGeneration !== scorePageGeneration || selectedExamId.value !== examId) {
+      return
+    }
     scorePanel.value = null
     showUserError(error, '成绩面板加载失败')
   }
@@ -1226,14 +1229,33 @@ async function refreshScoreFinalizeData(): Promise<void> {
   await Promise.all([loadCandidates(), loadRiskOverview(), refreshPendingAbsenceCount()])
 }
 
+/**
+ * 成绩写入成功后的页面同步：各分段独立 settled，不得把刷新失败冒充为写入失败。
+ */
 async function refreshAfterScoreWrite(): Promise<void> {
-  await refreshScoreFinalizeData()
-  await refreshArchiveGate()
+  const failedSurfaces: string[] = []
+  try {
+    await refreshScoreFinalizeData()
+  } catch (error) {
+    failedSurfaces.push('成绩列表/风险面板')
+    showUserError(error, '成绩列表或风险面板刷新失败')
+  }
+  try {
+    await refreshArchiveGate()
+  } catch (error) {
+    failedSurfaces.push('归档门禁')
+    showUserError(error, '归档门禁刷新失败')
+  }
   try {
     await refreshSnapshot()
   } catch (error) {
-    // 非工作台上下文也可能失败；不得静默
+    failedSurfaces.push('工作台快照')
     showUserError(error, '成绩工作台快照刷新失败')
+  }
+  if (failedSurfaces.length > 0) {
+    void message.warning(
+      `成绩已写入成功，但${failedSurfaces.join('、')}刷新失败，请手动刷新后核对，勿重复提交`,
+    )
   }
 }
 
@@ -1348,6 +1370,52 @@ const hasUnreviewedBlockingRisks = computed(() => {
 
 function openRiskReviewDrawer(): void {
   riskReviewDrawerOpen.value = true
+}
+
+const readinessActionLoading = ref<FinalScoreReadinessActionCode | null>(null)
+
+/**
+ * 就绪度面板动作：每组只走一个明确 CTA，禁止再弹批量错误列表。
+ */
+async function handleReadinessAction(item: FinalScoreReadinessItemResponse): Promise<void> {
+  if (readinessActionLoading.value) return
+  readinessActionLoading.value = item.actionCode
+  try {
+    if (item.code === 'DELAYED_AUTO_CONFIRM_BLOCKED') {
+      goDelayedConfirmTasks()
+      return
+    }
+    switch (item.actionCode) {
+      case 'GO_DELAYED_TASKS':
+        goDelayedConfirmTasks()
+        break
+      case 'GO_ABSENCE':
+        goAbsenceConfirm()
+        break
+      case 'REPAIR_SCORE_ZERO':
+        await handleRepairScoreZero()
+        break
+      case 'GO_QUESTION_REVIEW':
+        goQuestionReviewBatch()
+        break
+      case 'GO_SCAN_BATCHES':
+        goScanBindingAttention()
+        break
+      case 'OPEN_RISK_REVIEW':
+        openRiskReviewDrawer()
+        break
+      case 'BATCH_CONFIRM':
+        await handleBatchConfirmSafe()
+        break
+      case 'FILTER_CORRECTED':
+        filterCorrectedOnly()
+        break
+      default:
+        break
+    }
+  } finally {
+    readinessActionLoading.value = null
+  }
 }
 
 function isRiskReasonReviewed(reasonCode: FinalScoreRiskReasonCode): boolean {
@@ -1511,21 +1579,13 @@ async function handleRepairScoreZero(): Promise<void> {
         ? `已补齐 ${result.repairedCount} 条计零终分`
         : '本场无待补齐的计零缺考',
     )
-    await Promise.all([
-      loadCandidates(),
-      loadRiskOverview(),
-      refreshPendingAbsenceCount(),
-      refreshArchiveGate(),
-      refreshSnapshot().catch((error) => {
-        // 附属快照失败不阻断主流程，但不得静默；右上角 Message 告知教师
-        showUserError(error, '成绩快照刷新失败')
-      }),
-    ])
   } catch (error) {
     showUserError(error, '补齐计零终分失败')
+    return
   } finally {
     repairingScoreZero.value = false
   }
+  await refreshAfterScoreWrite()
 }
 
 /**
@@ -1541,6 +1601,7 @@ const canBatchConfirmSafe = computed(() => {
     && overview.safeConfirmableCount > 0
     && !hasHardBlockingRisks.value
     && !hasFieldWideSafeBatchBlockers.value
+    && !hasFieldWideHardBlockForWrite.value
     && !hasDailyScoreConfig.value
     && !batchConfirming.value,
   )
@@ -1591,14 +1652,20 @@ async function handleBatchConfirmSafe(): Promise<void> {
       void message.info('当前没有可批量确认的成绩')
     }
     if (result.failureCount > 0) {
-      void message.warning(`有 ${result.failureCount} 份成绩确认失败，请查看列表后逐份处理`)
+      const groupText = formatFinalScoreFailureGroups(result.failureGroups)
+      void message.warning(
+        groupText
+          ? `有 ${result.failureCount} 份成绩确认失败：${groupText}`
+          : `有 ${result.failureCount} 份成绩确认失败，请查看列表后逐份处理`,
+      )
     }
-    await refreshAfterScoreWrite()
   } catch (error) {
     showUserError(error, '批量确认无风险成绩失败')
+    return
   } finally {
     batchConfirming.value = false
   }
+  await refreshAfterScoreWrite()
 }
 
 const statMetrics = computed((): SignalMetric[] =>
@@ -1610,17 +1677,6 @@ const statMetrics = computed((): SignalMetric[] =>
   ),
 )
 
-const delayedAutoConfirmNotice = computed(() => {
-  const panel = scorePanel.value
-  if (!panel || panel.manualFinalScoreConfirmRequired || hasDailyScoreConfig.value) {
-    return null
-  }
-  const pending = panel.pendingDelayedFinalScoreConfirmCount
-  if (pending <= 0) {
-    return null
-  }
-  return `当前有 ${pending} 份答卷处于 ${panel.delayedFinalScoreConfirmMinutes} 分钟延迟自动确认窗口内，到期后将自动汇总确认最终成绩。`
-})
 
 /** 配置了日常分的考试：Worker 无法代填日常分，须逐人录日常分后手工确认。 */
 const dailyScoreManualConfirmNotice = computed(() => {
@@ -1630,57 +1686,7 @@ const dailyScoreManualConfirmNotice = computed(() => {
   return '本场考试配置了日常分，系统不会延迟自动确认最终成绩。请在题目分全部教师确认后，逐人录入日常分并手工确认总成绩。'
 })
 
-const blockedDelayedAutoConfirmNotice = computed(() => {
-  const panel = scorePanel.value
-  if (!panel || panel.manualFinalScoreConfirmRequired) {
-    return null
-  }
-  const blocked = panel.blockedDelayedFinalScoreConfirmCount
-  if (blocked <= 0) {
-    return null
-  }
-  return `有 ${blocked} 份答卷延迟自动确认连续失败，成绩仍停留在可确认态。请在本页逐份确认最终成绩，或前往批改进度查看任务诊断。`
-})
-
 // ─── 全场发布与发布门禁 ─────────────────────────────
-const publishRiskBlocked = computed(() => {
-  const overview = effectiveRiskOverview.value
-  return Boolean(overview && !overview.readyToPublish)
-})
-
-/** 发布闸门：只置顶一条阻断，其余折叠，避免告警墙淹没「全场发布」。 */
-type PublishGateKey = 'delayedAutoConfirm' | 'pendingAbsence' | 'scoreZero' | 'risk' | 'corrected'
-
-const PUBLISH_GATE_LABEL: Record<PublishGateKey, string> = {
-  delayedAutoConfirm: '延迟自动确认失败',
-  pendingAbsence: '缺考待确认',
-  scoreZero: '计零终分待补齐',
-  risk: '成绩风险未复核',
-  corrected: '已更正未重发布',
-}
-
-const publishGatePriorityKeys = computed((): PublishGateKey[] => {
-  const keys: PublishGateKey[] = []
-  if (blockedDelayedAutoConfirmNotice.value) keys.push('delayedAutoConfirm')
-  if (hasPendingAbsence.value) keys.push('pendingAbsence')
-  if (missingAbsenceScoreZeroFinalCount.value > 0) keys.push('scoreZero')
-  if (publishRiskBlocked.value) keys.push('risk')
-  if (correctedRepublishNotice.value) keys.push('corrected')
-  return keys
-})
-
-const publishPrimaryGateKey = computed(() => publishGatePriorityKeys.value[0] ?? null)
-const publishSecondaryGateKeys = computed(() => publishGatePriorityKeys.value.slice(1))
-const publishSecondaryGatesExpanded = ref(false)
-const publishSecondaryGateSummary = computed(() =>
-  publishSecondaryGateKeys.value.map((key) => PUBLISH_GATE_LABEL[key]).join(' · '),
-)
-
-function isPublishGateVisible(key: PublishGateKey): boolean {
-  if (publishPrimaryGateKey.value === key) return true
-  return publishSecondaryGatesExpanded.value && publishSecondaryGateKeys.value.includes(key)
-}
-
 const bulkModalStatItems = computed(() => {
   const overview = effectiveRiskOverview.value
   if (!overview) {
@@ -1707,7 +1713,7 @@ const canBulkPublish = computed(
     && publishableOverviewCount.value > 0
     && riskOverview.value?.readyToPublish === true
     && (riskOverview.value?.blockedCount ?? 0) === 0
-    // MVR-207：readyToPublish 不含「待确认缺考记录」计数，须与 BE ensureNoPendingAbsenceRecords 对齐
+    // 场级硬拦二次闸：pendingAbsence / 阻塞事件 / 重复影像（readyToPublish 已含 pendingAbsence）
     && !hasFieldWideHardBlockForWrite.value,
 )
 
@@ -1761,6 +1767,7 @@ async function runBulkPublish(): Promise<void> {
   bulkRunning.value = true
   try {
     bulkResult.value = await batchPublishFinalScores({ examId: selectedExamId.value })
+    // 保留后端 afterOverview，后续刷新失败不得清掉本次发布结果
     riskOverview.value = bulkResult.value.afterOverview
     if (bulkResult.value.failureCount === 0 && bulkResult.value.remainingCount === 0) {
       void message.success('全场成绩已发布，学生通知已下发')
@@ -1771,15 +1778,16 @@ async function runBulkPublish(): Promise<void> {
       )
     } else {
       void message.warning(
-        `全场发布完成：成功 ${bulkResult.value.successCount} 条，失败 ${bulkResult.value.failureCount} 条，请查看明细`,
+        `全场发布完成：成功 ${bulkResult.value.successCount} 条，失败 ${bulkResult.value.failureCount} 条（${formatFinalScoreFailureGroups(bulkResult.value.failureGroups) || '按原因分组查看'}）`,
       )
     }
-    await refreshAfterScoreWrite()
   } catch (error) {
     showUserError(error, '全场成绩发布失败')
+    return
   } finally {
     bulkRunning.value = false
   }
+  await refreshAfterScoreWrite()
 }
 
 function goDelayedConfirmTasks(): void {
@@ -1801,23 +1809,6 @@ function goQuestionReviewBatch(): void {
     params: { examId },
   })
 }
-
-/** 当前页候选状态分桶，仅用于页内偏差提示与下一份核对引导。 */
-const candidateBuckets = computed<Record<FinalScoreStatusCode, number>>(() => {
-  const buckets: Record<FinalScoreStatusCode, number> = {
-    [FinalScoreStatusCode.PENDING]: 0,
-    [FinalScoreStatusCode.CALCULATED]: 0,
-    [FinalScoreStatusCode.CONFIRMED]: 0,
-    [FinalScoreStatusCode.PUBLISHED]: 0,
-    [FinalScoreStatusCode.CORRECTED]: 0,
-    [FinalScoreStatusCode.WITHDRAWN]: 0,
-  }
-  for (const c of candidates.value) {
-    const s = c.finalScoreStatus
-    buckets[s] += 1
-  }
-  return buckets
-})
 
 /**
  * D-3 当前页成绩偏差统计：
@@ -1963,6 +1954,7 @@ async function loadPaperAuditLogs(): Promise<void> {
   auditLoading.value = true
   const examId = selectedExamId.value
   const paperInstanceId = detailCandidate.value.paperInstanceId
+  const loadGeneration = scorePageGeneration
   try {
     const page = await listOperationLogs({
       examId,
@@ -1971,16 +1963,33 @@ async function loadPaperAuditLogs(): Promise<void> {
       pageNum: auditPagination.pageNum,
       pageSize: auditPagination.pageSize,
     })
+    if (
+      loadGeneration !== scorePageGeneration
+      || selectedExamId.value !== examId
+      || detailCandidate.value?.paperInstanceId !== paperInstanceId
+    ) {
+      return
+    }
     auditLogs.value = page.list
     auditPagination.pageNum = page.pageNum
     auditPagination.pageSize = page.pageSize
     auditPagination.total = page.total
   } catch (error) {
+    if (
+      loadGeneration !== scorePageGeneration
+      || selectedExamId.value !== examId
+      || detailCandidate.value?.paperInstanceId !== paperInstanceId
+    ) {
+      return
+    }
     void message.warning(getUserErrorMessage(error, '操作记录加载失败'))
-    auditLogs.value = []
-    auditPagination.total = 0
   } finally {
-    auditLoading.value = false
+    if (
+      loadGeneration === scorePageGeneration
+      && detailCandidate.value?.paperInstanceId === paperInstanceId
+    ) {
+      auditLoading.value = false
+    }
   }
 }
 
@@ -2042,6 +2051,10 @@ async function loadHistoricalScores(): Promise<void> {
     historicalScores.value = []
     return
   }
+  const frozenExamId = selectedExamId.value
+  const frozenPaperInstanceId = candidate.paperInstanceId
+  const frozenStudentNo = candidate.studentNo
+  const loadGeneration = scorePageGeneration
   historicalLoading.value = true
   try {
     const examsPage = await pageExams({
@@ -2049,12 +2062,19 @@ async function loadHistoricalScores(): Promise<void> {
       pageSize: HISTORICAL_EXAMS_MAX,
       courseId,
     })
+    if (
+      loadGeneration !== scorePageGeneration
+      || selectedExamId.value !== frozenExamId
+      || detailCandidate.value?.paperInstanceId !== frozenPaperInstanceId
+    ) {
+      return
+    }
     const courseExams = examsPage.list
     const settled = await Promise.all(
       courseExams.map(async (exam) => {
         const result = await pageExamScoreSummary({
           examId: exam.examId,
-          keyword: candidate.studentNo,
+          keyword: frozenStudentNo,
           pageNum: 1,
           pageSize: 1,
         })
@@ -2065,11 +2085,18 @@ async function loadHistoricalScores(): Promise<void> {
           examName: exam.examName,
           examEndTime: exam.examEndTime,
           finalScore: item.finalScore,
-          isCurrent: exam.examId === selectedExamId.value,
+          isCurrent: exam.examId === frozenExamId,
         }
         return point
       }),
     )
+    if (
+      loadGeneration !== scorePageGeneration
+      || selectedExamId.value !== frozenExamId
+      || detailCandidate.value?.paperInstanceId !== frozenPaperInstanceId
+    ) {
+      return
+    }
     historicalScores.value = settled
       .filter((p): p is HistoricalScorePoint => p !== null)
       .sort((a: HistoricalScorePoint, b: HistoricalScorePoint) => {
@@ -2078,10 +2105,21 @@ async function loadHistoricalScores(): Promise<void> {
         return ta - tb
       })
   } catch (error) {
+    if (
+      loadGeneration !== scorePageGeneration
+      || selectedExamId.value !== frozenExamId
+      || detailCandidate.value?.paperInstanceId !== frozenPaperInstanceId
+    ) {
+      return
+    }
     void message.warning(getUserErrorMessage(error, '历次成绩趋势加载失败'))
-    historicalScores.value = []
   } finally {
-    historicalLoading.value = false
+    if (
+      loadGeneration === scorePageGeneration
+      && detailCandidate.value?.paperInstanceId === frozenPaperInstanceId
+    ) {
+      historicalLoading.value = false
+    }
   }
 }
 
@@ -2144,7 +2182,11 @@ const historicalSummary = computed(() => {
 })
 
 async function openDetailDrawer(record: ExamScoreSummaryItemResponse): Promise<void> {
-  if (!selectedExamId.value || !record.paperInstanceId) return
+  const examId = selectedExamId.value
+  if (!examId || !record.paperInstanceId) return
+  const frozenExamId = examId
+  const frozenPaperInstanceId = record.paperInstanceId
+  const loadGeneration = scorePageGeneration
   detailCandidate.value = record
   detailOpen.value = true
   detailLoading.value = true
@@ -2154,14 +2196,34 @@ async function openDetailDrawer(record: ExamScoreSummaryItemResponse): Promise<v
   auditPagination.total = 0
   historicalScores.value = []
   try {
-    paperScore.value = await getPaperScore({
-      examId: selectedExamId.value,
-      paperInstanceId: record.paperInstanceId,
+    const score = await getPaperScore({
+      examId: frozenExamId,
+      paperInstanceId: frozenPaperInstanceId,
     })
+    if (
+      loadGeneration !== scorePageGeneration
+      || selectedExamId.value !== frozenExamId
+      || detailCandidate.value?.paperInstanceId !== frozenPaperInstanceId
+    ) {
+      return
+    }
+    paperScore.value = score
   } catch (error) {
+    if (
+      loadGeneration !== scorePageGeneration
+      || selectedExamId.value !== frozenExamId
+      || detailCandidate.value?.paperInstanceId !== frozenPaperInstanceId
+    ) {
+      return
+    }
     showUserError(error, '成绩明细加载失败')
   } finally {
-    detailLoading.value = false
+    if (
+      loadGeneration === scorePageGeneration
+      && detailCandidate.value?.paperInstanceId === frozenPaperInstanceId
+    ) {
+      detailLoading.value = false
+    }
   }
   // 操作记录、历次成绩趋势与成绩明细并行展示但顺序加载，避免单点失败阻断主明细
   void loadPaperAuditLogs()
@@ -2233,7 +2295,8 @@ function resolveConfirmExamScorePreview(score: ExamPaperScoreResponse): number |
 }
 
 async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<void> {
-  if (!selectedExamId.value || !record.paperInstanceId) return
+  const examId = selectedExamId.value
+  if (!examId || !record.paperInstanceId) return
   // MVR-419：与 canConfirm(record) / 行内 disabled 同源二次闸（写权∧状态∧场级硬拦）
   if (!canConfirm(record)) {
     if (record.finalScoreStatus === FinalScoreStatusCode.CORRECTED) {
@@ -2249,6 +2312,9 @@ async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<v
     )
     return
   }
+  const frozenExamId = examId
+  const frozenPaperInstanceId = record.paperInstanceId
+  const loadGeneration = scorePageGeneration
   confirmCandidate.value = record
   confirmOpen.value = true
   confirmComputedExamScore.value = null
@@ -2256,9 +2322,17 @@ async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<v
   confirmAndPublish.value = false
   try {
     const score = await getPaperScore({
-      examId: selectedExamId.value,
-      paperInstanceId: record.paperInstanceId,
+      examId: frozenExamId,
+      paperInstanceId: frozenPaperInstanceId,
     })
+    if (
+      loadGeneration !== scorePageGeneration
+      || selectedExamId.value !== frozenExamId
+      || confirmCandidate.value?.paperInstanceId !== frozenPaperInstanceId
+      || !confirmOpen.value
+    ) {
+      return
+    }
     // 总分更正后 WITHDRAWN：官方分可与题分之和不一致；重新确认会覆盖官方更正分，须引导重发布。
     if (
       record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN
@@ -2281,56 +2355,63 @@ async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<v
       confirmDailyScore.value = score.dailyScore ?? undefined
     }
   } catch (error) {
+    if (
+      loadGeneration !== scorePageGeneration
+      || selectedExamId.value !== frozenExamId
+      || confirmCandidate.value?.paperInstanceId !== frozenPaperInstanceId
+    ) {
+      return
+    }
     void message.warning(getUserErrorMessage(error, '试卷总分加载失败'))
   }
 }
 
-// ─── D-3 下一步动作 ─────────────────────────────
-type NextStepKind = 'all-confirmed' | 'continue-next' | 'none'
-
-interface NextStepState {
+// ─── D-3 下一步：全场发布升级抽屉 + 单卷就地继续提示 ─────────────────────────────
+interface PublishReadyStepState {
   visible: boolean
-  kind: NextStepKind
-  /** 主标题文案 */
   title: string
-  /** 描述详情 */
   description: string
-  /** 下一份待确认学生（kind === 'continue-next' 时有效） */
-  nextCandidate: ExamScoreSummaryItemResponse | null
 }
 
-const nextStep = ref<NextStepState>({
+interface ContinueConfirmHintState {
+  description: string
+  nextCandidate: ExamScoreSummaryItemResponse
+}
+
+const publishReadyStep = ref<PublishReadyStepState>({
   visible: false,
-  kind: 'none',
   title: '',
   description: '',
-  nextCandidate: null,
 })
 
-function closeNextStep(): void {
-  nextStep.value = { visible: false, kind: 'none', title: '', description: '', nextCandidate: null }
+const continueConfirmHint = ref<ContinueConfirmHintState | null>(null)
+
+function closePublishReadyStep(): void {
+  publishReadyStep.value = { visible: false, title: '', description: '' }
+}
+
+function closeContinueConfirmHint(): void {
+  continueConfirmHint.value = null
 }
 
 /**
- * 根据最新状态推导下一步：
- * - 全部已确认（CONFIRMED + PUBLISHED + WITHDRAWN + CORRECTED == total）→ 引导全场发布
- * - 否则在当前页找下一份未确认（PENDING / CALCULATED）的学生，提示继续核对
- * - 若当前页无待确认但全场仍有 PENDING/CALCULATED → 提示翻页
+ * 确认成功后的下一步：
+ * - 全场具备发布条件 → 唯一升级抽屉（全场发布）
+ * - 当前页仍有待确认 → 列表上方就地提示，不另开 Drawer
+ * - 当前页已处理完 → 仅 toast，引导筛选/翻页
  */
 function deriveNextStepSuggestion(): void {
+  closeContinueConfirmHint()
+  closePublishReadyStep()
   const overview = effectiveRiskOverview.value
-  const b = candidateBuckets.value
   if (overview?.readyToPublish) {
-    nextStep.value = {
+    publishReadyStep.value = {
       visible: true,
-      kind: 'all-confirmed',
       title: '全场成绩已具备发布条件',
       description: `共 ${overview.totalCandidateCount} 名考生：已确认 ${overview.confirmedCount} · 已发布 ${overview.publishedCount} · 已撤回 ${overview.withdrawnCount} · 已更正 ${overview.correctedCount}。可在本页执行「全场发布」推送到学生侧。`,
-      nextCandidate: null,
     }
     return
   }
-  // 当前页找下一份未确认
   const next
     = candidates.value.find(
       (c) =>
@@ -2338,37 +2419,25 @@ function deriveNextStepSuggestion(): void {
         || c.finalScoreStatus === FinalScoreStatusCode.PENDING,
     ) ?? null
   if (next) {
-    nextStep.value = {
-      visible: true,
-      kind: 'continue-next',
-      title: '继续核对下一份',
-      description: `当前页还有 ${b[FinalScoreStatusCode.CALCULATED] + b[FinalScoreStatusCode.PENDING]} 名考生待确认。下一份待确认：${next.paperDisplay.primaryText}。`,
+    continueConfirmHint.value = {
+      description: `下一份待确认：${next.paperDisplay.primaryText}。确认后继续就地处理，无需离开名单。`,
       nextCandidate: next,
     }
     return
   }
-  // 当前页已全部处理，但全场未完成 → 翻页提示
-  nextStep.value = {
-    visible: true,
-    kind: 'continue-next',
-    title: '当前页已全部核对',
-    description:
-      '当前页成绩已处理，全场仍有待确认或风险项，请切换筛选 / 翻页或处理风险概览中的问题。',
-    nextCandidate: null,
-  }
+  void message.info('当前页成绩已处理；全场仍有待确认或风险项时，请切换筛选或翻页。')
 }
 
-function handleNextStepConfirmContinue(): void {
-  const next = nextStep.value.nextCandidate
-  closeNextStep()
+function handleContinueConfirmHint(): void {
+  const next = continueConfirmHint.value?.nextCandidate
+  closeContinueConfirmHint()
   if (next) {
     void openConfirmModal(next)
   }
 }
 
-function handleNextStepGoPublish(): void {
-  closeNextStep()
-  // MVR-429：仅认 canBulkPublish，与 openBulkPublishModal 二次闸同源
+function handlePublishReadyGoPublish(): void {
+  closePublishReadyStep()
   if (canBulkPublish.value) {
     openBulkPublishModal()
     return
@@ -2406,6 +2475,7 @@ async function handleConfirm(): Promise<void> {
   }
   const examId = selectedExamId.value
   const paperInstanceId = confirmCandidate.value.paperInstanceId
+  const shouldPublish = confirmAndPublish.value
   confirming.value = true
   try {
     await confirmFinalScore({
@@ -2413,7 +2483,7 @@ async function handleConfirm(): Promise<void> {
       paperInstanceId,
       dailyScore: hasDailyScoreConfig.value ? (confirmDailyScore.value ?? undefined) : undefined,
     })
-    if (confirmAndPublish.value) {
+    if (shouldPublish) {
       if (warnUnreviewedBlockingRisks()) {
         void message.success('成绩已确认，发布前请先完成异常风险集中复核')
         confirmOpen.value = false
@@ -2429,19 +2499,29 @@ async function handleConfirm(): Promise<void> {
         deriveNextStepSuggestion()
         return
       }
-      await publishFinalScore({ examId, paperInstanceId })
-      void message.success('成绩已确认并发布，学生通知已下发')
+      try {
+        await publishFinalScore({ examId, paperInstanceId })
+        void message.success('成绩已确认并发布，学生通知已下发')
+      } catch (publishError) {
+        void message.success('成绩已确认')
+        showUserError(publishError, '成绩已确认，但发布失败')
+        confirmOpen.value = false
+        await refreshAfterScoreWrite()
+        deriveNextStepSuggestion()
+        return
+      }
     } else {
       void message.success('成绩已确认，可在列表点击「发布」推送到学生侧')
     }
     confirmOpen.value = false
-    await refreshAfterScoreWrite()
-    deriveNextStepSuggestion()
   } catch (error) {
     showUserError(error, '成绩确认失败')
+    return
   } finally {
     confirming.value = false
   }
+  await refreshAfterScoreWrite()
+  deriveNextStepSuggestion()
 }
 
 // ─── 发布成绩 ─────────────────────────────
@@ -2471,12 +2551,13 @@ async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void
       paperInstanceId: record.paperInstanceId,
     })
     void message.success('成绩已发布，学生通知已下发')
-    await refreshAfterScoreWrite()
   } catch (error) {
     showUserError(error, '成绩发布失败')
+    return
   } finally {
     publishingPaperId.value = null
   }
+  await refreshAfterScoreWrite()
 }
 
 // ─── 撤回成绩 Modal ─────────────────────────────
@@ -2525,6 +2606,8 @@ async function handleWithdraw(): Promise<void> {
     showFormValidationMessage('请填写撤回原因')
     return
   }
+  const wasConfirmedOnly
+    = withdrawCandidate.value.finalScoreStatus === FinalScoreStatusCode.CONFIRMED
   withdrawing.value = true
   try {
     await withdrawFinalScore({
@@ -2532,24 +2615,23 @@ async function handleWithdraw(): Promise<void> {
       paperInstanceId: withdrawCandidate.value.paperInstanceId,
       reason,
     })
-    void message.success(
-      withdrawCandidate.value?.finalScoreStatus === FinalScoreStatusCode.CONFIRMED
-        ? '已撤销成绩确认'
-        : '成绩已撤回',
-    )
+    void message.success(wasConfirmedOnly ? '已撤销成绩确认' : '成绩已撤回')
     withdrawOpen.value = false
-    await refreshAfterScoreWrite()
   } catch (error) {
     showUserError(error, '成绩撤回失败')
+    return
   } finally {
     withdrawing.value = false
   }
+  await refreshAfterScoreWrite()
 }
 
 // ─── 初始化 ─────────────────────────────────────
 watch(
   selectedExamId,
   (value) => {
+    scorePageGeneration += 1
+    candidatesRequestSequence += 1
     pagination.current = 1
     statusTabKey.value = SCORE_STATUS_TAB_ALL
     scoreFilterForm.keyword = ''
@@ -2560,13 +2642,21 @@ watch(
     riskReviewDrawerOpen.value = false
     bulkOpen.value = false
     bulkResult.value = null
-    publishSecondaryGatesExpanded.value = false
     examDetail.value = null
     candidates.value = []
+    candidatesLoadFailed.value = false
     riskOverview.value = null
+    riskOverviewLoadFailed.value = false
     scorePanel.value = null
     panelLoadError.value = ''
     pagination.total = 0
+    confirmOpen.value = false
+    confirmCandidate.value = null
+    continueConfirmHint.value = null
+    publishReadyStep.value = { visible: false, title: '', description: '' }
+    detailOpen.value = false
+    detailCandidate.value = null
+    paperScore.value = null
     if (value) {
       void Promise.all([loadExamDetail(), refreshScoreFinalizeData()])
     }
@@ -2582,19 +2672,19 @@ watch(
 
 .score-finalize {
   &__notice-banner {
-    margin-top: var(--dp-space-3);
+    margin-top: var(--dp-space-component);
   }
 
   &__alert {
-    margin-top: var(--dp-space-3);
+    margin-top: var(--dp-space-component);
   }
 
   &__more-gates {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: var(--dp-space-2) var(--dp-space-3);
-    margin: 0 0 var(--dp-space-3);
+    gap: var(--dp-space-component-tight) var(--dp-space-component);
+    margin: 0 0 var(--dp-space-component);
   }
 
   &__more-gates-toggle {
@@ -2616,11 +2706,11 @@ watch(
   &__filter-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__filter-chip {
-    padding: 2px 10px;
+    padding: 2px var(--dp-space-component);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-control);
     background: var(--dp-surface);
@@ -2629,48 +2719,122 @@ watch(
     color: var(--dp-text-secondary);
     cursor: pointer;
     transition:
-      border-color 0.2s ease,
-      color 0.2s ease,
-      background-color 0.2s ease;
+      border-color var(--dp-duration-normal) var(--dp-ease-default),
+      color var(--dp-duration-normal) var(--dp-ease-default),
+      background-color var(--dp-duration-normal) var(--dp-ease-default);
 
     &:hover {
-      border-color: var(--dp-primary-light);
-      color: var(--dp-primary);
+      border-color: var(--dp-color-primary-border);
+      color: var(--dp-color-primary);
     }
 
     &--active {
-      border-color: var(--dp-primary);
-      background: color-mix(in srgb, var(--dp-primary) 8%, var(--dp-bg-container));
-      color: var(--dp-primary);
+      border-color: var(--dp-color-primary);
+      background: color-mix(in srgb, var(--dp-color-primary) 8%, var(--dp-surface));
+      color: var(--dp-color-primary);
       font-weight: 600;
     }
   }
 
   &__bulk-result {
-    margin-top: var(--dp-space-3);
+    margin-top: var(--dp-space-component);
   }
 
   &__bulk-meta {
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
-    margin-top: 4px;
+    margin-top: var(--dp-space-component-xs);
   }
 
-  &__bulk-list {
+  &__bulk-group {
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
+    border-bottom: 1px solid var(--dp-border-subtle);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+
+  &__bulk-group-head {
+    display: flex;
+    align-items: center;
+    gap: var(--dp-space-component-tight);
+  }
+
+  &__bulk-group-title {
+    font-size: var(--dp-font-size-sm);
+    font-weight: 500;
+    color: var(--dp-text-primary);
+  }
+
+  &__bulk-group-count {
+    margin-left: var(--dp-space-component-xs);
+    color: var(--dp-text-secondary);
+    font-weight: 600;
+  }
+
+  &__bulk-group-samples {
+    margin: var(--dp-space-component-xs) 0 0;
+    font-size: var(--dp-font-size-xs);
+    color: var(--dp-text-quaternary);
+  }
+  &__bulk-fail-groups {
+    margin-top: var(--dp-space-component);
+    display: flex;
+    flex-direction: column;
+    gap: var(--dp-space-component-tight);
     max-height: 320px;
     overflow-y: auto;
-    margin-top: var(--dp-space-2);
-    border: 1px solid var(--dp-border);
-    border-radius: var(--dp-radius-panel);
-    background: var(--dp-surface);
   }
 
-  &__bulk-error-tag {
-    margin-left: var(--dp-space-2);
+  &__bulk-fail-intro {
+    margin: 0;
+    font-size: var(--dp-font-size-sm);
+    color: var(--dp-text-secondary);
+  }
+
+  &__bulk-fail-group {
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
+    border: 1px solid var(--dp-border-subtle);
+    border-radius: var(--dp-radius-control);
+    background: color-mix(in srgb, var(--dp-error) 4%, var(--dp-surface));
+  }
+
+  &__bulk-fail-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--dp-space-component);
+  }
+
+  &__bulk-fail-title {
+    font-size: var(--dp-font-size-sm);
+    font-weight: 500;
+    color: var(--dp-text-primary);
+  }
+
+  &__bulk-fail-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--dp-space-component-tight);
+    margin-top: var(--dp-space-component-xs);
+    flex-wrap: wrap;
+  }
+
+  &__bulk-fail-hint {
+    font-size: var(--dp-font-size-xs);
+    color: var(--dp-text-quaternary);
+  }
+
+  &__bulk-group-count {
+    margin-left: var(--dp-space-component-tight);
+    font-size: var(--dp-font-size-xs);
+    font-weight: 600;
+    color: var(--dp-error);
   }
 
   &__guide {
-    margin-bottom: var(--dp-space-3);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__exam-select {
@@ -2678,18 +2842,18 @@ watch(
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__table-section {
-    margin-top: var(--dp-space-3);
+    margin-top: var(--dp-space-component);
   }
 
   &__table-shell {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-4);
-    padding: var(--dp-space-3) var(--dp-space-4) var(--dp-space-4);
+    gap: var(--dp-space-block);
+    padding: var(--dp-space-component) var(--dp-space-block);
   }
 
   &__status-tabs {
@@ -2702,7 +2866,7 @@ watch(
   &__table-toolbar {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
     width: 100%;
   }
 
@@ -2710,7 +2874,7 @@ watch(
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
     flex-wrap: wrap;
     width: 100%;
   }
@@ -2724,11 +2888,11 @@ watch(
   }
 
   &__detail-summary {
-    margin-bottom: var(--dp-space-4);
+    margin-bottom: var(--dp-space-block);
   }
 
   &__detail-section-title {
-    margin: var(--dp-space-4) 0 var(--dp-space-2) 0;
+    margin: var(--dp-space-block) 0 var(--dp-space-component-tight) 0;
     font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
@@ -2740,21 +2904,21 @@ watch(
   &__table-actions {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__risk-review-list {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
   }
 
   &__risk-review-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-3, 12px);
-    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
     background: var(--dp-surface);
@@ -2763,7 +2927,7 @@ watch(
   &__risk-review-main {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: var(--dp-space-component);
   }
 
   &__risk-review-title {
@@ -2773,7 +2937,7 @@ watch(
   }
 
   &__risk-review-desc {
-    margin-top: 4px;
+    margin-top: var(--dp-space-component-xs);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
@@ -2781,7 +2945,7 @@ watch(
   &__bias-cell {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
@@ -2791,18 +2955,18 @@ watch(
   }
 
   &__detail-section-helper {
-    margin-left: var(--dp-space-2);
+    margin-left: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
     font-weight: normal;
     color: var(--dp-text-muted);
   }
 
   &__history-chart {
-    margin-top: var(--dp-space-2);
+    margin-top: var(--dp-space-component-tight);
   }
 
   &__audit-pagination {
-    margin-top: var(--dp-space-3);
+    margin-top: var(--dp-space-component);
     display: flex;
     justify-content: flex-end;
   }
@@ -2810,17 +2974,17 @@ watch(
   &__next-step {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
   }
 
   &__next-step-desc {
     margin: 0;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
   }
 
   &__next-step-actions {
     display: flex;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-component-tight);
     justify-content: flex-end;
   }
 }

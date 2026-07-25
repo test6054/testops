@@ -75,6 +75,7 @@ const columns: ColumnsType<AccreditationCycleVO> = [
 
 const loading = ref(false)
 const cycles = ref<AccreditationCycleVO[]>([])
+const submitting = ref(false)
 const standards = ref<AccreditationStandardVO[]>([])
 const drawerOpen = ref(false)
 const detailOpen = ref(false)
@@ -206,6 +207,9 @@ async function openDetail(row: AccreditationCycleVO) {
 }
 
 async function submitCycle() {
+  if (submitting.value) {
+    return
+  }
   if (!form.cycleCode.trim() || !form.cycleName.trim()) {
     void message.error('请填写周期编码与名称')
     return
@@ -226,6 +230,7 @@ async function submitCycle() {
     onsiteVisitEnd: form.onsiteVisitEnd,
     onsiteReportDueDate: form.onsiteReportDueDate,
   }
+  submitting.value = true
   try {
     if (form.id) {
       await accreditationApi.cycleUpdate(request)
@@ -238,14 +243,20 @@ async function submitCycle() {
     emit('refresh')
   } catch (e) {
     showUserError(e, '认证周期保存失败')
+  } finally {
+    submitting.value = false
   }
 }
 
 async function runAction(fn: () => Promise<void>, confirmTitle?: string) {
+  if (submitting.value) {
+    return
+  }
   if (confirmTitle) {
     const ok = await confirmAsync({ title: confirmTitle })
     if (!ok) return
   }
+  submitting.value = true
   try {
     await fn()
     void message.success('操作成功')
@@ -253,6 +264,8 @@ async function runAction(fn: () => Promise<void>, confirmTitle?: string) {
     emit('refresh')
   } catch (e) {
     showUserError(e, '认证周期操作失败')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -542,6 +555,7 @@ defineExpose({ openCreate, loadCycles })
       width="480"
       :hide-footer="false"
       ok-text="保存"
+      :confirm-loading="submitting"
       @ok="submitCycle"
     >
       <UiForm layout="vertical">
@@ -641,6 +655,7 @@ defineExpose({ openCreate, loadCycles })
       width="480"
       :hide-footer="false"
       ok-text="提交决议"
+      :confirm-loading="submitting"
       @ok="submitReview"
     >
       <UiForm layout="vertical">
@@ -678,6 +693,7 @@ defineExpose({ openCreate, loadCycles })
       width="480"
       :hide-footer="false"
       ok-text="登记结论"
+      :confirm-loading="submitting"
       @ok="submitConclusion"
     >
       <UiForm layout="vertical">
@@ -732,20 +748,20 @@ defineExpose({ openCreate, loadCycles })
 .cycle-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 .cycle-banner {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
   background: var(--dp-surface);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-xs);
 }
 .readiness-panel {
-  padding: 14px 16px;
+  padding: var(--dp-space-block);
   background: var(--dp-warning-bg);
   border: 1px solid var(--dp-warning-border);
   border-radius: var(--dp-radius-xs);
@@ -754,18 +770,18 @@ defineExpose({ openCreate, loadCycles })
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .readiness-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .readiness-item {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 10px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component);
   background: color-mix(in srgb, var(--dp-surface) 82%, transparent);
   border: 1px solid color-mix(in srgb, var(--dp-success) 16%, transparent);
   border-radius: var(--dp-radius-xs);
@@ -775,23 +791,23 @@ defineExpose({ openCreate, loadCycles })
   background: var(--dp-orange-50);
 }
 .readiness-item p {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
   line-height: 1.5;
 }
 .banner-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   flex-shrink: 0;
 }
 .ml-8 {
-  margin-left: 8px;
+  margin-left: var(--dp-space-component-tight);
 }
 .meta {
-  margin-left: 12px;
+  margin-left: var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 .muted {
   color: var(--dp-text-muted);
@@ -802,10 +818,10 @@ defineExpose({ openCreate, loadCycles })
 .detail-dl {
   display: grid;
   grid-template-columns: 100px 1fr;
-  gap: 8px 12px;
+  gap: var(--dp-space-component-tight) var(--dp-space-component);
   font-size: var(--dp-font-size-md);
 }
 .detail-dl dt {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 </style>

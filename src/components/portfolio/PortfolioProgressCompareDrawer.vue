@@ -141,7 +141,7 @@ watch(
 
 <style scoped lang="scss">
 .portfolio-progress-compare__delta {
-  margin: 0 0 var(--dp-space-4);
+  margin: 0 0 var(--dp-space-block);
   font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
@@ -149,47 +149,47 @@ watch(
 .portfolio-progress-compare__rows {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .portfolio-progress-compare__row {
-  padding: var(--dp-space-3);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
-  border-radius: var(--dp-radius-sm);
+  border-radius: var(--dp-radius-xs);
 }
 
 .portfolio-progress-compare__row-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .portfolio-progress-compare__row-head h3 {
   margin: 0;
   font-size: var(--dp-font-size-lg);
-  font-weight: var(--dp-font-weight-semibold);
+  font-weight: var(--dp-font-weight-title);
 }
 
 .portfolio-progress-compare__percent {
   font-size: var(--dp-font-size-2xl);
-  font-weight: var(--dp-font-weight-semibold);
+  font-weight: var(--dp-font-weight-title);
   color: var(--dp-text-primary);
 }
 
 .portfolio-progress-compare__meta {
-  margin: var(--dp-space-2) 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
 .portfolio-progress-compare__gaps {
-  margin-top: var(--dp-space-3);
+  margin-top: var(--dp-space-component);
 }
 
 .portfolio-progress-compare__gaps-label {
   display: block;
-  margin-bottom: var(--dp-space-2);
+  margin-bottom: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }

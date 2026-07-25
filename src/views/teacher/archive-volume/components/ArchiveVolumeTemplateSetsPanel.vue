@@ -13,8 +13,6 @@
           size="sm"
           v-if="templateSetsLoadFailed"
           description="归档模板套加载失败"
-          action-label="重新加载"
-          @action="loadTemplateSets"
         />
         <UiDataTable
           v-else
@@ -81,8 +79,6 @@
           size="sm"
           v-if="templateSetsLoadFailed"
           description="归档模板套加载失败"
-          action-label="重新加载"
-          @action="loadTemplateSets"
         />
         <UiDataTable
           v-else
@@ -260,9 +256,7 @@
       <UiEmpty
         size="sm"
         v-if="auditLoadFailed"
-        description="模板版本历史加载失败"
-        action-label="重新加载"
-        @action="loadAuditRows"
+        description="模板版本历史加载失败；关闭后重新打开将再次拉取"
       />
       <UiDataTable
         v-else
@@ -1032,11 +1026,11 @@ onMounted(() => {
 .archive-template-sets-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-template-sets-panel__tabs {
-  margin-top: 16px;
+  margin-top: var(--dp-space-block);
 }
 
 .archive-template-sets-panel__copy-bar {
@@ -1044,8 +1038,8 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--dp-space-3);
-  padding: var(--dp-space-3) var(--dp-space-4);
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border-top: 1px solid var(--dp-border);
   background: var(--dp-surface-subtle);
 }
@@ -1053,29 +1047,29 @@ onMounted(() => {
 .archive-template-sets-panel__copy-all {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   flex-wrap: wrap;
 }
 
 .archive-template-sets-panel__copy-all-label {
   font-size: var(--dp-font-size-md);
-  color: var(--dp-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 
 .archive-template-sets-panel__release {
-  margin-right: var(--dp-space-2);
+  margin-right: var(--dp-space-component-tight);
 }
 
 .archive-template-sets-panel__resync-alert {
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .archive-template-sets-panel__resync-form {
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .archive-template-sets-panel__audit-meta {
-  margin: 0 0 var(--dp-space-3);
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
@@ -1083,6 +1077,6 @@ onMounted(() => {
 .archive-template-editor__retention {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 </style>

@@ -1,8 +1,10 @@
 <template>
   <aside class="archive-volume-material-tree">
-    <UiEmpty size="sm" v-if="catalogLoadFailed" description="目录加载失败">
-      <UiTextAction tone="primary" @click="loadCatalogLines">重新加载</UiTextAction>
-    </UiEmpty>
+    <UiEmpty
+      size="sm"
+      v-if="catalogLoadFailed"
+      description="目录加载失败"
+    />
     <UiEmpty size="sm" v-else-if="!treeGroups.length" description="暂无目录项" />
     <div v-else class="catalog-tree">
       <div class="catalog-tree__head">
@@ -11,11 +13,12 @@
           缺件 {{ missingEntryCount }}
         </span>
       </div>
-      <UiAlertStrip v-if="materialStatsLoadFailed" tone="warning" title="就绪统计加载失败" dense>
-        <template #actions>
-          <UiTextAction tone="primary" @click="loadMaterialStats">重新加载</UiTextAction>
-        </template>
-      </UiAlertStrip>
+      <UiAlertStrip
+        v-if="materialStatsLoadFailed"
+        tone="warning"
+        title="就绪统计加载失败"
+        dense
+      />
       <template v-for="group in treeGroups" :key="group.category">
         <div class="catalog-category">{{ group.category }}</div>
         <button
@@ -69,7 +72,6 @@ import {
 } from '@/apis/mark/archive-volume'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ALL_ARCHIVE_MATERIAL_TYPE_CODES } from '@/types/enums/archive-material-type-enum'
 import {
   archiveMissingItemTargetsCatalogKey,
@@ -323,10 +325,10 @@ onMounted(() => {
   width: 100%;
   min-width: 280px;
   flex-shrink: 0;
-  padding: var(--dp-space-3);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
   box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dp-text-muted) 6%, transparent);
 }
 
@@ -334,9 +336,9 @@ onMounted(() => {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-2);
-  padding-bottom: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-tight);
+  padding-bottom: var(--dp-space-component-tight);
   border-bottom: 1px solid var(--dp-border-subtle);
 }
 
@@ -349,14 +351,14 @@ onMounted(() => {
 .catalog-tree__head-missing {
   font-size: var(--dp-font-size-xs);
   font-weight: 600;
-  color: var(--dp-orange-600, var(--dp-color-warning));
-  padding: 1px 6px;
+  color: var(--dp-orange-600, var(--dp-warning));
+  padding: 1px var(--dp-space-component-tight);
   border-radius: 3px;
-  background: color-mix(in srgb, var(--dp-orange-500, var(--dp-color-warning)) 10%, transparent);
+  background: color-mix(in srgb, var(--dp-orange-500, var(--dp-warning)) 10%, transparent);
 }
 
 .catalog-category {
-  margin: var(--dp-space-3) 0 4px;
+  margin: var(--dp-space-component) 0 var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xxs);
   font-weight: 600;
   color: var(--dp-text-muted);
@@ -367,18 +369,18 @@ onMounted(() => {
 .catalog-entry {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   width: 100%;
   min-height: 34px;
-  padding: 5px 8px;
+  padding: 5px var(--dp-space-component-tight);
   border: none;
   border-radius: var(--dp-radius-control-inner);
   background: transparent;
   font: inherit;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    box-shadow 0.15s ease;
+    background-color var(--dp-duration-fast) var(--dp-ease-default),
+    box-shadow var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .catalog-entry--selectable:hover {
@@ -403,7 +405,7 @@ onMounted(() => {
 .catalog-seq {
   flex: 0 0 auto;
   min-width: 40px;
-  font-family: var(--dp-font-mono);
+  font-family: var(--dp-font-family-code);
   font-size: var(--dp-font-size-xxs);
   color: var(--dp-text-muted);
   text-align: left;
@@ -413,10 +415,10 @@ onMounted(() => {
   flex: 0 0 auto;
   font-size: 10px;
   font-weight: 700;
-  color: var(--dp-orange-600, var(--dp-color-warning));
-  padding: 0 4px;
+  color: var(--dp-orange-600, var(--dp-warning));
+  padding: 0 var(--dp-space-component-xs);
   border-radius: 3px;
-  background: color-mix(in srgb, var(--dp-orange-500, var(--dp-color-warning)) 12%, transparent);
+  background: color-mix(in srgb, var(--dp-orange-500, var(--dp-warning)) 12%, transparent);
 }
 
 .archive-volume-material-tree__title {
@@ -433,13 +435,13 @@ onMounted(() => {
 .archive-volume-material-tree__meta {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   flex-shrink: 0;
 }
 
 .archive-volume-material-tree__pages,
 .archive-volume-material-tree__ready {
-  font-family: var(--dp-font-mono);
+  font-family: var(--dp-font-family-code);
   font-size: var(--dp-type-hint-size);
   color: var(--dp-text-muted);
   font-variant-numeric: tabular-nums;

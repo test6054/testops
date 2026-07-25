@@ -23,7 +23,15 @@
         @reset="handleFilterReset"
       />
 
+      <UiAlertStrip
+        v-if="listLoadFailed"
+        tone="error"
+        title="成绩更正记录加载失败"
+        dense
+      />
+
       <UiDataTable
+        v-if="!listLoadFailed || rows.length > 0"
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
         :columns="columns"
@@ -122,13 +130,13 @@
             v-if="makeupCap60Hint"
             tone="info"
             :title="makeupCap60AlertMessage"
-            style="margin-bottom: 12px"
+            style="margin-bottom: var(--dp-space-component)"
           />
           <UiAlertStrip
             v-if="singleQuestionProjectionHint"
             tone="warning"
             :title="singleQuestionProjectionHint"
-            style="margin-bottom: 12px"
+            style="margin-bottom: var(--dp-space-component)"
           />
           <UiFormItem label="申请学生">
             <UiInput size="sm" :value="selectedReviewStudentLabel" disabled />
@@ -209,10 +217,15 @@ const REVIEW_REQUEST_SEARCH_DEBOUNCE_MS = 300
 
 const rows = ref<ExamGradeCorrectionRecordResponse[]>([])
 const loading = ref(false)
+const listLoadFailed = ref(false)
 const reviewRequestOptions = ref<{ value: string, label: string }[]>([])
 const reviewRequestCache = ref<Map<string, GradeReviewRequestItemResponse>>(new Map())
 const reviewRequestLoading = ref(false)
 let reviewRequestSearchTimer: ReturnType<typeof setTimeout> | undefined
+/** 列表/筛选请求代际 */
+let correctionLoadGeneration = 0
+/** 远程搜索请求代际（含关键词） */
+let reviewRequestSearchGeneration = 0
 const pagination = reactive({
   current: 1,
   pageSize: DEFAULT_LIST_PAGE_SIZE,
@@ -391,16 +404,22 @@ async function openCreateModal(): Promise<void> {
 }
 
 async function loadReviewRequestOptions(keyword?: string): Promise<void> {
-  if (!props.examId) return
+  const examId = props.examId
+  if (!examId) return
+  const searchKeyword = keyword?.trim() || ''
+  const searchGeneration = ++reviewRequestSearchGeneration
   reviewRequestLoading.value = true
   try {
     const result = await listReviewRequests({
-      examId: props.examId,
+      examId,
       requestStatus: GradeReviewRequestStatusCode.APPROVED,
-      keyword: keyword?.trim() || undefined,
+      keyword: searchKeyword || undefined,
       pageNum: 1,
       pageSize: APPROVED_REVIEW_REQUEST_PAGE_SIZE,
     })
+    if (searchGeneration !== reviewRequestSearchGeneration || props.examId !== examId) {
+      return
+    }
     const correctable = filterCorrectableReviewRequests(result.list)
     cacheReviewRequests(correctable)
     reviewRequestOptions.value = correctable.map((request) => buildReviewRequestOption(request))
@@ -408,10 +427,14 @@ async function loadReviewRequestOptions(keyword?: string): Promise<void> {
       await pinReviewRequestById(form.reviewRequestId)
     }
   } catch (e) {
-    reviewRequestOptions.value = []
+    if (searchGeneration !== reviewRequestSearchGeneration || props.examId !== examId) {
+      return
+    }
     showUserError(e, '已通过复核申请加载失败')
   } finally {
-    reviewRequestLoading.value = false
+    if (searchGeneration === reviewRequestSearchGeneration) {
+      reviewRequestLoading.value = false
+    }
   }
 }
 
@@ -443,27 +466,38 @@ function onReviewRequestSearch(keyword: string): void {
 }
 
 async function reload(): Promise<void> {
-  if (!props.examId) {
+  const examId = props.examId
+  if (!examId) {
     canManageReviewerWrites.value = false
     return
   }
+  const loadGeneration = ++correctionLoadGeneration
   loading.value = true
   try {
     // MVR-279：汇总下发写能力位，与新建纠正按钮闸对齐
     try {
-      const summary = await getReviewSummary(props.examId)
+      const summary = await getReviewSummary(examId)
+      if (loadGeneration !== correctionLoadGeneration || props.examId !== examId) {
+        return
+      }
       canManageReviewerWrites.value = summary.canManageReviewerWrites === true
     } catch {
+      if (loadGeneration !== correctionLoadGeneration || props.examId !== examId) {
+        return
+      }
       canManageReviewerWrites.value = false
     }
     const keyword = filterForm.keyword.trim() || undefined
     const result = await listCorrections({
-      examId: props.examId,
+      examId,
       keyword,
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
-
+    if (loadGeneration !== correctionLoadGeneration || props.examId !== examId) {
+      return
+    }
+    listLoadFailed.value = false
     rows.value = result.list
     pagination.total = result.total
     pagination.current = result.pageNum ?? pagination.current
@@ -473,11 +507,15 @@ async function reload(): Promise<void> {
       await reload()
     }
   } catch (e) {
-    rows.value = []
-    pagination.total = 0
+    if (loadGeneration !== correctionLoadGeneration || props.examId !== examId) {
+      return
+    }
+    listLoadFailed.value = true
     showUserError(e, '成绩更正记录加载失败')
   } finally {
-    loading.value = false
+    if (loadGeneration === correctionLoadGeneration) {
+      loading.value = false
+    }
   }
 }
 
@@ -625,6 +663,13 @@ function reviewRequestQuestionLabel(request: GradeReviewRequestItemResponse): st
 watch(
   () => [props.examId, props.reloadToken],
   () => {
+    if (reviewRequestSearchTimer) {
+      clearTimeout(reviewRequestSearchTimer)
+      reviewRequestSearchTimer = undefined
+    }
+    reviewRequestSearchGeneration += 1
+    reviewRequestCache.value = new Map()
+    reviewRequestOptions.value = []
     if (props.examId) {
       pagination.current = 1
       void reload()

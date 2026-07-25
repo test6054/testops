@@ -31,8 +31,8 @@ defineProps<{
 .grading-immersion-section {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component);
   background: var(--dp-surface);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
@@ -42,14 +42,14 @@ defineProps<{
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+    gap: var(--dp-space-component-tight) var(--dp-space-component);
   }
 
   &__title-row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     min-width: 0;
   }
 
@@ -65,14 +65,14 @@ defineProps<{
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__body {

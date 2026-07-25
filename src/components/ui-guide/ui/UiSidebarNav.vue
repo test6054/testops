@@ -83,7 +83,7 @@ const handleSelect = (item: UiSidebarNavItem) => {
 }
 
 .ui-sidebar-nav__head {
-  padding: 14px 16px;
+  padding: var(--dp-space-block);
   border-bottom: 1px solid var(--dp-border);
 }
 
@@ -98,25 +98,25 @@ const handleSelect = (item: UiSidebarNavItem) => {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px;
+  padding: var(--dp-space-component-tight);
 }
 
 .ui-sidebar-nav__item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--dp-space-component);
   width: 100%;
   min-width: 0;
-  padding: 10px 12px;
+  padding: var(--dp-space-component);
   border: 1px solid transparent;
   border-radius: var(--dp-radius-panel);
   background: transparent;
   text-align: left;
   cursor: pointer;
   transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease;
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    background-color var(--dp-duration-normal) var(--dp-ease-default);
 }
 
 .ui-sidebar-nav__item:hover:not(:disabled) {
@@ -143,7 +143,7 @@ const handleSelect = (item: UiSidebarNavItem) => {
 
 .ui-sidebar-nav__footer {
   margin-top: auto;
-  padding: 12px;
+  padding: var(--dp-space-component);
   border-top: 1px solid var(--dp-border);
 }
 </style>

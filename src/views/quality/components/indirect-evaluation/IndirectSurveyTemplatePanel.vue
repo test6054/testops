@@ -1583,7 +1583,7 @@ defineExpose({
   }
 
   &__structure-lock-alert {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__count-strong {
@@ -1603,20 +1603,20 @@ defineExpose({
   &__config-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__target-picker,
   &__selector-stack {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__config-row {
     display: grid;
     grid-template-columns: minmax(96px, 1fr) minmax(160px, 2fr) auto;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     align-items: center;
 
     &:has(.ie__config-value) {
@@ -1629,13 +1629,13 @@ defineExpose({
   }
 
   &__revision-section {
-    margin-top: 16px;
-    padding-top: 16px;
+    margin-top: var(--dp-space-block);
+    padding-top: var(--dp-space-block);
     border-top: 1px solid var(--dp-border);
   }
 
   &__revision-title {
-    margin: 0 0 12px;
+    margin: 0 0 var(--dp-space-component);
     font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
@@ -1648,7 +1648,7 @@ defineExpose({
   }
 
   &__revision-item {
-    padding: 8px 0;
+    padding: var(--dp-space-component-tight) 0;
     border-bottom: 1px solid var(--dp-border-subtle);
 
     &:last-child {
@@ -1657,7 +1657,7 @@ defineExpose({
   }
 
   &__revision-meta {
-    margin: 0 0 4px;
+    margin: 0 0 var(--dp-space-component-xs);
     color: var(--dp-text-muted);
     font-size: var(--dp-font-size-xs);
     line-height: 1.5;

@@ -26,14 +26,25 @@
       </div>
 
       <div
+        ref="tableWrapEl"
         class="ui-data-table__table-wrap"
         :class="{ 'ui-data-table__table-wrap--pinned': hasPinnedColumns }"
+        :style="fillWrapStyle"
       >
+        <UiSkeletonState
+          v-if="showTableSkeleton"
+          class="ui-data-table__skeleton"
+          variant="table"
+          :columns="skeletonColumnCount"
+          :rows="skeletonRowCount"
+          compact
+        />
         <a-table
+          v-else
           class="ui-data-table__table"
           :columns="resolvedColumns"
           :data-source="resolvedDataSource"
-          :loading="props.loading"
+          :loading="showInlineLoading"
           :row-key="props.rowKey"
           :pagination="false"
           :size="tableSize"
@@ -90,7 +101,7 @@ import type {
   UiDataTablePaginationMode,
 } from './data-table'
 import { useBreakpoints } from '@vueuse/core'
-import { computed, getCurrentInstance, ref, useAttrs, useSlots, watch } from 'vue'
+import { computed, getCurrentInstance, nextTick, onMounted, onUnmounted, ref, useAttrs, useSlots, watch } from 'vue'
 import UiCard from './Card.vue'
 import {
   filterResponsiveDataTableColumns,
@@ -101,6 +112,7 @@ import {
   UI_DATA_TABLE_VIEWPORT,
 } from './data-table'
 import UiEmpty from './Empty.vue'
+import UiSkeletonState from './UiSkeletonState.vue'
 import UiPagination from './Pagination.vue'
 import { resolvePopupContainer } from './popup-container'
 
@@ -139,10 +151,15 @@ const props = withDefaults(
     emptyDescription?: string
     /** 列表加载失败：展示「加载失败」，禁止伪装成暂无数据 */
     loadError?: boolean
-    /** 粘性表头：CSS sticky，不强制 scroll.y，避免与 scroll.x 冲突 */
+    /** 粘性表头：CSS sticky；默认配合 fillRemaining 撑满视口剩余高度 */
     stickyHeader?: boolean
-    /** 表格纵向滚动高度，stickyHeader 默认 480 */
+    /** 表格纵向滚动高度；显式传入时优先生效并关闭视口填满 */
     scrollY?: number | string
+    /**
+     * 表体撑满剩余视口（去掉历史 70vh/640 天花板）。
+     * 默认：flat + stickyHeader 且未传 scrollY 时启用；弹层/嵌套短表显式 false。
+     */
+    fillRemaining?: boolean
     /** 斑马纹行，适合高密度明细表 */
     zebra?: boolean
     /** 行级可点击指针（配合 customRow 整行跳转） */
@@ -153,6 +170,10 @@ const props = withDefaults(
     customRow?: TableProps['customRow']
     /** 透传 a-table rowClassName */
     rowClassName?: TableProps['rowClassName']
+    /** 首屏/空表加载时展示表格骨架，而非空白 spinner */
+    skeletonOnEmptyLoading?: boolean
+    /** 骨架行数，默认跟随 pageSize 上限 8 */
+    skeletonRows?: number
   }>(),
   {
     loading: false,
@@ -177,9 +198,12 @@ const props = withDefaults(
     loadError: false,
     stickyHeader: true,
     scrollY: undefined,
+    fillRemaining: undefined,
     zebra: true,
     rowClickable: false,
     responsiveColumns: true,
+    skeletonOnEmptyLoading: true,
+    skeletonRows: undefined,
   },
 )
 
@@ -192,8 +216,12 @@ const emit = defineEmits<{
 const attrs = useAttrs()
 const slots = useSlots()
 const tableRoot = ref<HTMLElement>()
+const tableWrapEl = ref<HTMLElement | null>(null)
+const fillBodyHeightPx = ref<number | undefined>(undefined)
 const instance = getCurrentInstance()
 let missingPageChangeWarned = false
+let fillMeasureRaf = 0
+let fillResizeObserver: ResizeObserver | null = null
 
 const breakpoints = useBreakpoints({
   md: UI_DATA_TABLE_VIEWPORT.md,
@@ -287,6 +315,79 @@ const tableSize = computed<'small' | 'middle' | 'large'>(() => {
   return 'middle'
 })
 
+const shouldFillRemaining = computed(() => {
+  if (props.scrollY != null) {
+    return false
+  }
+  if (props.fillRemaining === false) {
+    return false
+  }
+  if (props.fillRemaining === true) {
+    return true
+  }
+  /* 默认：工作台扁平列表（flat + sticky）自动撑满；嵌套卡片表 / 弹层请显式 false */
+  return props.stickyHeader && props.flat
+})
+
+const fillWrapStyle = computed(() => {
+  if (!shouldFillRemaining.value || fillBodyHeightPx.value == null) {
+    return undefined
+  }
+  return {
+    height: `${fillBodyHeightPx.value}px`,
+    maxHeight: `${fillBodyHeightPx.value}px`,
+  }
+})
+
+/** 测量表体区域：贴齐最近可滚动父级（或视口）底边，扣除分页条 */
+function measureFillBodyHeight(): void {
+  if (!shouldFillRemaining.value) {
+    fillBodyHeightPx.value = undefined
+    return
+  }
+  const root = tableRoot.value
+  const wrap = tableWrapEl.value
+  if (!root || !wrap) {
+    return
+  }
+  const pagination = root.querySelector<HTMLElement>('.ui-data-table__pagination')
+  const paginationH = pagination?.getBoundingClientRect().height ?? 0
+  const wrapTop = wrap.getBoundingClientRect().top
+  let bottomBound = window.innerHeight
+  let parent: HTMLElement | null = wrap.parentElement
+  while (parent) {
+    const style = window.getComputedStyle(parent)
+    const overflowY = style.overflowY
+    if (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'hidden') {
+      if (parent.clientHeight > 0) {
+        bottomBound = parent.getBoundingClientRect().bottom
+        break
+      }
+    }
+    parent = parent.parentElement
+  }
+  const bottomGap = 12
+  const next = Math.floor(bottomBound - wrapTop - paginationH - bottomGap)
+  const clamped = Math.max(240, next)
+  if (fillBodyHeightPx.value !== clamped) {
+    fillBodyHeightPx.value = clamped
+  }
+}
+
+function scheduleFillMeasure(): void {
+  if (!shouldFillRemaining.value) {
+    fillBodyHeightPx.value = undefined
+    return
+  }
+  if (fillMeasureRaf) {
+    cancelAnimationFrame(fillMeasureRaf)
+  }
+  fillMeasureRaf = requestAnimationFrame(() => {
+    fillMeasureRaf = 0
+    measureFillBodyHeight()
+  })
+}
+
 const resolvedScroll = computed<TableProps['scroll']>(() => {
   const attrScroll = attrs.scroll as TableProps['scroll'] | undefined
   const merged: NonNullable<TableProps['scroll']> = attrScroll ? { ...attrScroll } : {}
@@ -315,6 +416,7 @@ const rootClasses = computed(() => {
     { 'ui-data-table--zebra': props.zebra },
     { 'ui-data-table--row-clickable': props.rowClickable || !!props.customRow },
     { 'ui-data-table--sticky-header': props.stickyHeader },
+    { 'ui-data-table--fill-remaining': shouldFillRemaining.value },
     { 'ui-data-table--compact-viewport': isCompactViewport.value },
     { 'ui-data-table--pinned-columns': hasPinnedColumns.value },
     { 'ui-data-table--has-scroll-y': hasScrollY.value },
@@ -333,6 +435,29 @@ const effectiveShowPagination = computed(() => {
     return false
   }
   return props.showPagination
+})
+
+const showTableSkeleton = computed(() => {
+  if (!props.skeletonOnEmptyLoading || !props.loading || props.loadError) {
+    return false
+  }
+  return resolvedDataSource.value.length === 0
+})
+
+/** 有数据时的二次加载保留表格 + 行内 loading，避免闪回骨架 */
+const showInlineLoading = computed(() => props.loading && resolvedDataSource.value.length > 0)
+
+const skeletonColumnCount = computed(() => {
+  const count = resolvedColumns.value.length
+  if (count <= 0) return 4
+  return Math.min(count, 8)
+})
+
+const skeletonRowCount = computed(() => {
+  if (typeof props.skeletonRows === 'number' && props.skeletonRows > 0) {
+    return Math.min(props.skeletonRows, 12)
+  }
+  return Math.min(Math.max(pageSize.value, 4), 8)
 })
 
 const hasTopBar = computed(() => {
@@ -413,6 +538,43 @@ const getPopupContainer = (triggerNode?: HTMLElement) => {
 const handlePageChange = (page: number, size: number) => {
   emit('page-change', { current: page, pageSize: size })
 }
+
+watch(
+  () => [
+    shouldFillRemaining.value,
+    effectiveShowPagination.value,
+    props.loading,
+    showTableSkeleton.value,
+    resolvedDataSource.value.length,
+    hasTopBar.value,
+  ],
+  () => {
+    void nextTick(() => scheduleFillMeasure())
+  },
+)
+
+onMounted(() => {
+  scheduleFillMeasure()
+  fillResizeObserver = new ResizeObserver(() => scheduleFillMeasure())
+  if (tableRoot.value) {
+    fillResizeObserver.observe(tableRoot.value)
+  }
+  const surfaceParent = tableRoot.value?.parentElement
+  if (surfaceParent) {
+    fillResizeObserver.observe(surfaceParent)
+  }
+  window.addEventListener('resize', scheduleFillMeasure)
+})
+
+onUnmounted(() => {
+  if (fillMeasureRaf) {
+    cancelAnimationFrame(fillMeasureRaf)
+    fillMeasureRaf = 0
+  }
+  fillResizeObserver?.disconnect()
+  fillResizeObserver = null
+  window.removeEventListener('resize', scheduleFillMeasure)
+})
 </script>
 
 <style scoped>
@@ -420,12 +582,38 @@ const handlePageChange = (page: number, size: number) => {
   position: relative;
 }
 
+.ui-data-table--fill-remaining {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
+.ui-data-table--fill-remaining :deep(.ui-data-table__card),
+.ui-data-table--fill-remaining .ui-data-table__flat-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ui-data-table__skeleton {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: var(--dp-space-component) 0;
+}
+
+.ui-data-table--flat .ui-data-table__skeleton {
+  padding: var(--dp-space-component-tight) 0;
+}
+
 .ui-data-table__top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
-  margin-bottom: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
 }
 
 .ui-data-table__meta {
@@ -440,14 +628,14 @@ const handlePageChange = (page: number, size: number) => {
 }
 
 .ui-data-table__description {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-muted);
 }
 
 .ui-data-table__sorted-info {
-  margin-top: 6px;
+  margin-top: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-secondary);
@@ -456,14 +644,14 @@ const handlePageChange = (page: number, size: number) => {
 .ui-data-table__toolbar-left {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
-  margin-top: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .ui-data-table__toolbar-right {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
   flex-shrink: 0;
 }
 
@@ -497,7 +685,12 @@ const handlePageChange = (page: number, size: number) => {
 
 .ui-data-table--sticky-header:not(.ui-data-table--pinned-columns) .ui-data-table__table-wrap {
   overflow: auto;
-  max-height: min(70vh, 640px);
+}
+
+.ui-data-table--fill-remaining .ui-data-table__table-wrap {
+  flex: 1 1 auto;
+  min-height: 240px;
+  overflow: auto;
 }
 
 .ui-data-table--sticky-header:not(.ui-data-table--pinned-columns)
@@ -522,8 +715,8 @@ const handlePageChange = (page: number, size: number) => {
 }
 
 .ui-data-table--flat .ui-data-table__table-wrap :deep(.ant-table-placeholder .ui-empty--sm) {
-  padding-top: var(--dp-space-3, 12px);
-  padding-bottom: var(--dp-space-3, 12px);
+  padding-top: var(--dp-space-component);
+  padding-bottom: var(--dp-space-component);
 }
 
 .ui-data-table--has-scroll-y .ui-data-table__table :deep(.ant-table-body) {
@@ -534,8 +727,8 @@ const handlePageChange = (page: number, size: number) => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-3, 12px) 0;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component) 0;
   justify-content: space-between;
   margin-bottom: 0;
 }
@@ -553,13 +746,13 @@ const handlePageChange = (page: number, size: number) => {
   flex: 1;
   min-width: 0;
   margin-top: 0;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
 }
 
 .ui-data-table--flat .ui-data-table__toolbar-right {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
   flex-shrink: 0;
 }
 
@@ -648,7 +841,7 @@ const handlePageChange = (page: number, size: number) => {
   width: 12px;
   pointer-events: none;
   content: '';
-  transition: box-shadow 0.2s ease;
+  transition: box-shadow var(--dp-duration-normal) var(--dp-ease-default);
 }
 
 .ui-data-table__table :deep(.ant-table-cell-fix-left-last::after) {
@@ -713,7 +906,7 @@ const handlePageChange = (page: number, size: number) => {
 
 .ui-data-table__table :deep(.ant-table-tbody > tr:hover > td) {
   background: var(--dp-table-row-hover-bg) !important;
-  transition: background var(--dp-duration-fast) ease;
+  transition: background var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .ui-data-table--zebra
@@ -758,6 +951,6 @@ const handlePageChange = (page: number, size: number) => {
 }
 
 .ui-data-table__pagination {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-component);
 }
 </style>

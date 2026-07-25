@@ -60,10 +60,6 @@
             <dd>{{ examFormText }}</dd>
           </div>
           <div class="create-form-summary__row">
-            <dt>成绩事实源</dt>
-            <dd>{{ scoreSourceText }}</dd>
-          </div>
-          <div class="create-form-summary__row">
             <dt>密级</dt>
             <dd>{{ securityLevelText }}</dd>
           </div>
@@ -89,11 +85,9 @@
 import { computed } from 'vue'
 import {
   ArchiveExamFormDescription,
-  ArchiveScoreSourceDescription,
   ArchiveSecurityLevelDescription,
 } from '@/apis/mark/archive-volume'
 import { formatSemester } from '@/types/enums/semester-enum'
-import { composeAcademicYear } from '@/utils/academic-year'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import {
@@ -111,7 +105,7 @@ const planForm = useInjectedArchiveTaskCreatePlanForm()
 const provenanceText = computed(() => props.provenanceLabel || '未选择')
 
 const academicTermText = computed(() => {
-  const year = composeAcademicYear(basicForm.academicYearStartYear)
+  const year = basicForm.academicYear.trim()
   const semester = basicForm.semester ? formatSemester(basicForm.semester) : ''
   if (year && semester) return `${year} · ${semester}`
   if (year) return year
@@ -123,10 +117,6 @@ const examFormText = computed(() =>
   planForm.examForm
     ? strictEnumLabel(ArchiveExamFormDescription, planForm.examForm, '考试形式')
     : '—',
-)
-
-const scoreSourceText = computed(() =>
-  strictEnumLabel(ArchiveScoreSourceDescription, planForm.scoreSource, '成绩来源'),
 )
 
 const securityLevelText = computed(() =>

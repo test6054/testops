@@ -471,7 +471,7 @@ function formatFullScore(score: number): string {
 .question-answer-correction {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 
   &__strip {
     margin-bottom: 0;

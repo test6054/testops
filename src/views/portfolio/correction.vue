@@ -77,6 +77,8 @@ const {
 
 const loading = ref(false)
 const submitting = ref(false)
+const listLoadFailed = ref(false)
+const detailScopeMismatch = ref(false)
 const rows = ref<PortfolioCorrectionSummaryVO[]>([])
 const pageNum = ref(1)
 const pageSize = ref(10)
@@ -245,9 +247,11 @@ async function loadCorrections() {
   if (canPickTeachers.value && !targetTeacherId.value) {
     rows.value = []
     pageTotal.value = 0
+    listLoadFailed.value = false
     return
   }
   loading.value = true
+  listLoadFailed.value = false
   try {
     const page = await portfolioCorrectionApi.pageCorrections({
       ...teacherRequest.value,
@@ -269,8 +273,7 @@ async function loadCorrections() {
     ) {
       return
     }
-    rows.value = []
-    pageTotal.value = 0
+    listLoadFailed.value = true
     showUserError(error, '加载纠错列表失败')
   } finally {
     if (
@@ -284,9 +287,11 @@ async function loadCorrections() {
 
 async function openDetail(id: string) {
   const currentScopeToken = scopeRequestToken.value
+  const expectedTeacherId = targetTeacherId.value
   const currentToken = ++detailRequestToken.value
   drawerOpen.value = true
   detail.value = null
+  detailScopeMismatch.value = false
   detailLoading.value = true
   try {
     const nextDetail = await portfolioCorrectionApi.getCorrection(id)
@@ -294,6 +299,18 @@ async function openDetail(id: string) {
       scopeRequestToken.value !== currentScopeToken
       || currentToken !== detailRequestToken.value
     ) {
+      return
+    }
+    if (
+      expectedTeacherId
+      && nextDetail.teacherId
+      && String(nextDetail.teacherId) !== String(expectedTeacherId)
+    ) {
+      detailScopeMismatch.value = true
+      detail.value = null
+      showFormValidationMessage(
+        `深链纠错工单属于教师 ${nextDetail.teacherId}，与当前范围 ${expectedTeacherId} 不一致`,
+      )
       return
     }
     detail.value = nextDetail
@@ -480,6 +497,19 @@ watch(
         :description="archiveWriteBlockMessage"
         class="mb-3"
       />
+      <UiAlertStrip
+        v-if="listLoadFailed"
+        tone="error"
+        title="纠错列表加载失败"
+        class="mb-3"
+      />
+      <UiAlertStrip
+        v-if="detailScopeMismatch"
+        tone="error"
+        title="深链纠错工单与当前教师范围不一致"
+        description="请先切换到工单所属教师，或从列表打开本范围内的工单。"
+        class="mb-3"
+      />
 
       <UiCard title="发起纠错" class="correction-page__form">
         <UiForm layout="vertical">
@@ -615,11 +645,11 @@ watch(
 <style scoped lang="scss">
 .correction-page__form,
 .correction-page__list {
-  margin-bottom: var(--dp-space-4);
+  margin-bottom: var(--dp-space-block);
 }
 
 .correction-page__detail-line {
-  margin: 0 0 var(--dp-space-2);
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
 }
 </style>

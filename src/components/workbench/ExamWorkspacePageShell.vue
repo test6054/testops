@@ -69,7 +69,7 @@ const showPageHeading = computed(() =>
 .exam-workspace-page-heading {
   display: flex;
   align-items: flex-start;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
   flex-wrap: wrap;
 
   &__main {
@@ -86,7 +86,7 @@ const showPageHeading = computed(() =>
   }
 
   &__subtitle {
-    margin: 4px 0 0;
+    margin: var(--dp-space-component-xs) 0 0;
     font-size: var(--dp-font-size-sm);
     line-height: 1.5;
     color: var(--dp-text-secondary);
@@ -96,7 +96,7 @@ const showPageHeading = computed(() =>
   &__actions {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     flex-shrink: 0;
   }
 }

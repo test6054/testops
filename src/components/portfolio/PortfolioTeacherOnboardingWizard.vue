@@ -463,29 +463,29 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .portfolio-onboarding-wizard__steps {
-  padding: 0 var(--dp-space-4);
-  margin-bottom: var(--dp-space-4);
+  padding: 0 var(--dp-space-block);
+  margin-bottom: var(--dp-space-block);
 }
 
 .portfolio-onboarding-wizard__card {
-  margin: var(--dp-space-4);
+  margin: var(--dp-space-block);
 }
 
 .portfolio-onboarding-wizard__gate {
-  margin: var(--dp-space-3) var(--dp-space-4);
+  margin: var(--dp-space-component) var(--dp-space-block);
 }
 
 .portfolio-onboarding-wizard__gate-row {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
 .portfolio-onboarding-wizard__copy {
-  margin: 0 0 var(--dp-space-4);
+  margin: 0 0 var(--dp-space-block);
   color: var(--dp-text-secondary);
   line-height: 1.6;
 }
@@ -493,19 +493,19 @@ onMounted(() => {
 .portfolio-onboarding-wizard__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
-  padding: 0 var(--dp-space-4) var(--dp-space-4);
+  gap: var(--dp-space-component-tight);
+  padding: 0 var(--dp-space-block);
 }
 
 .portfolio-onboarding-wizard__picker {
   display: grid;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .portfolio-onboarding-wizard__spec-row {
   display: grid;
-  gap: var(--dp-space-1);
-  padding: var(--dp-space-2) 0;
+  gap: var(--dp-space-component-xs);
+  padding: var(--dp-space-component-tight) 0;
   border-bottom: 1px solid var(--dp-border);
 }
 </style>

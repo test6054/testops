@@ -586,6 +586,7 @@ async function loadLocationOptions(): Promise<void> {
 
 async function loadDevices(): Promise<void> {
   loading.value = true
+  const hadRows = devices.value.length > 0
   try {
     const query: ExamScannerDeviceQueryRequest = {
       pageNum: pagination.current,
@@ -612,13 +613,17 @@ async function loadDevices(): Promise<void> {
         interfaceMode: searchForm.interfaceMode,
       })
     } catch (error) {
+      // 汇总失败不抹掉列表；仅清空汇总信号
       deviceSummary.value = null
       showUserError(error, '扫描设备汇总加载失败')
     }
   } catch (error) {
-    devices.value = []
-    deviceSummary.value = null
-    pagination.total = 0
+    // 筛选/翻页失败保留旧表，避免空白闪烁；首屏失败仍清空
+    if (!hadRows) {
+      devices.value = []
+      deviceSummary.value = null
+      pagination.total = 0
+    }
     showUserError(error, '扫描设备列表加载失败')
   } finally {
     loading.value = false
@@ -626,6 +631,7 @@ async function loadDevices(): Promise<void> {
 }
 
 function handleSearch(): void {
+  // FilterBar 已先更新 searchForm（乐观 UI），此处仅触发后台请求
   pagination.current = 1
   void loadDevices()
 }
@@ -981,10 +987,10 @@ onBeforeUnmount(() => {
 .printer-management-page {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 
   &__filter {
-    margin-bottom: var(--dp-space-2);
+    margin-bottom: var(--dp-space-component-tight);
   }
 }
 
@@ -998,19 +1004,19 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-block);
 }
 
 .toolbar-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 
   .toolbar-actions {
     display: flex;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 }
 
@@ -1021,7 +1027,7 @@ onBeforeUnmount(() => {
 .token-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   flex-wrap: wrap;
 }
 
@@ -1034,7 +1040,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 
   &__hint {
     width: 100%;
@@ -1050,7 +1056,7 @@ onBeforeUnmount(() => {
   }
 
   &__code {
-    padding: 10px 14px;
+    padding: var(--dp-space-component) var(--dp-space-block);
     border-radius: 10px;
     background: var(--dp-gray-50);
     color: var(--dp-gray-900);
@@ -1063,7 +1069,7 @@ onBeforeUnmount(() => {
   &__meta {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--dp-space-component-tight);
     width: 100%;
     color: var(--dp-text-muted);
     font-size: var(--dp-font-size-sm);
@@ -1072,7 +1078,7 @@ onBeforeUnmount(() => {
   &__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     justify-content: center;
   }
 }

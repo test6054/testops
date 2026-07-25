@@ -226,8 +226,8 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
     'TeacherExamWorkspaceMarkingTaskPool',
     'TeacherExamWorkspaceScoreSummary',
   ],
+  // 制卷 LayoutDesigner 含 konva/pdf 重 chunk：进入备考页不主动预取，用户点菜单再加载
   TeacherExamWorkspacePrep: [
-    'TeacherExamWorkspaceLayoutDesigner',
     'TeacherExamWorkspaceCandidateRoster',
     'TeacherExamWorkspaceScanBatches',
   ],
@@ -279,7 +279,6 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
   TeacherExamWorkspaceOverview: [
     'TeacherExamList',
     'TeacherExamWorkspacePrep',
-    'TeacherExamWorkspaceLayoutDesigner',
     'TeacherExamWorkspaceCandidateRoster',
   ],
   TeacherExamWorkspaceMarkingTaskDetail: ['TeacherExamWorkspaceMarkingTaskPool'],
@@ -299,7 +298,8 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
   TeacherExamWorkspaceArchivePackage: ['TeacherExamWorkspaceArchivePackage', 'TeacherArchiveVolumeList'],
   TeacherExamWorkspaceArchiveExports: ['TeacherExamWorkspaceArchiveTeachingAffairs', 'TeacherExamWorkspaceArchivePackage'],
   TeacherExamWorkspaceArchiveTeachingAffairs: ['TeacherExamWorkspaceArchiveExports', 'TeacherExamWorkspaceArchivePackage'],
-  TeacherArchiveVolumeList: ['TeacherArchiveVolumeWorkspace', 'TeacherArchiveVolumeDetail', 'TeacherArchiveVolumeSearch', 'TeacherArchiveVolumeRemediationDetail', 'TeacherArchiveScanOps'],
+  // 归档详情含多 Tab 大面板：列表页不预取详情 chunk，点击进入再加载
+  TeacherArchiveVolumeList: ['TeacherArchiveVolumeWorkspace', 'TeacherArchiveVolumeSearch', 'TeacherArchiveVolumeRemediationDetail', 'TeacherArchiveScanOps'],
   TeacherArchiveVolumeDetail: ['TeacherArchiveVolumeList', 'TeacherArchiveScanOps'],
   TeacherArchiveVolumeWorkspace: ['TeacherArchiveVolumeList', 'TeacherArchiveScanOps'],
   TeacherArchiveScanOps: ['TeacherArchiveVolumeList', 'TeacherArchiveVolumeEvalCampaign'],

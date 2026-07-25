@@ -163,9 +163,7 @@ function openDetail(tabKey?: string) {
       size="sm"
       v-else-if="loadFailed"
       title="院系审核材料加载失败"
-      description="无法读取最新材料摘要与审核权限。"
-      action-label="重新加载"
-      @action="volumeId && loadDetail(volumeId)"
+      description="无法读取最新材料摘要与审核权限；关闭后重新打开将再次拉取。"
     />
     <template v-else-if="detail">
       <div class="dept-review-list-drawer__meta">
@@ -238,14 +236,14 @@ function openDetail(tabKey?: string) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
 .dept-review-list-drawer__denied {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
@@ -253,26 +251,26 @@ function openDetail(tabKey?: string) {
 .dept-review-list-drawer__links {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 12px;
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-component);
 }
 
 .dept-review-list-drawer__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--dp-border-light);
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-block);
+  padding-top: var(--dp-space-component);
+  border-top: 1px solid var(--dp-border-subtle);
 }
 
 .dept-review-list-drawer__reject {
-  margin-top: 12px;
+  margin-top: var(--dp-space-component);
 }
 
 .dept-review-list-drawer__reject-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component-tight);
 }
 </style>

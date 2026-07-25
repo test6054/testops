@@ -9,7 +9,7 @@
       :show-icon="false"
     >
       <template #default>
-        <span style="display: inline-flex; align-items: center; gap: 8px">
+        <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
           <UiTag tone="blue" size="sm">未选页</UiTag>
           <span>请在左侧页轨选择一条扫描页后查看登记与绑定详情</span>
         </span>
@@ -664,19 +664,19 @@ watch(
 
 <style lang="scss" scoped>
 .scan-batch-page-inspector__summary {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .scan-batch-page-inspector__position {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   min-width: 0;
-  margin-bottom: 6px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .scan-batch-page-inspector__order {
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
@@ -693,11 +693,11 @@ watch(
 .scan-batch-page-inspector__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
 }
 
 .scan-batch-page-inspector__subline {
-  margin: 6px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-xs);
   line-height: 1.4;
@@ -705,22 +705,22 @@ watch(
 
 .scan-batch-page-inspector__tip {
   flex-shrink: 0;
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
   font-size: var(--dp-font-size-sm);
   cursor: help;
 }
 
 .scan-batch-page-inspector__section {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: var(--dp-space-component);
+  padding-top: var(--dp-space-component);
   border-top: 1px solid var(--dp-border-subtle);
 }
 
 .scan-batch-page-inspector__section-title {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin: 0 0 8px;
+  gap: var(--dp-space-component-xs);
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   font-weight: 600;
 }
@@ -728,15 +728,15 @@ watch(
 .scan-batch-page-inspector__blocked {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 12px;
-  padding-top: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component);
+  padding-top: var(--dp-space-component);
   border-top: 1px solid var(--dp-border-subtle);
 }
 
 .scan-batch-page-inspector__bind-form {
   :deep(.ant-form-item) {
-    margin-bottom: 10px;
+    margin-bottom: var(--dp-space-component);
   }
 }
 </style>

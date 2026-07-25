@@ -13,6 +13,9 @@
     <div v-if="loading" class="matrix-workbench__placeholder">
       <UiSpin />
     </div>
+    <div v-else-if="loadError" class="matrix-workbench__placeholder">
+      <UiEmpty size="sm" :title="emptyErrorTitle" :description="emptyErrorDescription" />
+    </div>
     <div v-else-if="rows.length === 0 || cols.length === 0" class="matrix-workbench__placeholder">
       <UiEmpty size="sm" :description="emptyText" />
     </div>
@@ -171,6 +174,10 @@ const props = withDefaults(
     rowHeaderWidth?: number
     defaultColWidth?: number
     loading?: boolean
+    /** 矩阵数据源加载失败：禁止伪装成「尚无行列」业务空 */
+    loadError?: boolean
+    emptyErrorTitle?: string
+    emptyErrorDescription?: string
     emptyText?: string
     showRowSummary?: boolean
     rowSummaryLabel?: string
@@ -187,6 +194,9 @@ const props = withDefaults(
     rowHeaderWidth: 220,
     defaultColWidth: 140,
     loading: false,
+    loadError: false,
+    emptyErrorTitle: '矩阵加载失败',
+    emptyErrorDescription: undefined,
     emptyText: '暂无矩阵数据',
     showRowSummary: false,
     rowSummaryLabel: '合计',
@@ -231,6 +241,7 @@ function cellClass(cell: MatrixCell | undefined): string[] {
   } else {
     if (cell.tone) arr.push(`matrix-workbench__cell--${cell.tone}`)
     if (cell.warning) arr.push('matrix-workbench__cell--has-warning')
+    if (cell.dirty) arr.push('matrix-workbench__cell--dirty')
   }
   return arr
 }
@@ -262,16 +273,16 @@ function handleRowClick(row: MatrixRow) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border-bottom: 1px solid var(--dp-border);
-  background: var(--dp-surface-elevated);
+  background: var(--dp-surface-chrome);
 }
 
 .matrix-workbench__title-block {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .matrix-workbench__title {
@@ -289,19 +300,20 @@ function handleRowClick(row: MatrixRow) {
 .matrix-workbench__toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .matrix-workbench__placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
 }
 
 .matrix-workbench__scroll {
   width: 100%;
-  overflow-x: auto;
+  max-height: min(70vh, 640px);
+  overflow: auto;
   background: var(--dp-surface);
 }
 
@@ -316,7 +328,7 @@ function handleRowClick(row: MatrixRow) {
 
 .matrix-workbench__th,
 .matrix-workbench__cell {
-  padding: 10px 12px;
+  padding: var(--dp-space-component);
   border-bottom: 1px solid var(--dp-border);
   border-right: 1px solid var(--dp-border);
   text-align: left;
@@ -328,7 +340,7 @@ function handleRowClick(row: MatrixRow) {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: var(--dp-surface-elevated);
+  background: var(--dp-surface-chrome);
   font-weight: 600;
   text-align: center;
 }
@@ -338,7 +350,7 @@ function handleRowClick(row: MatrixRow) {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: var(--dp-surface-elevated);
+  background: var(--dp-surface-chrome);
   font-weight: 600;
   text-align: left;
 }
@@ -348,14 +360,14 @@ function handleRowClick(row: MatrixRow) {
   width: 100%;
   min-height: 100%;
   margin: 0;
-  padding: 10px 12px;
+  padding: var(--dp-space-component);
   border: none;
   background: transparent;
   font: inherit;
   text-align: inherit;
   color: inherit;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .matrix-workbench__hit:focus-visible {
@@ -364,7 +376,7 @@ function handleRowClick(row: MatrixRow) {
 }
 
 .matrix-workbench__hit:hover {
-  background: var(--dp-surface-elevated);
+  background: var(--dp-surface-chrome);
 }
 
 .matrix-workbench__th--row-header {
@@ -378,7 +390,7 @@ function handleRowClick(row: MatrixRow) {
 }
 
 .matrix-workbench__corner-axis {
-  margin-left: 6px;
+  margin-left: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-xs);
   font-weight: 400;
   color: var(--dp-text-muted);
@@ -392,7 +404,7 @@ function handleRowClick(row: MatrixRow) {
 
 .matrix-workbench__col-hint,
 .matrix-workbench__row-hint {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xs);
   font-weight: 400;
   color: var(--dp-text-muted);
@@ -401,8 +413,8 @@ function handleRowClick(row: MatrixRow) {
 .matrix-workbench__col-badge,
 .matrix-workbench__row-badge {
   display: inline-block;
-  margin-top: 4px;
-  padding: 0 6px;
+  margin-top: var(--dp-space-component-xs);
+  padding: 0 var(--dp-space-component-tight);
   border-radius: var(--dp-radius-panel);
   font-size: var(--dp-font-size-xxs);
   line-height: 18px;
@@ -415,13 +427,13 @@ function handleRowClick(row: MatrixRow) {
 }
 
 .matrix-workbench__row-warning {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-color-danger);
+  color: var(--dp-danger);
 }
 
 .matrix-workbench__th--summary {
-  background: var(--dp-surface-strong);
+  background: var(--dp-surface);
   font-weight: 600;
   text-align: center;
 }
@@ -443,13 +455,13 @@ function handleRowClick(row: MatrixRow) {
 }
 
 .matrix-workbench__cell--summary {
-  background: var(--dp-surface-strong);
+  background: var(--dp-surface);
   cursor: default;
   font-weight: 600;
 }
 
 .matrix-workbench__cell--summary:hover {
-  background: var(--dp-surface-strong);
+  background: var(--dp-surface);
 }
 
 .matrix-workbench__cell-primary {
@@ -472,6 +484,15 @@ function handleRowClick(row: MatrixRow) {
   background: var(--dp-surface);
 }
 
+.matrix-workbench__cell--dirty {
+  box-shadow: inset 0 0 0 2px var(--dp-warning, #d48806);
+}
+
+.matrix-workbench__cell--dirty .matrix-workbench__cell-secondary {
+  color: var(--dp-warning, #d48806);
+  font-weight: 600;
+}
+
 .matrix-workbench__cell-warning {
   position: absolute;
   top: 4px;
@@ -479,7 +500,7 @@ function handleRowClick(row: MatrixRow) {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: var(--dp-color-danger);
+  background: var(--dp-danger);
   color: var(--dp-text-inverse);
   font-size: var(--dp-font-size-xxs);
   font-weight: 700;

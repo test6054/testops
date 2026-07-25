@@ -70,63 +70,55 @@ const hasHeader = computed(
 <style scoped>
 .dp-card {
   background-color: var(--dp-surface);
-  border: 1px solid var(--dp-card-border);
+  border: 1px solid var(--dp-panel-border, var(--dp-border-subtle));
   border-radius: var(--dp-radius-panel);
-  box-shadow:
-    0 1px 2px color-mix(in srgb, var(--dp-text-primary) 4%, transparent),
-    0 1px 3px color-mix(in srgb, var(--dp-text-primary) 6%, transparent);
+  box-shadow: var(--dp-shadow-card);
   transition:
-    border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    box-shadow var(--dp-duration-normal) var(--dp-ease-default),
+    transform var(--dp-duration-normal) var(--dp-ease-default);
   box-sizing: border-box;
   overflow: hidden;
 }
 
 .dp-card--bordered {
-  --dp-card-border: var(--dp-border-strong);
+  --dp-border: var(--dp-border-strong);
 }
 
 .dp-card--hoverable {
   cursor: pointer;
-  box-shadow:
-    0 1px 3px color-mix(in srgb, var(--dp-text-primary) 5%, transparent),
-    0 4px 12px color-mix(in srgb, var(--dp-text-primary) 7%, transparent);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .dp-card--hoverable:hover {
-  border-color: var(--dp-color-primary-border, var(--dp-blue-200));
-  box-shadow:
-    0 4px 8px color-mix(in srgb, var(--dp-color-primary) 8%, transparent),
-    0 8px 24px color-mix(in srgb, var(--dp-text-primary) 10%, transparent);
-  transform: translateY(-2px);
+  border-color: var(--dp-border-subtle);
+  box-shadow: var(--dp-shadow-card-hover);
+  transform: var(--dp-lift-sm);
 }
 
 .dp-card--hoverable:active {
   transform: translateY(0);
-  box-shadow:
-    0 1px 3px color-mix(in srgb, var(--dp-text-primary) 5%, transparent),
-    0 4px 12px color-mix(in srgb, var(--dp-text-primary) 7%, transparent);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .dp-card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
-  border-bottom: 1px solid var(--dp-border);
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
+  border-bottom: 1px solid var(--dp-panel-border, var(--dp-border-subtle));
   background: linear-gradient(
     180deg,
-    var(--dp-surface-elevated) 0%,
-    color-mix(in srgb, var(--dp-surface-elevated) 60%, var(--dp-surface)) 100%
+    var(--dp-surface-chrome) 0%,
+    color-mix(in srgb, var(--dp-surface-chrome) 60%, var(--dp-surface)) 100%
   );
 }
 
 .dp-card__title {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
   font-size: 15px;
   font-weight: 600;
   color: var(--dp-text-primary);
@@ -146,25 +138,25 @@ const hasHeader = computed(
 .dp-card__extra {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-3, 10px);
+  gap: var(--dp-space-component);
   flex-shrink: 0;
 }
 
 .dp-card__body {
-  padding: var(--dp-space-4, 16px);
+  padding: var(--dp-space-block);
 }
 
 .dp-card__body--no-header {
-  padding: var(--dp-space-4, 16px);
+  padding: var(--dp-space-block);
 }
 
 .dp-card--compact .dp-card__header {
-  padding: 10px var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
 }
 
 .dp-card--compact .dp-card__body,
 .dp-card--compact .dp-card__body--no-header {
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
 }
 
 @media (prefers-reduced-motion: reduce) {

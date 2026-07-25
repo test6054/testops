@@ -67,12 +67,12 @@ function resolvePrepStepDescription(step: ExamWorkbenchPrepStepResponse, detail:
   switch (step.key) {
     case 'materialLayout':
       if (!detail.materialLayoutMode) {
-        return '先确定教考分离（独立答卷页）或整卷内作答，后续扫描、身份识别与印刷流程均按该形态执行'
+        return '可选：配置单独试卷或试卷+答题页，用于增强扫描识别与空白送印；未配置也可先扫描登记'
       }
       return `${strictEnumLabel(ExamMaterialLayoutModeDescription, detail.materialLayoutMode, '制卷形态')}，${
         detail.printSourceMode
           ? strictEnumLabel(ExamPrintSourceModeDescription, detail.printSourceMode, '印刷来源')
-          : '试题卷线下印制，系统只配置答题卡'
+          : '试题卷与答题页分册，可配置空白答题页'
       }`
     case 'candidateRoster':
       if (detail.candidateCount > 0) {
@@ -81,7 +81,7 @@ function resolvePrepStepDescription(step: ExamWorkbenchPrepStepResponse, detail:
           : `${detail.classIds.length} 个班级（名册推断，尚未保存参考班级）`
         return `已绑定 ${detail.candidateCount} 名考生 / ${scopeHint}`
       }
-      return '导入考生名册，缺失学生用户会在导入提交时创建为租户学生账号'
+      return '独立能力：卷面由考生自填身份，OCR 自动识别；名册可后补用于匹配与成绩，不阻断扫描与印刷'
     case 'paperTemplate': {
       const hasQuestions = detail.questionCount > 0
       if (!hasQuestions) {
@@ -100,24 +100,26 @@ function resolvePrepStepDescription(step: ExamWorkbenchPrepStepResponse, detail:
     case 'layoutDesign':
       if (detail.materialLayoutMode === 'ANSWER_SHEET') {
         return detail.pageTemplateReady === true
-          ? `答题卡已配置 ${detail.totalPages ?? 0} 页，考后按页序扫描登记`
-          : '上传答题卡 PDF 或配置标准底图，供扫描对齐与身份/客观题识别'
+          ? `答题页已配置 ${detail.totalPages ?? 0} 页；考后试卷与答题页一起扫描登记`
+          : '上传答题页 PDF 或生成标准空白答题页，配置密封线身份区与作答区'
       }
       {
         const layoutReady = detail.layoutConfigured === true && detail.layoutRegionReady === true
         const pageSynced = detail.pageTemplateReady === true
         if (layoutReady && pageSynced) {
-          return `整卷母版「${detail.layoutName ?? ''}」已就绪，${detail.totalPages ?? 0} 页已同步`
+          return `单独试卷母版「${detail.layoutName ?? ''}」已就绪，${detail.totalPages ?? 0} 页已同步`
         }
         if (layoutReady) {
-          return '整卷 PDF 已上传，请确认身份区 / 客观填涂区并等待拆页同步'
+          return '单独试卷 PDF 已上传，请确认身份区 / 客观作答区并等待拆页同步'
         }
-        return '上传与印制版一致的整卷 PDF，配置身份区与客观题填涂区'
+        return '上传与印制版一致的整卷 PDF，配置身份区与客观作答区'
       }
     case 'printPackage':
       return (detail.printPackageCount ?? 0) > 0
-        ? `已生成 ${detail.printPackageCount} 个印刷包，可送指定保密印刷厂`
-        : '按考生名册生成个性化印刷 PDF 后送印'
+        ? `已生成 ${detail.printPackageCount} 个空白印刷母版，可按座位送印`
+        : detail.materialLayoutMode === 'ANSWER_SHEET'
+          ? '生成空白答题页母版按考场座位送印；考生领卷后自行填写身份，不依赖名册'
+          : '生成空白印刷母版按考场座位送印；考生领卷后自行填写身份，不依赖名册'
     case 'experienceAssist':
       return step.status === 'completed'
         ? '本场经验辅助评阅策略已配置'
@@ -156,10 +158,11 @@ function resolvePrimaryAction(step: ExamWorkbenchPrepStepResponse, detail: ExamD
 
 /**
  * 将后端工作台准备诊断步骤映射为准备页卡片模型；状态与建议项以服务端为准。
+ * detail 缺失时仍渲染快照步骤（描述退回 statusText），禁止因详情失败整页空态。
  */
 export function buildPrepStepCards(
   backendSteps: ExamWorkbenchPrepStepResponse[],
-  detail: ExamDetailResponse,
+  detail: ExamDetailResponse | null,
 ): PrepStepCard[] {
   return backendSteps.map((step) => {
     const routeName = PREP_STEP_ROUTE_BY_KEY[step.key]
@@ -169,11 +172,15 @@ export function buildPrepStepCards(
     return {
       key: step.key,
       title: step.title,
-      description: resolvePrepStepDescription(step, detail),
+      description: detail
+        ? resolvePrepStepDescription(step, detail)
+        : (step.statusText?.trim() || '考试详情未加载，步骤状态以快照为准'),
       status: step.status,
       statusText: step.statusText,
       routeName,
-      primaryAction: resolvePrimaryAction(step, detail),
+      primaryAction: detail
+        ? resolvePrimaryAction(step, detail)
+        : (step.status === 'completed' ? '查看' : '前往配置'),
       advisoryReason: step.advisoryReason ?? undefined,
     }
   })

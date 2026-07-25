@@ -58,8 +58,9 @@ import {
   showFormValidationMessage,
   showUserError,
 } from '@/utils/error-handler'
+import { portfolioAiSourceDisplay } from '@/utils/portfolio-ai-source-display'
 import { formatPortfolioArchiveEvidenceRef } from '@/utils/portfolio-archive-evidence'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -235,6 +236,8 @@ const filterFields = computed<FilterField[]>(() => [
 ])
 
 const loading = ref(false)
+const listLoadFailed = ref(false)
+const listSyncFailed = ref(false)
 const rows = ref<PortfolioReviewTaskSummaryVO[]>([])
 const pageNum = ref(1)
 const pageSize = ref(DEFAULT_LIST_PAGE_SIZE)
@@ -449,6 +452,7 @@ async function loadPage() {
     }
     rows.value = result.list
     pageTotal.value = result.total
+    listLoadFailed.value = false
     selectedRowKeys.value = selectedRowKeys.value.filter((id) =>
       batchSelectableKeys.value.includes(id),
     )
@@ -459,10 +463,8 @@ async function loadPage() {
     if (currentToken !== pageRequestToken.value) {
       return
     }
-    rows.value = []
-    pageTotal.value = 0
-    selectedRowKeys.value = []
-    resetReviewDetailContext()
+    // 失败可见：保留上次成功队列，禁止把审核写入后的刷新失败伪装成空待办
+    listLoadFailed.value = true
     showUserError(error, '加载审核待办失败')
   } finally {
     if (currentToken === pageRequestToken.value) {
@@ -643,20 +645,29 @@ async function handleApprove(): Promise<void> {
   ) {
     return
   }
-  const target = activeRow.value
+  const actionContext = {
+    reviewTaskId: activeRow.value.id,
+    teacherId: activeRow.value.teacherId,
+    archiveRecordId: activeRow.value.archiveRecordId,
+  }
   const opinion = approveOpinion.value.trim() || undefined
   actionSubmitting.value = true
+  listSyncFailed.value = false
   try {
-    if (!(await bindActionTeacherAndAssert(target.teacherId, '档案审核通过'))) {
+    if (!(await bindActionTeacherAndAssert(actionContext.teacherId, '档案审核通过'))) {
       return
     }
     await portfolioReviewApi.approve({
-      reviewTaskId: target.id,
+      reviewTaskId: actionContext.reviewTaskId,
       opinion,
     })
     void message.success('审核已通过')
     resetReviewDetailContext()
     await loadPage()
+    if (listLoadFailed.value) {
+      listSyncFailed.value = true
+      void message.warning('审核已写入，待办列表同步失败；请使用刷新同步')
+    }
   } catch (error) {
     showUserError(error, '审核通过失败')
   } finally {
@@ -677,22 +688,30 @@ async function handleReject(): Promise<void> {
     showFormValidationMessage('请填写退回原因与重提期限')
     return
   }
-  const target = activeRow.value
+  const actionContext = {
+    reviewTaskId: activeRow.value.id,
+    teacherId: activeRow.value.teacherId,
+  }
   const reason = rejectReason.value.trim()
   const returnDeadlineValue = returnDeadline.value.trim()
   actionSubmitting.value = true
+  listSyncFailed.value = false
   try {
-    if (!(await bindActionTeacherAndAssert(target.teacherId, '档案审核退回'))) {
+    if (!(await bindActionTeacherAndAssert(actionContext.teacherId, '档案审核退回'))) {
       return
     }
     await portfolioReviewApi.reject({
-      reviewTaskId: target.id,
+      reviewTaskId: actionContext.reviewTaskId,
       reason,
       returnDeadline: returnDeadlineValue,
     })
     void message.success('已退回修改')
     resetReviewDetailContext()
     await loadPage()
+    if (listLoadFailed.value) {
+      listSyncFailed.value = true
+      void message.warning('退回已写入，待办列表同步失败；请使用刷新同步')
+    }
   } catch (error) {
     showUserError(error, '审核退回失败')
   } finally {
@@ -712,9 +731,13 @@ async function handleDismiss(): Promise<void> {
     showFormValidationMessage('请填写驳回依据')
     return
   }
-  const target = activeRow.value
+  const actionContext = {
+    reviewTaskId: activeRow.value.id,
+    teacherId: activeRow.value.teacherId,
+  }
   const reason = dismissReason.value.trim()
   actionSubmitting.value = true
+  listSyncFailed.value = false
   try {
     const ok = await confirmAsync({
       title: '确认驳回',
@@ -724,16 +747,20 @@ async function handleDismiss(): Promise<void> {
     if (!ok) {
       return
     }
-    if (!(await bindActionTeacherAndAssert(target.teacherId, '档案审核驳回'))) {
+    if (!(await bindActionTeacherAndAssert(actionContext.teacherId, '档案审核驳回'))) {
       return
     }
     await portfolioReviewApi.dismiss({
-      reviewTaskId: target.id,
+      reviewTaskId: actionContext.reviewTaskId,
       reason,
     })
     void message.success('已驳回')
     resetReviewDetailContext()
     await loadPage()
+    if (listLoadFailed.value) {
+      listSyncFailed.value = true
+      void message.warning('驳回已写入，待办列表同步失败；请使用刷新同步')
+    }
   } catch (error) {
     showUserError(error, '审核驳回失败')
   } finally {
@@ -750,26 +777,29 @@ async function handleBatchApprove(): Promise<void> {
     showFormValidationMessage('请选择可批量通过的待审任务')
     return
   }
+  // 先进入 submitting，再快照 ID，避免预检期间勾选变化
+  batchSubmitting.value = true
+  listSyncFailed.value = false
   const reviewTaskIds = selectedRowKeys.value.map(String)
   const selectedRows = reviewTaskIds.map((id) => rows.value.find((item) => item.id === id))
   if (selectedRows.some((row) => !row)) {
+    batchSubmitting.value = false
     showFormValidationMessage('勾选任务已变化，请重新选择')
     return
   }
-  batchSubmitting.value = true
+  const frozenTeacherIds = selectedRows.map((row) => row?.teacherId)
   try {
-    if (
-      !(await assertTeacherIdsArchiveWritable(
-        selectedRows.map((row) => row?.teacherId),
-        '批量审核通过',
-      ))
-    ) {
+    if (!(await assertTeacherIdsArchiveWritable(frozenTeacherIds, '批量审核通过'))) {
       return
     }
     const count = await portfolioReviewApi.batchApprove({ reviewTaskIds })
     void message.success(`已批量通过 ${count} 条`)
     selectedRowKeys.value = []
     await loadPage()
+    if (listLoadFailed.value) {
+      listSyncFailed.value = true
+      void message.warning('批量通过已写入，待办列表同步失败；请使用刷新同步')
+    }
   } catch (error) {
     showUserError(error, '批量通过失败')
   } finally {
@@ -790,22 +820,20 @@ async function handleBatchReject(): Promise<void> {
     showFormValidationMessage('请填写批量退回原因与重提期限')
     return
   }
+  batchRejectSubmitting.value = true
+  listSyncFailed.value = false
   const reviewTaskIds = selectedRowKeys.value.map(String)
   const selectedRows = reviewTaskIds.map((id) => rows.value.find((item) => item.id === id))
   if (selectedRows.some((row) => !row)) {
+    batchRejectSubmitting.value = false
     showFormValidationMessage('勾选任务已变化，请重新选择')
     return
   }
   const reason = batchRejectReason.value.trim()
   const returnDeadlineValue = batchReturnDeadline.value.trim()
-  batchRejectSubmitting.value = true
+  const frozenTeacherIds = selectedRows.map((row) => row?.teacherId)
   try {
-    if (
-      !(await assertTeacherIdsArchiveWritable(
-        selectedRows.map((row) => row?.teacherId),
-        '批量审核退回',
-      ))
-    ) {
+    if (!(await assertTeacherIdsArchiveWritable(frozenTeacherIds, '批量审核退回'))) {
       return
     }
     const count = await portfolioReviewApi.batchReject({
@@ -818,6 +846,10 @@ async function handleBatchReject(): Promise<void> {
     batchRejectReason.value = ''
     batchReturnDeadline.value = ''
     await loadPage()
+    if (listLoadFailed.value) {
+      listSyncFailed.value = true
+      void message.warning('批量退回已写入，待办列表同步失败；请使用刷新同步')
+    }
   } catch (error) {
     showUserError(error, '批量退回失败')
   } finally {
@@ -837,9 +869,13 @@ async function handleEscalate(): Promise<void> {
     showFormValidationMessage('请填写转复审原因')
     return
   }
-  const target = activeRow.value
+  const actionContext = {
+    reviewTaskId: activeRow.value.id,
+    teacherId: activeRow.value.teacherId,
+  }
   const reason = escalateReason.value.trim()
   actionSubmitting.value = true
+  listSyncFailed.value = false
   try {
     const ok = await confirmAsync({
       title: '确认转复审',
@@ -849,16 +885,20 @@ async function handleEscalate(): Promise<void> {
     if (!ok) {
       return
     }
-    if (!(await bindActionTeacherAndAssert(target.teacherId, '档案转复审'))) {
+    if (!(await bindActionTeacherAndAssert(actionContext.teacherId, '档案转复审'))) {
       return
     }
     await portfolioReviewApi.escalate({
-      reviewTaskId: target.id,
+      reviewTaskId: actionContext.reviewTaskId,
       reason,
     })
     void message.success('已转复审')
     resetReviewDetailContext()
     await loadPage()
+    if (listLoadFailed.value) {
+      listSyncFailed.value = true
+      void message.warning('转复审已写入，待办列表同步失败；请使用刷新同步')
+    }
   } catch (error) {
     showUserError(error, '转复审失败')
   } finally {
@@ -931,6 +971,12 @@ watch(
 
     <UiAlertStrip v-if="deepLinkHint" tone="info" :closable="false" :title="deepLinkHint" />
     <UiAlertStrip
+      v-if="listLoadFailed || listSyncFailed"
+      tone="error"
+      :closable="false"
+      :title="listSyncFailed ? '审核已写入，待办列表同步失败' : '审核待办加载失败'"
+    />
+    <UiAlertStrip
       v-if="archiveWriteForbidden"
       tone="warning"
       title="档案已封存写禁"
@@ -1002,6 +1048,9 @@ watch(
         :row-selection="{
           selectedRowKeys,
           onChange: (keys: string[]) => {
+            if (reviewWriting) {
+              return
+            }
             selectedRowKeys = keys
           },
           getCheckboxProps: (record: PortfolioReviewTaskSummaryVO) => ({
@@ -1020,7 +1069,7 @@ watch(
             </UiTag>
           </template>
           <template v-else-if="column.key === 'referenceTask'">
-            {{ record.referenceAiSourceLabel ?? '—' }}
+            {{ portfolioAiSourceDisplay(record.referenceAiSource) || '—' }}
           </template>
           <template v-else-if="column.key === 'aiPreReview'">
             {{ record.aiPreReviewSummary ?? '—' }}
@@ -1049,7 +1098,7 @@ watch(
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
             </UiTag>
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <span v-else-if="!record.lifecycleStatus" class="text-neutral-400">—</span>
@@ -1187,7 +1236,7 @@ watch(
         >
           教师生命周期：
           <UiTag :tone="portfolioLifecycleTagTone(activeRow.lifecycleStatus)">
-            {{ activeRow.lifecycleStatusLabel || activeRow.lifecycleStatus }}
+            {{ portfolioLifecycleStatusDisplay(activeRow.lifecycleStatus) }}
           </UiTag>
           <span v-if="activeRow.countsInCurrentFacultyStructure === false">（不计入当前在岗结构）</span>
           <span v-if="activeRow.archiveWriteForbidden">（档案写禁）</span>
@@ -1298,50 +1347,50 @@ watch(
 
 <style scoped lang="scss">
 .review-card {
-  margin-top: 16px;
+  margin-top: var(--dp-space-block);
 }
 .review-batch-reject {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 .review-toolbar {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .review-section {
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-block);
 }
 .review-section__title {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .review-sensitive-hint {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   color: var(--dp-error);
   font-size: var(--dp-font-size-sm);
 }
 .review-meta {
-  margin: 0 0 12px;
-  color: var(--dp-color-text-secondary);
+  margin: 0 0 var(--dp-space-component);
+  color: var(--dp-text-secondary);
 }
 .review-teacher-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 8px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-xs) var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 .review-broken-alert {
-  margin: 12px 0;
-  padding: 10px 12px;
+  margin: var(--dp-space-component) 0;
+  padding: var(--dp-space-component);
   border-radius: var(--dp-radius-panel);
-  border: 1px solid var(--dp-danger-border, #ffccc7);
-  background: var(--dp-danger-bg, #fff2f0);
+  border: 1px solid var(--dp-error-border, #ffccc7);
+  background: var(--dp-error-bg, #fff2f0);
   color: var(--dp-danger, #cf1322);
 }
 .review-broken-alert p {
-  margin: 6px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   color: var(--dp-text-secondary, #595959);
   word-break: break-word;
 }
@@ -1349,35 +1398,35 @@ watch(
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin: 8px 0 12px;
+  gap: var(--dp-space-component-tight);
+  margin: var(--dp-space-component-tight) 0 var(--dp-space-component);
   color: var(--dp-text-secondary, #595959);
   font-size: var(--dp-font-size-sm);
 }
 .review-ai-summary {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
 }
 .review-ai-issues {
-  margin: 0 0 12px 16px;
+  margin: 0 0 var(--dp-space-component) var(--dp-space-block);
   padding: 0;
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 .review-ai-absent {
-  color: var(--dp-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 .review-logs {
-  margin-top: 16px;
+  margin-top: var(--dp-space-block);
 }
 .review-actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 16px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-block);
 }
 .review-actions__row {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 </style>

@@ -11,6 +11,6 @@ export const ALL_EXAM_LAYOUT_ENTRY_KIND_CODES: readonly ExamLayoutEntryKindCode[
 
 export const ExamLayoutEntryKindDescription: Record<ExamLayoutEntryKindCode, string> = {
   [ExamLayoutEntryKindCode.SOURCE_FILE]: '有源整卷',
-  [ExamLayoutEntryKindCode.BLANK_SHEET]: '标准答题卡',
+  [ExamLayoutEntryKindCode.BLANK_SHEET]: '标准答题页',
 }
 

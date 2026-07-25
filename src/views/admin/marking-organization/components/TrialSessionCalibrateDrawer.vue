@@ -18,8 +18,14 @@
       </UiTag>
     </div>
     <UiForm layout="vertical" class="trial-calibrate-drawer__form">
-      <UiFormItem label="校准结论" required>
+      <UiFormItem
+        label="校准结论"
+        required
+        :validate-status="summaryFieldError ? 'error' : undefined"
+        :help="summaryFieldError || undefined"
+      >
         <UiTextarea
+          ref="summaryInputRef"
           size="sm"
           v-model="calibrationSummary"
           :rows="4"
@@ -76,6 +82,8 @@ const emit = defineEmits<{
 const calibrationSummary = ref('')
 const discussionNotes = ref('')
 const submitting = ref(false)
+const summaryFieldError = ref('')
+const summaryInputRef = ref<{ focus?: () => void } | null>(null)
 
 watch(
   () => props.open,
@@ -83,9 +91,14 @@ watch(
     if (!nextOpen) {
       calibrationSummary.value = ''
       discussionNotes.value = ''
+      summaryFieldError.value = ''
     }
   },
 )
+
+watch(calibrationSummary, () => {
+  summaryFieldError.value = ''
+})
 
 async function submit(): Promise<void> {
   if (!props.canManage) {
@@ -101,7 +114,14 @@ async function submit(): Promise<void> {
     showFormValidationMessage('当前试评会话状态不可提交校准')
     return
   }
-  if (!props.session?.id || !calibrationSummary.value.trim()) {
+  if (!props.session?.id) {
+    showFormValidationMessage('缺少试评会话，无法提交校准')
+    return
+  }
+  if (!calibrationSummary.value.trim()) {
+    summaryFieldError.value = '请填写校准结论'
+    showFormValidationMessage('请填写校准结论')
+    summaryInputRef.value?.focus?.()
     return
   }
   if (submitting.value) {
@@ -130,12 +150,12 @@ async function submit(): Promise<void> {
   &__meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 16px;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-block);
   }
 
   &__form {
-    margin-top: 4px;
+    margin-top: var(--dp-space-component-xs);
   }
 }
 </style>

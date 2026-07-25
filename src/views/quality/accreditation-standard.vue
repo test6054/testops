@@ -468,7 +468,7 @@ onActivated(() => {
         <UiFormItem label="摘要">
           <UiTextarea size="sm" v-model="editor.summary" :rows="4" />
         </UiFormItem>
-        <div class="dp-space" style="--dp-space-gap: 8px">
+        <div class="dp-space" style="--dp-space-component: 8px">
           <UiCheckbox v-model="editor.enabled">启用</UiCheckbox>
           <UiCheckbox v-model="editor.isPilotOnly">仅试点适用</UiCheckbox>
         </div>
@@ -480,22 +480,22 @@ onActivated(() => {
 <style scoped lang="scss">
 .accreditation-standard {
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
@@ -509,7 +509,7 @@ onActivated(() => {
   &__panel-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 

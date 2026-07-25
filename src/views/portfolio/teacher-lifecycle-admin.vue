@@ -6,46 +6,70 @@ import type {
   PortfolioTeacherLifecycleEventVO,
   PortfolioTeacherLifecycleStatusCode,
 } from '@/apis/portfolio/teacher-lifecycle'
+import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import message from 'ant-design-vue/es/message'
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS,
-  PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL,
   portfolioTeacherLifecycleApi,
 } from '@/apis/portfolio/teacher-lifecycle'
+import {
+  QUALITY_SELECTOR_PAGE_SIZE,
+  QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
+} from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
+import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { portfolioLifecycleApprovalStatusDisplay, portfolioLifecycleChangeTypeDisplay, portfolioLifecycleSourceTypeDisplay, portfolioLifecycleStatusDisplay } from '@/utils/portfolio-lifecycle-tag'
+import { formatPortfolioTeacherDisplay, portfolioTeacherSelectOptionsFromSummaries } from '@/utils/portfolio-teacher-display'
 
 const route = useRoute()
 const router = useRouter()
+const { loadTree, departmentOptions } = usePortfolioOrgTree()
 const loading = ref(false)
+const loadError = ref(false)
+const eventsRequestToken = ref(0)
 const applying = ref(false)
 const rows = ref<PortfolioTeacherLifecycleEventVO[]>([])
 const total = ref(0)
 const operationKey = ref('')
+/** 迁出数据包导出审批用途 */
+const transferExportModal = reactive({
+  open: false,
+  teacherUserId: '',
+  purpose: '',
+})
 /** 站内信深链聚焦的事件 ID（eventId 查询参数）。 */
 const focusedEventId = ref('')
+const teachers = ref<PortfolioTeacherSummaryVO[]>([])
+const teacherSearchToken = ref(0)
+let teacherSearchTimer: ReturnType<typeof setTimeout> | undefined
 
 const query = reactive({
   pageNum: 1,
   pageSize: DEFAULT_LIST_PAGE_SIZE,
-  teacherUserId: '' as string,
+  teacherUserId: undefined as string | undefined,
   changeType: undefined as PortfolioTeacherLifecycleChangeTypeCode | undefined,
-  departmentId: '' as string,
+  departmentId: undefined as string | undefined,
   approvalStatus: undefined as PortfolioTeacherLifecycleApprovalStatusCode | undefined,
 })
 
@@ -60,7 +84,7 @@ const approvalStatusOptions: Array<{
 ]
 
 const applyForm = reactive({
-  teacherUserId: '' as string,
+  teacherUserId: undefined as string | undefined,
   changeType: undefined as PortfolioTeacherLifecycleChangeTypeCode | undefined,
   reasonText: '' as string,
 })
@@ -70,23 +94,91 @@ const changeTypeOptions = PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS.map((item) 
   value: item.value,
 }))
 
+const teacherSelectOptions = computed(() => portfolioTeacherSelectOptionsFromSummaries(teachers.value))
+const departmentSelectOptions = computed(() => departmentOptions())
+
 const columns: ColumnsType = [
-  { title: '事件ID', dataIndex: 'id', key: 'id', width: 100 },
-  { title: '教师ID', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 120 },
+  { title: '事件', dataIndex: 'id', key: 'id', width: 100 },
+  { title: '教师', key: 'teacher', width: 180 },
+  { title: '院系', dataIndex: 'departmentName', key: 'departmentName', width: 140 },
   { title: '变更类型', key: 'changeType', width: 140 },
   { title: '状态流转', key: 'statusFlow', width: 200 },
-  { title: '生效时间', dataIndex: 'effectiveTime', key: 'effectiveTime', width: 180 },
+  { title: '生效时间', dataIndex: 'effectiveTime', key: 'effectiveTime', width: 170 },
   { title: '来源', key: 'sourceType', width: 100 },
   { title: '审批', key: 'approvalStatus', width: 100 },
   { title: '原因', dataIndex: 'reasonText', key: 'reasonText', ellipsis: true },
   { title: '操作', key: 'actions', width: 280 },
 ]
 
-function statusLabel(code?: string) {
+function statusLabel(code?: PortfolioTeacherLifecycleStatusCode) {
   if (!code) return '—'
-  return (
-    PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL[code as PortfolioTeacherLifecycleStatusCode] || code
-  )
+  return portfolioLifecycleStatusDisplay(code)
+}
+
+function changeTypeLabel(code?: PortfolioTeacherLifecycleChangeTypeCode) {
+  return portfolioLifecycleChangeTypeDisplay(code) || '—'
+}
+
+function sourceTypeLabel(code?: PortfolioTeacherLifecycleEventVO['sourceType']) {
+  return portfolioLifecycleSourceTypeDisplay(code) || '—'
+}
+
+function approvalStatusLabel(code?: PortfolioTeacherLifecycleApprovalStatusCode) {
+  return portfolioLifecycleApprovalStatusDisplay(code) || '—'
+}
+
+function teacherCellLabel(record: PortfolioTeacherLifecycleEventVO): string {
+  if (record.teacherName && record.teacherNumber) {
+    return formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber)
+  }
+  return record.teacherUserId ? String(record.teacherUserId) : '—'
+}
+
+function mergeTeacherOptions(rowsIn: PortfolioTeacherSummaryVO[]) {
+  const optionMap = new Map(teachers.value.map((item) => [item.userId, item]))
+  for (const row of rowsIn) {
+    optionMap.set(row.userId, row)
+  }
+  teachers.value = Array.from(optionMap.values())
+}
+
+function keepSelectedTeacher(rowsIn: PortfolioTeacherSummaryVO[]): PortfolioTeacherSummaryVO[] {
+  const selectedId = applyForm.teacherUserId || query.teacherUserId
+  if (!selectedId) return rowsIn
+  const selected = teachers.value.find((item) => item.userId === selectedId)
+  if (!selected) return rowsIn
+  if (rowsIn.some((item) => item.userId === selectedId)) return rowsIn
+  return [selected, ...rowsIn]
+}
+
+async function loadTeachers(keyword?: string) {
+  const currentToken = teacherSearchToken.value + 1
+  teacherSearchToken.value = currentToken
+  const requestKeyword = keyword?.trim() || ''
+  try {
+    const page = await portfolioTeacherApi.page({
+      pageNum: 1,
+      pageSize: QUALITY_SELECTOR_PAGE_SIZE,
+      searchText: requestKeyword || undefined,
+      departmentId: query.departmentId || undefined,
+    })
+    if (teacherSearchToken.value !== currentToken) return
+    if (requestKeyword) {
+      teachers.value = keepSelectedTeacher(page.list ?? [])
+    } else {
+      mergeTeacherOptions(page.list ?? [])
+    }
+  } catch (error) {
+    if (teacherSearchToken.value !== currentToken) return
+    showUserError(error, '加载教师名册失败')
+  }
+}
+
+function handleTeacherSearch(value: string) {
+  if (teacherSearchTimer) clearTimeout(teacherSearchTimer)
+  teacherSearchTimer = setTimeout(() => {
+    void loadTeachers(value.trim())
+  }, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS)
 }
 
 /** 目标态是否参评 hold：与 BE holdsEvaluationTasks 对齐（ACTIVE 除外）。 */
@@ -121,8 +213,11 @@ function eventRowClassName(record: PortfolioTeacherLifecycleEventVO): string {
   return ''
 }
 
-async function loadEvents() {
+async function loadEvents(options?: { errorMessage?: string }): Promise<boolean> {
+  const currentToken = eventsRequestToken.value + 1
+  eventsRequestToken.value = currentToken
   loading.value = true
+  loadError.value = false
   try {
     const result = await portfolioTeacherLifecycleApi.pageEvents({
       pageNum: query.pageNum,
@@ -132,6 +227,7 @@ async function loadEvents() {
       departmentId: query.departmentId || undefined,
       approvalStatus: query.approvalStatus,
     })
+    if (eventsRequestToken.value !== currentToken) return false
     rows.value = result?.list ?? []
     total.value = Number(result?.total ?? 0)
     if (focusedEventId.value) {
@@ -140,13 +236,19 @@ async function loadEvents() {
         void message.warning(`深链事件 eventId=${focusedEventId.value} 不在当前筛选结果中，请调整筛选条件`)
       }
     }
+    return true
   } catch (error) {
-    rows.value = []
-    total.value = 0
-    showUserError(error, '加载生命周期事件失败')
+    if (eventsRequestToken.value !== currentToken) return false
+    loadError.value = true
+    showUserError(error, options?.errorMessage ?? '加载生命周期事件失败')
+    return false
   } finally {
-    loading.value = false
+    if (eventsRequestToken.value === currentToken) loading.value = false
   }
+}
+
+async function refreshEventsAfterWrite(settledLabel: string) {
+  await loadEvents({ errorMessage: `${settledLabel}，事件列表刷新失败` })
 }
 
 /**
@@ -159,6 +261,7 @@ async function applyLifecycleDeepLink() {
   focusedEventId.value = eventId
   if (teacherUserId) {
     query.teacherUserId = teacherUserId
+    applyForm.teacherUserId = teacherUserId
   }
   if (eventId) {
     // 深链默认看待审；若用户已手动选状态则保留
@@ -180,7 +283,7 @@ function onPageChange(pageNum: number, pageSize: number) {
 
 async function applyLifecycle() {
   if (!applyForm.teacherUserId || !applyForm.changeType) {
-    showFormValidationMessage('请填写教师 ID 与变更类型')
+    showFormValidationMessage('请选择教师与变更类型')
     return
   }
   if (applying.value) return
@@ -197,33 +300,56 @@ async function applyLifecycle() {
     else if (next.lifecycleStatus === 'TEMP_HOLD') holdBits.push('档案可填报')
     const holdSuffix = holdBits.length ? `（${holdBits.join(' · ')}）` : ''
     void message.success(
-      `已更新为${next.lifecycleStatusLabel || next.lifecycleStatus}${holdSuffix}`,
+      `已更新为${portfolioLifecycleStatusDisplay(next.lifecycleStatus)}${holdSuffix}`,
     )
     applyForm.reasonText = ''
-    await loadEvents()
   } catch (error) {
     showUserError(error, '生命周期变更失败')
+    return
   } finally {
     applying.value = false
   }
+  await refreshEventsAfterWrite('生命周期已更新')
 }
 
 async function exportTransfer(teacherUserId: string | number) {
+  if (!teacherUserId) {
+    showFormValidationMessage('请选择教师')
+    return
+  }
+  transferExportModal.teacherUserId = String(teacherUserId)
+  transferExportModal.purpose = ''
+  transferExportModal.open = true
+}
+
+async function confirmTransferExportApply() {
+  const teacherUserId = transferExportModal.teacherUserId
+  const exportPurpose = transferExportModal.purpose.trim()
+  if (!teacherUserId) {
+    showFormValidationMessage('请选择教师')
+    return Promise.reject(new Error('缺少目标教师'))
+  }
+  if (!exportPurpose) {
+    showFormValidationMessage('请填写导出用途')
+    return Promise.reject(new Error('导出用途为空'))
+  }
   const key = `export:${teacherUserId}`
-  if (operationKey.value) return
+  if (operationKey.value) {
+    return Promise.reject(new Error('操作进行中'))
+  }
   operationKey.value = key
   try {
-    const result = await portfolioTeacherLifecycleApi.exportTransferPackage({ teacherUserId })
-    if (result.fileNodeId) {
-      await downloadPortfolioExcelExport({
-        fileName: result.fileName || `teacher-transfer-${teacherUserId}.zip`,
-        fileNodeId: String(result.fileNodeId),
-      })
-    }
-    void message.success(`迁出数据包已生成（正式档 ${result.officialRecordCount ?? 0}）`)
-    await loadEvents()
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.TEACHER_TRANSFER_PACKAGE,
+      businessRef: { teacherId: teacherUserId },
+      exportPurpose,
+    })
+    transferExportModal.open = false
+    void message.success('已提交迁出数据包导出审批；审批通过后生成包并推进生命周期')
+    void router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出迁出数据包失败')
+    showUserError(error, '提交迁出数据包导出审批失败')
+    return Promise.reject(error)
   } finally {
     operationKey.value = ''
   }
@@ -235,7 +361,7 @@ async function importTransferPackageFromFile(event: Event) {
   const file = input.files?.[0]
   if (!file) return
   if (!applyForm.teacherUserId) {
-    showFormValidationMessage('请先填写目标教师 ID 再导入迁出包')
+    showFormValidationMessage('请先选择目标教师再导入迁出包')
     input.value = ''
     return
   }
@@ -243,11 +369,12 @@ async function importTransferPackageFromFile(event: Event) {
     input.value = ''
     return
   }
-  operationKey.value = `import:${applyForm.teacherUserId}`
+  const frozenTeacherUserId = applyForm.teacherUserId
+  operationKey.value = `import:${frozenTeacherUserId}`
   try {
     const uploaded = await stageBusinessFile(FileUploadSceneKey.PORTFOLIO_MATERIAL, file)
     const result = await portfolioTeacherLifecycleApi.importTransferPackage({
-      targetTeacherUserId: applyForm.teacherUserId,
+      targetTeacherUserId: frozenTeacherUserId,
       fileNodeId: uploaded.id,
     })
     void message.success(
@@ -255,18 +382,19 @@ async function importTransferPackageFromFile(event: Event) {
         ? `迁出数据包已导入过（正式档 ${result.officialRecordCount ?? 0}）`
         : `迁出数据包导入成功（正式档 ${result.officialRecordCount ?? 0}）`,
     )
-    await loadEvents()
   } catch (error) {
     showUserError(error, '导入迁出数据包失败')
+    return
   } finally {
     operationKey.value = ''
     input.value = ''
   }
+  await refreshEventsAfterWrite('迁出包已导入')
 }
 
 async function selfDeclareLifecycle() {
   if (!applyForm.teacherUserId || !applyForm.changeType) {
-    showFormValidationMessage('请填写教师 ID 与变更类型')
+    showFormValidationMessage('请选择教师与变更类型')
     return
   }
   if (applying.value) return
@@ -279,12 +407,13 @@ async function selfDeclareLifecycle() {
     })
     void message.success(`已提交自助申报（待审批 eventId=${event.id}）`)
     query.approvalStatus = 'PENDING'
-    await loadEvents()
   } catch (error) {
     showUserError(error, '自助申报失败')
+    return
   } finally {
     applying.value = false
   }
+  await refreshEventsAfterWrite('自助申报已提交')
 }
 
 async function approveDeclare(record: PortfolioTeacherLifecycleEventVO) {
@@ -297,13 +426,14 @@ async function approveDeclare(record: PortfolioTeacherLifecycleEventVO) {
       eventId: record.id,
       approvalComment: '院系确认通过',
     })
-    void message.success(`已通过并生效：${next.lifecycleStatusLabel || next.lifecycleStatus}`)
-    await loadEvents()
+    void message.success(`已通过并生效：${portfolioLifecycleStatusDisplay(next.lifecycleStatus)}`)
   } catch (error) {
     showUserError(error, '通过申报失败')
+    return
   } finally {
     operationKey.value = ''
   }
+  await refreshEventsAfterWrite('申报已通过')
 }
 
 async function rejectDeclare(record: PortfolioTeacherLifecycleEventVO) {
@@ -317,12 +447,13 @@ async function rejectDeclare(record: PortfolioTeacherLifecycleEventVO) {
       approvalComment: '院系驳回',
     })
     void message.success('已驳回自助申报')
-    await loadEvents()
   } catch (error) {
     showUserError(error, '驳回申报失败')
+    return
   } finally {
     operationKey.value = ''
   }
+  await refreshEventsAfterWrite('申报已驳回')
 }
 
 function openTeacherDirectory(teacherUserId?: string | number) {
@@ -332,8 +463,10 @@ function openTeacherDirectory(teacherUserId?: string | number) {
   })
 }
 
-onMounted(() => {
-  void applyLifecycleDeepLink()
+onMounted(async () => {
+  await loadTree(false)
+  await loadTeachers()
+  await applyLifecycleDeepLink()
 })
 
 watch(
@@ -360,11 +493,14 @@ watch(
 
       <UiCard class="teacher-lifecycle-admin__card" title="登记生命周期变更">
         <UiForm layout="inline" class="teacher-lifecycle-admin__form">
-          <UiFormItem label="教师ID">
-            <UiInput
+          <UiFormItem label="教师">
+            <UiSelect
               v-model="applyForm.teacherUserId"
-              placeholder="目标教师用户ID"
-              style="width: 160px"
+              allow-search
+              :options="teacherSelectOptions"
+              placeholder="搜索姓名/工号"
+              style="min-width: 220px"
+              @search="handleTeacherSearch"
             />
           </UiFormItem>
           <UiFormItem label="变更类型">
@@ -385,9 +521,9 @@ watch(
           <UiButton
             :disabled="!applyForm.teacherUserId || !!operationKey"
             :loading="operationKey.startsWith('export:')"
-            @click="exportTransfer(applyForm.teacherUserId)"
+            @click="exportTransfer(applyForm.teacherUserId!)"
           >
-            导出迁出包
+            申请导出迁出包
           </UiButton>
           <label class="teacher-lifecycle-admin__import">
             <span class="teacher-lifecycle-admin__import-btn">
@@ -405,12 +541,35 @@ watch(
       </UiCard>
 
       <UiCard class="teacher-lifecycle-admin__card" title="生命周期事件">
+        <UiAlertStrip
+          v-if="loadError"
+          tone="error"
+          dense
+          :inline="false"
+          title="事件列表加载失败"
+          style="margin-bottom: var(--dp-space-component)"
+        />
         <UiForm layout="inline" class="teacher-lifecycle-admin__form">
-          <UiFormItem label="教师ID">
-            <UiInput v-model="query.teacherUserId" placeholder="可选" style="width: 140px" />
+          <UiFormItem label="教师">
+            <UiSelect
+              v-model="query.teacherUserId"
+              allow-clear
+              allow-search
+              :options="teacherSelectOptions"
+              placeholder="全部"
+              style="min-width: 220px"
+              @search="handleTeacherSearch"
+            />
           </UiFormItem>
-          <UiFormItem label="院系ID">
-            <UiInput v-model="query.departmentId" placeholder="校管可选" style="width: 140px" />
+          <UiFormItem label="院系">
+            <UiSelect
+              v-model="query.departmentId"
+              allow-clear
+              allow-search
+              :options="departmentSelectOptions"
+              placeholder="校管可选"
+              style="min-width: 200px"
+            />
           </UiFormItem>
           <UiFormItem label="变更类型">
             <UiSelect
@@ -436,7 +595,7 @@ watch(
             @click="
               () => {
                 query.pageNum = 1
-                loadEvents()
+                void loadEvents()
               }
             "
           >
@@ -448,6 +607,7 @@ watch(
           :columns="columns"
           :data-source="rows"
           :loading="loading"
+          :load-error="loadError"
           :pagination="{
             current: query.pageNum,
             pageSize: query.pageSize,
@@ -458,14 +618,20 @@ watch(
           :row-class-name="eventRowClassName"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'changeType'">
-              {{ record.changeTypeLabel || record.changeType || '—' }}
+            <template v-if="column.key === 'teacher'">
+              {{ teacherCellLabel(record) }}
+            </template>
+            <template v-else-if="column.key === 'departmentName'">
+              {{ record.departmentName || '—' }}
+            </template>
+            <template v-else-if="column.key === 'changeType'">
+              {{ changeTypeLabel(record.changeType) }}
             </template>
             <template v-else-if="column.key === 'statusFlow'">
               <span>
-                {{ record.fromStatusLabel || statusLabel(record.fromStatus) }}
+                {{ statusLabel(record.fromStatus) }}
                 →
-                {{ record.toStatusLabel || statusLabel(record.toStatus) }}
+                {{ statusLabel(record.toStatus) }}
               </span>
               <UiTag v-if="toStatusEvaluationHeld(record.toStatus)" tone="orange" class="ml-1">
                 参评 hold
@@ -478,28 +644,28 @@ watch(
               </UiTag>
             </template>
             <template v-else-if="column.key === 'sourceType'">
-              {{ record.sourceTypeLabel || record.sourceType || '—' }}
+              {{ sourceTypeLabel(record.sourceType) }}
             </template>
             <template v-else-if="column.key === 'approvalStatus'">
               <UiTag
                 v-if="record.approvalStatus === 'PENDING'"
                 tone="orange"
               >
-                {{ record.approvalStatusLabel || '待审批' }}
+                {{ approvalStatusLabel(record.approvalStatus) }}
               </UiTag>
               <UiTag
                 v-else-if="record.approvalStatus === 'APPROVED' || record.approvalStatus === 'APPLIED'"
                 tone="green"
               >
-                {{ record.approvalStatusLabel || record.approvalStatus }}
+                {{ approvalStatusLabel(record.approvalStatus) }}
               </UiTag>
               <UiTag
                 v-else-if="record.approvalStatus === 'REJECTED'"
                 tone="red"
               >
-                {{ record.approvalStatusLabel || '已驳回' }}
+                {{ approvalStatusLabel(record.approvalStatus) }}
               </UiTag>
-              <span v-else>{{ record.approvalStatusLabel || record.approvalStatus || '—' }}</span>
+              <span v-else>{{ approvalStatusLabel(record.approvalStatus) }}</span>
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="teacher-lifecycle-admin__actions">
@@ -539,6 +705,21 @@ watch(
         </UiDataTable>
       </UiCard>
     </div>
+    <UiDialog
+      v-model:open="transferExportModal.open"
+      title="申请导出迁出数据包"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="operationKey.startsWith('export:')"
+      @ok="confirmTransferExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="transferExportModal.purpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -546,16 +727,16 @@ watch(
 .teacher-lifecycle-admin {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-block);
 }
 .teacher-lifecycle-admin__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--dp-space-block);
 }
 .teacher-lifecycle-admin__header h2 {
-  margin: 0 0 4px;
+  margin: 0 0 var(--dp-space-component-xs);
   font-size: var(--dp-font-size-2xl);
   font-weight: 600;
 }
@@ -569,8 +750,8 @@ watch(
 .teacher-lifecycle-admin__form {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 12px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight) var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
   align-items: center;
 }
 .teacher-lifecycle-admin__import {
@@ -587,10 +768,10 @@ watch(
 .teacher-lifecycle-admin__actions {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   align-items: center;
 }
 :deep(.teacher-lifecycle-admin__row--focus > td) {
-  background: color-mix(in srgb, var(--dp-brand, #1677ff) 10%, transparent);
+  background: color-mix(in srgb, var(--dp-color-primary) 10%, transparent);
 }
 </style>

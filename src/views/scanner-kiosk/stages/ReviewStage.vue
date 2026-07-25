@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { TaskStatusCode } from '@/apis/mark/task-status'
 /**
- * Stage 3 - 澶嶆牳涓庡紓甯稿缃?
+ * Stage 3 - 复核与异常处理
  *
- * 涓氬姟瀹氫綅锛歝urrentJob 瀛樺湪涓斿寘鍚紓甯?/ 澶辫触椤碉紝鎴栬€呬笂浼?commit 鍗′綇銆?
- * 涓夋爮甯冨眬锛?
- *   宸?320px  路 寮傚父鍒楄〃锛團AILED 椤?+ attentionItems锛?
- *   涓?flex   路 閫変腑椤瑰ぇ鐢诲竷棰勮
- *   鍙?280px  路 鎿嶄綔闈㈡澘锛堥噸璇?/ 鍒犻櫎 / 绉婚櫎 / 鍒锋柊锛? 鎵规鎽樿
+ * 业务定位：currentJob 存在且包含异常/失败页，或者上传/commit 卡住。
+ * 三栏布局：
+ *   左 320px · 异常列表（FAILED 页 + attentionItems）
+ *   中 flex   · 选中项大画布预览
+ *   右 280px · 操作面板（重试 / 删除 / 移除 / 刷新）+ 批次摘要
  */
 import {
   CloseCircleFilled,
@@ -49,7 +49,7 @@ interface ReviewItem {
 
 const selectedBindingPaperInstanceId = ref('')
 
-/** 澶辫触椤碉紙鐩存帴浠?currentJob.pages 涓瓫閫夛級 */
+/** 失败页（直接从 currentJob.pages 中筛选） */
 const failedPages = computed<ReviewItem[]>(() =>
   workflow.exceptionPages.value.map((page): ReviewItem => ({
     key: `page-${page.pageNo}`,
@@ -147,7 +147,7 @@ const reviewItems = computed(() => {
   })
 })
 
-/** 鏈壒娆″凡鐧昏鐨勫叏閮ㄩ〉闈紙鍚崏绋跨焊绛夐檮鍔犻〉锛夛紝渚涘鏍搁樁娈垫祻瑙堝奖鍍忥紝涓庡紓甯稿緟鍔炲苟鍒楀睍绀恒€? */
+/** 本批次已登记的全部页面（含补扫补登等附加页），供复核阶段浏览影像，与异常待办并列表展示。 */
 const registeredPages = computed<ReviewItem[]>(() => {
   const ledger = workflow.pageLedger.value
   if (!ledger?.items.length) return []
@@ -168,7 +168,7 @@ const registeredPages = computed<ReviewItem[]>(() => {
       title: workflow.scanPageDisplayTitleByNo(item.pageNo),
       description: workflow.registrationStatusText(item.registrationStatus),
       detail: item.operatorName
-        ? `鎿嶄綔浜?${item.operatorName} 路 ${workflow.formatTime(item.occurredAt)}`
+        ? `操作人 ${item.operatorName} · ${workflow.formatTime(item.occurredAt)}`
         : workflow.formatTime(item.occurredAt),
       source: 'ledger',
       localPageId: item.localPageId,
@@ -244,7 +244,7 @@ const localBrowsablePages = computed<ReviewItem[]>(() => {
       type: 'page-registered',
       title: workflow.scanPageDisplayTitleByNo(page.pageNo),
       description: page.status === LocalScanPageStatusCode.UPLOADED ? '本机已上传' : '本机已扫描',
-      detail: page.uploadedFileId ? `鏂囦欢 ${page.uploadedFileId}` : undefined,
+      detail: page.uploadedFileId ? `文件 ${page.uploadedFileId}` : undefined,
       status: page.status,
       source: 'job',
     }))
@@ -254,7 +254,7 @@ const browsablePageCount = computed(
   () => registeredPageCount.value + localBrowsablePages.value.length,
 )
 
-/** 杩涘叆澶嶆牳闃舵鎴栭〉鍒楄〃鍙樺寲鏃讹紝榛樿閫変腑棣栨潯鍙祻瑙堥」 */
+/** 进入复核阶段或页列表变化时，默认选中首条可浏览项 */
 watch(
   [reviewItems, registeredPages, localBrowsablePages],
   ([issues, pages, localPages]) => {
@@ -347,7 +347,7 @@ const registerProgressText = computed(() => {
       </template>
     </UiAlertStrip>
 
-    <!-- 宸︼細寮傚父鍒楄〃 -->
+    <!-- 左：异常列表 -->
     <aside class="issue-list">
       <header class="issue-head">
         <div>
@@ -453,7 +453,7 @@ const registerProgressText = computed(() => {
       </section>
     </aside>
 
-    <!-- 涓細澶х敾甯冮瑙? -->
+    <!-- 中：大画布预览 -->
     <main class="preview-wrap">
       <div class="preview-canvas">
         <div
@@ -492,7 +492,7 @@ const registerProgressText = computed(() => {
           @error="workflow.onPreviewImageLoadError"
         />
 
-        <!-- 閫変腑椤规诞鍔ㄤ俊鎭潯 -->
+        <!-- 选中项浮动信息条 -->
         <div v-if="selectedItem" class="preview-banner">
           <span class="banner-no">{{ selectedPreviewTitle }}</span>
           <span class="banner-title">{{ selectedItem.title }}</span>
@@ -501,7 +501,7 @@ const registerProgressText = computed(() => {
       </div>
     </main>
 
-    <!-- 鍙筹細鎿嶄綔闈㈡澘 + 鎵规鎽樿 -->
+    <!-- 右：操作面板 + 批次摘要 -->
     <aside class="actions-panel">
       <KioskBoundStudentsPanel
         variant="panel"
@@ -660,7 +660,7 @@ const registerProgressText = computed(() => {
   flex-shrink: 0;
 }
 
-/* ============ 宸︼細寮傚父鍒楄〃 ============ */
+/* ============ 左：异常列表 ============ */
 
 .issue-list {
   background: var(--kiosk-surface);
@@ -778,11 +778,11 @@ const registerProgressText = computed(() => {
 }
 .issue-item.item-failed button {
   border-color: var(--kiosk-danger);
-  background: color-mix(in srgb, var(--kiosk-danger) 10%, var(--dp-bg-container));
+  background: color-mix(in srgb, var(--kiosk-danger) 10%, var(--dp-surface));
 }
 .issue-item.item-attention button {
   border-color: var(--kiosk-warning);
-  background: color-mix(in srgb, var(--kiosk-warning) 12%, var(--dp-bg-container));
+  background: color-mix(in srgb, var(--kiosk-warning) 12%, var(--dp-surface));
 }
 
 .issue-item-icon {
@@ -846,7 +846,7 @@ const registerProgressText = computed(() => {
   color: var(--kiosk-ink-tertiary);
 }
 
-/* ============ 涓細澶х敾甯冮瑙?============ */
+/* ============ 中：大画布预览 ============ */
 
 .preview-wrap {
   display: flex;
@@ -926,7 +926,7 @@ const registerProgressText = computed(() => {
   min-width: 0;
 }
 
-/* ============ 鍙筹細鎿嶄綔闈㈡澘 ============ */
+/* ============ 右：操作面板 ============ */
 
 .actions-panel {
   display: flex;

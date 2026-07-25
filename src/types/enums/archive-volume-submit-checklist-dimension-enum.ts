@@ -34,7 +34,7 @@ export const ArchiveVolumeSubmitChecklistDimensionDescription: Record<ArchiveVol
   [ArchiveVolumeSubmitChecklistDimensionCode.FOUR_PROPERTY]: '四性检测',
   [ArchiveVolumeSubmitChecklistDimensionCode.FOUR_PROPERTY_SECURITY]: '四性安全性',
   [ArchiveVolumeSubmitChecklistDimensionCode.REMEDIATION]: '整改',
-  [ArchiveVolumeSubmitChecklistDimensionCode.SCORE]: '成绩证明',
+  [ArchiveVolumeSubmitChecklistDimensionCode.SCORE]: '成绩材料',
   [ArchiveVolumeSubmitChecklistDimensionCode.CATALOG_NOT_READY]: '归档目录',
   [ArchiveVolumeSubmitChecklistDimensionCode.CATALOG]: '归档目录',
   [ArchiveVolumeSubmitChecklistDimensionCode.SELF_CHECK_PENDING]: '逐项自查',

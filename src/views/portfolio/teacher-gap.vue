@@ -3,12 +3,10 @@ import type {
   PortfolioArchiveRecordFieldInput,
   PortfolioGapTaskDetailVO,
 } from '@/apis/portfolio/types'
-import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
+import type { ScanDispatchResultPayload } from '@/components/scanner-ops/ScanDispatchResultDialog.vue'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
-import { PortfolioCollectModeCode, ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import {
@@ -16,14 +14,16 @@ import {
   PortfolioGapTaskStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
+import { createPortfolioScanDispatch } from '@/apis/portfolio/scan-dispatch'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import PortfolioArchiveFieldControl from '@/components/portfolio/PortfolioArchiveFieldControl.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
+import ScanDispatchResultDialog from '@/components/scanner-ops/ScanDispatchResultDialog.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
@@ -36,11 +36,14 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
+import { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { validatePortfolioArchiveFields } from '@/utils/portfolio-archive-field-validation'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { buildScanDispatchKioskUrl } from '@/utils/scan-dispatch-kiosk-url'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 function gapTaskStatusLabel(status: PortfolioGapTaskStatusCode): string {
   return strictEnumLabel(PortfolioGapTaskStatusDescription, status, '补采任务状态')
@@ -266,6 +269,11 @@ async function handleSubmit() {
   if (!assertArchiveWritable()) {
     return
   }
+  const schemaError = validatePortfolioArchiveFields(detail.value.missingFields, fieldValues)
+  if (schemaError) {
+    showFormValidationMessage(schemaError)
+    return
+  }
   if (!(await confirmProxyWrite('提交补采'))) {
     return
   }
@@ -320,8 +328,7 @@ async function openPortfolioGapScan() {
   const requestToken = scopeRequestToken.value
   scanOpening.value = true
   try {
-    const created = await createScanDispatch({
-      taskKind: ScanTaskKindCode.PORTFOLIO_COLLECT,
+    const created = await createPortfolioScanDispatch({
       collectMode: PortfolioCollectModeCode.GAP_ATTACHMENT,
       teacherId: targetTeacherId.value,
       gapTaskId: detail.value.id,
@@ -443,7 +450,7 @@ watch(
               {{ statusLabel }}
             </UiTag>
             <UiTag v-if="detail.lifecycleStatus" :tone="portfolioLifecycleTagTone(detail.lifecycleStatus)">
-              {{ detail.lifecycleStatusLabel || detail.lifecycleStatus }}
+              {{ portfolioLifecycleStatusDisplay(detail.lifecycleStatus) }}
             </UiTag>
             <UiTag v-if="detail.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <UiTag v-if="detail.countsInCurrentFacultyStructure === false" tone="gray">
@@ -488,20 +495,18 @@ watch(
                 v-for="field in detail.missingFields"
                 :key="field.fieldCode"
                 :label="field.fieldLabel ?? field.fieldCode"
-                :required="field.missing"
+                :required="field.missing || field.required"
               >
-                <UiTextarea
+                <PortfolioArchiveFieldControl
                   v-model="fieldValues[field.fieldCode]"
-                  size="sm"
-                  :rows="3"
+                  :field="field"
                   :disabled="!formWritable"
-                  placeholder="必填"
                 />
                 <UiInput
                   v-model="evidenceRefs[field.fieldCode]"
                   size="sm"
                   class="teacher-gap__evidence"
-                  :disabled="!formWritable"
+                  :disabled="!formWritable || field.readonly === true"
                   placeholder="证据引用（可选）"
                 />
               </UiFormItem>
@@ -525,28 +530,28 @@ watch(
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
-  margin: 0 0 var(--dp-space-4);
+  gap: var(--dp-space-component-tight);
+  margin: 0 0 var(--dp-space-block);
   font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
 .teacher-gap__return {
-  margin: 0 0 var(--dp-space-4);
+  margin: 0 0 var(--dp-space-block);
   font-size: var(--dp-font-size-md);
   color: var(--dp-warning);
 }
 
 .teacher-gap__evidence {
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .teacher-gap__scan-btn {
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .teacher-gap__file-id {
-  margin-left: var(--dp-space-2);
+  margin-left: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }

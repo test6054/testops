@@ -126,32 +126,32 @@ const getDisplayValue = (item: UiDescriptionItem) => {
 .ui-description-grid {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-block);
 }
 
 .ui-description-grid--compact {
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .ui-description-grid__grid {
   display: grid;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .ui-description-grid__item {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
 }
 
 .ui-description-grid--compact .ui-description-grid__item {
-  gap: var(--dp-space-1, 4px);
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+  gap: var(--dp-space-component-xs);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
 }
 
 .ui-description-grid__item--column {
@@ -170,7 +170,7 @@ const getDisplayValue = (item: UiDescriptionItem) => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
 }
 
 .ui-description-grid__value {
@@ -183,7 +183,7 @@ const getDisplayValue = (item: UiDescriptionItem) => {
 }
 
 .ui-description-grid__value--gray {
-  color: var(--dp-gray-700);
+  color: var(--dp-text-secondary);
 }
 
 .ui-description-grid__value--blue {
@@ -222,8 +222,8 @@ const getDisplayValue = (item: UiDescriptionItem) => {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--dp-space-3, 12px);
-  padding-top: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
+  padding-top: var(--dp-space-component);
   border-top: 1px solid var(--dp-border);
 }
 

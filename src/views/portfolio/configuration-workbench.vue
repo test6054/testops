@@ -1,58 +1,73 @@
 <script setup lang="ts">
+import type { PortfolioConfigurationCapabilityVO } from '@/apis/portfolio/configuration'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { portfolioConfigurationApi } from '@/apis/portfolio/configuration'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import {
+  PortfolioConfigurationCapabilityStatusDescription,
+  PortfolioConfigurationCapabilityStatusEnum,
+} from '@/types/enums/portfolio-configuration-capability-status-enum'
+import { PortfolioConfigurationSectionCodeDescription } from '@/types/enums/portfolio-configuration-section-code-enum'
+import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const router = useRouter()
+const loading = ref(false)
+const loadFailed = ref(false)
+const readiness = ref<Awaited<ReturnType<typeof portfolioConfigurationApi.getReadiness>> | null>(null)
+const loadGeneration = ref(0)
 
-const configurationSections = [
-  {
-    title: '组织与数据接入',
-    actions: [
-      { label: '组织与名册', routeName: 'PortfolioOrgAdmin' },
-      { label: '数据集成中心', routeName: 'PortfolioIntegrationDashboard' },
-    ],
-  },
-  {
-    title: '档案与评价规则',
-    actions: [
-      { label: '档案模板', routeName: 'PortfolioTemplateAdmin' },
-      { label: '档案评分规则', routeName: 'PortfolioArchiveScoreRuleAdmin' },
-      { label: '评价工作组', routeName: 'PortfolioEvaluationWorkgroupNav' },
-      { label: '政策文件库', routeName: 'PortfolioPolicyLibraryAdmin' },
-    ],
-  },
-  {
-    title: '指标与发布',
-    actions: [
-      { label: '租户指标配置', routeName: 'PortfolioIndicatorTenant' },
-      { label: '资格规则', routeName: 'PortfolioIndicatorEligibility' },
-      { label: '发布向导', routeName: 'PortfolioIndicatorPublishWizard' },
-      { label: '指标运行审计', routeName: 'PortfolioIndicatorOps' },
-    ],
-  },
-  {
-    title: '集成数据台账',
-    actions: [
-      { label: '教师工资', routeName: 'PortfolioTeacherSalaryAdmin' },
-      { label: '图书借阅', routeName: 'PortfolioTeacherLibraryAdmin' },
-    ],
-  },
-  {
-    title: '权限与审计',
-    actions: [
-      { label: '导出审批', routeName: 'PortfolioExportApprovalAdmin' },
-      { label: '脱敏规则', routeName: 'PortfolioMaskRuleAdmin' },
-      { label: '审计日志', routeName: 'PortfolioAuditLogAdmin' },
-    ],
-  },
-]
-
-/** 配置壳只通过已注册且服务端已门禁的路由进入具体配置页面。 */
-function openConfiguration(routeName: string) {
-  void router.push({ name: routeName })
+function statusTone(
+  status: PortfolioConfigurationCapabilityStatusEnum,
+): 'gray' | 'green' | 'orange' | 'blue' {
+  if (status === PortfolioConfigurationCapabilityStatusEnum.READY) {
+    return 'green'
+  }
+  if (status === PortfolioConfigurationCapabilityStatusEnum.ATTENTION) {
+    return 'orange'
+  }
+  if (status === PortfolioConfigurationCapabilityStatusEnum.NOT_CONFIGURED) {
+    return 'orange'
+  }
+  return 'blue'
 }
+
+function openCapability(item: PortfolioConfigurationCapabilityVO) {
+  void router.push({ name: item.routeName })
+}
+
+async function loadReadiness() {
+  const generation = ++loadGeneration.value
+  loading.value = true
+  loadFailed.value = false
+  try {
+    const result = await portfolioConfigurationApi.getReadiness()
+    if (generation !== loadGeneration.value) {
+      return
+    }
+    readiness.value = result
+  } catch (error) {
+    if (generation !== loadGeneration.value) {
+      return
+    }
+    loadFailed.value = true
+    showUserError(error, '加载配置 readiness 失败')
+  } finally {
+    if (generation === loadGeneration.value) {
+      loading.value = false
+    }
+  }
+}
+
+onMounted(() => {
+  void loadReadiness()
+})
 </script>
 
 <template>
@@ -60,23 +75,68 @@ function openConfiguration(routeName: string) {
     <template #context>
       <ContextBar show-title layout="workbench" title="档案袋配置中心" />
     </template>
-    <section class="configuration-workbench">
+    <UiAlertStrip
+      v-if="loadFailed"
+      tone="error"
+      title="配置 readiness 加载失败"
+      class="mb-3"
+    />
+    <UiAlertStrip
+      v-else-if="readiness"
+      tone="info"
+      title="配置依赖顺序"
+      :description="`先组织/模板，再规则/指标，最后安全审计。生成于 ${readiness.generatedAt}；未配置 ${readiness.notConfiguredCount} · 需关注 ${readiness.attentionCount}`"
+      class="mb-3"
+    />
+    <section v-if="loading && !readiness" class="configuration-workbench__loading dp-meta">
+      正在汇总配置能力就绪状态…
+    </section>
+    <section v-else-if="readiness" class="configuration-workbench">
       <section
-        v-for="section in configurationSections"
-        :key="section.title"
+        v-for="section in readiness.sections"
+        :key="section.sectionCode"
         class="configuration-workbench__section"
       >
-        <h2>{{ section.title }}</h2>
-        <div class="configuration-workbench__actions">
-          <UiButton
-            size="sm"
-            v-for="action in section.actions"
-            :key="action.routeName"
-            variant="outline"
-            @click="openConfiguration(action.routeName)"
+        <h2>
+          {{
+            section.sectionTitle
+              || strictEnumLabel(
+                PortfolioConfigurationSectionCodeDescription,
+                section.sectionCode,
+                '配置分区',
+              )
+          }}
+        </h2>
+        <div class="configuration-workbench__grid">
+          <UiCard
+            v-for="item in section.capabilities"
+            :key="item.capabilityCode"
+            class="configuration-workbench__card"
           >
-            {{ action.label }}
-          </UiButton>
+            <div class="configuration-workbench__card-head">
+              <strong>{{ item.title }}</strong>
+              <UiTag :tone="statusTone(item.status)" size="sm">
+                {{
+                  strictEnumLabel(
+                    PortfolioConfigurationCapabilityStatusDescription,
+                    item.status,
+                    '配置状态',
+                  )
+                }}
+              </UiTag>
+            </div>
+            <p class="configuration-workbench__summary">{{ item.statusSummary }}</p>
+            <p class="dp-meta">
+              {{ item.ownerHint }}
+              <template v-if="item.blockingCount != null"> · 待办 {{ item.blockingCount }}</template>
+              <template v-if="item.lastChangedAt"> · 最近变更 {{ item.lastChangedAt }}</template>
+            </p>
+            <div class="configuration-workbench__card-actions">
+              <UiButton size="sm" variant="primary" @click="openCapability(item)">
+                {{ item.nextAction }}
+              </UiButton>
+            </div>
+          </UiCard>
         </div>
       </section>
     </section>
@@ -85,24 +145,40 @@ function openConfiguration(routeName: string) {
 
 <style scoped>
 .configuration-workbench {
-  padding: var(--dp-space-4);
+  padding: var(--dp-space-block);
 }
-
+.configuration-workbench__loading {
+  padding: var(--dp-space-block);
+}
 .configuration-workbench__section + .configuration-workbench__section {
-  margin-top: var(--dp-space-3);
-  padding-top: var(--dp-space-3);
+  margin-top: var(--dp-space-component);
+  padding-top: var(--dp-space-component);
   border-top: 1px solid var(--dp-border-subtle);
 }
-
 .configuration-workbench__section h2 {
-  margin: 0 0 var(--dp-space-3);
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-lg);
   font-weight: 600;
 }
-
-.configuration-workbench__actions {
+.configuration-workbench__grid {
+  display: grid;
+  gap: var(--dp-space-component);
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+.configuration-workbench__card-head {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--dp-space-3);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-tight);
+}
+.configuration-workbench__summary {
+  margin: 0 0 var(--dp-space-component-tight);
+  color: var(--dp-text-primary);
+  font-size: var(--dp-font-size-sm);
+  line-height: 1.45;
+}
+.configuration-workbench__card-actions {
+  margin-top: var(--dp-space-component);
 }
 </style>

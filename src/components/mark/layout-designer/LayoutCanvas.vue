@@ -147,7 +147,7 @@ const safeMarginConfig = computed(() => {
     y: marginY,
     width: stageSize.value.width - marginX * 2,
     height: stageSize.value.height - marginY * 2,
-    stroke: resolveThemeColor('--dp-error-hover', ''),
+    stroke: resolveThemeColor('--dp-red-600', ''),
     dash: [6, 4],
     strokeWidth: 1,
     listening: false,
@@ -509,7 +509,7 @@ onMounted(() => {
         <template #default>
           <span class="layout-canvas__empty-row">
             <UiTag tone="blue" size="sm">待配置页背景</UiTag>
-            <span class="layout-canvas__empty-text">当前页尚未配置背景，请生成答题卡或上传整卷源文件</span>
+            <span class="layout-canvas__empty-text">当前页尚未配置背景，请生成答题纸或上传整卷源文件</span>
           </span>
         </template>
       </UiAlertStrip>
@@ -606,8 +606,8 @@ onMounted(() => {
   height: 100%;
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: var(--dp-bg-container);
-  padding: 12px;
+  background: var(--dp-surface);
+  padding: var(--dp-space-component);
 
   &__viewport {
     overflow: auto;
@@ -615,24 +615,24 @@ onMounted(() => {
     min-height: 440px;
     background: var(--dp-surface-subtle);
     border-radius: var(--dp-radius-control);
-    padding: 12px;
+    padding: var(--dp-space-component);
   }
 
   &__ruler {
-    margin-bottom: 8px;
+    margin-bottom: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
   &__empty {
-    margin: var(--dp-space-3) 0;
+    margin: var(--dp-space-component) 0;
     max-width: 100%;
   }
 
   &__empty-row {
     display: inline-flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     min-width: 0;
   }
 
@@ -642,7 +642,7 @@ onMounted(() => {
   }
 
   &__error {
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-error);
   }

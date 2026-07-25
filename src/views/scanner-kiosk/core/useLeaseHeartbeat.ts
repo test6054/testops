@@ -13,13 +13,15 @@ export interface LeaseHeartbeatCallbacks {
 export function useLeaseHeartbeat() {
   const activeTicketId = ref<string | null>(null)
   const leaseLost = ref(false)
-  let timer: ReturnType<typeof setInterval> | null = null
+  let timer: ReturnType<typeof setTimeout> | null = null
+  let heartbeatGeneration = 0
   let consecutiveFailures = 0
   let callbacks: LeaseHeartbeatCallbacks | null = null
 
   function stopHeartbeat() {
+    heartbeatGeneration += 1
     if (timer) {
-      clearInterval(timer)
+      clearTimeout(timer)
       timer = null
     }
     activeTicketId.value = null
@@ -27,13 +29,15 @@ export function useLeaseHeartbeat() {
     callbacks = null
   }
 
+  /** 租约失效时先取出回调再停心跳，避免 stopHeartbeat 清空 callbacks 导致 onLeaseLost 永不执行。 */
   function markLeaseLost() {
     if (leaseLost.value) {
       return
     }
     leaseLost.value = true
+    const onLeaseLost = callbacks?.onLeaseLost
     stopHeartbeat()
-    callbacks?.onLeaseLost?.()
+    onLeaseLost?.()
   }
 
   async function sendHeartbeat(ticketId: string, scannerDeviceId: string, scannerStationId: string) {
@@ -68,10 +72,25 @@ export function useLeaseHeartbeat() {
     leaseLost.value = false
     callbacks = nextCallbacks ?? null
     activeTicketId.value = ticketId
-    void sendHeartbeat(ticketId, scannerDeviceId, scannerStationId)
-    timer = setInterval(() => {
-      void sendHeartbeat(ticketId, scannerDeviceId, scannerStationId)
-    }, HEARTBEAT_INTERVAL_MS)
+    const generation = heartbeatGeneration
+    const scheduleNext = (delayMs: number) => {
+      if (generation !== heartbeatGeneration) {
+        return
+      }
+      timer = setTimeout(() => {
+        void (async () => {
+          if (generation !== heartbeatGeneration) {
+            return
+          }
+          await sendHeartbeat(ticketId, scannerDeviceId, scannerStationId)
+          if (generation !== heartbeatGeneration) {
+            return
+          }
+          scheduleNext(HEARTBEAT_INTERVAL_MS)
+        })()
+      }, delayMs)
+    }
+    scheduleNext(0)
   }
 
   function releaseLease() {

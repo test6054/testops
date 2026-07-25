@@ -415,14 +415,14 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 .aj-captcha-container {
-  padding: 16px;
+  padding: var(--dp-space-block);
 }
 
 .captcha-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-block);
 
   .captcha-title {
     font-size: var(--dp-font-size-lg);
@@ -437,7 +437,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   height: 200px;
-  gap: 12px;
+  gap: var(--dp-space-component);
   color: var(--ant-color-text-tertiary);
 }
 
@@ -471,7 +471,7 @@ onUnmounted(() => {
 }
 
 .slider-container {
-  margin-top: 12px;
+  margin-top: var(--dp-space-component);
 
   .slider-track {
     position: relative;
@@ -525,7 +525,7 @@ onUnmounted(() => {
     text-align: center;
     font-size: var(--dp-font-size-xs);
     color: var(--ant-color-text-tertiary);
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
   }
 
   &.is-success {
@@ -589,7 +589,7 @@ onUnmounted(() => {
 }
 
 .click-word-tip {
-  margin-top: 12px;
+  margin-top: var(--dp-space-component);
   text-align: center;
   font-size: var(--dp-font-size-md);
   color: var(--ant-color-text-secondary);
@@ -603,16 +603,16 @@ onUnmounted(() => {
 .click-word-actions {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  margin-top: 12px;
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-component);
 }
 
 .captcha-error {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 12px;
-  padding: 8px 12px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   background-color: var(--ant-color-error-bg);
   border-radius: var(--dp-radius-xs);
   font-size: var(--dp-font-size-sm);

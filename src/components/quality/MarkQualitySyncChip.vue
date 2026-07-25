@@ -112,7 +112,7 @@ watch(
 .mark-quality-sync-chip {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   flex-wrap: wrap;
 }
 

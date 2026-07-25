@@ -145,7 +145,7 @@ const industryPackColumns: ColumnsType = [
   { title: '状态', key: 'status', width: 88 },
 ]
 
-async function loadConfig() {
+async function loadConfig(options?: { errorMessage?: string }) {
   const currentToken = ++requestToken.config
   loadState.config = true
   loadError.config = false
@@ -155,15 +155,14 @@ async function loadConfig() {
     configRows.value = rows
   } catch (error) {
     if (requestToken.config !== currentToken) return
-    configRows.value = []
     loadError.config = true
-    showUserError(error, '加载租户指标配置失败')
+    showUserError(error, options?.errorMessage ?? '加载租户指标配置失败')
   } finally {
     if (requestToken.config === currentToken) loadState.config = false
   }
 }
 
-async function loadIndustryPacks() {
+async function loadIndustryPacks(options?: { errorMessage?: string }) {
   const currentToken = ++requestToken.packs
   loadState.packs = true
   loadError.packs = false
@@ -173,18 +172,19 @@ async function loadIndustryPacks() {
     industryPacks.value = rows
   } catch (error) {
     if (requestToken.packs !== currentToken) return
-    industryPacks.value = []
     loadError.packs = true
-    showUserError(error, '加载行业包失败')
+    showUserError(error, options?.errorMessage ?? '加载行业包失败')
   } finally {
     if (requestToken.packs === currentToken) loadState.packs = false
   }
 }
 
-async function loadModel() {
+async function loadModel(options?: { errorMessage?: string, clearOnStart?: boolean }) {
   const targetSceneCode = sceneCode.value
   const currentToken = ++requestToken.model
-  model.value = null
+  if (options?.clearOnStart !== false) {
+    model.value = null
+  }
   loadState.model = true
   loadError.model = false
   try {
@@ -194,9 +194,8 @@ async function loadModel() {
     modelDirty.value = false
   } catch (error) {
     if (requestToken.model !== currentToken) return
-    model.value = null
     loadError.model = true
-    showUserError(error, '加载场景模型失败')
+    showUserError(error, options?.errorMessage ?? '加载场景模型失败')
   } finally {
     if (requestToken.model === currentToken) loadState.model = false
   }
@@ -217,14 +216,17 @@ async function enableAll() {
   try {
     const result = await portfolioIndicatorTenantApi.enableAllConfig()
     void message.success(`已启用 ${result.enabledCount} 项指标`)
-    const reloads = [loadConfig()]
-    if (model.value) reloads.push(loadModel())
-    await Promise.all(reloads)
   } catch (error) {
     showUserError(error, '启用全部平台指标失败')
+    return
   } finally {
     endOperation(operation)
   }
+  const reloads = [loadConfig({ errorMessage: '指标已启用，配置列表刷新失败' })]
+  if (model.value) {
+    reloads.push(loadModel({ errorMessage: '指标已启用，场景模型刷新失败', clearOnStart: false }))
+  }
+  await Promise.all(reloads)
 }
 
 async function toggleEnabled(record: PortfolioTenantIndicatorConfigVO, enabled: boolean) {
@@ -236,10 +238,16 @@ async function toggleEnabled(record: PortfolioTenantIndicatorConfigVO, enabled: 
     void message.success(enabled ? '已启用' : '已停用')
   } catch (error) {
     showUserError(error, '切换指标启用状态失败')
+    return
   } finally {
-    await Promise.all([loadConfig(), model.value ? loadModel() : Promise.resolve()])
     endOperation(operation)
   }
+  await Promise.all([
+    loadConfig({ errorMessage: '指标启停已保存，配置列表刷新失败' }),
+    model.value
+      ? loadModel({ errorMessage: '指标启停已保存，场景模型刷新失败', clearOnStart: false })
+      : Promise.resolve(),
+  ])
 }
 
 function openEdit(record: PortfolioTenantIndicatorConfigVO) {
@@ -277,12 +285,18 @@ async function saveEdit() {
     await portfolioIndicatorTenantApi.saveConfig(request)
     void message.success('配置已保存')
     editDrawerOpen.value = false
-    await Promise.all([loadConfig(), model.value ? loadModel() : Promise.resolve()])
   } catch (error) {
     showUserError(error, '保存指标配置失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await Promise.all([
+    loadConfig({ errorMessage: '配置已保存，列表刷新失败' }),
+    model.value
+      ? loadModel({ errorMessage: '配置已保存，场景模型刷新失败', clearOnStart: false })
+      : Promise.resolve(),
+  ])
 }
 
 async function saveModel() {
@@ -303,11 +317,17 @@ async function saveModel() {
       indicators,
     })
     void message.success('场景模型已保存')
-    if (sceneCode.value === targetSceneCode) await loadModel()
   } catch (error) {
     showUserError(error, '保存场景模型失败')
+    return
   } finally {
     endOperation(operation)
+  }
+  if (sceneCode.value === targetSceneCode) {
+    await loadModel({
+      errorMessage: '场景模型已保存，详情刷新失败',
+      clearOnStart: false,
+    })
   }
 }
 
@@ -323,13 +343,29 @@ async function trialModel() {
   if (!beginOperation(operation)) return
   try {
     await portfolioIndicatorTenantApi.saveModel({ sceneCode: targetSceneCode, indicators })
+  } catch (error) {
+    showUserError(error, '保存场景模型失败，未执行试算')
+    endOperation(operation)
+    return
+  }
+  try {
     const result = await portfolioIndicatorTenantApi.trialModel({ sceneCode: targetSceneCode })
     if (sceneCode.value !== targetSceneCode) return
     model.value = result
     modelDirty.value = false
-    void message.success(result.trialPassed ? '当前权重已保存，试算通过' : '试算未通过，请检查权重')
+    if (result.trialPassed) {
+      void message.success('草稿已保存，试算通过')
+    } else {
+      void message.warning('草稿已保存，试算未通过')
+    }
   } catch (error) {
-    showUserError(error, '场景模型试算失败')
+    if (sceneCode.value === targetSceneCode) {
+      showUserError(error, '草稿已保存，试算失败')
+      await loadModel({
+        errorMessage: '草稿已保存，场景模型刷新失败',
+        clearOnStart: false,
+      })
+    }
   } finally {
     endOperation(operation)
   }
@@ -359,11 +395,17 @@ async function freezeModel() {
   try {
     await portfolioIndicatorTenantApi.freezeModel({ sceneCode: targetSceneCode })
     void message.success('场景模型已冻结')
-    if (sceneCode.value === targetSceneCode) await loadModel()
   } catch (error) {
     showUserError(error, '冻结场景模型失败')
+    return
   } finally {
     endOperation(operation)
+  }
+  if (sceneCode.value === targetSceneCode) {
+    await loadModel({
+      errorMessage: '场景模型已冻结，详情刷新失败',
+      clearOnStart: false,
+    })
   }
 }
 
@@ -527,7 +569,12 @@ onMounted(loadConfig)
           >
             批量启用 T001–T100
           </UiButton>
-          <UiButton size="sm" :loading="loadState.config" :disabled="writing" @click="loadConfig">
+          <UiButton
+            size="sm"
+            :loading="loadState.config"
+            :disabled="writing"
+            @click="() => { void loadConfig() }"
+          >
             刷新
           </UiButton>
         </div>
@@ -599,7 +646,7 @@ onMounted(loadConfig)
           </UiButton>
         </div>
         <UiSpin :spinning="loadState.model">
-          <UiEmpty size="sm" v-if="loadError.model" description="场景模型加载失败，请重试" />
+          <UiEmpty size="sm" v-if="loadError.model" description="场景模型加载失败" />
           <template v-if="model">
             <p class="meta">
               {{ sceneLabel }} · 状态 {{ modelStatusLabel(model.modelStatus) }} · 权重合计
@@ -756,13 +803,13 @@ onMounted(loadConfig)
 .toolbar,
 .bind-form {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-block);
   flex-wrap: wrap;
   align-items: center;
 }
 .meta {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }

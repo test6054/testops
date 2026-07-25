@@ -48,8 +48,12 @@
           </UiTag>
         </template>
         <template v-else-if="column.key === 'progress'">
+          <span
+            v-if="sessionProgressPercent(record.totalTaskCount, record.finalizedTaskCount) == null"
+          >—</span>
           <UiProgressBar
-            :percent="sessionProgressPercent(record.totalTaskCount, record.finalizedTaskCount)"
+            v-else
+            :percent="sessionProgressPercent(record.totalTaskCount, record.finalizedTaskCount)!"
             size="sm"
             :color="
               record.finalizedTaskCount >= record.totalTaskCount && record.totalTaskCount > 0
@@ -90,7 +94,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TrialSessionResponse } from '@/apis/mark/marking-organization'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
 import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
 import message from 'ant-design-vue/es/message'
@@ -112,12 +116,14 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import WorkflowPrerequisiteEmpty from '@/components/workbench/workflow-readiness/WorkflowPrerequisiteEmpty.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
-import {
-  ALL_TRIAL_SESSION_STATUS_CODES,
-  TrialSessionStatusCode,
-} from '@/types/enums/trial-session-status-enum'
+import { TrialSessionStatusCode } from '@/types/enums/trial-session-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import {
+  buildMarkingSessionFilterFields,
+  resolveSessionTableEmptyDescription,
+} from '@/utils/marking-session-list-contract'
+import { resolveTaskProgressPercent } from '@/utils/session-task-progress'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import TrialSessionCalibrateDrawer from './TrialSessionCalibrateDrawer.vue'
 
@@ -147,6 +153,8 @@ const props = defineProps<{
   canCloseMarkingSessions?: boolean
   createBlocked?: boolean
   prerequisiteEmpty?: WorkflowPrerequisiteEmptyViewModel
+  /** 列表请求失败时禁止把失败伪装成「暂无」空态 */
+  sessionsLoadFailed?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -192,59 +200,21 @@ const sessionColumns: ColumnType<TrialSessionResponse>[] = [
   { title: '操作', key: 'actions', width: 200 },
 ]
 
-const statusFilterOptions = computed(() =>
-  ALL_TRIAL_SESSION_STATUS_CODES.map((status) => ({
-    value: status,
-    label: strictEnumLabel(TrialSessionStatusDescription, status, '试评会话状态'),
-  })),
+const filterFields = computed(() => buildMarkingSessionFilterFields('trial', props.groupOptions))
+
+const sessionTableEmptyDescription = computed(() =>
+  resolveSessionTableEmptyDescription({
+    phase: 'trial',
+    loadFailed: Boolean(props.sessionsLoadFailed),
+    total: props.pagination.total,
+    filter: props.filterModel,
+    createHint: props.createBlocked
+      ? ''
+      : props.canManage
+        ? '暂无试评会话，点击顶部「创建试评」开始定标'
+        : '暂无试评会话',
+  }),
 )
-
-const filterFields = computed((): FilterField[] => [
-  {
-    key: 'keyword',
-    type: 'input',
-    inputPrefixIcon: 'search',
-    placeholder: '搜索题组、状态、校准结论',
-    width: 260,
-    triggerSearchOnChange: false,
-  },
-  {
-    key: 'status',
-    type: 'select',
-    placeholder: '全部状态',
-    options: statusFilterOptions.value,
-    width: 140,
-    triggerSearchOnChange: false,
-  },
-  {
-    key: 'groupId',
-    type: 'select',
-    placeholder: '全部题组',
-    options: props.groupOptions.map((item) => ({ label: item.label, value: item.value })),
-    width: 160,
-    triggerSearchOnChange: false,
-  },
-])
-
-const hasActiveFilter = computed(
-  () =>
-    Boolean(props.filterModel.keyword.trim())
-    || Boolean(props.filterModel.status)
-    || Boolean(props.filterModel.groupId),
-)
-
-const sessionTableEmptyDescription = computed(() => {
-  if (props.pagination.total === 0 && !hasActiveFilter.value) {
-    if (props.createBlocked) {
-      return ''
-    }
-    return props.canManage ? '暂无试评会话，点击顶部「创建试评」开始定标' : '暂无试评会话'
-  }
-  if (props.pagination.total === 0 && hasActiveFilter.value) {
-    return '未找到匹配会话，请调整筛选条件'
-  }
-  return '暂无试评会话'
-})
 
 watch(
   () => props.filterModel,
@@ -258,11 +228,8 @@ watch(
   { immediate: true, deep: true },
 )
 
-function sessionProgressPercent(total: number, finalized: number): number {
-  if (total <= 0) {
-    return 0
-  }
-  return Math.round((finalized * 100) / total)
+function sessionProgressPercent(total: number, finalized: number): number | null {
+  return resolveTaskProgressPercent(total, finalized)
 }
 
 function emitSearch(model: Record<string, unknown>): void {

@@ -5,7 +5,6 @@ import type {
 } from '@/apis/mark/archive-volume'
 import {
   ArchiveIntegrityStatusCode,
-  ArchiveScoreCompletionStatusCode,
   ArchiveScoreSourceCode,
   ArchiveVolumeStatusCode,
 } from '@/apis/mark/archive-volume'
@@ -21,8 +20,6 @@ interface SubmitGateInput {
     | 'hasBlockingRemediationForSubmit'
     | 'scoreSubmitReady'
     | 'scoreSource'
-    | 'scoreCompletionStatus'
-    | 'scoreProofFileId'
     | 'examGateOpen'
     | 'fourPropertyStale'
     | 'securityMarkPending'
@@ -108,13 +105,11 @@ export function canSubmitArchiveVolume(input: SubmitGateInput): boolean {
   return true
 }
 
-/** 与后端 assertScoreProof / submitReady 成绩分支一致 */
+/** 与后端 assertScoreProof / isScoreSubmitReady 一致：仅 MARK_INTERNAL 走考试双门禁 */
 export function isScoreSubmitReady(
   volume: Pick<
     ArchiveVolumeResponse,
     | 'scoreSource'
-    | 'scoreCompletionStatus'
-    | 'scoreProofFileId'
     | 'examGateOpen'
     | 'scoreSubmitReady'
   >,
@@ -123,18 +118,6 @@ export function isScoreSubmitReady(
   if (volume.scoreSubmitReady === false) return false
   if (volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL) {
     return volume.examGateOpen === true
-  }
-  if (
-    volume.scoreSource === ArchiveScoreSourceCode.TEACHING_AFFAIRS
-    || volume.scoreSource === ArchiveScoreSourceCode.OFFLINE_CONFIRMED
-  ) {
-    if (
-      volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED
-      || volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED
-    ) {
-      return true
-    }
-    return !!volume.scoreProofFileId
   }
   return true
 }
@@ -194,10 +177,7 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
     return '四性检测未通过，请先执行四性检测'
   }
   if (!isScoreSubmitReady(volume)) {
-    if (volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL) {
-      return '线上阅卷双门禁未满足，暂不可提交'
-    }
-    return '成绩证明未完成，请先确认成绩或上传证明文件'
+    return '线上阅卷双门禁未满足，暂不可提交'
   }
   if (volume.requireSelfCheckConfirm && !volume.selfCheckConfirmed) {
     return '请先完成提交前自查确认'

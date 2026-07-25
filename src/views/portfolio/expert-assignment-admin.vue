@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioExpertAssignmentVO } from '@/apis/portfolio/expert-assignment'
+import type {
+  PortfolioExpertAssignmentCreateOptionsVO,
+  PortfolioExpertAssignmentVO,
+} from '@/apis/portfolio/expert-assignment'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
 import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
-import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -52,8 +54,12 @@ const operating = computed(() => Boolean(operationKey.value))
 const createLoading = computed(() => operationKey.value === 'assignment:create')
 const pageRequestToken = ref(0)
 const taskRequestToken = ref(0)
+const optionsRequestToken = ref(0)
 const taskLoading = ref(false)
 const taskLoadError = ref(false)
+const optionsLoading = ref(false)
+const optionsLoadError = ref(false)
+const createOptions = ref<PortfolioExpertAssignmentCreateOptionsVO | null>(null)
 const rows = ref<PortfolioExpertAssignmentVO[]>([])
 const total = ref(0)
 const tasks = ref<PortfolioEvaluationTaskVO[]>([])
@@ -111,10 +117,45 @@ const query = reactive({
 
 const createForm = reactive({
   evaluationTaskId: '',
-  expertUserId: '',
-  subjectTeacherIdsText: '',
-  categoryCodesText: '',
+  expertUserId: undefined as string | undefined,
+  subjectTeacherIds: [] as string[],
+  categoryCodes: [] as string[],
   expireDays: 30,
+})
+
+const expertSelectOptions = computed(() =>
+  (createOptions.value?.expertOptions ?? []).map((expert) => ({
+    value: expert.userId,
+    label: [expert.userName, expert.userCode].filter(Boolean).join(' · ') || expert.userId,
+  })),
+)
+
+const subjectTeacherSelectOptions = computed(() =>
+  (createOptions.value?.subjectTeacherOptions ?? []).map((teacher) => ({
+    value: teacher.teacherUserId,
+    label: teacher.evaluationHeld
+      ? `${teacher.fullName}（不可授权）`
+      : teacher.fullName,
+    disabled: Boolean(teacher.evaluationHeld),
+  })),
+)
+
+const categorySelectOptions = computed(() =>
+  (createOptions.value?.categoryOptions ?? []).map((category) => ({
+    value: category.categoryCode,
+    label: `${category.categoryName}（${category.categoryCode}）`,
+  })),
+)
+
+const createScopeSummary = computed(() => {
+  const options = createOptions.value
+  if (!options) return ''
+  return [
+    `外部专家 ${options.externalExpertCount}`,
+    `可授权教师 ${options.participableSubjectTeacherCount}`,
+    options.heldSubjectTeacherCount > 0 ? `hold ${options.heldSubjectTeacherCount}` : null,
+    `启用分类 ${options.activeCategoryCount}`,
+  ].filter(Boolean).join(' · ')
 })
 
 const columns: ColumnsType = [
@@ -194,13 +235,6 @@ function buildPublicReviewUrl(accessToken: string): string | null {
   return `${window.location.origin}/portfolio/public/expert-review#${params.toString()}`
 }
 
-function parseCategoryCodes(text: string): string[] {
-  return text
-    .split(/[,，\s]+/)
-    .map((item) => item.trim())
-    .filter(Boolean)
-}
-
 async function copyCreatedPublicLink() {
   try {
     await navigator.clipboard.writeText(createdPublicLink.value)
@@ -227,11 +261,38 @@ function onRowAction(key: string, row: PortfolioExpertAssignmentVO) {
   }
 }
 
-function parseSubjectTeacherIds(text: string): string[] {
-  return text
-    .split(/[,，\s]+/)
-    .map((item) => item.trim())
-    .filter(Boolean)
+function clearCreateOptions() {
+  createOptions.value = null
+  optionsLoadError.value = false
+  createForm.expertUserId = undefined
+  createForm.subjectTeacherIds = []
+  createForm.categoryCodes = []
+}
+
+async function loadCreateOptions(taskId: string) {
+  const currentToken = optionsRequestToken.value + 1
+  optionsRequestToken.value = currentToken
+  if (!taskId) {
+    clearCreateOptions()
+    return
+  }
+  optionsLoading.value = true
+  optionsLoadError.value = false
+  try {
+    const result = await portfolioExpertAssignmentApi.createOptions({ id: taskId })
+    if (optionsRequestToken.value !== currentToken) return
+    createOptions.value = result
+    createForm.expertUserId = undefined
+    createForm.subjectTeacherIds = []
+    createForm.categoryCodes = []
+  } catch (error) {
+    if (optionsRequestToken.value !== currentToken) return
+    createOptions.value = null
+    optionsLoadError.value = true
+    showUserError(error, '加载授权创建选项失败')
+  } finally {
+    if (optionsRequestToken.value === currentToken) optionsLoading.value = false
+  }
 }
 
 async function loadTasks() {
@@ -256,7 +317,7 @@ async function loadTasks() {
   }
 }
 
-async function loadPage() {
+async function loadPage(options?: { errorMessage?: string }): Promise<boolean> {
   const currentToken = pageRequestToken.value + 1
   pageRequestToken.value = currentToken
   const request = {
@@ -270,20 +331,23 @@ async function loadPage() {
   loading.value = true
   try {
     const result = await portfolioExpertAssignmentApi.page(request)
-    if (pageRequestToken.value !== currentToken) return
+    if (pageRequestToken.value !== currentToken) return false
     rows.value = result.list ?? []
     total.value = result.total ?? 0
-
     okLoad()
+    return true
   } catch (error) {
-    if (pageRequestToken.value !== currentToken) return
+    if (pageRequestToken.value !== currentToken) return false
     failLoad()
-    rows.value = []
-    total.value = 0
-    showUserError(error, '加载外部专家授权列表失败')
+    showUserError(error, options?.errorMessage ?? '加载外部专家授权列表失败')
+    return false
   } finally {
     if (pageRequestToken.value === currentToken) loading.value = false
   }
+}
+
+async function refreshListAfterWrite(settledLabel: string) {
+  await loadPage({ errorMessage: `${settledLabel}，列表刷新失败` })
 }
 
 function onSearch() {
@@ -300,33 +364,38 @@ function onPageChange(page: { current: number, pageSize: number }) {
 function openCreateModal() {
   if (operating.value) return
   createForm.evaluationTaskId = filterForm.evaluationTaskId ?? ''
-  createForm.expertUserId = ''
-  createForm.subjectTeacherIdsText = ''
-  createForm.categoryCodesText = ''
   createForm.expireDays = 30
+  clearCreateOptions()
   createOpen.value = true
+  if (createForm.evaluationTaskId) {
+    void loadCreateOptions(createForm.evaluationTaskId)
+  }
 }
 
 async function submitCreate() {
-  const subjectTeacherIds = [...new Set(parseSubjectTeacherIds(createForm.subjectTeacherIdsText))]
-  if (
-    !createForm.evaluationTaskId
-    || !createForm.expertUserId.trim()
-    || subjectTeacherIds.length === 0
-  ) {
-    showFormValidationMessage('请填写评价任务、专家用户和至少一名被评教师')
+  if (!createForm.evaluationTaskId || !createForm.expertUserId) {
+    showFormValidationMessage('请选择评价任务与外部专家')
     return
   }
-  const categoryCodes = [...new Set(parseCategoryCodes(createForm.categoryCodesText))]
+  if (optionsLoadError.value || !createOptions.value) {
+    showFormValidationMessage('授权范围选项未就绪，请先选择评价任务并等待选项加载')
+    return
+  }
+  const subjectTeacherIds = [...new Set(createForm.subjectTeacherIds)]
+  if (subjectTeacherIds.length === 0) {
+    showFormValidationMessage('请至少选择一名可授权被评教师')
+    return
+  }
+  const categoryCodes = [...new Set(createForm.categoryCodes)]
   if (categoryCodes.length === 0) {
-    showFormValidationMessage('请至少填写一个材料分类编码')
+    showFormValidationMessage('请至少选择一个材料分类')
     return
   }
   const operation = 'assignment:create'
   if (!beginOperation(operation)) return
   const request = {
     evaluationTaskId: createForm.evaluationTaskId,
-    expertUserId: createForm.expertUserId.trim(),
+    expertUserId: createForm.expertUserId,
     subjectTeacherIds,
     materialScope: { categoryCodes },
     expireDays: createForm.expireDays,
@@ -334,25 +403,26 @@ async function submitCreate() {
   try {
     const created = await portfolioExpertAssignmentApi.create(request)
     if (!created.accessToken) {
-      showUserError(null, '授权已创建，但未返回一次性访问令牌，请刷新列表后重试或联系管理员')
-      await loadPage()
-      return
+      showUserError(null, '授权已创建，但未返回一次性访问令牌；请勿重复创建，可点刷新查看列表')
+    } else {
+      const publicLink = buildPublicReviewUrl(created.accessToken)
+      if (publicLink) {
+        createdPublicLink.value = publicLink
+        createdLinkOpen.value = true
+        void message.success('已创建外部专家授权，请立即保存免登链接')
+        createOpen.value = false
+      } else {
+        void message.success('已创建外部专家授权')
+        createOpen.value = false
+      }
     }
-    const publicLink = buildPublicReviewUrl(created.accessToken)
-    if (!publicLink) {
-      await loadPage()
-      return
-    }
-    createdPublicLink.value = publicLink
-    createdLinkOpen.value = true
-    void message.success('已创建外部专家授权，请立即保存免登链接')
-    createOpen.value = false
-    await loadPage()
   } catch (error) {
     showUserError(error, '创建外部专家授权失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshListAfterWrite('授权已创建')
 }
 
 async function revokeRow(row: PortfolioExpertAssignmentVO) {
@@ -371,13 +441,22 @@ async function revokeRow(row: PortfolioExpertAssignmentVO) {
   try {
     await portfolioExpertAssignmentApi.revoke({ id: assignmentId })
     void message.success('已吊销授权')
-    await loadPage()
   } catch (error) {
     showUserError(error, '吊销失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshListAfterWrite('已吊销授权')
 }
+
+watch(
+  () => createForm.evaluationTaskId,
+  (taskId) => {
+    if (!createOpen.value) return
+    void loadCreateOptions(taskId || '')
+  },
+)
 
 onMounted(async () => {
   await loadTasks()
@@ -469,33 +548,60 @@ onMounted(async () => {
             :disabled="operating || taskLoadError"
           />
         </UiFormItem>
-        <UiFormItem label="专家用户编号" required>
-          <UiInput
+        <UiAlertStrip
+          v-if="optionsLoadError"
+          tone="error"
+          dense
+          :inline="false"
+          title="授权范围选项加载失败"
+          description="请重新选择评价任务，或关闭后通过页面刷新再打开新建。"
+          style="margin-bottom: var(--dp-space-component)"
+        />
+        <UiAlertStrip
+          v-else-if="createScopeSummary"
+          tone="info"
+          dense
+          :inline="false"
+          title="范围预检"
+          :description="createScopeSummary"
+          style="margin-bottom: var(--dp-space-component)"
+        />
+        <UiFormItem label="外部专家" required>
+          <UiSelect
             size="sm"
             v-model="createForm.expertUserId"
-            placeholder="外部专家平台用户编号"
-            :disabled="operating"
+            placeholder="选择工作组外部专家"
+            allow-search
+            :options="expertSelectOptions"
+            :loading="optionsLoading"
+            :disabled="operating || optionsLoadError || !createForm.evaluationTaskId"
           />
         </UiFormItem>
-        <UiFormItem label="被评教师编号" required>
-          <UiTextarea
+        <UiFormItem label="被评教师" required>
+          <UiSelect
             size="sm"
-            v-model="createForm.subjectTeacherIdsText"
-            placeholder="多个编号用逗号或空格分隔"
-            :rows="3"
-            :disabled="operating"
+            mode="multiple"
+            v-model="createForm.subjectTeacherIds"
+            placeholder="选择任务参评范围内教师"
+            allow-search
+            :options="subjectTeacherSelectOptions"
+            :loading="optionsLoading"
+            :disabled="operating || optionsLoadError || !createForm.evaluationTaskId"
           />
-          <p class="mt-1 text-xs text-[var(--dp-color-text-tertiary)]">
-            封存 / 暂挂 / 迁出链路教师处于评价参评 hold，不可授权；后端会硬拦，禁止假成功。
+          <p class="mt-1 text-xs text-[var(--dp-text-muted)]">
+            封存 / 暂挂 / 迁出链路教师处于评价参评 hold，选项已禁用；后端会硬拦，禁止假成功。
           </p>
         </UiFormItem>
-        <UiFormItem label="材料分类编码" required>
-          <UiTextarea
+        <UiFormItem label="材料分类" required>
+          <UiSelect
             size="sm"
-            v-model="createForm.categoryCodesText"
-            placeholder="多个分类编码用逗号或空格分隔"
-            :rows="3"
-            :disabled="operating"
+            mode="multiple"
+            v-model="createForm.categoryCodes"
+            placeholder="选择启用档案分类"
+            allow-search
+            :options="categorySelectOptions"
+            :loading="optionsLoading"
+            :disabled="operating || optionsLoadError || !createForm.evaluationTaskId"
           />
         </UiFormItem>
         <UiFormItem label="有效天数" required>
@@ -528,7 +634,7 @@ onMounted(async () => {
         :inline="false"
         title="一次性链接提示"
         description="该链接仅在本次创建后显示，关闭后无法再次获取；如遗失请重新创建授权。"
-        style="margin-bottom: 16px"
+        style="margin-bottom: var(--dp-space-block)"
       />
       <UiInput size="sm" :value="createdPublicLink" readonly />
       <div class="expert-assignment__link-actions">
@@ -544,6 +650,6 @@ onMounted(async () => {
 .expert-assignment__link-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 16px;
+  margin-top: var(--dp-space-block);
 }
 </style>

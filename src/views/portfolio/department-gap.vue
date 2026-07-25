@@ -4,7 +4,7 @@ import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/enums'
 import type { PortfolioGapTaskSummaryVO } from '@/apis/portfolio/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -13,6 +13,7 @@ import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -21,7 +22,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -29,8 +30,25 @@ function gapStatusLabel(status: PortfolioGapTaskStatusCode): string {
   return strictEnumLabel(PortfolioGapTaskStatusDescription, status, '补采任务状态')
 }
 
+function teacherDisplayLabel(row: PortfolioGapTaskSummaryVO): string {
+  const name = row.teacherName?.trim()
+  const number = row.teacherNumber?.trim()
+  if (name && number) {
+    return `${name}（${number}）`
+  }
+  if (name) {
+    return name
+  }
+  if (number) {
+    return number
+  }
+  return '—'
+}
+
 const router = useRouter()
+const route = useRoute()
 const loading = ref(false)
+const loadFailed = ref(false)
 const urgingId = ref('')
 const extendingId = ref('')
 const extendDialogOpen = ref(false)
@@ -58,9 +76,9 @@ function gapCourseScopeLabel(row: PortfolioGapTaskSummaryVO): string {
   return parts.join(' · ')
 }
 
-
 const columns: ColumnsType<PortfolioGapTaskSummaryVO> = [
-  { title: '教师', dataIndex: 'teacherId', key: 'teacherId', width: 100, fixed: 'left' },
+  { title: '教师', key: 'teacher', width: 160, fixed: 'left' },
+  { title: '院系', dataIndex: 'departmentName', key: 'departmentName', width: 120 },
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName', width: 140 },
   { title: '课程维度', key: 'courseScope', width: 160 },
   { title: '任务', dataIndex: 'taskTitle', key: 'taskTitle' },
@@ -75,12 +93,16 @@ const columns: ColumnsType<PortfolioGapTaskSummaryVO> = [
 async function loadPage() {
   const currentToken = requestToken.value + 1
   requestToken.value = currentToken
+  const deepLinkGapTaskId = String(route.query.gapTaskId ?? '').trim()
   const request = {
-    openOnly: true,
+    // 深链须按主键精确定位，不得被 openOnly 过滤掉已提交/逾期任务
+    openOnly: deepLinkGapTaskId ? false : true,
     pageNum: pageNum.value,
     pageSize: pageSize.value,
+    ...(deepLinkGapTaskId ? { gapTaskId: deepLinkGapTaskId, pageNum: 1 } : {}),
   }
   loading.value = true
+  loadFailed.value = false
   try {
     const page = await portfolioGapApi.pageTasks(request)
     if (requestToken.value !== currentToken) {
@@ -88,17 +110,26 @@ async function loadPage() {
     }
     rows.value = page.list
     pageTotal.value = page.total
+    if (deepLinkGapTaskId && page.list.length === 0) {
+      showFormValidationMessage('深链补采任务不存在、已关闭或不在本院权限范围内')
+    }
   } catch (error) {
     if (requestToken.value !== currentToken) {
       return
     }
-    rows.value = []
-    pageTotal.value = 0
+    loadFailed.value = true
     showUserError(error, '加载补采任务失败')
   } finally {
     if (requestToken.value === currentToken) {
       loading.value = false
     }
+  }
+}
+
+function upsertRow(next: PortfolioGapTaskSummaryVO) {
+  const idx = rows.value.findIndex((item) => item.id === next.id)
+  if (idx >= 0) {
+    rows.value[idx] = next
   }
 }
 
@@ -110,6 +141,11 @@ async function urgeTask(row: PortfolioGapTaskSummaryVO) {
   try {
     await portfolioGapApi.urgeTask({ gapTaskId: row.id })
     void message.success('已发送催办通知')
+    try {
+      await loadPage()
+    } catch (error) {
+      showUserError(error, '催办已发送，列表同步失败')
+    }
   } catch (error) {
     showUserError(error, '催办失败')
   } finally {
@@ -137,14 +173,19 @@ async function extendTask() {
   const reason = extensionForm.reason.trim()
   extendingId.value = gapTaskId
   try {
-    await portfolioGapApi.extendTask({
+    const updated = await portfolioGapApi.extendTask({
       gapTaskId,
       dueTime,
       reason,
     })
+    upsertRow(updated)
     void message.success('延期已生效，教师已收到新的补采期限')
     extendDialogOpen.value = false
-    await loadPage()
+    try {
+      await loadPage()
+    } catch (error) {
+      showUserError(error, '延期已生效，列表同步失败')
+    }
   } catch (error) {
     showUserError(error, '延期失败')
   } finally {
@@ -183,6 +224,13 @@ void loadPage()
       </ContextBar>
     </template>
 
+    <UiAlertStrip
+      v-if="loadFailed"
+      tone="error"
+      title="补采任务加载失败"
+      class="mb-3"
+    />
+
     <UiCard title="开放补采任务">
       <UiDataTable
         v-if="rows.length || loading"
@@ -197,7 +245,13 @@ void loadPage()
         @page-change="() => void loadPage()"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'courseScope'">
+          <template v-if="column.key === 'teacher'">
+            {{ teacherDisplayLabel(record) }}
+          </template>
+          <template v-else-if="column.key === 'departmentName'">
+            {{ record.departmentName || '—' }}
+          </template>
+          <template v-else-if="column.key === 'courseScope'">
             {{ gapCourseScopeLabel(record) }}
           </template>
           <template v-else-if="column.key === 'taskStatus'">
@@ -205,17 +259,17 @@ void loadPage()
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
             </UiTag>
 
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
-            <span v-else>—</span>
+            <span v-else-if="!record.lifecycleStatus">—</span>
           </template>
           <template v-else-if="column.key === 'identityLayers'">
             <PortfolioOwnerIdentityLayersCell
               :layers="record.ownerIdentityLayers"
               :note="record.ownerMultiIdentityNote"
-              :row-key="record.id || record.teacherId || record.teacherUserId || record.userId"
+              :row-key="record.id || record.teacherId"
             />
           </template>
           <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
@@ -240,7 +294,11 @@ void loadPage()
           </template>
         </template>
       </UiDataTable>
-      <UiEmpty size="sm" v-else description="暂无开放补采任务" />
+      <UiEmpty
+        size="sm"
+        v-else
+        :description="loadFailed ? '补采任务加载失败' : '暂无开放补采任务'"
+      />
     </UiCard>
     <UiDialog
       v-model:open="extendDialogOpen"
@@ -259,7 +317,12 @@ void loadPage()
           />
         </UiFormItem>
         <UiFormItem label="延期理由" required>
-          <UiInput v-model="extensionForm.reason" size="sm" :maxlength="500" :disabled="writing" />
+          <UiInput
+            v-model="extensionForm.reason"
+            size="sm"
+            :disabled="writing"
+            placeholder="说明延期原因"
+          />
         </UiFormItem>
       </UiForm>
     </UiDialog>

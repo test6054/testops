@@ -44,7 +44,7 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 defineOptions({ name: 'PortfolioTeacherProcessJournal' })
 
 const router = useRouter()
-const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
   = usePortfolioArchiveWriteGuard()
@@ -63,6 +63,16 @@ const linkCategoryId = ref<string | undefined>()
 const linkSubmitForReview = ref(true)
 const categoryOptions = ref<{ value: string, label: string, code?: string }[]>([])
 const categoriesLoading = ref(false)
+const courseRequestToken = ref(0)
+const sessionRequestToken = ref(0)
+const coursesLoadFailed = ref(false)
+const sessionsLoadFailed = ref(false)
+
+/** 后端过程记录写路径仅允许教师本人；代理查看只读 */
+const canManageOwnProcess = computed(() =>
+  Boolean(currentUserId.value && targetTeacherId.value === currentUserId.value)
+  && !archiveWriteForbidden.value,
+)
 
 const form = reactive<{
   sessionDate: string
@@ -100,17 +110,24 @@ const teacherQuery = computed(() =>
 )
 
 async function loadCourses() {
+  const currentToken = ++courseRequestToken.value
   if (!targetTeacherId.value && canPickTeachers.value) {
     courses.value = []
     sessions.value = []
     selectedCourseId.value = ''
+    coursesLoadFailed.value = false
+    sessionsLoadFailed.value = false
     return
   }
   loading.value = true
+  coursesLoadFailed.value = false
   try {
     const overview = await portfolioCourseArchiveApi.overview({
       ...teacherQuery.value,
     })
+    if (currentToken !== courseRequestToken.value) {
+      return
+    }
     courses.value = overview.courses ?? []
     if (
       selectedCourseId.value
@@ -123,30 +140,56 @@ async function loadCourses() {
     }
     await loadSessions()
   } catch (error) {
-    courses.value = []
-    sessions.value = []
+    if (currentToken !== courseRequestToken.value) {
+      return
+    }
+    coursesLoadFailed.value = true
     showUserError(error, '加载讲授课程失败')
   } finally {
-    loading.value = false
+    if (currentToken === courseRequestToken.value) {
+      loading.value = false
+    }
   }
 }
 
 async function loadSessions() {
-  if (!targetTeacherId.value && canPickTeachers.value) {
+  const teacherId = targetTeacherId.value
+  const taughtCourseId = selectedCourseId.value
+  const currentToken = ++sessionRequestToken.value
+  if (!teacherId && canPickTeachers.value) {
     sessions.value = []
+    sessionsLoadFailed.value = false
     return
   }
   sessionsLoading.value = true
+  sessionsLoadFailed.value = false
   try {
-    sessions.value = await portfolioProcessSessionApi.list({
-      ...teacherQuery.value,
-      taughtCourseId: selectedCourseId.value || undefined,
+    const nextSessions = await portfolioProcessSessionApi.list({
+      teacherId: teacherId || undefined,
+      taughtCourseId: taughtCourseId || undefined,
     })
+    if (
+      currentToken !== sessionRequestToken.value
+      || targetTeacherId.value !== teacherId
+      || selectedCourseId.value !== taughtCourseId
+    ) {
+      return
+    }
+    sessions.value = nextSessions
   } catch (error) {
-    sessions.value = []
+    if (
+      currentToken !== sessionRequestToken.value
+      || targetTeacherId.value !== teacherId
+      || selectedCourseId.value !== taughtCourseId
+    ) {
+      return
+    }
+    sessionsLoadFailed.value = true
     showUserError(error, '加载过程记录失败')
   } finally {
-    sessionsLoading.value = false
+    if (currentToken === sessionRequestToken.value) {
+      sessionsLoading.value = false
+    }
   }
 }
 
@@ -186,6 +229,10 @@ async function loadCategories() {
 }
 
 function openLinkArchive(row: PortfolioProcessSessionVO) {
+  if (!canManageOwnProcess.value) {
+    showFormValidationMessage('过程记录仅教师本人可写入')
+    return
+  }
   if (row.sessionStatus !== PortfolioProcessSessionStatusCode.CONFIRMED) {
     showFormValidationMessage('请先将过程记录设为「已确认」再提交材料审核')
     return
@@ -311,6 +358,10 @@ function resetForm() {
 }
 
 function openCreate() {
+  if (!canManageOwnProcess.value) {
+    showFormValidationMessage('过程记录仅教师本人可写入')
+    return
+  }
   if (!selectedCourseId.value) {
     showFormValidationMessage('请先选择讲授课程')
     return
@@ -328,6 +379,10 @@ function openCreate() {
 }
 
 function openEdit(row: PortfolioProcessSessionVO) {
+  if (!canManageOwnProcess.value) {
+    showFormValidationMessage('过程记录仅教师本人可写入')
+    return
+  }
   editingId.value = row.id
   form.sessionDate = row.sessionDate
   form.sessionTitle = row.sessionTitle
@@ -343,6 +398,10 @@ function openEdit(row: PortfolioProcessSessionVO) {
 }
 
 async function saveSession() {
+  if (!canManageOwnProcess.value) {
+    showFormValidationMessage('过程记录仅教师本人可写入')
+    return
+  }
   if (!selectedCourseId.value) {
     showFormValidationMessage('请选择讲授课程')
     return
@@ -377,7 +436,11 @@ async function saveSession() {
     })
     void message.success(editingId.value ? '过程记录已更新' : '过程记录已保存')
     drawerOpen.value = false
-    await loadSessions()
+    try {
+      await loadSessions()
+    } catch (error) {
+      showUserError(error, '保存已生效，列表同步失败')
+    }
   } catch (error) {
     showUserError(error, '保存过程记录失败')
   } finally {
@@ -386,6 +449,10 @@ async function saveSession() {
 }
 
 async function removeSession(row: PortfolioProcessSessionVO) {
+  if (!canManageOwnProcess.value) {
+    showFormValidationMessage('过程记录仅教师本人可写入')
+    return
+  }
   if (!assertArchiveWritable()) {
     return
   }
@@ -405,13 +472,22 @@ async function removeSession(row: PortfolioProcessSessionVO) {
       ...teacherQuery.value,
     })
     void message.success('已删除')
-    await loadSessions()
+    sessions.value = sessions.value.filter((item) => item.id !== row.id)
+    try {
+      await loadSessions()
+    } catch (error) {
+      showUserError(error, '删除已生效，列表同步失败')
+    }
   } catch (error) {
     showUserError(error, '删除过程记录失败')
   }
 }
 
 async function toggleMasterpiece(row: PortfolioProcessSessionVO) {
+  if (!canManageOwnProcess.value) {
+    showFormValidationMessage('过程记录仅教师本人可写入')
+    return
+  }
   const next = !row.selectedForMasterpiece
   if (!assertArchiveWritable()) {
     return
@@ -468,6 +544,13 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
       :description="archiveWriteBlockMessage"
       class="mb-3"
     />
+    <UiAlertStrip
+      v-else-if="canPickTeachers && targetTeacherId && !canManageOwnProcess"
+      tone="info"
+      title="代看只读"
+      description="过程记录仅教师本人可写入；当前为代理查看，不提供代办写入。"
+      class="mb-3"
+    />
 
     <UiSpin :spinning="loading">
       <UiCard title="全过程过程记录">
@@ -486,7 +569,13 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
             :options="courseOptions"
             @change="loadSessions"
           />
-          <UiButton variant="primary" size="sm" :disabled="!selectedCourseId" @click="openCreate">
+          <UiButton
+            v-if="canManageOwnProcess"
+            variant="primary"
+            size="sm"
+            :disabled="!selectedCourseId"
+            @click="openCreate"
+          >
             新建课次记录
           </UiButton>
           <UiButton size="sm" variant="outline" :loading="sessionsLoading" @click="loadSessions">
@@ -494,9 +583,22 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
           </UiButton>
         </div>
 
-        <UiAlertStrip v-if="!courses.length" tone="info" size="sm" dense inline :show-icon="false">
+        <UiAlertStrip
+          v-if="coursesLoadFailed"
+          tone="error"
+          title="讲授课程加载失败"
+          class="mb-3"
+        />
+        <UiAlertStrip
+          v-else-if="!courses.length && !loading"
+          tone="info"
+          size="sm"
+          dense
+          inline
+          :show-icon="false"
+        >
           <template #default>
-            <span style="display: inline-flex; align-items: center; gap: 8px">
+            <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
               <UiTag tone="blue" size="sm">无课程</UiTag>
               <span>暂无讲授课程，请先在个人资料维护授课信息</span>
             </span>
@@ -507,9 +609,17 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
         </UiAlertStrip>
 
         <UiSpin v-else :spinning="sessionsLoading">
+          <UiAlertStrip
+            v-if="sessionsLoadFailed"
+            tone="error"
+            title="过程记录加载失败"
+            class="mb-3"
+          />
           <UiEmpty
-            v-if="!sessions.length"
-            description="尚无课次过程记录，点击「新建课次记录」开始短记"
+            v-else-if="!sessions.length"
+            :description="canManageOwnProcess
+              ? '尚无课次过程记录，点击「新建课次记录」开始短记'
+              : '尚无课次过程记录'"
             size="sm"
           />
           <ul v-else class="process-journal__list">
@@ -569,7 +679,7 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
                   打开关联档案
                 </UiButton>
                 <UiButton
-                  v-else
+                  v-else-if="canManageOwnProcess"
                   size="sm"
                   variant="primary"
                   :disabled="row.sessionStatus !== PortfolioProcessSessionStatusCode.CONFIRMED"
@@ -577,19 +687,37 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
                 >
                   提交材料审核
                 </UiButton>
-                <UiButton size="sm" variant="outline" @click="openEdit(row)">编辑</UiButton>
                 <UiButton
-                  v-if="row.linkedArchiveRecordId"
+                  v-if="canManageOwnProcess"
+                  size="sm"
+                  variant="outline"
+                  @click="openEdit(row)"
+                >
+                  编辑
+                </UiButton>
+                <UiButton
+                  v-if="canManageOwnProcess && row.linkedArchiveRecordId"
                   size="sm"
                   variant="ghost"
                   @click="openLinkArchive(row)"
                 >
                   更新关联
                 </UiButton>
-                <UiButton size="sm" variant="ghost" @click="toggleMasterpiece(row)">
+                <UiButton
+                  v-if="canManageOwnProcess"
+                  size="sm"
+                  variant="ghost"
+                  @click="toggleMasterpiece(row)"
+                >
                   {{ row.selectedForMasterpiece ? '取消精选' : '精选' }}
                 </UiButton>
-                <UiButton size="sm" variant="ghost" status="danger" @click="removeSession(row)">
+                <UiButton
+                  v-if="canManageOwnProcess"
+                  size="sm"
+                  variant="ghost"
+                  status="danger"
+                  @click="removeSession(row)"
+                >
                   删除
                 </UiButton>
               </div>
@@ -713,7 +841,7 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
 
 <style scoped lang="scss">
 .process-journal__lead {
-  margin: 0 0 var(--dp-space-3);
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
   line-height: 1.6;
@@ -722,9 +850,9 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
 .process-journal__toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   align-items: center;
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .process-journal__list {
@@ -733,11 +861,11 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .process-journal__item {
-  padding: var(--dp-space-3);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
@@ -746,12 +874,12 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
 .process-journal__head {
   display: flex;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   flex-wrap: wrap;
 }
 
 .process-journal__meta {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
@@ -759,24 +887,24 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
 .process-journal__tags {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
 }
 
 .process-journal__preview {
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
   line-height: 1.5;
 }
 
 .process-journal__actions {
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 </style>

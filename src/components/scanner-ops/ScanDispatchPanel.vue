@@ -2,7 +2,6 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -15,7 +14,12 @@ import {
   ScanDispatchTicketStatusCode,
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
-import { ScanTaskKindDescription } from '@/apis/mark/scanner-work-order'
+import {
+  cancelPortfolioScanDispatch,
+  loadPortfolioScanDispatchQueueSummary,
+  pagePortfolioScanDispatchTickets,
+} from '@/apis/portfolio/scan-dispatch'
+import ScanDispatchForceReleaseDialog from '@/components/scanner-ops/ScanDispatchForceReleaseDialog.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -28,10 +32,10 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { DispatchQueueStatusFilterCode } from '@/types/enums/dispatch-queue-status-filter-enum'
+import { ScanTaskKindCode, ScanTaskKindDescription } from '@/types/enums/scan-task-kind-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import ScanDispatchForceReleaseDialog from '@/views/teacher/archive-volume/components/ScanDispatchForceReleaseDialog.vue'
 
 defineOptions({ name: 'ScanDispatchPanel' })
 
@@ -302,7 +306,9 @@ async function loadSummary() {
   const generation = ++summaryLoadGeneration
   summaryLoading.value = true
   try {
-    const summary = await loadScanDispatchQueueSummary({ taskKind: props.taskKind })
+    const summary = props.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT
+      ? await loadPortfolioScanDispatchQueueSummary()
+      : await loadScanDispatchQueueSummary({ taskKind: props.taskKind })
     if (generation !== summaryLoadGeneration) {
       return
     }
@@ -325,8 +331,7 @@ async function loadTickets() {
   loading.value = true
   try {
     const filter = queueFilter.value
-    const result = await pageScanDispatchTickets({
-      taskKind: props.taskKind,
+    const pageRequest = {
       statusList: STATUS_FILTER_MAP[filter],
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
@@ -336,11 +341,17 @@ async function loadTickets() {
         || filter === DispatchQueueStatusFilterCode.PENDING
           ? true
           : undefined,
-    })
+    }
+    const result = props.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT
+      ? await pagePortfolioScanDispatchTickets(pageRequest)
+      : await pageScanDispatchTickets({
+          ...pageRequest,
+          taskKind: props.taskKind,
+        })
     if (generation !== ticketsLoadGeneration) {
       return
     }
-    tickets.value = result.list
+    tickets.value = result.list as ScanDispatchTicketVO[]
     pagination.total = result.total
   } catch (error) {
     if (generation !== ticketsLoadGeneration) {
@@ -497,7 +508,11 @@ async function cancelTicket(record: ScanDispatchTicketVO) {
     onOk: async () => {
       cancellingTicketId.value = record.ticketId
       try {
-        await cancelScanDispatch({ ticketId: record.ticketId! })
+        if (props.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT) {
+          await cancelPortfolioScanDispatch({ ticketId: record.ticketId! })
+        } else {
+          await cancelScanDispatch({ ticketId: record.ticketId! })
+        }
         await reloadAll()
         emit('metrics-changed')
       } catch (error) {
@@ -663,7 +678,8 @@ onMounted(() => {
     <ScanDispatchForceReleaseDialog
       v-model:open="forceReleaseOpen"
       :can-force-release="forceReleaseAllowed"
-      :ticket="forceReleaseTicket ? { ticketId: forceReleaseTicket.ticketId } : null"
+      :ticket-id="forceReleaseTicket?.ticketId"
+      :task-kind="taskKind"
       @released="handleForceReleased"
     />
   </div>
@@ -671,7 +687,7 @@ onMounted(() => {
 
 <style scoped>
 .scan-dispatch-panel__signal {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .scan-dispatch-panel__toolbar {
@@ -679,7 +695,7 @@ onMounted(() => {
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--dp-space-component);
   width: 100%;
 }
 </style>

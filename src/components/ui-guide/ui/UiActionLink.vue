@@ -67,7 +67,7 @@ const handleClick = (event: MouseEvent) => {
   line-height: 1.4;
   white-space: nowrap;
   color: var(--dp-color-primary);
-  transition: color 0.2s ease, opacity 0.2s ease;
+  transition: color var(--dp-duration-normal) var(--dp-ease-default), opacity var(--dp-duration-normal) var(--dp-ease-default);
 }
 
 .ui-action-link:hover:not(:disabled) {
@@ -79,7 +79,7 @@ const handleClick = (event: MouseEvent) => {
 }
 
 .ui-action-link--danger:hover:not(:disabled) {
-  color: var(--dp-error-hover);
+  color: var(--dp-red-600);
 }
 
 .ui-action-link--disabled {

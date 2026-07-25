@@ -16,7 +16,12 @@
       class="trial-create-dialog__hint"
     />
     <UiForm layout="vertical">
-      <UiFormItem label="选择题组" required>
+      <UiFormItem
+        label="选择题组"
+        required
+        :validate-status="groupFieldError ? 'error' : undefined"
+        :help="groupFieldError || undefined"
+      >
         <UiSelect v-model="groupId" placeholder="选择参加试评的题组" :options="groupOptions" />
       </UiFormItem>
       <SessionGroupCreateSummary
@@ -79,6 +84,7 @@ const emit = defineEmits<{
 
 const groupId = ref<string | undefined>(undefined)
 const submitting = ref(false)
+const groupFieldError = ref('')
 
 
 const selectedGroupReadiness = computed(() =>
@@ -119,20 +125,37 @@ watch(
   (nextOpen) => {
     if (!nextOpen) {
       groupId.value = undefined
+      groupFieldError.value = ''
       return
     }
+    groupFieldError.value = ''
     if (props.groupOptions.length === 1) {
       groupId.value = props.groupOptions[0].value
     }
   },
 )
 
+watch(groupId, () => {
+  groupFieldError.value = ''
+})
+
 async function submit(): Promise<void> {
   if (!props.canManage) {
     showFormValidationMessage('仅考试主考老师可管理试评会话')
     return
   }
-  if (!props.organizationId || !groupId.value || !selectedGroupCanCreate.value) {
+  if (!props.organizationId) {
+    showFormValidationMessage('缺少阅卷组织，无法创建试评会话')
+    return
+  }
+  if (!groupId.value) {
+    groupFieldError.value = '请选择题组'
+    showFormValidationMessage('请选择题组')
+    return
+  }
+  if (!selectedGroupCanCreate.value) {
+    groupFieldError.value = '所选题组当前不可创建试评会话'
+    showFormValidationMessage('所选题组当前不可创建试评会话')
     return
   }
   if (submitting.value) return
@@ -155,6 +178,6 @@ async function submit(): Promise<void> {
 
 <style lang="scss" scoped>
 .trial-create-dialog__hint {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 </style>

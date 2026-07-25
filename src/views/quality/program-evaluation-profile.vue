@@ -602,7 +602,7 @@ onActivated(() => {
         </UiRow>
         <UiDivider orientation="left">样本范围</UiDivider>
         <UiFormItem>
-          <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
+          <div class="dp-space dp-space--wrap" style="--dp-space-component: 8px">
             <UiCheckbox v-model="editor.includeGraduateSamples">毕业生</UiCheckbox>
             <UiCheckbox v-model="editor.includeEmployerSamples">用人单位</UiCheckbox>
             <UiCheckbox v-model="editor.includeAlumniSamples">校友</UiCheckbox>
@@ -698,18 +698,18 @@ onActivated(() => {
   }
 
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__panel-header {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel-title {

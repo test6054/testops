@@ -49,11 +49,34 @@
     <ExamWorkspaceJourneySubNav v-if="isExamWorkspaceRoute" />
 
     <UiAlertStrip
+      v-if="organizationLoadFailed"
+      tone="error"
+      dense
+      title="阅卷组织加载失败"
+      class="org-sessions__readiness-error"
+    />
+
+    <UiAlertStrip
+      v-if="organization && summaryLoadFailed"
+      tone="error"
+      dense
+      title="试评会话汇总加载失败"
+      class="org-sessions__readiness-error"
+    />
+
+    <UiAlertStrip
+      v-if="organization && sessionsLoadFailed"
+      tone="error"
+      dense
+      title="试评会话列表加载失败"
+      class="org-sessions__readiness-error"
+    />
+
+    <UiAlertStrip
       v-if="organization && canManageOrganization && sessionCreateReadinessLoadFailed"
       tone="error"
       dense
       title="试评创建条件加载失败"
-      description="创建条件暂时不可用，请返回后重新进入本页。"
       class="org-sessions__readiness-error"
     />
 
@@ -70,7 +93,14 @@
       :metrics="sessionCreateWorkflow.metrics"
     />
 
-    <UiSkeletonState v-if="initialLoading && !organization" variant="card" compact />
+    <UiSkeletonState v-if="initialLoading && !organization && !organizationLoadFailed" variant="card" compact />
+
+    <UiEmpty
+      size="sm"
+      v-else-if="organizationLoadFailed && !organization"
+      description="阅卷组织加载失败"
+      class="org-sessions__empty"
+    />
 
     <UiEmpty size="sm" v-else-if="!organization" description="暂无阅卷组织数据" class="org-sessions__empty" />
 
@@ -81,6 +111,7 @@
       :filter-model="sessionFilterModel"
       :pagination="sessionPagination"
       :loading="sessionsLoading"
+      :sessions-load-failed="sessionsLoadFailed"
       :can-manage="canManageOrganization"
       :can-close-marking-sessions="canCloseMarkingSessions"
       :create-blocked="canManageOrganization && sessionCreateReadinessLoaded && !canCreateSession"
@@ -108,6 +139,7 @@
       v-model:open="lifecycleModalOpen"
       :action="lifecycleAction"
       :session-id="lifecycleSessionId"
+      :target-summary="lifecycleTargetSummary"
       :can-manage="lifecycleModalCanManage"
       @success="onTrialSessionsChanged"
     />
@@ -115,13 +147,17 @@
 </template>
 
 <script lang="ts" setup>
-import type { LifecycleAction } from './components/SessionLifecycleReasonModal.vue'
+import type {
+  LifecycleAction,
+  SessionLifecycleTargetSummary,
+} from './components/SessionLifecycleReasonModal.vue'
 import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   MARKING_ORGANIZATION_STATUS_TONE,
   MarkingOrganizationStatusDescription,
+  TrialSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -154,6 +190,9 @@ const {
   trialSessions,
   initialLoading,
   sessionsLoading,
+  organizationLoadFailed,
+  sessionsLoadFailed,
+  summaryLoadFailed,
   groupOptions,
   creatableGroupOptions,
   groupHasAllocationPolicyMap,
@@ -194,6 +233,7 @@ function openCreateDialog(): void {
 const lifecycleModalOpen = ref(false)
 const lifecycleAction = ref<LifecycleAction | null>(null)
 const lifecycleSessionId = ref('')
+const lifecycleTargetSummary = ref<SessionLifecycleTargetSummary | null>(null)
 
 /** MVR-398：关闭动作认 canCloseMarkingSessions；其它写认 canManageOrganization */
 const lifecycleModalCanManage = computed(() => {
@@ -211,8 +251,20 @@ function openLifecycleModal(action: LifecycleAction, sessionId: string): void {
   } else if (!guardOrganizationOwnerAction()) {
     return
   }
+  const session = trialSessions.value.find((item) => item.id === sessionId)
   lifecycleAction.value = action
   lifecycleSessionId.value = sessionId
+  lifecycleTargetSummary.value = {
+    sessionId,
+    groupName: session?.groupName ?? '—',
+    phaseLabel: '试评',
+    statusLabel: session
+      ? strictEnumLabel(TrialSessionStatusDescription, session.sessionStatus, '试评会话状态')
+      : '—',
+    finalizedTaskCount:
+      typeof session?.finalizedTaskCount === 'number' ? session.finalizedTaskCount : null,
+    totalTaskCount: typeof session?.totalTaskCount === 'number' ? session.totalTaskCount : null,
+  }
   lifecycleModalOpen.value = true
 }
 
@@ -227,6 +279,6 @@ function goFormalSessions(): void {
 
 <style lang="scss" scoped>
 .org-sessions__empty {
-  padding: 20px 0;
+  padding: var(--dp-space-block) 0;
 }
 </style>

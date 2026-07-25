@@ -23,6 +23,8 @@ export interface ExamCandidateRosterWorkbenchListQueryRequest extends QueryDto {
   classId?: string
   keyword?: string
   scanProgressStatus?: CandidateScanProgressStatusCode
+  /** 试卷实例精确过滤；补录成功深链定位名册行 */
+  paperInstanceId?: string
 }
 
 /** 考生名册工作台列表项 - 对应 ExamCandidateRosterWorkbenchItemResponse */

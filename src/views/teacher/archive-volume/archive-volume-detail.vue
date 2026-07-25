@@ -14,12 +14,7 @@
     >
       <UiEmpty size="md" show-icon title="无法加载归档任务" :description="detailLoadError">
         <template #action>
-          <div class="archive-volume-detail__load-error-actions">
-            <UiButton variant="primary" size="sm" :loading="loading" @click="() => loadDetail()">
-              重新加载
-            </UiButton>
-            <UiButton variant="outline" size="sm" @click="goArchiveList"> 返回列表 </UiButton>
-          </div>
+          <UiButton variant="outline" size="sm" @click="goArchiveList">返回列表</UiButton>
         </template>
       </UiEmpty>
     </WorkbenchSurfaceCard>
@@ -33,18 +28,11 @@
         dense
         inline
         class="archive-volume-detail__alert"
-      >
-        <template #actions>
-          <UiButton size="sm" variant="outline" @click="() => loadSubmitChecklist()">
-            重新加载
-          </UiButton>
-        </template>
-      </UiAlertStrip>
+      />
       <UiAlertStrip
         v-if="isArchiveGateVisible('grantsFail')"
         tone="warning"
         title="岗位职责加载失败"
-        description="鉴定、销毁与查阅审批操作不可用"
         dense
         inline
         class="archive-volume-detail__alert"
@@ -113,7 +101,7 @@
         v-if="isArchiveGateVisible('scoreSubmit') && scoreSubmitBlockReason"
         tone="warning"
         :title="scoreSubmitBlockReason"
-        description="成绩证明未满足提交前置条件"
+        description="线上阅卷考试双门禁未满足，暂不可提交"
         dense
         inline
         class="archive-volume-detail__alert"
@@ -316,8 +304,8 @@
             v-else-if="activeTab === 'scores'"
             :volume-id="volumeId"
             :detail="detail"
-            :can-confirm-score-completion="canConfirmScoreCompletion"
             @refreshed="loadDetail"
+            @open-materials="setActiveTab('materials')"
           />
 
           <ArchiveVolumeOcrSearchPanel
@@ -466,14 +454,13 @@
     </template>
 
     <WorkbenchSurfaceCard v-else class="archive-volume-detail__load-error">
-      <UiEmpty size="md" show-icon title="无法加载归档任务" description="请重新加载或返回归档列表">
+      <UiEmpty
+        size="md"
+        show-icon
+        title="无法加载归档任务"
+      >
         <template #action>
-          <div class="archive-volume-detail__load-error-actions">
-            <UiButton variant="primary" size="sm" :loading="loading" @click="() => loadDetail()">
-              重新加载
-            </UiButton>
-            <UiButton variant="outline" size="sm" @click="goArchiveList"> 返回列表 </UiButton>
-          </div>
+          <UiButton variant="outline" size="sm" @click="goArchiveList">返回列表</UiButton>
         </template>
       </UiEmpty>
     </WorkbenchSurfaceCard>
@@ -524,7 +511,7 @@ import type {
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import {
@@ -534,9 +521,7 @@ import {
   ArchiveIntegrityStatusDescription,
   ArchiveRemediationStatusCode,
   ArchiveRemediationStatusDescription,
-  ArchiveScoreCompletionStatusCode,
-  ArchiveScoreCompletionStatusDescription,
-  ArchiveScoreSourceDescription,
+  ArchiveScoreSourceCode,
   ArchiveSecurityLevelDescription,
   ArchiveSelfCheckStatusCode,
   ArchiveSelfCheckStatusDescription,
@@ -600,32 +585,80 @@ import {
 } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import ArchiveCollectionRejectDialog from '@/views/teacher/archive-volume/components/ArchiveCollectionRejectDialog.vue'
-import ArchiveScanBatchReviewPanel from '@/views/teacher/archive-volume/components/detail/ArchiveScanBatchReviewPanel.vue'
-import ArchiveScanBatchSnapshotPanel from '@/views/teacher/archive-volume/components/detail/ArchiveScanBatchSnapshotPanel.vue'
-import ArchiveVolumeAccessPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeAccessPanel.vue'
-import ArchiveVolumeAppraisalPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeAppraisalPanel.vue'
-import ArchiveVolumeCatalogEditor from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeCatalogEditor.vue'
-import ArchiveVolumeCollaboratorsPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeCollaboratorsPanel.vue'
-import ArchiveVolumeEventsPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeEventsPanel.vue'
-import ArchiveVolumeFourPropertyPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeFourPropertyPanel.vue'
+// 常驻壳条同步引入；按 tab / 弹窗挂载的面板走异步 chunk，避免详情首屏打进全部材料表/成绩等大模块
 import ArchiveVolumeGateOpsStrip from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeGateOpsStrip.vue'
-import ArchiveVolumeIntegrityPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeIntegrityPanel.vue'
-import ArchiveVolumeMaterialTablePanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTablePanel.vue'
-import ArchiveVolumeMaterialTreePanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTreePanel.vue'
-import ArchiveVolumeNextStepsPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeNextStepsPanel.vue'
-import ArchiveVolumeOcrSearchPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeOcrSearchPanel.vue'
-import ArchiveVolumePhysicalLocationPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumePhysicalLocationPanel.vue'
 import ArchiveVolumeQualityGuideStrip from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeQualityGuideStrip.vue'
-import ArchiveVolumeScoresPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeScoresPanel.vue'
-import ArchiveVolumeSelfCheckList from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeSelfCheckList.vue'
-import ArchiveVolumeStartCollectingPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeStartCollectingPanel.vue'
-import ArchiveVolumeSubmitChecklistModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitChecklistModal.vue'
 import ArchiveVolumeSubmitProgressBand from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitProgressBand.vue'
-import ArchiveVolumeTaskSettingsPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeTaskSettingsPanel.vue'
-import ArchiveVolumeTransferPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeTransferPanel.vue'
-import DepartmentReviewPanel from '@/views/teacher/archive-volume/components/detail/DepartmentReviewPanel.vue'
-import DigitalMaterialConfirmPanel from '@/views/teacher/archive-volume/components/detail/DigitalMaterialConfirmPanel.vue'
+
+const ArchiveCollectionRejectDialog = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/ArchiveCollectionRejectDialog.vue'),
+)
+const ArchiveScanBatchReviewPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveScanBatchReviewPanel.vue'),
+)
+const ArchiveScanBatchSnapshotPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveScanBatchSnapshotPanel.vue'),
+)
+const ArchiveVolumeAccessPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeAccessPanel.vue'),
+)
+const ArchiveVolumeAppraisalPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeAppraisalPanel.vue'),
+)
+const ArchiveVolumeCatalogEditor = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeCatalogEditor.vue'),
+)
+const ArchiveVolumeCollaboratorsPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeCollaboratorsPanel.vue'),
+)
+const ArchiveVolumeEventsPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeEventsPanel.vue'),
+)
+const ArchiveVolumeFourPropertyPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeFourPropertyPanel.vue'),
+)
+const ArchiveVolumeIntegrityPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeIntegrityPanel.vue'),
+)
+const ArchiveVolumeMaterialTablePanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTablePanel.vue'),
+)
+const ArchiveVolumeMaterialTreePanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTreePanel.vue'),
+)
+const ArchiveVolumeNextStepsPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeNextStepsPanel.vue'),
+)
+const ArchiveVolumeOcrSearchPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeOcrSearchPanel.vue'),
+)
+const ArchiveVolumePhysicalLocationPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumePhysicalLocationPanel.vue'),
+)
+const ArchiveVolumeScoresPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeScoresPanel.vue'),
+)
+const ArchiveVolumeSelfCheckList = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeSelfCheckList.vue'),
+)
+const ArchiveVolumeStartCollectingPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeStartCollectingPanel.vue'),
+)
+const ArchiveVolumeSubmitChecklistModal = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitChecklistModal.vue'),
+)
+const ArchiveVolumeTaskSettingsPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeTaskSettingsPanel.vue'),
+)
+const ArchiveVolumeTransferPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/ArchiveVolumeTransferPanel.vue'),
+)
+const DepartmentReviewPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/DepartmentReviewPanel.vue'),
+)
+const DigitalMaterialConfirmPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/detail/DigitalMaterialConfirmPanel.vue'),
+)
 
 defineOptions({ name: 'TeacherArchiveVolumeDetail' })
 
@@ -859,9 +892,7 @@ const canRunFourPropertyCheck = computed(() => {
   return d.volume.volumeStatus === ArchiveVolumeStatusCode.SUBMITTED && canReviewTransfer.value
 })
 
-// MVR-188：与 BE getDetail canConfirmScoreCompletion / confirmScoreCompletion 同源
-const canConfirmScoreCompletion = computed(() => detail.value?.canConfirmScoreCompletion === true)
-
+// MVR-188：成绩完成确认主链已退役；成绩齐备走材料完整性
 const submitBlockReason = computed(() => {
   const d = detail.value
   if (!d) return null
@@ -873,10 +904,10 @@ const scoreSubmitBlockReason = computed(() => {
   if (!d || !detailScope.volumeAcceptsSubmitStatus(d.volume.volumeStatus)) return null
   if (!d.capabilities?.canSubmitVolume) return null
   if (isScoreSubmitReady(d.volume)) return null
-  if (d.volume.scoreSource === 'MARK_INTERNAL') {
+  if (d.volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL) {
     return '线上阅卷双门禁未满足'
   }
-  return '成绩证明未完成'
+  return null
 })
 
 const showRemediationWorkflowStrip = computed(() => detail.value?.hasOpenRemediationTask === true)
@@ -913,7 +944,7 @@ const ARCHIVE_GATE_LABEL: Record<ArchiveGateKey, string> = {
   appraisal: '鉴定待办',
   integrity: '完整性自检',
   fourProperty: '四性检测',
-  scoreSubmit: '成绩证明门禁',
+  scoreSubmit: '线上阅卷成绩门禁',
 }
 
 const showIntegrityGate = computed(() => {
@@ -980,7 +1011,7 @@ const materialsSignalMetrics = computed((): SignalMetric[] => {
       value: missingCount,
       unit: '项',
       tone: missingCount > 0 ? 'red' : 'green',
-      iconTone: missingCount > 0 ? 'red' : 'green',
+      iconTone: missingCount > 0 ? 'gray' : 'green',
       helper: missingCount > 0 ? '点击查看完整性' : '完整性无缺件',
       clickable: true,
     },
@@ -999,7 +1030,7 @@ const materialsSignalMetrics = computed((): SignalMetric[] => {
       label: '提交阶段',
       value: phaseLabel,
       tone: d.submitProgress?.submitReady ? 'green' : 'orange',
-      iconTone: d.submitProgress?.submitReady ? 'green' : 'orange',
+      iconTone: d.submitProgress?.submitReady ? 'green' : 'gray',
       helper:
         d.submitProgress?.pendingBlockingCount && d.submitProgress.pendingBlockingCount > 0
           ? `${d.submitProgress.pendingBlockingCount} 项阻塞`
@@ -1021,39 +1052,27 @@ const materialsSignalMetrics = computed((): SignalMetric[] => {
 const scoresSignalMetrics = computed((): SignalMetric[] => {
   const d = detail.value
   if (!d) return []
-  const completion = strictEnumLabel(
-    ArchiveScoreCompletionStatusDescription,
-    d.volume.scoreCompletionStatus,
-    'scoreCompletionStatus',
-  )
-  // MVR-337：scoreSource 可空，禁止把 undefined 传入 strictEnumLabel
-  const source = d.volume.scoreSource
-    ? strictEnumLabel(ArchiveScoreSourceDescription, d.volume.scoreSource, 'scoreSource')
-    : '—'
-  const completionCode = d.volume.scoreCompletionStatus
-  const completionOk
-    = completionCode === ArchiveScoreCompletionStatusCode.COMPLETED
-      || completionCode === ArchiveScoreCompletionStatusCode.VERIFIED
-      || completionCode === ArchiveScoreCompletionStatusCode.NOT_REQUIRED
+  const isMarkInternal = d.volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL
+  const examGateOk = isScoreSubmitReady(d.volume)
   return [
     {
-      key: 'completion',
-      label: '成绩完成度',
-      value: completion,
-      tone: completionOk ? 'green' : 'orange',
-      iconTone: completionOk ? 'green' : 'orange',
-      helper: d.volume.scoreConfirmedUserNickName
-        ? `确认人 ${d.volume.scoreConfirmedUserNickName}`
-        : '待确认成绩完成',
-      clickable: false,
-    },
-    {
-      key: 'source',
-      label: '成绩来源',
-      value: source,
+      key: 'materials',
+      label: '成绩材料',
+      value: '目录项',
       tone: 'blue',
       iconTone: 'blue',
-      helper: d.volume.examId ? '已关联考试' : '未关联考试',
+      helper: '成绩单等走材料登记与完整性',
+      clickable: true,
+    },
+    {
+      key: 'exam-gate',
+      label: '考试门禁',
+      value: isMarkInternal ? (examGateOk ? '已满足' : '未满足') : '不适用',
+      tone: !isMarkInternal ? 'gray' : examGateOk ? 'green' : 'orange',
+      iconTone: !isMarkInternal ? 'gray' : examGateOk ? 'green' : 'gray',
+      helper: isMarkInternal
+        ? (examGateOk ? '线上阅卷双门禁已开放' : '须成绩发布且门禁开放')
+        : '手工袋不走考试门禁',
       clickable: false,
     },
     {
@@ -1061,8 +1080,8 @@ const scoresSignalMetrics = computed((): SignalMetric[] => {
       label: '提交门禁',
       value: scoreSubmitBlockReason.value ? '未满足' : '已满足',
       tone: scoreSubmitBlockReason.value ? 'orange' : 'green',
-      iconTone: scoreSubmitBlockReason.value ? 'orange' : 'green',
-      helper: scoreSubmitBlockReason.value ?? '成绩证明可提交',
+      iconTone: scoreSubmitBlockReason.value ? 'gray' : 'green',
+      helper: scoreSubmitBlockReason.value ?? '成绩维度可提交',
       clickable: false,
     },
   ]
@@ -1086,7 +1105,7 @@ const integritySignalMetrics = computed((): SignalMetric[] => {
       iconTone:
         status === ArchiveIntegrityStatusCode.PASSED || status === ArchiveIntegrityStatusCode.WAIVED
           ? 'green'
-          : 'orange',
+          : 'gray',
       helper: missingCount > 0 ? `${missingCount} 项缺件` : '无缺件目录',
       clickable: false,
     },
@@ -1106,7 +1125,7 @@ const selfCheckSignalMetrics = computed((): SignalMetric[] => {
       label: '自检清单',
       value: statusLabel,
       tone: status === ArchiveSelfCheckStatusCode.COMPLETED ? 'green' : 'orange',
-      iconTone: status === ArchiveSelfCheckStatusCode.COMPLETED ? 'green' : 'orange',
+      iconTone: status === ArchiveSelfCheckStatusCode.COMPLETED ? 'green' : 'gray',
       helper: d.volume.selfCheckConfirmed ? '已签字确认' : '待勾选与签字',
       clickable: false,
     },
@@ -1125,7 +1144,7 @@ const fourPropertySignalMetrics = computed((): SignalMetric[] => {
       label: '四性检测',
       value: fourSummary ? `${fourSummary.passed}/${fourSummary.total}` : '未执行',
       tone: d.fourPropertyStale ? 'orange' : four?.overallPassed ? 'green' : 'orange',
-      iconTone: d.fourPropertyStale ? 'orange' : four?.overallPassed ? 'green' : 'orange',
+      iconTone: d.fourPropertyStale ? 'gray' : four?.overallPassed ? 'green' : 'gray',
       helper: d.fourPropertyStale ? '结论已失效' : '真实性/完整性/可用性/安全性',
       clickable: false,
     },
@@ -1134,7 +1153,7 @@ const fourPropertySignalMetrics = computed((): SignalMetric[] => {
       label: '密级定密',
       value: securityPending ? '待确认' : '已确认',
       tone: securityPending ? 'orange' : 'green',
-      iconTone: securityPending ? 'orange' : 'green',
+      iconTone: securityPending ? 'gray' : 'green',
       helper: d.volume.securityLevel
         ? strictEnumLabel(ArchiveSecurityLevelDescription, d.volume.securityLevel, 'securityLevel')
         : '未定密级',
@@ -1156,7 +1175,7 @@ const departmentReviewSignalMetrics = computed((): SignalMetric[] => {
       label: '院系审核',
       value: pending ? '待审' : reviewed ? '已审' : statusLabel,
       tone: reviewed ? 'green' : pending ? 'orange' : 'blue',
-      iconTone: reviewed ? 'green' : pending ? 'orange' : 'blue',
+      iconTone: reviewed ? 'green' : pending ? 'gray' : 'blue',
       helper: d.volume.departmentReviewRejectReason ? '存在驳回原因' : '审核状态',
       clickable: false,
     },
@@ -1210,7 +1229,7 @@ const transferSignalMetrics = computed((): SignalMetric[] => {
       label: '整改',
       value: openRemediation ? '进行中' : '无',
       tone: openRemediation ? 'red' : 'green',
-      iconTone: openRemediation ? 'red' : 'green',
+      iconTone: openRemediation ? 'gray' : 'green',
       helper: openRemediation ? '验收前须关闭整改' : '无未关闭整改',
       clickable: openRemediation,
     },
@@ -1241,6 +1260,10 @@ const activeTabSignalMetrics = computed((): SignalMetric[] => {
 function handleActiveTabSignalClick(key: string): void {
   if (activeTab.value === 'materials') {
     handleMaterialsSignalClick(key)
+    return
+  }
+  if (activeTab.value === 'scores' && key === 'materials') {
+    setActiveTab('materials')
     return
   }
   if (
@@ -1279,7 +1302,7 @@ const archiveGateOpsItems = computed(() => {
     .filter((key) => key !== 'remediation')
     .filter((key) => !isArchiveGateNavHiddenOnTab(activeTab.value, key))
     .map((key) => {
-      let actionLabel = '去处理'
+      let actionLabel: string | undefined = '去处理'
       let tone: 'blue' | 'orange' | 'red' | 'gray' = 'orange'
       let description = ARCHIVE_GATE_LABEL[key]
       if (key === 'integrity') {
@@ -1291,20 +1314,20 @@ const archiveGateOpsItems = computed(() => {
         tone = 'orange'
         description = '提交前须完成四性检测'
       } else if (key === 'scoreSubmit') {
-        actionLabel = '去成绩证明'
+        actionLabel = '查看考试门禁'
         tone = 'orange'
         description = scoreSubmitBlockReason.value ?? description
       } else if (key === 'appraisal') {
         actionLabel = '进入鉴定'
         tone = 'orange'
         description = appraisalGuidanceDescription.value
-      } else if (key === 'checklistFail') {
-        actionLabel = '重新加载'
+      } else if (key === 'checklistFail' || key === 'grantsFail') {
+        actionLabel = undefined
         tone = 'red'
-      } else if (key === 'grantsFail') {
-        actionLabel = '重新加载'
-        tone = 'gray'
-        description = '鉴定、销毁与查阅审批操作不可用，请重新加载岗位职责'
+        description
+          = key === 'grantsFail'
+            ? '鉴定、销毁与查阅审批操作不可用'
+            : ARCHIVE_GATE_LABEL[key]
       }
       return {
         key,
@@ -1331,14 +1354,6 @@ function handleArchiveGateOpsAction(key: string): void {
   }
   if (key === 'appraisal') {
     setActiveTab('appraisal')
-    return
-  }
-  if (key === 'checklistFail') {
-    void loadSubmitChecklist()
-    return
-  }
-  if (key === 'grantsFail') {
-    void loadGrants()
   }
 }
 
@@ -1885,7 +1900,7 @@ watch(
 <style lang="scss" scoped>
 @use '@/styles/breakpoints' as bp;
 .archive-volume-detail__alert {
-  margin-bottom: var(--dp-space-4);
+  margin-bottom: var(--dp-space-block);
 }
 
 .archive-volume-detail__remediation-assignee {
@@ -1894,7 +1909,7 @@ watch(
 }
 
 .archive-volume-detail__ops {
-  margin-bottom: var(--dp-space-2);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .archive-volume-detail__shell {
@@ -1902,7 +1917,7 @@ watch(
 }
 
 .archive-volume-detail__overdue-hint {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
@@ -1914,7 +1929,7 @@ watch(
 .archive-volume-detail__panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-volume-detail__catalog-editor {
@@ -1924,7 +1939,7 @@ watch(
 .archive-volume-detail__catalog {
   display: grid;
   grid-template-columns: minmax(260px, 280px) minmax(0, 1fr);
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   align-items: stretch;
   min-height: 420px;
 }
@@ -1937,7 +1952,7 @@ watch(
 
 .archive-volume-detail__submit-summary {
   display: grid;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
@@ -1948,14 +1963,14 @@ watch(
 
 .archive-volume-detail__load-error {
   max-width: 520px;
-  margin: var(--dp-space-6) auto;
-  padding: var(--dp-space-2);
+  margin: var(--dp-space-page) auto;
+  padding: var(--dp-space-component-tight);
 }
 
 .archive-volume-detail__load-error-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 </style>

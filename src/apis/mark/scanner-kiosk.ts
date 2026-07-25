@@ -33,7 +33,6 @@ import type { ExamScannerPageServerReceiveStatusCode } from '@/types/enums/exam-
 import type { ExamScannerPageUploadStatusCode } from '@/types/enums/exam-scanner-page-upload-status-enum'
 import type { PageRegisterStateCode } from '@/types/enums/page-register-state-enum'
 import type { PortfolioAiTaskTypeCode } from '@/types/enums/portfolio-ai-task-type-enum'
-import type { ScannerKioskBlockReasonCode } from '@/types/enums/scanner-kiosk-block-reason-enum'
 import type { ScannerKioskResumeActionCode } from '@/types/enums/scanner-kiosk-resume-action-enum'
 import type { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
@@ -60,11 +59,6 @@ export {
   PageRegisterStateCode,
   PageRegisterStateDescription,
 } from '@/types/enums/page-register-state-enum'
-export {
-  ALL_SCANNER_KIOSK_BLOCK_REASON_CODES,
-  ScannerKioskBlockReasonCode,
-  ScannerKioskBlockReasonDescription,
-} from '@/types/enums/scanner-kiosk-block-reason-enum'
 export {
   ALL_SCANNER_KIOSK_RESUME_ACTION_CODES,
   ScannerKioskResumeActionCode,
@@ -225,16 +219,12 @@ export interface ExamScannerKioskContextVO {
   blockReason?: string
   directBlockReason?: string
   supplementBlockReason?: string
-  /** 一体机阻断原因码（如 E_KOS_004 去制卷） */
-  blockReasonCode?: ScannerKioskBlockReasonCode | null
   /** 续处理动作；后端未算出时为 null（A3） */
   resumeAction?: ScannerKioskResumeActionCode | null
   /** commit 成功但页登记待重试 */
   pageRegisterPending?: boolean
   pageRegisterPendingBatchId?: string
   pageRegisterDiagnostic?: string
-  /** 考试准备硬阻断项（与开批次接口同源） */
-  prepHardBlockingReasons?: string[]
   /** 考试准备建议项（不阻断直扫） */
   prepAdvisoryReasons?: string[]
   taskContract?: ExamScannerKioskTaskContractVO
@@ -763,6 +753,12 @@ export interface ScannerKioskPortfolioGapTaskPageRequest extends QueryDto {
 export interface PortfolioGapTaskSummaryInternalVO {
   id: string
   teacherId: string
+  /** 教师姓名（edu-user nickName） */
+  teacherName?: string
+  /** 教师工号（edu-user teacherNumber） */
+  teacherNumber?: string
+  /** 院系名称 */
+  departmentName?: string
   categoryId: string
   categoryName?: string
   taskTitle?: string

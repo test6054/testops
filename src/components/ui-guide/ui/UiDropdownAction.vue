@@ -115,7 +115,7 @@ const handleMenuClick = (info: { key: string | number }) => {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding: 2px 8px;
+  padding: 2px var(--dp-space-component-tight);
   border: 0;
   border-radius: var(--dp-radius-xs);
   background: transparent;
@@ -124,7 +124,7 @@ const handleMenuClick = (info: { key: string | number }) => {
   font-weight: 400;
   line-height: 1.4;
   color: var(--dp-color-primary);
-  transition: background 0.1s ease;
+  transition: background var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .ui-dropdown-action__table-trigger:hover:not(:disabled) {
@@ -140,7 +140,7 @@ const handleMenuClick = (info: { key: string | number }) => {
   font-size: var(--dp-font-size-xs);
 }
 .ui-dropdown-action-overlay .ant-dropdown-menu {
-  padding: 6px;
+  padding: var(--dp-space-component-tight);
   border-radius: var(--dp-radius-overlay);
   box-shadow: var(--dp-shadow-dropdown);
 }

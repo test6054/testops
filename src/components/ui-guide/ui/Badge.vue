@@ -39,7 +39,7 @@ type BadgeVariant = 'solid' | 'outline' | 'soft'
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--dp-space-1, 6px);
+  gap: var(--dp-space-component-xs);
   border: 1px solid var(--badge-border);
   border-radius: var(--dp-radius-full, 999px);
   white-space: nowrap;
@@ -47,10 +47,10 @@ type BadgeVariant = 'solid' | 'outline' | 'soft'
   letter-spacing: 0.01em;
   line-height: 1;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease;
+    background-color var(--dp-duration-fast) var(--dp-ease-default),
+    border-color var(--dp-duration-fast) var(--dp-ease-default),
+    color var(--dp-duration-fast) var(--dp-ease-default),
+    box-shadow var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .ui-badge--sm {

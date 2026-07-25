@@ -16,6 +16,7 @@ import { loadExamLayoutDesign } from '@/apis/mark/exam-layout-design'
 import { WorkbenchNextActionKeyCode } from '@/apis/mark/exam-progress'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import ExamPrepInfoPanels from '@/components/workbench/ExamPrepInfoPanels.vue'
@@ -60,9 +61,7 @@ const nextActions = computed(() => snapshot.value?.nextActions ?? [])
 const markingProgress = computed(
   () => workbenchContext?.markingProgress?.value ?? snapshot.value?.markingProgress ?? null,
 )
-const prepBlockingReasons = computed(() => snapshot.value?.prepBlockingReasons ?? [])
 const prepAdvisoryReasons = computed(() => snapshot.value?.prepAdvisoryReasons ?? [])
-const prepBlockingDescription = computed(() => prepBlockingReasons.value.join('；'))
 const prepAdvisoryDescription = computed(() => prepAdvisoryReasons.value.join('；'))
 
 const startScanAction = computed(() =>
@@ -73,12 +72,10 @@ const enterReviewAction = computed(() =>
 )
 
 const scanEntryEnabled = computed(() =>
-  canStartScanRegistration(prepBlockingReasons.value, nextActions.value),
+  canStartScanRegistration(nextActions.value),
 )
-const scanEntryDisabledReason = computed(
-  () =>
-    resolveNextActionDisabledReason(nextActions.value, WorkbenchNextActionKeyCode.START_SCAN)
-    ?? prepBlockingReasons.value[0],
+const scanEntryDisabledReason = computed(() =>
+  resolveNextActionDisabledReason(nextActions.value, WorkbenchNextActionKeyCode.START_SCAN),
 )
 const reviewEntryEnabled = computed(() =>
   canEnterReviewBatch(nextActions.value, markingProgress.value),
@@ -86,12 +83,14 @@ const reviewEntryEnabled = computed(() =>
 
 const prepSteps = computed<PrepStepCard[]>(() => {
   const backendSteps = snapshot.value?.prepSteps
-  const detail = examDetail.value
-  if (!backendSteps?.length || !detail) {
+  if (!backendSteps?.length) {
     return []
   }
-  return buildPrepStepCards(backendSteps, detail)
+  return buildPrepStepCards(backendSteps, examDetail.value)
 })
+
+const detailError = computed(() => workbenchContext?.detailError?.value ?? null)
+const snapshotPrepReady = computed(() => (snapshot.value?.prepSteps?.length ?? 0) > 0)
 
 const completedPrepCount = computed(
   () => prepSteps.value.filter((step) => step.status === 'completed').length,
@@ -128,8 +127,8 @@ const prepSignalMetrics = computed((): SignalMetric[] => {
     {
       key: 'pages',
       label: '页数',
-      value: detail.totalPages ?? 0,
-      tone: (detail.totalPages ?? 0) > 0 ? 'blue' : 'gray',
+      value: detail.totalPages == null ? '—' : detail.totalPages,
+      tone: detail.totalPages != null && detail.totalPages > 0 ? 'blue' : 'gray',
     },
     {
       key: 'full-score',
@@ -140,7 +139,7 @@ const prepSignalMetrics = computed((): SignalMetric[] => {
     {
       key: 'progress',
       label: '准备进度',
-      value: `${completedPrepCount.value}/${total}`,
+      value: total > 0 ? `${completedPrepCount.value}/${total}` : '—',
       tone: completedPrepCount.value >= total && total > 0 ? 'green' : 'blue',
     },
   ]
@@ -209,7 +208,15 @@ async function loadExamFullScore(examId: string): Promise<void> {
       examFullScore.value = null
       return
     }
-    examFullScore.value = questions.reduce((sum, question) => sum + (question.fullScore ?? 0), 0)
+    let sum = 0
+    for (const question of questions) {
+      if (question.fullScore == null || !Number.isFinite(question.fullScore)) {
+        examFullScore.value = null
+        return
+      }
+      sum += question.fullScore
+    }
+    examFullScore.value = sum
   } catch (error) {
     examFullScore.value = null
     showUserError(error, '考试满分加载失败')
@@ -227,7 +234,7 @@ async function handleSaveLayoutMode(): Promise<void> {
     return
   }
   if (draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER && !draftPrintSource.value) {
-    void message.warning('整卷作答需选择印刷来源')
+    void message.warning('单独试卷需选择印刷来源')
     return
   }
   layoutSaving.value = true
@@ -256,10 +263,21 @@ async function goPrepStep(step: PrepStepCard): Promise<void> {
     return
   }
   if (step.key === 'materialLayout') {
+    if (!examDetail.value) {
+      showUserError(null, '考试详情未加载，无法配置制卷形态')
+      return
+    }
     layoutModalOpen.value = true
     return
   }
-  if (!examDetail.value?.materialLayoutMode) {
+  if (!examDetail.value) {
+    void router.push({
+      name: step.routeName,
+      params: { examId: selectedExamId.value },
+    })
+    return
+  }
+  if (!examDetail.value.materialLayoutMode) {
     layoutModalOpen.value = true
     return
   }
@@ -289,19 +307,12 @@ function goFirstPendingPrepStep(): void {
   goPrepStep(step)
 }
 
-function goPrepBlockingAction(): void {
-  if (prepBlockingReasons.value.some((reason) => reason.includes('制卷设计'))) {
-    const layoutStep = prepSteps.value.find((step) => step.key === 'layoutDesign')
-    if (layoutStep) {
-      goPrepStep(layoutStep)
-      return
-    }
-  }
-  goFirstPendingPrepStep()
-}
-
 function goScanEntry(): void {
-  if (!selectedExamId.value || !startScanAction.value?.enabled) {
+  if (!selectedExamId.value) {
+    return
+  }
+  if (!startScanAction.value?.enabled) {
+    showUserError(null, scanEntryDisabledReason.value ?? '扫描登记入口不可用，等待工作台合同确认')
     return
   }
   const routeName = resolveNextActionRouteName(
@@ -313,7 +324,11 @@ function goScanEntry(): void {
 }
 
 function goReviewEntry(): void {
-  if (!selectedExamId.value || !enterReviewAction.value?.enabled) {
+  if (!selectedExamId.value) {
+    return
+  }
+  if (!enterReviewAction.value?.enabled) {
+    showUserError(null, '阅卷复核入口不可用，等待工作台合同确认')
     return
   }
   const routeName = resolveNextActionRouteName(
@@ -363,43 +378,33 @@ watch(
     <UiSkeletonState v-if="pageLoading" variant="card" compact />
 
     <template v-else>
-      <UiEmpty
-        size="sm"
-        v-if="!snapshot?.prepSteps?.length"
-        description="准备诊断未加载完成，请返回考试列表后重新进入"
+      <UiAlertStrip
+        v-if="detailError"
+        tone="warning"
+        title="考试详情加载失败"
+        :description="detailError"
+        class="exam-prep__detail-error"
       />
 
-      <template v-else-if="examDetail && prepSteps.length > 0">
+      <UiEmpty
+        v-if="!snapshotPrepReady"
+        size="sm"
+        description="准备步骤快照未加载，可离开后再进入或使用页面刷新"
+      />
+
+      <template v-else-if="prepSteps.length > 0">
         <ExamPrepInfoPanels
+          v-if="examDetail"
           :detail="examDetail"
           :exam-full-score="examFullScore"
-          :alert-tone="
-            prepBlockingReasons.length > 0
-              ? 'error'
-              : prepAdvisoryReasons.length > 0
-                ? 'warning'
-                : undefined
-          "
-          :alert-title="
-            prepBlockingReasons.length > 0
-              ? '扫描登记暂不可用'
-              : prepAdvisoryReasons.length > 0
-                ? '准备项待完善'
-                : undefined
-          "
+          :alert-tone="prepAdvisoryReasons.length > 0 ? 'warning' : undefined"
+          :alert-title="prepAdvisoryReasons.length > 0 ? '准备项待完善' : undefined"
           :alert-description="
-            prepBlockingReasons.length > 0
-              ? prepBlockingDescription
-              : prepAdvisoryReasons.length > 0
-                ? prepAdvisoryDescription
-                : undefined
+            prepAdvisoryReasons.length > 0 ? prepAdvisoryDescription : undefined
           "
           class="exam-prep__info"
         >
-          <template v-if="prepBlockingReasons.length > 0" #alert-actions>
-            <UiButton size="sm" variant="primary" @click="goPrepBlockingAction"> 去处理 </UiButton>
-          </template>
-          <template v-else-if="prepAdvisoryReasons.length > 0" #alert-actions>
+          <template v-if="prepAdvisoryReasons.length > 0" #alert-actions>
             <UiButton
               v-if="firstPendingPrepStep"
               size="sm"
@@ -415,7 +420,7 @@ watch(
           class="exam-prep__pipeline-row"
           :steps="prepSteps"
           :current-step-key="firstPendingPrepStep?.key"
-          :locked="!examDetail.materialLayoutMode"
+          :locked="!examDetail?.materialLayoutMode"
           @select="goPrepStep"
         >
           <template #actions>
@@ -445,7 +450,7 @@ watch(
         </PrepStepPipelineRow>
 
         <MaterialLayoutConfigModal
-          v-if="materialLayoutStep"
+          v-if="materialLayoutStep && examDetail"
           v-model:open="layoutModalOpen"
           v-model:draft-layout-mode="draftLayoutMode"
           v-model:draft-print-source="draftPrintSource"
@@ -466,12 +471,13 @@ watch(
 <style scoped lang="scss">
 .exam-prep {
   &__empty {
-    margin-top: var(--dp-space-4);
+    margin-top: var(--dp-space-block);
   }
 
+  &__detail-error,
   &__info,
   &__pipeline-row {
-    margin-bottom: var(--dp-space-3);
+    margin-bottom: var(--dp-space-component);
   }
 }
 </style>

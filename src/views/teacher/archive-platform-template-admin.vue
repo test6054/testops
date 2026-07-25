@@ -318,8 +318,6 @@ onMounted(loadPlatformSets)
           size="sm"
           v-if="loadFailed"
           description="平台模板加载失败"
-          action-label="重新加载"
-          @action="loadPlatformSets"
         />
 
         <UiDataTable
@@ -443,16 +441,16 @@ onMounted(loadPlatformSets)
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--dp-space-component);
   width: 100%;
 }
 .archive-platform-admin__actions {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .archive-template-editor__retention {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 </style>

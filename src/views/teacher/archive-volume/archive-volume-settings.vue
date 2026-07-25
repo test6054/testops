@@ -46,15 +46,6 @@
             >
               考试列表
             </UiButton>
-            <UiButton
-              v-if="s1AttentionLoadFailed"
-              size="sm"
-              variant="outline"
-              :loading="s1AttentionLoading"
-              @click="loadS1AutoCreateAttention"
-            >
-              重试
-            </UiButton>
           </template>
         </UiAlertStrip>
         <SignalBand variant="panel" :metrics="settingsSignalMetrics" />
@@ -75,22 +66,7 @@
           size="sm"
           v-if="dutyLoadFailed || departmentLoadFailed"
           description="职责授权配置加载失败"
-        >
-          <template #action>
-            <UiButton
-              size="sm"
-              variant="outline"
-              @click="
-                () => {
-                  loadDepartments()
-                  loadDutyGrants()
-                }
-              "
-            >
-              重新加载
-            </UiButton>
-          </template>
-        </UiEmpty>
+        />
         <UiForm v-else :disabled="dutyLoading || saving || !canManageArchiveConfig">
           <WorkbenchSurfaceCard flush>
             <template #head>
@@ -179,11 +155,11 @@
       </section>
 
       <section v-else-if="settingsTab === 'security'" class="archive-volume-settings__panel">
-        <UiEmpty size="sm" v-if="policyLoadFailed" description="密级策略加载失败">
-          <template #action>
-            <UiButton size="sm" variant="outline" @click="loadPolicy">重新加载</UiButton>
-          </template>
-        </UiEmpty>
+        <UiEmpty
+          size="sm"
+          v-if="policyLoadFailed"
+          description="密级策略加载失败"
+        />
         <UiForm v-else :disabled="policyLoading || saving || !canManageArchiveConfig">
           <WorkbenchSurfaceCard flush>
             <template #head>
@@ -257,13 +233,11 @@
       </section>
 
       <section v-else-if="settingsTab === 'collaboration'" class="archive-volume-settings__panel">
-        <UiEmpty size="sm" v-if="collaborationLoadFailed" description="协作策略加载失败">
-          <template #action>
-            <UiButton size="sm" variant="outline" @click="loadCollaborationPolicy">
-              重新加载
-            </UiButton>
-          </template>
-        </UiEmpty>
+        <UiEmpty
+          size="sm"
+          v-if="collaborationLoadFailed"
+          description="协作策略加载失败"
+        />
         <UiForm v-else :disabled="collaborationLoading || saving || !canManageArchiveConfig">
           <WorkbenchSurfaceCard flush>
             <template #head>
@@ -323,22 +297,7 @@
           size="sm"
           v-if="deadlineLoadFailed || departmentLoadFailed"
           description="归档时限策略加载失败"
-        >
-          <template #action>
-            <UiButton
-              size="sm"
-              variant="outline"
-              @click="
-                () => {
-                  loadDepartments()
-                  loadDeadlinePolicy()
-                }
-              "
-            >
-              重新加载
-            </UiButton>
-          </template>
-        </UiEmpty>
+        />
         <UiForm v-else :disabled="deadlineLoading || saving || !canManageArchiveConfig">
           <WorkbenchSurfaceCard flush>
             <template #head>
@@ -1093,7 +1052,7 @@ onMounted(() => {
 .archive-volume-settings__signal-stack {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-volume-settings__duty-wide {
@@ -1101,7 +1060,7 @@ onMounted(() => {
 }
 
 .archive-volume-settings__duty-footer {
-  padding: var(--dp-space-2) var(--dp-space-4);
+  padding: var(--dp-space-component-tight) var(--dp-space-block);
   border-top: 1px solid var(--dp-border-subtle);
   font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
@@ -1109,7 +1068,7 @@ onMounted(() => {
 .archive-volume-settings__panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-volume-settings__section-toolbar {
@@ -1117,7 +1076,7 @@ onMounted(() => {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   width: 100%;
 }
 
@@ -1131,21 +1090,21 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   margin-left: auto;
 }
 
 .archive-volume-settings__collaboration-form {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
-  padding: var(--dp-space-4);
+  gap: var(--dp-space-block);
+  padding: var(--dp-space-block);
 }
 
 .archive-volume-settings__field {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   max-width: 420px;
 }
 </style>

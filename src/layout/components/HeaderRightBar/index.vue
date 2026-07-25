@@ -27,6 +27,7 @@
       </button>
       <template #content>
         <Message
+          v-if="messagePopoverVisible"
           :variant="variant"
           @close="messagePopoverVisible = false"
           @readall-success="getMessageCount"
@@ -43,7 +44,7 @@
       <div v-else class="user">
         <GiCellAvatar
           :name="userStore.nickname"
-          :size="36"
+          :size="32"
           :avatar-url="userStore.avatarUrl"
           :show-name="false"
         />
@@ -58,7 +59,7 @@
           </UiMenuItem>
           <UiMenuItem key="export" @click="openExportTaskCenter">
             <template #icon><DownloadOutlined /></template>
-            <div class="dp-space" style="--dp-space-gap: 8px">
+            <div class="dp-space" style="--dp-space-component: 8px">
               <span>导出任务中心</span>
               <UiCountBadge
                 v-if="exportTaskStore.runningCount > 0"
@@ -77,7 +78,7 @@
       </template>
     </UiDropdown>
   </div>
-  <ExportTaskCenter />
+  <ExportTaskCenter v-if="exportTaskStore.visible" />
 
   <UiConfirmModal
     v-model:open="showLogoutModal"
@@ -98,8 +99,7 @@ import DownOutlined from '@ant-design/icons-vue/DownOutlined'
 import LogoutOutlined from '@ant-design/icons-vue/LogoutOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import ExportTaskCenter from '@/components/export/ExportTaskCenter.vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
 import GiCellAvatar from '@/components/GiCell/GiCellAvatar.vue'
 import UiConfirmModal from '@/components/ui-guide/ui/ConfirmModal.vue'
 import UiCountBadge from '@/components/ui-guide/ui/UiCountBadge.vue'
@@ -113,7 +113,12 @@ import { useExportTaskStore } from '@/stores/exportTask'
 import { useNotificationStore } from '@/stores/modules/notification'
 import mittBus from '@/utils/mitt'
 import ScanHealthBadge from '../ScanHealthBadge.vue'
-import Message from './Message.vue'
+
+/** 消息面板 / 导出中心：打开时再拉 chunk，避免壳层同步吃下 Message 与导出任务 UI */
+const Message = defineAsyncComponent(() => import('./Message.vue'))
+const ExportTaskCenter = defineAsyncComponent(
+  () => import('@/components/export/ExportTaskCenter.vue'),
+)
 
 defineOptions({ name: 'HeaderRight', inheritAttrs: false })
 
@@ -228,14 +233,14 @@ const openExportTaskCenter = () => {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
 
   &--default {
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
   }
 
   &--workbench {
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-component-tight);
 
     .header-btn {
       width: 36px;
@@ -251,7 +256,7 @@ const openExportTaskCenter = () => {
       right: 2px;
       min-width: 16px;
       height: 16px;
-      padding: 0 4px;
+      padding: 0 var(--dp-space-component-xs);
       font-size: 9px;
       line-height: 16px;
     }
@@ -277,7 +282,7 @@ const openExportTaskCenter = () => {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  margin-right: 4px;
+  margin-right: var(--dp-space-component-xs);
 
   .tenant-name {
     font-size: var(--dp-font-size-sm);
@@ -310,8 +315,8 @@ const openExportTaskCenter = () => {
   cursor: pointer;
   padding: 0;
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background var(--dp-duration-fast) var(--dp-ease-default),
+    color var(--dp-duration-fast) var(--dp-ease-default);
 
   &:hover {
     background: var(--dp-fill-tertiary);
@@ -345,11 +350,11 @@ const openExportTaskCenter = () => {
 .user-chip {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 3px 10px 3px 4px;
+  gap: var(--dp-space-component-tight);
+  padding: 3px var(--dp-space-component) 3px var(--dp-space-component-xs);
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background var(--dp-duration-fast) var(--dp-ease-default);
 
   &:hover {
     background: var(--dp-fill-tertiary);
@@ -380,7 +385,7 @@ const openExportTaskCenter = () => {
 .user-chevron {
   font-size: 10px;
   color: var(--dp-text-muted);
-  transition: transform 0.3s;
+  transition: transform var(--dp-duration-slow);
 }
 
 .user {
@@ -391,7 +396,7 @@ const openExportTaskCenter = () => {
   color: var(--dp-text-primary);
 
   .username {
-    margin-left: 10px;
+    margin-left: var(--dp-space-component);
     white-space: nowrap;
     font-size: var(--dp-font-size-md);
     font-weight: 600;
@@ -399,7 +404,7 @@ const openExportTaskCenter = () => {
   }
 
   .anticon-down {
-    transition: transform 0.3s;
+    transition: transform var(--dp-duration-slow);
     margin-left: 2px;
   }
 }

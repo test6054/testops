@@ -61,6 +61,7 @@ const saving = ref(false)
 const creatingCategory = ref(false)
 const submittingTrainingId = ref('')
 const loadFailed = ref(false)
+const categoryLoadFailed = ref(false)
 const rows = ref<PortfolioTeachingExtensionActivityVO[]>([])
 const categories = ref<PortfolioTeachingExtensionCategoryVO[]>([])
 const modalOpen = ref(false)
@@ -206,6 +207,7 @@ async function loadData() {
   loading.value = true
   categoryLoading.value = true
   loadFailed.value = false
+  let categoryFailed = false
   try {
     const activityRows = await portfolioTeachingExtensionApi.list({ teacherId: scopeTeacherId() })
     if (requestToken.value !== currentToken) {
@@ -221,7 +223,7 @@ async function loadData() {
       }
     } catch (error) {
       if (requestToken.value === currentToken) {
-        categories.value = []
+        categoryFailed = true
         showUserError(error, '拓展活动分类加载失败')
       }
     }
@@ -237,14 +239,13 @@ async function loadData() {
     if (requestToken.value !== currentToken) {
       return
     }
-    rows.value = []
-    categories.value = []
     loadFailed.value = true
     showUserError(error, '加载拓展活动失败')
   } finally {
     if (requestToken.value === currentToken) {
       loading.value = false
       categoryLoading.value = false
+      categoryLoadFailed.value = categoryFailed
     }
   }
 }
@@ -318,7 +319,11 @@ async function saveActivity() {
     void message.success('拓展活动已保存')
     modalOpen.value = false
     resetForm()
-    await loadData()
+    try {
+      await loadData()
+    } catch (error) {
+      showUserError(error, '保存已生效，列表同步失败')
+    }
   } catch (error) {
     showUserError(error, '保存拓展活动失败')
   } finally {
@@ -361,9 +366,19 @@ async function removeActivity(row: PortfolioTeachingExtensionActivityVO) {
 }
 
 async function prepareTrainingArchiveDraft(row: PortfolioTeachingExtensionActivityVO) {
-  submittingTrainingId.value = row.id
+  const teacherId = targetTeacherId.value
+  const activityId = row.id
+  const operationToken = requestToken.value
+  submittingTrainingId.value = activityId
   try {
-    const prepared = await portfolioTeachingExtensionApi.prepareTrainingArchiveDraft(row.id)
+    const prepared = await portfolioTeachingExtensionApi.prepareTrainingArchiveDraft(activityId)
+    if (
+      requestToken.value !== operationToken
+      || targetTeacherId.value !== teacherId
+      || submittingTrainingId.value !== activityId
+    ) {
+      return
+    }
     if (prepared.missingRequiredFieldCodes.length) {
       void message.info('已生成档案草稿，请补齐模板必填字段后提交审核')
     }
@@ -372,14 +387,22 @@ async function prepareTrainingArchiveDraft(row: PortfolioTeachingExtensionActivi
       params: { categoryId: prepared.categoryId },
       query: {
         recordId: prepared.archiveRecordId,
-        teacherId: scopeTeacherId(),
+        teacherId: teacherId || undefined,
         fromPage: 'trainingExtension',
       },
     })
   } catch (error) {
+    if (
+      requestToken.value !== operationToken
+      || targetTeacherId.value !== teacherId
+    ) {
+      return
+    }
     showUserError(error, '准备培训档案失败')
   } finally {
-    submittingTrainingId.value = ''
+    if (submittingTrainingId.value === activityId) {
+      submittingTrainingId.value = ''
+    }
   }
 }
 
@@ -515,6 +538,7 @@ watch(
     deletingCategoryId.value = ''
     uploadingFile.value = false
     loadFailed.value = false
+    categoryLoadFailed.value = false
     rows.value = []
     categories.value = []
     modalOpen.value = false
@@ -547,9 +571,10 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
     <UiCard v-else-if="loadFailed" title="加载失败">
-      <UiEmpty size="sm" description="拓展活动加载失败">
-        <UiButton size="sm" variant="primary" @click="loadData">重试</UiButton>
-      </UiEmpty>
+      <UiEmpty
+        size="sm"
+        description="拓展活动加载失败"
+      />
     </UiCard>
 
     <template v-else>
@@ -560,7 +585,7 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
             v-model="kindFilter"
             allow-clear
             placeholder="大类筛选"
-            style="width: 120px; margin-right: 8px"
+            style="width: 120px; margin-right: var(--dp-space-component-tight)"
             :options="PortfolioTeachingExtensionKindOptions"
           />
           <UiButton variant="primary" size="sm" v-if="!readonlyMode" @click="openModal()">
@@ -652,12 +677,18 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
         </UiDataTable>
       </UiCard>
 
-      <UiCard title="活动分类" :loading="categoryLoading" style="margin-top: 16px">
+      <UiCard title="活动分类" :loading="categoryLoading" style="margin-top: var(--dp-space-block)">
         <template #extra>
           <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCategoryModal">
             新建分类
           </UiButton>
         </template>
+        <UiAlertStrip
+          v-if="categoryLoadFailed"
+          tone="error"
+          title="活动分类加载失败"
+          class="mb-3"
+        />
         <UiDataTable
           :columns="categoryColumns"
           :data-source="categories"
@@ -784,6 +815,6 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 .teacher-extension__attachment {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 </style>

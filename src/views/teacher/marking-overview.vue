@@ -15,7 +15,6 @@
                 :options="academicYearOptions"
                 :placeholder="MARK_DASHBOARD_FILTER_PLACEHOLDERS.academicYear"
                 :loading="filterRefreshing"
-                allow-clear
                 @change="handleFilterChange"
               />
             </div>
@@ -26,7 +25,6 @@
                 :options="semesterOptions"
                 :placeholder="MARK_DASHBOARD_FILTER_PLACEHOLDERS.semester"
                 :loading="filterRefreshing"
-                allow-clear
                 :disabled="!filter.academicYear"
                 @change="handleFilterChange"
               />
@@ -42,6 +40,15 @@
                 @change="handleFilterChange"
               />
             </div>
+            <UiButton
+              size="sm"
+              variant="outline"
+              class="marking-overview__scope-current-term"
+              :disabled="isCurrentTermSelected"
+              @click="handleUseCurrentTerm"
+            >
+              本学期
+            </UiButton>
             <UiSpin v-if="filterRefreshing" size="sm" class="marking-overview__filter-spin" />
           </div>
         </template>
@@ -126,8 +133,8 @@
       class="marking-overview__content"
       :class="{ 'marking-overview__content--todo-focus': showTodoFocusLayout }"
     >
-      <UiRow :gutter="20" class="marking-overview__analytics-row">
-        <UiCol :span="24">
+      <div class="marking-overview__analytics-row">
+
           <UiSkeletonState
             v-if="signalLoading && !overview && !signalLoadFailed"
             variant="card"
@@ -142,8 +149,8 @@
             :daily-progress-trend="overview?.dailyProgressTrend ?? []"
             :filtered-exam-count="overview?.filterContext.filteredExamCount ?? 0"
           />
-        </UiCol>
-      </UiRow>
+
+      </div>
 
       <div class="marking-overview__content-grid">
         <section class="marking-overview__main">
@@ -174,31 +181,37 @@
                 size="sm"
                 title="加载失败"
               />
-              <UiSkeletonState v-else-if="examsPanelLoading" variant="card" :card-count="3" compact />
+              <UiSkeletonState v-else-if="examsPanelLoading" variant="list" :rows="4" compact />
               <UiEmpty
                 size="sm"
                 v-else-if="examsLoadFailed"
                 title="加载失败"
               />
               <template v-else>
-                <OngoingExamCardGrid
-                  :exams="displayedOngoingExamItems"
-                  @navigate="goExamWorkspace"
-                />
                 <UiEmpty
-                  v-if="selectedJourneyKey && displayedOngoingExamItems.length === 0"
+                  v-if="ongoingExamItems.length === 0"
                   size="sm"
-                  description="当前页无该阶段考试，可翻页或清除阶段筛选"
+                  :description="
+                    selectedJourneyKey
+                      ? '当前筛选范围内无该阶段考试，可清除阶段筛选'
+                      : '当前筛选下暂无进行中考试'
+                  "
                 />
-                <UiPagination
-                  v-if="ongoingExamPage.total > ongoingExamPage.pageSize"
-                  v-model:current="ongoingExamPageNum"
-                  v-model:page-size="ongoingExamPageSize"
-                  class="marking-overview__panel-pagination"
-                  :total="ongoingExamPage.total"
-                  :show-size-changer="false"
-                  @change="handleOngoingExamPageChange"
-                />
+                <template v-else>
+                  <OngoingExamCardGrid
+                    :exams="ongoingExamItems"
+                    @navigate="goExamWorkspace"
+                  />
+                  <UiPagination
+                    v-if="ongoingExamPage.total > ongoingExamPage.pageSize"
+                    v-model:current="ongoingExamPageNum"
+                    v-model:page-size="ongoingExamPageSize"
+                    class="marking-overview__panel-pagination"
+                    :total="ongoingExamPage.total"
+                    :show-size-changer="false"
+                    @change="handleOngoingExamPageChange"
+                  />
+                </template>
               </template>
             </div>
           </WorkbenchSurfaceCard>
@@ -251,10 +264,11 @@
               <template v-else>
                 <UiSectionTabs
                   v-if="hasPendingTodos"
-                  v-model="pendingTodoTabKey"
+                  :model-value="pendingTodoTabKey"
                   :items="pendingTodoTabItems"
                   compact
                   class="marking-overview__todo-tabs"
+                  @update:model-value="handlePendingTodoTabChange"
                 />
                 <PendingTodoFeed
                   :todos="pendingTodoItems"
@@ -276,8 +290,8 @@
         </aside>
       </div>
 
-      <UiRow :gutter="20" class="marking-overview__bottom-row">
-        <UiCol :span="24">
+      <div class="marking-overview__bottom-row">
+
           <WorkbenchSurfaceCard class="marking-overview__panel marking-overview__panel--secondary">
             <template #head>
               <div class="marking-overview__panel-head">
@@ -316,8 +330,8 @@
               </section>
             </div>
           </WorkbenchSurfaceCard>
-        </UiCol>
-      </UiRow>
+
+      </div>
     </div>
   </StageWorkbenchShell>
 </template>
@@ -325,8 +339,8 @@
 <script lang="ts" setup>
 import type { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
 import type { WorkbenchStage } from '@/types/workbench'
-import type { MarkDashboardPendingTodoTabKey } from '@/utils/mark-dashboard-todo'
-import { computed, onMounted, ref, watch } from 'vue'
+import type {MarkDashboardPendingTodoTabKey} from '@/utils/mark-dashboard-todo';
+import { computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import MarkingOverviewAnalytics from '@/components/mark/dashboard/MarkingOverviewAnalytics.vue'
 import OngoingExamCardGrid from '@/components/mark/dashboard/OngoingExamCardGrid.vue'
@@ -336,8 +350,8 @@ import PublishedExamInsightTable from '@/components/mark/dashboard/PublishedExam
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
-import UiCol from '@/components/ui-guide/ui/UiCol.vue'
-import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+
+
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
@@ -350,14 +364,20 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useMarkingOverviewSignals } from '@/composables/useMarkingOverviewSignals'
 import { useMarkingOverviewStages } from '@/composables/useMarkingOverviewStages'
 import { useMarkTeacherDashboardOverview } from '@/composables/useMarkTeacherDashboardOverview'
-import { EXAM_JOURNEY_STEPS, resolveJourneyKeyByStage } from '@/constants/exam-journey'
-import { buildExamListRoute } from '@/utils/exam-list-navigation'
+import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
+import { ExamWorkbenchPriorityReasonCode } from '@/types/enums/exam-workbench-priority-reason-code-enum'
+import { requireWorkbenchAcademicYearSemester } from '@/utils/academic-year-semester-query'
+import { showUserError } from '@/utils/error-handler'
+import { buildExamListRouteFromDashboardFilter } from '@/utils/exam-list-navigation'
 import { MARK_DASHBOARD_FILTER_PLACEHOLDERS } from '@/utils/mark-dashboard-filter-options'
 import {
   buildPendingTodoHint,
   buildPendingTodoTabItems,
+  
+  resolveDefaultPendingTodoTab,
   resolvePendingTodoFocusTone,
   resolvePendingTodoScopeByTab,
+  resolvePendingTodoTabByScope
 } from '@/utils/mark-dashboard-todo'
 
 defineOptions({ name: 'TeacherMarkingOverview' })
@@ -379,14 +399,20 @@ const {
   statusOptions,
   ongoingExamPageNum,
   ongoingExamPageSize,
+  ongoingExamJourneyKey,
   pendingTodoPageNum,
   pendingTodoPageSize,
   pendingTodoScope,
   load,
   loadOngoingExamPage,
+  setOngoingExamJourneyKey,
   loadPendingTodoPage,
   handleFilterChange,
+  handleUseCurrentTerm,
+  isCurrentTermSelected,
   suppressTodoTabReload,
+  pendingTodoTabUserChosen,
+  markPendingTodoTabUserChosen,
 } = useMarkTeacherDashboardOverview()
 
 const { metrics: dashboardSignals } = useMarkingOverviewSignals({
@@ -405,8 +431,8 @@ const {
   journeyStageSummary: computed(() => overview.value?.journeyStageSummary ?? []),
 })
 
-/** 旅程轨点击筛选：与当前页进行中考试客户端对齐 */
-const selectedJourneyKey = ref<MarkTeacherDashboardJourneyKeyCode | ''>('')
+/** 旅程轨点击筛选：服务端 journeyKey 过滤后再分页 */
+const selectedJourneyKey = ongoingExamJourneyKey
 
 const emptyOngoingExamPage = {
   list: [],
@@ -430,38 +456,13 @@ const pendingTodoItems = computed(() => pendingTodoPage.value.list)
 
 const journeyRailActiveKey = computed(() => selectedJourneyKey.value || bottleneckStageKey.value)
 
-const displayedOngoingExamItems = computed(() => {
-  const key = selectedJourneyKey.value
-  if (!key) {
-    return ongoingExamItems.value
-  }
-  return ongoingExamItems.value.filter((exam) => {
-    const stageKey = exam.currentStageKey
-    if (
-      stageKey !== 'EXAM_PREP'
-      && stageKey !== 'PAPER_TEMPLATE'
-      && stageKey !== 'CANDIDATE_ROSTER'
-      && stageKey !== 'SCAN'
-      && stageKey !== 'MARKING_ORG'
-      && stageKey !== 'TRIAL_MARKING'
-      && stageKey !== 'FORMAL_MARKING'
-      && stageKey !== 'SCORE_PUBLISH'
-      && stageKey !== 'ARCHIVE'
-    ) {
-      return false
-    }
-    return resolveJourneyKeyByStage(stageKey) === key
-  })
-})
-
 const journeyFilterHint = computed(() => {
   if (!selectedJourneyKey.value) {
     return ''
   }
   const step = EXAM_JOURNEY_STEPS.find((item) => item.key === selectedJourneyKey.value)
   const title = step?.title ?? selectedJourneyKey.value
-  const count = displayedOngoingExamItems.value.length
-  return `已筛「${title}」· 当前页 ${count} 场`
+  return `已筛「${title}」· 共 ${ongoingExamPage.value.total} 场`
 })
 
 const filteredExamCount = computed(() => overview.value?.filterContext.filteredExamCount ?? 0)
@@ -470,6 +471,10 @@ const filteredExamCount = computed(() => overview.value?.filterContext.filteredE
 const examsPanelLoading = computed(() => {
   if (signalLoading.value && !overview.value) return true
   if (examsLoading.value && !!overview.value) return true
+  // 旅程筛选空结果是合法空态；仅无旅程筛选且筛选域有考试、分页尚未回填时视为段未就绪
+  if (selectedJourneyKey.value) {
+    return false
+  }
   return filteredExamCount.value > 0
     && ongoingExamPage.value.total === 0
     && !examsLoadFailed.value
@@ -506,7 +511,9 @@ const pendingTodoFocusClass = computed(() =>
     ? `marking-overview__panel--focus-${pendingTodoFocusTone.value}`
     : undefined,
 )
-const pendingTodoTabKey = ref<MarkDashboardPendingTodoTabKey>('all')
+const pendingTodoTabKey = ref<MarkDashboardPendingTodoTabKey>(
+  resolvePendingTodoTabByScope(pendingTodoScope.value),
+)
 const pendingTodoTotals = computed(() => {
   const metrics = overview.value?.signalMetrics
   if (!metrics) return undefined
@@ -539,6 +546,18 @@ function panelShowsEmptyState(panel: 'exams' | 'todos'): boolean {
   return !todosLoading.value && !todosLoadFailed.value && !hasPendingTodos.value
 }
 
+/** scope 是列表真源；未手动选 Tab 时由 composable 写入默认 scope，这里只同步展示。 */
+watch(
+  pendingTodoScope,
+  (scope) => {
+    const tab = resolvePendingTodoTabByScope(scope)
+    if (pendingTodoTabKey.value !== tab) {
+      pendingTodoTabKey.value = tab
+    }
+  },
+  { immediate: true },
+)
+
 watch(pendingTodoTabKey, (tab, previousTab) => {
   if (tab === previousTab || !overview.value || suppressTodoTabReload.value) {
     return
@@ -550,21 +569,37 @@ watch(
   () => pendingTodoTotals.value,
   (totals) => {
     if (!totals || totals.pendingTodoRowCount <= 0) {
-      pendingTodoTabKey.value = 'all'
+      if (pendingTodoTabKey.value !== 'all') {
+        pendingTodoTabKey.value = 'all'
+      }
+      return
+    }
+    // 未手动选档时默认 Tab 由 composable 按 signal 写入 scope，再经 scope→tab 同步，避免双写。
+    if (!pendingTodoTabUserChosen.value) {
       return
     }
     const tabItems = buildPendingTodoTabItems([], totals)
     const currentTab = tabItems.find((item) => item.key === pendingTodoTabKey.value)
     if (currentTab?.disabled) {
-      pendingTodoTabKey.value = totals.urgentTodoCount > 0
-        ? 'urgent'
-        : totals.attentionTodoCount > 0
-          ? 'attention'
-          : 'all'
+      pendingTodoTabKey.value = resolveDefaultPendingTodoTab(totals)
     }
   },
   { immediate: true },
 )
+
+function isPendingTodoTabKey(value: string): value is MarkDashboardPendingTodoTabKey {
+  return value === 'all' || value === 'urgent' || value === 'attention'
+}
+
+function handlePendingTodoTabChange(tab: string | number): void {
+  const next = String(tab)
+  if (!isPendingTodoTabKey(next)) {
+    showUserError(null, `未知待办 Tab：${next}`)
+    return
+  }
+  markPendingTodoTabUserChosen()
+  pendingTodoTabKey.value = next
+}
 
 function handleOngoingExamPageChange(pageNum: number, pageSize: number): void {
   void loadOngoingExamPage(pageNum, pageSize)
@@ -577,63 +612,97 @@ function handlePendingTodoPageChange(pageNum: number, pageSize: number): void {
   })
 }
 
+
+/** 深链前强制成对学期，禁止清空态把 KPI 打成无学期列表。 */
+function resolveDashboardDeepLinkFilter() {
+  const term = requireWorkbenchAcademicYearSemester(filter.value.academicYear, filter.value.semester)
+  filter.value.academicYear = term.academicYear
+  filter.value.semester = term.semester
+  return {
+    academicYear: term.academicYear,
+    semester: term.semester,
+    status: filter.value.status,
+  }
+}
+/** 查看全部 / 菜单式进入：携带概览当前学年学期状态，打开「全部」Tab。 */
 function goExamList() {
-  void router.push({ name: 'TeacherExamList' })
+  try {
+    void router.push(
+      buildExamListRouteFromDashboardFilter(resolveDashboardDeepLinkFilter(), { tab: 'all' }),
+    )
+  } catch (error) {
+    showUserError(error, '概览 → 考试列表深链合同无效')
+  }
 }
 
 function handleJourneyStageSelect(stage: WorkbenchStage): void {
   const key = stage.key as MarkTeacherDashboardJourneyKeyCode
-  selectedJourneyKey.value = selectedJourneyKey.value === key ? '' : key
+  const next = selectedJourneyKey.value === key ? '' : key
+  void setOngoingExamJourneyKey(next)
 }
 
 function clearJourneyStageFilter(): void {
-  selectedJourneyKey.value = ''
+  void setOngoingExamJourneyKey('')
 }
 
 function handleSignalMetricClick(key: string): void {
-  if (key === 'active' || key === 'unpublished' || key === 'scan-attention' || key === 'marking-progress') {
+  try {
+    if (key === 'active' || key === 'marking-progress') {
+      void router.push(
+        buildExamListRouteFromDashboardFilter(resolveDashboardDeepLinkFilter(), { tab: 'ongoing' }),
+      )
+      return
+    }
+    if (key === 'unpublished') {
+      void router.push(
+        buildExamListRouteFromDashboardFilter(resolveDashboardDeepLinkFilter(), {
+          tab: 'priority',
+          priorityReason: ExamWorkbenchPriorityReasonCode.CONFIRMED_UNPUBLISHED_SCORE,
+        }),
+      )
+      return
+    }
+    if (key === 'scan-attention') {
+      void router.push(
+        buildExamListRouteFromDashboardFilter(resolveDashboardDeepLinkFilter(), {
+          tab: 'priority',
+          priorityReason: ExamWorkbenchPriorityReasonCode.SCAN_ATTENTION,
+        }),
+      )
+      return
+    }
+    if (key === 'exceptions' || key === 'arbitration' || key === 'spot-check') {
+      goPriorityExamList()
+    }
+  } catch (error) {
+    showUserError(error, '概览 KPI 深链合同无效')
+  }
+}
+
+/** 待处理等优先事项深链：携带当前学年学期筛选，打开考试列表「优先推进」Tab。 */
+function goPriorityExamList() {
+  try {
     void router.push(
-      buildExamListRoute({
-        tab: 'ongoing',
-        academicYear: filter.value.academicYear,
-        semester: filter.value.semester,
-        status: filter.value.status,
-      }),
+      buildExamListRouteFromDashboardFilter(resolveDashboardDeepLinkFilter(), { tab: 'priority' }),
     )
+  } catch (error) {
+    showUserError(error, '概览 → 优先推进深链合同无效')
+  }
+}
+
+function goExamWorkspace(routeName: string, examId: string) {
+  const nextRoute = routeName.trim()
+  const nextExamId = examId.trim()
+  if (!nextRoute || !nextExamId) {
+    showUserError(null, `考试工作台入口合同缺失：examId=${examId || '—'}，route=${routeName || '—'}`)
     return
   }
-  if (key === 'exceptions' || key === 'arbitration' || key === 'spot-check') {
-    goPriorityExamList()
-  }
-}
-
-/** 待处理事项深链：携带当前学年学期筛选，打开考试列表「优先推进」Tab。 */
-function goPriorityExamList() {
-  void router.push(
-    buildExamListRoute({
-      tab: 'priority',
-      academicYear: filter.value.academicYear,
-      semester: filter.value.semester,
-      status: filter.value.status,
-    }),
-  )
-}
-
-function goExamWorkspace(routeName: string | undefined, examId: string | undefined) {
-  if (!routeName || !examId) return
-  void router.push({ name: routeName, params: { examId } })
+  void router.push({ name: nextRoute, params: { examId: nextExamId } })
 }
 
 function goArchiveStatistics(examId: string) {
   void router.push({ name: 'TeacherExamWorkspaceArchiveStatistics', params: { examId } })
 }
-
-watch(
-  () => [filter.value.academicYear, filter.value.semester, filter.value.status],
-  () => {
-    selectedJourneyKey.value = ''
-  },
-)
 
 onMounted(() => {
   void load()
@@ -643,31 +712,31 @@ onMounted(() => {
 <style scoped lang="scss">
 @use '@/styles/breakpoints' as bp;
 
-/* 范围筛选：宿主格定宽 + 单行 nowrap；UiSelect 内部 100% 填满格 */
+/* 范围筛选：可换行，禁止 overflow-x 藏控件（高校 1366 / 侧栏场景） */
 .marking-overview__scope {
   display: flex;
   flex-direction: row;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
   max-width: 100%;
   min-height: var(--dp-control-height-sm, 28px);
 }
 
 .marking-overview__scope-item {
-  flex: 0 0 132px;
-  width: 132px;
-  min-width: 132px;
-  max-width: 132px;
+  flex: 0 1 8.25rem;
+  width: 8.25rem;
+  min-width: 7rem;
+  max-width: 10rem;
 }
 
 .marking-overview__scope-item--status {
-  flex-basis: 112px;
-  width: 112px;
-  min-width: 112px;
-  max-width: 112px;
+  flex-basis: 7rem;
+  width: 7rem;
+  min-width: 6.5rem;
+  max-width: 8.5rem;
 }
 
 .marking-overview__scope-item :deep(.ui-select) {
@@ -714,15 +783,15 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-1);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-xs);
   min-height: 28px;
 }
 
 .marking-overview__stage-rail-head-main {
   display: flex;
   align-items: baseline;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
 }
 
@@ -760,30 +829,25 @@ onMounted(() => {
 }
 
 .marking-overview__panel-desc {
-  margin: var(--dp-space-1) 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-type-hint-size);
   line-height: var(--dp-type-hint-line-height);
   color: var(--dp-text-muted);
 }
 
 @media (max-width: #{bp.$ant-grid-xl - 1px}) {
-  .marking-overview__scope {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-  }
-
   .marking-overview__scope-item {
-    flex: 0 0 120px;
-    width: 120px;
-    min-width: 120px;
-    max-width: 120px;
+    flex: 0 1 7.5rem;
+    width: 7.5rem;
+    min-width: 6.5rem;
+    max-width: 9rem;
   }
 
   .marking-overview__scope-item--status {
-    flex-basis: 100px;
-    width: 100px;
-    min-width: 100px;
-    max-width: 100px;
+    flex-basis: 6.5rem;
+    width: 6.5rem;
+    min-width: 6rem;
+    max-width: 8rem;
   }
 }
 
@@ -791,7 +855,7 @@ onMounted(() => {
 .marking-overview__content {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .marking-overview__analytics-row {
@@ -801,7 +865,7 @@ onMounted(() => {
 .marking-overview__content-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
   align-items: stretch;
   margin-bottom: 0;
 }
@@ -852,8 +916,8 @@ onMounted(() => {
 }
 
 .marking-overview__panel-pagination {
-  margin-top: var(--dp-space-4);
-  padding-top: var(--dp-space-3);
+  margin-top: var(--dp-space-block);
+  padding-top: var(--dp-space-component);
   border-top: 1px solid var(--dp-border);
   display: flex;
   justify-content: flex-end;
@@ -923,7 +987,7 @@ onMounted(() => {
 }
 
 .marking-overview__todo-tabs {
-  padding: 0 var(--dp-space-4);
+  padding: 0 var(--dp-space-block);
   border-bottom: 1px solid var(--dp-border);
 }
 
@@ -932,7 +996,7 @@ onMounted(() => {
 }
 
 .marking-overview__todo-tabs :deep(.ui-section-tabs__helper) {
-  margin-bottom: var(--dp-space-2);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .marking-overview__analytics-row,
@@ -941,7 +1005,7 @@ onMounted(() => {
 }
 
 .marking-overview__analytics-row {
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .marking-overview__bottom-row {
@@ -951,7 +1015,7 @@ onMounted(() => {
 .marking-overview__insight-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .marking-overview__insight-empty {
@@ -969,7 +1033,7 @@ onMounted(() => {
 
 .marking-overview__insight-slot {
   min-height: 120px;
-  padding: var(--dp-space-3);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control-inner);
   background: var(--dp-surface-subtle);
@@ -979,7 +1043,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   width: 100%;
 }
 
@@ -994,9 +1058,22 @@ onMounted(() => {
 }
 
 .marking-overview__panel-desc {
-  margin: var(--dp-space-1) 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-type-hint-size);
   line-height: var(--dp-type-hint-line-height);
   color: var(--dp-text-muted);
+}
+
+/* 工作台各段右缘对齐：禁止 gutter 负边距；块级满宽 */
+.marking-overview__analytics-row,
+.marking-overview__bottom-row,
+.marking-overview__content,
+.marking-overview__content-grid,
+.marking-overview__stage-rail {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-left: 0;
+  margin-right: 0;
 }
 </style>

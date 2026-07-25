@@ -35,6 +35,8 @@ export interface PortfolioReportingTaskVO {
   shareFields: PortfolioReportingShareFieldCodeValue[]
   scopeType: PortfolioReportingScopeTypeCode
   departmentId?: string
+  /** 组织树解析的院系名称；失效时为空 */
+  departmentName?: string
   maskMode: boolean
   taskStatus: PortfolioReportingTaskStatusCode
   previewReady?: boolean
@@ -91,6 +93,8 @@ export const portfolioReportingApi = {
     http.post<PortfolioReportingTaskVO>('/api/portfolio/reporting/reject', data),
   download: (data: { id: string }) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/reporting/download', data),
+  confirmDownload: (data: { id: string }) =>
+    http.post<PortfolioReportingTaskVO>('/api/portfolio/reporting/download/confirm', data),
   page: (data: PortfolioReportingTaskPageRequest) =>
     http.post<PageResult<PortfolioReportingTaskVO>>('/api/portfolio/reporting/task/page', data),
 }

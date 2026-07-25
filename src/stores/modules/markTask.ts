@@ -46,10 +46,13 @@ export const useMarkTaskStore = defineStore('markTask', () => {
   const tasksPageNum = ref(1)
   const tasksPageSize = ref(20)
   const tasksPageTotal = ref(0)
+  /** 任务列表请求代际：旧考试响应不得覆盖当前考试。 */
+  let tasksLoadGeneration = 0
 
   /** 教师领取上下文：活跃题组 + 当前会话；按 examId + markingPhase 隔离 */
   const claimContextByExam = ref<Map<string, TeacherClaimContextResponse>>(new Map())
   const claimContextLoading = ref(false)
+  let claimContextLoadGeneration = 0
 
   function claimContextKey(examId: string, markingPhase: MarkingSessionPhaseCode): string {
     return `${examId}:${markingPhase}`
@@ -71,25 +74,30 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     request: MarkingTaskQueryRequest,
     options?: { silent?: boolean },
   ): Promise<MarkingTaskResponse[]> {
+    const generation = ++tasksLoadGeneration
+    const examId = request.examId
     if (!options?.silent) {
       tasksLoading.value = true
     }
     try {
       const pageSize = request.pageSize ?? MARKING_TASK_NAV_PAGE_SIZE
       const page = await pageMarkingTasks({ ...request, pageNum: 1, pageSize })
+      if (generation !== tasksLoadGeneration) {
+        return tasks.value
+      }
       if (page.total > page.list.length) {
         throw new Error(
           `阅卷任务数量（${page.total}）超过导航单页上限（${pageSize}），请缩小考试或题组筛选范围`,
         )
       }
       tasks.value = page.list
-      tasksLoadedExamId.value = request.examId
+      tasksLoadedExamId.value = examId
       tasksPageNum.value = page.pageNum
       tasksPageSize.value = page.pageSize
       tasksPageTotal.value = page.total
       return tasks.value
     } finally {
-      if (!options?.silent) {
+      if (!options?.silent && generation === tasksLoadGeneration) {
         tasksLoading.value = false
       }
     }
@@ -104,6 +112,8 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     pageSize: number,
     options?: { silent?: boolean },
   ): Promise<PageResult<MarkingTaskResponse>> {
+    const generation = ++tasksLoadGeneration
+    const examId = request.examId
     if (!options?.silent) {
       tasksLoading.value = true
     }
@@ -112,22 +122,35 @@ export const useMarkTaskStore = defineStore('markTask', () => {
         { ...request, pageNum, pageSize },
         options?.silent ? { showErrorMessage: false } : undefined,
       )
+      if (generation !== tasksLoadGeneration) {
+        const pageSize = tasksPageSize.value
+        return {
+          list: tasks.value,
+          pageNum: tasksPageNum.value,
+          pageSize,
+          total: tasksPageTotal.value,
+          pages: pageSize > 0 ? Math.ceil(tasksPageTotal.value / pageSize) : 0,
+        }
+      }
       tasks.value = page.list
-      tasksLoadedExamId.value = request.examId
+      tasksLoadedExamId.value = examId
       tasksPageNum.value = page.pageNum
       tasksPageSize.value = page.pageSize
       tasksPageTotal.value = page.total
       return page
     } finally {
-      if (!options?.silent) {
+      if (!options?.silent && generation === tasksLoadGeneration) {
         tasksLoading.value = false
       }
     }
   }
 
-  async function claimTasks(request: MarkingTaskClaimRequest): Promise<MarkingTaskResponse[]> {
+  async function claimTasks(
+    request: MarkingTaskClaimRequest,
+    options?: { examId?: string },
+  ): Promise<MarkingTaskResponse[]> {
     const claimed = await claimMarkingTasks(request)
-    if (claimed.length > 0) {
+    if (claimed.length > 0 && options?.examId === tasksLoadedExamId.value) {
       tasks.value = [...claimed, ...tasks.value]
     }
     return claimed
@@ -136,15 +159,21 @@ export const useMarkTaskStore = defineStore('markTask', () => {
   async function loadClaimContext(
     request: TeacherClaimContextQueryRequest,
   ): Promise<TeacherClaimContextResponse> {
+    const generation = ++claimContextLoadGeneration
     claimContextLoading.value = true
     try {
       const result = await getTeacherClaimContext(request)
+      if (generation !== claimContextLoadGeneration) {
+        return result
+      }
       const next = new Map(claimContextByExam.value)
       next.set(claimContextKey(request.examId, request.markingPhase), result)
       claimContextByExam.value = next
       return result
     } finally {
-      claimContextLoading.value = false
+      if (generation === claimContextLoadGeneration) {
+        claimContextLoading.value = false
+      }
     }
   }
 
@@ -162,16 +191,22 @@ export const useMarkTaskStore = defineStore('markTask', () => {
    * 避免组件内部直接修改 storeToRefs 解开后的 ref（Pinia 反模式）。
    */
   function clearTasks(): void {
+    tasksLoadGeneration += 1
     tasks.value = []
     tasksLoadedExamId.value = ''
     tasksPageTotal.value = 0
     tasksPageNum.value = 1
+    tasksLoading.value = false
   }
 
   function reset(): void {
+    tasksLoadGeneration += 1
+    claimContextLoadGeneration += 1
     tasks.value = []
     claimContextByExam.value = new Map()
     tasksLoadedExamId.value = ''
+    tasksLoading.value = false
+    claimContextLoading.value = false
   }
 
   /**
@@ -195,6 +230,9 @@ export const useMarkTaskStore = defineStore('markTask', () => {
   }
 
   function upsertTask(task: MarkingTaskResponse): void {
+    if (tasksLoadedExamId.value && task.examId && task.examId !== tasksLoadedExamId.value) {
+      return
+    }
     const idx = tasks.value.findIndex((item) => item.id === task.id)
     if (idx >= 0) {
       tasks.value[idx] = task

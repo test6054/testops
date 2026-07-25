@@ -352,31 +352,48 @@ async function loadRecords() {
     recordSummary.value = null
     return
   }
+  const scope = beginQualityScopeRequest()
+  const batchId = selectedBatch.value.id
   recordsLoading.value = true
   beginRecordsLoad()
   try {
     const page = await scoreRecordApi.pageByBatch({
-      batchId: selectedBatch.value.id,
+      batchId,
       validFlag: validFilter.value,
       pageNum: recordPageNum.value,
       pageSize: recordPageSize.value,
     })
+    if (scope.isStale() || selectedBatch.value?.id !== batchId) {
+      return
+    }
     records.value = page.list
     recordTotal.value = page.total
     recordPageNum.value = page.pageNum ?? recordPageNum.value
     recordPageSize.value = page.pageSize ?? recordPageSize.value
     try {
-      recordSummary.value = await scoreRecordApi.getBatchSummary(selectedBatch.value.id)
+      const summary = await scoreRecordApi.getBatchSummary(batchId)
+      if (scope.isStale() || selectedBatch.value?.id !== batchId) {
+        return
+      }
+      recordSummary.value = summary
     } catch (error) {
+      if (scope.isStale() || selectedBatch.value?.id !== batchId) {
+        return
+      }
       recordSummary.value = null
       showUserError(error, '成绩明细汇总加载失败')
     }
     okRecordsLoad()
   } catch (error) {
+    if (scope.isStale() || selectedBatch.value?.id !== batchId) {
+      return
+    }
     failRecordsLoad()
     showUserError(error, '成绩明细加载失败')
   } finally {
-    recordsLoading.value = false
+    if (!scope.isStale() && selectedBatch.value?.id === batchId) {
+      recordsLoading.value = false
+    }
   }
 }
 
@@ -949,7 +966,7 @@ function handleCourseChange(courseId: string | null) {
           </template>
           <template v-else #title>成绩明细</template>
           <template v-if="selectedBatch" #extra>
-            <div class="dp-space" style="--dp-space-gap: 8px">
+            <div class="dp-space" style="--dp-space-component: 8px">
               <UiButton
                 variant="outline"
                 size="sm"
@@ -1036,7 +1053,7 @@ function handleCourseChange(courseId: string | null) {
                   {{ formatScore(record.fullScore, 'fullScore') }}
                 </template>
                 <template v-else-if="column.key === 'recordStatus'">
-                  <div class="dp-space" style="--dp-space-gap: 8px">
+                  <div class="dp-space" style="--dp-space-component: 8px">
                     <UiTag :tone="record.validFlag ? 'green' : 'red'">
                       {{ record.validFlag ? '有效' : '无效' }}
                     </UiTag>
@@ -1242,17 +1259,17 @@ function handleCourseChange(courseId: string | null) {
   }
 
   &__empty {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-component);
   }
 
   &__signals {
-    margin-bottom: var(--dp-space-3);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__layout {
     display: grid;
     grid-template-columns: minmax(360px, 38%) 1fr;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
     align-items: stretch;
   }
 
@@ -1260,7 +1277,7 @@ function handleCourseChange(courseId: string | null) {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
     min-height: 96px;
   }
 
@@ -1268,7 +1285,7 @@ function handleCourseChange(courseId: string | null) {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    margin-bottom: var(--dp-space-3);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel-title {
@@ -1297,13 +1314,13 @@ function handleCourseChange(courseId: string | null) {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: var(--dp-space-3, 12px);
-    margin-bottom: var(--dp-space-3);
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
   &__detail-meta {
-    margin-top: 4px;
+    margin-top: var(--dp-space-component-xs);
     color: var(--dp-text-muted);
     font-size: var(--dp-font-size-xs);
   }
@@ -1311,7 +1328,7 @@ function handleCourseChange(courseId: string | null) {
   &__detail-actions {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
@@ -1327,22 +1344,22 @@ function handleCourseChange(courseId: string | null) {
   &__valid-search {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
-    margin-bottom: var(--dp-space-3);
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
   &__item-code {
     color: var(--dp-text-muted);
     font-size: var(--dp-font-size-xs);
-    margin-right: 4px;
+    margin-right: var(--dp-space-component-xs);
   }
 
   &__student-info {
     min-height: 32px;
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     color: var(--dp-text-primary);
   }
 
@@ -1353,11 +1370,11 @@ function handleCourseChange(courseId: string | null) {
 
   &__rubrics {
     display: grid;
-    gap: var(--dp-space-2);
-    padding: 10px;
+    gap: var(--dp-space-component-tight);
+    padding: var(--dp-space-component);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    background: var(--dp-surface-elevated);
+    background: var(--dp-surface-chrome);
   }
 
   &__rubrics-head {
@@ -1372,9 +1389,9 @@ function handleCourseChange(courseId: string | null) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 140px;
     align-items: center;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
     min-height: 42px;
-    padding: var(--dp-space-2) 10px;
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     border: 1px solid var(--dp-border);
     border-radius: 6px;
     background: var(--dp-surface);
@@ -1384,7 +1401,7 @@ function handleCourseChange(courseId: string | null) {
     min-width: 0;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
@@ -1404,7 +1421,7 @@ function handleCourseChange(courseId: string | null) {
 
   &__rubric-empty {
     margin: 0;
-    padding: var(--dp-space-3) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__import-link {
@@ -1415,7 +1432,7 @@ function handleCourseChange(courseId: string | null) {
   &__gate-row {
     display: inline-flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     min-width: 0;
     font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);

@@ -47,14 +47,14 @@ const tileCount = computed(() => (props.density === 'dense' ? 48 : 32))
     inset: -35%;
     display: grid;
     grid-template-columns: repeat(4, minmax(220px, 1fr));
-    gap: 40px 56px;
+    gap: var(--dp-space-section-loose) 56px;
     transform: rotate(-22deg);
     opacity: 0.14;
   }
 
   &--dense &__grid {
     grid-template-columns: repeat(5, minmax(200px, 1fr));
-    gap: 28px 40px;
+    gap: var(--dp-space-page) var(--dp-space-section-loose);
     opacity: 0.18;
   }
 

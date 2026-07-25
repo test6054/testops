@@ -114,14 +114,14 @@ function operationLabel(operationType: OperationLogResponse['operationType']): s
 
   &__records {
     display: grid;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__record {
     display: grid;
     grid-template-columns: auto auto 1fr;
-    gap: 4px 8px;
-    padding: 8px;
+    gap: var(--dp-space-component-xs) var(--dp-space-component-tight);
+    padding: var(--dp-space-component-tight);
     border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-panel);
     color: var(--dp-text-secondary);

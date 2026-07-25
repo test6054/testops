@@ -30,13 +30,13 @@ withDefaults(defineProps<{
 .ui-form-section {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .ui-form-section__header {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-1, 4px);
+  gap: var(--dp-space-component-xs);
 }
 
 .ui-form-section__title {
@@ -53,16 +53,16 @@ withDefaults(defineProps<{
 .ui-form-section__body {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .ui-form-section--divided {
-  padding-top: 4px;
+  padding-top: var(--dp-space-component-xs);
 }
 
 .ui-form-section--divided + .ui-form-section--divided {
-  margin-top: var(--dp-space-4, 16px);
-  padding-top: var(--dp-space-4, 16px);
+  margin-top: var(--dp-space-block);
+  padding-top: var(--dp-space-block);
   border-top: 1px solid var(--dp-border);
 }
 </style>

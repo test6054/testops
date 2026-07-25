@@ -42,7 +42,7 @@ const columns = [
   { title: '分类', key: 'categoryName', dataIndex: 'categoryName', width: 120 },
   { title: '课程维度', key: 'courseScope', width: 140 },
   { title: '任务', key: 'taskTitle', dataIndex: 'taskTitle', ellipsis: true },
-  { title: '教师', key: 'teacherId', dataIndex: 'teacherId', width: 120 },
+  { title: '教师', key: 'teacher', width: 168 },
   { title: '状态', key: 'taskStatus', dataIndex: 'taskStatus', width: 96 },
   { title: '截止', key: 'dueTime', dataIndex: 'dueTime', width: 160 },
   { title: '操作', key: 'actions', width: 88 },
@@ -102,6 +102,16 @@ function gapCourseScopeLabel(row: PortfolioGapTaskSummaryInternalVO): string {
     parts.push(`第${row.semester}学期`)
   }
   return parts.join(' · ')
+}
+
+function gapTeacherLabel(row: PortfolioGapTaskSummaryInternalVO): string {
+  const name = row.teacherName?.trim()
+  const number = row.teacherNumber?.trim()
+  // 与 BE fromDetails 合同一致：姓名与工号均须下发，禁止仅展示 teacherId 或半残字段
+  if (!name || !number) {
+    return '—'
+  }
+  return `${name} · ${number}`
 }
 
 async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
@@ -186,6 +196,12 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
           <template v-else-if="column.key === 'courseScope'">
             {{ gapCourseScopeLabel(record) }}
           </template>
+          <template v-else-if="column.key === 'teacher'">
+            <div class="kiosk-portfolio-pick__teacher">
+              <span>{{ gapTeacherLabel(record) }}</span>
+              <small v-if="record.departmentName">{{ record.departmentName }}</small>
+            </div>
+          </template>
           <template v-else-if="column.key === 'taskStatus'">
             <UiTag tone="blue" size="sm">{{ gapStatusLabel(record.taskStatus) }}</UiTag>
           </template>
@@ -206,7 +222,7 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
 
 <style scoped>
 .kiosk-portfolio-pick__hint {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--kiosk-ink-secondary);
 }
@@ -215,8 +231,19 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
   min-width: 0;
 }
 .kiosk-portfolio-pick__error {
-  margin: 0 0 12px;
-  padding: 0 var(--dp-space-5);
+  margin: 0 0 var(--dp-space-component);
+  padding: 0 var(--dp-space-block);
   color: var(--kiosk-danger);
+}
+.kiosk-portfolio-pick__teacher {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.kiosk-portfolio-pick__teacher small {
+  color: var(--kiosk-ink-secondary);
+  font-size: var(--dp-font-size-xs);
+  line-height: 1.3;
 }
 </style>

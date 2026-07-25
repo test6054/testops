@@ -83,6 +83,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'prep',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('layout-designer', 'TeacherExamWorkspaceLayoutDesigner', () => import('@/views/teacher/exam-layout-designer.vue'), {
       title: '制卷设计',
@@ -91,6 +92,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'layout-designer',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('candidate-roster', 'TeacherExamWorkspaceCandidateRoster', () => import('@/views/teacher/candidate-roster.vue'), {
       title: '考生名册',
@@ -99,6 +101,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'candidate-roster',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('scan/batches', 'TeacherExamWorkspaceScanBatches', () => import('@/views/teacher/scan-batch-workbench.vue'), {
       title: '扫描批次',
@@ -107,6 +110,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'scan',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('scan/batches/:scanBatchId', 'TeacherExamWorkspaceScanBatchDetail', () => import('@/views/teacher/scan-batch-detail-workbench.vue'), {
       title: '批次详情',
@@ -116,7 +120,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       keepAlive: false,
       noCache: true,
       hasWorkbenchShell: true,
-      layoutWide: true,
+      layoutImmersive: true,
     }),
     workspaceChild('scan/manual-entry', 'TeacherExamWorkspaceScanManualEntry', () => import('@/views/teacher/scan-manual-entry.vue'), {
       title: '手动补录',
@@ -125,6 +129,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'scan',
       keepAlive: false,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('scan/monitor', 'TeacherExamWorkspaceScanMonitor', () => import('@/views/teacher/scan-live-monitor.vue'), {
       title: '扫描监控',
@@ -134,6 +139,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       keepAlive: false,
       noCache: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('scan/ledger', 'TeacherExamWorkspaceScanLedger', () => import('@/views/teacher/image-ledger.vue'), {
       title: '影像账本',
@@ -142,6 +148,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'scan',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('scan/devices', 'TeacherExamWorkspaceScanDevices', () => import('@/views/teacher/printer-management.vue'), {
       title: '扫描设备',
@@ -150,6 +157,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'scan',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('scan/ocr', 'TeacherExamWorkspaceScanOcr', () => import('@/views/teacher/ocr-settings.vue'), {
       title: 'OCR 配置',
@@ -158,6 +166,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'scan',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('scan/ops', 'TeacherExamWorkspaceScanOps', () => import('@/views/teacher/exam-scan-ops.vue'), {
       title: '扫描运营',
@@ -166,6 +175,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'scan',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking-org', 'TeacherExamWorkspaceMarkingOrg', () => import('@/views/admin/marking-organization/marking-org-entry.vue'), {
       title: '阅卷组织',
@@ -175,6 +185,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       keepAlive: false,
       noCache: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking-org/trial', 'TeacherExamWorkspaceMarkingOrgTrialHub', () => import('@/views/admin/marking-organization/marking-org-session-hub.vue'), {
       title: '试评定标',
@@ -185,6 +196,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       keepAlive: false,
       noCache: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking-org/formal', 'TeacherExamWorkspaceMarkingOrgFormalHub', () => import('@/views/admin/marking-organization/marking-org-session-hub.vue'), {
       title: '正评会话',
@@ -195,6 +207,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       keepAlive: false,
       noCache: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking-org/:organizationId', 'TeacherExamWorkspaceMarkingOrgDetail', () => import('@/views/admin/marking-organization/detail.vue'), {
       title: '组织详情',
@@ -204,6 +217,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       keepAlive: false,
       noCache: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking-org/:organizationId/trial-sessions', 'TeacherExamWorkspaceMarkingOrgTrialSessions', () => import('@/views/admin/marking-organization/trial-sessions.vue'), {
       title: '试评定标',
@@ -213,6 +227,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       keepAlive: false,
       noCache: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking-org/:organizationId/formal-sessions', 'TeacherExamWorkspaceMarkingOrgFormalSessions', () => import('@/views/admin/marking-organization/formal-sessions.vue'), {
       title: '正评会话',
@@ -222,6 +237,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       keepAlive: false,
       noCache: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking-org/:organizationId/sessions', 'TeacherExamWorkspaceMarkingOrgSessions', () => import('@/views/admin/marking-organization/sessions.vue'), {
       title: '试评 / 正评',
@@ -231,6 +247,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       keepAlive: false,
       noCache: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
       hideInMenu: true,
     }),
     workspaceChild('trial/task-pool', 'TeacherExamWorkspaceTrialTaskPool', () => import('@/views/teacher/marking-task-pool.vue'), {
@@ -240,6 +257,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'trial',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('trial/progress', 'TeacherExamWorkspaceTrialProgress', () => import('@/views/teacher/exam-workspace/marking-progress-dashboard.vue'), {
       title: '试评进度',
@@ -248,6 +266,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'trial',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking/review-batch', 'TeacherExamWorkspaceReviewBatchConfirm', () => import('@/views/teacher/review-batch-confirm.vue'), {
       title: '批量复核确认',
@@ -256,6 +275,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'marking',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking/experience-assist-policy', 'TeacherExamWorkspaceMarkingExperienceAssistPolicy', () => import('@/views/teacher/exam-workspace/marking-experience-assist-policy.vue'), {
       title: '经验辅助评阅',
@@ -264,6 +284,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'prep',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking/task-pool', 'TeacherExamWorkspaceMarkingTaskPool', () => import('@/views/teacher/marking-task-pool.vue'), {
       title: '阅卷任务池',
@@ -272,13 +293,14 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'marking',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking/task/:taskId', 'TeacherExamWorkspaceMarkingTaskDetail', () => import('@/views/teacher/marking-task-detail.vue'), {
       title: '阅卷工作台',
       markStageKey: 'FORMAL_MARKING',
       journeyKey: 'mark',
       workspacePhase: 'marking',
-      layoutWide: true,
+      layoutImmersive: true,
       keepAlive: false,
       noCache: true,
     }),
@@ -289,6 +311,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'marking',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking/review-progress', 'TeacherExamWorkspaceMarkingReviewProgress', () => import('@/views/teacher/review-progress.vue'), {
       title: 'OCR/AI 复核进度',
@@ -297,6 +320,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'marking',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking/arbitration', 'TeacherExamWorkspaceMarkingArbitration', () => import('@/views/teacher/review-arbitration.vue'), {
       title: '仲裁裁定',
@@ -305,6 +329,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'marking',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking/quality', 'TeacherExamWorkspaceMarkingQuality', () => import('@/views/teacher/marking-spot-check.vue'), {
       title: '抽检处理',
@@ -313,6 +338,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'marking',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking/quality-monitor', 'TeacherExamWorkspaceMarkingQualityMonitor', () => import('@/views/admin/marking-quality-dashboard.vue'), {
       title: '阅卷质量监控',
@@ -321,6 +347,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'marking',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking/audit-trail', 'TeacherExamWorkspaceMarkingAuditTrail', () => import('@/views/admin/audit-trail.vue'), {
       title: '批改审计',
@@ -329,6 +356,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'marking',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking/review', 'TeacherExamWorkspaceMarkingReview', () => import('@/views/teacher/review-workspace.vue'), {
       title: 'OCR/AI 复核',
@@ -337,13 +365,14 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'marking',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('marking/review/:taskId', 'TeacherExamWorkspaceReviewWorkspace', () => import('@/views/teacher/review-workspace.vue'), {
       title: 'OCR/AI 单题复核',
       markStageKey: 'FORMAL_MARKING',
       journeyKey: 'mark',
       workspacePhase: 'marking',
-      layoutWide: true,
+      layoutImmersive: true,
       keepAlive: false,
       noCache: true,
     }),
@@ -352,7 +381,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       markStageKey: 'FORMAL_MARKING',
       journeyKey: 'mark',
       workspacePhase: 'marking',
-      layoutWide: true,
+      layoutImmersive: true,
       keepAlive: false,
       noCache: true,
     }),
@@ -363,6 +392,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'score',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     {
       path: 'score/release',
@@ -390,6 +420,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'score',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('score/appeal', 'TeacherExamWorkspaceScoreAppeal', () => import('@/views/teacher/appeal-handle.vue'), {
       title: '复核申诉',
@@ -398,6 +429,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'score',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('archive/package', 'TeacherExamWorkspaceArchivePackage', () => import('@/views/teacher/archive-volume/archive-volume-exam-progress.vue'), {
       title: '归档复盘',
@@ -406,6 +438,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'archive',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('archive/ai-analysis', 'TeacherExamWorkspaceArchiveAiAnalysis', () => import('@/views/teacher/exam-workspace/exam-workspace-ai-analysis.vue'), {
       title: 'AI 分析',
@@ -414,6 +447,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'archive',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('archive/question-analysis', 'TeacherExamWorkspaceArchiveQuestionAnalysis', () => import('@/views/teacher/exam-workspace/exam-workspace-question-analysis.vue'), {
       title: '题目分析',
@@ -422,6 +456,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'archive',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('archive/statistics', 'TeacherExamWorkspaceArchiveStatistics', () => import('@/views/teacher/statistics.vue'), {
       title: '成绩统计',
@@ -430,6 +465,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'archive',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('archive/grading-experience', 'TeacherExamWorkspaceGradingExperience', () => import('@/views/teacher/grading-experience-hub.vue'), {
       title: '阅卷经验库',
@@ -438,6 +474,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'archive',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('archive/exports', 'TeacherExamWorkspaceArchiveExports', () => import('@/views/common/exam-export-tasks.vue'), {
       title: '导出任务',
@@ -446,6 +483,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'archive',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
     workspaceChild('archive/teaching-affairs', 'TeacherExamWorkspaceArchiveTeachingAffairs', () => import('@/views/admin/teaching-affairs-sync.vue'), {
       title: '教务同步',
@@ -454,6 +492,7 @@ export const examWorkspaceRoutes: RouteRecordRaw = {
       workspacePhase: 'archive',
       keepAlive: true,
       hasWorkbenchShell: true,
+      layoutWide: true,
     }),
   ],
 }

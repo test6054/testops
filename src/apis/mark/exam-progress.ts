@@ -196,7 +196,6 @@ export interface ExamWorkbenchStageSnapshotResponse {
   stages: ExamWorkbenchStageItemResponse[]
   prepSteps: ExamWorkbenchPrepStepResponse[]
   prepAdvisoryReasons: string[]
-  prepBlockingReasons: string[]
   prepScenarioGuide?: ExamPrepScenarioGuideResponse
   /** 租户是否启用经验辅助评阅 */
   tenantExperienceAssistEnabled: boolean

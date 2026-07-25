@@ -20,9 +20,7 @@
       v-else-if="!loading && !detail"
       description="复核任务加载失败或不存在"
       class="review-workspace__empty"
-    >
-      <UiButton size="sm" variant="outline" @click="loadTask">重试</UiButton>
-    </UiEmpty>
+    />
 
     <template v-else-if="detail">
       <UiAlertStrip
@@ -52,6 +50,27 @@
         inline
         class="review-workspace__claim-blocked-banner"
       />
+      <UiAlertStrip
+        v-else-if="needsExplicitClaim"
+        tone="info"
+        title="当前为浏览态"
+        description="尚未领取本任务，可查看影像与建议分；开始复核后才会占用任务租期并允许写分。"
+        dense
+        inline
+        class="review-workspace__claim-start-banner"
+      >
+        <template #actions>
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="claiming"
+            :disabled="!canManageReviewerWrites"
+            @click="claimAndStartReview"
+          >
+            开始复核
+          </UiButton>
+        </template>
+      </UiAlertStrip>
       <!-- B-7 流水线进度：当前任务在同题复核队列中的位次 -->
       <GradingWorkspaceLayout
         :confidential="isExamConfidential"
@@ -77,7 +96,7 @@
                 {{ reviewStatusLabel(detail.status) }}
               </UiTag>
               <UiTag v-if="queueTotal > 0 && currentQueueIndex > 0" tone="blue" size="sm">
-                同题进度 {{ currentQueueIndex }} / {{ queueTotal }}
+                当前队列位置 {{ currentQueueIndex }} / {{ queueTotal }}
               </UiTag>
             </template>
           </GradingImmersionChrome>
@@ -87,20 +106,14 @@
             class="review-workspace__queue-progress"
           >
             <div class="review-workspace__queue-progress-meta">
-              <span class="review-workspace__queue-progress-title">本题复核流水线</span>
+              <span class="review-workspace__queue-progress-title">本题复核队列</span>
               <span class="review-workspace__queue-progress-text">
-                当前第 {{ currentQueueIndex }} 份，剩余
-                {{ Math.max(0, queueTotal - currentQueueIndex) }} 份待复核
+                当前位置第 {{ currentQueueIndex }} 份（共 {{ queueTotal }} 份可继续），
+                后方还有 {{ Math.max(0, queueTotal - currentQueueIndex) }} 份
               </span>
-              <span class="review-workspace__keyboard-hint">J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span>
+              <span class="review-workspace__keyboard-hint">Space/←/→（J/K 别名）· 0-9 快捷给分</span>
             </div>
-            <UiProgressBar
-              :percent="queueProgressPercent"
-              :show-label="true"
-              size="sm"
-              :color="queueProgressPercent >= 100 ? 'var(--dp-success)' : 'var(--dp-color-primary)'"
-            />
-            <div class="review-workspace__queue-jump dp-space" style="--dp-space-gap: 8px">
+            <div class="review-workspace__queue-jump dp-space" style="--dp-space-component: 8px">
               <span class="review-workspace__jump-label">跳转到第</span>
               <UiInputNumber
                 :value="jumpTarget ?? undefined"
@@ -286,7 +299,7 @@
                 />
                 <div class="review-workspace__hint">满分 {{ detail.fullScore }} 分</div>
                 <!-- FIX-10: 快捷给分按钮 -->
-                <div class="review-workspace__quick-scores dp-space" style="--dp-space-gap: 8px">
+                <div class="review-workspace__quick-scores dp-space" style="--dp-space-component: 8px">
                   <UiButton
                     size="sm"
                     variant="outline"
@@ -454,8 +467,8 @@ import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, inject, onActivated, onBeforeUnmount, onDeactivated, onMounted, reactive, ref, watch } from 'vue'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { listAnnotations } from '@/apis/mark/exam-annotation'
 import {
   AI_ABILITY_TONE,
@@ -497,7 +510,6 @@ import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiList from '@/components/ui-guide/ui/UiList.vue'
 import UiListItem from '@/components/ui-guide/ui/UiListItem.vue'
 import UiListItemMeta from '@/components/ui-guide/ui/UiListItemMeta.vue'
-import UiProgressBar from '@/components/ui-guide/ui/UiProgressBar.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
 import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
@@ -515,7 +527,7 @@ import { useUserStore } from '@/stores/modules/user'
 import { ResultCode } from '@/types/enums/result-code'
 import { getUserErrorMessage, readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { isGradingKeyboardInputTarget } from '@/utils/grading-keyboard'
+import { isShortcutBlockingTarget } from '@/utils/grading-keyboard'
 import {
   isBusinessConflict,
   isFinalScoreConfirmLockConflict,
@@ -583,21 +595,23 @@ function resolveReviewTaskPoolRouteName():
 }
 
 function goBack(): void {
-  if (!examId.value) {
-    void router.push({ name: 'TeacherExamList' })
-    return
-  }
-  if (taskId.value) {
+  void leaveReviewWorkspace(() => {
+    if (!examId.value) {
+      void router.push({ name: 'TeacherExamList' })
+      return
+    }
+    if (taskId.value) {
+      void router.push({
+        name: resolveReviewTaskPoolRouteName(),
+        params: { examId: examId.value },
+        query: reviewWorkspaceSourceQuery(),
+      })
+      return
+    }
     void router.push({
-      name: resolveReviewTaskPoolRouteName(),
+      name: 'TeacherExamWorkspaceMarkingTaskPool',
       params: { examId: examId.value },
-      query: reviewWorkspaceSourceQuery(),
     })
-    return
-  }
-  void router.push({
-    name: 'TeacherExamWorkspaceMarkingTaskPool',
-    params: { examId: examId.value },
   })
 }
 
@@ -608,6 +622,8 @@ const loading = ref(false)
 const ownerOverrideMode = ref(false)
 /** 非主考打开他人已领取任务：只读禁写 */
 const claimBlockedByOther = ref(false)
+/** 浏览 PENDING 任务时的显式领取进行中 */
+const claiming = ref(false)
 /** 丢弃过期的复核任务加载，避免 J/K 导航与 claim 并发覆盖 detail。 */
 let loadTaskGeneration = 0
 
@@ -634,16 +650,26 @@ const canSubmit = computed(() => !!examId.value && !!taskId.value)
 /** MVR-283：与 getReviewTaskDetail 下发的 canManageReviewerWrites 对齐（Service 门禁优先）。 */
 const canManageReviewerWrites = computed(() => detail.value?.canManageReviewerWrites === true)
 
+/**
+ * 仅已领取（IN_PROGRESS）或主考代办可写分。
+ * PENDING 浏览态必须先点「开始复核」领取，禁止页面加载副作用占用租期。
+ */
 const canConfirm = computed(() => {
-  // MVR-283：无阅卷写能力位不得暴露确认/采纳/快捷给分
   if (!canManageReviewerWrites.value) {
     return false
   }
-  const status = detail.value?.status
-  return (
-    (status === ReviewTaskStatusCode.PENDING || status === ReviewTaskStatusCode.IN_PROGRESS)
-    && !claimBlockedByOther.value
-  )
+  if (claimBlockedByOther.value) {
+    return false
+  }
+  return detail.value?.status === ReviewTaskStatusCode.IN_PROGRESS
+})
+
+/** PENDING 且未被他人占用时，需要教师显式领取后才能写分。 */
+const needsExplicitClaim = computed(() => {
+  if (!detail.value || claimBlockedByOther.value || ownerOverrideMode.value) {
+    return false
+  }
+  return detail.value.status === ReviewTaskStatusCode.PENDING
 })
 
 /** 仅首次复核任务可驳回升级仲裁；仲裁任务本身不可再次驳回。 */
@@ -657,9 +683,10 @@ const annotations = ref<AnnotationResponse[]>([])
 const annotationsLoading = ref(false)
 const annotationPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
-async function loadAnnotations(): Promise<void> {
+async function loadAnnotations(expectedGeneration = loadTaskGeneration): Promise<void> {
   if (!examId.value || !detail.value) return
   const currentExamId = examId.value
+  const currentTaskId = taskId.value
   const { paperInstanceId, layoutQuestionId, gradeResultId } = detail.value
   annotationsLoading.value = true
   try {
@@ -671,16 +698,28 @@ async function loadAnnotations(): Promise<void> {
       pageNum: annotationPagination.pageNum,
       pageSize: annotationPagination.pageSize,
     })
+    if (
+      expectedGeneration !== loadTaskGeneration
+      || examId.value !== currentExamId
+      || taskId.value !== currentTaskId
+    ) {
+      return
+    }
     annotations.value = page.list
     annotationPagination.total = page.total
     annotationPagination.pageNum = page.pageNum
     annotationPagination.pageSize = page.pageSize
   } catch (error) {
+    if (expectedGeneration !== loadTaskGeneration) {
+      return
+    }
     annotations.value = []
     annotationPagination.total = 0
     showUserError(error, '批注记录加载失败')
   } finally {
-    annotationsLoading.value = false
+    if (expectedGeneration === loadTaskGeneration) {
+      annotationsLoading.value = false
+    }
   }
 }
 
@@ -692,7 +731,7 @@ const pipelineCurrentIndex = ref(0)
  * 加载当前考试 + 当前题目下可继续复核的任务集合。
  * 只保留 PENDING 和当前教师自己已领取的 IN_PROGRESS 任务，避免把其他教师已领取任务误纳入“下一份”候选。
  */
-async function loadReviewQueue(): Promise<void> {
+async function loadReviewQueue(expectedGeneration = loadTaskGeneration): Promise<void> {
   if (
     !examId.value
     || !detail.value?.layoutQuestionId
@@ -711,6 +750,7 @@ async function loadReviewQueue(): Promise<void> {
     return
   }
   const currentExamId = examId.value
+  const currentTaskId = taskId.value
   const { layoutQuestionId, reviewType, gradeSource } = detail.value
   try {
     const pipeline = await getReviewTaskPipeline({
@@ -719,11 +759,21 @@ async function loadReviewQueue(): Promise<void> {
       reviewType,
       gradeSource,
       excludeArbitration: reviewType !== ReviewTaskTypeCode.QUESTION_REVIEW_ARBITRATION,
-      currentReviewTaskId: taskId.value,
+      currentReviewTaskId: currentTaskId,
     })
+    if (
+      expectedGeneration !== loadTaskGeneration
+      || examId.value !== currentExamId
+      || taskId.value !== currentTaskId
+    ) {
+      return
+    }
     reviewQueue.value = pipeline.items
     pipelineCurrentIndex.value = pipeline.currentIndex
   } catch (error) {
+    if (expectedGeneration !== loadTaskGeneration) {
+      return
+    }
     showUserError(error, '同题复核队列加载失败，提交并取下一份暂不可用。')
     reviewQueue.value = []
     pipelineCurrentIndex.value = 0
@@ -737,17 +787,6 @@ const currentQueueIndex = computed<number>(() => pipelineCurrentIndex.value)
 
 const queueTotal = computed<number>(() => reviewQueue.value.length)
 
-/**
- * 复核流水线进度百分比（0-100）。
- * 当前任务一旦提交（APPROVED/REJECTED）会从队列中消失，下次刷新位次自然推进。
- */
-const queueProgressPercent = computed<number>(() => {
-  if (queueTotal.value === 0) return 0
-  const remaining = queueTotal.value
-  const completedInWindow = Math.max(0, currentQueueIndex.value - 1)
-  return Math.min(100, Math.round((completedInWindow / Math.max(remaining, 1)) * 100))
-})
-
 /** P2-2: 队列快速跳转 */
 const jumpTarget = ref<number | null>(null)
 
@@ -760,12 +799,7 @@ function handleQueueJump(): void {
   }
   const targetTask = reviewQueue.value[idx - 1]
   if (targetTask) {
-    resetGradeForm()
-    void router.replace({
-      name: 'TeacherExamWorkspaceReviewWorkspace',
-      params: { examId: examId.value, taskId: targetTask.reviewTaskId },
-      query: reviewWorkspaceSourceQuery(),
-    })
+    void navigateToQueueTask(targetTask.reviewTaskId)
   }
 }
 
@@ -784,28 +818,35 @@ function navigateQueueRelative(offset: -1 | 1): void {
     return
   }
   const targetTask = reviewQueue.value[targetIdx]
-  resetGradeForm()
-  void router.replace({
-    name: 'TeacherExamWorkspaceReviewWorkspace',
-    params: { examId: examId.value, taskId: targetTask.reviewTaskId },
-    query: reviewWorkspaceSourceQuery(),
-  })
+  void navigateToQueueTask(targetTask.reviewTaskId)
 }
 
 function handleReviewWorkspaceKeydown(event: KeyboardEvent): void {
+  // 仅单题复核任务页抢键；列表路由 / 无 taskId 时不拦截
+  if (!taskId.value) {
+    return
+  }
   if (event.metaKey || event.ctrlKey || event.altKey || event.isComposing) {
     return
   }
-  if (isGradingKeyboardInputTarget(event.target)) {
+  // 与阅卷工作台同级：输入态与可激活控件均不抢单键
+  if (isShortcutBlockingTarget(event.target)) {
     return
   }
   const key = event.key.toLowerCase()
   if (key === 'j' || key === 'arrowleft') {
+    if (reviewQueue.value.length === 0) {
+      return
+    }
     event.preventDefault()
     navigateQueueRelative(-1)
     return
   }
-  if (key === 'k' || key === 'arrowright') {
+  // Space / → / K：下一份
+  if (event.key === ' ' || key === 'k' || key === 'arrowright') {
+    if (reviewQueue.value.length === 0) {
+      return
+    }
     event.preventDefault()
     navigateQueueRelative(1)
     return
@@ -846,15 +887,13 @@ function syncExperienceAssistMetaFromDetail(taskDetail: ReviewTaskDetailResponse
 
 /** 是否可以调用单题 AI 复评，需同时满足：存在 gradeResultId、状态为 PENDING/IN_PROGRESS、未提交中 */
 const canRescoreByAi = computed<boolean>(() => {
-  // MVR-283：无阅卷写能力位不得暴露 AI 复评
+  // MVR-283：无阅卷写能力位不得暴露 AI 复评；浏览态 PENDING 未领取也不可复评
   if (!canManageReviewerWrites.value) return false
+  if (!canConfirm.value) return false
   if (rescoring.value || submitting.value) return false
   if (!examId.value) return false
   if (!detail.value) return false
-  return (
-    detail.value.status === ReviewTaskStatusCode.PENDING
-    || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
-  )
+  return detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
 })
 
 // ─── 加载主流程 ───────────────────────────
@@ -865,7 +904,7 @@ async function loadTask(): Promise<void> {
   const generation = ++loadTaskGeneration
   loading.value = true
   try {
-    const loadedDetail = await loadReviewTaskDetail()
+    const loadedDetail = await loadReviewTaskDetail(expectedExamId, expectedTaskId)
     if (
       generation !== loadTaskGeneration
       || expectedExamId !== examId.value
@@ -875,7 +914,8 @@ async function loadTask(): Promise<void> {
     }
     detail.value = loadedDetail
     syncExperienceAssistMetaFromDetail(detail.value)
-    await Promise.all([loadAnnotations(), loadReviewQueue()])
+    captureGradeBaseline()
+    await Promise.all([loadAnnotations(generation), loadReviewQueue(generation)])
   } catch (error) {
     if (generation !== loadTaskGeneration) {
       return
@@ -896,6 +936,7 @@ function resetGradeForm(): void {
   gradeForm.teacherReviewScore = undefined
   gradeForm.commentText = ''
   gradeForm.annotationText = ''
+  captureGradeBaseline()
 }
 
 /** 路由切换或重新加载任务前清空上一份任务残留，避免表单/队列/批注串页。 */
@@ -904,6 +945,7 @@ function resetTaskState(): void {
   detail.value = null
   ownerOverrideMode.value = false
   claimBlockedByOther.value = false
+  claiming.value = false
   annotations.value = []
   annotationPagination.pageNum = 1
   annotationPagination.total = 0
@@ -914,48 +956,155 @@ function resetTaskState(): void {
   lastExperienceAssistMeta.value = null
 }
 
-/**
- * 加载复核任务详情：活跃态任务先 claim 绑定当前教师；
- * 他人已领取时主考进入代办模式，非主考只读禁写。
- */
-async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
-  const preview = await getReviewTaskDetail({
-    examId: examId.value,
-    reviewTaskId: taskId.value,
+function serializeGradeForm(): string {
+  return JSON.stringify({
+    score: gradeForm.teacherReviewScore ?? null,
+    comment: (gradeForm.commentText ?? '').trim(),
+    annotation: (gradeForm.annotationText ?? '').trim(),
   })
-  if (
-    preview.status !== ReviewTaskStatusCode.PENDING
-    && preview.status !== ReviewTaskStatusCode.IN_PROGRESS
-  ) {
-    return preview
+}
+
+function captureGradeBaseline(): void {
+  gradeFormBaseline.value = serializeGradeForm()
+}
+
+/** 可写态下未提交的正式分/评语/内部批注视为 dirty。 */
+const isGradeFormDirty = computed(
+  () => canConfirm.value && serializeGradeForm() !== gradeFormBaseline.value,
+)
+
+/** 允许一次受控离开后跳过重复确认（路由守卫与主动导航共用）。 */
+let bypassDirtyLeaveGuard = false
+
+const gradeFormBaseline = ref('')
+
+async function confirmLeaveIfDirty(): Promise<boolean> {
+  if (bypassDirtyLeaveGuard || !isGradeFormDirty.value) {
+    return true
   }
-  try {
-    const claimed = await claimReviewTask({
-      examId: examId.value,
-      reviewTaskId: taskId.value,
-    })
+  const confirmed = await confirmAsync({
+    title: '尚未提交的复核内容将丢失',
+    content: '尚未提交的教师复核分不会写入。确认离开当前任务？',
+    type: 'warning',
+    okText: '继续离开',
+    cancelText: '留在当前任务',
+  })
+  if (confirmed) {
+    bypassDirtyLeaveGuard = true
+  }
+  return confirmed
+}
+
+async function leaveReviewWorkspace(navigate: () => void): Promise<void> {
+  if (!(await confirmLeaveIfDirty())) {
+    return
+  }
+  navigate()
+}
+
+async function navigateToQueueTask(targetTaskId: string): Promise<void> {
+  if (!examId.value || !targetTaskId || targetTaskId === taskId.value) {
+    return
+  }
+  if (!(await confirmLeaveIfDirty())) {
+    return
+  }
+  void router.replace({
+    name: 'TeacherExamWorkspaceReviewWorkspace',
+    params: { examId: examId.value, taskId: targetTaskId },
+    query: reviewWorkspaceSourceQuery(),
+  })
+}
+
+/**
+ * 加载复核任务详情：PENDING 仅浏览不领取；IN_PROGRESS 按归属进入本人写 / 主考代办 / 只读。
+ * 领取意图必须由「开始复核」或「提交并取下一份」显式触发。
+ */
+async function loadReviewTaskDetail(
+  capturedExamId: string,
+  capturedTaskId: string,
+): Promise<ReviewTaskDetailResponse> {
+  const preview = await getReviewTaskDetail({
+    examId: capturedExamId,
+    reviewTaskId: capturedTaskId,
+  })
+  if (preview.status === ReviewTaskStatusCode.PENDING) {
     ownerOverrideMode.value = false
     claimBlockedByOther.value = false
-    return claimed
+    return preview
+  }
+  if (preview.status !== ReviewTaskStatusCode.IN_PROGRESS) {
+    ownerOverrideMode.value = false
+    claimBlockedByOther.value = false
+    return preview
+  }
+  const heldByOther
+    = !!preview.assignedTeacherUserId
+      && preview.assignedTeacherUserId !== currentUserId.value
+  if (heldByOther && canManageOwnerReviewOverride.value) {
+    ownerOverrideMode.value = true
+    claimBlockedByOther.value = false
+    return preview
+  }
+  if (heldByOther) {
+    ownerOverrideMode.value = false
+    claimBlockedByOther.value = true
+    return preview
+  }
+  ownerOverrideMode.value = false
+  claimBlockedByOther.value = false
+  return preview
+}
+
+/** 浏览态显式领取：占用任务租期后才允许写分。 */
+async function claimAndStartReview(): Promise<void> {
+  if (claiming.value || !detail.value) {
+    return
+  }
+  if (!canManageReviewerWrites.value) {
+    void message.warning('当前账号无阅卷写权限，无法开始复核')
+    return
+  }
+  if (detail.value.status !== ReviewTaskStatusCode.PENDING) {
+    return
+  }
+  const expectedExamId = examId.value
+  const expectedTaskId = taskId.value
+  const generation = loadTaskGeneration
+  claiming.value = true
+  try {
+    const claimed = await claimReviewTask({
+      examId: expectedExamId,
+      reviewTaskId: expectedTaskId,
+    })
+    if (
+      generation !== loadTaskGeneration
+      || examId.value !== expectedExamId
+      || taskId.value !== expectedTaskId
+    ) {
+      return
+    }
+    detail.value = claimed
+    ownerOverrideMode.value = false
+    claimBlockedByOther.value = false
+    syncExperienceAssistMetaFromDetail(claimed)
+    captureGradeBaseline()
+    await Promise.all([loadAnnotations(generation), loadReviewQueue(generation)])
   } catch (error) {
-    if (!isBusinessConflict(error)) {
-      throw error
+    if (generation !== loadTaskGeneration) {
+      return
     }
-    const heldByOther
-      = preview.status === ReviewTaskStatusCode.IN_PROGRESS
-        && !!preview.assignedTeacherUserId
-        && preview.assignedTeacherUserId !== currentUserId.value
-    if (heldByOther && canManageOwnerReviewOverride.value) {
-      ownerOverrideMode.value = true
-      claimBlockedByOther.value = false
-      return preview
+    if (isBusinessConflict(error)) {
+      claimBlockedByOther.value = !canManageOwnerReviewOverride.value
+      ownerOverrideMode.value = canManageOwnerReviewOverride.value
+      void message.warning(getUserErrorMessage(error, '复核任务已被其他教师领取'))
+      return
     }
-    if (heldByOther) {
-      ownerOverrideMode.value = false
-      claimBlockedByOther.value = true
-      return preview
+    showUserError(error, '开始复核失败')
+  } finally {
+    if (generation === loadTaskGeneration) {
+      claiming.value = false
     }
-    throw error
   }
 }
 
@@ -1174,19 +1323,34 @@ function openExecutionsDrawer(highlightTraceId?: string | null): void {
   void loadAiExecutions()
 }
 
-async function loadAiExecutions(): Promise<void> {
+async function loadAiExecutions(expectedGeneration = loadTaskGeneration): Promise<void> {
   if (!examId.value || !detail.value) return
+  const currentExamId = examId.value
+  const currentTaskId = taskId.value
   executionsLoading.value = true
   try {
-    aiExecutions.value = await listAiExecutionsForQuestion({
-      examId: examId.value,
+    const list = await listAiExecutionsForQuestion({
+      examId: currentExamId,
       gradeResultId: detail.value.gradeResultId,
     })
+    if (
+      expectedGeneration !== loadTaskGeneration
+      || examId.value !== currentExamId
+      || taskId.value !== currentTaskId
+    ) {
+      return
+    }
+    aiExecutions.value = list
   } catch (error) {
+    if (expectedGeneration !== loadTaskGeneration) {
+      return
+    }
     showUserError(error, '智能复评历史加载失败')
     aiExecutions.value = []
   } finally {
-    executionsLoading.value = false
+    if (expectedGeneration === loadTaskGeneration) {
+      executionsLoading.value = false
+    }
   }
 }
 
@@ -1290,6 +1454,7 @@ async function submitGrade(): Promise<boolean> {
       ownerOverrideReason,
     })
     ownerOverrideMode.value = false
+    captureGradeBaseline()
     try {
       await refreshSnapshot()
     } catch (error) {
@@ -1434,37 +1599,50 @@ async function takeNextTask(): Promise<void> {
     void message.warning('当前账号无阅卷写权限，无法领取复核任务')
     return
   }
-  if (!examId.value) return
+  const expectedExamId = examId.value
+  if (!expectedExamId) return
+  const generation = loadTaskGeneration
+  const currentTaskId = taskId.value
   try {
     // 重新拉一次队列，确保不包含刚提交的任务（后端可能已变状态）
-    await loadReviewQueue()
-    const currentTaskId = taskId.value
+    await loadReviewQueue(generation)
+    if (generation !== loadTaskGeneration || examId.value !== expectedExamId) {
+      return
+    }
     const candidate = reviewQueue.value.find(
       (item) => item.reviewTaskId !== currentTaskId && item.status === ReviewTaskStatusCode.PENDING,
     )
     if (!candidate) {
       void message.success('同题剩余任务复核完毕，返回考试工作台')
+      bypassDirtyLeaveGuard = true
       void router.push({
         name: resolveReviewTaskPoolRouteName(),
-        params: { examId: examId.value },
+        params: { examId: expectedExamId },
         query: reviewWorkspaceSourceQuery(),
       })
       return
     }
     // 领取下一份；后端会把状态推进到处理中并绑定到当前教师
     await claimReviewTask({
-      examId: examId.value,
+      examId: expectedExamId,
       reviewTaskId: candidate.reviewTaskId,
     })
+    if (generation !== loadTaskGeneration || examId.value !== expectedExamId) {
+      return
+    }
     // 切换路由前清空表单 + 释放上一份切片图，避免视觉残留
+    bypassDirtyLeaveGuard = true
     resetGradeForm()
     void router.replace({
       name: 'TeacherExamWorkspaceReviewWorkspace',
-      params: { examId: examId.value, taskId: candidate.reviewTaskId },
+      params: { examId: expectedExamId, taskId: candidate.reviewTaskId },
       query: reviewWorkspaceSourceQuery(),
     })
     // watch(examId, taskId) 会自动触发 loadTask，无需手动调用
   } catch (error) {
+    if (generation !== loadTaskGeneration || examId.value !== expectedExamId) {
+      return
+    }
     showUserError(error, '取下一份复核任务失败')
   }
 }
@@ -1473,6 +1651,7 @@ async function takeNextTask(): Promise<void> {
 watch(
   () => [examId.value, taskId.value],
   () => {
+    bypassDirtyLeaveGuard = false
     resetTaskState()
     if (canSubmit.value) {
       void loadTask()
@@ -1481,20 +1660,39 @@ watch(
   { immediate: true },
 )
 
-onMounted(() => {
-  window.addEventListener('keydown', handleReviewWorkspaceKeydown)
+onBeforeRouteLeave(async () => {
+  return confirmLeaveIfDirty()
 })
 
-onBeforeUnmount(() => {
+let reviewKeyboardBound = false
+
+function bindReviewWorkspaceKeyboard(): void {
+  if (reviewKeyboardBound) {
+    return
+  }
+  window.addEventListener('keydown', handleReviewWorkspaceKeydown)
+  reviewKeyboardBound = true
+}
+
+function unbindReviewWorkspaceKeyboard(): void {
+  if (!reviewKeyboardBound) {
+    return
+  }
   window.removeEventListener('keydown', handleReviewWorkspaceKeydown)
-})
+  reviewKeyboardBound = false
+}
+
+onMounted(bindReviewWorkspaceKeyboard)
+onBeforeUnmount(unbindReviewWorkspaceKeyboard)
+onActivated(bindReviewWorkspaceKeyboard)
+onDeactivated(unbindReviewWorkspaceKeyboard)
 </script>
 
 <style lang="scss" scoped>
 .review-workspace {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   min-width: 0;
 
   &__section--standard {
@@ -1502,25 +1700,25 @@ onBeforeUnmount(() => {
   }
 
   &__queue-progress {
-    margin-bottom: 12px;
-    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+    margin-bottom: var(--dp-space-component);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-component-tight);
   }
 
   &__invalidated-banner {
-    margin-bottom: 8px;
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__queue-progress-meta {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+    gap: var(--dp-space-component-tight) var(--dp-space-component);
   }
 
   &__keyboard-hint {
@@ -1540,7 +1738,7 @@ onBeforeUnmount(() => {
   }
 
   &__row {
-    row-gap: var(--dp-space-3, 12px);
+    row-gap: var(--dp-space-component);
   }
 
   &__slice-viewer {
@@ -1548,9 +1746,9 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--dp-surface-soft);
+    background: var(--dp-surface-subtle);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__slice-image {
@@ -1566,13 +1764,13 @@ onBeforeUnmount(() => {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     color: var(--dp-text-primary);
-    background: var(--dp-surface-soft);
-    padding: 12px;
+    background: var(--dp-surface-subtle);
+    padding: var(--dp-space-component);
     border-radius: var(--dp-radius-panel);
   }
 
   &__alert {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__score-input {
@@ -1580,19 +1778,19 @@ onBeforeUnmount(() => {
   }
 
   &__hint {
-    margin-top: 4px;
+    margin-top: var(--dp-space-component-xs);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
   &__annotation-meta {
     display: flex;
-    gap: 12px;
+    gap: var(--dp-space-component);
     font-size: var(--dp-font-size-xs);
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__sticky-left {
@@ -1604,31 +1802,31 @@ onBeforeUnmount(() => {
   &__sticky-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__ai-actions {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 12px;
-    padding-top: 12px;
+    gap: var(--dp-space-component-tight);
+    margin-top: var(--dp-space-component);
+    padding-top: var(--dp-space-component);
     border-top: 1px dashed var(--dp-border);
   }
 
   &__ai-actions-hint {
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
-    margin-left: 8px;
+    margin-left: var(--dp-space-component-tight);
   }
 }
 
 .review-workspace__score-triple {
-  margin-bottom: 10px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .review-workspace__invalidated-banner {
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 </style>

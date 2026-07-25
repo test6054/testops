@@ -76,8 +76,10 @@
     <AiAnalysisCardBody
       :loading="loading"
       :generating="generating"
-      :has-content="true"
+      :has-content="record != null || !loadFailed"
+      :load-failed="loadFailed"
       :empty-description="emptyDescription"
+      error-description="班级薄弱题型分析加载失败"
       progress-title="AI 班级薄弱题型分析生成中"
       progress-waiting-text="正在等待后端返回该班级的真实薄弱题型分析。"
     >
@@ -172,6 +174,8 @@ const emit = defineEmits<{ (e: 'class-change', classId?: string): void }>()
 
 const record = ref<TeachingAnalysisRecordResponse | null>(null)
 const loading = ref(false)
+const loadFailed = ref(false)
+let loadGeneration = 0
 const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
 
 /** MVR-285：默认拒绝假可写；依赖 AI 分析中心 overview 或页面 provide 的能力位 */
@@ -211,16 +215,28 @@ const { chartOption: weaknessChartOption } = useChartOption(() =>
 )
 
 async function reload(): Promise<void> {
+  const examId = props.examId
   const classId = props.classId
-  if (!props.examId || !classId) return
+  if (!examId || !classId) return
+  const generation = ++loadGeneration
   loading.value = true
+  loadFailed.value = false
   try {
-    record.value = await getLatestClassWeaknessAnalysis({ examId: props.examId, classId })
+    const next = await getLatestClassWeaknessAnalysis({ examId, classId })
+    if (generation !== loadGeneration || props.examId !== examId || props.classId !== classId) {
+      return
+    }
+    record.value = next
   } catch (e) {
-    record.value = null
+    if (generation !== loadGeneration || props.examId !== examId || props.classId !== classId) {
+      return
+    }
+    loadFailed.value = true
     showUserError(e, '班级薄弱题型分析加载失败')
   } finally {
-    loading.value = false
+    if (generation === loadGeneration) {
+      loading.value = false
+    }
   }
 }
 
@@ -234,20 +250,21 @@ async function handleGenerate(): Promise<void> {
     showFormValidationMessage('请先选择班级')
     return
   }
-  await runGeneration(() => generateClassWeaknessAnalysis({ examId: props.examId, classId }), {
+  const examId = props.examId
+  await runGeneration(() => generateClassWeaknessAnalysis({ examId, classId }), {
     successMessage: '已生成最新分析',
     onSuccess: (generated) => {
+      if (props.examId !== examId || props.classId !== classId) {
+        return
+      }
       record.value = generated
-    },
-    onFailure: () => {
-      record.value = null
+      loadFailed.value = false
     },
   })
 }
 
 function handleClassSelectChange(value?: SelectValue): void {
   emit('class-change', typeof value === 'string' ? value : undefined)
-  record.value = null
 }
 
 function questionTypeLabel(value: ClassWeaknessItemResponse['questionType']): string {
@@ -259,9 +276,11 @@ function formatRate(rate: number): string {
 }
 
 watch(
-  () => [props.examId, props.reloadToken, props.classId],
+  () => [props.examId, props.reloadToken, props.classId] as const,
   () => {
+    loadGeneration += 1
     record.value = null
+    loadFailed.value = false
     if (props.classId) void reload()
   },
 )

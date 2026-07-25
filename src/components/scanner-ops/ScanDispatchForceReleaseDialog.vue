@@ -1,19 +1,22 @@
 <script setup lang="ts">
-import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
 import message from 'ant-design-vue/es/message'
 import { reactive, ref, watch } from 'vue'
 import { forceReleaseScanDispatch } from '@/apis/mark/scanner-dispatch'
+import { forceReleasePortfolioScanDispatch } from '@/apis/portfolio/scan-dispatch'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
   open: boolean
-  ticket?: ScanDispatchTicketVO | null
+  ticketId?: string | null
+  archiveTitle?: string | null
   /** MVR-317：父层已按 canForceReleaseTicket 过滤；handler 二次拦截 */
   canForceRelease?: boolean
+  taskKind?: ScanTaskKindCode
 }>()
 
 const emit = defineEmits<{
@@ -36,7 +39,6 @@ watch(
 )
 
 async function handleSubmit() {
-  // MVR-317：与 BE/父层 canForceReleaseTicket 二次拦截
   if (!props.canForceRelease) {
     showFormValidationMessage('当前账号无权强制解锁该派单')
     return
@@ -49,17 +51,18 @@ async function handleSubmit() {
     showFormValidationMessage('请填写强制解锁原因')
     return
   }
-  const ticketId = props.ticket?.ticketId
+  const ticketId = props.ticketId
   if (!ticketId) {
     showFormValidationMessage('缺少派单编号，请重新选择派单后再解锁')
     return
   }
   submitting.value = true
   try {
-    await forceReleaseScanDispatch({
-      ticketId,
-      releaseReason: reason,
-    })
+    if (props.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT) {
+      await forceReleasePortfolioScanDispatch({ ticketId, releaseReason: reason })
+    } else {
+      await forceReleaseScanDispatch({ ticketId, releaseReason: reason })
+    }
     void message.success('派单已强制解锁')
     emit('released')
     emit('update:open', false)
@@ -83,9 +86,7 @@ async function handleSubmit() {
     @close="emit('update:open', false)"
     @confirm="handleSubmit"
   >
-    <p v-if="ticket?.archiveSnapshot?.archiveTitle" class="scan-dispatch-force-release__hint">
-      卷：{{ ticket.archiveSnapshot.archiveTitle }}
-    </p>
+    <p v-if="archiveTitle" class="scan-dispatch-force-release__hint">卷：{{ archiveTitle }}</p>
     <p class="scan-dispatch-force-release__warn">
       将释放设备锁并把派单退回待处理；若已绑定进行中扫描工单，将同步废弃该工单并清除未提交页，操作写入审计日志。
     </p>
@@ -104,11 +105,11 @@ async function handleSubmit() {
 
 <style scoped>
 .scan-dispatch-force-release__hint {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   color: var(--dp-text-secondary);
 }
 .scan-dispatch-force-release__warn {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-warning);
 }

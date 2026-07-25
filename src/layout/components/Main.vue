@@ -3,7 +3,8 @@
     <div
       class="main-scroll-wrapper"
       :class="{
-        'main-scroll-wrapper--wide': route.meta.layoutWide,
+        'main-scroll-wrapper--wide': route.meta.layoutWide && !route.meta.layoutImmersive,
+        'main-scroll-wrapper--immersive': route.meta.layoutImmersive,
         'main-scroll-wrapper--create-page': route.meta.layoutCreatePage,
         'mark-domain--quality': isQualityDomain,
         'mark-domain--portfolio': isPortfolioDomain,
@@ -78,8 +79,8 @@ function shouldCacheRoute(childRoute: RouteLocationNormalized): boolean {
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  /* 页面 canvas 用布局灰；白 panel 由 WorkbenchSurfaceCard / Shell 承载 */
-  background: var(--dp-bg-layout);
+  /* 纯白壳画布；业务卡/表自带描边，不再用灰底托白卡 */
+  background: var(--dp-surface);
 }
 
 // 滚动包装层：负责滚动，覆盖整个宽度
@@ -91,9 +92,29 @@ function shouldCacheRoute(childRoute: RouteLocationNormalized): boolean {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--dp-space-4, 16px);
+  padding: var(--dp-space-block);
   box-sizing: border-box;
-  background: var(--dp-bg-layout);
+  background: var(--dp-surface);
+
+  /* 列表表体填满：外层不再滚动，表体吃剩余高度；仅含填满表的子树参与 flex 拉伸 */
+  &:has(.ui-data-table--fill-remaining) {
+    overflow: hidden;
+    align-items: stretch;
+
+    :deep(> *) {
+      flex: 0 0 auto;
+      width: 100%;
+    }
+
+    :deep(> *:has(.ui-data-table--fill-remaining)) {
+      flex: 1 1 auto;
+      min-height: 0;
+      height: auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+  }
 
   // 自定义细滚动条样式（替代完全隐藏，保持可操作性）
   scrollbar-width: thin; // Firefox
@@ -118,17 +139,43 @@ function shouldCacheRoute(childRoute: RouteLocationNormalized): boolean {
 
   :deep(> *) {
     width: 100%;
-    max-width: 1400px;
+    max-width: var(--dp-content-max-width);
     box-sizing: border-box;
   }
 
+  /* 列表/表格页：横向宽模式，1366+ 利用剩余空间 */
   &--wide :deep(> *) {
-    max-width: min(100%, 1680px);
+    max-width: min(100%, var(--dp-content-max-width-wide));
+  }
+
+  /* 阅卷 Trust 沉浸：全宽，取消画布内边距 */
+  &--immersive {
+    padding: 0;
+    align-items: stretch;
+
+    :deep(> *) {
+      max-width: 100%;
+    }
+  }
+
+  /* 创建页由 CreatePageLayout / CreateFormPageShell 自管宽度 */
+  &--create-page {
+    padding: 0;
+    align-items: stretch;
+
+    :deep(> *) {
+      max-width: 100%;
+    }
   }
 
   // 移动端适配
   @media (max-width: bp.$layout-mobile-max) {
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
+
+    &--immersive,
+    &--create-page {
+      padding: 0;
+    }
 
     // 为底部TabBar留出空间
     &.with-tabbar {
@@ -138,14 +185,19 @@ function shouldCacheRoute(childRoute: RouteLocationNormalized): boolean {
 
   // 平板适配
   @media (min-width: bp.$shell-tablet-min) and (max-width: bp.$shell-tablet-max) {
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
+
+    &--immersive,
+    &--create-page {
+      padding: 0;
+    }
   }
 }
 
-// 页面切换过渡：150ms 淡入淡出
+// 页面切换过渡：页面级时长淡入淡出
 .page-fade-enter-active,
 .page-fade-leave-active {
-  transition: opacity var(--dp-duration-fast, 150ms) ease;
+  transition: opacity var(--dp-duration-page) var(--dp-ease-default);
 }
 
 .page-fade-enter-from,

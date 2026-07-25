@@ -104,12 +104,12 @@ defineProps<{
   &__header {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__stem {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 }
 </style>

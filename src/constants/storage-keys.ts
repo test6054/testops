@@ -30,6 +30,13 @@ export const STORAGE_LAST_STUDENT_SCHOOL = 'LAST_STUDENT_SCHOOL'
 /** 设备唯一标识（雪花ID），用于风控审计与登录设备指纹 */
 export const STORAGE_DEVICE_ID = 'deviceId'
 
+/**
+ * 阅卷工作台（考试列表 + 阅卷总览）学年/学期/状态筛选偏好（按租户隔离）。
+ * 完整 key = 前缀 + ':' + tenantId；仅 UX 便利，非认证态。
+ * 归档历史存档域不得复用此 key。
+ */
+export const STORAGE_MARK_WORKBENCH_TERM_FILTER_PREFIX = 'mark.workbench.termFilter'
+
 
 /**
  * 认证相关的所有 key 列表

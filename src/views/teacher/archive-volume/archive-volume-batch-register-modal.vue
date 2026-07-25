@@ -247,9 +247,9 @@ async function handleSubmit() {
 
 <style scoped>
 .archive-volume-batch-register__form {
-  margin-top: var(--dp-space-3);
+  margin-top: var(--dp-space-component);
 }
 .archive-volume-batch-register__table {
-  margin-top: 12px;
+  margin-top: var(--dp-space-component);
 }
 </style>

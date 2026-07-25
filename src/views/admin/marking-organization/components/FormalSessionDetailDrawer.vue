@@ -114,32 +114,32 @@ const emit = defineEmits<{
 <style lang="scss" scoped>
 .formal-detail-drawer {
   &__section {
-    margin-top: 20px;
+    margin-top: var(--dp-space-block);
   }
 
   &__title {
-    margin: 0 0 8px;
+    margin: 0 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
 
   &__text {
-    margin: 0 0 6px;
+    margin: 0 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-sm);
     line-height: 1.6;
     color: var(--dp-text-secondary);
   }
 
   &__warn {
-    margin: 8px 0 0;
+    margin: var(--dp-space-component-tight) 0 0;
     font-size: var(--dp-font-size-xs);
-    color: var(--dp-color-warning);
+    color: var(--dp-warning);
   }
 
   &__error {
-    margin: 8px 0 0;
+    margin: var(--dp-space-component-tight) 0 0;
     font-size: var(--dp-font-size-xs);
-    color: var(--dp-color-error);
+    color: var(--dp-error);
   }
 }
 </style>

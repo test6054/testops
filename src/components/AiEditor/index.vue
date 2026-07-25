@@ -152,7 +152,7 @@ defineExpose({
   :deep(.aie-container-main) {
     flex: 1;
     overflow: auto;
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 }
 </style>

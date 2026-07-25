@@ -314,15 +314,15 @@ function handleSave(): void {
 </script>
 
 <style lang="scss" scoped>
-.paper-governance-drawer__form { margin-top: var(--dp-space-4); }
-.paper-governance-drawer__plan-grid, .paper-governance-drawer__paper-grid, .paper-governance-drawer__file-grid { display: grid; gap: var(--dp-space-3); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.paper-governance-drawer__form { margin-top: var(--dp-space-block); }
+.paper-governance-drawer__plan-grid, .paper-governance-drawer__paper-grid, .paper-governance-drawer__file-grid { display: grid; gap: var(--dp-space-component); grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .paper-governance-drawer__file-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.paper-governance-drawer__section-head, .paper-governance-drawer__paper-head, .paper-governance-drawer__question-head { display: flex; justify-content: space-between; align-items: center; gap: var(--dp-space-3); }
-.paper-governance-drawer__section-head { margin: var(--dp-space-5) 0 var(--dp-space-3); }
+.paper-governance-drawer__section-head, .paper-governance-drawer__paper-head, .paper-governance-drawer__question-head { display: flex; justify-content: space-between; align-items: center; gap: var(--dp-space-component); }
+.paper-governance-drawer__section-head { margin: var(--dp-space-block) 0 var(--dp-space-component); }
 .paper-governance-drawer__section-head h3 { margin: 0; font-size: var(--dp-font-size-md); }
-.paper-governance-drawer__section-head p { margin: var(--dp-space-1) 0 0; color: var(--dp-text-secondary); }
-.paper-governance-drawer__paper-set { padding: var(--dp-space-4); margin-bottom: var(--dp-space-4); border: 1px solid var(--dp-border-subtle); border-radius: var(--dp-radius-panel); }
-.paper-governance-drawer__question-head { margin-top: var(--dp-space-2); }
-.paper-governance-drawer__question-row { display: grid; grid-template-columns: 100px 180px 120px minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--dp-space-2); margin-top: var(--dp-space-2); }
+.paper-governance-drawer__section-head p { margin: var(--dp-space-component-xs) 0 0; color: var(--dp-text-secondary); }
+.paper-governance-drawer__paper-set { padding: var(--dp-space-block); margin-bottom: var(--dp-space-block); border: 1px solid var(--dp-border-subtle); border-radius: var(--dp-radius-panel); }
+.paper-governance-drawer__question-head { margin-top: var(--dp-space-component-tight); }
+.paper-governance-drawer__question-row { display: grid; grid-template-columns: 100px 180px 120px minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--dp-space-component-tight); margin-top: var(--dp-space-component-tight); }
 @media (max-width: 900px) { .paper-governance-drawer__file-grid, .paper-governance-drawer__question-row { grid-template-columns: 1fr; } }
 </style>

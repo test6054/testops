@@ -100,7 +100,7 @@ function formatPassRate(value?: number): string {
 }
 
 .published-insight-table__head {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .published-insight-table__title {

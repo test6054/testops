@@ -129,18 +129,18 @@ function moveLayer(delta: number): void {
 .layout-block-layer {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
   height: 100%;
-  padding: 12px;
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
 
   &__header {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__title {
@@ -158,7 +158,7 @@ function moveLayer(delta: number): void {
   &__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__list {
@@ -174,8 +174,8 @@ function moveLayer(delta: number): void {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    padding: 8px 10px;
+    gap: var(--dp-space-component-tight);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     border-radius: var(--dp-radius-control);
     cursor: pointer;
 
@@ -200,7 +200,7 @@ function moveLayer(delta: number): void {
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px) var(--dp-space-2, 8px);
+    padding: var(--dp-space-component) var(--dp-space-component-tight);
     font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }

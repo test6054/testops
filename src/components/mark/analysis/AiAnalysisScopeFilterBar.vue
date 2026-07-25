@@ -34,6 +34,7 @@ const {
   referenceDepartmentLabel,
   scopeCourseLabel,
   examsLoading,
+  examsLoadFailed,
   academicYearOptions,
   semesterOptions,
   examOptions,
@@ -300,6 +301,7 @@ function handleReset(): void {
         :loading="examsLoading"
         placeholder="请选择考试"
         allow-search
+        :not-found-content="examsLoadFailed ? '考试列表加载失败' : '暂无考试'"
       />
     </template>
   </UiFilterBar>
@@ -309,8 +311,8 @@ function handleReset(): void {
 .ai-analysis-scope-filter-bar__readonly {
   display: block;
   min-height: 32px;
-  padding: 4px 0;
-  font-size: var(--dp-font-body);
+  padding: var(--dp-space-component-xs) 0;
+  font-size: var(--dp-font-size-md);
   line-height: 24px;
   color: var(--dp-text-primary);
 }

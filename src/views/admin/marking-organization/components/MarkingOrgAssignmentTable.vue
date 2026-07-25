@@ -217,7 +217,7 @@ const summaryReviewerCount = computed(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
     width: 100%;
   }
 
@@ -234,14 +234,14 @@ const summaryReviewerCount = computed(() => {
   &__chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: var(--dp-space-component-xs);
   }
 
   &__chip {
     display: inline-flex;
-    padding: 0 6px;
+    padding: 0 var(--dp-space-component-tight);
     border-radius: var(--dp-radius-xs);
-    background: var(--dp-surface-sunken);
+    background: var(--dp-bg-muted);
     font-size: var(--dp-font-size-xs);
     font-weight: 500;
     line-height: 20px;

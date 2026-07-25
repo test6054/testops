@@ -154,10 +154,10 @@ defineExpose({ reload: loadOptions })
 
 <style scoped>
 .text-gray-400 {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .ml-1 {
-  margin-left: 4px;
+  margin-left: var(--dp-space-component-xs);
 }
 </style>

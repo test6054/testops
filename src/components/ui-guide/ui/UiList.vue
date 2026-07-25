@@ -73,7 +73,7 @@ const antSize = computed<'small' | 'default' | 'large'>(() => {
 
 <style lang="scss" scoped>
 .ui-list {
-  background: var(--dp-bg-elevated, var(--dp-surface));
+  background: var(--dp-surface-elevated);
 }
 
 .ui-list--bordered {
@@ -82,7 +82,7 @@ const antSize = computed<'small' | 'default' | 'large'>(() => {
 }
 
 .ui-list--sm :deep(.ant-list-item) {
-  padding: 10px 12px;
+  padding: var(--dp-space-component);
 }
 
 .ui-list :deep(.ant-list-item-meta-title) {

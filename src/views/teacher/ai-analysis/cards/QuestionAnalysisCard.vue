@@ -4,7 +4,7 @@
       <h3 class="stats-card__title">题目质量分析</h3>
     </template>
     <template v-if="!embedded" #toolbar>
-      <div class="dp-space" style="--dp-space-gap: 8px">
+      <div class="dp-space" style="--dp-space-component: 8px">
         <UiSelect
           size="sm"
           v-model="selectedLayoutQuestionId"
@@ -52,7 +52,7 @@
     </template>
 
     <template v-if="embedded" #actions>
-      <span class="question-analysis-card__ideal-hint">理想区间：难度 0.3–0.8 · 区分度 ≥ 0.4</span>
+      <span class="question-analysis-card__ideal-hint">参考区间：难度 0.3–0.8 · 区分度 ≥ 0.4（非正式质量结论）</span>
     </template>
 
     <div class="question-analysis-card" :class="{ 'question-analysis-card--embedded': embedded }">
@@ -188,7 +188,7 @@
           @page-change="handleTablePageChange"
         >
           <template #empty-action>
-            <div class="dp-space" v-if="tableEmptyKind === 'first-run'" style="--dp-space-gap: 8px">
+            <div class="dp-space" v-if="tableEmptyKind === 'first-run'" style="--dp-space-component: 8px">
               <UiButton
                 v-if="canManageReviewerWrites"
                 variant="outline"
@@ -202,7 +202,7 @@
             <div
               class="dp-space"
               v-else-if="tableEmptyKind === 'no-result'"
-              style="--dp-space-gap: 8px"
+              style="--dp-space-component: 8px"
             >
               <UiButton
                 v-if="canManageReviewerWrites"
@@ -762,7 +762,7 @@ const correctRatioBarItems = computed(() => correctRatioToBarItems(chartRows.val
 
 const scatterChartHint = computed(() =>
   mergeChartHint(
-    '理想区间：难度 0.3-0.8 且 区分度 ≥ 0.4；可使用右上角工具框选题目查看清单。',
+    '参考区间：难度 0.3-0.8 且 区分度 ≥ 0.4（非正式质量结论）；可使用右上角工具框选题目查看清单。',
     buildScatterChartInsight(questionQualityScatterSeries.value),
   ),
 )
@@ -879,8 +879,8 @@ watch(
   }
 
   &__brush-list {
-    margin-top: var(--dp-space-3);
-    padding: var(--dp-space-3) var(--dp-space-4);
+    margin-top: var(--dp-space-component);
+    padding: var(--dp-space-component) var(--dp-space-block);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
     background: var(--dp-surface-subtle);
@@ -890,8 +890,8 @@ watch(
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-3);
-    margin-bottom: var(--dp-space-2);
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-md);
   }
 
@@ -901,14 +901,14 @@ watch(
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__brush-item {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
     font-size: var(--dp-font-size-sm);
   }
 

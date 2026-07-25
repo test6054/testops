@@ -548,12 +548,12 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-block);
   }
 
   &__template-hint {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   &__template-text {
@@ -565,7 +565,7 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
     border: 1px dashed var(--dp-border-strong);
     border-radius: var(--dp-radius-panel);
     background: var(--dp-surface);
-    padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px);
+    padding: var(--dp-space-block) var(--dp-space-component);
     text-align: center;
     cursor: pointer;
   }
@@ -573,7 +573,7 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
   &__dropzone-icon {
     font-size: var(--dp-font-size-xl);
     color: var(--dp-text-secondary);
-    margin-bottom: 8px;
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__dropzone-hint {
@@ -587,7 +587,7 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
   }
 
   &__dropzone-desc {
-    margin: 8px 0 0;
+    margin: var(--dp-space-component-tight) 0 0;
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
@@ -595,9 +595,9 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
   &__file {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-top: 12px;
-    padding: 8px 12px;
+    gap: var(--dp-space-component-tight);
+    margin-top: var(--dp-space-component);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     border-radius: var(--dp-radius-control);
     background: var(--dp-surface-subtle);
   }
@@ -616,24 +616,24 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
   }
 
   &__requirements {
-    margin: 12px 0 0;
+    margin: var(--dp-space-component) 0 0;
     padding-left: 18px;
     color: var(--dp-text-secondary);
     font-size: var(--dp-font-size-xs);
   }
 
   &__summary {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__summary-title {
     font-weight: var(--dp-font-weight-title);
-    margin-bottom: 8px;
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__summary-stats {
     display: flex;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
     font-size: var(--dp-font-size-sm);
 
     .is-success {
@@ -661,7 +661,7 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
   }
 
   &__async-hint {
-    margin-top: 12px;
+    margin-top: var(--dp-space-component);
     color: var(--dp-text-secondary);
     font-size: var(--dp-font-size-sm);
   }

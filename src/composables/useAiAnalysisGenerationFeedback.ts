@@ -9,8 +9,10 @@ export function useAiAnalysisGenerationFeedback() {
     task: () => Promise<T>,
     options: {
       successMessage: string
-      onSuccess: (result: T) => void
+      /** 生成写入成功后的结果刷新；支持 async，失败不否定生成本身 */
+      onSuccess: (result: T) => void | Promise<void>
       onFailure?: () => void
+      refreshFailureMessage?: string
     },
   ): Promise<void> {
     // MVR-097：双点 / 键盘连触防重入
@@ -20,8 +22,14 @@ export function useAiAnalysisGenerationFeedback() {
     generating.value = true
     try {
       const result = await task()
-      options.onSuccess(result)
       void message.success(options.successMessage)
+      try {
+        await options.onSuccess(result)
+      } catch {
+        void message.warning(
+          options.refreshFailureMessage ?? '已生成，结果刷新失败，可手动刷新本卡',
+        )
+      }
     } catch {
       options.onFailure?.()
     } finally {

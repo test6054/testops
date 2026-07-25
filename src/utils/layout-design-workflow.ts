@@ -36,7 +36,7 @@ const LAYOUT_DESIGN_PHASE_SEQUENCE: LayoutDesignPhaseCode[] = [
 ]
 
 const PHASE_SUMMARY: Record<LayoutDesignPhaseCode, string> = {
-  [LayoutDesignPhaseCode.SOURCE]: '资料上传或在线生成答题卡',
+  [LayoutDesignPhaseCode.SOURCE]: '资料上传或在线生成答题页',
   [LayoutDesignPhaseCode.QUESTIONS]: '核对题号、题型与分值',
   [LayoutDesignPhaseCode.LAYOUT]: '框选身份区与作答 ROI',
   [LayoutDesignPhaseCode.REVIEW]: '校验通过后保存并预览',
@@ -50,14 +50,14 @@ function resolvePhaseGuide(
   materialLayoutMode?: ExamMaterialLayoutModeCode,
 ): string {
   if (!materialLayoutMode) {
-    return '请先在考试准备页保存制卷形态（整卷作答或独立答卷页）'
+    return '请先在考试准备页保存制卷形态（单独试卷或试卷+答题页）'
   }
   if (phase === LayoutDesignPhaseCode.SOURCE) {
     if (isFullPaperWorkspace(materialLayoutMode)) {
-      return '上传整卷 PDF/Word/图片，异步识别题目并同步分页底图；也可在右侧调整制卷名称与安全边距'
+      return '上传单独试卷 PDF/Word/图片，异步识别题目并同步分页底图；也可在右侧调整制卷名称与安全边距'
     }
     if (isAnswerSheetWorkspace(materialLayoutMode)) {
-      return '选择 A3/A4 纸型，配置题目结构后一键生成标准答题卡，再进入版式划区微调'
+      return '选择 A3/A4 纸型，配置题目结构后一键生成标准空白答题页，再进入版式划区微调'
     }
   }
   if (phase === LayoutDesignPhaseCode.QUESTIONS) {

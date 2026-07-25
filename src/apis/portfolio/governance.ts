@@ -2,6 +2,7 @@ import type { PortfolioAnalysisComplianceAlertVO } from '@/apis/portfolio/analys
 import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
+import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
 import type { PortfolioAuditActionTypeCode } from '@/types/enums/portfolio-audit-action-type-enum'
 import type { PortfolioAuditResourceTypeCode } from '@/types/enums/portfolio-audit-resource-type-enum'
 import type { PortfolioDoubleHighTaskStatusCode } from '@/types/enums/portfolio-double-high-task-status-enum'
@@ -11,6 +12,8 @@ import type { PortfolioMajorGroupSectionCode } from '@/types/enums/portfolio-maj
 import type { PortfolioMaskExportScopeCode } from '@/types/enums/portfolio-mask-export-scope-enum'
 import type { PortfolioMaskFieldTypeCode } from '@/types/enums/portfolio-mask-field-type-enum'
 import type { PortfolioMaskStrategyCode } from '@/types/enums/portfolio-mask-strategy-enum'
+import type { PortfolioMaterialStatusCode } from '@/types/enums/portfolio-material-status-enum'
+import type { PortfolioMaterialTypeCode } from '@/types/enums/portfolio-material-type-enum'
 import type { PortfolioTeacherIdentityTypeCode } from '@/types/enums/portfolio-teacher-identity-type-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
@@ -29,6 +32,32 @@ export interface PortfolioExportBusinessRef {
   baselinePeriodLabel?: string
   majorGroupName?: string
   reportType?: string
+  keyTeacherRegistryType?: string
+  salaryMonth?: string
+  externalDataStatus?: string
+  teachSubject?: string
+  teacherSource?: string
+  externalContractStatus?: string
+  developmentRecordType?: string
+  categoryCode?: string
+  levelCode?: string
+  nationalOnly?: boolean
+  /** 授予单位（荣誉库筛选） */
+  awardUnit?: string
+  /** 记录日期起 yyyy-MM-dd */
+  recordDateFrom?: string
+  /** 记录日期止 yyyy-MM-dd */
+  recordDateTo?: string
+  /** 发展规划类型：TEACHER / DEPARTMENT */
+  developmentPlanType?: string
+  evaluationTaskId?: string
+  evaluationTaskIds?: string[]
+  evaluationWorkgroupId?: string
+  objectionStatus?: string
+  teacherPkSessionId?: string
+  maskMode?: boolean
+  /** 全国教师上报同步任务 ID */
+  syncTaskId?: string
 }
 
 export interface PortfolioExportApprovalVO {
@@ -56,7 +85,6 @@ export interface PortfolioExportApprovalVO {
   /** edu-user 标的教师工号 */
   subjectTeacherNumber?: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
@@ -87,24 +115,27 @@ export interface PortfolioMajorGroupPortfolioVO {
 export interface PortfolioMajorGroupPortfolioSectionItemVO {
   businessId: string
   teacherId: string
-  categoryCode: string
-  categoryLabel: string
+  categoryCode?: string
+  /** ARCHIVE 分区档案类目业务名（非枚举标签） */
+  categoryName?: string
   recordTitle: string
-  periodLabel: string
-  /** 状态编码（TASK 分区为双高任务状态枚举码，与 taskStatus 同值） */
-  statusLabel: string
-  /** 双高任务状态（仅 TASK 分区有值） */
+  periodLabel?: string
+  /** ARCHIVE 分区档案记录状态 */
+  archiveRecordStatus?: PortfolioArchiveRecordStatusCode
+  /** TASK 分区双高任务状态 */
   taskStatus?: PortfolioDoubleHighTaskStatusCode
+  /** MATERIAL_INDEX 分区材料类型 */
+  materialType?: PortfolioMaterialTypeCode
+  /** MATERIAL_INDEX 分区材料状态 */
+  materialStatus?: PortfolioMaterialStatusCode
   contributionFactor?: number | string
   majorGroupMembershipCount?: number
   contributionNote?: string
   identityType?: PortfolioTeacherIdentityTypeCode
-  identityTypeLabel?: string
   externalIdentity?: boolean
   identityCompositeScore?: number | string
   workloadHours?: number | string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -113,7 +144,6 @@ export interface PortfolioMajorGroupPortfolioSectionItemVO {
   ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   /** 多身份贡献说明；层数大于 1 时非空 */
   ownerMultiIdentityNote?: string
-
 }
 
 
@@ -160,6 +190,8 @@ export const portfolioSecurityApi = {
     http.post<PageResult<PortfolioExportApprovalVO>>('/api/portfolio/security/export/page', data),
   downloadExport: (data: { id: string }) =>
     http.post<PortfolioExportApprovalVO>('/api/portfolio/security/export/download', data),
+  confirmDownloadExport: (data: { id: string }) =>
+    http.post<PortfolioExportApprovalVO>('/api/portfolio/security/export/download/confirm', data),
   revokeExport: (data: { id: string, revokeReason: string }) =>
     http.post<PortfolioExportApprovalVO>('/api/portfolio/security/export/revoke', data),
   saveMaskRule: (data: {
@@ -167,6 +199,8 @@ export const portfolioSecurityApi = {
     exportScope: PortfolioMaskExportScopeCode
     maskStrategy: PortfolioMaskStrategyCode
     enabled?: boolean
+    /** 更新既有规则时必传，与列表行 updateTime 一致 */
+    expectedUpdateTime?: string
   }) => http.post<PortfolioMaskRuleVO>('/api/portfolio/security/mask-rule/save', data),
   pageMaskRule: (data: {
     pageNum: number
@@ -180,6 +214,7 @@ export const portfolioSecurityApi = {
     pageSize: number
     actionType?: PortfolioAuditActionTypeCode
     resourceType?: PortfolioAuditResourceTypeCode
+    resourceId?: string
     operatorUserId?: string
   }) => http.post<PageResult<PortfolioAuditLogVO>>('/api/portfolio/security/audit/page', data),
 }

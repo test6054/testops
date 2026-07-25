@@ -99,7 +99,7 @@ const emitAction = (key: string) => {
   display: inline-flex;
   align-items: center;
   flex-wrap: nowrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
   max-width: 100%;
   white-space: nowrap;
 }

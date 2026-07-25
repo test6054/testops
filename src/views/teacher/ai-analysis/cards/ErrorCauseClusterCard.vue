@@ -29,8 +29,10 @@
     <AiAnalysisCardBody
       :loading="loading"
       :generating="generating"
-      :has-content="true"
+      :has-content="record != null || !loadFailed"
+      :load-failed="loadFailed"
       empty-description="暂无错因聚类，可点击重新生成"
+      error-description="错因聚类分析加载失败"
       progress-title="AI 错因聚类分析生成中"
       :progress-waiting-text="
         props.classId
@@ -119,6 +121,8 @@ const emit = defineEmits<{ changed: [] }>()
 
 const record = ref<ErrorCauseClusterResponse | null>(null)
 const loading = ref(false)
+const loadFailed = ref(false)
+let loadGeneration = 0
 const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
 
 /** MVR-285：默认拒绝假可写；依赖 AI 分析中心 overview 或页面 provide 的能力位 */
@@ -170,18 +174,35 @@ function formatPercent(value: number): string {
 }
 
 async function reload(): Promise<void> {
-  if (!props.examId) return
+  const examId = props.examId
+  if (!examId) return
+  const classId = props.classId || undefined
+  const generation = ++loadGeneration
   loading.value = true
+  loadFailed.value = false
   try {
-    record.value = await getLatestErrorCauseCluster({
-      examId: props.examId,
-      classId: props.classId || undefined,
+    const next = await getLatestErrorCauseCluster({
+      examId,
+      classId,
     })
+    if (
+      generation !== loadGeneration
+      || props.examId !== examId
+      || (props.classId || undefined) !== classId
+    ) {
+      return
+    }
+    record.value = next
   } catch (e) {
-    record.value = null
+    if (generation !== loadGeneration || props.examId !== examId) {
+      return
+    }
+    loadFailed.value = true
     showUserError(e, '错因聚类分析加载失败')
   } finally {
-    loading.value = false
+    if (generation === loadGeneration) {
+      loading.value = false
+    }
   }
 }
 
@@ -190,28 +211,34 @@ async function handleGenerate(): Promise<void> {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
+  const examId = props.examId
+  const classId = props.classId || undefined
   await runGeneration(
     () =>
       generateErrorCauseCluster({
-        examId: props.examId,
-        classId: props.classId || undefined,
+        examId,
+        classId,
       }),
     {
       successMessage: '已生成最新错因聚类',
       onSuccess: (generated) => {
+        if (props.examId !== examId || (props.classId || undefined) !== classId) {
+          return
+        }
         record.value = generated
+        loadFailed.value = false
         emit('changed')
-      },
-      onFailure: () => {
-        record.value = null
       },
     },
   )
 }
 
 watch(
-  () => [props.examId, props.reloadToken, props.classId],
+  () => [props.examId, props.reloadToken, props.classId] as const,
   () => {
+    loadGeneration += 1
+    record.value = null
+    loadFailed.value = false
     if (props.examId) void reload()
   },
   { immediate: true },

@@ -236,7 +236,7 @@
             :show-icon="false"
           >
             <template #default>
-              <span style="display: inline-flex; align-items: center; gap: 8px">
+              <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
                 <UiTag tone="blue" size="sm">待查询</UiTag>
                 <span>请选择题目并查询最新聚类结果</span>
               </span>
@@ -286,7 +286,7 @@
                         {{ item.groupDescription }}
                       </span>
                     </div>
-                    <div class="dp-space" style="--dp-space-gap: 8px">
+                    <div class="dp-space" style="--dp-space-component: 8px">
                       <UiTag v-if="item.answerCount != null" tone="blue" size="sm">
                         {{ item.answerCount }} 份
                       </UiTag>
@@ -333,7 +333,7 @@
     <UiList v-else :data-source="similarResults" item-layout="vertical">
       <template #renderItem="{ item }: { item: QuestionSignatureResponse }">
         <UiListItem>
-          <div class="dp-space" style="--dp-space-gap: 8px">
+          <div class="dp-space" style="--dp-space-component: 8px">
             <UiTag tone="blue" size="sm">{{ item.examName }} · {{ item.examNo }}</UiTag>
             <UiTag tone="blue" size="sm">
               {{ questionTypeLabel(item.questionType) }}
@@ -383,7 +383,7 @@
         {{ experienceApplicableScopeText(detailExperience) }}
       </UiDescriptionsItem>
       <UiDescriptionsItem v-if="detailExperience.riskTags?.length" label="风险标签">
-        <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
+        <div class="dp-space dp-space--wrap" style="--dp-space-component: 8px">
           <UiTag v-for="tag in detailExperience.riskTags" :key="tag" tone="orange" size="sm">
             {{ tag }}
           </UiTag>
@@ -430,7 +430,7 @@
       <div
         class="dp-space"
         v-if="canConfirmExperience || canDeprecateExperience"
-        style="--dp-space-gap: 8px"
+        style="--dp-space-component: 8px"
       >
         <UiButton
           variant="primary"
@@ -1174,7 +1174,7 @@ onActivated(() => {
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__tabs-card {
@@ -1184,31 +1184,31 @@ onActivated(() => {
   &__tab-panel {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--dp-space-component);
     min-width: 0;
-    padding: 0 16px 16px;
+    padding: 0 var(--dp-space-block);
   }
 
   &__panel-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding-top: 12px;
+    gap: var(--dp-space-component);
+    padding-top: var(--dp-space-component);
     min-width: 0;
   }
 
   &__panel-title {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     font-weight: 600;
   }
 
   &__panel-actions {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--dp-space-component);
     flex-shrink: 0;
   }
 
@@ -1219,12 +1219,12 @@ onActivated(() => {
   }
 
   &__cluster-meta {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 }
 
 .empty-block {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-component);
 }
 
 .error-text {
@@ -1233,43 +1233,43 @@ onActivated(() => {
 }
 
 .similar-digest {
-  margin: 6px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-sm);
 }
 
 .experience-items,
 .answer-groups {
-  margin-top: 12px;
+  margin-top: var(--dp-space-component);
 }
 
 .analysis-item {
   &__header {
     display: flex;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 8px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__muted {
-    margin-left: 8px;
-    color: var(--dp-text-tertiary);
+    margin-left: var(--dp-space-component-tight);
+    color: var(--dp-text-muted);
     font-size: var(--dp-font-size-xs);
   }
 
   &__text {
-    margin-bottom: 6px;
+    margin-bottom: var(--dp-space-component-tight);
   }
 }
 
 .answer-samples {
   display: grid;
-  gap: 8px;
-  margin: 8px 0;
+  gap: var(--dp-space-component-tight);
+  margin: var(--dp-space-component-tight) 0;
 }
 
 .answer-sample {
-  padding: 8px 10px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   background: var(--dp-gray-50);
   border: 1px solid var(--dp-border-subtle);
   border-radius: 6px;

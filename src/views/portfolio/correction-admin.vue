@@ -34,7 +34,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -183,23 +183,43 @@ async function handleRow(
   if (operationPending.value) {
     return
   }
-  if (!(await bindActionTeacherAndAssert(row.teacherId, '纠错处理'))) {
-    return
+  // 先冻结操作目标，预检期间禁止切行串写
+  const actionContext = {
+    requestId: String(row.id),
+    teacherId: row.teacherId != null ? String(row.teacherId) : '',
+    action,
   }
-  handlingId.value = row.id
+  handlingId.value = actionContext.requestId
   try {
+    if (!(await bindActionTeacherAndAssert(actionContext.teacherId, '纠错处理'))) {
+      return
+    }
+    if (handlingId.value !== actionContext.requestId) {
+      return
+    }
     await portfolioCorrectionApi.handleCorrection({
-      correctionRequestId: row.id,
-      action,
+      correctionRequestId: actionContext.requestId,
+      action: actionContext.action,
       ...(handleOpinion ? { handleOpinion } : {}),
     })
+    if (handlingId.value !== actionContext.requestId) {
+      return
+    }
     void message.success('处理成功')
     resetRejectContext()
-    await loadPage()
+    try {
+      await loadPage()
+    } catch (error) {
+      showUserError(error, '处理已生效，列表同步失败')
+    }
   } catch (error) {
-    showUserError(error, '处理纠错失败')
+    if (handlingId.value === actionContext.requestId) {
+      showUserError(error, '处理纠错失败')
+    }
   } finally {
-    handlingId.value = ''
+    if (handlingId.value === actionContext.requestId) {
+      handlingId.value = ''
+    }
   }
 }
 
@@ -384,7 +404,7 @@ void loadPage()
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
             </UiTag>
 
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -513,7 +533,7 @@ void loadPage()
 
 <style scoped lang="scss">
 .correction-admin__reject-meta {
-  margin: 0 0 var(--dp-space-3);
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
@@ -523,7 +543,7 @@ void loadPage()
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .correction-admin__impact-head {
@@ -533,8 +553,8 @@ void loadPage()
 .correction-admin__impact-summary,
 .correction-admin__impact-result,
 .correction-admin__impact-failure {
-  margin: var(--dp-space-3) 0 0;
-  padding: var(--dp-space-3);
+  margin: var(--dp-space-component) 0 0;
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control);
   font-size: var(--dp-font-size-md);
@@ -555,8 +575,8 @@ void loadPage()
 .correction-admin__impact-grid {
   display: grid;
   grid-template-columns: 88px minmax(0, 1fr);
-  gap: var(--dp-space-2) var(--dp-space-3);
-  margin: var(--dp-space-4) 0 0;
+  gap: var(--dp-space-component-tight) var(--dp-space-component);
+  margin: var(--dp-space-block) 0 0;
   font-size: var(--dp-font-size-sm);
 }
 

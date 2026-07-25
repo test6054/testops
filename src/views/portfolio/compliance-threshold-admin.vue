@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  PortfolioComplianceMetricDefinitionVO,
   PortfolioComplianceMetricVO,
   PortfolioComplianceThresholdVO,
 } from '@/apis/portfolio/compliance'
@@ -9,6 +10,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioComplianceApi } from '@/apis/portfolio/compliance'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
@@ -38,28 +40,36 @@ import {
   PortfolioComplianceScopeTypeCode,
   PortfolioComplianceScopeTypeDescription,
 } from '@/types/enums/portfolio-compliance-scope-type-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const saving = ref(false)
 const rows = ref<PortfolioComplianceThresholdVO[]>([])
+const listLastSuccessAt = ref<string | null>(null)
+const listRefreshError = ref<string | null>(null)
 const metricRows = ref<PortfolioComplianceMetricVO[]>([])
 const metricLoading = ref(false)
+const metricLoadFailed = ref(false)
+const metricLastSuccessAt = ref<string | null>(null)
+const definitions = ref<PortfolioComplianceMetricDefinitionVO[]>([])
+const definitionsLoading = ref(false)
+const definitionsLoadFailed = ref(false)
 const editorOpen = ref(false)
 const editingId = ref<string | undefined>()
 const deletingId = ref('')
 const recomputing = ref(false)
-const requestToken = ref(0)
+const listRequestToken = ref(0)
+const metricRequestToken = ref(0)
 const writing = computed(() => saving.value || Boolean(deletingId.value) || recomputing.value)
 
 const form = reactive({
   metricCode: PortfolioComplianceAlertTypeCode.C001,
   scopeType: PortfolioComplianceScopeTypeCode.SCHOOL,
-  targetValue: 0.5,
-  yellowThreshold: 0.4,
-  redThreshold: 0.3,
+  targetValue: null as number | null,
+  yellowThreshold: null as number | null,
+  redThreshold: null as number | null,
   compareDirection: PortfolioComplianceCompareDirectionCode.LOWER_IS_WORSE,
   denominatorBasisValue: undefined as number | undefined,
   counselorRatioStandard: undefined as number | undefined,
@@ -93,10 +103,13 @@ const metricColumns: ColumnsType = [
   { title: '计算时间', dataIndex: 'computedTime', key: 'computedTime', width: 170 },
 ]
 
-const needsDenominator = computed(
-  () =>
-    form.metricCode === PortfolioComplianceAlertTypeCode.C002
-    || form.metricCode === PortfolioComplianceAlertTypeCode.C003,
+const currentDefinition = computed(() =>
+  definitions.value.find((item) => item.metricCode === form.metricCode) ?? null,
+)
+
+const needsDenominator = computed(() => Boolean(currentDefinition.value?.requiresDenominatorBasis))
+const needsCounselorRatio = computed(() =>
+  Boolean(currentDefinition.value?.requiresCounselorRatioStandard),
 )
 
 function metricLabel(code: string) {
@@ -146,73 +159,112 @@ function alertLevelTone(code?: string) {
   return 'gray'
 }
 
+/** 按指标定义重置比较方向，并清空可保存阈值，禁止写入示例默认值。 */
+function applyMetricDefinition(metric: PortfolioComplianceAlertTypeCode) {
+  const definition = definitions.value.find((item) => item.metricCode === metric)
+  if (!definition) {
+    showFormValidationMessage('指标定义尚未加载，请稍后重试')
+    return
+  }
+  form.compareDirection = definition.compareDirection
+  form.targetValue = null
+  form.yellowThreshold = null
+  form.redThreshold = null
+  if (!definition.requiresDenominatorBasis) {
+    form.denominatorBasisValue = undefined
+  }
+  if (!definition.requiresCounselorRatioStandard) {
+    form.counselorRatioStandard = undefined
+  }
+}
+
+async function loadDefinitions() {
+  definitionsLoading.value = true
+  definitionsLoadFailed.value = false
+  try {
+    definitions.value = await portfolioComplianceApi.listMetricDefinitions()
+  } catch (error) {
+    definitionsLoadFailed.value = true
+    showUserError(error, '加载合规指标定义失败')
+  } finally {
+    definitionsLoading.value = false
+  }
+}
+
 async function loadMetrics() {
-  const currentToken = requestToken.value
+  const currentToken = ++metricRequestToken.value
   metricLoading.value = true
+  metricLoadFailed.value = false
   try {
     const nextRows = await portfolioComplianceApi.getMetrics({
       scopeType: PortfolioComplianceScopeTypeCode.SCHOOL,
     })
-    if (requestToken.value !== currentToken) return
+    if (metricRequestToken.value !== currentToken) {
+      return
+    }
     metricRows.value = nextRows
+    metricLastSuccessAt.value = new Date().toISOString()
   } catch (error) {
-    if (requestToken.value !== currentToken) return
-    metricRows.value = []
+    if (metricRequestToken.value !== currentToken) {
+      return
+    }
+    metricLoadFailed.value = true
     showUserError(error, '加载当前合规结果失败')
   } finally {
-    if (requestToken.value === currentToken) metricLoading.value = false
+    if (metricRequestToken.value === currentToken) {
+      metricLoading.value = false
+    }
   }
 }
 
-function applyMetricDefaults(metric: PortfolioComplianceAlertTypeCode) {
-  if (metric === PortfolioComplianceAlertTypeCode.C006) {
-    form.compareDirection = PortfolioComplianceCompareDirectionCode.HIGHER_IS_WORSE
-    form.targetValue = 0.3
-    form.yellowThreshold = 0.4
-    form.redThreshold = 0.5
-    return
+async function loadList(options?: { asRefresh?: boolean }) {
+  const currentToken = ++listRequestToken.value
+  const asRefresh = Boolean(options?.asRefresh)
+  if (!asRefresh) {
+    beginLoad()
   }
-  form.compareDirection = PortfolioComplianceCompareDirectionCode.LOWER_IS_WORSE
-  form.targetValue = 0.5
-  form.yellowThreshold = 0.4
-  form.redThreshold = 0.3
-}
-
-async function loadList() {
-  const currentToken = requestToken.value + 1
-  requestToken.value = currentToken
-  beginLoad()
   loading.value = true
+  listRefreshError.value = null
   try {
     const nextRows = await portfolioComplianceApi.listThreshold({
       scopeType: PortfolioComplianceScopeTypeCode.SCHOOL,
     })
-    if (requestToken.value !== currentToken) {
+    if (listRequestToken.value !== currentToken) {
       return
     }
     rows.value = nextRows
+    listLastSuccessAt.value = new Date().toISOString()
     okLoad()
   } catch (error) {
-    if (requestToken.value !== currentToken) {
+    if (listRequestToken.value !== currentToken) {
       return
     }
-    rows.value = []
+    if (asRefresh && rows.value.length > 0) {
+      listRefreshError.value = '阈值已写入，列表刷新失败；当前仍显示上次成功数据'
+      showUserError(error, '阈值列表刷新失败')
+      return
+    }
     failLoad()
     showUserError(error, '加载失败')
   } finally {
-    if (requestToken.value === currentToken) {
+    if (listRequestToken.value === currentToken) {
       loading.value = false
     }
   }
 }
 
-function openCreate() {
+async function openCreate() {
+  if (definitions.value.length === 0) {
+    await loadDefinitions()
+  }
+  if (definitionsLoadFailed.value || definitions.value.length === 0) {
+    showFormValidationMessage('指标定义不可用，无法新建阈值')
+    return
+  }
   editingId.value = undefined
   form.metricCode = PortfolioComplianceAlertTypeCode.C001
   form.scopeType = PortfolioComplianceScopeTypeCode.SCHOOL
-  applyMetricDefaults(form.metricCode)
-  form.denominatorBasisValue = undefined
-  form.counselorRatioStandard = undefined
+  applyMetricDefinition(form.metricCode)
   form.enabled = true
   editorOpen.value = true
 }
@@ -235,6 +287,23 @@ function openEdit(row: PortfolioComplianceThresholdVO) {
 
 async function saveRow() {
   if (writing.value) {
+    return
+  }
+  if (
+    form.targetValue == null
+    || form.yellowThreshold == null
+    || form.redThreshold == null
+  ) {
+    showFormValidationMessage('请人工填写目标值、黄线与红线，不得留空')
+    return
+  }
+  const definition = currentDefinition.value
+  if (!definition) {
+    showFormValidationMessage('指标定义缺失，无法保存')
+    return
+  }
+  if (form.compareDirection !== definition.compareDirection) {
+    showFormValidationMessage('比较方向须与指标定义一致')
     return
   }
   const ordered
@@ -262,7 +331,7 @@ async function saveRow() {
     })
     void message.success('阈值已保存')
     editorOpen.value = false
-    await loadList()
+    await loadList({ asRefresh: true })
   } catch (error) {
     showUserError(error, '保存失败')
   } finally {
@@ -287,7 +356,8 @@ async function deleteRow(row: PortfolioComplianceThresholdVO) {
   try {
     await portfolioComplianceApi.deleteThreshold({ id: row.id })
     void message.success('阈值已删除')
-    await loadList()
+    rows.value = rows.value.filter((item) => item.id !== row.id)
+    await loadList({ asRefresh: true })
   } catch (error) {
     showUserError(error, '删除结构合规阈值失败')
   } finally {
@@ -296,16 +366,27 @@ async function deleteRow(row: PortfolioComplianceThresholdVO) {
 }
 
 async function recompute() {
-  if (writing.value || loading.value) {
+  if (writing.value || metricLoading.value) {
     return
   }
+  const currentToken = ++metricRequestToken.value
   recomputing.value = true
+  metricLoadFailed.value = false
   try {
-    metricRows.value = await portfolioComplianceApi.recompute({
+    const nextRows = await portfolioComplianceApi.recompute({
       scopeType: PortfolioComplianceScopeTypeCode.SCHOOL,
     })
+    if (metricRequestToken.value !== currentToken) {
+      return
+    }
+    metricRows.value = nextRows
+    metricLastSuccessAt.value = new Date().toISOString()
     void message.success('已重算全校结构合规指标')
   } catch (error) {
+    if (metricRequestToken.value !== currentToken) {
+      return
+    }
+    metricLoadFailed.value = true
     showUserError(error, '重算结构合规失败')
   } finally {
     recomputing.value = false
@@ -313,7 +394,7 @@ async function recompute() {
 }
 
 onMounted(() => {
-  void Promise.all([loadList(), loadMetrics()])
+  void Promise.all([loadDefinitions(), loadList(), loadMetrics()])
 })
 </script>
 
@@ -331,20 +412,38 @@ onMounted(() => {
           >
             重算全校
           </UiButton>
-          <UiButton size="sm" variant="primary" :disabled="writing" @click="openCreate">
+          <UiButton
+            size="sm"
+            variant="primary"
+            :disabled="writing || definitionsLoading || definitionsLoadFailed"
+            @click="() => void openCreate()"
+          >
             新建阈值
           </UiButton>
         </template>
       </ContextBar>
     </template>
+    <UiAlertStrip
+      v-if="definitionsLoadFailed"
+      tone="error"
+      title="指标定义加载失败"
+      class="mb-3"
+    />
+    <UiAlertStrip
+      v-if="listRefreshError"
+      tone="warning"
+      title="列表刷新失败"
+      :description="listRefreshError"
+      class="mb-3"
+    />
     <UiCard title="学校级阈值">
       <UiSpin :spinning="loading">
         <WorkbenchContextGateStrip
-          v-if="!loading && !rows.length"
+          v-if="!loading && !rows.length && !loadError"
           tag="未配置"
           body="暂无合规阈值，请先新建阈值"
           cta-label="新建阈值"
-          @cta="openCreate"
+          @cta="() => void openCreate()"
         />
         <UiDataTable
           :load-error="loadError"
@@ -386,18 +485,27 @@ onMounted(() => {
           </template>
         </UiDataTable>
       </UiSpin>
+      <p v-if="listLastSuccessAt" class="compliance-threshold-meta">
+        阈值上次成功同步：{{ listLastSuccessAt }}
+      </p>
     </UiCard>
     <UiCard title="当前合规结果">
+      <UiAlertStrip
+        v-if="metricLoadFailed"
+        tone="warning"
+        title="合规结果同步失败"
+        class="mb-3"
+      />
       <UiSpin :spinning="metricLoading">
         <WorkbenchContextGateStrip
-          v-if="!metricRows.length"
+          v-if="!metricLoading && !metricRows.length && !metricLoadFailed"
           tag="无结果"
           body="尚未生成合规结果，请执行重算"
           cta-label="重算全校"
           @cta="recompute"
         />
         <UiDataTable
-          v-else
+          v-else-if="metricRows.length"
           :columns="metricColumns"
           :data-source="metricRows"
           :pagination="false"
@@ -447,7 +555,14 @@ onMounted(() => {
             }))
           "
           :disabled="Boolean(editingId)"
-          @change="applyMetricDefaults(form.metricCode)"
+          @change="applyMetricDefinition(form.metricCode)"
+        />
+        <UiAlertStrip
+          v-if="currentDefinition && !editingId"
+          dense
+          tone="info"
+          title="须人工填写正式阈值"
+          :description="`${currentDefinition.unitLabel}。${currentDefinition.suggestedRangeHint}`"
         />
         <label>目标值</label>
         <UiInputNumber
@@ -457,6 +572,7 @@ onMounted(() => {
           :max="1"
           :step="0.01"
           class="w-full"
+          placeholder="必填，无默认值"
         />
         <label>黄线</label>
         <UiInputNumber
@@ -466,6 +582,7 @@ onMounted(() => {
           :max="1"
           :step="0.01"
           class="w-full"
+          placeholder="必填，无默认值"
         />
         <label>红线</label>
         <UiInputNumber
@@ -475,11 +592,13 @@ onMounted(() => {
           :max="1"
           :step="0.01"
           class="w-full"
+          placeholder="必填，无默认值"
         />
         <label>比较方向</label>
         <UiSelect
           size="sm"
           v-model="form.compareDirection"
+          disabled
           :options="[
             {
               value: PortfolioComplianceCompareDirectionCode.LOWER_IS_WORSE,
@@ -505,7 +624,7 @@ onMounted(() => {
             class="w-full"
           />
         </template>
-        <template v-if="form.metricCode === PortfolioComplianceAlertTypeCode.C003">
+        <template v-if="needsCounselorRatio">
           <label>辅导员配比标准（1:N）</label>
           <UiInputNumber
             size="sm"
@@ -520,7 +639,7 @@ onMounted(() => {
       </div>
       <template #footer>
         <UiButton size="sm" variant="soft" @click="editorOpen = false"> 取消 </UiButton>
-        <UiButton size="sm" variant="primary" :loading="saving" @click="saveRow"> 保存 </UiButton>
+        <UiButton size="sm" variant="primary" :loading="saving" :disabled="writing" @click="saveRow"> 保存 </UiButton>
       </template>
     </UiDrawer>
   </StageWorkbenchShell>
@@ -529,10 +648,15 @@ onMounted(() => {
 <style scoped>
 .compliance-threshold-form {
   display: grid;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   grid-template-columns: 1fr;
 }
 .compliance-threshold-form label {
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+}
+.compliance-threshold-meta {
+  margin: var(--dp-space-component-tight) 0 0;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }

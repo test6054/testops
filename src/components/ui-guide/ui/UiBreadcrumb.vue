@@ -27,6 +27,6 @@ defineOptions({
 }
 
 .ui-breadcrumb :deep(a:hover) {
-  color: var(--dp-primary);
+  color: var(--dp-color-primary);
 }
 </style>

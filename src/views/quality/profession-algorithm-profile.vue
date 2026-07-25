@@ -926,7 +926,7 @@ onActivated(() => {
         <UiRow :gutter="12">
           <UiCol :span="12">
             <UiFormItem label="继承模板策略">
-              <div class="dp-space dp-space--vertical" style="--dp-space-gap: 8px">
+              <div class="dp-space dp-space--vertical" style="--dp-space-component: 8px">
                 <UiCheckbox v-model="editor.inheritAggregationStrategy"> 聚合策略 </UiCheckbox>
                 <UiCheckbox v-model="editor.inheritWeightStrategy"> 权重策略 </UiCheckbox>
                 <UiCheckbox v-model="editor.inheritThresholdStrategy"> 阈值策略 </UiCheckbox>
@@ -935,7 +935,7 @@ onActivated(() => {
           </UiCol>
           <UiCol :span="12">
             <UiFormItem label="本专业调整项">
-              <div class="dp-space dp-space--vertical" style="--dp-space-gap: 8px">
+              <div class="dp-space dp-space--vertical" style="--dp-space-component: 8px">
                 <UiCheckbox v-model="editor.overrideAggregationStrategy"> 调整聚合策略 </UiCheckbox>
                 <UiCheckbox v-model="editor.overrideWeightStrategy"> 调整权重策略 </UiCheckbox>
                 <UiCheckbox v-model="editor.overrideThresholdStrategy"> 调整阈值策略 </UiCheckbox>
@@ -960,22 +960,22 @@ onActivated(() => {
 <style scoped lang="scss">
 .pap {
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
@@ -989,7 +989,7 @@ onActivated(() => {
   &__panel-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 }

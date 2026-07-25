@@ -30,6 +30,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
@@ -61,6 +62,7 @@ interface ReportingCreateForm {
 
 const loading = ref(false)
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
+const { loadTree, departmentOptions } = usePortfolioOrgTree()
 const operationKey = ref('')
 const operating = computed(() => Boolean(operationKey.value))
 const createLoading = computed(() => operationKey.value === 'task:create')
@@ -75,6 +77,7 @@ const rejectReason = ref('')
 const pendingRejectRow = ref<PortfolioReportingTaskVO | null>(null)
 const preview = ref<PortfolioReportingPreviewVO | null>(null)
 const previewTaskId = ref('')
+const departmentSelectOptions = computed(() => departmentOptions())
 
 const filterForm = reactive<ReportingFilterModel>({})
 
@@ -161,6 +164,19 @@ function scopeLabel(code: string): string {
   )
 }
 
+function scopeDisplay(row: PortfolioReportingTaskVO): string {
+  if (row.scopeType !== PortfolioReportingScopeTypeCode.DEPARTMENT) {
+    return scopeLabel(row.scopeType)
+  }
+  if (row.departmentName?.trim()) {
+    return `${scopeLabel(row.scopeType)} · ${row.departmentName.trim()}`
+  }
+  if (row.departmentId) {
+    return `${scopeLabel(row.scopeType)} · 院系已失效`
+  }
+  return scopeLabel(row.scopeType)
+}
+
 function statusTone(code: string): 'blue' | 'green' | 'red' | 'gray' {
   switch (code) {
     case PortfolioReportingTaskStatusCode.DRAFT:
@@ -200,7 +216,7 @@ function canDownload(row: PortfolioReportingTaskVO): boolean {
   )
 }
 
-async function loadPage() {
+async function loadPage(options?: { errorMessage?: string }): Promise<boolean> {
   const currentToken = requestToken.value + 1
   requestToken.value = currentToken
   const request = {
@@ -212,20 +228,23 @@ async function loadPage() {
   loading.value = true
   try {
     const result = await portfolioReportingApi.page(request)
-    if (requestToken.value !== currentToken) return
+    if (requestToken.value !== currentToken) return false
     rows.value = result.list ?? []
     total.value = result.total ?? 0
-
     okLoad()
+    return true
   } catch (error) {
-    if (requestToken.value !== currentToken) return
+    if (requestToken.value !== currentToken) return false
     failLoad()
-    rows.value = []
-    total.value = 0
-    showUserError(error, '加载报送任务失败')
+    showUserError(error, options?.errorMessage ?? '加载报送任务失败')
+    return false
   } finally {
     if (requestToken.value === currentToken) loading.value = false
   }
+}
+
+async function refreshListAfterWrite(settledLabel: string) {
+  await loadPage({ errorMessage: `${settledLabel}，列表刷新失败` })
 }
 
 function onSearch() {
@@ -251,6 +270,7 @@ function openCreateModal() {
   createForm.departmentId = ''
   createForm.maskMode = true
   createOpen.value = true
+  void loadTree()
 }
 
 async function submitCreate() {
@@ -278,7 +298,7 @@ async function submitCreate() {
     createForm.scopeType === PortfolioReportingScopeTypeCode.DEPARTMENT
     && !createForm.departmentId.trim()
   ) {
-    showFormValidationMessage('院系报送须填写院系编号')
+    showFormValidationMessage('院系报送须从组织树选择院系')
     return
   }
   const operation = 'task:create'
@@ -298,12 +318,13 @@ async function submitCreate() {
     await portfolioReportingApi.create(request)
     void message.success('已创建报送任务')
     createOpen.value = false
-    await loadPage()
   } catch (error) {
     showUserError(error, '创建报送任务失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshListAfterWrite('已创建报送任务')
 }
 
 async function runPreview(row: PortfolioReportingTaskVO) {
@@ -316,12 +337,13 @@ async function runPreview(row: PortfolioReportingTaskVO) {
     preview.value = await portfolioReportingApi.preview({ id: taskId })
     previewTaskId.value = taskId
     previewOpen.value = true
-    await loadPage()
   } catch (error) {
     showUserError(error, '报送预览失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshListAfterWrite('预览已完成')
 }
 
 async function runRequestApproval(row: PortfolioReportingTaskVO) {
@@ -336,12 +358,13 @@ async function runRequestApproval(row: PortfolioReportingTaskVO) {
   try {
     await portfolioReportingApi.requestApproval({ id: taskId, scopeFingerprint })
     void message.success('已提交审批')
-    await loadPage()
   } catch (error) {
     showUserError(error, '提交审批失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshListAfterWrite('已提交审批')
 }
 
 async function runApprove(row: PortfolioReportingTaskVO) {
@@ -365,12 +388,13 @@ async function runApprove(row: PortfolioReportingTaskVO) {
   try {
     await portfolioReportingApi.approve({ id: taskId, scopeFingerprint })
     void message.success('已审批并生成报送清单')
-    await loadPage()
   } catch (error) {
     showUserError(error, '审批失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshListAfterWrite('已审批并生成报送清单')
 }
 
 function openReject(row: PortfolioReportingTaskVO) {
@@ -400,22 +424,42 @@ async function submitReject() {
     void message.success('已驳回')
     rejectOpen.value = false
     pendingRejectRow.value = null
-    await loadPage()
   } catch (error) {
     showUserError(error, '驳回失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshListAfterWrite('已驳回')
 }
 
 async function runDownload(row: PortfolioReportingTaskVO) {
   const taskId = row.id
   const operation = `task:download:${taskId}`
   if (!beginOperation(operation)) return
+  const fieldLabels = (row.shareFields ?? [])
+    .map((code) => PortfolioReportingShareFieldDescription[code] ?? code)
+    .join('、')
+  const confirmed = await confirmAsync({
+    title: '确认下载报送产物？',
+    content:
+      `用途：${row.reportPurpose || '—'}；范围：${scopeDisplay(row)}；字段：${fieldLabels || '—'}；`
+      + `脱敏：${row.maskMode ? '是' : '否'}。下载文件可能含水印与敏感字段，仅限审批用途。`,
+    type: 'warning',
+  })
+  if (!confirmed) {
+    endOperation(operation)
+    return
+  }
   try {
     const result = await portfolioReportingApi.download({ id: taskId })
     await downloadPortfolioExcelExport(result)
-    void message.success('已开始下载')
+    try {
+      await portfolioReportingApi.confirmDownload({ id: taskId })
+      void message.success('下载完成')
+    } catch (error) {
+      showUserError(error, '文件已下载，下载状态确认失败')
+    }
   } catch (error) {
     showUserError(error, '下载失败')
   } finally {
@@ -460,7 +504,7 @@ onMounted(() => {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'scopeType'">
-            {{ scopeLabel(record.scopeType) }}
+            {{ scopeDisplay(record) }}
           </template>
           <template v-else-if="column.key === 'maskMode'">
             {{ record.maskMode ? '是' : '否' }}
@@ -566,10 +610,18 @@ onMounted(() => {
         </UiFormItem>
         <UiFormItem
           v-if="createForm.scopeType === PortfolioReportingScopeTypeCode.DEPARTMENT"
-          label="院系编号"
+          label="院系"
           required
         >
-          <UiInput size="sm" v-model="createForm.departmentId" :disabled="operating" />
+          <UiSelect
+            v-model="createForm.departmentId"
+            size="sm"
+            allow-search
+            placeholder="从组织树选择院系"
+            :disabled="operating"
+            :options="departmentSelectOptions"
+            style="width: 100%"
+          />
         </UiFormItem>
         <UiFormItem label="脱敏">
           <UiSwitch size="sm" v-model="createForm.maskMode" :disabled="operating" />

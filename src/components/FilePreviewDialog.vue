@@ -130,15 +130,20 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { resolveFileIcon, resolveFileIconTheme } from '@/utils/file-preview'
-import '@vue-office/docx/lib/index.css'
-import '@vue-office/excel/lib/index.css'
 
 const props = defineProps<{
   api: FilePreviewApi
 }>()
 
-const VueOfficeDocx = defineAsyncComponent(() => import('@vue-office/docx'))
-const VueOfficeExcel = defineAsyncComponent(() => import('@vue-office/excel'))
+// Office CSS 与组件同 chunk 懒加载，避免同步进任何挂 FilePreview 的列表页
+const VueOfficeDocx = defineAsyncComponent(async () => {
+  await import('@vue-office/docx/lib/index.css')
+  return import('@vue-office/docx')
+})
+const VueOfficeExcel = defineAsyncComponent(async () => {
+  await import('@vue-office/excel/lib/index.css')
+  return import('@vue-office/excel')
+})
 const VueOfficePptx = defineAsyncComponent(() => import('@vue-office/pptx'))
 
 /** 弹窗关闭时走 composable 清理 Blob URL 与预览状态，禁止直接改 prop 内 ref。 */
@@ -173,7 +178,7 @@ const dialogWidth = computed(() => {
   display: grid;
   grid-template-columns: 32px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: var(--dp-space-component);
   min-width: 0;
 }
 
@@ -225,15 +230,15 @@ const dialogWidth = computed(() => {
   display: flex;
   flex-direction: column;
   background: var(--dp-surface-subtle, var(--dp-surface-subtle));
-  padding: var(--dp-space-2, 8px);
+  padding: var(--dp-space-component-tight);
   overflow: hidden;
 }
 
 .file-preview-dialog__state {
   display: grid;
   place-items: center;
-  gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-block) var(--dp-space-component);
   flex: 1;
   text-align: center;
 
@@ -279,7 +284,7 @@ const dialogWidth = computed(() => {
 .file-preview-dialog__text {
   flex: 1;
   margin: 0;
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
+  padding: var(--dp-space-component) var(--dp-space-block);
   background: var(--dp-surface, var(--dp-surface));
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
   font-size: var(--dp-font-size-sm);
@@ -301,7 +306,7 @@ const dialogWidth = computed(() => {
 .file-preview-dialog__audio {
   display: block;
   width: min(720px, calc(100% - 48px));
-  margin: var(--dp-space-8, 32px) auto 0;
+  margin: var(--dp-space-section) auto 0;
 }
 
 .file-icon {
@@ -357,7 +362,7 @@ const dialogWidth = computed(() => {
 <style lang="scss">
 .file-preview-dialog__wrap .ui-dialog__header {
   min-height: 0;
-  padding: 8px 16px;
+  padding: var(--dp-space-component-tight) var(--dp-space-block);
   background: var(--dp-surface);
 }
 

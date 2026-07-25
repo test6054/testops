@@ -88,14 +88,14 @@ const submitReady = computed(() => props.canSubmitVolume)
 
 <style scoped>
 .archive-volume-submit-progress-band {
-  margin-bottom: var(--dp-space-4);
+  margin-bottom: var(--dp-space-block);
 }
 
 .archive-volume-submit-progress-band__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   width: 100%;
 }
 
@@ -103,7 +103,7 @@ const submitReady = computed(() => props.canSubmitVolume)
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-submit-progress-band__label {
@@ -115,12 +115,12 @@ const submitReady = computed(() => props.canSubmitVolume)
   font-size: 15px;
   font-weight: 600;
   color: var(--dp-text-primary);
-  padding: 1px 8px;
+  padding: 1px var(--dp-space-component-tight);
   border-radius: var(--dp-radius-xs);
-  background: color-mix(in srgb, var(--dp-primary) 7%, transparent);
+  background: color-mix(in srgb, var(--dp-color-primary) 7%, transparent);
 }
 
 .archive-volume-submit-progress-band__tasks {
-  margin-top: var(--dp-space-3);
+  margin-top: var(--dp-space-component);
 }
 </style>

@@ -42,7 +42,7 @@ function recordStatusLabel(status: PortfolioArchiveRecordStatusCode): string {
       <ContextBar layout="workbench" show-title title="教师培训档案" />
     </template>
     <UiCard>
-      <UiButton size="sm" @click="loadPage"> 刷新 </UiButton>
+      <UiButton size="sm" @click="() => void loadPage()"> 刷新 </UiButton>
       <UiEmpty size="sm" v-if="!loadError && !loading && rows.length === 0" description="当前筛选无培训档案" />
       <UiDataTable
         v-model:current="pageNum"
@@ -54,7 +54,7 @@ function recordStatusLabel(status: PortfolioArchiveRecordStatusCode): string {
         :loading="loading"
         :load-error="loadError"
         row-key="id"
-        style="margin-top: 16px"
+        style="margin-top: var(--dp-space-block)"
         @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">

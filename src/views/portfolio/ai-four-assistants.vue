@@ -10,6 +10,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { PortfolioMaterialTypeCode } from '@/apis/portfolio/enums'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
+import PortfolioArchiveWriteGuardStrip from '@/components/portfolio/PortfolioArchiveWriteGuardStrip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -22,6 +23,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioAiTaskPolling } from '@/composables/usePortfolioAiTaskPolling'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
@@ -92,11 +94,24 @@ const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
-  = usePortfolioArchiveWriteGuard()
+const {
+  archiveWriteForbidden,
+  archiveWriteCapabilityUnknown,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+  loading: archiveWriteGuardLoading,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard()
 const { canManageTeacherAi } = usePortfolioTeacherAccess()
 const activeKey = ref<AssistantKey>('generate')
 const submitting = ref(false)
+const {
+  polling,
+  timedOutTaskId,
+  pollStatusDescription,
+  pollUntilSettled,
+  invalidateOwner,
+} = usePortfolioAiTaskPolling()
 const historyLoading = ref(false)
 const reviewLoading = ref(false)
 const detailLoadingToken = ref<number | null>(null)
@@ -151,12 +166,9 @@ function reviewStatusTone(status: PortfolioAiAnalysisReviewStatusCode): BadgeTon
   return tones[status]
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, ms))
-}
-
 function resetTeacherContext(): void {
   pollToken.value += 1
+  invalidateOwner()
   historyToken.value += 1
   reviewToken.value += 1
   detailToken.value += 1
@@ -345,28 +357,49 @@ async function applyAiAssistantDeepLink() {
 }
 
 async function pollTask(taskId: string, token: number): Promise<void> {
-  for (let attempt = 0; attempt < 60; attempt++) {
+  const pollResult = await pollUntilSettled(taskId, () => pollToken.value === token)
+  if (pollResult.outcome === 'ABORTED' || pollToken.value !== token) {
+    return
+  }
+  if (pollResult.outcome === AiTaskStatusCode.COMPLETED) {
+    const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
     if (pollToken.value !== token) {
       return
     }
-    const task = await portfolioAiJobApi.get(taskId)
-    if (task.status === AiTaskStatusCode.COMPLETED) {
-      const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
-      if (pollToken.value !== token) {
-        return
-      }
-      applyDetail(detail)
-      await loadHistory()
-      void message.success('智能分析结果已生成，请复核后确认采用')
-      return
-    }
-    if (task.status === AiTaskStatusCode.FAILED || task.status === AiTaskStatusCode.CANCELLED) {
-      showUserError(null, '智能分析任务执行失败，请在历史任务中查看原因')
-      return
-    }
-    await sleep(2000)
+    applyDetail(detail)
+    await loadHistory()
+    void message.success('智能分析结果已生成，请复核后确认采用')
+    return
   }
-  showUserError(null, '智能分析任务仍在执行，请稍后从历史结果查看')
+  if (
+    pollResult.outcome === AiTaskStatusCode.FAILED
+    || pollResult.outcome === AiTaskStatusCode.CANCELLED
+  ) {
+    showUserError(null, '智能分析任务执行失败，请在历史任务中查看原因')
+    return
+  }
+  void message.info('智能分析任务仍在后台执行，可从历史结果查看或继续同步')
+}
+
+/** 超时后继续同步同一任务，不重新提交。 */
+async function continueTimedOutAiSync(): Promise<void> {
+  const taskId = timedOutTaskId.value
+  if (!taskId || submitting.value || polling.value) {
+    return
+  }
+  const token = ++pollToken.value
+  submitting.value = true
+  try {
+    await pollTask(taskId, token)
+  } catch (error) {
+    if (pollToken.value === token) {
+      showUserError(error, '继续同步智能助手任务失败')
+    }
+  } finally {
+    if (pollToken.value === token) {
+      submitting.value = false
+    }
+  }
 }
 
 async function submitTask(): Promise<void> {
@@ -547,12 +580,12 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
         subtitle="AI 只出草稿 · 教师本人确认后才写入档案或发展规划"
       />
     </template>
-    <UiAlertStrip
-      v-if="archiveWriteForbidden"
-      tone="warning"
-      title="档案已封存写禁"
-      :description="archiveWriteBlockMessage"
-      class="mb-3"
+    <PortfolioArchiveWriteGuardStrip
+      :blocked="archiveWriteForbidden"
+      :capability-unknown="archiveWriteCapabilityUnknown"
+      :message="archiveWriteBlockMessage"
+      :loading="archiveWriteGuardLoading"
+      @confirm="() => void reloadLifecycleState()"
     />
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
@@ -568,6 +601,33 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
         description="管理员可代为生成与润色草稿，不可替本人确认写入档案。"
         class="ai-assistants__proxy"
       />
+      <UiAlertStrip
+        v-if="polling && pollStatusDescription"
+        dense
+        tone="info"
+        title="智能任务同步中"
+        :description="pollStatusDescription"
+        class="ai-assistants__proxy"
+      />
+      <UiAlertStrip
+        v-else-if="timedOutTaskId"
+        dense
+        tone="warning"
+        title="任务仍在后台执行"
+        :description="pollStatusDescription"
+        class="ai-assistants__proxy"
+      >
+        <template #actions>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :loading="submitting || polling"
+            @click="continueTimedOutAiSync"
+          >
+            继续同步
+          </UiButton>
+        </template>
+      </UiAlertStrip>
 
       <section class="ai-assistants__params" aria-label="生成参数">
         <div class="ai-assistants__params-head">
@@ -577,8 +637,8 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
             size="sm"
             variant="primary"
             class="ai-assistants__params-cta"
-            :loading="submitting"
-            :disabled="!canOperate"
+            :loading="submitting || polling"
+            :disabled="!canOperate || submitting || polling"
             @click="submitTask"
           >
             {{ activeDetail ? '重新生成' : '生成草稿' }}
@@ -728,12 +788,13 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
       <section v-else class="ai-assistants__draft-empty" aria-label="草稿空态">
         <span>
           {{
-            detailLoading ? '正在加载所选历史结果…' : '生成后草稿显示在此 · 确认写入前不会进入档案'
+            detailLoading
+              ? '正在加载所选历史结果…'
+              : loadFailed
+                ? '历史结果加载失败'
+                : '生成后草稿显示在此 · 确认写入前不会进入档案'
           }}
         </span>
-        <UiButton v-if="loadFailed" size="sm" variant="outline" @click="loadHistory">
-          重新加载历史
-        </UiButton>
       </section>
 
       <section class="ai-assistants__versions" aria-label="版本历史">
@@ -784,12 +845,12 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
 
 <style scoped lang="scss">
 .ai-assistants__proxy {
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .ai-assistants__params {
-  margin: var(--dp-space-3) 0;
-  padding: var(--dp-space-3) var(--dp-space-4);
+  margin: var(--dp-space-component) 0;
+  padding: var(--dp-space-component) var(--dp-space-block);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface-subtle);
@@ -799,8 +860,8 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .ai-assistants__params-title {
@@ -822,7 +883,7 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
 }
 
 .ai-assistants__draft {
-  margin: var(--dp-space-3) 0;
+  margin: var(--dp-space-component) 0;
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
@@ -832,17 +893,17 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
-  padding: var(--dp-space-3) var(--dp-space-4);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border-bottom: 1px solid var(--dp-border-subtle);
-  background: color-mix(in srgb, var(--dp-primary) 4%, var(--dp-surface));
+  background: color-mix(in srgb, var(--dp-color-primary) 4%, var(--dp-surface));
 }
 
 .ai-assistants__draft-titles {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
 }
 
@@ -855,7 +916,7 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
 .ai-assistants__draft-actions {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   margin-left: auto;
 }
 
@@ -866,11 +927,11 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
 }
 
 .ai-assistants__draft-form {
-  padding: 0 var(--dp-space-4) var(--dp-space-3);
+  padding: 0 var(--dp-space-block) var(--dp-space-component);
 }
 
 .ai-assistants__summary {
-  margin: var(--dp-space-3) var(--dp-space-4) 0;
+  margin: var(--dp-space-component) var(--dp-space-block) 0;
   color: var(--dp-text-secondary);
   line-height: 1.6;
 }
@@ -880,10 +941,10 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   min-height: 48px;
-  margin: var(--dp-space-3) 0;
-  padding: 0 var(--dp-space-4);
+  margin: var(--dp-space-component) 0;
+  padding: 0 var(--dp-space-block);
   border: 1px dashed var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
   color: var(--dp-text-secondary);
@@ -892,8 +953,8 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
 }
 
 .ai-assistants__versions {
-  margin-top: var(--dp-space-4);
-  padding-top: var(--dp-space-3);
+  margin-top: var(--dp-space-block);
+  padding-top: var(--dp-space-component);
   border-top: 1px solid var(--dp-border-subtle);
 }
 
@@ -901,7 +962,7 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--dp-space-2);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .ai-assistants__versions-label {
@@ -919,16 +980,16 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
 .ai-assistants__chips {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .ai-assistants__chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   max-width: 100%;
-  padding: 6px 10px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-full);
   background: var(--dp-surface);
@@ -937,14 +998,14 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
   text-align: left;
 
   &:hover {
-    border-color: var(--dp-primary-light);
-    background: color-mix(in srgb, var(--dp-primary) 4%, var(--dp-surface));
+    border-color: var(--dp-color-primary-border);
+    background: color-mix(in srgb, var(--dp-color-primary) 4%, var(--dp-surface));
   }
 
   &--active {
-    border-color: var(--dp-primary-light);
-    background: color-mix(in srgb, var(--dp-primary) 8%, var(--dp-surface));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-primary) 16%, transparent);
+    border-color: var(--dp-color-primary-border);
+    background: color-mix(in srgb, var(--dp-color-primary) 8%, var(--dp-surface));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-color-primary) 16%, transparent);
   }
 }
 

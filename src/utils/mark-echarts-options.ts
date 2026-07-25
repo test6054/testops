@@ -38,7 +38,7 @@ interface MarkChartAxisLabelStyle {
 }
 
 export const MARK_ECHARTS_PALETTE: MarkEchartsPalette = {
-  primary: '#1677ff',
+  primary: '#2B67FF',
   success: '#16a34a',
   warning: '#f59e0b',
   danger: '#dc2626',
@@ -1127,7 +1127,7 @@ export function buildHeatmapChartOption(
               borderColor: resolveThemeColor('--dp-color-primary', MARK_ECHARTS_PALETTE.primary),
               borderWidth: 2,
               shadowBlur: 8,
-              shadowColor: 'rgba(22, 119, 255, 0.2)',
+              shadowColor: 'rgba(31, 90, 154, 0.2)',
             },
           }
         })

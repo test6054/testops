@@ -74,7 +74,7 @@ function statusTone(status: WorkbenchStageStatusCode): BadgeTone {
   &__head {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__title {
@@ -86,7 +86,7 @@ function statusTone(status: WorkbenchStageStatusCode): BadgeTone {
 
   &__meta {
     font-size: var(--dp-font-size-xs);
-    color: var(--dp-text-tertiary);
+    color: var(--dp-text-muted);
     font-variant-numeric: tabular-nums;
   }
 
@@ -99,8 +99,8 @@ function statusTone(status: WorkbenchStageStatusCode): BadgeTone {
   &__step {
     display: flex;
     align-items: flex-start;
-    gap: var(--dp-space-3);
-    padding: var(--dp-space-3) 0;
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-component) 0;
     border-bottom: 1px solid var(--dp-border);
 
     &:last-child {
@@ -112,7 +112,7 @@ function statusTone(status: WorkbenchStageStatusCode): BadgeTone {
     flex-shrink: 0;
     width: 8px;
     height: 8px;
-    margin-top: 6px;
+    margin-top: var(--dp-space-component-tight);
     border-radius: var(--dp-radius-full);
     background: var(--dp-gray-300);
   }
@@ -139,7 +139,7 @@ function statusTone(status: WorkbenchStageStatusCode): BadgeTone {
   &__row {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__step-title {
@@ -149,7 +149,7 @@ function statusTone(status: WorkbenchStageStatusCode): BadgeTone {
   }
 
   &__advisory {
-    margin: var(--dp-space-1) 0 0;
+    margin: var(--dp-space-component-xs) 0 0;
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
     line-height: 1.4;

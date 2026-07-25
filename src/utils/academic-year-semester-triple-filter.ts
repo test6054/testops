@@ -12,14 +12,14 @@ import {
   ensureAcademicYearSemesterPair,
 } from '@/utils/academic-year-semester-query'
 
-/** 学年学期三字段筛选态：学年起始年、学年结束年（只读）、学期枚举。 */
+/** 学年学期三字段筛选态：学年起始年、学年结束年（只读）、学期枚举。归档历史：双空=全量；禁止半填。 */
 export interface AcademicYearSemesterTripleFilterState {
   academicYearStartYear: number | undefined
   academicYearEndYear: number | undefined
   semester: SemesterCode | undefined
 }
 
-/** 初始化三字段默认值；useCurrentTerm=true 时默认当前学年学期。 */
+/** 初始化三字段默认值；useCurrentTerm=true 时默认当前学年学期，仍可清空回全量。 */
 export function createAcademicYearSemesterTripleDefaults(
   useCurrentTerm = true,
 ): AcademicYearSemesterTripleFilterState {
@@ -89,7 +89,7 @@ export function buildAcademicYearSemesterTripleFilterFields(): FilterField[] {
       key: 'academicYearStartYear',
       label: '学年起始年',
       type: 'select',
-      placeholder: '全部起始年',
+      placeholder: '全部（不限）',
       options: startOptions,
       allowClear: true,
     },
@@ -104,22 +104,50 @@ export function buildAcademicYearSemesterTripleFilterFields(): FilterField[] {
       key: 'semester',
       label: '学期',
       type: 'select',
-      placeholder: '全部学期',
+      placeholder: '全部（不限）',
       options: semesterOptions,
       allowClear: true,
     },
   ]
 }
 
-/** 学年起始年变更时同步结束年与学期联动。 */
+/** 清空为历史全量（双空）。 */
+export function clearAcademicYearSemesterTripleToFullScope(
+  state: AcademicYearSemesterTripleFilterState,
+): void {
+  state.academicYearStartYear = undefined
+  state.academicYearEndYear = undefined
+  state.semester = undefined
+}
+
+/**
+ * 学年起始年变更：同步结束年；清空起始年时两侧同清为全量。
+ * 换年时保留学期编码，减少二次点击。
+ */
 export function applyAcademicYearStartYearChange(
   state: AcademicYearSemesterTripleFilterState,
   startYear: number | undefined | null,
 ): void {
-  state.academicYearEndYear = startYear != null ? startYear + 1 : undefined
   if (startYear == null) {
-    state.semester = undefined
+    clearAcademicYearSemesterTripleToFullScope(state)
+    return
   }
+  state.academicYearStartYear = startYear
+  state.academicYearEndYear = startYear + 1
+}
+
+/**
+ * 学期变更：清空学期时两侧同清为全量，禁止半填。
+ */
+export function applyTripleSemesterChange(
+  state: AcademicYearSemesterTripleFilterState,
+  semester: SemesterCode | undefined | null,
+): void {
+  if (semester == null) {
+    clearAcademicYearSemesterTripleToFullScope(state)
+    return
+  }
+  state.semester = semester
 }
 
 /** 重置三字段为默认当前学年学期。 */

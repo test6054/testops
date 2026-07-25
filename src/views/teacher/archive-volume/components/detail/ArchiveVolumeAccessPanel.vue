@@ -12,7 +12,6 @@
     <UiSkeletonState v-if="accessLoading" variant="card" compact />
     <div v-else-if="accessLoadFailed" class="archive-volume-access-panel__load-error">
       <p>查阅记录加载失败</p>
-      <UiButton size="sm" variant="outline" @click="loadAccessRecords">重试</UiButton>
     </div>
     <UiEmpty size="sm" v-else-if="accessRecords.length === 0" description="暂无查阅记录" />
     <div v-else class="archive-volume-access-panel__list">
@@ -582,7 +581,7 @@ defineExpose({ loadAccessRecords })
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   width: 100%;
 }
 
@@ -590,7 +589,7 @@ defineExpose({ loadAccessRecords })
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .archive-volume-access-panel__load-error p {
@@ -606,32 +605,32 @@ defineExpose({ loadAccessRecords })
   margin: 0;
   font-size: var(--dp-font-size-lg);
   font-weight: 600;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
 }
 
 .archive-volume-access-panel__list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
-  padding: var(--dp-space-3) 0;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component) 0;
 }
 
 :deep(.approval-card__actions) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
-  margin-top: var(--dp-space-3);
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component);
 }
 
 :deep(.approval-card__action-row) {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 :deep(.approval-card__reject-input) {
   width: 100%;
-  margin-bottom: var(--dp-space-2);
+  margin-bottom: var(--dp-space-component-tight);
 }
 </style>

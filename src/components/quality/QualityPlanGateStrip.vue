@@ -73,13 +73,13 @@ function goPlanWorkbench() {
 
 <style scoped lang="scss">
 .quality-plan-gate-strip {
-  margin: var(--dp-space-2) 0; max-height: 48px;
+  margin: var(--dp-space-component-tight) 0; max-height: 48px;
 }
 
 .quality-plan-gate-strip__row {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
   flex: 1;
 }

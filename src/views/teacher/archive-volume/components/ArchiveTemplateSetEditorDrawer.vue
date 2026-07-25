@@ -380,7 +380,7 @@ defineExpose({
 
 <style scoped>
 .archive-template-editor__tip {
-  margin: 0 0 16px;
+  margin: 0 0 var(--dp-space-block);
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-sm);
 }
@@ -388,14 +388,14 @@ defineExpose({
 :deep(.archive-template-editor__meta) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 12px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight) var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
 }
 
 :deep(.archive-template-editor__field) {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-md);
 }
 
@@ -404,11 +404,11 @@ defineExpose({
 }
 
 .archive-template-editor__tabs-wrap {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
 }
 
 .archive-template-editor__tabs :deep(.ant-tabs-nav) {
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .archive-template-editor__tabs :deep(.ant-table) {

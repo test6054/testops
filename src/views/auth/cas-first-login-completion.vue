@@ -435,13 +435,13 @@ void initialize()
 .cas-completion {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-block);
 }
 
 .cas-completion__header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .cas-completion__eyebrow {
@@ -469,20 +469,20 @@ void initialize()
 .cas-completion__panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .cas-completion__summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 .cas-completion__summary-item {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
@@ -505,7 +505,7 @@ void initialize()
 .cas-completion__form {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .cas-completion__submit-error {
@@ -518,8 +518,8 @@ void initialize()
 .cas-completion__actions {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 4px;
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-component-xs);
 }
 
 @media (max-width: 900px) {

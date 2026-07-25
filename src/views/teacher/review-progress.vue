@@ -863,7 +863,7 @@ onActivated(() => {
 .progress-page {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
   min-width: 0;
   padding: 0;
   /* 滚动页：surface 随内容增高，避免 flex 吃满视口产生底部空白 */
@@ -872,12 +872,12 @@ onActivated(() => {
   }
 
   &__empty {
-    padding: var(--dp-space-4) 0;
+    padding: var(--dp-space-block) 0;
   }
 }
 
 .overview-row {
-  row-gap: var(--dp-space-4);
+  row-gap: var(--dp-space-block);
 }
 
 .status-card {
@@ -886,7 +886,7 @@ onActivated(() => {
   &__title {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
@@ -896,11 +896,11 @@ onActivated(() => {
   &__body {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
   }
 
   &__aux {
-    padding-top: var(--dp-space-3, 12px);
+    padding-top: var(--dp-space-component);
     border-top: 1px solid var(--dp-border-subtle);
   }
 }
@@ -911,7 +911,7 @@ onActivated(() => {
   &__title {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
@@ -921,15 +921,15 @@ onActivated(() => {
   &__body {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
   }
 
   &__ring-block {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 4px 0 8px;
+    gap: var(--dp-space-component-tight);
+    padding: var(--dp-space-component-xs) 0 var(--dp-space-component-tight);
   }
 
   &__gauge {
@@ -938,14 +938,14 @@ onActivated(() => {
 
   &__formula {
     font-size: var(--dp-font-size-lg);
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
     text-align: center;
   }
 
   &__hint {
     margin: 0;
     font-size: var(--dp-font-size-xs);
-    color: var(--dp-text-tertiary);
+    color: var(--dp-text-muted);
     text-align: center;
   }
 }
@@ -954,7 +954,7 @@ onActivated(() => {
   &__title {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
@@ -966,7 +966,7 @@ onActivated(() => {
   &__title {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
@@ -985,7 +985,7 @@ onActivated(() => {
 
 .progress-page__chart,
 .progress-page__heatmap {
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-block);
 }
 
 .question-cell--highlight {
@@ -1002,7 +1002,7 @@ onActivated(() => {
 .question-cell {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   min-width: 0;
 }
 
@@ -1013,16 +1013,16 @@ onActivated(() => {
 }
 
 .progress-detail {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .muted {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .empty-block {
-  padding: var(--dp-space-3, 12px) 0;
+  padding: var(--dp-space-component) 0;
 }
 </style>

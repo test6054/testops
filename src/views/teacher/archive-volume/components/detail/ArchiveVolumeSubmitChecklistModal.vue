@@ -194,9 +194,7 @@ async function handleConfirm() {
       size="sm"
       v-else-if="loadFailed"
       title="提交自查清单加载失败"
-      description="无法读取最新提交前置，请重新加载后再确认。"
-      action-label="重新加载"
-      @action="loadChecklist()"
+      description="无法读取最新提交前置；关闭后重新打开本对话框将再次拉取。"
     />
     <template v-else-if="checklist">
       <UiAlertStrip
@@ -267,27 +265,27 @@ async function handleConfirm() {
 
 <style scoped>
 .submit-checklist-modal__alert {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .submit-checklist-modal__tasks {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .submit-checklist-modal__check {
   display: block;
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
 }
 .submit-checklist-modal__signoff {
-  margin: 16px 0;
+  margin: var(--dp-space-block) 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .submit-checklist-modal__signoff-row {
   display: grid;
   grid-template-columns: 160px 1fr;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
 }
 </style>

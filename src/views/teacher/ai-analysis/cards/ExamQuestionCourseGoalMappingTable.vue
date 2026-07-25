@@ -313,12 +313,12 @@ function handleFilterReset(): void {
 .exam-goal-mapping-table {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .exam-goal-mapping-table__goal-meta {
-  margin-top: 4px;
-  font-size: var(--dp-font-hint);
+  margin-top: var(--dp-space-component-xs);
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
   line-height: 1.4;
 }

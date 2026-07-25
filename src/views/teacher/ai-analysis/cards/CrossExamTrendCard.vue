@@ -579,7 +579,7 @@ async function handleGenerate(): Promise<void> {
 .diagnosis-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .diagnosis-rate {
   margin-left: auto;
@@ -592,7 +592,7 @@ async function handleGenerate(): Promise<void> {
   color: var(--dp-text-primary);
 }
 .diagnosis-text {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);

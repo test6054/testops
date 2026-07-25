@@ -423,7 +423,7 @@ onActivated(() => {
 <style lang="scss" scoped>
 .spot-check-page {
   &__form {
-    margin-top: 12px;
+    margin-top: var(--dp-space-component);
   }
 
   &__field-full {
@@ -431,17 +431,17 @@ onActivated(() => {
   }
 
   &__target-desc {
-    margin-bottom: 4px;
+    margin-bottom: var(--dp-space-component-xs);
   }
 
   &__exam-cell {
     font-weight: 500;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
   }
 
   &__sub {
     font-size: var(--dp-font-size-xs);
-    color: var(--dp-text-tertiary);
+    color: var(--dp-text-muted);
   }
 
   &__score {

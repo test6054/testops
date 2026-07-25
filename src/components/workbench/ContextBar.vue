@@ -3,9 +3,12 @@ import { computed } from 'vue'
 
 /**
  * 工作台上下文条：页标题 + #status 状态标签 + #toolbar 范围筛选 + #actions 操作。
- * workbench：标题左、筛选与操作右；整行垂直居中（筛选不得贴顶）。
- * 范围筛选禁止塞进 #status（status 在标题下竖排，配合 UiSelect 100% 宽会变成三层大下拉）。
- * 默认只展示 title；subtitle 仅用于动态范围摘要，禁止功能罗列说明。
+ *
+ * workbench 合同（高校教务 1366 / 侧栏展开）：
+ * - 标题左、筛选与操作右；空间不足时整行换行，禁止横向滚动藏筛选。
+ * - #toolbar 仅放学期级范围（建议 ≤3 个 UiSelect）；院系/课程/关键词进表区 UiFilterBar。
+ * - 范围筛选禁止塞进 #status（status 在标题下竖排，配合 UiSelect 100% 宽会变成三层大下拉）。
+ * - subtitle 仅动态范围摘要，禁止功能罗列。
  */
 defineOptions({ name: 'ContextBar' })
 
@@ -15,14 +18,20 @@ const props = withDefaults(
     showTitle?: boolean
     title?: string
     subtitle?: string
-    /** stack：标题在上、操作在下；workbench：横向标题左 + 工具区右，垂直居中 */
+    /** stack：标题在上、操作在下；workbench：横向标题左 + 工具区右，空间不足换行 */
     layout?: 'stack' | 'workbench'
+    /**
+     * 强调态：仅「需要行动」时使用橙色左竖条；
+     * 默认无彩色强调，靠白底 + 边框 + 微阴影与灰画布分层。
+     */
+    attention?: boolean
   }>(),
   {
     showTitle: false,
     title: '',
     subtitle: '',
     layout: 'stack',
+    attention: false,
   },
 )
 
@@ -36,7 +45,13 @@ const isCompactToolbar = computed(
 <template>
   <div
     class="context-bar"
-    :class="[`context-bar--${layout}`, { 'context-bar--compact-toolbar': isCompactToolbar }]"
+    :class="[
+      `context-bar--${layout}`,
+      {
+        'context-bar--compact-toolbar': isCompactToolbar,
+        'context-bar--attention': attention,
+      },
+    ]"
   >
     <div
       v-if="showTitleBlock || subtitle || $slots.status || $slots.info"
@@ -76,13 +91,21 @@ const isCompactToolbar = computed(
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
   flex-wrap: wrap;
+
+  /* 默认克制：无品牌色左竖条；attention 才加行动强调 */
+  &--attention {
+    box-shadow: var(--dp-shadow-xs),
+      inset 3px 0 0 color-mix(in srgb, var(--dp-orange-500, var(--dp-warning)) 75%, transparent);
+  }
 
   &--workbench {
     width: 100%;
     align-items: center;
-    flex-wrap: nowrap;
+    /* 允许换行：1366+侧栏时筛选不得被裁切或横向滚动隐藏 */
+    flex-wrap: wrap;
+    row-gap: var(--dp-space-component);
     margin-bottom: 0;
     min-height: var(--dp-control-height-md, 36px);
   }
@@ -101,11 +124,11 @@ const isCompactToolbar = computed(
     min-width: 240px;
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-1);
+    gap: var(--dp-space-component-xs);
   }
 
   &--workbench &__info {
-    flex: 0 1 auto;
+    flex: 1 1 12rem;
     min-width: 0;
     justify-content: center;
   }
@@ -113,7 +136,7 @@ const isCompactToolbar = computed(
   &__title {
     margin: 0;
     font-size: var(--dp-type-h1-size);
-    line-height: var(--dp-type-h1-line-height, var(--dp-type-h1-lh));
+    line-height: var(--dp-type-h1-line-height, var(--dp-line-height-tight));
     font-weight: var(--dp-type-h1-weight);
     color: var(--dp-text-primary);
     letter-spacing: -0.02em;
@@ -127,38 +150,40 @@ const isCompactToolbar = computed(
 
   &__subtitle {
     margin: 0;
-    font-size: var(--dp-font-size-sm);
-    line-height: var(--dp-type-hint-line-height);
-    color: var(--dp-text-muted);
+    font-size: var(--dp-type-context-subtitle-size, 14px);
+    line-height: var(--dp-type-context-subtitle-line-height, 20px);
+    font-weight: var(--dp-type-context-subtitle-weight, 500);
+    color: var(--dp-text-secondary);
   }
 
   &__status {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
-    margin-top: var(--dp-space-1);
+    margin-top: var(--dp-space-component-xs);
   }
 
   &__info-extra {
-    margin-top: var(--dp-space-1);
+    margin-top: var(--dp-space-component-xs);
   }
 
   &__end {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
     flex-wrap: wrap;
     flex-shrink: 0;
     min-width: 0;
   }
 
   &--workbench &__end {
-    flex: 0 1 auto;
+    flex: 1 1 22rem;
     margin-left: auto;
     justify-content: flex-end;
     align-items: center;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    row-gap: var(--dp-space-component-tight);
     min-width: 0;
   }
 
@@ -166,7 +191,7 @@ const isCompactToolbar = computed(
   &__toolbar {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
     flex-shrink: 0;
     min-width: 0;
@@ -175,18 +200,19 @@ const isCompactToolbar = computed(
   &--workbench &__toolbar,
   &--workbench &__actions {
     align-items: center;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     min-width: 0;
+  }
+
+  &--workbench &__actions {
+    flex-shrink: 0;
   }
 }
 
-@media (max-width: #{bp.$ant-grid-lg - 1px}) {
-  .context-bar--workbench {
-    flex-wrap: wrap;
-  }
-
+/* 窄屏：工具区独占一行，避免与标题抢宽 */
+@media (max-width: #{bp.$shell-laptop-max}) {
   .context-bar--workbench .context-bar__end {
-    width: 100%;
+    flex-basis: 100%;
     margin-left: 0;
     justify-content: flex-start;
   }

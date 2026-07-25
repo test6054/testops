@@ -10,7 +10,7 @@ import type { ExamLayoutDetectTaskStatusCode } from '@/types/enums/exam-layout-d
 import http from '@/config/axios'
 
 /** 制卷设计主流程 hint：整卷直接上传源文件，答题卡生成识别版式后保存并预览 */
-export const EXAM_LAYOUT_DESIGN_FLOW_HINT = '确定制卷形态 → 整卷上传资料异步识别题单 / 答题卡生成版式 → 核对 ROI 后保存并预览'
+export const EXAM_LAYOUT_DESIGN_FLOW_HINT = '确定制卷形态 → 单独试卷上传资料异步识别题单 / 试卷+答题页生成版式 → 核对 ROI 后保存并预览'
 
 export interface ExamLayoutRectNorm {
   x: number

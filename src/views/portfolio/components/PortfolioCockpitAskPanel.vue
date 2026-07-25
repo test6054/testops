@@ -175,36 +175,43 @@ async function openHistoryRow(row: PortfolioAiAnalysisSummaryVO) {
   }
 }
 
-async function pollAnalysis(taskId: string, requestToken = resultRequestToken.value) {
+async function pollAnalysis(
+  taskId: string,
+  requestToken = resultRequestToken.value,
+): Promise<'COMPLETED' | 'FAILED' | 'CANCELLED' | 'TIMEOUT' | 'ABORTED'> {
   polling.value = true
   try {
     for (let attempt = 0; attempt < 60; attempt++) {
       if (requestToken !== resultRequestToken.value) {
-        return
+        return 'ABORTED'
       }
       const task = await portfolioAiJobApi.get(taskId)
       if (requestToken !== resultRequestToken.value) {
-        return
+        return 'ABORTED'
       }
       if (task.status === AiTaskStatusCode.COMPLETED) {
         const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
         if (requestToken !== resultRequestToken.value) {
-          return
+          return 'ABORTED'
         }
         applyAnalysisDetail(detail)
         await loadHistory()
-        return
+        return 'COMPLETED'
       }
       if (task.status === AiTaskStatusCode.FAILED || task.status === AiTaskStatusCode.CANCELLED) {
         if (requestToken !== resultRequestToken.value) {
-          return
+          return 'ABORTED'
         }
         showUserError(null, '智能问数任务失败，请在问数历史查看原因后重新提交')
-        return
+        return task.status === AiTaskStatusCode.FAILED ? 'FAILED' : 'CANCELLED'
       }
       await sleep(2000)
     }
+    if (requestToken !== resultRequestToken.value) {
+      return 'ABORTED'
+    }
     showUserError(null, '智能分析任务超时，请在问数历史中查看结果')
+    return 'TIMEOUT'
   } finally {
     if (requestToken === resultRequestToken.value) {
       polling.value = false
@@ -231,11 +238,13 @@ async function submitAsk() {
       return
     }
     void message.info('问数任务已提交，正在等待结果…')
-    await pollAnalysis(submitResult.taskId, currentToken)
+    const outcome = await pollAnalysis(submitResult.taskId, currentToken)
     if (currentToken !== resultRequestToken.value) {
       return
     }
-    void message.success('问数完成')
+    if (outcome === 'COMPLETED') {
+      void message.success('问数完成')
+    }
   } catch (error) {
     if (currentToken !== resultRequestToken.value) {
       return
@@ -433,20 +442,20 @@ async function openTaskResult(taskId: string) {
   display: block;
   width: 100%;
   max-width: 640px;
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .cockpit-ask__title {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-weight: 600;
 }
 .cockpit-ask__meta {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .cockpit-ask__summary {
-  margin: 0 0 12px;
-  padding: 12px;
+  margin: 0 0 var(--dp-space-component);
+  padding: var(--dp-space-component);
   white-space: pre-wrap;
   word-break: break-word;
   background: var(--dp-fill-quaternary);
@@ -455,16 +464,16 @@ async function openTaskResult(taskId: string) {
   line-height: 1.6;
 }
 .cockpit-ask__section {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .cockpit-ask__section-title {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .cockpit-ask__list {
   margin: 0;
-  padding-left: 20px;
+  padding-left: var(--dp-space-block);
   font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }

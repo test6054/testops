@@ -6,12 +6,12 @@ import type {
   PortfolioTeacherRecommendRuleVO,
   PortfolioTeacherRecommendRunVO,
 } from '@/apis/portfolio/teacher-platform'
-import type { AiTaskStatusCode } from '@/apis/quality/types'
 import message from 'ant-design-vue/es/message'
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS,
+  PortfolioPortraitDimensionDescription,
   PortfolioTeacherRecommendRunModeDescription,
   PortfolioTeacherRecommendRunStatusDescription,
   PortfolioTeacherRecommendSceneCode,
@@ -19,11 +19,12 @@ import {
 } from '@/apis/portfolio/enums'
 import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
 import { aiTaskApi } from '@/apis/quality/ai-task'
-import { AiTaskStatusDescription } from '@/apis/quality/types'
+import { AiTaskStatusCode, AiTaskStatusDescription } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
@@ -37,7 +38,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import {
   formatPortfolioTeacherDisplay,
   formatPortfolioTeacherPkDisplay,
@@ -59,8 +60,13 @@ const pkResult = ref<PortfolioTeacherPkCompareVO | null>(null)
 const selectedRuleId = ref('')
 const lastRunId = ref('')
 const loading = ref(false)
+const explainSubmitting = ref(false)
+/** 规则已完成但智能解释提交失败时保留，供单独重试。 */
+const explainSubmitFailed = ref(false)
 const saving = ref(false)
 const routeRequestToken = ref(0)
+let explainPollTimer: ReturnType<typeof setTimeout> | undefined
+const explainPollFailures = ref(0)
 
 const ruleForm = reactive({
   ruleName: '',
@@ -145,11 +151,14 @@ async function loadCandidates() {
 }
 
 function resetRouteDrivenContext() {
+  clearExplainPoll()
+  explainPollFailures.value = 0
   explainDrawerOpen.value = false
   explainLoading.value = false
   explainStatus.value = null
   explainRunId.value = ''
   lastRunId.value = ''
+  explainSubmitFailed.value = false
   candidates.value = []
   pageTotal.value = 0
   pageNum.value = 1
@@ -160,6 +169,74 @@ function aiTaskStatusLabel(status?: AiTaskStatusCode): string {
     return '未提交'
   }
   return strictEnumLabel(AiTaskStatusDescription, status, '智能任务状态')
+}
+
+const explainTerminal = computed(() => {
+  const status = explainStatus.value?.status
+  return (
+    status === AiTaskStatusCode.COMPLETED
+    || status === AiTaskStatusCode.FAILED
+    || status === AiTaskStatusCode.CANCELLED
+  )
+})
+
+function clearExplainPoll() {
+  if (explainPollTimer != null) {
+    clearTimeout(explainPollTimer)
+    explainPollTimer = undefined
+  }
+}
+
+function scheduleExplainPoll(runId: string, requestToken: number, delayMs: number) {
+  clearExplainPoll()
+  explainPollTimer = setTimeout(() => {
+    void pollExplainStatus(runId, requestToken)
+  }, delayMs)
+}
+
+async function pollExplainStatus(runId: string, requestToken = routeRequestToken.value) {
+  if (
+    !explainDrawerOpen.value
+    || explainRunId.value !== runId
+    || requestToken !== routeRequestToken.value
+  ) {
+    return
+  }
+  try {
+    const nextStatus = await portfolioTeacherRecommendationApi.explainStatus({ runId })
+    if (
+      requestToken !== routeRequestToken.value
+      || explainRunId.value !== runId
+      || !explainDrawerOpen.value
+    ) {
+      return
+    }
+    explainStatus.value = nextStatus
+    explainPollFailures.value = 0
+    const status = nextStatus.status
+    const terminal
+      = status === AiTaskStatusCode.COMPLETED
+        || status === AiTaskStatusCode.FAILED
+        || status === AiTaskStatusCode.CANCELLED
+    if (!terminal && nextStatus.explainTaskId) {
+      scheduleExplainPoll(runId, requestToken, 3000)
+    }
+  } catch (error) {
+    if (
+      requestToken !== routeRequestToken.value
+      || explainRunId.value !== runId
+      || !explainDrawerOpen.value
+    ) {
+      return
+    }
+    explainPollFailures.value += 1
+    if (explainPollFailures.value >= 5) {
+      showUserError(error, '智能解释状态同步失败，已暂停轮询')
+      return
+    }
+    const delayMs = Math.min(30000, 2000 * 2 ** (explainPollFailures.value - 1))
+    scheduleExplainPoll(runId, requestToken, delayMs)
+  }
 }
 
 function openExplainAiTask() {
@@ -263,23 +340,46 @@ async function saveRule() {
   }
 }
 
+async function submitExplainForRun(runId: string) {
+  if (!runId) {
+    showFormValidationMessage('请先完成规则推荐')
+    return
+  }
+  explainSubmitting.value = true
+  try {
+    await portfolioTeacherRecommendationApi.explainSubmit({ runId })
+    explainSubmitFailed.value = false
+    void message.success('智能解释任务已提交')
+  } catch (error) {
+    explainSubmitFailed.value = true
+    showUserError(error, '智能解释提交失败；规则推荐结果已保留')
+    return
+  } finally {
+    explainSubmitting.value = false
+  }
+  await loadCandidates()
+  await loadExplainStatus(runId)
+}
+
 async function executeRuleRun() {
   if (!selectedRuleId.value) {
     showFormValidationMessage('请先选择规则')
     return
   }
   loading.value = true
+  explainSubmitFailed.value = false
   try {
     lastRunId.value = await portfolioTeacherRecommendationApi.executeRun({
       ruleId: selectedRuleId.value,
     })
     void message.success('规则推荐已完成')
-    await loadCandidates()
   } catch (error) {
     showUserError(error, '执行规则推荐失败')
+    return
   } finally {
     loading.value = false
   }
+  await loadCandidates()
 }
 
 async function executeAiExplain() {
@@ -288,18 +388,26 @@ async function executeAiExplain() {
     return
   }
   loading.value = true
+  explainSubmitFailed.value = false
+  let runId = ''
   try {
-    lastRunId.value = await portfolioTeacherRecommendationApi.executeRun({
+    runId = await portfolioTeacherRecommendationApi.executeRun({
       ruleId: selectedRuleId.value,
     })
-    await portfolioTeacherRecommendationApi.explainSubmit({ runId: lastRunId.value })
-    void message.success('规则执行完成，智能解释任务已提交')
-    await loadCandidates()
+    lastRunId.value = runId
+    void message.success('规则推荐已完成')
   } catch (error) {
-    showUserError(error, '提交智能解释任务失败')
+    showUserError(error, '执行规则推荐失败')
+    return
   } finally {
     loading.value = false
   }
+  await loadCandidates()
+  await submitExplainForRun(runId)
+}
+
+async function retryExplainSubmit() {
+  await submitExplainForRun(lastRunId.value)
 }
 
 function viewRunCandidates(runId: string) {
@@ -309,6 +417,8 @@ function viewRunCandidates(runId: string) {
 }
 
 async function loadExplainStatus(runId: string, requestToken = routeRequestToken.value) {
+  clearExplainPoll()
+  explainPollFailures.value = 0
   explainRunId.value = runId
   explainDrawerOpen.value = true
   explainLoading.value = true
@@ -319,6 +429,14 @@ async function loadExplainStatus(runId: string, requestToken = routeRequestToken
       return
     }
     explainStatus.value = nextStatus
+    const status = nextStatus.status
+    const terminal
+      = status === AiTaskStatusCode.COMPLETED
+        || status === AiTaskStatusCode.FAILED
+        || status === AiTaskStatusCode.CANCELLED
+    if (!terminal && nextStatus.explainTaskId) {
+      scheduleExplainPoll(runId, requestToken, 3000)
+    }
   } catch (error) {
     if (requestToken !== routeRequestToken.value || explainRunId.value !== runId) {
       return
@@ -361,6 +479,19 @@ onMounted(async () => {
   await loadRuns()
   await applyRouteDeepLink()
 })
+
+onBeforeUnmount(() => {
+  clearExplainPoll()
+})
+
+watch(
+  () => explainDrawerOpen.value,
+  (open) => {
+    if (!open) {
+      clearExplainPoll()
+    }
+  },
+)
 
 watch(
   () => [route.query.runId, route.query.taskId],
@@ -413,7 +544,7 @@ watch(
       <UiSelect
         v-model="selectedRuleId"
         placeholder="选择规则"
-        style="width: 240px; margin-top: 8px"
+        style="width: 240px; margin-top: var(--dp-space-component-tight)"
         size="sm"
         :options="
           rules.map((rule) => ({
@@ -428,17 +559,42 @@ watch(
       :items="recTabItems"
       compact
       divided
-      style="margin-top: 16px"
+      style="margin-top: var(--dp-space-block)"
     />
     <template v-if="activeTab === 'execute'">
       <UiCard>
         <div class="form-row">
-          <UiButton size="sm" :loading="loading" @click="executeRuleRun"> 规则推荐 </UiButton>
-          <UiButton size="sm" variant="primary" :loading="loading" @click="executeAiExplain">
+          <UiButton size="sm" :loading="loading" :disabled="loading || explainSubmitting || saving" @click="executeRuleRun"> 规则推荐 </UiButton>
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="loading || explainSubmitting"
+            @click="executeAiExplain"
+            :disabled="loading || explainSubmitting || saving"
+          >
             规则执行 → 智能解释
+          </UiButton>
+          <UiButton
+            v-if="explainSubmitFailed && lastRunId"
+            size="sm"
+            variant="outline"
+            :loading="explainSubmitting"
+            @click="retryExplainSubmit"
+            :disabled="loading || explainSubmitting || saving"
+          >
+            重试智能解释
           </UiButton>
           <UiButton size="sm" @click="loadCandidates"> 刷新候选 </UiButton>
         </div>
+        <UiAlertStrip
+          v-if="explainSubmitFailed && lastRunId"
+          tone="warning"
+          dense
+          :inline="false"
+          title="智能解释未提交"
+          description="规则推荐已完成并保留；可单独重试智能解释，不会改变推荐正式状态。"
+          style="margin-top: var(--dp-space-component)"
+        />
         <UiEmpty
           size="sm"
           v-if="!candidatesLoadError && !candidatesLoading && candidates.length === 0"
@@ -454,7 +610,7 @@ watch(
           :loading="candidatesLoading"
           :load-error="candidatesLoadError"
           row-key="id"
-          style="margin-top: 16px"
+          style="margin-top: var(--dp-space-block)"
           @page-change="handlePageChange"
         >
           <template #bodyCell="{ column, record }">
@@ -469,7 +625,7 @@ watch(
             </template>
             <template v-else-if="column.key === 'lifecycleStatus'">
               <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+                {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
               </UiTag>
               <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
               <span v-else-if="!record.lifecycleStatus">—</span>
@@ -480,7 +636,7 @@ watch(
     </template>
     <template v-else-if="activeTab === 'runs'">
       <UiCard>
-        <UiButton size="sm" :loading="runsLoading" @click="loadRuns"> 刷新历史 </UiButton>
+        <UiButton size="sm" :loading="runsLoading" @click="() => void loadRuns()"> 刷新历史 </UiButton>
         <UiEmpty
           size="sm"
           v-if="!runsLoadError && !runsLoading && runs.length === 0"
@@ -496,7 +652,7 @@ watch(
           :loading="runsLoading"
           :load-error="runsLoadError"
           row-key="id"
-          style="margin-top: 16px"
+          style="margin-top: var(--dp-space-block)"
           @page-change="handleRunsPageChange"
         >
           <template #bodyCell="{ column, record }">
@@ -520,7 +676,7 @@ watch(
         </UiDataTable>
       </UiCard>
     </template>
-    <UiCard title="教师多维对比" style="margin-top: 16px">
+    <UiCard title="教师多维对比" style="margin-top: var(--dp-space-block)">
       <div class="form-row">
         <UiInput
           size="sm"
@@ -536,7 +692,13 @@ watch(
             {{ formatPortfolioTeacherPkDisplay(teacher.displayName, teacher.teacherNumber) }}
           </div>
           <div v-for="row in teacher.dimensionRows" :key="row.dimensionCode" class="pk-row">
-            {{ row.dimensionLabel }}：{{ row.dimensionScore }}
+            {{
+              strictEnumLabel(
+                PortfolioPortraitDimensionDescription,
+                row.dimensionCode,
+                '画像维度',
+              )
+            }}：{{ row.dimensionScore }}
           </div>
         </div>
       </div>
@@ -546,12 +708,15 @@ watch(
         <template v-if="explainStatus">
           <p v-if="explainStatus.explainTaskId">
             智能解释已提交
-            <UiButton size="sm" style="margin-left: 8px" @click="openExplainAiTask">
+            <UiButton size="sm" style="margin-left: var(--dp-space-component-tight)" @click="openExplainAiTask">
               打开智能任务中心
             </UiButton>
           </p>
           <p v-else>尚未提交智能解释任务</p>
-          <p v-if="explainStatus.status">状态 {{ aiTaskStatusLabel(explainStatus.status) }}</p>
+          <p v-if="explainStatus.status">
+            状态 {{ aiTaskStatusLabel(explainStatus.status) }}
+            <span v-if="!explainTerminal && explainStatus.explainTaskId">（同步中）</span>
+          </p>
           <ul v-if="explainStatus.candidateItems?.length" class="explain-list">
             <li v-for="item in explainStatus.candidateItems" :key="item.teacherUserId">
               <strong>{{
@@ -570,39 +735,39 @@ watch(
 .form-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
 }
 .explain-text {
-  margin-top: 8px;
-  padding: 8px;
+  margin-top: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   white-space: pre-wrap;
   background: var(--dp-fill-quaternary);
   border-radius: var(--dp-radius-xs);
 }
 .explain-list {
-  margin: 12px 0 0;
-  padding-left: 16px;
+  margin: var(--dp-space-component) 0 0;
+  padding-left: var(--dp-space-block);
 }
 .explain-list li {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .pk-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-3, 12px);
-  margin-top: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-component);
 }
 .pk-col {
   min-width: 200px;
-  padding: 8px;
+  padding: var(--dp-space-component-tight);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-xs);
 }
 .pk-title {
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 .pk-row {
   font-size: var(--dp-font-size-sm);

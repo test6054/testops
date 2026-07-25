@@ -16,9 +16,9 @@
 }
 
 .ant-btn-default:not(:disabled):not(.ant-btn-disabled) {
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
   border-color: var(--dp-border);
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
 }
 
 .ant-table-thead > tr > th,
@@ -31,7 +31,7 @@
 .ant-input,
 .ant-input-affix-wrapper,
 .ant-picker {
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
 }
 
 .ant-select-focused:not(.ant-select-disabled) .ant-select-selector,
@@ -47,11 +47,11 @@
   > .ant-menu-submenu > .ant-menu-sub.ant-menu-inline {
     > .ant-menu-item,
     > .ant-menu-submenu > .ant-menu-submenu-title {
-      padding-inline-start: 24px !important;
+      padding-inline-start: var(--dp-space-page) !important;
     }
 
     .ant-menu-sub.ant-menu-inline > .ant-menu-item {
-      padding-inline-start: 48px !important;
+      padding-inline-start: var(--dp-space-section-loose) !important;
     }
   }
 }

@@ -74,7 +74,7 @@ const aliasColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 120 },
 ]
 
-const { loading, treeRoots, loadTree } = usePortfolioOrgTree()
+const { loading, loadFailed: treeLoadFailed, treeRoots, loadTree } = usePortfolioOrgTree()
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 const authStore = useAuthStore()
 const userStore = useUserStore()
@@ -207,16 +207,27 @@ async function loadLatestSync() {
   } catch (error) {
     if (syncLogRequestToken.value !== currentToken) return
     showUserError(error, '读取同步审计失败')
-    lastSyncLog.value = null
   }
 }
 
-async function refreshTree() {
-  await loadTree(false)
+async function refreshTree(): Promise<boolean> {
+  const ok = await loadTree(false)
+  if (!ok) {
+    return false
+  }
   treeData.value = mapTree(treeRoots.value)
   if (selectedNode.value) {
     const key = selectedNode.value.key
     selectedNode.value = findTreeNode(treeData.value, key)
+  }
+  return true
+}
+
+/** 写入已成功后独立刷新组织树；失败不得否定已生效写入。 */
+async function refreshTreeAfterWrite(writeSettledLabel: string): Promise<void> {
+  const ok = await refreshTree()
+  if (!ok) {
+    showUserError(null, `${writeSettledLabel}已生效，组织树刷新失败`)
   }
 }
 
@@ -240,13 +251,14 @@ async function handleSync() {
         `挂接失效扩展组织 ${syncDiagnostics.value.length} 个，见下方诊断列表`,
       )
     }
-    await refreshTree()
-    await loadLatestSync()
   } catch (error) {
     showUserError(error, '组织校验失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshTreeAfterWrite('组织校验')
+  await loadLatestSync()
 }
 
 function findTreeNode(nodes: TreeNode[], key: string): TreeNode | null {
@@ -375,12 +387,13 @@ async function submitUnit() {
     void message.success(unitMode.value === 'edit' ? '扩展组织已更新' : '扩展组织已创建')
     unitVisible.value = false
     syncDiagnostics.value = []
-    await refreshTree()
   } catch (error) {
     showUserError(error, '保存扩展组织失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshTreeAfterWrite('扩展组织保存')
 }
 
 async function deleteSelectedUnit() {
@@ -407,12 +420,13 @@ async function deleteSelectedUnit() {
     void message.success('已删除')
     selectedNode.value = null
     syncDiagnostics.value = []
-    await refreshTree()
   } catch (error) {
     showUserError(error, '删除失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshTreeAfterWrite('扩展组织删除')
 }
 
 function handleOrgAliasAction(key: string, row: PortfolioOrgAliasVO): void {
@@ -485,12 +499,13 @@ async function submitAlias() {
     await portfolioOrgApi.saveAlias(request)
     void message.success(aliasMode.value === 'edit' ? '历史名称已更新' : '历史名称已添加')
     aliasVisible.value = false
-    await refreshTree()
   } catch (error) {
     showUserError(error, '保存历史名称失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshTreeAfterWrite('历史名称保存')
 }
 
 async function deleteAlias(row: PortfolioOrgAliasVO) {
@@ -505,12 +520,13 @@ async function deleteAlias(row: PortfolioOrgAliasVO) {
   try {
     await portfolioOrgApi.deleteAlias(aliasId)
     void message.success('已删除')
-    await refreshTree()
   } catch (error) {
     showUserError(error, `删除历史名称「${aliasName}」失败`)
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshTreeAfterWrite('历史名称删除')
 }
 
 const orgMoreActionItems = computed(() => [
@@ -596,6 +612,13 @@ onMounted(async () => {
     </UiCard>
     <div class="org-admin">
       <UiCard title="组织树" class="org-admin__tree" :loading="loading">
+        <UiAlertStrip
+          v-if="treeLoadFailed"
+          tone="error"
+          title="组织树加载失败"
+          description="主数据故障不可当作未配置空态。"
+          class="mb-3"
+        />
         <UiTree
           v-if="treeData.length"
           :tree-data="treeData"
@@ -604,7 +627,11 @@ onMounted(async () => {
           :disabled="interactionLocked"
           @select="onSelect"
         />
-        <UiEmpty size="sm" v-else description="暂无组织数据，请联系学校管理员校验主数据挂接" />
+        <UiEmpty
+          size="sm"
+          v-else-if="!treeLoadFailed"
+          description="暂无组织数据，请联系学校管理员校验主数据挂接"
+        />
       </UiCard>
       <UiCard title="节点详情" class="org-admin__detail">
         <template v-if="selectedRaw">
@@ -676,7 +703,7 @@ onMounted(async () => {
         </template>
         <UiAlertStrip v-else tone="info" size="sm" dense inline :show-icon="false">
           <template #default>
-            <span style="display: inline-flex; align-items: center; gap: 8px">
+            <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
               <UiTag tone="blue" size="sm">未选择组织</UiTag>
               <span>请在左侧选择组织节点后维护扩展属性</span>
             </span>
@@ -781,12 +808,12 @@ onMounted(async () => {
 .org-admin {
   display: grid;
   grid-template-columns: minmax(280px, 36%) 1fr;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   align-items: start;
 }
 
 .org-admin__diagnostics {
-  margin-bottom: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-component);
 }
 
 .org-admin__diagnostic-list {
@@ -799,12 +826,12 @@ onMounted(async () => {
 .org-admin__meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 16px;
-  margin: 0 0 16px;
+  gap: var(--dp-space-component-tight) var(--dp-space-block);
+  margin: 0 0 var(--dp-space-block);
 
   div {
     display: flex;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-md);
   }
 

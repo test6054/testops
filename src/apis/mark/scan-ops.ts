@@ -26,8 +26,3 @@ export function loadExamScanOpsOverview(examId: string) {
 export function loadArchiveScanOpsOverview() {
   return http.post<ScanOpsOverviewResponse>('/api/mark/archive-volumes/scan-ops/overview', {})
 }
-
-/** 加载教学档案袋扫描运营概览 KPI */
-export function loadPortfolioScanOpsOverview() {
-  return http.post<ScanOpsOverviewResponse>('/api/mark/scanner/portfolio-scan-ops/overview', {})
-}

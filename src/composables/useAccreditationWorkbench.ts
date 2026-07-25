@@ -109,12 +109,12 @@ export function useAccreditationWorkbench() {
     if (!c) return []
     return [
       { key: 'annual', label: '年度评价计划', value: String(c.annualPlanCount) },
-      { key: 'coverage', label: '年度覆盖率', value: `${c.annualCoverageRate ?? 0}%` },
+      { key: 'coverage', label: '年度覆盖率', value: `${c.annualCoverageRate}%` },
       { key: 'onsite', label: '现场考查计划', value: String(c.onsiteVisitPlanCount) },
       {
         key: 'checklist',
         label: '考查清单完成率',
-        value: `${c.onsiteChecklistCompletionRate ?? 0}%`,
+        value: `${c.onsiteChecklistCompletionRate}%`,
       },
       {
         key: 'support',

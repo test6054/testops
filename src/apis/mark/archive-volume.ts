@@ -400,11 +400,11 @@ export interface ArchiveVolumeResponse {
   hasBlockingRemediationForSubmit?: boolean
   /** 是否存在未关闭整改任务 */
   hasOpenRemediationTask?: boolean
-  /** 成绩证明是否满足提交前置条件 */
+  /** 成绩维度是否满足提交前置（线上为考试双门禁） */
   scoreSubmitReady?: boolean
   /** 线上阅卷归档双门禁是否开放 */
   examGateOpen?: boolean
-  /** 成绩证明文件 ID */
+  /** 历史旁路成绩证明文件 ID（已退役主链，仅兼容存量） */
   scoreProofFileId?: string
   selfCheckConfirmed?: boolean
   signOffReady?: boolean
@@ -575,7 +575,7 @@ export interface ArchiveVolumeDetailResponse {
   canWaiveMaterialMissing?: boolean
   /** MVR-187：可登记延迟补交（COLLEGE_COORDINATOR + 收材/开放整改窗口） */
   canAllowMaterialDelay?: boolean
-  /** MVR-188：可确认线下成绩完成（DRAFT/COLLECTING + OFFLINE_CONFIRMED 待确认 + 组织/提交/材料管理） */
+  /** @deprecated 成绩完成确认主链已退役；详情恒返回 false */
   canConfirmScoreCompletion?: boolean
   /** 当前用户是否可确认卷密级定密标记 */
   canConfirmSecurityMark?: boolean
@@ -1535,7 +1535,6 @@ export interface ArchiveVolumeTaskSettingsUpdateRequest {
   /** null 表示清除关联考试 */
   relatedExamId?: string | null
   templateSetCode: string
-  scoreSource: ArchiveScoreSourceCode
   examForm?: ArchiveExamFormCode | null
   securityLevel: ArchiveSecurityLevelCode
   retentionYears?: number
@@ -2163,8 +2162,6 @@ export interface ArchiveTaskCreateRequest {
   examForm?: ArchiveExamFormCode
   archiveNo?: string
   archiveTitle: string
-  scoreSource: ArchiveScoreSourceCode
-  scoreProofFileId?: string
   securityLevel: ArchiveSecurityLevelCode
   retentionYears?: number
   permanentRetention?: boolean
@@ -2172,7 +2169,7 @@ export interface ArchiveTaskCreateRequest {
   archiveDueTimeOverride?: string
 }
 
-/** 废弃归档任务创建阶段未使用的临时成绩证明。 */
+/** @deprecated 建袋旁路成绩证明已退役；请走材料登记上传 */
 export function discardArchiveTaskScoreProof(fileId: string): Promise<void> {
   return http.post<void>('/api/mark/archive-volumes/task/score-proof/discard', { fileId })
 }
@@ -2858,6 +2855,7 @@ export function confirmArchiveVolumeDestructionSupervision(
   )
 }
 
+/** @deprecated 成绩完成确认主链已退役；成绩齐备走材料登记 + 完整性 */
 export function confirmArchiveVolumeScoreCompletion(
   request: ArchiveScoreCompletionConfirmRequest,
 ): Promise<ArchiveVolumeResponse> {

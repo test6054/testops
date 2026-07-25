@@ -30,3 +30,6 @@ vitest.config.ts
 # Auto-generated type declarations
 src/types/components.d.ts
 src/types/auto-imports.d.ts
+
+# Local typecheck / CLI dumps
+typecheck-out.txt

@@ -52,8 +52,11 @@ export const WORKBENCH_STAGE_TO_TIMELINE: Record<WorkbenchStageStatus, UiArrowTi
 /** 趋势箭头颜色极性：positive=上升为好，negative=上升为坏，neutral=中性蓝 */
 export type SignalMetricTrendPolarity = 'positive' | 'negative' | 'neutral'
 
-/** SignalBand 图标区色调（仅 UI 装饰映射，不承载业务数） */
-export type SignalMetricIconTone = 'blue' | 'green' | 'orange' | 'red' | 'gray' | 'purple'
+/**
+ * SignalBand 图标区色调：仅 KPI 分区装饰，禁止表达告警/异常。
+ * 业务严重度只用 `tone`（数值色）或页面级 UiAlertStrip；不得用红/橙 icon 底暗示异常。
+ */
+export type SignalMetricIconTone = 'blue' | 'green' | 'gray' | 'purple'
 
 /** 信号指标项 */
 export interface SignalMetric {
@@ -61,6 +64,10 @@ export interface SignalMetric {
   label: string
   value: string | number
   unit?: string
+  /**
+   * 数值语义色：红/橙表示需关注的业务态（积压、逾期、告警）；
+   * 与 iconTone 独立，禁止互相推导。
+   */
   tone?: BadgeTone
   /** 趋势百分比；正数上升、负数下降。颜色极性由 trendPolarity 或 SignalBand 默认值决定 */
   trend?: number
@@ -73,7 +80,7 @@ export interface SignalMetric {
   active?: boolean
   /** 可选 spark 序列（仅绑 Live 趋势字段，禁止编造） */
   sparkValues?: number[]
-  /** panel 模式图标区色调；缺省按 tone 推导 */
+  /** panel 图标区装饰色；缺省 gray，不得从 tone 推导 */
   iconTone?: SignalMetricIconTone
   /** 0–100 进度值；仅 showProgress 为 true 时渲染进度条 */
   progress?: number

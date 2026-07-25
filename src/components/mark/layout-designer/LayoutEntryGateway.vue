@@ -149,7 +149,7 @@ function startBlankSheet(): void {
   }
   patchDocument({
     layoutEntryKind: ExamLayoutEntryKindCode.BLANK_SHEET,
-    layoutName: layoutName.value || '标准答题卡',
+    layoutName: layoutName.value || '标准答题纸',
     printSafeMarginMm: printSafeMarginMm.value,
     paperSpec: paperSpec.value,
   })
@@ -188,12 +188,12 @@ function buildSourceFileDocument(currentDocument: ExamLayoutDocument | null): Ex
 
 function handleGenerateSheet(): void {
   if (entryReadonly.value) {
-    showFormValidationMessage('当前制卷设计不可编辑，无法生成答题卡')
+    showFormValidationMessage('当前制卷设计不可编辑，无法生成答题纸')
     return
   }
   const questions = buildGenerateQuestionsFromDrafts(questionRows.value)
   if (questions.length === 0) {
-    void message.warning('请至少配置一道题目后再生成答题卡')
+    void message.warning('请至少配置一道题目后再生成答题纸')
     return
   }
   startBlankSheet()
@@ -356,7 +356,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
     <UiForm layout="vertical" class="layout-entry-gateway__form">
       <UiTooltip
         v-if="!materialLayoutMode"
-        title="请先回到考试准备页保存答卷页模式或整卷模式，再进入制卷设计。"
+        title="请先回到考试准备页保存单独试卷或试卷+答题页形态，再进入制卷设计。"
       >
         <UiAlertStrip
           tone="warning"
@@ -539,7 +539,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
           :disabled="entryReadonly"
           @click="handleGenerateSheet"
         >
-          生成标准答题卡
+          生成标准答题纸
         </UiButton>
       </template>
     </UiForm>
@@ -549,7 +549,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
 <style scoped lang="scss">
 .layout-entry-gateway {
   max-width: 720px;
-  padding: var(--dp-space-3) var(--dp-space-4);
+  padding: var(--dp-space-component) var(--dp-space-block);
 
   &__form {
     display: flex;
@@ -558,13 +558,13 @@ function onSourcePdfChange(fileId: string | undefined): void {
   }
 
   &__alert {
-    margin-bottom: var(--dp-space-2);
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__meta {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 112px;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
     align-items: start;
   }
 
@@ -575,7 +575,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
   &__margin-control {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__unit {
@@ -587,7 +587,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
   &__label {
     display: inline-flex;
     align-items: center;
-    gap: var(--dp-space-1);
+    gap: var(--dp-space-component-xs);
   }
 
   &__label-icon {
@@ -597,11 +597,11 @@ function onSourcePdfChange(fileId: string | undefined): void {
   }
 
   &__form :deep(.ant-form-item) {
-    margin-bottom: 10px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__form :deep(.ant-upload.ant-upload-drag) {
-    padding: 12px 8px;
+    padding: var(--dp-space-component) var(--dp-space-component-tight);
   }
 
   &__form :deep(.ant-upload-drag-icon .anticon) {
@@ -615,17 +615,17 @@ function onSourcePdfChange(fileId: string | undefined): void {
   &__quick-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--dp-space-2);
-    margin-bottom: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__quick-button,
   &__remove-button {
     height: 26px;
-    padding: 0 var(--dp-space-2);
+    padding: 0 var(--dp-space-component-tight);
     border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-control);
-    background: var(--dp-bg-container);
+    background: var(--dp-surface);
     color: var(--dp-text-primary);
     font-size: var(--dp-font-size-xs);
     line-height: 24px;
@@ -634,7 +634,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
     &:disabled {
       color: var(--dp-text-disabled);
       cursor: not-allowed;
-      background: var(--dp-fill-muted);
+      background: var(--dp-fill-tertiary);
     }
   }
 
@@ -647,7 +647,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
   &__question-list {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     max-height: 360px;
     overflow: auto;
     padding-right: 2px;
@@ -657,7 +657,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
   &__question-row {
     display: grid;
     grid-template-columns: 48px minmax(112px, 1.2fr) 42px 62px 58px 44px;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     align-items: center;
   }
 
@@ -666,7 +666,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
     top: 0;
     z-index: 1;
     min-height: 24px;
-    background: var(--dp-bg-container);
+    background: var(--dp-surface);
     color: var(--dp-text-secondary);
     font-size: var(--dp-font-size-xs);
   }

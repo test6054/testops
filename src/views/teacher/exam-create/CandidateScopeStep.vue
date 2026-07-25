@@ -444,7 +444,7 @@ watch(formRef, (value) => {
 
   &__name {
     font-weight: 500;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
   }
 
   &__no {

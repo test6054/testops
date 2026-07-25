@@ -348,12 +348,12 @@ onMounted(() => {
 .archive-access-pending__list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
-  padding: var(--dp-space-3) 0;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component) 0;
 }
 
 .approval-card__reason-label {
-  margin-right: var(--dp-space-2);
+  margin-right: var(--dp-space-component-tight);
   color: var(--dp-text-muted);
 }
 </style>

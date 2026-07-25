@@ -658,7 +658,7 @@ watch(
           :rule-type="trialForm.ruleType"
           :params="trialParams"
           :disabled="operating"
-          style="margin-top: 12px"
+          style="margin-top: var(--dp-space-component)"
           @update:params="trialParams = $event"
         />
         <UiButton
@@ -666,7 +666,7 @@ watch(
           variant="primary"
           :loading="computing"
           :disabled="operating"
-          style="margin-top: 12px"
+          style="margin-top: var(--dp-space-component)"
           @click="runTrial"
         >
           执行试算
@@ -708,7 +708,7 @@ watch(
           variant="primary"
           :loading="computing"
           :disabled="operating"
-          style="margin-top: 12px"
+          style="margin-top: var(--dp-space-component)"
           @click="runSnapshotCompute"
         >
           正式计分
@@ -857,7 +857,7 @@ watch(
           :load-error="loadError.collect"
           :total="collectTotal"
           row-key="indicatorCode"
-          style="margin-top: 12px"
+          style="margin-top: var(--dp-space-component)"
           @page-change="handleCollectPageChange"
         >
           <template #bodyCell="{ column, record }">
@@ -951,14 +951,14 @@ watch(
 <style scoped>
 .form-grid {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
   align-items: center;
 }
 .result-panel {
-  margin-top: 16px;
-  padding: 12px;
+  margin-top: var(--dp-space-block);
+  padding: var(--dp-space-component);
   background: var(--dp-fill-quaternary);
   border-radius: var(--dp-radius-xs);
   font-size: var(--dp-font-size-sm);

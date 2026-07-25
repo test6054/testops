@@ -121,14 +121,14 @@ function handleSelect(step: PrepStepCard): void {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-component-tight);
     width: 100%;
   }
 
   &__head-main {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-component-tight);
     min-width: 0;
   }
 
@@ -136,7 +136,7 @@ function handleSelect(step: PrepStepCard): void {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-component-tight);
     margin-left: auto;
   }
 
@@ -166,7 +166,7 @@ function handleSelect(step: PrepStepCard): void {
     }
 
     .prep-step-pipeline__track {
-      gap: 8px;
+      gap: var(--dp-space-component-tight);
       padding-bottom: 0;
     }
 
@@ -175,13 +175,13 @@ function handleSelect(step: PrepStepCard): void {
       min-width: 0;
       flex-direction: row;
       align-items: center;
-      gap: 8px;
-      padding: 4px 10px;
+      gap: var(--dp-space-component-tight);
+      padding: var(--dp-space-component-xs) var(--dp-space-component);
       border-radius: 6px;
     }
 
     .prep-step-pipeline__step--chip .prep-step-pipeline__step-head {
-      gap: 6px;
+      gap: var(--dp-space-component-tight);
     }
 
     .prep-step-pipeline__step--chip .prep-step-pipeline__icon {
@@ -196,7 +196,7 @@ function handleSelect(step: PrepStepCard): void {
   }
 
   &__hint {
-    margin: 0 0 var(--dp-space-2, 8px);
+    margin: 0 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
     line-height: 1.5;
     color: var(--dp-text-secondary);
@@ -204,10 +204,10 @@ function handleSelect(step: PrepStepCard): void {
 
   &__track {
     display: flex;
-    gap: var(--dp-space-2, 8px);
+    gap: var(--dp-space-component-tight);
     align-items: stretch;
     overflow-x: auto;
-    padding-bottom: 4px;
+    padding-bottom: var(--dp-space-component-xs);
   }
 
   &__step {
@@ -216,16 +216,16 @@ function handleSelect(step: PrepStepCard): void {
     min-width: 160px;
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-2, 8px);
-    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+    gap: var(--dp-space-component-tight);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     text-align: left;
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
     background: var(--dp-surface);
     cursor: pointer;
     transition:
-      border-color 0.2s ease,
-      background-color 0.2s ease;
+      border-color var(--dp-duration-normal) var(--dp-ease-default),
+      background-color var(--dp-duration-normal) var(--dp-ease-default);
 
     &:hover:not(:disabled) {
       border-color: var(--dp-blue-500, var(--dp-color-primary));
@@ -267,7 +267,7 @@ function handleSelect(step: PrepStepCard): void {
   &__step-head {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__icon {

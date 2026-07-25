@@ -177,7 +177,7 @@ function handleAction(key: string, record: ExamManualSupplementCandidateItemResp
 
 .manual-supplement-candidate-table__name {
   font-weight: 500;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
 }
 
 .manual-supplement-candidate-table__no {

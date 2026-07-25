@@ -4,7 +4,7 @@
       <h3 class="stats-card__title">成绩分数分布</h3>
     </template>
     <template #toolbar>
-      <div class="dp-space" style="--dp-space-gap: 8px">
+      <div class="dp-space" style="--dp-space-component: 8px">
         <UiSelect
           size="sm"
           :model-value="props.classId"

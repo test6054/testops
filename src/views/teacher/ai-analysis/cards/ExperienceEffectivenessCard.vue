@@ -664,12 +664,12 @@ watch(
 .ai-record {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 .ai-record__charts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 .ai-summary {
   margin: 0;
@@ -677,15 +677,15 @@ watch(
 .ai-evidence {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .ai-evidence__header {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .text-muted {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 .experience-effectiveness-filter {
   width: 100%;
@@ -694,7 +694,7 @@ watch(
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: end;
-    gap: 12px;
+    gap: var(--dp-space-component);
     width: 100%;
   }
 

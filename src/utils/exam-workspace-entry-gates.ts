@@ -16,11 +16,6 @@ const NEXT_ACTION_ROUTE: Record<WorkbenchNextActionKeyCode, string> = {
     'TeacherExamWorkspaceMarkingExperienceAssistPolicy',
 }
 
-/** 是否存在扫描登记硬阻断 */
-export function hasPrepHardBlocking(prepBlockingReasons: string[] | null | undefined): boolean {
-  return (prepBlockingReasons?.length ?? 0) > 0
-}
-
 export function findWorkbenchNextAction(
   nextActions: ExamWorkbenchNextActionResponse[] | null | undefined,
   actionKey: WorkbenchNextActionKeyCode,
@@ -29,37 +24,29 @@ export function findWorkbenchNextAction(
 }
 
 /**
- * 是否允许从准备页进入扫描登记：消费后端 nextActions.START_SCAN，无 nextActions 时仅看硬阻断。
+ * 是否允许从准备页进入扫描登记：仅看 START_SCAN 合同 enabled；
+ * 缺 nextAction 时 fail-closed。制卷/名册硬阻断不再参与。
  */
 export function canStartScanRegistration(
-  prepBlockingReasons: string[] | null | undefined,
   nextActions?: ExamWorkbenchNextActionResponse[] | null,
 ): boolean {
   const action = findWorkbenchNextAction(nextActions, WorkbenchNextActionKeyCode.START_SCAN)
-  if (action) {
-    return action.enabled
+  if (!action) {
+    return false
   }
-  return !hasPrepHardBlocking(prepBlockingReasons)
+  return action.enabled
 }
 
 /** 是否允许进入批量复核：消费后端 nextActions.ENTER_REVIEW */
 export function canEnterReviewBatch(
   nextActions?: ExamWorkbenchNextActionResponse[] | null,
-  progress?: MarkingProgressResponse | null,
+  _progress?: MarkingProgressResponse | null,
 ): boolean {
   const action = findWorkbenchNextAction(nextActions, WorkbenchNextActionKeyCode.ENTER_REVIEW)
-  if (action) {
-    return action.enabled
-  }
-  if (!progress) {
+  if (!action) {
     return false
   }
-  const needReviewGrades = progress.needReviewGradeResultCount ?? 0
-  if (needReviewGrades > 0) {
-    return true
-  }
-  const pendingReview = progress.pendingReviewTaskCount + progress.inProgressReviewTaskCount
-  return progress.gradablePaperCount > 0 && pendingReview > 0
+  return action.enabled
 }
 
 export function resolveNextActionDisabledReason(
@@ -116,8 +103,13 @@ export function countBlockingScanAttention(
   return Math.max(0, scanAttentionCount - needReviewGrades)
 }
 
+/**
+ * 考试列表智能入口：优先消费后端 workspaceRouteName；CLOSED 进概览；其余按进度回退。
+ */
 export function resolveSmartExamEntryRouteName(exam: {
   status: string
+  hasPrioritySignal?: boolean
+  workspaceRouteName?: string
   scanAttentionCount: number
   questionCount: number
   totalQuestionGradeCount: number
@@ -130,6 +122,13 @@ export function resolveSmartExamEntryRouteName(exam: {
 }): string {
   if (exam.status === 'CLOSED') {
     return 'TeacherExamWorkspaceOverview'
+  }
+  if (exam.hasPrioritySignal === true) {
+    const routeName = exam.workspaceRouteName?.trim()
+    if (!routeName) {
+      throw new Error('优先推进考试缺少 workspaceRouteName 合同字段')
+    }
+    return routeName
   }
   const needReviewGrades = exam.needReviewGradeResultCount ?? 0
   if (countBlockingScanAttention(exam.scanAttentionCount, needReviewGrades) > 0) {

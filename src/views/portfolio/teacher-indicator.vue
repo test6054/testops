@@ -123,14 +123,17 @@ watch(
           :disabled="!targetTeacherId"
           @click="evaluate"
         >
-          开始评估
+          开始预检
         </UiButton>
         <UiButton size="sm" v-if="result" @click="explainOpen = true"> 查看解释 </UiButton>
       </div>
       <template v-if="result">
-        <UiTag :tone="result.eligible ? 'green' : 'red'" style="margin-bottom: 12px">
-          {{ result.eligible ? '评估通过' : '评估不通过' }}
+        <UiTag :tone="result.eligible ? 'green' : 'orange'" style="margin-bottom: var(--dp-space-component)">
+          {{ result.eligible ? '当前规则预检满足' : '当前规则预检存在缺口' }}
         </UiTag>
+        <p class="precheck-note">
+          本结果为规则即时预检，非正式双师认定结论；正式认定仍须走申请、院审与教务终审。
+        </p>
         <p>{{ result.explainText }}</p>
         <ul v-if="result.gapItems.length" class="gap-list">
           <li v-for="(item, index) in result.gapItems" :key="index">
@@ -150,12 +153,17 @@ watch(
 <style scoped>
 .toolbar {
   display: flex;
-  gap: 8px;
-  margin: 12px 0;
+  gap: var(--dp-space-component-tight);
+  margin: var(--dp-space-component) 0;
+}
+.precheck-note {
+  margin: 0 0 var(--dp-space-component-tight);
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
 }
 .gap-list {
-  margin: 8px 0 0;
-  padding-left: 20px;
+  margin: var(--dp-space-component-tight) 0 0;
+  padding-left: var(--dp-space-block);
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-sm);
 }

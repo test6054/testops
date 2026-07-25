@@ -62,6 +62,20 @@ export function useDispatchSession() {
     return Boolean(snapshot?.physicalStorageLocation?.trim() && snapshot.materialType)
   }
 
+  /**
+   * PROCESSING 且租约有效、快照完备时可再次打开认知确认；
+   * 不得复用 PENDING 的 canClaimTicket，否则取消弹窗后无法重新确认。
+   */
+  const canConfirmFeed = computed(() => {
+    if (ticket.value?.status !== ScanDispatchTicketStatusCode.PROCESSING) {
+      return false
+    }
+    if (lease.leaseLost.value) {
+      return false
+    }
+    return isDispatchSnapshotReady(ticket.value)
+  })
+
   function handleLeaseLost() {
     errorMessage.value = '派单租约已失效，任务可能已被释放，请返回队列重新领取'
     cognitive.clearConfirm()
@@ -84,20 +98,37 @@ export function useDispatchSession() {
     })
   }
 
+  /** 派单详情请求代际：路由 ticketId 变化时丢弃旧响应 */
+  let ticketLoadGeneration = 0
+
   async function loadTicket() {
-    if (!ticketId.value) {
+    const requestedTicketId = ticketId.value
+    if (!requestedTicketId) {
       errorMessage.value = '缺少派单信息'
+      ticket.value = null
       return
     }
+    const loadGeneration = ++ticketLoadGeneration
     loading.value = true
     errorMessage.value = ''
     try {
-      ticket.value = await previewScanDispatch({ ticketId: ticketId.value })
+      const preview = await previewScanDispatch({ ticketId: requestedTicketId })
+      if (loadGeneration !== ticketLoadGeneration || ticketId.value !== requestedTicketId) {
+        return
+      }
+      ticket.value = preview
     } catch (error) {
+      if (loadGeneration !== ticketLoadGeneration || ticketId.value !== requestedTicketId) {
+        return
+      }
       errorMessage.value = getUserErrorMessage(error)
-      ticket.value = null
+      if (ticket.value?.ticketId !== requestedTicketId) {
+        ticket.value = null
+      }
     } finally {
-      loading.value = false
+      if (loadGeneration === ticketLoadGeneration) {
+        loading.value = false
+      }
     }
   }
 
@@ -315,6 +346,7 @@ export function useDispatchSession() {
     scannerDeviceId,
     scannerStationId,
     canClaimTicket,
+    canConfirmFeed,
     bootstrap,
     cognitive,
     lease,

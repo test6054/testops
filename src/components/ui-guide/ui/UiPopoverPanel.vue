@@ -181,7 +181,7 @@ const handleOpenChange = (value: boolean) => {
 }
 
 .ui-popover-panel__header {
-  padding: var(--dp-space-3, 12px) var(--dp-space-3, 12px) 0;
+  padding: var(--dp-space-component) 0;
 }
 
 .ui-popover-panel__title {
@@ -193,7 +193,7 @@ const handleOpenChange = (value: boolean) => {
 }
 
 .ui-popover-panel__description {
-  margin: 6px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
@@ -201,15 +201,15 @@ const handleOpenChange = (value: boolean) => {
 
 .ui-popover-panel__body {
   min-width: 0;
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
 }
 
 .ui-popover-panel__surface--compact .ui-popover-panel__header {
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px) 0;
+  padding: var(--dp-space-component-tight) var(--dp-space-component) 0;
 }
 
 .ui-popover-panel__surface--compact .ui-popover-panel__body {
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px) var(--dp-space-3, 12px);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
 }
 
 .ui-popover-panel__content-text {
@@ -223,13 +223,13 @@ const handleOpenChange = (value: boolean) => {
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
-  padding: 0 var(--dp-space-3, 12px) var(--dp-space-3, 12px);
+  gap: var(--dp-space-component-tight);
+  padding: 0 var(--dp-space-component);
   border-top: 1px solid var(--dp-border);
 }
 
 .ui-popover-panel__surface--compact .ui-popover-panel__footer {
-  padding: 0 var(--dp-space-3, 12px) var(--dp-space-2, 8px);
+  padding: 0 var(--dp-space-component) var(--dp-space-component-tight);
 }
 </style>
 

@@ -11,6 +11,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { passwordLogin, phoneLogin, refreshToken, studentLogin, wechatCallback } from '@/apis/auth'
 import { clearAllGradingDrafts } from '@/composables/useGradingDraftPersist'
+import { clearAllQualityLongFormDrafts } from '@/composables/useQualityLongFormDraftPersist'
 import { resetAuthState } from '@/config/axios/auth-state'
 import {
   STORAGE_REFRESH_TOKEN,
@@ -738,6 +739,7 @@ export const useAuthStore = defineStore(
       userStore.clearUserInfo()
       resetToken()
       await clearAllGradingDrafts()
+      await clearAllQualityLongFormDrafts()
 
       syncRememberedAccountOnLogout()
 

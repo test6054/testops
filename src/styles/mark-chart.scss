@@ -63,7 +63,7 @@
 .mark-distribution-section,
 .mark-scatter-section,
 .mark-heatmap-section {
-  padding: var(--dp-space-3) var(--dp-space-4);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
@@ -77,8 +77,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
-  margin-bottom: var(--dp-space-2);
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .mark-trend-section__title,
@@ -120,13 +120,13 @@
   align-items: center;
   justify-content: center;
   min-height: 160px;
-  padding: var(--dp-space-4) 0;
+  padding: var(--dp-space-block) 0;
 }
 
 .mark-gauge-block {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
   min-width: 0;
 }
 
@@ -143,7 +143,7 @@
 .mark-gauge-block__meta {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-1);
+  gap: var(--dp-space-component-xs);
   min-width: 0;
   flex: 1;
 }
@@ -170,7 +170,7 @@
 .mark-gauge-block__detail-list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-1);
+  gap: var(--dp-space-component-xs);
   margin: 0;
   padding: 0;
   list-style: none;

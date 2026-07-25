@@ -48,6 +48,7 @@ const loading = ref(false)
 const teacherListRequestToken = ref(0)
 const teacherDetailRequestToken = ref(0)
 const switchingWorkShell = ref(false)
+const teacherNameLoadFailed = ref(false)
 let teacherSearchTimer: ReturnType<typeof setTimeout> | null = null
 
 const workShellOptions = computed(() =>
@@ -73,9 +74,8 @@ const selectedTeacherId = computed({
     : portfolioStore.currentTeacherId || resolveDefaultTeacherId(),
   set: (value: string) => {
     const teacherId = value || ''
-    if (teacherId) {
-      portfolioStore.setTeacher(teacherId)
-    }
+    // 清空时立即写 store，避免仅改 URL 时短暂保留旧教师
+    portfolioStore.setTeacher(teacherId)
     syncRouteQuery(teacherId)
   },
 })
@@ -91,17 +91,23 @@ const selfTeacherLabel = computed(() => {
   return '当前：本人'
 })
 
-/** 管理员/可选人是否正在代办他人档案 */
+/** 管理员代办或审核人深链代看他人档案 */
 const isProxyingOtherTeacher = computed(() => {
-  if (!canPickTeachers.value || !selectedTeacherId.value) {
+  if (!selectedTeacherId.value || !currentUserId.value) {
     return false
   }
-  return selectedTeacherId.value !== currentUserId.value
+  if (selectedTeacherId.value === currentUserId.value) {
+    return false
+  }
+  return canPickTeachers.value || canReviewPortfolio.value
 })
 
 const proxyTeacherLabel = computed(() => {
   if (!selectedTeacherId.value) {
     return ''
+  }
+  if (teacherNameLoadFailed.value) {
+    return `已选择教师（名称加载失败）· ${selectedTeacherId.value}`
   }
   const teacher = teacherOptions.value.find((item) => item.userId === selectedTeacherId.value)
   return teacher?.nickName || teacher?.teacherNumber || selectedTeacherId.value
@@ -124,10 +130,11 @@ function clearTeacherSelection() {
 }
 
 async function loadTeacherOptions(keyword?: string) {
-  if (!canPickTeachers.value) {
+  if (!canPickTeachers.value || switchingWorkShell.value) {
     return
   }
   const currentToken = ++teacherListRequestToken.value
+  const scopeTeacherId = selectedTeacherId.value
   loading.value = true
   try {
     const page = await portfolioTeacherApi.page({
@@ -138,7 +145,14 @@ async function loadTeacherOptions(keyword?: string) {
     if (currentToken !== teacherListRequestToken.value) {
       return
     }
-    mergeTeacherOptions(page.list ?? [])
+    // 搜索结果整页替换；保留当前已选教师，避免切壳/切人后旧名册混入
+    const nextRows = page.list ?? []
+    const selected = teacherOptions.value.find((item) => item.userId === scopeTeacherId)
+    const optionMap = new Map(nextRows.map((item) => [item.userId, item]))
+    if (selected && !optionMap.has(selected.userId)) {
+      optionMap.set(selected.userId, selected)
+    }
+    teacherOptions.value = Array.from(optionMap.values())
   } catch (error) {
     if (currentToken !== teacherListRequestToken.value) {
       return
@@ -161,9 +175,11 @@ function mergeTeacherOptions(rows: PortfolioTeacherSummaryVO[]) {
 
 async function hydrateTeacherOption(userId: string) {
   if (!userId || teacherOptions.value.some((item) => item.userId === userId)) {
+    teacherNameLoadFailed.value = false
     return
   }
   const currentToken = ++teacherDetailRequestToken.value
+  teacherNameLoadFailed.value = false
   try {
     const detail = await portfolioTeacherApi.get(userId)
     if (currentToken !== teacherDetailRequestToken.value) {
@@ -181,12 +197,20 @@ async function hydrateTeacherOption(userId: string) {
         status: detail.status,
       },
     ])
-  } catch {
-    // 已选教师标签补水失败时不阻断页面范围切换。
+    teacherNameLoadFailed.value = false
+  } catch (error) {
+    if (currentToken !== teacherDetailRequestToken.value) {
+      return
+    }
+    teacherNameLoadFailed.value = true
+    showUserError(error, '已选择教师，但名称加载失败')
   }
 }
 
 function handleTeacherSearch(value: string) {
+  if (switchingWorkShell.value) {
+    return
+  }
   if (teacherSearchTimer) {
     clearTimeout(teacherSearchTimer)
   }
@@ -210,6 +234,12 @@ async function handleWorkShellChange(workShell: SegmentedValue) {
     return
   }
   switchingWorkShell.value = true
+  teacherListRequestToken.value += 1
+  teacherDetailRequestToken.value += 1
+  if (teacherSearchTimer) {
+    clearTimeout(teacherSearchTimer)
+    teacherSearchTimer = null
+  }
   try {
     const targetRoute = selectWorkShell(authorizedOption.value)
     await routeStore.generateMenus()
@@ -222,6 +252,9 @@ async function handleWorkShellChange(workShell: SegmentedValue) {
 }
 
 function syncRouteQuery(teacherId: string) {
+  if (switchingWorkShell.value) {
+    return
+  }
   const query = { ...route.query }
   if (teacherId) {
     query.teacherId = teacherId
@@ -252,6 +285,9 @@ function bootstrapFromRoute() {
 watch(
   () => route.query.teacherId,
   (teacherId) => {
+    if (switchingWorkShell.value) {
+      return
+    }
     const id = typeof teacherId === 'string' ? teacherId : ''
     if (!canPickTeachers.value && accessScope.value === null) {
       return
@@ -329,6 +365,7 @@ watch(
             allow-clear
             size="sm"
             :loading="loading"
+            :disabled="switchingWorkShell"
             placeholder="或快速搜索教师"
             :filter-option="false"
             :options="portfolioTeacherSelectOptionsFromSummaries(teacherOptions)"
@@ -339,23 +376,28 @@ watch(
         <template v-else>
           <UiTag v-if="isProxyingOtherTeacher" tone="orange" size="sm">代办</UiTag>
           <UiTag v-else tone="blue" size="sm">本人</UiTag>
+          <UiTag v-if="teacherNameLoadFailed" tone="orange" size="sm">名称加载失败</UiTag>
           <span class="portfolio-scope-header__name">{{ proxyTeacherLabel }}</span>
           <UiButton
             v-if="isProxyingOtherTeacher && currentUserId"
             size="sm"
             variant="outline"
+            :disabled="switchingWorkShell"
             @click="backToSelf"
           >
             回本人
           </UiButton>
-          <UiButton size="sm" variant="ghost" @click="goTeacherDirectory">
+          <UiButton size="sm" variant="ghost" :disabled="switchingWorkShell" @click="goTeacherDirectory">
             回名册
           </UiButton>
-          <UiButton size="sm" variant="ghost" @click="clearTeacherSelection">
+          <UiButton size="sm" variant="ghost" :disabled="switchingWorkShell" @click="clearTeacherSelection">
             清除
           </UiButton>
         </template>
       </template>
+      <UiTag v-else-if="isProxyingOtherTeacher" tone="orange" size="sm">
+        审核代看 · {{ proxyTeacherLabel }}
+      </UiTag>
       <UiTag v-else tone="blue" size="sm">
         {{ selfTeacherLabel }}
       </UiTag>
@@ -368,19 +410,23 @@ watch(
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-3) var(--dp-space-4);
-  padding: var(--dp-space-3) var(--dp-space-4);
-  border: 1px solid var(--dp-border-subtle);
+  gap: var(--dp-space-component) var(--dp-space-block);
+  padding: var(--dp-space-component) var(--dp-space-block);
+  border: 1px solid var(--dp-panel-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
-  box-shadow: var(--dp-shadow-xs);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .portfolio-scope-header__field {
   display: flex;
   align-items: center;
   min-width: 0;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
+}
+
+.portfolio-scope-header__field--grow {
+  flex: 1 1 280px;
 }
 
 .portfolio-scope-header__label {
@@ -400,14 +446,41 @@ watch(
   overflow-x: auto;
 }
 
+.portfolio-scope-header__name {
+  min-width: 0;
+  font-size: var(--dp-font-size-md);
+  color: var(--dp-text-primary);
+}
+
 @media (max-width: 767px) {
+  .portfolio-scope-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .portfolio-scope-header__field {
+    width: 100%;
+    flex-wrap: wrap;
+    min-height: 44px;
+  }
+
+  .portfolio-scope-header__field--grow {
+    flex: none;
+  }
+
+  .portfolio-scope-header__segmented-wrap {
     width: 100%;
   }
 
   .portfolio-scope-header__select {
     min-width: 0;
     width: 100%;
+    min-height: 44px;
+  }
+
+  .portfolio-scope-header__select--secondary {
+    order: 3;
+    flex: 1 1 100%;
   }
 }
 </style>

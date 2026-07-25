@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioTeacherSalaryApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -10,29 +11,38 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiTag from '@/components/ui-guide/ui/UiTag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
+import { usePortfolioReviewAccess } from '@/composables/usePortfolioReviewAccess'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { useUserStore } from '@/stores/modules/user'
 import { PortfolioBusinessDataSourceTypeCode } from '@/types/enums/portfolio-business-data-source-type-enum'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
+const { accessScope, ensureLoaded } = usePortfolioReviewAccess()
 /** 院系路由或非租户管理员：本院系只读口径（PF-P0-421） */
 const isDepartmentScoped = computed(
   () => route.path.includes('/department/') || !userStore.isTenantAdmin,
 )
 const pageTitle = computed(() => (isDepartmentScoped.value ? '院系教师工资' : '教师工资'))
+const exportApplyModal = reactive({
+  open: false,
+  purpose: '',
+})
 
 
 const form = reactive<{
@@ -141,28 +151,47 @@ async function saveSalary() {
 }
 
 async function exportCsv() {
+  exportApplyModal.purpose = ''
+  exportApplyModal.open = true
+}
+
+async function confirmExportApply() {
+  const exportPurpose = exportApplyModal.purpose.trim()
+  if (!exportPurpose) {
+    showFormValidationMessage('请填写导出用途')
+    return Promise.reject(new Error('导出用途为空'))
+  }
+  const scope = accessScope.value
+  const tenantWide = Boolean(scope?.tenantWide)
+  const departmentId = scope?.reviewerDepartmentId
+  if (!tenantWide && !departmentId) {
+    showFormValidationMessage('当前账号缺少院系范围，无法申请导出教师薪酬')
+    return Promise.reject(new Error('缺少院系范围'))
+  }
   const operation = 'salary:export'
-  if (!beginOperation(operation)) return
-  if (
-    !(await confirmAsync({
-      title: '确认导出教师薪酬？',
-      content: '导出文件包含敏感薪酬数据，操作将写入审计记录，请确认用途和保管范围。',
-      type: 'warning',
-    }))
-  ) {
-    endOperation(operation)
-    return
+  if (!beginOperation(operation)) {
+    return Promise.reject(new Error('操作进行中'))
   }
   try {
-    const result = await portfolioTeacherSalaryApi.export()
-    await downloadPortfolioExcelExport(result)
-    void message.success(`已导出 ${result.rowCount} 条`)
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.TEACHER_SALARY,
+      businessRef: tenantWide ? {} : { departmentId },
+      exportPurpose,
+    })
+    exportApplyModal.open = false
+    void message.success('已提交教师薪酬导出审批')
+    void router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出教师薪酬失败')
+    showUserError(error, '提交教师薪酬导出审批失败')
+    return Promise.reject(error)
   } finally {
     endOperation(operation)
   }
 }
+
+onMounted(() => {
+  void ensureLoaded()
+})
 </script>
 
 <template>
@@ -254,7 +283,7 @@ async function exportCsv() {
         :loading="loading"
         :load-error="loadError"
         row-key="id"
-        style="margin-top: 16px"
+        style="margin-top: var(--dp-space-block)"
         @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
@@ -276,6 +305,21 @@ async function exportCsv() {
         </template>
       </UiDataTable>
     </UiCard>
+    <UiDialog
+      v-model:open="exportApplyModal.open"
+      title="申请导出教师薪酬"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="operationKey === 'salary:export'"
+      @ok="confirmExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="exportApplyModal.purpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填；薪酬敏感，将写入审批与水印）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -283,6 +327,6 @@ async function exportCsv() {
 .form-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 </style>

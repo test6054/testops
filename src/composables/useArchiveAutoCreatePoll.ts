@@ -51,13 +51,10 @@ export function useArchiveAutoCreatePoll(options: ArchiveAutoCreatePollOptions) 
     polling.value = false
   }
 
-  async function pollOnce(): Promise<ArchiveVolumeExamGateResponse> {
-    return getArchiveVolumeExamGate(options.examId.value)
-  }
-
   function pollUntilHealthy(): Promise<ArchiveAutoCreatePollResult> {
     stopPoll()
     const generation = pollGeneration
+    const examIdAtStart = options.examId.value
     const timeoutMs = options.timeoutMs ?? 90_000
     const initialIntervalMs = options.initialIntervalMs ?? 1_000
     const maxIntervalMs = options.maxIntervalMs ?? 8_000
@@ -75,13 +72,16 @@ export function useArchiveAutoCreatePoll(options: ArchiveAutoCreatePollOptions) 
             if (generation !== pollGeneration) {
               return
             }
-            if (!options.examId.value) {
+            if (!examIdAtStart || options.examId.value !== examIdAtStart) {
               stopPoll()
               resolve('failed')
               return
             }
             try {
-              const gate = await pollOnce()
+              const gate = await getArchiveVolumeExamGate(examIdAtStart)
+              if (generation !== pollGeneration || options.examId.value !== examIdAtStart) {
+                return
+              }
               if (isPollSucceeded(gate)) {
                 stopPoll()
                 resolve('healthy')

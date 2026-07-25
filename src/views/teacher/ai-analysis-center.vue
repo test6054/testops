@@ -4,7 +4,7 @@ import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import type { SignalMetric } from '@/types/workbench'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
@@ -28,10 +28,11 @@ const {
   examId,
   overview,
   overviewLoadFailed,
-  reloadToken,
+  teachingReloadToken,
+  clusterReloadToken,
   selectedExamLabel,
   setClassScope,
-  refreshAnalysis,
+  refreshClusterAnalysis,
   examLocked,
 } = useAiAnalysisScope()
 
@@ -39,7 +40,7 @@ const tabItems = [
   { key: 'teaching', label: '教学分析' },
   { key: 'trend', label: '趋势分析' },
   { key: 'cluster', label: '错因聚类' },
-  { key: 'school', label: '校级质量' },
+  { key: 'school', label: '考试质量' },
 ]
 
 function parseTab(value: unknown): AiAnalysisTab {
@@ -99,12 +100,13 @@ const headerSignalMetrics = computed<SignalMetric[]>(() => {
     const rate = Math.round((analyzed / total) * 100)
     metrics.push({
       key: 'quality-coverage',
-      label: '质量分析覆盖',
+      label: '题目分析覆盖',
       value: rate,
       unit: '%',
-      tone: rate >= 80 ? 'green' : rate >= 50 ? 'orange' : 'red',
-      iconTone: rate >= 80 ? 'green' : rate >= 50 ? 'orange' : 'red',
-      helper: `${analyzed}/${total} 题已完成分析`,
+      // 覆盖率仅作参考进度，禁止用红/绿暗示正式质量结论（非正式 OBE）
+      tone: 'blue',
+      iconTone: 'blue',
+      helper: `参考覆盖 ${analyzed}/${total} 题（非正式质量结论）`,
     })
   }
 
@@ -120,7 +122,7 @@ function handleClassSelectChange(classIdValue?: string, option?: MarkClassOption
 }
 
 function handleClusterDataChanged(): void {
-  refreshAnalysis()
+  refreshClusterAnalysis()
 }
 </script>
 
@@ -134,36 +136,45 @@ function handleClusterDataChanged(): void {
       <SignalBand compact variant="panel" :metrics="headerSignalMetrics" />
     </template>
 
-    <UiEmpty size="sm" v-if="overviewLoadFailed" title="加载失败" />
+    <UiAlertStrip
+      v-if="overviewLoadFailed"
+      tone="warning"
+      title="分析概览加载失败"
+      class="ai-analysis-center__overview-alert"
+    />
 
-    <template v-else>
-      <ExamWorkspaceJourneySubNav v-if="examLocked" />
+    <ExamWorkspaceJourneySubNav v-if="examLocked" />
 
-      <WorkbenchSurfaceCard flush>
-        <template #head>
-          <UiSectionTabs
-            :model-value="activeTab"
-            :items="tabItems"
-            compact
-            divided
-            @update:model-value="handleTabChange"
-          />
-        </template>
-
-        <AiAnalysisTeachingTab
-          v-if="activeTab === 'teaching'"
-          :reload-token="reloadToken"
-          @class-change="handleClassSelectChange"
+    <WorkbenchSurfaceCard flush>
+      <template #head>
+        <UiSectionTabs
+          :model-value="activeTab"
+          :items="tabItems"
+          compact
+          divided
+          @update:model-value="handleTabChange"
         />
-        <AiAnalysisTrendTab v-else-if="activeTab === 'trend'" />
-        <AiAnalysisClusterTab
-          v-else-if="activeTab === 'cluster'"
-          :reload-token="reloadToken"
-          :cluster-signal="overview?.clusterSignal"
-          @changed="handleClusterDataChanged"
-        />
-        <AiAnalysisSchoolTab v-else-if="activeTab === 'school'" />
-      </WorkbenchSurfaceCard>
-    </template>
+      </template>
+
+      <AiAnalysisTeachingTab
+        v-if="activeTab === 'teaching'"
+        :reload-token="teachingReloadToken"
+        @class-change="handleClassSelectChange"
+      />
+      <AiAnalysisTrendTab v-else-if="activeTab === 'trend'" />
+      <AiAnalysisClusterTab
+        v-else-if="activeTab === 'cluster'"
+        :reload-token="clusterReloadToken"
+        :cluster-signal="overview?.clusterSignal"
+        @changed="handleClusterDataChanged"
+      />
+      <AiAnalysisSchoolTab v-else-if="activeTab === 'school'" />
+    </WorkbenchSurfaceCard>
   </StageWorkbenchShell>
 </template>
+
+<style scoped lang="scss">
+.ai-analysis-center__overview-alert {
+  margin-bottom: var(--dp-space-component);
+}
+</style>

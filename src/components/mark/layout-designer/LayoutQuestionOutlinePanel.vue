@@ -118,20 +118,20 @@ function formatQuestionTypeLabel(question: ExamLayoutQuestionDto): string {
 <style scoped lang="scss">
 .layout-question-outline {
   height: 100%;
-  padding: 12px;
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 
   &__header {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__title {
@@ -152,24 +152,24 @@ function formatQuestionTypeLabel(question: ExamLayoutQuestionDto): string {
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--dp-space-component-tight);
     flex: 1;
     min-height: 0;
     overflow: auto;
   }
 
   &__item {
-    padding: 8px;
+    padding: var(--dp-space-component-tight);
     border: 1px solid var(--dp-border-subtle);
     border-radius: 6px;
     cursor: pointer;
     transition:
-      border-color 0.2s ease,
-      background 0.2s ease;
+      border-color var(--dp-duration-normal) var(--dp-ease-default),
+      background var(--dp-duration-normal) var(--dp-ease-default);
 
     &:hover {
       border-color: var(--dp-color-primary);
-      background: var(--dp-fill-muted);
+      background: var(--dp-fill-tertiary);
     }
 
     &--active {
@@ -187,8 +187,8 @@ function formatQuestionTypeLabel(question: ExamLayoutQuestionDto): string {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 4px;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component-xs);
   }
 
   &__no {

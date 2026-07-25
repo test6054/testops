@@ -6,6 +6,7 @@ import type {
   MarkTeacherDashboardSignalSectionVO,
   MarkTeacherDashboardTodosSectionVO,
 } from '@/apis/mark/teacher-dashboard'
+import type { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
 import { debounce } from 'lodash-es'
 import { computed, onUnmounted, ref } from 'vue'
 import { ExamStatusCode } from '@/apis/mark/exam'
@@ -21,12 +22,12 @@ import {
   MarkTeacherDashboardPendingTodoScopeCode,
 } from '@/types/enums/mark-teacher-dashboard-pending-todo-scope-enum'
 import {
-  getDefaultAcademicYearAndSemester,
   resolveDefaultDashboardFilter,
 } from '@/utils/academic-year'
 import {
   buildOptionalAcademicYearSemesterQuery,
   ensureAcademicYearSemesterPair,
+  requireWorkbenchAcademicYearSemester,
 } from '@/utils/academic-year-semester-query'
 import { showUserError } from '@/utils/error-handler'
 import {
@@ -34,6 +35,16 @@ import {
   buildMarkDashboardSemesterSelectOptions,
   buildMarkDashboardStatusSelectOptions,
 } from '@/utils/mark-dashboard-filter-options'
+import {
+  resolveDefaultPendingTodoTab,
+  resolvePendingTodoScopeByTab,
+} from '@/utils/mark-dashboard-todo'
+import {
+  isCurrentWorkbenchTerm,
+  resolveCurrentWorkbenchTerm,
+  resolveMarkWorkbenchTermFilter,
+  writeMarkWorkbenchTermPreference,
+} from '@/utils/mark-workbench-term-scope'
 
 const FILTER_CHANGE_DEBOUNCE_MS = 250
 
@@ -54,7 +65,7 @@ export interface UseMarkTeacherDashboardOverviewOptions {
 export function useMarkTeacherDashboardOverview(
   options: UseMarkTeacherDashboardOverviewOptions = {},
 ) {
-  const defaultYearSemester = getDefaultAcademicYearAndSemester()
+  const workbenchDefaults = resolveMarkWorkbenchTermFilter()
   const signalLoading = ref(false)
   const examsLoading = ref(false)
   const todosLoading = ref(false)
@@ -63,19 +74,27 @@ export function useMarkTeacherDashboardOverview(
   const todosLoadFailed = ref(false)
   const overview = ref<MarkTeacherDashboardOverviewVO | null>(null)
   const loadKey = ref<string | null>(null)
+  const initialTerm = requireWorkbenchAcademicYearSemester(
+    options.initialFilter?.academicYear ?? workbenchDefaults.academicYear,
+    options.initialFilter?.semester ?? workbenchDefaults.semester,
+  )
   const filter = ref<MarkTeacherDashboardQuery>({
-    academicYear: options.initialFilter?.academicYear ?? defaultYearSemester.academicYear,
-    semester: options.initialFilter?.semester ?? defaultYearSemester.semester,
-    status: options.initialFilter?.status ?? ExamStatusCode.ACTIVE,
+    academicYear: initialTerm.academicYear,
+    semester: initialTerm.semester,
+    status: options.initialFilter?.status ?? workbenchDefaults.status ?? ExamStatusCode.ACTIVE,
     publishedInsightLimit: options.initialFilter?.publishedInsightLimit,
   })
   const committedFilter = ref<MarkTeacherDashboardQuery>({ ...filter.value })
   const filterChangeLoading = ref(false)
   const ongoingExamPageNum = ref(1)
   const ongoingExamPageSize = ref(MARK_DASHBOARD_ONGOING_EXAM_PAGE_SIZE)
+  /** 进行中考试六步旅程服务端筛选；空串表示不过滤 */
+  const ongoingExamJourneyKey = ref<MarkTeacherDashboardJourneyKeyCode | ''>('')
   const pendingTodoPageNum = ref(1)
   const pendingTodoPageSize = ref(MARK_DASHBOARD_PENDING_TODO_PAGE_SIZE)
   const pendingTodoScope = ref<MarkTeacherDashboardPendingTodoScopeCode>(MarkTeacherDashboardPendingTodoScopeCode.ALL)
+  /** 教师本会话是否手动切过待办 Tab；未切过则按 signal 全量计数选默认档。 */
+  const pendingTodoTabUserChosen = ref(false)
 
   let loadGeneration = 0
   let syncingFilterFromServer = false
@@ -98,7 +117,22 @@ export function useMarkTeacherDashboardOverview(
     return message.includes('不在可选范围内')
   }
 
+  function normalizeAndPersistWorkbenchTerm(): void {
+    const term = requireWorkbenchAcademicYearSemester(
+      filter.value.academicYear,
+      filter.value.semester,
+    )
+    filter.value.academicYear = term.academicYear
+    filter.value.semester = term.semester
+    writeMarkWorkbenchTermPreference({
+      academicYear: term.academicYear,
+      semester: term.semester,
+      status: filter.value.status ?? null,
+    })
+  }
+
   function buildFilterQuery(): MarkTeacherDashboardQuery | null {
+    normalizeAndPersistWorkbenchTerm()
     if (!ensureAcademicYearSemesterPair(filter.value.academicYear, filter.value.semester)) {
       return null
     }
@@ -106,13 +140,21 @@ export function useMarkTeacherDashboardOverview(
       filter.value.academicYear,
       filter.value.semester,
     )
-    if (termQuery === null) {
+    if (termQuery === null || !termQuery.academicYear || !termQuery.semester) {
       return null
     }
     return {
       status: filter.value.status,
       publishedInsightLimit: filter.value.publishedInsightLimit,
       ...termQuery,
+    }
+  }
+
+  function buildOngoingExamPageQuery(pageNum: number, pageSize: number) {
+    return {
+      pageNum,
+      pageSize,
+      ...(ongoingExamJourneyKey.value ? { journeyKey: ongoingExamJourneyKey.value } : {}),
     }
   }
 
@@ -124,10 +166,7 @@ export function useMarkTeacherDashboardOverview(
     return {
       ...query,
       loadKey: loadKey.value,
-      ongoingExamPage: {
-        pageNum: ongoingExamPageNum.value,
-        pageSize: ongoingExamPageSize.value,
-      },
+      ongoingExamPage: buildOngoingExamPageQuery(ongoingExamPageNum.value, ongoingExamPageSize.value),
       pendingTodoPage: {
         pageNum: pendingTodoPageNum.value,
         pageSize: pendingTodoPageSize.value,
@@ -139,6 +178,34 @@ export function useMarkTeacherDashboardOverview(
   function resetListPagination(): void {
     ongoingExamPageNum.value = 1
     pendingTodoPageNum.value = 1
+  }
+
+  function clearOngoingExamJourneyFilter(): void {
+    ongoingExamJourneyKey.value = ''
+  }
+
+  /** 未手动选 Tab 时，按 signalMetrics 全量计数写入待办 scope，保证首屏列表与默认 Tab 同真源。 */
+  function syncDefaultPendingTodoScopeFromSignal(
+    metrics: MarkTeacherDashboardSignalSectionVO['signalMetrics'],
+  ): void {
+    if (pendingTodoTabUserChosen.value) {
+      return
+    }
+    if (!metrics || metrics.pendingTodoRowCount <= 0) {
+      pendingTodoScope.value = MarkTeacherDashboardPendingTodoScopeCode.ALL
+      return
+    }
+    pendingTodoScope.value = resolvePendingTodoScopeByTab(
+      resolveDefaultPendingTodoTab({
+        pendingTodoRowCount: metrics.pendingTodoRowCount,
+        urgentTodoCount: metrics.urgentTodoCount,
+        attentionTodoCount: metrics.attentionTodoCount,
+      }),
+    )
+  }
+
+  function markPendingTodoTabUserChosen(): void {
+    pendingTodoTabUserChosen.value = true
   }
 
   function applySignalSection(data: MarkTeacherDashboardSignalSectionVO): void {
@@ -234,7 +301,12 @@ export function useMarkTeacherDashboardOverview(
       return
     }
     const filteredExamCount = current.filterContext.filteredExamCount ?? 0
-    if (filteredExamCount > 0 && (current.ongoingExamPage.total ?? 0) === 0) {
+    // 旅程筛选下 total=0 是合法空结果，禁止再拉全量段伪装加载
+    if (
+      !ongoingExamJourneyKey.value
+      && filteredExamCount > 0
+      && (current.ongoingExamPage.total ?? 0) === 0
+    ) {
       await loadOngoingExamPage(ongoingExamPageNum.value)
     }
     const pendingTodoRowCount = current.signalMetrics?.pendingTodoRowCount ?? 0
@@ -253,6 +325,7 @@ export function useMarkTeacherDashboardOverview(
     }
     if (loadOptions?.fromFilterChange) {
       resetListPagination()
+      clearOngoingExamJourneyFilter()
     }
     const generation = ++loadGeneration
     if (loadOptions?.fromFilterChange) {
@@ -271,6 +344,7 @@ export function useMarkTeacherDashboardOverview(
         return
       }
       applySignalSection(signal)
+      syncDefaultPendingTodoScopeFromSignal(signal.signalMetrics)
       committedFilter.value = { ...filter.value }
       signalLoading.value = false
 
@@ -319,18 +393,18 @@ export function useMarkTeacherDashboardOverview(
   }
 
   async function loadOngoingExamPage(pageNum: number, pageSize?: number): Promise<void> {
-    const sectionQuery = buildSectionQuery()
-    if (!sectionQuery) {
+    if (!loadKey.value) {
       return
     }
     ongoingExamPageNum.value = pageNum
     if (pageSize != null) {
       ongoingExamPageSize.value = pageSize
     }
-    sectionQuery.ongoingExamPage = {
-      pageNum,
-      pageSize: ongoingExamPageSize.value,
+    const sectionQuery = buildSectionQuery()
+    if (!sectionQuery) {
+      return
     }
+    sectionQuery.ongoingExamPage = buildOngoingExamPageQuery(pageNum, ongoingExamPageSize.value)
     examsLoading.value = true
     examsLoadFailed.value = false
     try {
@@ -342,6 +416,19 @@ export function useMarkTeacherDashboardOverview(
     } finally {
       examsLoading.value = false
     }
+  }
+
+  /**
+   * 切换六步旅程服务端筛选：重置页码并重载 exams 段，保证 total 与列表同属筛选域。
+   */
+  async function setOngoingExamJourneyKey(
+    journeyKey: MarkTeacherDashboardJourneyKeyCode | '',
+  ): Promise<void> {
+    if (ongoingExamJourneyKey.value === journeyKey) {
+      return
+    }
+    ongoingExamJourneyKey.value = journeyKey
+    await loadOngoingExamPage(1)
   }
 
   async function loadPendingTodoPage(
@@ -385,14 +472,27 @@ export function useMarkTeacherDashboardOverview(
     if (syncingFilterFromServer) {
       return
     }
-    if (!filter.value.academicYear) {
-      filter.value.semester = undefined
-    }
+    normalizeAndPersistWorkbenchTerm()
     if (!ensureAcademicYearSemesterPair(filter.value.academicYear, filter.value.semester)) {
       debouncedLoadFromFilter.cancel()
       return
     }
     debouncedLoadFromFilter()
+  }
+
+  const isCurrentTermSelected = computed(() =>
+    isCurrentWorkbenchTerm(filter.value.academicYear, filter.value.semester),
+  )
+
+  /** 一键回到当前学年学期，保留状态筛选。 */
+  function handleUseCurrentTerm(): void {
+    if (syncingFilterFromServer) {
+      return
+    }
+    const current = resolveCurrentWorkbenchTerm()
+    filter.value.academicYear = current.academicYear
+    filter.value.semester = current.semester
+    handleFilterChange()
   }
 
   function cancelPendingFilterLoad(): void {
@@ -419,14 +519,21 @@ export function useMarkTeacherDashboardOverview(
     statusOptions,
     ongoingExamPageNum,
     ongoingExamPageSize,
+    ongoingExamJourneyKey,
     pendingTodoPageNum,
     pendingTodoPageSize,
     pendingTodoScope,
+    pendingTodoTabUserChosen,
     suppressTodoTabReload,
     load,
     loadOngoingExamPage,
+    setOngoingExamJourneyKey,
+    clearOngoingExamJourneyFilter,
     loadPendingTodoPage,
     handleFilterChange,
+    handleUseCurrentTerm,
+    isCurrentTermSelected,
     cancelPendingFilterLoad,
+    markPendingTodoTabUserChosen,
   }
 }

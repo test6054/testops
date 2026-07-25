@@ -99,7 +99,7 @@ function onCta() {
 
 <style scoped lang="scss">
 .workbench-context-gate-strip {
-  margin: var(--dp-space-2) 0;
+  margin: var(--dp-space-component-tight) 0;
   max-height: 48px;
   max-width: 100%;
 }
@@ -107,7 +107,7 @@ function onCta() {
 .workbench-context-gate-strip__row {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
 }
 

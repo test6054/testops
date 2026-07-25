@@ -185,7 +185,7 @@ onMounted(() => {
 .archive-scan-batch-snapshot__head {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
 }
 
 .archive-scan-batch-snapshot__title {
@@ -200,7 +200,7 @@ onMounted(() => {
   color: var(--dp-text-secondary);
 }
 .archive-scan-batch-snapshot__error {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   color: var(--dp-error);
 }
 .archive-scan-batch-snapshot__score {

@@ -3,13 +3,26 @@
     <template #head>
       <div class="org-strategy__head">
         <h3 class="org-strategy__title">分配策略</h3>
-        <UiButton v-if="canManage" variant="outline" size="sm" @click="emit('edit-policy')">
+        <UiButton
+          v-if="canManage && !policiesLoadFailed"
+          variant="outline"
+          size="sm"
+          @click="emit('edit-policy')"
+        >
           编辑策略
         </UiButton>
       </div>
     </template>
 
-    <dl class="org-strategy__list">
+    <UiAlertStrip
+      v-if="policiesLoadFailed"
+      tone="error"
+      dense
+      title="分配策略加载失败"
+      class="org-strategy__alert"
+    />
+
+    <dl v-else class="org-strategy__list">
       <div class="org-strategy__row">
         <dt>分配模式</dt>
         <dd>{{ allocationModeLabel }}</dd>
@@ -59,6 +72,7 @@ import {
 } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -68,6 +82,7 @@ const props = defineProps<{
   allocationPolicy?: AllocationPolicyResponse
   recyclePolicy?: RecyclePolicyResponse
   canManage: boolean
+  policiesLoadFailed?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -111,7 +126,7 @@ const autoRecycleEnabled = computed(() =>
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
     width: 100%;
   }
 
@@ -121,30 +136,32 @@ const autoRecycleEnabled = computed(() =>
     font-weight: 600;
   }
 
+  &__alert {
+    margin: var(--dp-space-component-tight) var(--dp-space-component);
+  }
+
   &__list {
     margin: 0;
-    padding: 8px 12px;
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
   }
 
   &__row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 6px 0;
-    border-bottom: 1px solid var(--dp-border-light);
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-component-tight) 0;
+    border-bottom: 1px solid var(--dp-border-subtle);
 
     dt {
       margin: 0;
       font-size: var(--dp-font-size-xs);
-      color: var(--dp-text-muted);
+      color: var(--dp-text-secondary);
     }
 
     dd {
       margin: 0;
-      font-size: var(--dp-font-size-xs);
-      font-weight: 600;
-      text-align: right;
+      font-size: var(--dp-font-size-sm);
       color: var(--dp-text-primary);
     }
 

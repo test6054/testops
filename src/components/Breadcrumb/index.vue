@@ -92,8 +92,8 @@ function breadcrumbTitle(item: RouteRecordRaw): string {
 /** breadcrumb-transform 面包屑动画 */
 .breadcrumb-enter-active {
   transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
+    opacity var(--dp-duration-normal) var(--dp-ease-default),
+    transform var(--dp-duration-normal) var(--dp-ease-default);
 }
 
 .breadcrumb-enter-from,
@@ -118,7 +118,7 @@ function breadcrumbTitle(item: RouteRecordRaw): string {
   align-items: center;
 
   .anticon-right {
-    margin: 0 4px;
+    margin: 0 var(--dp-space-component-xs);
   }
 }
 
@@ -129,7 +129,7 @@ function breadcrumbTitle(item: RouteRecordRaw): string {
 }
 
 .breadcrumb-item-title {
-  transition: color 0.3s ease;
+  transition: color var(--dp-duration-slow) var(--dp-ease-default);
   cursor: pointer;
 
   &:hover {

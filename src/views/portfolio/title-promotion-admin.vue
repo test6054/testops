@@ -12,7 +12,7 @@ import type {
 import type { PortfolioArchiveCategoryTreeNodeVO } from '@/apis/portfolio/types'
 import message from 'ant-design-vue/es/message'
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioTitlePromotionApi } from '@/apis/portfolio/title-promotion'
 import TitlePromotionFlowPanel from '@/components/portfolio/TitlePromotionFlowPanel.vue'
@@ -25,7 +25,6 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
-import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
@@ -73,29 +72,43 @@ import {
   PortfolioTitlePromotionTaskStatusDescription,
 } from '@/types/enums/portfolio-title-promotion-task-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
+import TitlePromotionSurfaceNav from '@/views/portfolio/title-promotion/TitlePromotionSurfaceNav.vue'
+import type { TitlePromotionSurface } from '@/views/portfolio/title-promotion/title-promotion-surface'
+
+const props = withDefaults(
+  defineProps<{
+    /** 路由级工作面：任务与政策 / 申请审核 / 公示与归档 */
+    surface?: TitlePromotionSurface
+  }>(),
+  {
+    surface: 'application',
+  },
+)
 
 const userStore = useUserStore()
 const router = useRouter()
 const route = useRoute()
 const canManageSchoolWorkflow = computed(() => userStore.isTenantAdmin)
-const tabItems = computed(() => {
-  const items: Array<{ key: 'task' | 'application', label: string }> = []
-  if (canManageSchoolWorkflow.value) {
-    items.push({ key: 'task', label: '申报任务' })
+const activeSurface = computed<TitlePromotionSurface>(() => {
+  if (props.surface === 'task' && !canManageSchoolWorkflow.value) {
+    return 'application'
   }
-  items.push({ key: 'application', label: '申报审核' })
-  return items
+  if (props.surface === 'publicity' && !canManageSchoolWorkflow.value) {
+    return 'application'
+  }
+  return props.surface
 })
-const activeTab = ref<'task' | 'application'>(
-  canManageSchoolWorkflow.value ? 'task' : 'application',
+const showTaskSurface = computed(
+  () => canManageSchoolWorkflow.value && activeSurface.value === 'task',
 )
-if (!canManageSchoolWorkflow.value) {
-  activeTab.value = 'application'
-}
+const showApplicationSurface = computed(() => activeSurface.value === 'application')
+const showPublicitySurface = computed(
+  () => canManageSchoolWorkflow.value && activeSurface.value === 'publicity',
+)
 
 /** PF-P0-296：职称治理 taskId / applicationId 深链 */
 function readRouteStringParam(value: unknown): string {
@@ -105,11 +118,6 @@ const pendingLocateTaskId = ref(readRouteStringParam(route.query.taskId))
 const pendingLocateApplicationId = ref(readRouteStringParam(route.query.applicationId))
 const highlightedTaskId = ref('')
 const highlightedApplicationId = ref('')
-if (pendingLocateApplicationId.value) {
-  activeTab.value = 'application'
-} else if (pendingLocateTaskId.value && canManageSchoolWorkflow.value) {
-  activeTab.value = 'task'
-}
 
 function taskRowClassName(record: PortfolioTitlePromotionTaskVO): string {
   return record.id === highlightedTaskId.value ? 'title-promo__row-active' : ''
@@ -167,6 +175,10 @@ const selectedTemplateIds = ref<string[]>([])
 const changeLogs = ref<PortfolioTitleTaskCriteriaChangeLogVO[]>([])
 const emergencyReason = ref('')
 const criteriaLoading = ref(false)
+const criteriaListFailed = ref(false)
+const criteriaCategoryFailed = ref(false)
+const criteriaTemplateFailed = ref(false)
+const criteriaChangeLogFailed = ref(false)
 const criteriaSaving = ref(false)
 const criteriaBaseline = ref('')
 /** 任务条件导入完整读取租户模板库的最大页数，超过时显式暴露配置规模异常。 */
@@ -202,6 +214,10 @@ const appQuery = reactive<{
 }>({
   pageNum: 1,
   pageSize: DEFAULT_LIST_PAGE_SIZE,
+  applicationStatus:
+    props.surface === 'publicity'
+      ? PortfolioTitlePromotionApplicationStatusCode.PUBLICITY
+      : undefined,
 })
 
 const form = reactive({
@@ -327,6 +343,8 @@ async function loadTasks() {
       highlightedTaskId.value = locateOnce
       if (tasks.value.some((item) => item.id === locateOnce)) {
         scrollToHighlightedRow()
+      } else {
+        showFormValidationMessage('深链职称任务不在当前列表，可能已删除或无权查看')
       }
     }
 
@@ -335,8 +353,6 @@ async function loadTasks() {
     if (taskRequestToken.value !== currentToken) {
       return
     }
-    tasks.value = []
-    taskTotal.value = 0
     failTaskLoad()
     showUserError(error, '加载职称任务失败')
   } finally {
@@ -378,8 +394,10 @@ async function loadApps() {
         if (
           matched.applicationStatus === PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING
         ) {
-          void openReviewAsync(matched)
+          openReview(matched)
         }
+      } else {
+        showFormValidationMessage('深链职称申报不在当前列表，可能已删除或无权查看')
       }
     }
 
@@ -388,8 +406,6 @@ async function loadApps() {
     if (appRequestToken.value !== currentToken) {
       return
     }
-    apps.value = []
-    appTotal.value = 0
     failAppLoad()
     showUserError(error, '加载职称申报失败')
   } finally {
@@ -437,17 +453,23 @@ async function saveTask() {
     })
     void message.success('任务已保存')
     editorOpen.value = false
-    await loadTasks()
   } catch (error) {
     showUserError(error, '保存任务失败')
+    return
   } finally {
     saving.value = false
+  }
+  try {
+    await loadTasks()
+  } catch (error) {
+    showUserError(error, '任务已保存，列表同步失败')
   }
 }
 
 async function publishTask(row: PortfolioTitlePromotionTaskVO) {
   const operation = `publish:${row.id}`
   if (!beginWorkflowOperation(operation)) return
+  let wrote = false
   try {
     const confirmed = await confirmAsync({
       title: '确认发布职称申报任务',
@@ -457,18 +479,26 @@ async function publishTask(row: PortfolioTitlePromotionTaskVO) {
     })
     if (!confirmed) return
     await portfolioTitlePromotionApi.publishTask({ id: row.id })
+    wrote = true
     void message.success('任务已发布')
-    await loadTasks()
   } catch (error) {
     showUserError(error, '发布失败')
+    return
   } finally {
     endWorkflowOperation(operation)
+  }
+  if (!wrote) return
+  try {
+    await loadTasks()
+  } catch (error) {
+    showUserError(error, '任务已发布，列表同步失败')
   }
 }
 
 async function closeTask(row: PortfolioTitlePromotionTaskVO) {
   const operation = `close:${row.id}`
   if (!beginWorkflowOperation(operation)) return
+  let wrote = false
   try {
     const confirmed = await confirmAsync({
       title: '确认关闭职称申报任务',
@@ -478,12 +508,19 @@ async function closeTask(row: PortfolioTitlePromotionTaskVO) {
     })
     if (!confirmed) return
     await portfolioTitlePromotionApi.closeTask({ id: row.id })
+    wrote = true
     void message.success('任务已关闭')
-    await loadTasks()
   } catch (error) {
     showUserError(error, '关闭失败')
+    return
   } finally {
     endWorkflowOperation(operation)
+  }
+  if (!wrote) return
+  try {
+    await loadTasks()
+  } catch (error) {
+    showUserError(error, '任务已关闭，列表同步失败')
   }
 }
 
@@ -493,77 +530,84 @@ async function openCriteria(row: PortfolioTitlePromotionTaskVO) {
   emergencyReason.value = ''
   selectedTemplateIds.value = []
   criteriaLoading.value = true
+  criteriaListFailed.value = false
+  criteriaCategoryFailed.value = false
+  criteriaTemplateFailed.value = false
+  criteriaChangeLogFailed.value = false
   try {
     const list = await portfolioTitlePromotionApi.listTaskCriteria({ taskId: row.id })
     criteriaList.value = list || []
     criteriaBaseline.value = criteriaFingerprint()
-    try {
-      const tree = await portfolioArchiveTemplateApi.listCategoryTree()
-      const options: Array<{ value: string, label: string }> = []
-      const visit = (nodes: PortfolioArchiveCategoryTreeNodeVO[]) => {
-        for (const node of nodes) {
-          if (node.status === PortfolioArchiveCategoryStatusCode.ACTIVE) {
-            options.push({
-              value: node.categoryCode,
-              label: node.categoryName + '（' + node.categoryCode + '）',
-            })
-          }
-          visit(node.children || [])
-        }
-      }
-      visit(tree || [])
-      criteriaCategoryOptions.value = options
-    } catch (error) {
-      criteriaCategoryOptions.value = []
-      showUserError(error, '加载档案分类失败')
-    }
-    try {
-      const allTemplates: PortfolioTitleCriteriaTemplateVO[] = []
-      for (let pageNum = 1; pageNum <= TITLE_CRITERIA_TEMPLATE_PAGE_MAX; pageNum++) {
-        const templates = await portfolioTitlePromotionApi.pageCriteriaTemplate({
-          pageNum,
-          pageSize: 100,
-          enabled: true,
-        })
-        allTemplates.push(...(templates.list || []))
-        if (pageNum >= templates.pages || templates.list.length < templates.pageSize) {
-          criteriaTemplates.value = allTemplates
-          break
-        }
-        if (pageNum === TITLE_CRITERIA_TEMPLATE_PAGE_MAX) {
-          criteriaTemplates.value = []
-          showUserError(
-            new Error(`启用条件模板分页超过 ${TITLE_CRITERIA_TEMPLATE_PAGE_MAX} 页`),
-            '加载条件模板失败',
-          )
-          break
-        }
-      }
-    } catch (error) {
-      criteriaTemplates.value = []
-      showUserError(error, '加载条件模板失败')
-    }
-    try {
-      if (row.taskStatus === PortfolioTitlePromotionTaskStatusCode.PUBLISHED) {
-        const logs = await portfolioTitlePromotionApi.pageTaskCriteriaChangeLog({
-          taskId: row.id,
-          pageNum: 1,
-          pageSize: 20,
-        })
-        changeLogs.value = logs.list || []
-      } else {
-        changeLogs.value = []
-      }
-    } catch (error) {
-      changeLogs.value = []
-      showUserError(error, '加载条件变更记录失败')
-    }
   } catch (error) {
+    criteriaListFailed.value = true
     criteriaList.value = []
     criteriaBaseline.value = ''
-    criteriaTemplates.value = []
-    changeLogs.value = []
     showUserError(error, '加载任务条件失败')
+  }
+  try {
+    const tree = await portfolioArchiveTemplateApi.listCategoryTree()
+    const options: Array<{ value: string, label: string }> = []
+    const visit = (nodes: PortfolioArchiveCategoryTreeNodeVO[]) => {
+      for (const node of nodes) {
+        if (node.status === PortfolioArchiveCategoryStatusCode.ACTIVE) {
+          options.push({
+            value: node.categoryCode,
+            label: node.categoryName + '（' + node.categoryCode + '）',
+          })
+        }
+        visit(node.children || [])
+      }
+    }
+    visit(tree || [])
+    criteriaCategoryOptions.value = options
+  } catch (error) {
+    criteriaCategoryFailed.value = true
+    criteriaCategoryOptions.value = []
+    showUserError(error, '加载档案分类失败')
+  }
+  try {
+    const allTemplates: PortfolioTitleCriteriaTemplateVO[] = []
+    for (let pageNum = 1; pageNum <= TITLE_CRITERIA_TEMPLATE_PAGE_MAX; pageNum++) {
+      const templates = await portfolioTitlePromotionApi.pageCriteriaTemplate({
+        pageNum,
+        pageSize: 100,
+        enabled: true,
+      })
+      allTemplates.push(...(templates.list || []))
+      if (pageNum >= templates.pages || templates.list.length < templates.pageSize) {
+        criteriaTemplates.value = allTemplates
+        break
+      }
+      if (pageNum === TITLE_CRITERIA_TEMPLATE_PAGE_MAX) {
+        criteriaTemplates.value = []
+        criteriaTemplateFailed.value = true
+        showUserError(
+          new Error(`启用条件模板分页超过 ${TITLE_CRITERIA_TEMPLATE_PAGE_MAX} 页`),
+          '加载条件模板失败',
+        )
+        break
+      }
+    }
+  } catch (error) {
+    criteriaTemplateFailed.value = true
+    criteriaTemplates.value = []
+    showUserError(error, '加载条件模板失败')
+  }
+  try {
+    if (row.taskStatus === PortfolioTitlePromotionTaskStatusCode.PUBLISHED) {
+      const logs = await portfolioTitlePromotionApi.pageTaskCriteriaChangeLog({
+        taskId: row.id,
+        pageNum: 1,
+        pageSize: 20,
+      })
+      changeLogs.value = logs.list || []
+    } else {
+      changeLogs.value = []
+    }
+  } catch (error) {
+    criteriaChangeLogFailed.value = true
+    changeLogs.value = []
+    showUserError(error, '加载条件变更记录失败')
   } finally {
     criteriaLoading.value = false
   }
@@ -591,7 +635,7 @@ const jobCategoryOptions = ALL_PORTFOLIO_TITLE_JOB_CATEGORY_CODES.map((value) =>
 }))
 
 function canEditCriteriaList() {
-  if (!criteriaTask.value) return false
+  if (!criteriaTask.value || criteriaListFailed.value) return false
   return (
     criteriaTask.value.taskStatus === PortfolioTitlePromotionTaskStatusCode.DRAFT
     || criteriaTask.value.taskStatus === PortfolioTitlePromotionTaskStatusCode.PUBLISHED
@@ -796,11 +840,16 @@ async function importTemplates() {
     criteriaBaseline.value = criteriaFingerprint()
     selectedTemplateIds.value = []
     void message.success('模板已导入')
-    await loadTasks()
   } catch (error) {
     showUserError(error, '导入模板失败')
+    return
   } finally {
     criteriaSaving.value = false
+  }
+  try {
+    await loadTasks()
+  } catch (error) {
+    showUserError(error, '模板已导入，任务列表同步失败')
   }
 }
 
@@ -819,11 +868,16 @@ async function saveDraftCriteriaReplace() {
     })
     criteriaBaseline.value = criteriaFingerprint()
     void message.success('草稿条件已保存')
-    await loadTasks()
   } catch (error) {
     showUserError(error, '保存条件失败')
+    return
   } finally {
     criteriaSaving.value = false
+  }
+  try {
+    await loadTasks()
+  } catch (error) {
+    showUserError(error, '草稿条件已保存，任务列表同步失败')
   }
 }
 
@@ -845,66 +899,111 @@ async function emergencyReplaceCriteria() {
     okText: '确认修正',
   })
   if (!confirmed) return
+  const taskId = criteriaTask.value.id
   criteriaSaving.value = true
   try {
     criteriaList.value = await portfolioTitlePromotionApi.emergencyReplaceTaskCriteria({
-      taskId: criteriaTask.value.id,
+      taskId,
       changeReason: emergencyReason.value.trim(),
       criteriaItems: toCriteriaItems(),
     })
     criteriaBaseline.value = criteriaFingerprint()
     void message.success('紧急修正已生效（草稿、退回补正及之后新申报）')
     emergencyReason.value = ''
+  } catch (error) {
+    showUserError(error, '紧急修正失败')
+    return
+  } finally {
+    criteriaSaving.value = false
+  }
+  try {
     const logs = await portfolioTitlePromotionApi.pageTaskCriteriaChangeLog({
-      taskId: criteriaTask.value.id,
+      taskId,
       pageNum: 1,
       pageSize: 20,
     })
     changeLogs.value = logs.list || []
+  } catch (error) {
+    showUserError(error, '紧急修正已生效，变更日志同步失败')
+  }
+  try {
     await loadTasks()
   } catch (error) {
-    showUserError(error, '紧急修正失败')
-  } finally {
-    criteriaSaving.value = false
+    showUserError(error, '紧急修正已生效，任务列表同步失败')
   }
 }
 
 function openExpertReview(row: PortfolioTitlePromotionApplicationVO) {
-  if (writing.value) return
-  void bindActionTeacherAndAssert(row.teacherUserId, '职称专家评审').then((ok) => {
-    if (!ok) return
-    void openExpertReviewAsync(row)
-  })
+  if (writing.value || !row.id) return
+  const operation = `openExpert:${row.id}`
+  if (!beginWorkflowOperation(operation)) return
+  const reviewContext = {
+    applicationId: String(row.id),
+    teacherId: row.teacherUserId != null ? String(row.teacherUserId) : '',
+  }
+  void (async () => {
+    try {
+      const ok = await bindActionTeacherAndAssert(reviewContext.teacherId, '职称专家评审')
+      if (!ok || operationKey.value !== operation) return
+      await openExpertReviewAsync(row, operation)
+    } finally {
+      endWorkflowOperation(operation)
+    }
+  })()
 }
 
-async function openExpertReviewAsync(row: PortfolioTitlePromotionApplicationVO) {
+async function openExpertReviewAsync(
+  row: PortfolioTitlePromotionApplicationVO,
+  operation: string,
+) {
   if (!row.id) return
+  const applicationId = String(row.id)
   try {
     expertFlowLoading.value = true
-    expertTarget.value = await portfolioTitlePromotionApi.getApplication(row.id)
-    expertFlow.value = await portfolioTitlePromotionApi.getFlowView({
-      applicationId: row.id,
-      pathCode: expertTarget.value.pathCode,
-      jobCategory: expertTarget.value.jobCategory,
+    const detail = await portfolioTitlePromotionApi.getApplication(applicationId)
+    if (operationKey.value !== operation) return
+    const flow = await portfolioTitlePromotionApi.getFlowView({
+      applicationId,
+      pathCode: detail.pathCode,
+      jobCategory: detail.jobCategory,
     })
+    if (operationKey.value !== operation) return
+    expertTarget.value = detail
+    expertFlow.value = flow
     expertForm.opinion = ''
     expertOpen.value = true
   } catch (error) {
-    showUserError(error, '加载申报详情失败')
+    if (operationKey.value === operation) {
+      showUserError(error, '加载申报详情失败')
+    }
   } finally {
-    expertFlowLoading.value = false
+    if (operationKey.value === operation) {
+      expertFlowLoading.value = false
+    }
   }
 }
 
 function openPublicity(row: PortfolioTitlePromotionApplicationVO) {
-  if (writing.value) return
-  void bindActionTeacherAndAssert(row.teacherUserId, '职称公示发布').then((ok) => {
-    if (!ok) return
-    publicityTarget.value = row
-    publicityForm.days = 7
-    publicityForm.remark = ''
-    publicityOpen.value = true
-  })
+  if (writing.value || !row.id) return
+  const operation = `openPublicity:${row.id}`
+  if (!beginWorkflowOperation(operation)) return
+  const reviewContext = {
+    applicationId: String(row.id),
+    teacherId: row.teacherUserId != null ? String(row.teacherUserId) : '',
+    row,
+  }
+  void (async () => {
+    try {
+      const ok = await bindActionTeacherAndAssert(reviewContext.teacherId, '职称公示发布')
+      if (!ok || operationKey.value !== operation) return
+      publicityTarget.value = reviewContext.row
+      publicityForm.days = 7
+      publicityForm.remark = ''
+      publicityOpen.value = true
+    } finally {
+      endWorkflowOperation(operation)
+    }
+  })()
 }
 
 async function runExpertReview(approve: boolean) {
@@ -915,6 +1014,7 @@ async function runExpertReview(approve: boolean) {
   if (!(await bindActionTeacherAndAssert(target.teacherUserId, '职称专家评审'))) return
   const operation = `expert:${targetId}`
   if (!beginWorkflowOperation(operation)) return
+  let wrote = false
   try {
     if (!approve) {
       if (!expertForm.opinion.trim()) {
@@ -934,13 +1034,20 @@ async function runExpertReview(approve: boolean) {
       opinion: expertForm.opinion.trim() || undefined,
       approve,
     })
+    wrote = true
     void message.success(approve ? '专家评审已通过' : '专家评审已驳回')
     expertOpen.value = false
-    await loadApps()
   } catch (error) {
     showUserError(error, '专家评审失败')
+    return
   } finally {
     endWorkflowOperation(operation)
+  }
+  if (!wrote) return
+  try {
+    await loadApps()
+  } catch (error) {
+    showUserError(error, '专家评审已生效，申报列表同步失败')
   }
 }
 
@@ -956,6 +1063,7 @@ async function runStartPublicity() {
   if (!(await bindActionTeacherAndAssert(target.teacherUserId, '职称公示发布'))) return
   const operation = `publicity:${targetId}`
   if (!beginWorkflowOperation(operation)) return
+  let wrote = false
   try {
     const confirmed = await confirmAsync({
       title: '确认发布职称公示',
@@ -969,13 +1077,20 @@ async function runStartPublicity() {
       days: publicityForm.days,
       remark: publicityForm.remark.trim() || undefined,
     })
+    wrote = true
     void message.success('公示已发布')
     publicityOpen.value = false
-    await loadApps()
   } catch (error) {
     showUserError(error, '发布公示失败')
+    return
   } finally {
     endWorkflowOperation(operation)
+  }
+  if (!wrote) return
+  try {
+    await loadApps()
+  } catch (error) {
+    showUserError(error, '公示已发布，申报列表同步失败')
   }
 }
 
@@ -984,6 +1099,7 @@ async function runArchivePublicity(row: PortfolioTitlePromotionApplicationVO) {
   if (!(await bindActionTeacherAndAssert(row.teacherUserId, '职称公示归档'))) return
   const operation = `archive:${row.id}`
   if (!beginWorkflowOperation(operation)) return
+  let wrote = false
   try {
     const confirmed = await confirmAsync({
       title: '确认归档职称公示',
@@ -993,12 +1109,19 @@ async function runArchivePublicity(row: PortfolioTitlePromotionApplicationVO) {
     })
     if (!confirmed) return
     await portfolioTitlePromotionApi.archivePublicity({ id: row.id })
+    wrote = true
     void message.success('公示已归档')
-    await loadApps()
   } catch (error) {
     showUserError(error, '归档失败')
+    return
   } finally {
     endWorkflowOperation(operation)
+  }
+  if (!wrote) return
+  try {
+    await loadApps()
+  } catch (error) {
+    showUserError(error, '公示已归档，申报列表同步失败')
   }
 }
 
@@ -1009,29 +1132,52 @@ function canArchivePublicity(row: PortfolioTitlePromotionApplicationVO) {
 }
 
 function openReview(row: PortfolioTitlePromotionApplicationVO) {
-  if (writing.value) return
-  void bindActionTeacherAndAssert(row.teacherUserId, '职称申报审核').then((ok) => {
-    if (!ok) return
-    void openReviewAsync(row)
-  })
+  if (writing.value || !row.id) return
+  const operation = `openReview:${row.id}`
+  if (!beginWorkflowOperation(operation)) return
+  const reviewContext = {
+    applicationId: String(row.id),
+    teacherId: row.teacherUserId != null ? String(row.teacherUserId) : '',
+  }
+  void (async () => {
+    try {
+      const ok = await bindActionTeacherAndAssert(reviewContext.teacherId, '职称申报审核')
+      if (!ok || operationKey.value !== operation) return
+      await openReviewAsync(row, operation)
+    } finally {
+      endWorkflowOperation(operation)
+    }
+  })()
 }
 
-async function openReviewAsync(row: PortfolioTitlePromotionApplicationVO) {
+async function openReviewAsync(
+  row: PortfolioTitlePromotionApplicationVO,
+  operation: string,
+) {
   if (!row.id) return
+  const applicationId = String(row.id)
   try {
     reviewFlowLoading.value = true
-    reviewTarget.value = await portfolioTitlePromotionApi.getApplication(row.id)
-    reviewFlow.value = await portfolioTitlePromotionApi.getFlowView({
-      applicationId: row.id,
-      pathCode: reviewTarget.value.pathCode,
-      jobCategory: reviewTarget.value.jobCategory,
+    const detail = await portfolioTitlePromotionApi.getApplication(applicationId)
+    if (operationKey.value !== operation) return
+    const flow = await portfolioTitlePromotionApi.getFlowView({
+      applicationId,
+      pathCode: detail.pathCode,
+      jobCategory: detail.jobCategory,
     })
+    if (operationKey.value !== operation) return
+    reviewTarget.value = detail
+    reviewFlow.value = flow
     reviewForm.opinion = ''
     reviewOpen.value = true
   } catch (error) {
-    showUserError(error, '加载申报详情失败')
+    if (operationKey.value === operation) {
+      showUserError(error, '加载申报详情失败')
+    }
   } finally {
-    reviewFlowLoading.value = false
+    if (operationKey.value === operation) {
+      reviewFlowLoading.value = false
+    }
   }
 }
 
@@ -1045,6 +1191,7 @@ async function runReview(
   if (!(await bindActionTeacherAndAssert(target.teacherUserId, '职称申报审核'))) return
   const operation = `${action}:${targetId}`
   if (!beginWorkflowOperation(operation)) return
+  let wrote = false
   try {
     const negativeAction
       = action === 'collegeReturn' || action === 'hrReturn' || action === 'hrReject'
@@ -1083,13 +1230,20 @@ async function runReview(
         await portfolioTitlePromotionApi.hrReject(payload)
         break
     }
+    wrote = true
     void message.success('审核操作已完成')
     reviewOpen.value = false
-    await loadApps()
   } catch (error) {
     showUserError(error, '审核失败')
+    return
   } finally {
     endWorkflowOperation(operation)
+  }
+  if (!wrote) return
+  try {
+    await loadApps()
+  } catch (error) {
+    showUserError(error, '审核已生效，申报列表同步失败')
   }
 }
 
@@ -1106,10 +1260,34 @@ function onAppPageChange(page: { current: number, pageSize: number }) {
 }
 
 onMounted(() => {
-  if (canManageSchoolWorkflow.value) {
-    void loadTasks()
+  if (
+    pendingLocateTaskId.value
+    && canManageSchoolWorkflow.value
+    && activeSurface.value !== 'task'
+  ) {
+    void router.replace({
+      name: 'PortfolioTitlePromotionTasks',
+      query: route.query,
+    })
+    return
   }
-  void loadApps()
+  if (pendingLocateApplicationId.value && activeSurface.value === 'task') {
+    void router.replace({
+      name:
+        route.name === 'PortfolioDepartmentTitlePromotionReview'
+          ? 'PortfolioDepartmentTitlePromotionReview'
+          : 'PortfolioTitlePromotionApplications',
+      query: route.query,
+    })
+    return
+  }
+  if (showTaskSurface.value) {
+    void loadTasks()
+    return
+  }
+  if (showApplicationSurface.value || showPublicitySurface.value) {
+    void loadApps()
+  }
 })
 </script>
 
@@ -1119,14 +1297,26 @@ onMounted(() => {
       <ContextBar
         layout="workbench"
         show-title
-        title="职称申报辅助"
-        subtitle="任务发布 · 匹配度核验"
+        :title="
+          showTaskSurface
+            ? '职称任务与政策'
+            : showPublicitySurface
+              ? '职称公示与归档'
+              : '职称申请审核'
+        "
+        :subtitle="
+          showTaskSurface
+            ? '任务发布 · 资格条件'
+            : showPublicitySurface
+              ? '公示发布 · 到期归档'
+              : '院审 · 人事复审 · 专家评审'
+        "
       >
         <template #actions>
           <UiButton
             variant="primary"
             size="sm"
-            v-if="canManageSchoolWorkflow && activeTab === 'task'"
+            v-if="showTaskSurface"
             :disabled="writing"
             @click="openCreate"
           >
@@ -1142,14 +1332,12 @@ onMounted(() => {
       :description="archiveWriteBlockMessage"
     />
     <UiCard>
-      <UiSectionTabs
-        v-model="activeTab"
-        :items="tabItems"
-        compact
-        divided
+      <TitlePromotionSurfaceNav
         class="title-promo__tabs"
+        :surface="activeSurface"
+        :show-school-surfaces="canManageSchoolWorkflow"
       />
-      <template v-if="canManageSchoolWorkflow && activeTab === 'task'">
+      <template v-if="showTaskSurface">
         <UiSpin :spinning="taskLoading">
           <WorkbenchContextGateStrip
             v-if="!taskLoading && !tasks.length"
@@ -1219,7 +1407,7 @@ onMounted(() => {
           </UiDataTable>
         </UiSpin>
       </template>
-      <template v-else-if="activeTab === 'application'">
+      <template v-else-if="showApplicationSurface || showPublicitySurface">
         <div class="title-promo__filters">
           <UiSelect
             size="sm"
@@ -1236,7 +1424,11 @@ onMounted(() => {
             "
           />
           <span class="title-promo__toolbar-hint">
-            校级流程：院审 → 人事复审 → 专家评审 → 公示 → 归档
+            {{
+              showPublicitySurface
+                ? '本面仅处理公示发布与到期归档'
+                : '本面处理院审 / 人事复审 / 专家评审'
+            }}
           </span>
         </div>
         <UiSpin :spinning="appLoading">
@@ -1260,7 +1452,7 @@ onMounted(() => {
               </template>
               <template v-else-if="column.key === 'lifecycleStatus'">
                 <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-                  {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+                  {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
                 </UiTag>
                 <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
                 <span v-else-if="!record.lifecycleStatus">—</span>
@@ -1295,57 +1487,60 @@ onMounted(() => {
                 >
                   读整袋
                 </UiButton>
-                <UiButton
-                  v-if="
-                    record.applicationStatus
-                      === PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING
-                      || (canManageSchoolWorkflow
+                <template v-if="showApplicationSurface">
+                  <UiButton
+                    v-if="
+                      record.applicationStatus
+                        === PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING
+                        || (canManageSchoolWorkflow
+                          && record.applicationStatus
+                            === PortfolioTitlePromotionApplicationStatusCode.HR_PENDING)
+                    "
+                    size="sm"
+                    variant="primary"
+                    :disabled="writing"
+                    @click="openReview(record)"
+                  >
+                    审核
+                  </UiButton>
+                  <UiButton
+                    v-if="
+                      canManageSchoolWorkflow
                         && record.applicationStatus
-                          === PortfolioTitlePromotionApplicationStatusCode.HR_PENDING)
-                  "
-                  size="sm"
-                  variant="primary"
-                  :disabled="writing"
-                  @click="openReview(record)"
-                >
-                  审核
-                </UiButton>
-                <UiButton
-                  v-if="
-                    canManageSchoolWorkflow
-                      && record.applicationStatus
-                        === PortfolioTitlePromotionApplicationStatusCode.EXPERT_PENDING
-                  "
-                  size="sm"
-                  variant="primary"
-                  :disabled="writing"
-                  @click="openExpertReview(record)"
-                >
-                  专家评审
-                </UiButton>
-                <UiButton
-                  v-if="
-                    canManageSchoolWorkflow
-                      && record.applicationStatus
+                          === PortfolioTitlePromotionApplicationStatusCode.EXPERT_PENDING
+                    "
+                    size="sm"
+                    variant="primary"
+                    :disabled="writing"
+                    @click="openExpertReview(record)"
+                  >
+                    专家评审
+                  </UiButton>
+                </template>
+                <template v-else-if="showPublicitySurface">
+                  <UiButton
+                    v-if="
+                      record.applicationStatus
                         === PortfolioTitlePromotionApplicationStatusCode.PUBLICITY
-                      && !record.publicityStartTime
-                  "
-                  variant="primary"
-                  size="sm"
-                  :disabled="writing"
-                  @click="openPublicity(record)"
-                >
-                  发布公示
-                </UiButton>
-                <UiButton
-                  v-if="canManageSchoolWorkflow && canArchivePublicity(record)"
-                  size="sm"
-                  variant="soft"
-                  :disabled="writing"
-                  @click="runArchivePublicity(record)"
-                >
-                  归档
-                </UiButton>
+                        && !record.publicityStartTime
+                    "
+                    variant="primary"
+                    size="sm"
+                    :disabled="writing"
+                    @click="openPublicity(record)"
+                  >
+                    发布公示
+                  </UiButton>
+                  <UiButton
+                    v-if="canArchivePublicity(record)"
+                    size="sm"
+                    variant="soft"
+                    :disabled="writing"
+                    @click="runArchivePublicity(record)"
+                  >
+                    归档
+                  </UiButton>
+                </template>
               </template>
             </template>
           </UiDataTable>
@@ -1378,7 +1573,7 @@ onMounted(() => {
     <UiDrawer v-model:open="reviewOpen" title="审核申报" width="640">
       <div v-if="reviewTarget" class="title-promo__form">
         <TitlePromotionFlowPanel :flow="reviewFlow" :loading="reviewFlowLoading" />
-        <div class="title-promo__actions" style="margin-bottom: 12px">
+        <div class="title-promo__actions" style="margin-bottom: var(--dp-space-component)">
           <UiButton
             variant="outline"
             size="sm"
@@ -1497,7 +1692,7 @@ onMounted(() => {
     <UiDrawer v-model:open="expertOpen" title="专家评审" width="640">
       <div v-if="expertTarget" class="title-promo__form">
         <TitlePromotionFlowPanel :flow="expertFlow" :loading="expertFlowLoading" />
-        <div class="title-promo__actions" style="margin-bottom: 12px">
+        <div class="title-promo__actions" style="margin-bottom: var(--dp-space-component)">
           <UiButton
             variant="outline"
             size="sm"
@@ -1601,6 +1796,34 @@ onMounted(() => {
           {{ criteriaTask.taskName }} · {{ criteriaTask.taskStatus }} · 共
           {{ criteriaList.length }} 条
         </p>
+        <UiAlertStrip
+          v-if="criteriaListFailed"
+          tone="error"
+          title="条件列表加载失败"
+          description="当前不可编辑条件；关闭后重新打开条件抽屉"
+          class="mb-2"
+        />
+        <UiAlertStrip
+          v-if="criteriaCategoryFailed"
+          tone="warning"
+          title="档案分类加载失败"
+          description="证据分类选项不可用，保存含分类条件前须恢复"
+          class="mb-2"
+        />
+        <UiAlertStrip
+          v-if="criteriaTemplateFailed"
+          tone="warning"
+          title="条件模板加载失败"
+          description="模板导入暂不可用，不影响已加载条件行编辑"
+          class="mb-2"
+        />
+        <UiAlertStrip
+          v-if="criteriaChangeLogFailed"
+          tone="warning"
+          title="变更记录加载失败"
+          description="不影响条件保存；变更日志区暂不可用"
+          class="mb-2"
+        />
         <UiSpin :spinning="criteriaLoading || criteriaSaving">
           <div
             v-if="criteriaTask.taskStatus === PortfolioTitlePromotionTaskStatusCode.DRAFT"
@@ -1863,8 +2086,8 @@ onMounted(() => {
 .title-promo__filters {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
 }
 .title-promo__toolbar-hint {
   margin-left: auto;
@@ -1887,7 +2110,7 @@ onMounted(() => {
 .title-promo__form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .title-promo__form label {
   font-size: var(--dp-font-size-sm);
@@ -1895,7 +2118,7 @@ onMounted(() => {
 }
 .title-promo__match {
   margin: 0;
-  padding-left: 16px;
+  padding-left: var(--dp-space-block);
   font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }
@@ -1912,18 +2135,18 @@ onMounted(() => {
 .title-promo__criteria-grid {
   display: grid;
   grid-template-columns: 72px 1fr 72px 1fr;
-  gap: 8px 10px;
+  gap: var(--dp-space-component-tight) var(--dp-space-component);
   align-items: center;
 }
 .title-promo__actions {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   flex-wrap: wrap;
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
 }
 
 .title-promo__actions--spaced {
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .title-promo__hint {
@@ -1935,8 +2158,8 @@ onMounted(() => {
 .title-promo__criteria-import {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-3);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 
 .title-promo__criteria-import--row {
@@ -1946,25 +2169,25 @@ onMounted(() => {
 
 .title-promo__criteria-note-label {
   display: block;
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .title-promo__criteria-check {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
-  margin-top: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .title-promo__criteria-list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
-  margin-bottom: var(--dp-space-3);
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
 }
 
 .title-promo__criteria-panel {
-  padding: var(--dp-space-3);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control);
   font-size: var(--dp-font-size-sm);
@@ -1974,8 +2197,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .title-promo__field-label {
@@ -1985,24 +2208,24 @@ onMounted(() => {
 
 .title-promo__field-label--block {
   display: block;
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .title-promo__checkbox-row {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
-  margin-top: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .title-promo__emergency {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .title-promo__change-log {
-  padding: var(--dp-space-2);
+  padding: var(--dp-space-component-tight);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control);
   font-size: var(--dp-font-size-sm);

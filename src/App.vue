@@ -1,15 +1,21 @@
 <script lang="ts" setup>
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import theme from 'ant-design-vue/es/theme'
-import { onBeforeUnmount, watch } from 'vue'
-import GlobalPromptInputDialog from '@/components/quality/GlobalPromptInputDialog.vue'
+import { defineAsyncComponent, onBeforeUnmount, watch } from 'vue'
 import UiConfigProvider from '@/components/ui-guide/ui/UiConfigProvider.vue'
 import UiWatermark from '@/components/ui-guide/ui/UiWatermark.vue'
 import UiErrorBoundary from '@/components/UiErrorBoundary.vue'
-import GlobalConfirmDialog from '@/components/workbench/GlobalConfirmDialog.vue'
 import { useAppStore, useUserStore } from '@/stores'
 import { useNotificationStore } from '@/stores/modules/notification'
 import { isScannerKioskBrowserPage } from '@/utils/kiosk-auth'
+
+/** 全局对话框按需 chunk：不阻塞首屏解析，首次 confirm/prompt 时再加载 */
+const GlobalConfirmDialog = defineAsyncComponent(
+  () => import('@/components/workbench/GlobalConfirmDialog.vue'),
+)
+const GlobalPromptInputDialog = defineAsyncComponent(
+  () => import('@/components/quality/GlobalPromptInputDialog.vue'),
+)
 
 defineOptions({ name: 'App' })
 
@@ -20,22 +26,24 @@ const DP_FONT_FAMILY_SANS
  * Ant Design Vue 全局主题配置
  *
  * 提到模块顶层常量：避免每次 setup 都重新构造对象，去掉响应式无意义开销。
- * 主题色升级时仅改这一处即可（首屏 FOUC 兜底见 src/styles/ui-tokens.scss）。
+ * 品牌主色仅在 token.colorPrimary 升级；首屏 FOUC 色阶见 src/styles/ui-tokens.scss（须与本 seed 同步）。
  *
  * Cloudscape 对齐：中性灰画布 + 白面板层级，克制的控件几何与表格密度。
+ * 主色：超星对齐现代教务蓝 #2B67FF（现场唯一品牌主色；禁止沉蓝 #1F5A9A / 第二主色 / 紫靛 chrome）。
  */
 const THEME_CONFIG = Object.freeze({
   cssVar: true,
   token: Object.freeze({
+    colorPrimary: '#2B67FF',
     borderRadius: 6,
     fontSize: 14,
     fontFamily: DP_FONT_FAMILY_SANS,
-    colorBgLayout: '#f2f3f3',
+    colorBgLayout: '#f2f3f5',
     controlHeight: 36,
   }),
   components: Object.freeze({
     Table: Object.freeze({
-      headerBg: '#f8f9fa',
+      headerBg: '#f6f8fb',
       cellPaddingBlock: 12,
     }),
     Card: Object.freeze({

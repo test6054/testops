@@ -1,4 +1,5 @@
 import type { DuplicateResolutionStatusCode } from './duplicate-resolution-status'
+import type { PaperInstanceDisplayVO } from './exam-score'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 /**
  * 影像账本 API - 对接 edu-mark 模块 ImageLedgerController
@@ -13,6 +14,7 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
  * - 后端 Long ID 统一用 string 表达到前端
  */
 import type { PageResult, QueryDto } from '@/types'
+import type { QualityDecisionCode } from '@/types/enums/quality-decision-enum'
 import http from '@/config/axios'
 import { LedgerStatusCode } from '@/types/enums/ledger-status-enum'
 
@@ -83,6 +85,20 @@ export function executeImageLedgerBalance(
 
 // ─── 重复影像处置 ─────────────────────────────────────
 
+/** 重复影像单侧页证据 - 对应 DuplicatePageEvidenceVO */
+export interface DuplicatePageEvidenceVO {
+  pageId: string
+  paperInstanceId: string
+  paperDisplay: PaperInstanceDisplayVO
+  scanBatchId?: string
+  scanBatchDisplayName?: string
+  templatePageNo?: number
+  pageSeq?: number
+  qualityStatus?: QualityDecisionCode
+  scannedTime?: string
+  sideLabel: string
+}
+
 /** 重复影像处置记录 - 对应 ExamPaperDuplicateResolutionVO */
 export interface ExamPaperDuplicateResolutionVO {
   id: string
@@ -95,6 +111,8 @@ export interface ExamPaperDuplicateResolutionVO {
   selectedPaperInstanceId?: string
   resolutionStatus: DuplicateResolutionStatusCode
   resolutionReason?: string
+  firstPageEvidence: DuplicatePageEvidenceVO
+  secondPageEvidence: DuplicatePageEvidenceVO
   resolvedUserId?: string
   resolvedTime?: string
   createTime?: string
@@ -122,13 +140,15 @@ export function pagePendingDuplicates(
 export interface DuplicateResolveRequest {
   examId: string
   resolutionId: string
+  /** 教师选择保留的扫描页 ID，必须是该记录双侧页之一 */
+  selectedPageId: string
   /** 教师选择保留的试卷实例ID，必须是该记录中两份之一 */
   selectedPaperInstanceId: string
   resolutionReason: string
 }
 
 /**
- * 处置重复影像：教师选择保留某一张试卷实例
+ * 处置重复影像：教师按证据侧选择保留扫描页（同卷仅废未保留页，异卷废未保留答卷）
  * POST /api/mark/exams/binding/resolve-duplicate
  */
 export function resolveDuplicate(request: DuplicateResolveRequest): Promise<boolean> {

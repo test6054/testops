@@ -4,7 +4,8 @@
  */
 
 import type { RouteRecordRaw } from 'vue-router'
-import { readPortfolioReviewAccessFlag } from '@/composables/usePortfolioReviewAccess'
+import type { PortfolioWorkShellCode } from '@/apis/portfolio/types'
+import { readPortfolioReviewAccessFlag, readPortfolioWorkShellCode } from '@/composables/usePortfolioReviewAccess'
 import { archiveVolumeWorkspaceRoutes } from '@/router/routes/archive-volume-workspace'
 import { commonRoutes, errorRoutes } from '@/router/routes/common'
 import { constantRoutes } from '@/router/routes/constant'
@@ -134,6 +135,7 @@ export function getRoutePermission(path: string): {
   roles: RoleEnum[]
   requireTenantAdmin?: boolean
   requirePortfolioReviewer?: boolean
+  portfolioWorkShells?: PortfolioWorkShellCode[]
 } | undefined {
     const route = findRouteByPath(path)
 
@@ -145,6 +147,7 @@ export function getRoutePermission(path: string): {
         roles: route.meta.roles || [],
         requireTenantAdmin: route.meta.requireTenantAdmin,
         requirePortfolioReviewer: route.meta.requirePortfolioReviewer,
+        portfolioWorkShells: route.meta.portfolioWorkShells,
     }
 }
 
@@ -160,6 +163,23 @@ export function passesPortfolioReviewerGate(userRole: RoleEnum, isTenantAdmin: b
     return readPortfolioReviewAccessFlag() === true
   }
   return false
+}
+
+/** 路由守卫读取当前档案袋工作壳；非法编码视为未选择。 */
+function resolveCurrentPortfolioWorkShell(): PortfolioWorkShellCode | '' {
+  try {
+    return readPortfolioWorkShellCode()
+  } catch {
+    return ''
+  }
+}
+
+function passesPortfolioWorkShellGate(allowed?: PortfolioWorkShellCode[]): boolean {
+  if (!allowed?.length) {
+    return true
+  }
+  const currentWorkShell = resolveCurrentPortfolioWorkShell()
+  return Boolean(currentWorkShell && allowed.includes(currentWorkShell))
 }
 
 /**
@@ -182,10 +202,10 @@ export function hasRoutePermission(
     }
 
     if (userRole === RoleEnum.SUPER_ADMIN) {
-        if (permission.requireTenantAdmin) {
-            return passesTenantAdminRouteGate(userRole, isTenantAdmin)
+        if (permission.requireTenantAdmin && !passesTenantAdminRouteGate(userRole, isTenantAdmin)) {
+            return false
         }
-        return true
+        return passesPortfolioWorkShellGate(permission.portfolioWorkShells)
     }
 
     // 检查角色权限
@@ -196,7 +216,10 @@ export function hasRoutePermission(
     if (permission.requireTenantAdmin && !passesTenantAdminRouteGate(userRole, isTenantAdmin)) {
         return false
     }
-    return !(permission.requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin));
+    if (permission.requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin)) {
+        return false
+    }
+    return passesPortfolioWorkShellGate(permission.portfolioWorkShells)
 }
 
 /**
@@ -221,10 +244,10 @@ export function hasRouteNamePermission(
         return false
     }
     if (userRole === RoleEnum.SUPER_ADMIN) {
-        if (requireTenantAdmin) {
-            return passesTenantAdminRouteGate(userRole, isTenantAdmin)
+        if (requireTenantAdmin && !passesTenantAdminRouteGate(userRole, isTenantAdmin)) {
+            return false
         }
-        return true
+        return passesPortfolioWorkShellGate(route.meta.portfolioWorkShells)
     }
     if (!roles.includes(userRole)) {
         return false
@@ -233,7 +256,10 @@ export function hasRouteNamePermission(
         return false
     }
     const requirePortfolioReviewer = route.meta.requirePortfolioReviewer
-    return !(requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin));
+    if (requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin)) {
+        return false
+    }
+    return passesPortfolioWorkShellGate(route.meta.portfolioWorkShells)
 }
 
 /**

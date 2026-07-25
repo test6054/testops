@@ -3,7 +3,7 @@
 
  * 批阅沉浸式布局：左侧影像/材料区 + 右侧 sticky 给分面板 + 可选顶部队列与底部操作条。
 
- * 配合路由 meta.layoutWide 使用，对标行业「左卷右分」批阅工作台。
+ * 配合路由 meta.layoutImmersive 使用，对标行业「左卷右分」批阅工作台。
 
  * 涉密场次：强制平铺水印；密级状态条由 exam-workspace-layout 统一展示。
 

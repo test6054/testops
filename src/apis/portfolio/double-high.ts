@@ -1,30 +1,31 @@
 import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { PortfolioDoubleHighConstructionDimensionCode } from '@/types/enums/portfolio-double-high-construction-dimension-enum'
 import type { PortfolioDoubleHighStageReviewStatusCode } from '@/types/enums/portfolio-double-high-stage-review-status-enum'
+import type { PortfolioDoubleHighStatisticScopeCode } from '@/types/enums/portfolio-double-high-statistic-scope-enum'
 import type { PortfolioDoubleHighTaskStatusCode } from '@/types/enums/portfolio-double-high-task-status-enum'
 import http from '@/config/axios'
 
 export interface PortfolioDoubleHighDimensionScoreVO {
-  dimensionCode: string
-  dimensionName: string
+  dimensionCode: PortfolioDoubleHighConstructionDimensionCode
   weightPercent: string
   dimensionScore: string
   weightedScore: string
 }
 
 export interface PortfolioDoubleHighMonitorVO {
-  statisticScopeLabel: string
+  statisticScope: PortfolioDoubleHighStatisticScopeCode
   constructionPeriodLabel?: string
   baselinePeriodLabel?: string
   dataCutoffTime: string
   dataSourceNote: string
-  constructionIndex: string
-  baselineConstructionIndex?: string
-  periodValueAdded?: string
-  taskTotalCount: number
-  taskTerminalCount: number
-  taskCompletionRatePercent: string
+  constructionIndex?: string | null
+  baselineConstructionIndex?: string | null
+  periodValueAdded?: string | null
+  taskTotalCount?: number | null
+  taskTerminalCount?: number | null
+  taskCompletionRatePercent?: string | null
   dimensionScores: PortfolioDoubleHighDimensionScoreVO[]
 }
 
@@ -69,7 +70,6 @@ export interface PortfolioDoubleHighTaskVO {
   /** 责任人生命周期状态编码（台账可见不默认过滤；结构态仅标注） */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 责任人生命周期状态标签 */
-  lifecycleStatusLabel?: string
   /** 责任人档案写禁 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -107,7 +107,6 @@ export interface PortfolioDoubleHighEvidenceArchiveVO {
   /** 归属教师生命周期状态编码（台账可见不默认过滤；结构态仅标注） */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 归属教师生命周期状态标签 */
-  lifecycleStatusLabel?: string
   /** 档案写禁 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */

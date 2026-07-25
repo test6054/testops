@@ -10,7 +10,6 @@ export interface PortfolioPublicExpertReviewSubjectVO {
   maskedDisplayName: string
   /** 生命周期状态编码（脱敏可读；不默认过滤） */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   /** 档案写禁 */
   archiveWriteForbidden?: boolean
   /** 是否计入当前在岗结构 */
@@ -38,7 +37,6 @@ export interface PortfolioPublicExpertReviewMaterialVO {
   /** EXTERNAL 切片不可用于校内硬性条件 */
   usableForCampusHardCriteria?: boolean
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   countsInCurrentFacultyStructure?: boolean
   evaluationHeld?: boolean

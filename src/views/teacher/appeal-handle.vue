@@ -14,8 +14,11 @@
           >
             {{ windowStatusLabel }}
           </UiTag>
-          <UiTag v-if="pendingCount > 0" tone="orange" size="sm">
+          <UiTag v-if="(pendingCount ?? 0) > 0" tone="orange" size="sm">
             待处理 {{ pendingCount }} 条
+          </UiTag>
+          <UiTag v-else-if="pendingCount === null" tone="red" size="sm">
+            待办数加载失败
           </UiTag>
         </template>
       </ContextBar>
@@ -42,7 +45,7 @@
         v-if="activeTab === 'policy'"
         :exam-id="currentExamId"
         :reload-token="windowReloadToken"
-        @changed="onAppealFlowChanged"
+        @changed="onPolicyChanged"
       />
 
       <ReviewRequestsCard
@@ -66,7 +69,7 @@
         :exam-id="currentExamId"
         :score-policy="selectedExam?.scorePolicy"
         :reload-token="batchReloadToken"
-        @changed="onAppealFlowChanged"
+        @changed="onBatchChanged"
       />
     </template>
   </StageWorkbenchShell>
@@ -76,6 +79,7 @@
 import type { ExamReviewWindowPolicy } from '@/apis/mark/grade-review'
 import type { UiSectionTabItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import {
   getReviewSummary,
@@ -112,7 +116,8 @@ const { examStatusLabel, examStatusTone } = useExamJourneyContextBar('成绩复�
 const currentExamId = computed(() => selectedExamId.value || '')
 
 const activeTab = ref<AppealTabKey>('policy')
-const pendingCount = ref(0)
+/** null = 未就绪或加载失败，禁止当成 0 */
+const pendingCount = ref<number | null>(null)
 const windowPolicy = ref<ExamReviewWindowPolicy | null>(null)
 
 const windowStatusLabel = computed(() => {
@@ -136,8 +141,8 @@ const tabItems = computed((): UiSectionTabItem[] => [
   {
     key: 'requests',
     label: '复核申请',
-    count: pendingCount.value > 0 ? pendingCount.value : undefined,
-    badgeTone: pendingCount.value > 0 ? 'orange' : undefined,
+    count: pendingCount.value != null && pendingCount.value > 0 ? pendingCount.value : undefined,
+    badgeTone: pendingCount.value != null && pendingCount.value > 0 ? 'orange' : undefined,
   },
   { key: 'corrections', label: '成绩纠正' },
   { key: 'batch', label: '批量纠正' },
@@ -174,9 +179,9 @@ const appealSignalMetrics = computed((): SignalMetric[] => {
     {
       key: 'pending',
       label: '待办复核',
-      value: pendingCount.value,
-      unit: '条',
-      tone: pendingCount.value > 0 ? 'orange' : 'green',
+      value: pendingCount.value == null ? '—' : pendingCount.value,
+      unit: pendingCount.value == null ? undefined : '条',
+      tone: (pendingCount.value ?? 0) > 0 ? 'orange' : pendingCount.value == null ? 'red' : 'green',
     },
   ]
 })
@@ -185,34 +190,49 @@ const windowReloadToken = ref(0)
 const requestReloadToken = ref(0)
 const correctionReloadToken = ref(0)
 const batchReloadToken = ref(0)
-
+let pendingSummaryGeneration = 0
+let windowPolicyGeneration = 0
 
 async function loadPendingSummary(): Promise<void> {
-  if (!currentExamId.value) {
-    pendingCount.value = 0
+  const examId = currentExamId.value
+  if (!examId) {
+    pendingCount.value = null
     return
   }
+  const loadGeneration = ++pendingSummaryGeneration
   try {
-    const summary = await getReviewSummary(currentExamId.value)
+    const summary = await getReviewSummary(examId)
+    if (loadGeneration !== pendingSummaryGeneration || currentExamId.value !== examId) {
+      return
+    }
     // PENDING + IN_REVIEW + APPROVED：已通过待更正必须计入待办，避免只在「复核申请」Tab 才可见
     pendingCount.value = summary.pendingRequestCount
       + summary.inReviewRequestCount
       + summary.approvedRequestCount
   }
   catch {
-    pendingCount.value = 0
+    // 失败不写 0；过期响应同样丢弃。子卡会通过 pending-change 回写成功值。
   }
 }
+
 async function loadWindowPolicy(): Promise<void> {
-  if (!currentExamId.value) {
+  const examId = currentExamId.value
+  if (!examId) {
     windowPolicy.value = null
     return
   }
+  const loadGeneration = ++windowPolicyGeneration
   try {
-    const data = await getReviewWindowPolicy(currentExamId.value)
+    const data = await getReviewWindowPolicy(examId)
+    if (loadGeneration !== windowPolicyGeneration || currentExamId.value !== examId) {
+      return
+    }
     // MVR-279：能力位壳（无 id/policyStatus）不当作已配置策略
     windowPolicy.value = data?.id || data?.policyStatus ? data : null
   } catch (error) {
+    if (loadGeneration !== windowPolicyGeneration || currentExamId.value !== examId) {
+      return
+    }
     windowPolicy.value = null
     showUserError(error, '复核窗口策略加载失败')
   }
@@ -227,34 +247,68 @@ function reloadAll(): void {
   void loadPendingSummary()
 }
 
-async function onRequestHandled(): Promise<void> {
-  requestReloadToken.value += 1
-  correctionReloadToken.value += 1
-  await refreshSnapshot()
+/**
+ * 子卡写入成功后的父级协调刷新：各表面独立捕获失败，禁止把刷新异常当成写入失败或未处理 Promise。
+ */
+async function refreshAppealAfterWrite(affected: {
+  bumpPolicy?: boolean
+  bumpRequests?: boolean
+  bumpCorrections?: boolean
+  bumpBatch?: boolean
+}): Promise<void> {
+  if (affected.bumpPolicy) {
+    windowReloadToken.value += 1
+  }
+  if (affected.bumpRequests) {
+    requestReloadToken.value += 1
+  }
+  if (affected.bumpCorrections) {
+    correctionReloadToken.value += 1
+  }
+  if (affected.bumpBatch) {
+    batchReloadToken.value += 1
+  }
+
+  const failedSurfaces: string[] = []
+  try {
+    await refreshSnapshot()
+  } catch (error) {
+    failedSurfaces.push('工作台摘要')
+    showUserError(error, '工作台摘要刷新失败')
+  }
+  // loadWindowPolicy / loadPendingSummary 内部已隔离错误，不向上抛
   await loadWindowPolicy()
   await loadPendingSummary()
+  if (failedSurfaces.length > 0) {
+    void message.warning(`写入已成功，${failedSurfaces.join('、')}刷新失败，可手动刷新后查看最新状态`)
+  }
+}
+
+async function onRequestHandled(): Promise<void> {
+  await refreshAppealAfterWrite({ bumpRequests: true, bumpCorrections: true })
 }
 
 async function onCorrectionCreated(): Promise<void> {
-  correctionReloadToken.value += 1
-  requestReloadToken.value += 1
-  await refreshSnapshot()
-  await loadWindowPolicy()
-  await loadPendingSummary()
+  await refreshAppealAfterWrite({ bumpCorrections: true, bumpRequests: true })
 }
 
-async function onAppealFlowChanged(): Promise<void> {
-  reloadAll()
-  await refreshSnapshot()
+async function onPolicyChanged(): Promise<void> {
+  await refreshAppealAfterWrite({ bumpPolicy: true })
+}
+
+async function onBatchChanged(): Promise<void> {
+  await refreshAppealAfterWrite({ bumpBatch: true, bumpCorrections: true })
 }
 
 watch(
   selectedExamId,
   (value) => {
+    pendingSummaryGeneration += 1
+    windowPolicyGeneration += 1
     if (value) {
       reloadAll()
     } else {
-      pendingCount.value = 0
+      pendingCount.value = null
       windowPolicy.value = null
     }
   },
@@ -265,11 +319,11 @@ watch(
 <style lang="scss" scoped>
 .appeal-page {
   &__empty {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-component);
   }
 
   &__tabs {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 }
 
@@ -283,7 +337,7 @@ watch(
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 :deep(.appeal-section__flow-hint) {
@@ -297,12 +351,12 @@ watch(
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 :deep(.appeal-section__count) {
   flex-shrink: 0;
-  padding-top: 8px;
+  padding-top: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-xs);
   color: var(--c-text-4);
   white-space: nowrap;

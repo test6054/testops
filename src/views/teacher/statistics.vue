@@ -487,11 +487,11 @@ onBeforeUnmount(() => {
 .stats-page {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   min-width: 0;
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__notice {
@@ -502,7 +502,7 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     min-width: 0;
   }
 
@@ -510,7 +510,7 @@ onBeforeUnmount(() => {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     min-width: 0;
     flex: 1 1 auto;
   }
@@ -520,7 +520,7 @@ onBeforeUnmount(() => {
     flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     flex-shrink: 0;
   }
 
@@ -538,7 +538,7 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
     width: 100%;
     flex-wrap: wrap;
   }
@@ -546,7 +546,7 @@ onBeforeUnmount(() => {
   &__section-copy {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--dp-space-component-xs);
     min-width: 0;
     flex: 1 1 240px;
   }
@@ -569,7 +569,7 @@ onBeforeUnmount(() => {
   &__cards {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-4);
+    gap: var(--dp-space-block);
 
     :deep(.stats-card) {
       box-shadow: var(--dp-shadow-sm);
@@ -602,14 +602,14 @@ onBeforeUnmount(() => {
     :deep(.stats-card .question-analysis-card) {
       display: flex;
       flex-direction: column;
-      gap: var(--dp-space-3);
+      gap: var(--dp-space-component);
     }
 
     :deep(.stats-card .score-dist),
     :deep(.stats-card .ai-record) {
       display: flex;
       flex-direction: column;
-      gap: var(--dp-space-3);
+      gap: var(--dp-space-component);
     }
 
     :deep(.stats-card .score-dist__chart),
@@ -620,7 +620,7 @@ onBeforeUnmount(() => {
     }
 
     :deep(.stats-card .score-dist__metrics) {
-      padding: var(--dp-space-3) var(--dp-space-4);
+      padding: var(--dp-space-component) var(--dp-space-block);
       background: var(--dp-surface-subtle);
       border-radius: var(--dp-radius-control-inner);
     }
@@ -628,7 +628,7 @@ onBeforeUnmount(() => {
     :deep(.stats-card .score-dist__chart-wrap),
     :deep(.stats-card .question-analysis-card__chart-wrap),
     :deep(.stats-card .ai-chart) {
-      padding: var(--dp-space-3) var(--dp-space-4);
+      padding: var(--dp-space-component) var(--dp-space-block);
       border: 1px solid var(--dp-border);
       border-radius: var(--dp-radius-panel);
       background: var(--dp-surface);
@@ -640,8 +640,8 @@ onBeforeUnmount(() => {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: var(--dp-space-3);
-      margin-bottom: var(--dp-space-2);
+      gap: var(--dp-space-component);
+      margin-bottom: var(--dp-space-component-tight);
 
       strong {
         font-size: var(--dp-font-size-md);

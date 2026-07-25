@@ -10,7 +10,12 @@ import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-c
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { PortfolioOrgUnitTypeCode } from '@/apis/portfolio/enums'
+import {
+  PortfolioArchiveRecordStatusDescription,
+  PortfolioMaterialStatusDescription,
+  PortfolioMaterialTypeDescription,
+  PortfolioOrgUnitTypeCode,
+} from '@/apis/portfolio/enums'
 import { portfolioMajorGroupApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -41,7 +46,8 @@ import {
   PortfolioMajorGroupSectionDescription,
 } from '@/types/enums/portfolio-major-group-section-code-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioIdentityTypeDisplay } from '@/utils/portfolio-identity-type'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -79,13 +85,19 @@ const sectionRequestToken = ref(0)
 const compareRequestToken = ref(0)
 const exportRequestToken = ref(0)
 const portfolio = ref<PortfolioMajorGroupPortfolioVO | null>(null)
+const portfolioLoadError = ref(false)
+const portfolioLastSuccessAt = ref<string | null>(null)
 const activeSection = ref<PortfolioMajorGroupSectionCode>(PortfolioMajorGroupSectionCode.ARCHIVE)
 const sectionItems = ref<PortfolioMajorGroupPortfolioSectionItemVO[]>([])
 const sectionTotal = ref(0)
+const sectionLoadError = ref(false)
+const sectionLastSuccessAt = ref<string | null>(null)
 const exportPurpose = ref('')
 const exportModalOpen = ref(false)
 const compareLoading = ref(false)
 const periodCompare = ref<PortfolioMajorGroupPeriodCompareVO | null>(null)
+const compareLoadError = ref(false)
+const compareLastSuccessAt = ref<string | null>(null)
 const periodForm = reactive({
   baselinePeriodYear: String(new Date().getFullYear() - 1),
   comparePeriodYear: String(new Date().getFullYear()),
@@ -125,19 +137,19 @@ const openComplianceAlerts = computed(() =>
 )
 
 const sectionColumns: ColumnsType = [
-  { title: '教师编号', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
   { title: '身份层', key: 'ownerIdentityLayers', width: 200 },
-  { title: '分类', dataIndex: 'categoryLabel', key: 'categoryLabel', width: 140 },
+  { title: '教师 ID', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
+  { title: '分类', key: 'category', width: 140 },
   { title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' },
   { title: '周期', dataIndex: 'periodLabel', key: 'periodLabel', width: 120 },
-  { title: '状态', dataIndex: 'statusLabel', key: 'statusLabel', width: 100 },
+  { title: '状态', key: 'status', width: 100 },
   { title: '生命周期', key: 'lifecycleStatus', width: 160 },
 ]
 
 /** OVERVIEW：同人多身份并列（US-MI-01 / §8.50） */
 const overviewIdentityColumns: ColumnsType = [
-  { title: '教师编号', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
-  { title: '身份', dataIndex: 'identityTypeLabel', key: 'identityTypeLabel', width: 120 },
+  { title: '身份', key: 'identityType', width: 120 },
+  { title: '教师 ID', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
   { title: '外部身份', key: 'externalIdentity', width: 100 },
   {
     title: '身份切片分',
@@ -156,7 +168,27 @@ const activeSectionColumns = computed(() =>
     : sectionColumns,
 )
 
-/** TASK 分区状态按双高任务枚举契约映射中文；其他分区沿用 statusLabel。 */
+/** 分类列：ARCHIVE 用类目业务名；TASK 用分区标题；MATERIAL 用材料类型字典；其余用身份字典或编码。 */
+function sectionCategoryDisplay(record: PortfolioMajorGroupPortfolioSectionItemVO): string {
+  if (activeSection.value === PortfolioMajorGroupSectionCode.ARCHIVE) {
+    return record.categoryName || record.categoryCode || '—'
+  }
+  if (activeSection.value === PortfolioMajorGroupSectionCode.TASK) {
+    return PortfolioMajorGroupSectionDescription[PortfolioMajorGroupSectionCode.TASK]
+  }
+  if (activeSection.value === PortfolioMajorGroupSectionCode.MATERIAL_INDEX) {
+    if (!record.materialType) {
+      throw new Error('枚举合同不同步：材料类型缺失')
+    }
+    return strictEnumLabel(PortfolioMaterialTypeDescription, record.materialType, '材料类型')
+  }
+  if (record.identityType) {
+    return portfolioIdentityTypeDisplay(record.identityType)
+  }
+  return record.categoryCode || '—'
+}
+
+/** 状态列：按分区消费正式枚举字段，禁止 statusLabel 双轨。 */
 function sectionStatusDisplay(record: PortfolioMajorGroupPortfolioSectionItemVO): string {
   if (activeSection.value === PortfolioMajorGroupSectionCode.TASK) {
     if (!record.taskStatus) {
@@ -168,7 +200,27 @@ function sectionStatusDisplay(record: PortfolioMajorGroupPortfolioSectionItemVO)
       '双高任务状态',
     )
   }
-  return record.statusLabel
+  if (activeSection.value === PortfolioMajorGroupSectionCode.ARCHIVE) {
+    if (!record.archiveRecordStatus) {
+      throw new Error('枚举合同不同步：档案记录状态缺失')
+    }
+    return strictEnumLabel(
+      PortfolioArchiveRecordStatusDescription,
+      record.archiveRecordStatus,
+      '档案记录状态',
+    )
+  }
+  if (activeSection.value === PortfolioMajorGroupSectionCode.MATERIAL_INDEX) {
+    if (!record.materialStatus) {
+      throw new Error('枚举合同不同步：材料状态缺失')
+    }
+    return strictEnumLabel(
+      PortfolioMaterialStatusDescription,
+      record.materialStatus,
+      '材料状态',
+    )
+  }
+  return '—'
 }
 
 function sectionLabel(code: PortfolioMajorGroupSectionCode): string {
@@ -193,11 +245,16 @@ async function loadPortfolio() {
   if (!portfolioOrgId.value) {
     loading.value = false
     portfolio.value = null
+    portfolioLoadError.value = false
+    portfolioLastSuccessAt.value = null
     sectionItems.value = []
     sectionTotal.value = 0
+    sectionLoadError.value = false
+    sectionLastSuccessAt.value = null
     return
   }
   loading.value = true
+  portfolioLoadError.value = false
   try {
     const nextPortfolio = await portfolioMajorGroupApi.getPortfolio({
       portfolioOrgId: portfolioOrgId.value,
@@ -206,11 +263,12 @@ async function loadPortfolio() {
       return
     }
     portfolio.value = nextPortfolio
+    portfolioLastSuccessAt.value = new Date().toISOString()
   } catch (error) {
     if (currentToken !== portfolioRequestToken.value) {
       return
     }
-    portfolio.value = null
+    portfolioLoadError.value = true
     showUserError(error, '加载专业群档案袋失败')
   } finally {
     if (currentToken === portfolioRequestToken.value) {
@@ -225,9 +283,12 @@ async function loadSection() {
     sectionLoading.value = false
     sectionItems.value = []
     sectionTotal.value = 0
+    sectionLoadError.value = false
+    sectionLastSuccessAt.value = null
     return
   }
   sectionLoading.value = true
+  sectionLoadError.value = false
   try {
     const result = await portfolioMajorGroupApi.pageSection({
       portfolioOrgId: portfolioOrgId.value,
@@ -240,12 +301,12 @@ async function loadSection() {
     }
     sectionItems.value = result.list ?? []
     sectionTotal.value = result.total ?? 0
+    sectionLastSuccessAt.value = new Date().toISOString()
   } catch (error) {
     if (currentToken !== sectionRequestToken.value) {
       return
     }
-    sectionItems.value = []
-    sectionTotal.value = 0
+    sectionLoadError.value = true
     showUserError(error, '加载分区块明细失败')
   } finally {
     if (currentToken === sectionRequestToken.value) {
@@ -304,6 +365,7 @@ async function comparePeriods() {
     return
   }
   compareLoading.value = true
+  compareLoadError.value = false
   try {
     const compareResult = await portfolioMajorGroupApi.comparePeriods({
       portfolioOrgId: portfolioOrgId.value,
@@ -314,11 +376,12 @@ async function comparePeriods() {
       return
     }
     periodCompare.value = compareResult
+    compareLastSuccessAt.value = new Date().toISOString()
   } catch (error) {
     if (currentToken !== compareRequestToken.value) {
       return
     }
-    periodCompare.value = null
+    compareLoadError.value = true
     showUserError(error, '建设周期对比失败')
   } finally {
     if (currentToken === compareRequestToken.value) {
@@ -350,11 +413,17 @@ watch(portfolioOrgId, () => {
   compareLoading.value = false
   exportLoading.value = false
   portfolio.value = null
+  portfolioLoadError.value = false
+  portfolioLastSuccessAt.value = null
   sectionItems.value = []
   sectionTotal.value = 0
+  sectionLoadError.value = false
+  sectionLastSuccessAt.value = null
   const sectionAlreadyFirstPage = sectionFilter.pageNum === 1
   sectionFilter.pageNum = 1
   periodCompare.value = null
+  compareLoadError.value = false
+  compareLastSuccessAt.value = null
   void loadPortfolio()
   if (sectionAlreadyFirstPage) {
     void loadSection()
@@ -363,6 +432,7 @@ watch(portfolioOrgId, () => {
 
 watch(activeSection, () => {
   sectionRequestToken.value += 1
+  sectionLoadError.value = false
   if (sectionFilter.pageNum === 1) {
     void loadSection()
   } else {
@@ -376,6 +446,8 @@ watch(
     compareRequestToken.value += 1
     compareLoading.value = false
     periodCompare.value = null
+    compareLoadError.value = false
+    compareLastSuccessAt.value = null
   },
 )
 
@@ -446,9 +518,20 @@ watch(
           </span>
         </template>
       </UiAlertStrip>
+      <UiAlertStrip
+        v-else-if="portfolioLoadError"
+        tone="error"
+        title="专业群档案袋加载失败"
+        class="mb-3"
+      />
       <UiEmpty
         size="sm"
-        v-else-if="!loading && !portfolio"
+        v-if="!loading && portfolioOrgId && portfolioLoadError && !portfolio"
+        description="专业群档案袋加载失败"
+      />
+      <UiEmpty
+        size="sm"
+        v-else-if="!loading && portfolioOrgId && !portfolio"
         description="当前专业群暂无档案袋数据"
       />
       <template v-else-if="portfolio">
@@ -470,6 +553,17 @@ watch(
             />
             <UiButton size="sm" :loading="compareLoading" @click="comparePeriods">对比</UiButton>
           </div>
+          <UiAlertStrip
+            v-if="compareLoadError"
+            tone="error"
+            title="建设周期对比失败"
+            :description="
+              compareLastSuccessAt
+                ? `最近成功对比 ${compareLastSuccessAt}；下方为陈旧结果。`
+                : '请调整年度后再次对比。'
+            "
+            class="mb-2"
+          />
           <dl v-if="periodCompare" class="major-group-portfolio__compare-result">
             <div>
               <dt>正式档案</dt>
@@ -514,6 +608,12 @@ watch(
         </UiCard>
         <UiCard title="分区块">
           <UiSectionTabs v-model="activeSection" :items="tabItems" />
+          <UiAlertStrip
+            v-if="sectionLoadError"
+            tone="error"
+            title="分区块加载失败"
+            class="mb-2"
+          />
           <template v-if="activeSection === PortfolioMajorGroupSectionCode.OVERVIEW">
             <ul class="major-group-portfolio__section-summary">
               <li v-for="item in portfolio.sections" :key="item.sectionCode">
@@ -535,12 +635,23 @@ watch(
             :columns="activeSectionColumns"
             :data-source="sectionItems"
             :loading="sectionLoading"
+            :load-error="sectionLoadError"
             pagination-mode="server"
             :total="sectionTotal"
             @page-change="onSectionPageChange"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'statusLabel'">
+              <template v-if="column.key === 'identityType'">
+                {{
+                  record.identityType
+                    ? portfolioIdentityTypeDisplay(record.identityType)
+                    : '—'
+                }}
+              </template>
+              <template v-else-if="column.key === 'category'">
+                {{ sectionCategoryDisplay(record) }}
+              </template>
+              <template v-else-if="column.key === 'status'">
                 {{ sectionStatusDisplay(record) }}
               </template>
               <template v-else-if="column.key === 'ownerIdentityLayers'">
@@ -560,7 +671,7 @@ watch(
                   v-if="record.lifecycleStatus"
                   :tone="portfolioLifecycleTagTone(record.lifecycleStatus)"
                 >
-                  {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+                  {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
                 </UiTag>
                 <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
                 <UiTag v-if="record.archiveWriteForbidden" tone="red" class="ml-1">档案写禁</UiTag>
@@ -597,21 +708,21 @@ watch(
 <style scoped>
 .major-group-portfolio__toolbar {
   display: flex;
-  gap: 12px;
+  gap: var(--dp-space-component);
   align-items: center;
 }
 .major-group-portfolio__field {
   min-width: 280px;
 }
 .major-group-portfolio__compliance {
-  margin-top: 16px;
+  margin-top: var(--dp-space-block);
 }
 .major-group-portfolio__compare {
-  margin-top: 16px;
+  margin-top: var(--dp-space-block);
 }
 .major-group-portfolio__compare-bar {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
 }
 .major-group-portfolio__year {
@@ -620,8 +731,8 @@ watch(
 .major-group-portfolio__compare-result {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin: 12px 0 0;
+  gap: var(--dp-space-component);
+  margin: var(--dp-space-component) 0 0;
 }
 .major-group-portfolio__compare-result dt {
   margin: 0;
@@ -629,7 +740,7 @@ watch(
   color: var(--dp-text-secondary);
 }
 .major-group-portfolio__compare-result dd {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
 }
 .major-group-portfolio__alert-list {
   margin: 0;
@@ -637,30 +748,30 @@ watch(
   list-style: none;
 }
 .major-group-portfolio__alert-item + .major-group-portfolio__alert-item {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: var(--dp-space-component);
+  padding-top: var(--dp-space-component);
   border-top: 1px solid var(--dp-border-subtle);
 }
 .major-group-portfolio__alert-head {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: var(--dp-space-component-xs);
 }
 .major-group-portfolio__section-summary {
-  margin: 16px 0 0;
+  margin: var(--dp-space-block) 0 0;
   padding: 0;
   list-style: none;
 }
 .major-group-portfolio__section-summary li {
   display: flex;
   justify-content: space-between;
-  padding: 8px 0;
+  padding: var(--dp-space-component-tight) 0;
   border-bottom: 1px solid var(--dp-border-subtle);
 }
 
 .major-group-portfolio__overview-hint {
-  margin: 12px 0 8px;
+  margin: var(--dp-space-component) 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
@@ -668,7 +779,7 @@ watch(
 .major-group-portfolio__gate-row {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);

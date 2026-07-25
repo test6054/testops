@@ -34,7 +34,7 @@
           variant="outline"
           size="sm"
           class="todo-feed__action"
-          @click="emit('navigate', todo.workspacePath, todo.examId)"
+          @click="handleNavigate(todo)"
         >
           {{ resolveTodoActionLabel(todo) }}
         </UiButton>
@@ -48,6 +48,7 @@ import type { MarkTeacherDashboardPendingTodoItemVO } from '@/apis/mark/teacher-
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import { showUserError } from '@/utils/error-handler'
 import {
   formatTodoTypeLabel,
   MARK_DASHBOARD_TODO_COUNT_UNIT,
@@ -74,9 +75,22 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  "navigate": [routeName: string | undefined, examId: string | undefined]
+  "navigate": [routeName: string, examId: string]
   'empty-action': []
 }>()
+
+function handleNavigate(todo: MarkTeacherDashboardPendingTodoItemVO): void {
+  const routeName = todo.workspacePath?.trim()
+  const examId = todo.examId?.trim()
+  if (!routeName || !examId) {
+    showUserError(
+      null,
+      `待办入口合同缺失：todoType=${todo.todoType}，examId=${todo.examId || '—'}，route=${routeName || '—'}`,
+    )
+    return
+  }
+  emit('navigate', routeName, examId)
+}
 
 function resolveRowTitle(todo: MarkTeacherDashboardPendingTodoItemVO): string {
   if (props.titleSource === 'todo-type') {
@@ -120,7 +134,7 @@ function resolveRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string 
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--dp-space-3) var(--dp-space-4);
+  padding: var(--dp-space-component) var(--dp-space-block);
   background: var(--dp-surface);
   min-height: 120px;
 }
@@ -134,11 +148,11 @@ function resolveRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string 
 .todo-feed__row {
   display: grid;
   grid-template-columns: 8px minmax(0, 1fr) auto;
-  column-gap: var(--dp-space-2);
+  column-gap: var(--dp-space-component-tight);
   align-items: center;
-  padding: var(--dp-space-3) var(--dp-space-4);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border-bottom: 1px solid var(--dp-border);
-  transition: background var(--dp-duration-fast) ease;
+  transition: background var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .todo-feed__row:last-child {
@@ -195,8 +209,8 @@ function resolveRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string 
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-1);
-  margin-top: var(--dp-space-1);
+  gap: var(--dp-space-component-xs);
+  margin-top: var(--dp-space-component-xs);
 }
 
 .todo-feed__label {
@@ -206,7 +220,7 @@ function resolveRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string 
 }
 
 .todo-feed__context {
-  margin-top: var(--dp-space-1);
+  margin-top: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-secondary);

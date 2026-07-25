@@ -334,7 +334,7 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .tenant-policy__card + .tenant-policy__card {
-  margin-top: var(--dp-space-4);
+  margin-top: var(--dp-space-block);
 }
 
 .tenant-policy__title {
@@ -347,11 +347,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .tenant-policy__hint {
-  margin: 0 0 var(--dp-space-4);
+  margin: 0 0 var(--dp-space-block);
   color: var(--dp-gray-600);
   font-size: var(--dp-font-size-sm);
 }
@@ -359,25 +359,25 @@ onMounted(() => {
 .tenant-policy__ops-summary {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-4);
-  margin-bottom: var(--dp-space-3);
+  gap: var(--dp-space-block);
+  margin-bottom: var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-gray-700);
+  color: var(--dp-text-secondary);
 }
 
 .tenant-policy__form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
   max-width: 720px;
 }
 
 .tenant-policy__field {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-gray-700);
+  color: var(--dp-text-secondary);
 
   &--switch {
     flex-direction: row;

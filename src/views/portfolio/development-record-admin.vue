@@ -3,20 +3,23 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentRecordStatusCode } from '@/apis/portfolio/enums'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDevelopmentRecordStatusDescription,
   PortfolioDevelopmentRecordTypeCode,
   PortfolioDevelopmentRecordTypeDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
+import PortfolioArchiveWriteGuardStrip from '@/components/portfolio/PortfolioArchiveWriteGuardStrip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
@@ -26,14 +29,15 @@ import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchive
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { useUserStore } from '@/stores/modules/user'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 /** 院系路由或非租户管理员：本院系发展档案库口径（PF-P0-420） */
 const isDepartmentScoped = computed(
@@ -42,8 +46,14 @@ const isDepartmentScoped = computed(
 const pageScopeTitle = computed(() => (isDepartmentScoped.value ? '院系发展档案' : '发展档案库'))
 
 
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
-  = usePortfolioArchiveWriteGuard()
+const {
+  archiveWriteForbidden,
+  archiveWriteCapabilityUnknown,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+  loading: archiveWriteGuardLoading,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard()
 
 const RECORD_TAB_KEYS: PortfolioDevelopmentRecordTypeCode[] = [
   PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT,
@@ -60,7 +70,9 @@ const activeType = ref<RecordType>(PortfolioDevelopmentRecordTypeCode.ACHIEVEMEN
 const importModalOpen = ref(false)
 const saving = ref(false)
 const removingId = ref('')
-const exporting = ref(false)
+const exportApplyOpen = ref(false)
+const exportPurpose = ref('')
+const applyingExport = ref(false)
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 const {
   loading,
@@ -133,6 +145,10 @@ function resetForm() {
   form.teacherUserId = ''
 }
 
+async function refreshListAfterWrite(settledLabel: string) {
+  await loadPage({ errorMessage: `${settledLabel}，列表刷新失败` })
+}
+
 async function saveRecord() {
   if (!assertArchiveWritable()) {
     return
@@ -158,12 +174,13 @@ async function saveRecord() {
     })
     void message.success('已保存')
     resetForm()
-    await loadPage()
   } catch (error) {
     showUserError(error, '保存发展记录失败')
+    return
   } finally {
     saving.value = false
   }
+  await refreshListAfterWrite('已保存')
 }
 
 async function removeRecord(id: string) {
@@ -177,27 +194,50 @@ async function removeRecord(id: string) {
   try {
     await portfolioDevelopmentRecordApi.delete({ id })
     void message.success('已删除')
-    await loadPage()
   } catch (error) {
     showUserError(error, '删除发展记录失败')
+    return
   } finally {
     removingId.value = ''
   }
+  await refreshListAfterWrite('已删除')
 }
 
-async function exportExcel() {
-  if (exporting.value) {
-    return
+async function onImportSuccess() {
+  await refreshListAfterWrite('导入已完成')
+}
+
+function openExportApply() {
+  exportPurpose.value = ''
+  exportApplyOpen.value = true
+}
+
+async function submitExportApply() {
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return Promise.reject(new Error('导出用途为空'))
   }
-  exporting.value = true
+  if (applyingExport.value) {
+    return Promise.reject(new Error('导出申请进行中'))
+  }
+  applyingExport.value = true
   try {
-    const result = await portfolioDevelopmentRecordApi.exportExcel({ recordType: activeType.value })
-    await downloadPortfolioExcelExport(result)
-    void message.success(`已导出 ${result.rowCount} 条`)
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.DEVELOPMENT_RECORD,
+      businessRef: {
+        developmentRecordType: activeType.value,
+      },
+      exportPurpose: purpose,
+    })
+    exportApplyOpen.value = false
+    void message.success('已提交发展档案导出审批')
+    await router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出发展记录失败')
+    showUserError(error, '提交发展档案导出审批失败')
+    return Promise.reject(error)
   } finally {
-    exporting.value = false
+    applyingExport.value = false
   }
 }
 
@@ -213,12 +253,12 @@ function switchTab(type: RecordType) {
     <template #context>
       <ContextBar layout="workbench" show-title :title="`${pageScopeTitle} · ${tabLabel}`" />
     </template>
-    <UiAlertStrip
-      v-if="archiveWriteForbidden"
-      tone="warning"
-      title="档案已封存写禁"
-      :description="archiveWriteBlockMessage"
-      class="mb-3"
+    <PortfolioArchiveWriteGuardStrip
+      :blocked="archiveWriteForbidden"
+      :capability-unknown="archiveWriteCapabilityUnknown"
+      :message="archiveWriteBlockMessage"
+      :loading="archiveWriteGuardLoading"
+      @confirm="() => void reloadLifecycleState()"
     />
     <div class="tabs">
       <UiButton
@@ -259,7 +299,7 @@ function switchTab(type: RecordType) {
     </UiCard>
     <UiCard>
       <div class="toolbar">
-        <UiButton size="sm" @click="loadPage"> 刷新 </UiButton>
+        <UiButton size="sm" @click="() => void loadPage()"> 刷新 </UiButton>
         <UiButton
           v-if="!isDepartmentScoped"
           size="sm"
@@ -271,11 +311,11 @@ function switchTab(type: RecordType) {
         <UiButton
           v-if="!isDepartmentScoped"
           size="sm"
-          :loading="exporting"
-          :disabled="exporting"
-          @click="exportExcel"
+          :loading="applyingExport"
+          :disabled="applyingExport"
+          @click="openExportApply"
         >
-          导出表格文件
+          申请导出
         </UiButton>
       </div>
       <UiEmpty
@@ -293,7 +333,7 @@ function switchTab(type: RecordType) {
         :loading="loading"
         :load-error="loadError"
         row-key="id"
-        style="margin-top: 16px"
+        style="margin-top: var(--dp-space-block)"
         @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
@@ -308,7 +348,7 @@ function switchTab(type: RecordType) {
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
             </UiTag>
 
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -334,7 +374,7 @@ function switchTab(type: RecordType) {
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
               v-if="!isDepartmentScoped"
-              :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
+              :items="[{ key: 'delete', label: '删除', tone: 'danger', disabled: Boolean(removingId || saving) }]"
               split
               @action="() => removeRecord(record.id)"
             />
@@ -348,25 +388,40 @@ function switchTab(type: RecordType) {
       entity-label="发展档案"
       :scene-key="ExcelImportSceneKey.PORTFOLIO_DEVELOPMENT_RECORD"
       :context="importContext"
-      @success="loadPage"
+      @success="onImportSuccess"
     />
+    <UiDialog
+      v-model:open="exportApplyOpen"
+      title="申请导出发展档案台账"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="applyingExport"
+      @ok="submitExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="exportPurpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
 <style scoped>
 .tabs {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-block);
 }
 .form-row,
 .toolbar {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
 }
 .input {
-  padding: 6px 8px;
+  padding: var(--dp-space-component-tight);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-xs);
 }

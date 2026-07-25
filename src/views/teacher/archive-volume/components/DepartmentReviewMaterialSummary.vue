@@ -123,7 +123,6 @@ onMounted(() => {
         <dt>已登记材料</dt>
         <dd v-if="materialCountLoadFailed">
           加载失败
-          <UiTextAction tone="primary" @click="loadMaterialCount">重试</UiTextAction>
         </dd>
         <dd v-else>{{ materialCount ?? '—' }} 件</dd>
       </div>
@@ -171,17 +170,17 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .dept-review-summary {
-  padding: 12px;
-  border: 1px solid var(--dp-border-light);
-  border-radius: var(--dp-radius-md);
-  background: var(--dp-surface-muted);
+  padding: var(--dp-space-component);
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-control);
+  background: var(--dp-surface-subtle);
 }
 
 .dept-review-summary__head {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 10px;
+  gap: var(--dp-space-component-xs);
+  margin-bottom: var(--dp-space-component);
 }
 
 .dept-review-summary__title {
@@ -198,7 +197,7 @@ onMounted(() => {
 .dept-review-summary__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px 16px;
+  gap: var(--dp-space-component) var(--dp-space-block);
   margin: 0;
 }
 
@@ -217,9 +216,9 @@ onMounted(() => {
 }
 
 .dept-review-summary__missing {
-  margin: 10px 0 0;
+  margin: var(--dp-space-component) 0 0;
   padding-left: 18px;
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-color-error);
+  color: var(--dp-error);
 }
 </style>

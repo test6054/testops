@@ -46,7 +46,19 @@
 
     <UiSkeletonState v-if="loading" :rows="6" compact />
 
-    <UiEmpty size="sm" v-else-if="!detail" description="暂无本场成绩详情" class="score-detail__empty" />
+    <UiEmpty
+      size="sm"
+      v-else-if="detailLoadFailed"
+      title="成绩详情加载失败"
+      class="score-detail__empty"
+    />
+
+    <UiEmpty
+      size="sm"
+      v-else-if="!detail"
+      description="暂无本场成绩详情"
+      class="score-detail__empty"
+    />
 
     <template v-else-if="detail">
       <ConfidentialStatusBar v-if="isExamConfidential" class="score-detail__confidential-strip" />
@@ -141,7 +153,7 @@
             :show-icon="false"
           >
             <template #default>
-              <span style="display:inline-flex;align-items:center;gap:8px">
+              <span style="display:inline-flex;align-items:center;gap:var(--dp-space-component-tight)">
                 <UiTag tone="blue" size="sm">未选择题目</UiTag>
                 <span>请在左侧选择题目后查看作答与得分明细</span>
               </span>
@@ -522,6 +534,8 @@ defineOptions({ name: 'StudentScoreDetail' })
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
+const detailLoadFailed = ref(false)
+let detailLoadGeneration = 0
 const detail = ref<StudentScoreDetailResponse | null>(null)
 const isExamConfidential = computed(() => isExamConfidentialFlag(detail.value?.confidential))
 const sliceWatermarkLines = computed(() => {
@@ -770,19 +784,31 @@ async function loadDetail() {
     void message.warning('考试信息缺失，无法加载成绩详情')
     return
   }
+  const targetExamId = examId.value
+  const generation = ++detailLoadGeneration
   loading.value = true
+  detailLoadFailed.value = false
   try {
-    const loadedDetail = await getMyScoreDetail(examId.value)
+    const loadedDetail = await getMyScoreDetail(targetExamId)
+    if (generation !== detailLoadGeneration || examId.value !== targetExamId) {
+      return
+    }
     detail.value = loadedDetail
     if (loadedDetail.finalScoreStatus === FinalScoreStatusCode.PUBLISHED) {
       wrongBookPagination.current = 1
       await loadWrongBook()
     }
   } catch (error) {
-    showUserError(error, '成绩详情加载失败')
+    if (generation !== detailLoadGeneration || examId.value !== targetExamId) {
+      return
+    }
+    detailLoadFailed.value = true
     detail.value = null
+    showUserError(error, '成绩详情加载失败')
   } finally {
-    loading.value = false
+    if (generation === detailLoadGeneration) {
+      loading.value = false
+    }
   }
 }
 
@@ -933,7 +959,12 @@ function getScoreTagTone(answer: StudentQuestionAnswerDetailResponse): BadgeTone
   return 'orange'
 }
 
-watch(examId, () => loadDetail(), { immediate: true })
+watch(examId, () => {
+  detailLoadGeneration += 1
+  detail.value = null
+  detailLoadFailed.value = false
+  void loadDetail()
+}, { immediate: true })
 watch(detail, () => {
   selectedQuestionId.value = null
   currentDetail.value = null
@@ -966,9 +997,9 @@ onBeforeUnmount(() => {
   &__layout {
     display: grid;
     grid-template-columns: 300px minmax(0, 1fr);
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
     align-items: start;
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
 
     @media (max-width: #{bp.$ant-grid-lg - 1px}) {
       grid-template-columns: 1fr;
@@ -983,16 +1014,16 @@ onBeforeUnmount(() => {
   &__stats {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__empty {
-    padding: 20px 0;
+    padding: var(--dp-space-block) 0;
   }
 
   &__confidential-strip {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   &__hint {
@@ -1008,57 +1039,57 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--dp-space-component);
   width: 100%;
 }
 
 .score-detail__card-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-lg);
   font-weight: var(--dp-font-weight-title);
 }
 
 .score-detail__wrong-book-card,
 .score-detail__profile-card {
-  margin-top: 16px;
+  margin-top: var(--dp-space-block);
 }
 
 .answer-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 
   &__summary {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
-    padding-bottom: 12px;
+    padding-bottom: var(--dp-space-component);
     border-bottom: 1px dashed var(--dp-border-subtle);
   }
 
   &__section {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__section-title {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--dp-space-component-tight);
     font-weight: 600;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
   }
 
   &__slice {
     position: relative;
     border: 1px solid var(--dp-border-subtle);
     border-radius: 6px;
-    padding: 8px;
-    background: var(--dp-surface-soft);
+    padding: var(--dp-space-component-tight);
+    background: var(--dp-surface-subtle);
     text-align: center;
     min-height: 120px;
   }
@@ -1071,23 +1102,23 @@ onBeforeUnmount(() => {
 
   &__text {
     margin: 0;
-    padding: 12px;
-    background: var(--dp-surface-soft);
+    padding: var(--dp-space-component);
+    background: var(--dp-surface-subtle);
     border-radius: 6px;
     border: 1px solid var(--dp-border-subtle);
     white-space: pre-wrap;
     word-break: break-word;
     line-height: 1.7;
     font-size: var(--dp-font-size-sm);
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
   }
 
   &__ai {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 12px;
-    background: var(--dp-surface-soft);
+    gap: var(--dp-space-component-tight);
+    padding: var(--dp-space-component);
+    background: var(--dp-surface-subtle);
     border-radius: 6px;
     border: 1px solid var(--dp-border-subtle);
   }
@@ -1096,10 +1127,10 @@ onBeforeUnmount(() => {
     margin: 0;
     line-height: 1.7;
     font-size: var(--dp-font-size-sm);
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
     display: flex;
     align-items: baseline;
-    gap: 6px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
@@ -1116,32 +1147,32 @@ onBeforeUnmount(() => {
 .profile-block {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--dp-space-block);
 }
 
 .profile-summary {
   margin: 0;
   line-height: 1.7;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
 }
 
 .profile-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .diagnosis-item {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   width: 100%;
 }
 
 .diagnosis-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .diagnosis-type {
@@ -1161,10 +1192,10 @@ onBeforeUnmount(() => {
 
 .suggestion-list {
   margin: 0;
-  padding-left: 20px;
+  padding-left: var(--dp-space-block);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   line-height: 1.7;
 }
 </style>

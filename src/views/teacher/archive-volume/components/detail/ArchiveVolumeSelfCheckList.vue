@@ -145,14 +145,7 @@ defineExpose({ loadSelfCheck })
         dense
         inline
         title="自查清单加载失败"
-        description="重新加载成功前不能勾选或进入签字确认"
-      >
-        <template #actions>
-          <UiButton size="sm" variant="outline" :loading="loading" @click="loadSelfCheck">
-            重新加载
-          </UiButton>
-        </template>
-      </UiAlertStrip>
+      />
 
       <UiSkeletonState v-else-if="loading" variant="card" compact />
 
@@ -202,27 +195,27 @@ defineExpose({ loadSelfCheck })
 .archive-quality-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
-  padding: var(--dp-space-3) var(--dp-space-4);
+  gap: var(--dp-space-block);
+  padding: var(--dp-space-component) var(--dp-space-block);
 }
 
 .archive-quality-panel__section {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .archive-quality-panel__section-head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-quality-panel__section-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   margin-left: auto;
 }
 
@@ -250,11 +243,11 @@ defineExpose({ loadSelfCheck })
 .self-check-row {
   display: flex;
   align-items: flex-start;
-  gap: var(--dp-space-3);
-  padding: 10px 12px;
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component);
   border-top: 1px solid var(--dp-border-subtle);
   background: var(--dp-surface);
-  transition: background-color 0.2s ease-out;
+  transition: background-color var(--dp-duration-normal) ease-out;
 
   &:first-child {
     border-top: none;
@@ -292,7 +285,7 @@ defineExpose({ loadSelfCheck })
 }
 
 .self-check-mark--pending {
-  background: var(--dp-surface-sunken);
+  background: var(--dp-bg-muted);
   color: var(--dp-text-muted);
   border: 1px solid var(--dp-border);
 }
@@ -308,7 +301,7 @@ defineExpose({ loadSelfCheck })
 .self-check-row__label {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   line-height: 1.45;
   color: var(--dp-text-primary);
@@ -332,7 +325,7 @@ defineExpose({ loadSelfCheck })
 
 .self-check-row__time {
   font-size: var(--dp-font-size-xs);
-  font-family: var(--dp-font-mono), ui-monospace, monospace;
+  font-family: var(--dp-font-family-code), ui-monospace, monospace;
   color: var(--dp-text-muted);
 }
 

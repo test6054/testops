@@ -12,17 +12,17 @@
             {{ examStatusLabel }}
           </UiTag>
         </template>
-        <template v-if="canManageExamOwner && !resolving && selectedExamId" #actions>
+        <template v-if="canManageExamOwner && !resolving && !resolveLoadFailed && selectedExamId" #actions>
           <UiButton variant="primary" size="sm" @click="openCreateDrawer"> 创建阅卷组织 </UiButton>
         </template>
       </ContextBar>
     </template>
 
-    <template v-if="selectedExamId && !resolving" #signal>
+    <template v-if="selectedExamId && !resolving && !resolveLoadFailed" #signal>
       <SignalBand :metrics="entrySignalMetrics" variant="panel" compact />
     </template>
 
-    <ExamWorkspaceJourneySubNav v-if="selectedExamId && !resolving" />
+    <ExamWorkspaceJourneySubNav v-if="selectedExamId && !resolving && !resolveLoadFailed" />
 
     <UiSkeletonState v-if="resolving" variant="card" compact />
 
@@ -31,8 +31,17 @@
       body="请从考试列表进入工作台后再创建或查看阅卷组织"
     />
 
+    <UiAlertStrip
+      v-else-if="resolveLoadFailed"
+      tone="error"
+      title="阅卷组织加载失败"
+      :description="`考试 ${selectedExamId} 的组织配置暂不可读取；不得按「尚未配置」处理。`"
+      dense
+      class="org-entry__alert"
+    />
+
     <WorkbenchContextGateStrip
-      v-else-if="selectedExamId"
+      v-else-if="selectedExamId && organizationConfigured === false"
       tag="未配置"
       :body="
         canManageExamOwner
@@ -41,6 +50,15 @@
       "
       hide-cta
       class="org-entry__panel--empty"
+    />
+
+    <UiAlertStrip
+      v-if="createSettledMessage"
+      :tone="createSettledTone"
+      title="创建结果"
+      :description="createSettledMessage"
+      dense
+      class="org-entry__alert"
     />
 
     <UiDrawer
@@ -90,6 +108,7 @@ import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
@@ -126,6 +145,13 @@ const organizationGate = ref<Awaited<ReturnType<typeof getOrganization>> | null>
 const { canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, organizationGate)
 
 const resolving = ref(true)
+const resolveLoadFailed = ref(false)
+/** null=未知；true=已配置（通常已跳转）；false=明确未配置 */
+const organizationConfigured = ref<boolean | null>(null)
+const createSettledMessage = ref('')
+const createSettledTone = ref<'success' | 'warning' | 'error'>('success')
+let resolveGeneration = 0
+const skipFirstActivatedResolve = ref(true)
 const examLabel = computed(() => selectedExamLabel.value || '未选择考试')
 
 const entrySignalMetrics = computed<SignalMetric[]>(() => [
@@ -149,20 +175,50 @@ const entrySignalMetrics = computed<SignalMetric[]>(() => [
   },
 ])
 
-/** 已配置组织时跳转详情页，未配置时留在本页展示创建入口。 */
+function isSameDetailRoute(organizationId: string, examId: string): boolean {
+  return (
+    route.name === 'TeacherExamWorkspaceMarkingOrgDetail'
+    && String(route.params.examId) === examId
+    && String(route.params.organizationId) === organizationId
+  )
+}
+
+function isSameFormalHubRoute(examId: string): boolean {
+  return (
+    route.name === 'TeacherExamWorkspaceMarkingOrgFormalHub'
+    && String(route.params.examId) === examId
+  )
+}
+
+/** 已配置组织时跳转详情页，未配置时留在本页展示创建入口；失败不得伪装成未配置。 */
 async function redirectToDetailIfConfigured(): Promise<void> {
   const examId = selectedExamId.value
+  const generation = ++resolveGeneration
   if (!examId) {
     resolving.value = false
+    resolveLoadFailed.value = false
+    organizationConfigured.value = null
+    organizationGate.value = null
     return
   }
   resolving.value = true
+  resolveLoadFailed.value = false
   try {
     const org = await getOrganization({ examId })
+    if (generation !== resolveGeneration || selectedExamId.value !== examId) {
+      return
+    }
     organizationGate.value = org
+    organizationConfigured.value = org.configured === true
+    resolveLoadFailed.value = false
     if (org.configured && org.id) {
       if (route.query.setupTab === 'launch') {
-        await router.replace(resolveMarkingOrganizationFormalHubRoute(examId))
+        if (!isSameFormalHubRoute(examId)) {
+          await router.replace(resolveMarkingOrganizationFormalHubRoute(examId))
+        }
+        return
+      }
+      if (isSameDetailRoute(org.id, examId)) {
         return
       }
       const target = resolveMarkingOrganizationDetailRoute(org.id, examId)
@@ -171,10 +227,17 @@ async function redirectToDetailIfConfigured(): Promise<void> {
       await router.replace(typeof target === 'string' ? target : { ...target, query })
     }
   } catch (error) {
+    if (generation !== resolveGeneration || selectedExamId.value !== examId) {
+      return
+    }
     organizationGate.value = null
+    organizationConfigured.value = null
+    resolveLoadFailed.value = true
     showUserError(error, '阅卷组织加载失败')
   } finally {
-    resolving.value = false
+    if (generation === resolveGeneration) {
+      resolving.value = false
+    }
   }
 }
 
@@ -204,12 +267,17 @@ const createRules: Record<string, Rule[]> = {
 
 function openCreateDrawer(): void {
   if (!guardExamOwnerAction()) return
+  if (resolveLoadFailed.value) {
+    void message.warning('组织加载失败，无法创建')
+    return
+  }
   if (!selectedExamId.value) {
     showFormValidationMessage('请先选择考试')
     return
   }
   createForm.anonymousMode = true
   createForm.remark = ''
+  createSettledMessage.value = ''
   createDrawerOpen.value = true
 }
 
@@ -230,9 +298,17 @@ async function submitCreate(): Promise<void> {
       remark: createForm.remark?.trim() || undefined,
     }
     const nextOrganization = await createOrganization(request)
-    void message.success('阅卷组织已创建')
     createDrawerOpen.value = false
-    await refreshSnapshot()
+    createSettledTone.value = 'success'
+    createSettledMessage.value = '阅卷组织已创建'
+    void message.success('阅卷组织已创建')
+    try {
+      await refreshSnapshot()
+    } catch (error) {
+      createSettledTone.value = 'warning'
+      createSettledMessage.value = '阅卷组织已创建，但阶段快照刷新失败；页面将继续进入组织详情'
+      showUserError(error, '阅卷组织已创建，但阶段快照刷新失败')
+    }
     if (nextOrganization.id) {
       await router.replace(
         resolveMarkingOrganizationDetailRoute(nextOrganization.id, selectedExamId.value),
@@ -241,6 +317,8 @@ async function submitCreate(): Promise<void> {
       await redirectToDetailIfConfigured()
     }
   } catch (error) {
+    createSettledTone.value = 'error'
+    createSettledMessage.value = '阅卷组织创建失败'
     showUserError(error, '阅卷组织创建失败')
   } finally {
     creating.value = false
@@ -250,49 +328,61 @@ async function submitCreate(): Promise<void> {
 watch(
   selectedExamId,
   () => {
+    createSettledMessage.value = ''
     void redirectToDetailIfConfigured()
   },
   { immediate: true },
 )
 
 onActivated(() => {
-  void redirectToDetailIfConfigured()
+  if (skipFirstActivatedResolve.value) {
+    skipFirstActivatedResolve.value = false
+    return
+  }
+  // 失败、未解析或未配置：激活时再拉一次，避免他人已创建后仍卡在创建态
+  if (resolveLoadFailed.value || organizationConfigured.value !== true) {
+    void redirectToDetailIfConfigured()
+  }
 })
 </script>
 
 <style lang="scss" scoped>
 .org-entry {
+  &__alert {
+    margin-bottom: var(--dp-space-component);
+  }
+
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
 
     &--empty {
       text-align: center;
-      padding: var(--dp-space-3, 12px) var(--dp-space-3, 12px);
+      padding: var(--dp-space-component);
     }
   }
 
   &__empty-title {
-    margin: 0 0 var(--dp-space-2);
+    margin: 0 0 var(--dp-space-component-tight);
     font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__empty-desc {
-    margin: var(--dp-space-2) 0 var(--dp-space-4);
+    margin: var(--dp-space-component-tight) 0 var(--dp-space-block);
     font-size: var(--dp-font-size-md);
     color: var(--dp-text-secondary);
   }
 
   &__switch-hint {
-    margin-left: var(--dp-space-2);
+    margin-left: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }

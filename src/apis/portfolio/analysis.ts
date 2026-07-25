@@ -1,4 +1,3 @@
-import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
 import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
 import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
@@ -55,11 +54,19 @@ export interface PortfolioAnalysisAlertVO {
   alertSummary?: string
   ruleSnapshotId?: string
   portraitComputedTime?: string
+  /** 状态版本；处置时回传 expectedStatusVersion */
+  statusVersion: number
+  assigneeUserId?: string
+  resolveEvidenceText?: string
+  resolveRemark?: string
+  acknowledgedUserId?: string
+  acknowledgedTime?: string
+  resolvedTime?: string
+  updateTime: string
 
   /** 归属教师生命周期状态编码（台账可见不默认过滤；结构态仅标注） */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 归属教师生命周期状态标签 */
-  lifecycleStatusLabel?: string
   /** 档案写禁 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -84,7 +91,6 @@ export interface PortfolioAnalysisSuggestionVO {
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
-  lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -111,7 +117,6 @@ export interface PortfolioAnalysisTrainingRecommendVO {
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
-  lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -143,7 +148,6 @@ export interface PortfolioPortraitCreditCurveVO {
   officialFactCount?: number
   dedupDroppedCount?: number
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -165,6 +169,15 @@ export interface PortfolioAnalysisComplianceAlertVO {
   thresholdValue?: string
   alertSummary: string
   computedTime: string
+  /** 状态版本；处置时回传 expectedStatusVersion */
+  statusVersion: number
+  assigneeUserId?: string
+  resolveEvidenceText?: string
+  resolveRemark?: string
+  acknowledgedUserId?: string
+  acknowledgedTime?: string
+  resolvedTime?: string
+  updateTime: string
 }
 
 export interface PortfolioSchoolPortraitCockpitVO {
@@ -199,7 +212,6 @@ export interface PortfolioAnalysisAnnualReportVO {
   errorSummary?: string
   createTime: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -257,8 +269,7 @@ export interface PortfolioAppointmentPeriodRiskItemVO {
 export interface PortfolioAppointmentPeriodEvaluationVO {
   formulaLabel?: string
   teacherId?: string
-  cycleSceneCode?: PortfolioEvaluationSceneCode
-  cycleSceneLabel?: string
+  cycleSceneCode: PortfolioEvaluationSceneCode
   annualSourceSceneCode?: PortfolioEvaluationSceneCode
   periodStart?: string
   periodEnd?: string
@@ -276,7 +287,6 @@ export interface PortfolioAppointmentPeriodEvaluationVO {
   /** 贡献教师多身份口径说明 */
   ownerMultiIdentityNote?: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
@@ -408,8 +418,6 @@ export const portfolioAnalysisApi = {
       '/api/portfolio/analysis/pk/session/page',
       data,
     ),
-  exportPkSession: (data: { sessionId: string, maskMode?: boolean }) =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/analysis/pk/export', data),
   generateAnnualReport: (data: { teacherId: string, reportYear: string }) =>
     http.post<PortfolioAnalysisAnnualReportVO>(
       '/api/portfolio/analysis/report/annual/generate',
@@ -431,11 +439,19 @@ export const portfolioAnalysisApi = {
   resolvePortraitAlert: (data: {
     alertId: string
     alertStatus: PortfolioAlertStatusCode
+    expectedFromStatus: PortfolioAlertStatusCode
+    expectedStatusVersion: number
     resolveRemark?: string
+    assigneeUserId?: string
+    resolveEvidenceText?: string
   }) => http.post<void>('/api/portfolio/analysis/alert/resolve', data),
   resolveComplianceAlert: (data: {
     alertId: string
     alertStatus: PortfolioAlertStatusCode
+    expectedFromStatus: PortfolioAlertStatusCode
+    expectedStatusVersion: number
     resolveRemark?: string
+    assigneeUserId?: string
+    resolveEvidenceText?: string
   }) => http.post<void>('/api/portfolio/analysis/compliance/resolve', data),
 }

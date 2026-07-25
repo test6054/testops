@@ -235,15 +235,8 @@ defineExpose({ loadCatalog })
       v-if="loadFailed"
       tone="error"
       title="目录加载失败"
-      description="当前保留的是上次成功加载的内容，重新加载成功前不能编辑或确认。"
       :inline="false"
-    >
-      <template #actions>
-        <UiButton size="sm" variant="outline" :loading="loading" @click="loadCatalog">
-          重新加载
-        </UiButton>
-      </template>
-    </UiAlertStrip>
+    />
 
     <UiSkeletonState v-if="loading" variant="card" compact />
 
@@ -304,13 +297,13 @@ defineExpose({ loadCatalog })
 .archive-volume-catalog-editor {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-volume-catalog-editor__title-wrap {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-catalog-editor__title {
@@ -327,16 +320,16 @@ defineExpose({ loadCatalog })
 .archive-volume-catalog-editor__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-catalog-editor__empty-strip {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   min-height: 48px;
-  padding: var(--dp-space-3) var(--dp-space-4);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border: 1px dashed var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: color-mix(in srgb, var(--dp-gray-50) 80%, var(--dp-surface));
