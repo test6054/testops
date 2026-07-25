@@ -8,10 +8,9 @@ import type {
 import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS } from '@/apis/portfolio/enums'
-import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   QUALITY_SELECTOR_PAGE_SIZE,
@@ -33,10 +32,10 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
-import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import {
   formatPortfolioTeacherPkDisplay,
   portfolioTeacherSelectOptionsFromSummaries,
@@ -44,7 +43,6 @@ import {
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
-const router = useRouter()
 const userStore = useUserStore()
 const isDepartmentScoped = computed(
   () => route.path.includes('/department/') || !userStore.isTenantAdmin,
@@ -88,6 +86,8 @@ const historyColumns: ColumnsType = [
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
   { title: '操作', key: 'actions', width: 130 },
 ]
+
+
 function resolveTeacherTitle(teacher: PortfolioTeacherPkCompareTeacherVO): string {
   return formatPortfolioTeacherPkDisplay(teacher.displayName, teacher.teacherNumber)
 }
@@ -238,25 +238,16 @@ async function exportSession(row: PortfolioTeacherPkSessionVO) {
   if (operationPending.value) {
     return
   }
-  const purpose = (row.sessionPurpose || '').trim()
-  if (!purpose) {
-    showFormValidationMessage('会话缺少对比用途，无法提交导出审批')
-    return
-  }
   operation.value = 'export'
   try {
-    await portfolioSecurityApi.applyExport({
-      exportType: PortfolioExportTypeCode.TEACHER_PK_COMPARE,
-      businessRef: {
-        pkSessionId: row.id,
-        maskMode: row.maskMode,
-      },
-      exportPurpose: purpose,
+    const result = await portfolioAnalysisApi.exportPkSession({
+      sessionId: row.id,
+      maskMode: row.maskMode,
     })
-    void message.success('教师对比报告导出审批已提交，请在「我的导出」下载')
-    void router.push({ name: 'PortfolioExportApprovalMine' })
+    await downloadPortfolioExcelExport(result)
+    void message.success('已开始下载教师对比报告')
   } catch (error) {
-    showUserError(error, '提交教师对比报告导出审批失败')
+    showUserError(error, '导出教师对比报告失败')
   } finally {
     operation.value = null
   }
@@ -501,7 +492,7 @@ onUnmounted(() => {
   gap: 6px;
   min-width: 0;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .teacher-pk__mask {
@@ -537,7 +528,7 @@ onUnmounted(() => {
 
 .teacher-pk__result-head span {
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .teacher-pk__grid {
@@ -557,14 +548,14 @@ onUnmounted(() => {
 .teacher-pk__archive-count {
   margin-bottom: 8px;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .teacher-pk__table {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .teacher-pk__table th,
@@ -589,7 +580,7 @@ onUnmounted(() => {
   gap: 6px;
   margin-top: 12px;
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .teacher-pk__materials ul {

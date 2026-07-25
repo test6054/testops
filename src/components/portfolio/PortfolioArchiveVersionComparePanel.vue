@@ -232,7 +232,7 @@ function changeTypeTone(code: string): BadgeTone {
   height: 32px;
   padding: 0 8px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
   background: var(--dp-surface);
 }
 
@@ -244,20 +244,20 @@ function changeTypeTone(code: string): BadgeTone {
   display: inline-flex;
   gap: 4px;
   align-items: center;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
 .version-compare__summary {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
 .version-compare__evidence {
   display: block;
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-tertiary);
 }
 </style>

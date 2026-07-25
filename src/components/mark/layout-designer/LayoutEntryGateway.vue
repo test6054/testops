@@ -617,7 +617,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
   }
 
   &__form :deep(.ant-upload-text) {
-    font-size: 13px !important;
+    font-size: var(--dp-font-size-sm) !important;
   }
 
   &__quick-actions {

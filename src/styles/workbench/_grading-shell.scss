@@ -358,7 +358,7 @@
 :global(.approval-card__title) {
   flex: 1;
   min-width: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text);
 }
@@ -373,7 +373,7 @@
 :global(.approval-card__reason),
 :global(.approval-card__remark) {
   margin: 0 0 4px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-secondary);
 }
@@ -387,7 +387,7 @@
 
 :global(.approval-card__reject) {
   margin: var(--dp-space-2) 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-red-600);
 }
@@ -426,7 +426,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -443,13 +443,13 @@
 }
 
 :global(.score-gate__title) {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 500;
 }
 
 :global(.score-gate__hint) {
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 
@@ -485,7 +485,7 @@
 
 :global(.stat-card__label) {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 
@@ -542,7 +542,7 @@
 :global(.self-check-row__label) {
   flex: 1;
   min-width: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 :global(.self-check-row__time) {
@@ -571,7 +571,7 @@
 }
 
 :global(.submit-task-row__message) {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.5;
   color: var(--dp-text-primary);
 }
@@ -586,7 +586,7 @@
 
 :global(.archive-search-snippet-block) {
   display: block;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.7;
   color: var(--dp-text-secondary);
   padding: var(--dp-space-2) var(--dp-space-3);
@@ -610,7 +610,7 @@
 
 :global(.score-summary-table__mono) {
   font-family: var(--dp-font-family-code);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -630,7 +630,7 @@
 :global(.audit-time) {
   flex-shrink: 0;
   min-width: 120px;
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   font-family: var(--dp-font-family-code);
   color: var(--dp-text-muted);
 }
@@ -641,14 +641,14 @@
 }
 
 :global(.audit-title) {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 500;
   color: var(--dp-text);
 }
 
 :global(.audit-desc) {
   margin-top: 2px;
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   color: var(--dp-text-muted);
 }
 

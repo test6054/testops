@@ -15,10 +15,8 @@ import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImp
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
@@ -30,7 +28,7 @@ import { useQueryTable } from '@/composables/useQueryTable'
 import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -42,6 +40,7 @@ const isDepartmentScoped = computed(
   () => route.path.includes('/department/') || !userStore.isTenantAdmin,
 )
 const pageScopeTitle = computed(() => (isDepartmentScoped.value ? '院系发展档案' : '发展档案库'))
+
 
 const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
   = usePortfolioArchiveWriteGuard()
@@ -62,8 +61,6 @@ const importModalOpen = ref(false)
 const saving = ref(false)
 const removingId = ref('')
 const exporting = ref(false)
-const exportConfirmOpen = ref(false)
-const exportPurpose = ref('')
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 const {
   loading,
@@ -124,6 +121,8 @@ const tabLabel = computed(
 )
 
 const importContext = computed(() => ({ defaultRecordType: activeType.value }))
+
+
 function recordStatusLabel(status: PortfolioDevelopmentRecordStatusCode): string {
   return strictEnumLabel(PortfolioDevelopmentRecordStatusDescription, status, '发展档案条目状态')
 }
@@ -186,27 +185,14 @@ async function removeRecord(id: string) {
   }
 }
 
-function openExportConfirm() {
-  if (exporting.value) return
-  exportPurpose.value = ''
-  exportConfirmOpen.value = true
-}
-
 async function exportExcel() {
-  if (exporting.value) return
-  const purpose = exportPurpose.value.trim()
-  if (!purpose) {
-    showFormValidationMessage('请填写导出用途')
+  if (exporting.value) {
     return
   }
   exporting.value = true
   try {
-    const result = await portfolioDevelopmentRecordApi.exportExcel({
-      recordType: activeType.value,
-      exportPurpose: purpose,
-    })
+    const result = await portfolioDevelopmentRecordApi.exportExcel({ recordType: activeType.value })
     await downloadPortfolioExcelExport(result)
-    exportConfirmOpen.value = false
     void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出发展记录失败')
@@ -287,7 +273,7 @@ function switchTab(type: RecordType) {
           size="sm"
           :loading="exporting"
           :disabled="exporting"
-          @click="openExportConfirm"
+          @click="exportExcel"
         >
           导出表格文件
         </UiButton>
@@ -321,7 +307,7 @@ function switchTab(type: RecordType) {
             {{ recordStatusLabel(record.recordStatus) }}
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
 
@@ -364,24 +350,6 @@ function switchTab(type: RecordType) {
       :context="importContext"
       @success="loadPage"
     />
-
-    <UiDialog
-      v-model:open="exportConfirmOpen"
-      title="导出"
-      ok-text="确认导出"
-      cancel-text="取消"
-      :confirm-loading="exporting"
-      @ok="exportExcel"
-    >
-      <label class="export-purpose__label">导出用途（必填）</label>
-      <UiTextarea
-        v-model="exportPurpose"
-        size="sm"
-        :rows="3"
-        placeholder="请填写本次导出用途（写入审计）"
-        :disabled="exporting"
-      />
-    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -400,7 +368,7 @@ function switchTab(type: RecordType) {
 .input {
   padding: 6px 8px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
 }
 .input--wide {
   flex: 1;
@@ -409,11 +377,5 @@ function switchTab(type: RecordType) {
 .input--teacher {
   width: 240px;
   min-width: 200px;
-}
-
-.export-purpose__label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
 }
 </style>

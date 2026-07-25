@@ -148,7 +148,7 @@ const handleOpenChange = (open: boolean) => {
   border-radius: var(--dp-radius-control);
   border: 1px solid var(--dp-border);
   background-color: var(--dp-bg-control);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 22px;
   color: var(--dp-text-primary);
   font-family: var(--dp-font-family);
@@ -196,7 +196,7 @@ const handleOpenChange = (open: boolean) => {
   line-height: 22px !important;
   background-color: transparent;
   color: var(--dp-text-primary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-family: var(--dp-font-family);
 }
 
@@ -265,14 +265,14 @@ const handleOpenChange = (open: boolean) => {
 
 .ui-date-picker-dropdown .ant-picker-content th {
   font-family: var(--dp-font-family) !important;
-  font-size: 13px !important;
+  font-size: var(--dp-font-size-sm) !important;
   font-weight: 500 !important;
   color: var(--dp-text-muted) !important;
 }
 
 .ui-date-picker-dropdown .ant-picker-cell-inner {
   font-family: var(--dp-font-family) !important;
-  font-size: 14px !important;
+  font-size: var(--dp-font-size-md) !important;
   color: var(--dp-text-primary) !important;
   border-radius: var(--dp-radius-control-inner) !important;
 }
@@ -306,7 +306,7 @@ const handleOpenChange = (open: boolean) => {
 
 .ui-date-picker-dropdown .ant-picker-ranges .ant-picker-ok .ant-btn-primary {
   font-family: var(--dp-font-family) !important;
-  font-size: 13px !important;
+  font-size: var(--dp-font-size-sm) !important;
   font-weight: 500 !important;
   background-color: var(--dp-blue-600) !important;
   border: none !important;

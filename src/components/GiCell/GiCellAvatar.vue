@@ -291,7 +291,7 @@ watch(
   }
 
   &__name {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 500;
     color: var(--dp-text);
     line-height: 1.5;
@@ -301,7 +301,7 @@ watch(
   }
 
   &__sub {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-tertiary);
     line-height: 1.4;
     overflow: hidden;
@@ -352,7 +352,7 @@ watch(
       opacity: 0;
       transition: opacity 0.2s;
       color: var(--dp-bg-container);
-      font-size: 16px;
+      font-size: var(--dp-font-size-lg);
     }
 
     &:hover .avatar-trigger-overlay {

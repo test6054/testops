@@ -61,7 +61,7 @@ const statusLabel = computed(() =>
   annualReport.value
     ? strictEnumLabel(
         PortfolioAnnualReportTaskStatusDescription,
-        annualReport.value.taskStatus as PortfolioAnnualReportTaskStatusCode,
+        annualReport.value.taskStatus,
         '年度报告任务状态',
       )
     : '',

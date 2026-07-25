@@ -366,7 +366,7 @@ watch(
 <style scoped lang="scss">
 .shuanggao-monitor__meta {
   margin: 0 0 var(--dp-space-2);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
 }

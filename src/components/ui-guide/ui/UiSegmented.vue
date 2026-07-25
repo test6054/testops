@@ -112,18 +112,18 @@ const handleChange = (value: string | number) => {
 
 .ui-segmented--sm :deep(.ant-segmented-item) {
   min-height: 24px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   padding-inline: var(--dp-space-2, 8px);
 }
 
 .ui-segmented--md :deep(.ant-segmented-item) {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   padding-inline: 10px;
 }
 
 .ui-segmented--lg :deep(.ant-segmented-item) {
   min-height: 32px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   padding-inline: var(--dp-space-3, 12px);
 }
 

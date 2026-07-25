@@ -391,7 +391,7 @@ async function runFourPropertyCheck() {
 
 .archive-quality-panel__stale-hint {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-warning);
 }
 
@@ -408,14 +408,14 @@ async function runFourPropertyCheck() {
 
 .archive-quality-panel__empty-title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
 
 .archive-quality-panel__empty-desc {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
   color: var(--dp-text-secondary);
 }

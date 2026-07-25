@@ -382,7 +382,7 @@ function goBack() {
 
 .archive-scan-session__title {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
   font-weight: 600;
 }
 
@@ -394,13 +394,13 @@ function goBack() {
   padding: var(--dp-space-3, 12px);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .archive-scan-session__block {
   margin: 0;
   color: var(--kiosk-danger);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .archive-scan-session__select {
@@ -417,19 +417,19 @@ function goBack() {
 
 .archive-scan-session__hint {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
 
 .archive-scan-session__error {
   margin: 0;
   color: var(--kiosk-danger);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .archive-scan-session__success {
   margin: 0;
   color: var(--kiosk-success);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 </style>

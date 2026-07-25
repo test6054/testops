@@ -186,7 +186,7 @@ const antSize = computed<SizeType>(() => {
   border-radius: var(--dp-radius-control-inner) !important;
   background: var(--dp-blue-50) !important;
   color: var(--dp-text-primary) !important;
-  font-size: 14px !important;
+  font-size: var(--dp-font-size-md) !important;
   font-weight: 500 !important;
   position: static !important;
   inset: auto !important;

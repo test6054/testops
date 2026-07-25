@@ -114,9 +114,9 @@ const handleCancel = () => {
   justify-content: center;
   width: var(--dp-control-height-md);
   height: var(--dp-control-height-md, 36px);
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   flex-shrink: 0;
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
 }
 
 .ui-confirm-dialog__icon--warning {
@@ -145,7 +145,7 @@ const handleCancel = () => {
 
 .ui-confirm-dialog__text {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.7;
   color: var(--dp-text-secondary);
 }

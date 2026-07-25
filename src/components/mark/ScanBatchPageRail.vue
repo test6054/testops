@@ -358,13 +358,13 @@ watch(
 
 .scan-batch-page-rail__chip-order {
   color: var(--dp-text-muted);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .scan-batch-page-rail__chip-label {
   overflow: hidden;
   color: var(--dp-text-primary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -373,7 +373,7 @@ watch(
 .scan-batch-page-rail__chip-meta {
   overflow: hidden;
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -450,13 +450,13 @@ watch(
 
 .scan-batch-page-rail__order {
   color: var(--dp-text-muted);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .scan-batch-page-rail__label {
   overflow: hidden;
   color: var(--dp-text-primary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -465,7 +465,7 @@ watch(
 .scan-batch-page-rail__meta {
   overflow: hidden;
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -478,7 +478,7 @@ watch(
   border-radius: 10px;
   background: var(--dp-error-bg);
   color: var(--dp-danger);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 20px;
 }
 
@@ -493,7 +493,7 @@ watch(
   align-self: center;
   padding: 8px 12px;
   color: var(--dp-text-muted);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   text-align: center;
   white-space: nowrap;
 }

@@ -13,7 +13,7 @@ import {
   PortfolioEvaluationIdentityMaterialScopeCode,
 } from '@/types/enums/portfolio-evaluation-identity-material-scope-enum'
 import { showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 
 const loading = ref(false)
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
@@ -23,7 +23,7 @@ const requestToken = ref(0)
 
 /** 被评教师中处于评价参评 hold 的人数。 */
 const heldSubjectCount = computed(() =>
-  (bundle.value?.subjectTeachers ?? []).filter((item) => Boolean(item.evaluationHeld)).length,
+  (bundle.value?.subjectTeachers ?? []).filter((item) => item.evaluationHeld === true).length,
 )
 
 const publicLinkParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
@@ -126,7 +126,7 @@ onMounted(() => {
               <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
-              <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+              <UiTag v-if="record.evaluationHeld === true" tone="orange" class="ml-1">参评 hold</UiTag>
               <span v-else-if="!record.lifecycleStatus">—</span>
             </template>
           </template>
@@ -144,11 +144,11 @@ onMounted(() => {
               <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
-              <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+              <UiTag v-if="record.evaluationHeld === true" tone="orange" class="ml-1">参评 hold</UiTag>
               <span v-else-if="!record.lifecycleStatus">—</span>
             </template>
             <template v-else-if="column.key === 'hasPrimaryFile'">
-              {{ record.hasPrimaryFile ? '有' : '无' }}
+              {{ record.hasPrimaryFile === true ? '有' : '无' }}
             </template>
             <template v-else-if="column.key === 'identityScope'">
               <UiTag :tone="record.identityScope === PortfolioEvaluationIdentityMaterialScopeCode.EXTERNAL ? 'orange' : record.identityScope === PortfolioEvaluationIdentityMaterialScopeCode.SHARED ? 'green' : 'blue'">
@@ -159,13 +159,13 @@ onMounted(() => {
                       ? '仅外部'
                       : record.identityScope === PortfolioEvaluationIdentityMaterialScopeCode.SHARED
                         ? '共享'
-                        : (record.identityScope || '—')
+                        : '—'
                 }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'usableForCampusHardCriteria'">
-              <UiTag :tone="record.usableForCampusHardCriteria ? 'green' : 'orange'">
-                {{ record.usableForCampusHardCriteria ? '可用' : '不可用' }}
+              <UiTag :tone="record.usableForCampusHardCriteria === true ? 'green' : 'orange'">
+                {{ record.usableForCampusHardCriteria === true ? '可用' : '不可用' }}
               </UiTag>
             </template>
           </template>
@@ -205,7 +205,7 @@ onMounted(() => {
 .public-expert-review__header p {
   margin: 0;
   color: var(--dp-text-secondary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .public-expert-review__meta {
   display: flex;
@@ -213,14 +213,14 @@ onMounted(() => {
   gap: var(--dp-space-2, 8px);
   align-items: center;
   margin-bottom: var(--dp-space-3, 12px);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .public-expert-review__teachers {
   margin-bottom: 16px;
 }
 .public-expert-review__section-title {
   margin: 0 0 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 </style>

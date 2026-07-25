@@ -342,7 +342,7 @@ function navigateTab(tabKey: string) {
 
 .dept-review-panel__reject {
   margin: 0 0 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-color-error);
 }
 
@@ -352,7 +352,7 @@ function navigateTab(tabKey: string) {
 
 .dept-review-panel__hint {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
 </style>

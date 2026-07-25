@@ -64,7 +64,7 @@ const props = withDefaults(
 <style lang="scss" scoped>
 .ui-typography-text {
   color: var(--dp-text-primary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.55;
 }
 

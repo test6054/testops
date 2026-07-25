@@ -31,7 +31,6 @@ import {
   PortfolioArchiveSupportMaterialSourceTypeDescription,
   PortfolioCompletenessLevelDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioArchiveBagApi } from '@/apis/portfolio/teacher-platform'
 import {
@@ -46,7 +45,6 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
@@ -65,9 +63,6 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { useUserStore } from '@/stores/modules/user'
-import { PortfolioArchiveScoreLineTypeCode } from '@/types/enums/portfolio-archive-score-line-type-enum'
-import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
@@ -190,7 +185,6 @@ const materialLibraryColumns: ColumnsType<PortfolioMaterialVO> = [
 
 const route = useRoute()
 const router = useRouter()
-const userStore = useUserStore()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
@@ -216,8 +210,6 @@ const bagPreview = ref<PortfolioArchiveBagPreviewVO | null>(null)
 const scoreResult = ref<PortfolioArchiveScoreResultVO | null>(null)
 const scoreLoading = ref(false)
 const exportConfirmOpen = ref(false)
-const exportPurpose = ref('')
-const exportApplying = ref(false)
 const requestToken = ref(0)
 const oneTableRequestToken = ref(0)
 const recordRequestToken = ref(0)
@@ -884,7 +876,6 @@ async function previewBag(): Promise<boolean> {
 }
 
 function openExportConfirm() {
-  exportPurpose.value = ''
   if (!bagPreview.value) {
     void previewBag().then((previewed) => {
       if (previewed) {
@@ -900,53 +891,40 @@ async function confirmExportBag() {
   if (!assertArchiveWritable()) {
     return
   }
-  if (!(await confirmProxyWrite('申请导出材料包'))) {
+  if (!(await confirmProxyWrite('导出一表通'))) {
     return
   }
-  const purpose = exportPurpose.value.trim()
-  if (!purpose) {
-    showFormValidationMessage('请填写导出用途')
-    return
-  }
-  const teacherId = targetTeacherId.value || userStore.userInfo.userId
-  if (!teacherId) {
-    showFormValidationMessage('当前登录用户信息尚未就绪')
-    return
-  }
+
+  const currentToken = requestToken.value
   if (!canLoadTeacherArchive.value) {
     return
   }
-  if (exportApplying.value) {
-    return
-  }
-  const currentToken = requestToken.value
-  exportApplying.value = true
   bagLoading.value = true
   try {
-    // §7.9：TEACHER_ARCHIVE 走导出审批；审批通过后由 ExportArtifactService 生成 ZIP
-    await portfolioSecurityApi.applyExport({
-      exportType: PortfolioExportTypeCode.TEACHER_ARCHIVE,
-      businessRef: {
-        teacherId,
-        academicYear: bagRequest.value.academicYear,
-        semester: bagRequest.value.semester,
-      },
-      exportPurpose: purpose,
+    const result = await portfolioArchiveBagApi.buildMaterialPackage(bagRequest.value)
+    if (requestToken.value !== currentToken) {
+      return
+    }
+    if (!result.fileNodeId) {
+      showUserError(new Error('导出未返回压缩包文件编号'), '导出档案袋失败')
+      return
+    }
+    await handleDownloadFile({
+      fileId: result.fileNodeId,
+      fileName: result.fileName,
     })
     if (requestToken.value !== currentToken) {
       return
     }
     exportConfirmOpen.value = false
-    void message.success('材料包导出审批已提交，请在「我的导出」下载')
-    void router.push({ name: 'PortfolioExportApprovalMine' })
+    await previewBag()
   } catch (error) {
     if (requestToken.value !== currentToken) {
       return
     }
-    showUserError(error, '提交材料包导出审批失败')
+    showUserError(error, '导出档案袋失败')
   } finally {
     if (requestToken.value === currentToken) {
-      exportApplying.value = false
       bagLoading.value = false
     }
   }
@@ -1111,69 +1089,71 @@ watch(
       />
     </UiCard>
 
-    <UiCard v-if="scoreResult" title="档案袋评分" class="teacher-archive__bag">
-      <p>
-        总分 {{ scoreResult.totalScore
-        }}<template v-if="scoreResult.computedTime">
-          · 计算于 {{ scoreResult.computedTime }}
-        </template>
-      </p>
-      <ul v-if="scoreResult.breakdown.length" class="teacher-archive__score-list">
-        <li
-          v-for="(item, idx) in scoreResult.breakdown"
-          :key="`${item.lineType || 'line'}-${item.ruleId || 'x'}-${idx}`"
-          :class="{
-            'teacher-archive__score-item--detail': item.lineType === PortfolioArchiveScoreLineTypeCode.ACHIEVEMENT_ITEM,
-            'teacher-archive__score-item--blank': item.lineType === PortfolioArchiveScoreLineTypeCode.BLANK_PERIOD,
-          }"
-        >
-          <div class="teacher-archive__score-item-head">
-            <strong>{{ item.ruleName }}</strong>
-            <span>{{ item.earnedScore }} 分</span>
-          </div>
-          <div
-            v-if="item.lineType === PortfolioArchiveScoreLineTypeCode.ACHIEVEMENT_ITEM || item.decayFactor != null"
-            class="teacher-archive__score-decay"
+    <div v-if="bagSummary || scoreResult" class="teacher-archive__bag-grid">
+      <UiCard v-if="bagSummary" title="档案袋汇聚" class="teacher-archive__bag">
+        <div class="teacher-archive__completeness-head">
+          <span>{{ bagAssembleCompletenessHeadline(bagSummary) }}</span>
+          <UiTag
+            v-if="bagSummary.preview?.completenessLevel"
+            :tone="completenessLevelTone(bagSummary.preview.completenessLevel)"
+            size="sm"
           >
-            <template v-if="item.rawScore != null">原始 {{ item.rawScore }} · </template>
-            <template v-if="item.decayFactor != null">
-              衰减系数 {{ item.decayFactor }}
-              <template v-if="item.decayProfileLabel">（{{ item.decayProfileLabel }}）</template>
-              ·
-            </template>
-            <template v-if="item.recognitionYear != null">
-              认定年 {{ item.recognitionYear }} ·
-            </template>
-            <template v-if="item.decayApplied">已衰减</template>
-            <template v-else-if="item.lineType === PortfolioArchiveScoreLineTypeCode.ACHIEVEMENT_ITEM">未衰减</template>
-          </div>
-          <p class="teacher-archive__score-explain">{{ item.explainText }}</p>
-        </li>
-      </ul>
-    </UiCard>
+            {{ completenessLevelLabel(bagSummary.preview.completenessLevel) }}
+          </UiTag>
+        </div>
+        <p>
+          已归档 {{ bagSummary.archivedCategoryCount }} 类 · 开放补采
+          {{ bagSummary.openGapTaskCount }} 项
+          <template v-if="bagSummary.preview && bagCourseArchiveLabel(bagSummary.preview)">
+            · {{ bagCourseArchiveLabel(bagSummary.preview) }}
+          </template>
+        </p>
+        <p v-if="bagSummary.missingCategoryNames.length">
+          缺失：{{ bagSummary.missingCategoryNames.join('、') }}
+        </p>
+      </UiCard>
 
-    <UiCard v-if="bagSummary" title="档案袋汇聚" class="teacher-archive__bag">
-      <div class="teacher-archive__completeness-head">
-        <span>{{ bagAssembleCompletenessHeadline(bagSummary) }}</span>
-        <UiTag
-          v-if="bagSummary.preview?.completenessLevel"
-          :tone="completenessLevelTone(bagSummary.preview.completenessLevel)"
-          size="sm"
-        >
-          {{ completenessLevelLabel(bagSummary.preview.completenessLevel) }}
-        </UiTag>
-      </div>
-      <p>
-        已归档 {{ bagSummary.archivedCategoryCount }} 类 · 开放补采
-        {{ bagSummary.openGapTaskCount }} 项
-        <template v-if="bagSummary.preview && bagCourseArchiveLabel(bagSummary.preview)">
-          · {{ bagCourseArchiveLabel(bagSummary.preview) }}
-        </template>
-      </p>
-      <p v-if="bagSummary.missingCategoryNames.length">
-        缺失：{{ bagSummary.missingCategoryNames.join('、') }}
-      </p>
-    </UiCard>
+      <UiCard v-if="scoreResult" title="档案袋评分" class="teacher-archive__bag">
+        <p>
+          总分 {{ scoreResult.totalScore
+          }}<template v-if="scoreResult.computedTime">
+            · 计算于 {{ scoreResult.computedTime }}
+          </template>
+        </p>
+        <ul v-if="scoreResult.breakdown.length" class="teacher-archive__score-list">
+          <li
+            v-for="(item, idx) in scoreResult.breakdown"
+            :key="`${item.lineType || 'line'}-${item.ruleId || 'x'}-${idx}`"
+            :class="{
+              'teacher-archive__score-item--detail': item.lineType === 'ACHIEVEMENT_ITEM',
+              'teacher-archive__score-item--blank': item.lineType === 'BLANK_PERIOD',
+            }"
+          >
+            <div class="teacher-archive__score-item-head">
+              <strong>{{ item.ruleName }}</strong>
+              <span>{{ item.earnedScore }} 分</span>
+            </div>
+            <div
+              v-if="item.lineType === 'ACHIEVEMENT_ITEM' || item.decayFactor != null"
+              class="teacher-archive__score-decay"
+            >
+              <template v-if="item.rawScore != null">原始 {{ item.rawScore }} · </template>
+              <template v-if="item.decayFactor != null">
+                衰减系数 {{ item.decayFactor }}
+                <template v-if="item.decayProfileLabel">（{{ item.decayProfileLabel }}）</template>
+                ·
+              </template>
+              <template v-if="item.recognitionYear != null">
+                认定年 {{ item.recognitionYear }} ·
+              </template>
+              <template v-if="item.decayApplied">已衰减</template>
+              <template v-else-if="item.lineType === 'ACHIEVEMENT_ITEM'">未衰减</template>
+            </div>
+            <p class="teacher-archive__score-explain">{{ item.explainText }}</p>
+          </li>
+        </ul>
+      </UiCard>
+    </div>
 
     <UiCard v-if="bagPreview" title="结构化预览" class="teacher-archive__bag-preview">
       <div class="teacher-archive__completeness-head">
@@ -1577,28 +1557,22 @@ watch(
 
     <UiDialog
       v-model:open="exportConfirmOpen"
-      title="申请导出材料包"
-      ok-text="提交审批"
+      title="确认导出材料包"
+      ok-text="确认导出"
       cancel-text="取消"
-      :confirm-loading="bagLoading || exportApplying"
+      :confirm-loading="bagLoading"
       @ok="confirmExportBag"
     >
       <p v-if="bagPreview">
-        将按当前预览申请导出约 {{ bagPreview.totalAttachmentCount }} 个附件，目录
-        {{ bagPreview.catalogItems.length }} 条；审批通过后可在「我的导出」下载含水印 ZIP。
+        将导出 {{ bagPreview.totalAttachmentCount }} 个附件，目录
+        {{ bagPreview.catalogItems.length }} 条。
       </p>
-      <p v-else>将按当前筛选条件申请导出材料包；须经租户管理员审批后下载。</p>
+      <p v-else>将按当前筛选条件构建压缩包材料包。</p>
       <p v-if="bagPreview?.latestMaterialPackageExport" class="teacher-archive__latest-export">
         上次导出 {{ bagPreview.latestMaterialPackageExport.exportedTime }}， 附件
-        {{ bagPreview.latestMaterialPackageExport.attachmentCount }} 个。
+        {{ bagPreview.latestMaterialPackageExport.attachmentCount }} 个。 本次将生成新的
+        压缩包，不会覆盖历史导出。
       </p>
-      <label class="teacher-archive__export-label">导出用途（必填）</label>
-      <UiTextarea
-        v-model="exportPurpose"
-        size="sm"
-        :rows="3"
-        placeholder="请说明导出用途，例如职称评审、迎评检查"
-      />
     </UiDialog>
   </StageWorkbenchShell>
 </template>
@@ -1633,12 +1607,12 @@ watch(
 
 .teacher-archive__category-name {
   flex: 1 1 100%;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: var(--dp-font-weight-medium);
 }
 
 .teacher-archive__category-count {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 
@@ -1650,7 +1624,7 @@ watch(
 
 .teacher-archive__latest-export {
   margin-top: var(--dp-space-3);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
@@ -1670,18 +1644,18 @@ watch(
   align-items: center;
   gap: var(--dp-space-2);
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .teacher-archive__timeline-meta {
   margin: var(--dp-space-1) 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 
 .teacher-archive__detail-meta {
   margin: 0 0 var(--dp-space-2);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -1695,7 +1669,7 @@ watch(
 
 .teacher-archive__version-title {
   margin: 0 0 var(--dp-space-2);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: var(--dp-font-weight-medium);
 }
 
@@ -1712,7 +1686,7 @@ watch(
   padding: var(--dp-space-2) 0;
   border-bottom: 1px solid var(--dp-border-subtle);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .teacher-archive__version-time {
@@ -1778,14 +1752,14 @@ watch(
 
 .teacher-archive__support-title {
   overflow-wrap: anywhere;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: var(--dp-font-weight-medium);
 }
 
 .teacher-archive__support-meta {
   margin-top: var(--dp-space-1);
   overflow-wrap: anywhere;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 
@@ -1796,14 +1770,26 @@ watch(
 
 .teacher-archive__material-label {
   margin-top: var(--dp-space-2);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: var(--dp-font-weight-medium);
 }
 
 .teacher-archive__score-list {
   margin: 8px 0 0;
   padding-left: 18px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
+}
+
+.teacher-archive__bag-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: var(--dp-space-4);
+  margin-bottom: var(--dp-space-4);
+  align-items: start;
+}
+
+.teacher-archive__bag-grid .teacher-archive__bag {
+  margin-bottom: 0;
 }
 
 .teacher-archive__bag,
@@ -1832,7 +1818,7 @@ watch(
 
 .teacher-archive__section-title {
   margin: 0 0 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: var(--dp-font-weight-medium);
 }
 
@@ -1842,7 +1828,7 @@ watch(
 
 .teacher-archive__group-title {
   margin: 0 0 4px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -1853,7 +1839,7 @@ watch(
 
 .teacher-archive__bag p {
   margin: 0 0 var(--dp-space-2);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -1863,6 +1849,10 @@ watch(
 
 @media (max-width: 1100px) {
   .teacher-archive__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .teacher-archive__bag-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -14,10 +14,8 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
-import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
@@ -31,7 +29,7 @@ import { useUserStore } from '@/stores/modules/user'
 import { PortfolioBusinessDataSourceTypeCode } from '@/types/enums/portfolio-business-data-source-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -42,6 +40,7 @@ const isDepartmentScoped = computed(
   () => route.path.includes('/department/') || !userStore.isTenantAdmin,
 )
 const pageTitle = computed(() => (isDepartmentScoped.value ? '院系图书借阅' : '图书借阅'))
+
 
 const stats = ref<PortfolioTeacherLibraryBorrowStatsVO | null>(null)
 const form = reactive({
@@ -64,13 +63,10 @@ const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange }
   = useQueryTable(portfolioTeacherLibraryApi.page)
 const statsLoading = ref(false)
-const exportConfirmOpen = ref(false)
-const exportPurpose = ref('')
 const statsLoadError = ref(false)
 const statsRequestToken = ref(0)
 const operationKey = ref('')
 const operating = computed(() => Boolean(operationKey.value))
-const exporting = computed(() => operationKey.value === 'borrow:export')
 
 function beginOperation(key: string): boolean {
   if (operating.value) return false
@@ -99,6 +95,8 @@ async function loadStats() {
     if (statsRequestToken.value === currentToken) statsLoading.value = false
   }
 }
+
+
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
   { title: '书名', dataIndex: 'bookTitle', key: 'bookTitle' },
@@ -235,23 +233,12 @@ async function returnBorrow(row: (typeof rows.value)[number]) {
   }
 }
 
-function openExportConfirm() {
-  exportPurpose.value = ''
-  exportConfirmOpen.value = true
-}
-
 async function exportCsv() {
-  const purpose = exportPurpose.value.trim()
-  if (!purpose) {
-    showFormValidationMessage('请填写导出用途')
-    return
-  }
   const operation = 'borrow:export'
   if (!beginOperation(operation)) return
   try {
-    const result = await portfolioTeacherLibraryApi.export({ exportPurpose: purpose })
+    const result = await portfolioTeacherLibraryApi.export()
     await downloadPortfolioExcelExport(result)
-    exportConfirmOpen.value = false
     void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出借阅记录失败')
@@ -342,7 +329,7 @@ void loadStats()
           size="sm"
           :loading="operationKey === 'borrow:export'"
           :disabled="operating"
-          @click="openExportConfirm"
+          @click="exportCsv"
         >
           导出
         </UiButton>
@@ -370,7 +357,7 @@ void loadStats()
             {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
             <span v-else>—</span>
@@ -400,24 +387,6 @@ void loadStats()
         </template>
       </UiDataTable>
     </UiCard>
-
-    <UiDialog
-      v-model:open="exportConfirmOpen"
-      title="导出"
-      ok-text="确认导出"
-      cancel-text="取消"
-      :confirm-loading="exporting"
-      @ok="exportCsv"
-    >
-      <label class="export-purpose__label">导出用途（必填）</label>
-      <UiTextarea
-        v-model="exportPurpose"
-        size="sm"
-        :rows="3"
-        placeholder="请填写本次导出用途（写入审计）"
-        :disabled="exporting"
-      />
-    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -430,15 +399,10 @@ void loadStats()
   margin-bottom: 8px;
 }
 .stats {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--text-secondary);
 }
 .stats--error {
   color: var(--dp-error);
-}
-.export-purpose__label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
 }
 </style>

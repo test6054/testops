@@ -351,7 +351,7 @@ onMounted(() => {
   border: none;
   background: transparent;
   padding: 0;
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   color: var(--dp-color-primary);
   cursor: pointer;
 
@@ -378,14 +378,14 @@ onMounted(() => {
 
   &::-webkit-scrollbar-thumb {
     background: var(--dp-fill-secondary);
-    border-radius: 4px;
+    border-radius: var(--dp-radius-xs);
   }
 }
 
 .notif-empty {
   padding: var(--dp-space-4) var(--dp-space-3);
   text-align: center;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 
   &--error {
@@ -438,7 +438,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 700;
   flex-shrink: 0;
 
@@ -479,7 +479,7 @@ onMounted(() => {
 }
 
 .notif-desc {
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   color: var(--dp-text-muted);
   margin-top: 1px;
   overflow: hidden;
@@ -512,7 +512,7 @@ onMounted(() => {
   border: none;
   background: transparent;
   padding: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-color-primary);
   cursor: pointer;
 

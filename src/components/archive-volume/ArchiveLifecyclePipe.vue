@@ -72,13 +72,13 @@ const stageTotal = computed(() => {
 <style lang="scss" scoped>
 .archive-lifecycle-pipe-card {
   &__title {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   &__progress {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 }

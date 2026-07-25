@@ -236,6 +236,6 @@ defineExpose({ validate })
 
 .muted {
   color: var(--dp-text-tertiary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 </style>

@@ -117,12 +117,12 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
 
   &__title {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
   }
 
   &__hint {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
@@ -137,7 +137,7 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
 
   &__item {
     border: 1px solid var(--dp-border);
-    border-radius: 4px;
+    border-radius: var(--dp-radius-xs);
     padding: 8px 10px;
     background: var(--dp-surface);
   }
@@ -158,13 +158,13 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
   }
 
   &__name {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
   }
 
   &__leader {
     flex-shrink: 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
@@ -172,7 +172,7 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
     display: flex;
     gap: var(--dp-space-3, 12px);
     margin-bottom: 8px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
@@ -201,7 +201,7 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
 
   &__percent {
     min-width: 36px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     font-weight: 600;
     text-align: right;
   }

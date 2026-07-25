@@ -446,14 +446,14 @@ void initialize()
 
 .cas-completion__eyebrow {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 700;
   color: var(--dp-blue-600);
 }
 
 .cas-completion__title {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
   line-height: 1.25;
   font-weight: 700;
   color: var(--dp-text-primary);
@@ -461,7 +461,7 @@ void initialize()
 
 .cas-completion__subtitle {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.7;
   color: var(--dp-text-secondary);
 }
@@ -489,13 +489,13 @@ void initialize()
 }
 
 .cas-completion__summary-label {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.4;
   color: var(--dp-text-muted);
 }
 
 .cas-completion__summary-value {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.6;
   font-weight: 700;
   color: var(--dp-text-primary);
@@ -510,7 +510,7 @@ void initialize()
 
 .cas-completion__submit-error {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-red-500);
 }

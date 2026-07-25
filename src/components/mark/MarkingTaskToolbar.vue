@@ -210,7 +210,7 @@ const navNextLabel = computed(() => props.navigation.navNextLabel.value)
   }
 
   &__progress {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 500;
     color: var(--dp-text-secondary);
     padding: 0 4px;
@@ -233,14 +233,14 @@ const navNextLabel = computed(() => props.navigation.navNextLabel.value)
 
     dt {
       margin: 0;
-      font-size: 12px;
+      font-size: var(--dp-font-size-xs);
       line-height: 1.5;
       color: var(--dp-text-muted);
     }
 
     dd {
       margin: 0;
-      font-size: 13px;
+      font-size: var(--dp-font-size-sm);
       line-height: 1.5;
       color: var(--dp-text-primary);
       word-break: break-word;
@@ -267,7 +267,7 @@ const navNextLabel = computed(() => props.navigation.navNextLabel.value)
     display: flex;
     flex-direction: column;
     gap: 2px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 }

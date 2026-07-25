@@ -107,14 +107,14 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
   }
 
   &__label {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     font-weight: 600;
     color: var(--dp-text-primary);
     white-space: nowrap;
   }
 
   &__meta {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
     white-space: nowrap;
   }
@@ -133,9 +133,9 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
     gap: 4px;
     padding: 2px 8px;
     border: 1px solid var(--dp-border-subtle);
-    border-radius: 4px;
+    border-radius: var(--dp-radius-xs);
     background: var(--dp-surface);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 20px;
     color: var(--dp-text-primary);
     cursor: pointer;

@@ -14,10 +14,8 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
-import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
@@ -30,7 +28,7 @@ import { useQueryTable } from '@/composables/useQueryTable'
 import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -42,10 +40,8 @@ const isDepartmentScoped = computed(
 )
 const pageTitle = computed(() => (isDepartmentScoped.value ? '院系荣誉库' : '荣誉库'))
 
+
 const importModalOpen = ref(false)
-const exporting = ref(false)
-const exportConfirmOpen = ref(false)
-const exportPurpose = ref('')
 const stats = ref<PortfolioHonorStatsVO | null>(null)
 const statsRequestToken = ref(0)
 const operationKey = ref('')
@@ -128,6 +124,8 @@ const {
     },
   },
 )
+
+
 async function saveRecord() {
   if (writing.value) return
   if (!form.recordTitle.trim()) {
@@ -191,20 +189,9 @@ async function removeRecord(id: string, title: string) {
   }
 }
 
-function openExportConfirm() {
-  if (exporting.value || writing.value) return
-  exportPurpose.value = ''
-  exportConfirmOpen.value = true
-}
-
 async function exportHonor() {
-  if (exporting.value || writing.value) return
-  const purpose = exportPurpose.value.trim()
-  if (!purpose) {
-    showFormValidationMessage('请填写导出用途')
-    return
-  }
-  exporting.value = true
+  if (writing.value) return
+  operationKey.value = 'export'
   try {
     const result = await portfolioDevelopmentRecordApi.honorExport({
       levelCode: (query.value.levelCode || undefined) as PortfolioHonorLevelCode | undefined,
@@ -212,15 +199,13 @@ async function exportHonor() {
       recordDateFrom: query.value.recordDateFrom || undefined,
       recordDateTo: query.value.recordDateTo || undefined,
       categoryCode: query.value.categoryCode || undefined,
-      exportPurpose: purpose,
     })
     await downloadPortfolioExcelExport(result)
-    exportConfirmOpen.value = false
     void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出荣誉库失败')
   } finally {
-    exporting.value = false
+    if (operationKey.value === 'export') operationKey.value = ''
   }
 }
 </script>
@@ -262,7 +247,7 @@ async function exportHonor() {
           placeholder="截止日期"
         />
         <UiButton size="sm" :disabled="writing" @click="search"> 查询 </UiButton>
-        <UiButton v-if="!isDepartmentScoped" size="sm" :disabled="writing" @click="openExportConfirm"> 导出 </UiButton>
+        <UiButton v-if="!isDepartmentScoped" size="sm" :disabled="writing" @click="exportHonor"> 导出 </UiButton>
         <UiButton
           v-if="!isDepartmentScoped"
           variant="primary"
@@ -330,7 +315,7 @@ async function exportHonor() {
             {{ record.affiliationStaffNo || '—' }}
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
 
@@ -382,24 +367,6 @@ async function exportHonor() {
       :requirements="honorImportRequirements"
       @success="loadPage"
     />
-
-    <UiDialog
-      v-model:open="exportConfirmOpen"
-      title="导出"
-      ok-text="确认导出"
-      cancel-text="取消"
-      :confirm-loading="exporting"
-      @ok="exportHonor"
-    >
-      <label class="export-purpose__label">导出用途（必填）</label>
-      <UiTextarea
-        v-model="exportPurpose"
-        size="sm"
-        :rows="3"
-        placeholder="请填写本次导出用途（写入审计）"
-        :disabled="exporting"
-      />
-    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -413,13 +380,7 @@ async function exportHonor() {
   margin-bottom: 8px;
 }
 .stats span {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--text-secondary);
-}
-
-.export-purpose__label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
 }
 </style>

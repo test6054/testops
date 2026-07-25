@@ -73,7 +73,7 @@ import {
   PortfolioTitlePromotionTaskStatusDescription,
 } from '@/types/enums/portfolio-title-promotion-task-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -247,6 +247,20 @@ const appColumns: ColumnsType = [
   { title: '状态', key: 'applicationStatus', width: 120 },
   { title: '操作', key: 'actions', width: 280 },
 ]
+
+
+/** 匹配度按阈值着色：<60% 红、60-80% 橙、>80% 绿，便于审核台快速识别风险申报。
+ *  后端 matchScore 可能返回 0-1 比率或百分比文本，统一归一到百分制再比阈值。 */
+function matchScoreToneClass(score?: string | number): string {
+  if (score === undefined || score === null || score === '') return ''
+  const parsed = Number.parseFloat(String(score))
+  if (Number.isNaN(parsed)) return ''
+  const percent = parsed <= 1 ? parsed * 100 : parsed
+  if (percent < 60) return 'title-promo__score--low'
+  if (percent <= 80) return 'title-promo__score--mid'
+  return 'title-promo__score--high'
+}
+
 /** 院审/人事读整袋：teacherUserId 即档案 teacherId */
 function goTeacherPortfolioPage(path: string, teacherId?: string) {
   if (!teacherId) {
@@ -1221,6 +1235,9 @@ onMounted(() => {
               }
             "
           />
+          <span class="title-promo__toolbar-hint">
+            校级流程：院审 → 人事复审 → 专家评审 → 公示 → 归档
+          </span>
         </div>
         <UiSpin :spinning="appLoading">
           <UiEmpty size="sm" v-if="!appLoading && !apps.length" description="暂无申报单" />
@@ -1242,7 +1259,7 @@ onMounted(() => {
                 {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
               </template>
               <template v-else-if="column.key === 'lifecycleStatus'">
-                <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+                <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
                   {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
                 </UiTag>
                 <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -1253,6 +1270,11 @@ onMounted(() => {
                   :layers="record.ownerIdentityLayers"
                   :note="record.ownerMultiIdentityNote"
                 />
+              </template>
+              <template v-else-if="column.key === 'matchScore'">
+                <span class="title-promo__score" :class="matchScoreToneClass(record.matchScore)">
+                  {{ record.matchScore || '—' }}
+                </span>
               </template>
               <template v-else-if="column.key === 'redlineBlocked'">
                 <UiTag :tone="record.redlineBlocked ? 'red' : 'green'">
@@ -1839,7 +1861,28 @@ onMounted(() => {
 
 <style scoped>
 .title-promo__filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 12px;
+}
+.title-promo__toolbar-hint {
+  margin-left: auto;
+  font-size: var(--dp-font-size-xs);
+  color: var(--dp-text-muted);
+}
+.title-promo__score {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+.title-promo__score--low {
+  color: var(--dp-red-600);
+}
+.title-promo__score--mid {
+  color: var(--dp-orange-600);
+}
+.title-promo__score--high {
+  color: var(--dp-green-600);
 }
 .title-promo__form {
   display: flex;
@@ -1847,24 +1890,24 @@ onMounted(() => {
   gap: 8px;
 }
 .title-promo__form label {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .title-promo__match {
   margin: 0;
   padding-left: 16px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }
 .title-promo__match-desc {
   margin-top: 2px;
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 .title-promo__match-gap {
   margin-top: 2px;
   color: var(--dp-danger);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 .title-promo__criteria-grid {
   display: grid;
@@ -1936,7 +1979,7 @@ onMounted(() => {
 }
 
 .title-promo__field-label {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 

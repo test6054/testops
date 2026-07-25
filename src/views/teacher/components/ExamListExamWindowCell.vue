@@ -61,12 +61,12 @@ const windowCell = computed(() => {
 }
 
 .exam-list-page__exam-window-range {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   white-space: nowrap;
 }
 
 .exam-list-page__exam-window-phase {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 18px;
   color: var(--dp-text-tertiary);
 }

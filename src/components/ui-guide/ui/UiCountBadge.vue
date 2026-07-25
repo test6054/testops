@@ -46,7 +46,7 @@ const props = withDefaults(
 .ui-count-badge :deep(.ant-badge-count) {
   background: var(--dp-danger);
   box-shadow: none;
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   font-weight: 600;
 }
 </style>

@@ -437,7 +437,7 @@ function goBack() {
 
 .portfolio-scan-session__title {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
 }
 
 .portfolio-scan-session__summary,
@@ -445,7 +445,7 @@ function goBack() {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .portfolio-scan-session__select {
@@ -465,12 +465,12 @@ function goBack() {
 }
 
 .portfolio-scan-session__hint {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--kiosk-ink-secondary);
 }
 
 .portfolio-scan-session__error {
   color: var(--kiosk-danger);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 </style>

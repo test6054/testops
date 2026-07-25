@@ -56,19 +56,19 @@ type BadgeVariant = 'solid' | 'outline' | 'soft'
 .ui-badge--sm {
   min-height: 22px;
   padding: 0 9px;
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
 }
 
 .ui-badge--md {
   min-height: 26px;
   padding: 0 11px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .ui-badge--lg {
   min-height: 30px;
   padding: 0 13px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .ui-badge--outline {

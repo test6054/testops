@@ -201,14 +201,14 @@ const dialogWidth = computed(() => {
 
   strong {
     color: var(--dp-text-primary);
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     line-height: 19px;
   }
 
   small {
     color: var(--dp-text-secondary);
-    font-size: 11px;
+    font-size: var(--dp-font-size-xxs);
     line-height: 16px;
   }
 }
@@ -239,12 +239,12 @@ const dialogWidth = computed(() => {
 
   > .anticon {
     color: var(--dp-text-muted, var(--dp-text-muted));
-    font-size: 20px;
+    font-size: var(--dp-font-size-2xl);
   }
 
   strong {
     color: var(--dp-text-primary);
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
   }
 }
 
@@ -282,7 +282,7 @@ const dialogWidth = computed(() => {
   padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
   background: var(--dp-surface, var(--dp-surface));
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-primary);
   overflow: auto;

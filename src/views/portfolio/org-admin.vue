@@ -793,7 +793,7 @@ onMounted(async () => {
   margin: 0;
   padding-left: 18px;
   color: var(--dp-text-secondary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .org-admin__meta {
@@ -805,7 +805,7 @@ onMounted(async () => {
   div {
     display: flex;
     gap: 8px;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
   }
 
   dt {

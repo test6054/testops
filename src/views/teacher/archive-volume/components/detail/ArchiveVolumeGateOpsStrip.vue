@@ -90,14 +90,14 @@ const emit = defineEmits<{
 }
 
 .archive-gate-ops__title {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
   color: var(--dp-text-primary);
   line-height: 1.2;
 }
 
 .archive-gate-ops__cta {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
   color: var(--dp-color-primary);
   white-space: nowrap;

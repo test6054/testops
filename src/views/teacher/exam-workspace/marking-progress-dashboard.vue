@@ -433,7 +433,7 @@ watch(examId, () => loadPanel(), { immediate: true })
 
 .marking-progress-dash__mono {
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 </style>

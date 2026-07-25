@@ -512,7 +512,7 @@ onActivated(() => {
   &__audit-comment {
     margin-top: 4px;
     color: var(--dp-text-secondary);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 }
 </style>

@@ -99,7 +99,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 
 .task-result-panel__title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
@@ -110,7 +110,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 }
 
 .task-result-panel__empty-text {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
 
@@ -157,7 +157,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 }
 
 .task-result-panel__item-title {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 500;
   color: var(--dp-text-primary);
   min-width: 0;
@@ -169,7 +169,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 .task-result-panel__item-badge {
   flex-shrink: 0;
   padding: 1px var(--dp-space-2, 8px);
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   font-weight: 500;
   border-radius: 10px;
   line-height: 1.6;
@@ -212,7 +212,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 
 .task-result-panel__item-desc {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
   line-height: 1.5;
 }
@@ -225,7 +225,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 
 .task-result-panel__item-time,
 .task-result-panel__item-extra {
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   color: var(--dp-text-muted);
 }
 
@@ -238,7 +238,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 
 .task-result-panel__action {
   padding: 2px 10px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 500;
   color: var(--dp-color-primary);
   background: transparent;

@@ -1182,7 +1182,7 @@ onMounted(() => {
 
 .archive-supervision-panel__export-hint {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
   line-height: 1.5;
 }
@@ -1196,7 +1196,7 @@ onMounted(() => {
 }
 
 .detail-head__title {
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
 }
 
@@ -1207,7 +1207,7 @@ onMounted(() => {
 
 .section-title {
   margin: 16px 0 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .archive-supervision-panel__problem-filters {

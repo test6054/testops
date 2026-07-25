@@ -16,11 +16,8 @@ import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
-import {
-  PortfolioEvaluationIdentityMaterialScopeCode,
-} from '@/types/enums/portfolio-evaluation-identity-material-scope-enum'
 import { showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
@@ -54,18 +51,26 @@ function materialRowKey(record: unknown): string {
   return row.materialRef || row.archiveRecordId || `${row.maskedTeacherLabel}-${row.categoryCode}-${row.academicYear}`
 }
 
+function subjectLifecycleTone(record: unknown) {
+  return portfolioLifecycleTagTone(subjectTeacherRow(record).lifecycleStatus)
+}
+
+function materialLifecycleTone(record: unknown) {
+  return portfolioLifecycleTagTone(materialRow(record).lifecycleStatus)
+}
+
 function identityScopeTone(record: unknown): 'orange' | 'green' | 'blue' {
   const scope = materialRow(record).identityScope
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.EXTERNAL) return 'orange'
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.SHARED) return 'green'
+  if (scope === 'EXTERNAL') return 'orange'
+  if (scope === 'SHARED') return 'green'
   return 'blue'
 }
 
 function identityScopeLabel(record: unknown): string {
   const scope = materialRow(record).identityScope
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.CAMPUS) return '校内'
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.EXTERNAL) return '仅外部'
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.SHARED) return '共享'
+  if (scope === 'CAMPUS') return '校内'
+  if (scope === 'EXTERNAL') return '仅外部'
+  if (scope === 'SHARED') return '共享'
   if (!scope) return '—'
   throw new Error(`专家审阅材料 identityScope 契约异常: ${scope}`)
 }
@@ -240,7 +245,7 @@ watch(
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="subjectTeacherRow(record).lifecycleStatus" :tone="portfolioLifecycleTagTone(subjectTeacherRow(record))">
+              <UiTag v-if="subjectTeacherRow(record).lifecycleStatus" :tone="subjectLifecycleTone(record)">
                 {{ subjectTeacherRow(record).lifecycleStatusLabel || subjectTeacherRow(record).lifecycleStatus }}
               </UiTag>
               <UiTag v-if="subjectTeacherRow(record).evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -275,7 +280,7 @@ watch(
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="materialRow(record).lifecycleStatus" :tone="portfolioLifecycleTagTone(materialRow(record))">
+              <UiTag v-if="materialRow(record).lifecycleStatus" :tone="materialLifecycleTone(record)">
                 {{ materialRow(record).lifecycleStatusLabel || materialRow(record).lifecycleStatus }}
               </UiTag>
               <UiTag v-if="materialRow(record).evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -348,19 +353,39 @@ watch(
   gap: 12px;
   align-items: center;
   margin-bottom: 16px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .expert-review__teachers {
   margin-bottom: 16px;
 }
 .expert-review__section-title {
   margin: 0 0 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .expert-review__hold-hint {
   margin: 0 0 12px;
   color: var(--dp-color-warning, #d48806);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
+}
+.expert-review__ai {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.expert-review__ai-title {
+  font-size: var(--dp-font-size-xs);
+  font-weight: 600;
+  color: var(--dp-text);
+}
+.expert-review__ai-summary {
+  font-size: var(--dp-font-size-xs);
+  color: var(--dp-text-muted);
+  line-height: 1.4;
+}
+.expert-review__ai-muted {
+  font-size: var(--dp-font-size-xs);
+  color: var(--dp-text-muted);
 }
 </style>

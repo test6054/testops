@@ -165,7 +165,7 @@ function handleNavigate(path: string) {
     user-select: none;
 
     .tab-bar-icon {
-      font-size: 20px;
+      font-size: var(--dp-font-size-2xl);
       color: var(--dp-text-tertiary);
       transition:
         color 0.3s ease,
@@ -173,7 +173,7 @@ function handleNavigate(path: string) {
     }
 
     .tab-bar-label {
-      font-size: 11px;
+      font-size: var(--dp-font-size-xxs);
       color: var(--dp-text-tertiary);
       transition: color 0.3s ease;
       white-space: nowrap;

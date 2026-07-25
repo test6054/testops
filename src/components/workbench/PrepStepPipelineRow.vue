@@ -141,17 +141,17 @@ function handleSelect(step: PrepStepCard): void {
   }
 
   &__title {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
 
   &__meta {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
   &__hint-inline {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.4;
     color: var(--dp-text-secondary);
     overflow: hidden;
@@ -185,11 +185,11 @@ function handleSelect(step: PrepStepCard): void {
     }
 
     .prep-step-pipeline__step--chip .prep-step-pipeline__icon {
-      font-size: 14px;
+      font-size: var(--dp-font-size-md);
     }
 
     .prep-step-pipeline__step--chip .prep-step-pipeline__label {
-      font-size: 13px;
+      font-size: var(--dp-font-size-sm);
       font-weight: 500;
       white-space: nowrap;
     }
@@ -197,7 +197,7 @@ function handleSelect(step: PrepStepCard): void {
 
   &__hint {
     margin: 0 0 var(--dp-space-2, 8px);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.5;
     color: var(--dp-text-secondary);
   }
@@ -271,19 +271,19 @@ function handleSelect(step: PrepStepCard): void {
   }
 
   &__icon {
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     color: var(--dp-blue-500, var(--dp-color-primary));
   }
 
   &__label {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   &__desc {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.5;
     color: var(--dp-text-muted);
     display: -webkit-box;

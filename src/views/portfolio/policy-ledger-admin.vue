@@ -45,7 +45,7 @@ import {
 import { PortfolioVirtualTeachingRoomActivityTypeCode } from '@/types/enums/portfolio-virtual-teaching-room-activity-type-enum'
 import { PortfolioVirtualTeachingRoomRoleCode } from '@/types/enums/portfolio-virtual-teaching-room-role-enum'
 import { showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -119,6 +119,8 @@ function statusTone(
   if (status === PortfolioPolicyLedgerReviewStatusCode.REJECTED) return 'red'
   return 'gray'
 }
+
+
 async function loadPage() {
   if (canPickTeachers.value && !targetTeacherId.value) {
     virtualRows.value = []
@@ -487,7 +489,7 @@ onMounted(() => {
             />
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -588,7 +590,7 @@ onMounted(() => {
             />
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -637,7 +639,7 @@ onMounted(() => {
 }
 .policy-ledger__hint {
   margin: 12px 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .policy-ledger__form {
@@ -650,7 +652,7 @@ onMounted(() => {
 .input {
   padding: 6px 8px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
   min-width: 140px;
 }
 </style>

@@ -85,7 +85,7 @@ function statusTone(status: WorkbenchStageStatusCode): BadgeTone {
   }
 
   &__meta {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-tertiary);
     font-variant-numeric: tabular-nums;
   }
@@ -143,14 +143,14 @@ function statusTone(status: WorkbenchStageStatusCode): BadgeTone {
   }
 
   &__step-title {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 500;
     color: var(--dp-text-primary);
   }
 
   &__advisory {
     margin: var(--dp-space-1) 0 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
     line-height: 1.4;
   }

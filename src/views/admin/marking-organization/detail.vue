@@ -2088,7 +2088,7 @@ watch(
 
   &__switch-hint {
     margin-left: 8px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 }
@@ -2105,7 +2105,7 @@ watch(
 
 .org-detail__info-title {
   margin: 0 0 12px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 500;
   color: var(--dp-text-primary);
 }
@@ -2123,13 +2123,13 @@ watch(
 .org-detail__remark-label {
   flex-shrink: 0;
   min-width: 70px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text-secondary);
 }
 
 .org-detail__remark-value {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.6;
   color: var(--dp-text-primary);
   word-break: break-word;
@@ -2151,13 +2151,13 @@ watch(
   }
 
   &__item {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.5;
     color: var(--dp-text-secondary);
   }
 
   &__more {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 }
@@ -2165,7 +2165,7 @@ watch(
 .policy-form {
   .subsection-title {
     margin: 0 0 12px;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 500;
     color: var(--dp-text-primary);
   }
@@ -2173,7 +2173,7 @@ watch(
   .policy-hint {
     margin-top: 6px;
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.5;
   }
 }

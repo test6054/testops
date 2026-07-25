@@ -58,7 +58,7 @@ const statusDotClass = computed(() => {
 
   &__name {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: 600;
     line-height: 1.5;
     color: var(--dp-text);
@@ -87,7 +87,7 @@ const statusDotClass = computed(() => {
 
   &__no {
     margin: 0 0 4px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.4;
     color: var(--dp-text-tertiary);
     word-break: break-all;
@@ -95,7 +95,7 @@ const statusDotClass = computed(() => {
 
   &__context {
     margin: 0 0 8px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.4;
     color: var(--dp-text-secondary);
     word-break: break-word;

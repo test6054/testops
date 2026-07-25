@@ -92,13 +92,13 @@ const statusTone = computed((): BadgeTone => {
 }
 
 .mark-score-triple__label {
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   line-height: 16px;
   color: var(--dp-text-tertiary);
 }
 
 .mark-score-triple__value {
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
   line-height: 22px;
   color: var(--dp-text);

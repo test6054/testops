@@ -3,9 +3,9 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioCourseArchiveCourseVO,
   PortfolioCourseArchiveFrameworkVO,
+  PortfolioCourseArchiveOverviewVO,
 } from '@/apis/portfolio/course-archive'
 import type { PortfolioTeacherCustomCategoryVO } from '@/apis/portfolio/teacher-custom-category'
-import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type {
   PortfolioMultiIdentityLayerVO,
   PortfolioTeachingWorkloadByIdentityVO,
@@ -38,7 +38,7 @@ import {
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 
 const router = useRouter()
 const route = useRoute()
@@ -54,13 +54,10 @@ const {
 } = usePortfolioArchiveWriteGuard()
 
 /** 课程档案概览返回的生命周期结构态（与写禁 guard 双源对齐展示）。 */
-const overviewLifecycle = ref<{
-  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
-  archiveWriteForbidden?: boolean
-  evaluationHeld?: boolean
-  countsInCurrentFacultyStructure?: boolean
-}>({})
+const overviewLifecycle = ref<Pick<
+  PortfolioCourseArchiveOverviewVO,
+  'lifecycleStatus' | 'lifecycleStatusLabel' | 'archiveWriteForbidden' | 'evaluationHeld' | 'countsInCurrentFacultyStructure'
+>>({})
 
 const loading = ref(false)
 const customLoading = ref(false)
@@ -563,12 +560,12 @@ watch(
 <style scoped>
 .course-archive__summary {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 .course-archive__workload {
   margin-top: 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .course-archive__identity-layers {
@@ -576,7 +573,7 @@ watch(
 }
 .course-archive__note {
   margin: 6px 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-tertiary, var(--dp-text-secondary));
 }
 </style>

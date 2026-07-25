@@ -938,14 +938,14 @@ onActivated(() => {
   }
 
   &__formula {
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     color: var(--dp-text);
     text-align: center;
   }
 
   &__hint {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-tertiary);
     text-align: center;
   }
@@ -978,7 +978,7 @@ onActivated(() => {
 .processing-card__diagnostic {
   display: -webkit-box;
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1009,13 +1009,13 @@ onActivated(() => {
 
 .question-type {
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   white-space: nowrap;
 }
 
 .progress-detail {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-tertiary);
 }
 

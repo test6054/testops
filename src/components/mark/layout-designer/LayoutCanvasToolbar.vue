@@ -135,7 +135,7 @@ function onSnapChange(value: SelectValue, _option?: DefaultOptionType | DefaultO
   &__zoom {
     min-width: 44px;
     text-align: center;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 }

@@ -44,7 +44,7 @@ const props = withDefaults(
   padding: 10px 12px !important;
   color: var(--dp-text-primary);
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .ui-collapse :deep(.ant-collapse-content-box) {

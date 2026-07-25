@@ -1121,7 +1121,7 @@ onActivated(() => {
 
   &__synthesis-links-title {
     margin: 0 0 8px;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: var(--dp-font-weight-title);
     color: var(--dp-text-primary);
   }
@@ -1139,7 +1139,7 @@ onActivated(() => {
     gap: 12px;
     padding: 8px 0;
     border-top: 1px solid var(--dp-border-subtle);
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     color: var(--dp-text-secondary);
 
     &:first-child {
@@ -1174,7 +1174,7 @@ onActivated(() => {
 
   &__panel-meta {
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__layout {
@@ -1186,13 +1186,13 @@ onActivated(() => {
 
   &__ref-code {
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     margin-right: 4px;
   }
 
   &__evidence-gap {
     margin: 4px 0 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-warning);
     line-height: 1.4;
   }
@@ -1208,7 +1208,7 @@ onActivated(() => {
 
   &__audit-meta {
     margin: 0 0 4px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
@@ -1223,7 +1223,7 @@ onActivated(() => {
   }
 
   &__review-time {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 

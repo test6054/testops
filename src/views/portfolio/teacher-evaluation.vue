@@ -53,11 +53,9 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { PortfolioEvaluationIdentityMaterialScopeCode } from '@/types/enums/portfolio-evaluation-identity-material-scope-enum'
-import { PortfolioTeacherLifecycleStatusCode } from '@/types/enums/portfolio-teacher-lifecycle-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -125,8 +123,6 @@ const { currentUserId, canPickTeachers } = usePortfolioTeacherAccess()
 const loading = ref(false)
 const publicityLoading = ref(false)
 const publicityExporting = ref(false)
-const publicityExportConfirmOpen = ref(false)
-const publicityExportPurpose = ref('')
 const resultLoading = ref(false)
 const previewLoading = ref(false)
 const confirming = ref(false)
@@ -229,16 +225,16 @@ function evaluationCourseArchiveMeta(preview: PortfolioEvaluationMaterialPreview
 }
 
 function identityScopeLabel(scope?: string): string {
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.CAMPUS) return '校内'
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.EXTERNAL) return '仅外部'
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.SHARED) return '共享'
+  if (scope === 'CAMPUS') return '校内'
+  if (scope === 'EXTERNAL') return '仅外部'
+  if (scope === 'SHARED') return '共享'
   return scope || '—'
 }
 
 function identityScopeTone(scope?: string): 'blue' | 'orange' | 'green' | 'gray' {
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.CAMPUS) return 'blue'
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.EXTERNAL) return 'orange'
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.SHARED) return 'green'
+  if (scope === 'CAMPUS') return 'blue'
+  if (scope === 'EXTERNAL') return 'orange'
+  if (scope === 'SHARED') return 'green'
   return 'gray'
 }
 
@@ -247,7 +243,7 @@ function identityMaterialRowKey(record: unknown): string {
     archiveRecordId?: string
     categoryCode?: string
     academicYear?: string
-    identityScope?: PortfolioEvaluationIdentityMaterialScopeCode
+    identityScope?: string
   }
   return [
     item.archiveRecordId ?? '',
@@ -280,6 +276,8 @@ function evaluationMaterialRowKey(record: unknown): string {
     category.semester ?? '',
   ].join(':')
 }
+
+
 const publicityColumns: ColumnsType<PortfolioEvaluationPublicityListItemVO> = [
   { title: '任务', dataIndex: 'taskName', key: 'taskName', fixed: 'left' },
   { title: '场景', dataIndex: 'sceneCode', key: 'sceneCode', width: 120 },
@@ -477,17 +475,6 @@ async function loadPublicity() {
 }
 
 /** 导出当前可见公示台账 Excel（含业务场景）。 */
-function openPublicityExportConfirm(): void {
-  if (publicityExporting.value || publicityLoading.value) {
-    return
-  }
-  if (canPickTeachers.value && !targetTeacherId.value) {
-    return
-  }
-  publicityExportPurpose.value = ''
-  publicityExportConfirmOpen.value = true
-}
-
 async function exportPublicityExcel(): Promise<void> {
   if (publicityExporting.value || publicityLoading.value) {
     return
@@ -495,20 +482,12 @@ async function exportPublicityExcel(): Promise<void> {
   if (canPickTeachers.value && !targetTeacherId.value) {
     return
   }
-  const purpose = publicityExportPurpose.value.trim()
-  if (!purpose) {
-    showFormValidationMessage('请填写导出用途')
-    return
-  }
   publicityExporting.value = true
   try {
     const listRequest: {
       teacherId?: string
       evaluationTaskId?: string
-      exportPurpose?: string
-    } = {
-      exportPurpose: purpose,
-    }
+    } = {}
     if (targetTeacherId.value) {
       listRequest.teacherId = targetTeacherId.value
     }
@@ -517,10 +496,6 @@ async function exportPublicityExcel(): Promise<void> {
     }
     const result = await portfolioEvaluationPublicityApi.exportPublicityExcel(listRequest)
     await downloadPortfolioExcelExport(result)
-    publicityExportConfirmOpen.value = false
-    void message.success('公示台账已导出')
-  } catch (error) {
-    showUserError(error, '导出公示台账失败')
   } finally {
     publicityExporting.value = false
   }
@@ -724,7 +699,7 @@ function buildNoticeRowActions(record: PortfolioEvaluationTeacherNoticeVO): UiTa
   if (record.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusEnum.CONFIRMED) {
     actions.push({
       key: 'confirm',
-      label: '确认材料',
+      label: '确认参加',
       tone: 'primary',
       disabled:
         confirming.value
@@ -765,10 +740,10 @@ function buildPublicityRowActions(
       label: '提交异议',
       disabled:
         evaluationHeld.value
-        || record.lifecycleStatus === PortfolioTeacherLifecycleStatusCode.SEALED
-        || record.lifecycleStatus === PortfolioTeacherLifecycleStatusCode.TEMP_HOLD
-        || record.lifecycleStatus === PortfolioTeacherLifecycleStatusCode.TRANSFER_FROZEN
-        || record.lifecycleStatus === PortfolioTeacherLifecycleStatusCode.TRANSFERRED,
+        || record.lifecycleStatus === 'SEALED'
+        || record.lifecycleStatus === 'TEMP_HOLD'
+        || record.lifecycleStatus === 'TRANSFER_FROZEN'
+        || record.lifecycleStatus === 'TRANSFERRED',
     })
   }
   return actions
@@ -907,7 +882,7 @@ watch(
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
     <template v-else>
-      <UiCard title="评价待办">
+      <UiCard title="评价通知">
         <UiDataTable
           v-if="notices.length || loading"
           v-model:current="pageNum"
@@ -922,7 +897,7 @@ watch(
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
               <span v-else>-</span>
@@ -1068,7 +1043,7 @@ watch(
             variant="primary"
             :loading="publicityExporting"
             :disabled="publicityExporting || publicityLoading"
-            @click="() => void openPublicityExportConfirm()"
+            @click="() => void exportPublicityExcel()"
           >
             导出公示
           </UiButton>
@@ -1083,7 +1058,7 @@ watch(
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
               <span v-else>-</span>
@@ -1158,7 +1133,7 @@ watch(
 
       <UiCard
         v-if="resultSummary || resultLoading"
-        title="评价结果与依据"
+        title="评价结果明细"
         class="teacher-evaluation__block"
       >
         <UiSpin :spinning="resultLoading">
@@ -1187,7 +1162,7 @@ watch(
               "
               class="teacher-evaluation__meta teacher-evaluation__result-lifecycle"
             >
-              <UiTag v-if="resultSummary.lifecycleStatus" :tone="portfolioLifecycleTagTone(resultSummary)">
+              <UiTag v-if="resultSummary.lifecycleStatus" :tone="portfolioLifecycleTagTone(resultSummary.lifecycleStatus)">
                 {{ resultSummary.lifecycleStatusLabel || resultSummary.lifecycleStatus }}
               </UiTag>
               <UiTag
@@ -1278,24 +1253,6 @@ watch(
       </UiDialog>
     </template>
   </StageWorkbenchShell>
-
-  <UiDialog
-    v-model:open="publicityExportConfirmOpen"
-    title="导出评价公示台账"
-    ok-text="确认导出"
-    cancel-text="取消"
-    :confirm-loading="publicityExporting"
-    @ok="exportPublicityExcel"
-  >
-    <label class="export-purpose__label">导出用途（必填）</label>
-    <UiTextarea
-      v-model="publicityExportPurpose"
-      size="sm"
-      :rows="3"
-      placeholder="请填写本次导出用途（写入审计）"
-      :disabled="publicityExporting"
-    />
-  </UiDialog>
 </template>
 
 <style scoped lang="scss">
@@ -1305,13 +1262,13 @@ watch(
 
 .teacher-evaluation__meta {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
 .teacher-evaluation__handle-opinion {
   margin: var(--dp-space-1) 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-secondary);
 }
@@ -1330,7 +1287,7 @@ watch(
 
 .teacher-evaluation__identity-policy {
   margin: var(--dp-space-2) 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-secondary);
 }
@@ -1342,7 +1299,7 @@ watch(
   margin: var(--dp-space-2) 0 0;
   padding: 0;
   list-style: none;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 

@@ -778,14 +778,14 @@ watch(
 
 .experience-assist-policy__title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 
 .experience-assist-policy__hint {
   margin: 0 0 var(--dp-space-3);
   color: var(--dp-gray-600);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .experience-assist-policy__meta {
@@ -796,13 +796,13 @@ watch(
 
   dt {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-gray-500);
   }
 
   dd {
     margin: var(--dp-space-1) 0 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
 }

@@ -493,7 +493,7 @@ onActivated(reloadPage)
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: var(--dp-font-weight-title);
   }
 
@@ -501,7 +501,7 @@ onActivated(reloadPage)
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: var(--dp-font-weight-title);
   }
 
@@ -536,14 +536,14 @@ onActivated(reloadPage)
     border-radius: var(--dp-radius-panel);
 
     .score-label {
-      font-size: 12px;
+      font-size: var(--dp-font-size-xs);
       color: var(--dp-text-tertiary);
       margin: 0 0 8px;
     }
 
     .score-value {
       margin: 0;
-      font-size: 14px;
+      font-size: var(--dp-font-size-md);
       color: var(--dp-text-secondary);
 
       strong {
@@ -560,7 +560,7 @@ onActivated(reloadPage)
 
     .score-helper {
       margin: 8px 0 0;
-      font-size: 12px;
+      font-size: var(--dp-font-size-xs);
       color: var(--dp-text-tertiary);
     }
   }
@@ -577,7 +577,7 @@ onActivated(reloadPage)
       align-items: center;
       gap: 12px;
       padding: 6px 0;
-      font-size: 13px;
+      font-size: var(--dp-font-size-sm);
       border-bottom: 1px dashed var(--dp-border-subtle);
 
       &:last-child {
@@ -598,7 +598,7 @@ onActivated(reloadPage)
 
 .student-score__exam-no {
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-tertiary);
 }
 

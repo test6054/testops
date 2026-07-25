@@ -83,7 +83,7 @@ provide(uiRadioGroupKey, true)
   border-radius: var(--dp-radius-control-inner);
   background: transparent;
   color: var(--dp-text-secondary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 500;
   line-height: var(--dp-control-height-sm, 32px);
   box-shadow: none;

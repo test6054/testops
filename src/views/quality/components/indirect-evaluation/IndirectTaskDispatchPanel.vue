@@ -665,7 +665,7 @@ defineExpose({
   &__workflow-line {
     margin: 0;
     color: var(--dp-text-muted);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__workflow-pending-confirm {
@@ -676,7 +676,7 @@ defineExpose({
   &__progress-pending-confirm {
     margin: 0 0 8px;
     color: var(--dp-warning);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__workflow-pending {
@@ -729,29 +729,29 @@ defineExpose({
 
   &__target-score-label {
     font-weight: 500;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__target-score-meta {
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__target-score-value {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__target-score-muted {
     margin: 0;
     color: var(--dp-text-muted);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__target-score-warn {
     margin: 4px 0 0;
     color: var(--dp-warning);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__target-score-error {
@@ -761,7 +761,7 @@ defineExpose({
   &__target-score-synthesis {
     margin: 4px 0 0;
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__target-score-stale {

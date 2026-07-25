@@ -554,7 +554,7 @@ onBeforeUnmount(() => {
   &__section-title {
     margin: 0;
     color: var(--dp-text-primary);
-    font-size: 18px;
+    font-size: var(--dp-font-size-xl);
     font-weight: var(--dp-font-weight-title);
     line-height: 1.5;
   }
@@ -562,7 +562,7 @@ onBeforeUnmount(() => {
   &__section-desc {
     margin: 0;
     color: var(--dp-text-muted);
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     line-height: 1.6;
   }
 
@@ -577,7 +577,7 @@ onBeforeUnmount(() => {
 
     :deep(.stats-card__title) {
       margin: 0;
-      font-size: 16px;
+      font-size: var(--dp-font-size-lg);
       font-weight: var(--dp-font-weight-title);
       line-height: 1.5;
     }

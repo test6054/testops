@@ -33,7 +33,7 @@ defineProps<{
 }
 
 .ui-info-grid-item__label {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text);
   min-width: 70px;
@@ -41,12 +41,12 @@ defineProps<{
 }
 
 .ui-info-grid-item__value {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 500;
   color: var(--dp-text);
 
   :deep(strong) {
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     color: var(--dp-color-primary);
   }
 }

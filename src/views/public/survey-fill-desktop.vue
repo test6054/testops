@@ -466,7 +466,7 @@ async function handleSubmit() {
 }
 
 .d-survey__status-hint {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--survey-text-muted);
   margin-top: 12px;
 }
@@ -490,7 +490,7 @@ async function handleSubmit() {
   background: var(--survey-primary-bg);
   border-radius: 20px;
   color: var(--survey-primary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 500;
   letter-spacing: 2px;
   margin-bottom: 16px;
@@ -523,7 +523,7 @@ async function handleSubmit() {
   display: flex;
   align-items: center;
   gap: var(--dp-space-3, 12px);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--dp-shadow-xs);
 }
 
 .d-survey__progress {
@@ -544,7 +544,7 @@ async function handleSubmit() {
 }
 
 .d-survey__progress-label {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--survey-text-secondary);
   white-space: nowrap;
   flex-shrink: 0;
@@ -571,14 +571,14 @@ async function handleSubmit() {
   color: var(--survey-text);
   line-height: 1.6;
   font-style: italic;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--dp-shadow-xs);
 }
 
 .d-survey__meta {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--survey-text-muted);
   margin-bottom: var(--dp-space-3, 12px);
   padding: 0 4px;
@@ -590,7 +590,7 @@ async function handleSubmit() {
   border-radius: var(--dp-radius-panel);
   padding: var(--dp-space-3, 12px);
   margin-bottom: var(--dp-space-3, 12px);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--dp-shadow-xs);
 }
 
 .d-survey__identity-header {
@@ -617,7 +617,7 @@ async function handleSubmit() {
 }
 
 .d-survey__field-label {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 500;
   color: var(--survey-text);
   margin-bottom: 8px;
@@ -632,7 +632,7 @@ async function handleSubmit() {
   padding: 0 14px;
   border: 1.5px solid var(--survey-border);
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--survey-text);
   background: var(--survey-surface-muted);
   outline: none;
@@ -657,12 +657,12 @@ async function handleSubmit() {
   border-radius: var(--dp-radius-panel);
   padding: var(--dp-space-3, 12px);
   margin-bottom: var(--dp-space-3, 12px);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--dp-shadow-xs);
   transition: all 0.2s;
   border: 1.5px solid transparent;
 
   &:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--dp-shadow-sm);
   }
 }
 
@@ -706,7 +706,7 @@ async function handleSubmit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 600;
   border: 2px solid var(--survey-border);
   color: var(--survey-text-muted);
@@ -717,7 +717,7 @@ async function handleSubmit() {
   border-color: var(--dp-success);
   background: var(--dp-success);
   color: var(--survey-on-primary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .d-survey__item-dot--req {
@@ -739,25 +739,25 @@ async function handleSubmit() {
 
 .d-survey__item-text {
   flex: 1;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
   color: var(--survey-text);
   line-height: 1.6;
 }
 
 .d-survey__required-tag {
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   color: var(--survey-on-primary);
   background: var(--survey-danger);
   padding: 2px 8px;
-  border-radius: 8px;
+  border-radius: var(--dp-radius-panel);
   font-weight: 500;
   flex-shrink: 0;
   margin-top: 3px;
 }
 
 .d-survey__item-type {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--survey-text-placeholder);
   flex-shrink: 0;
   margin-top: 4px;
@@ -767,7 +767,7 @@ async function handleSubmit() {
 .d-survey__scale-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--survey-text-muted);
   margin-bottom: 10px;
 }
@@ -783,7 +783,7 @@ async function handleSubmit() {
   border: 2px solid var(--survey-border);
   border-radius: 12px;
   background: var(--survey-surface-muted);
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
   color: var(--survey-text);
   cursor: pointer;
@@ -818,7 +818,7 @@ async function handleSubmit() {
   border: 1.5px solid var(--survey-border);
   border-radius: 10px;
   background: var(--survey-surface-muted);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--survey-text);
   cursor: pointer;
   transition: all 0.15s;
@@ -845,12 +845,12 @@ async function handleSubmit() {
 .d-survey__choice-letter {
   width: 26px;
   height: 26px;
-  border-radius: 8px;
+  border-radius: var(--dp-radius-panel);
   border: 1.5px solid var(--survey-border);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
   color: var(--survey-text-secondary);
   flex-shrink: 0;
@@ -869,7 +869,7 @@ async function handleSubmit() {
 }
 
 .d-survey__hint {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--survey-text-muted);
   margin: 4px 0 0 4px;
 }
@@ -880,7 +880,7 @@ async function handleSubmit() {
   padding: 14px 16px;
   border: 1.5px solid var(--survey-border);
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--survey-text);
   background: var(--survey-surface-muted);
   outline: none;
@@ -902,7 +902,7 @@ async function handleSubmit() {
 
 .d-survey__char-count {
   text-align: right;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--survey-text-placeholder);
   margin-top: 4px;
 }
@@ -922,7 +922,7 @@ async function handleSubmit() {
   padding: 0 40px;
   border: none;
   border-radius: 24px;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
   color: var(--survey-on-primary);
   background: var(--survey-primary);

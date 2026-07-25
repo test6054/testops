@@ -64,19 +64,19 @@ const resolvedTone = computed<BadgeTone>(() => (props.empty ? 'gray' : props.ton
 .ui-tag--sm {
   min-height: 22px;
   padding: 0 9px;
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
 }
 
 .ui-tag--md {
   min-height: 26px;
   padding: 0 11px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .ui-tag--lg {
   min-height: 30px;
   padding: 0 13px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .ui-tag--soft {
@@ -129,6 +129,12 @@ const resolvedTone = computed<BadgeTone>(() => (props.empty ? 'gray' : props.ton
   --tag-text: var(--dp-purple-700);
   --tag-bg: var(--dp-purple-50);
   --tag-border: var(--dp-purple-200);
+}
+
+.ui-tag--ink {
+  --tag-text: var(--dp-gray-900);
+  --tag-bg: var(--dp-gray-100);
+  --tag-border: var(--dp-gray-300);
 }
 
 .ui-tag--empty {

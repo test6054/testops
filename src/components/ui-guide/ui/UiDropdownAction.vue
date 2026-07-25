@@ -108,7 +108,7 @@ const handleMenuClick = (info: { key: string | number }) => {
 }
 
 .ui-dropdown-action__arrow {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .ui-dropdown-action__table-trigger {
@@ -117,10 +117,10 @@ const handleMenuClick = (info: { key: string | number }) => {
   gap: 2px;
   padding: 2px 8px;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
   background: transparent;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 400;
   line-height: 1.4;
   color: var(--dp-color-primary);
@@ -137,7 +137,7 @@ const handleMenuClick = (info: { key: string | number }) => {
 }
 
 .ui-dropdown-action__table-arrow {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 .ui-dropdown-action-overlay .ant-dropdown-menu {
   padding: 6px;
@@ -149,7 +149,7 @@ const handleMenuClick = (info: { key: string | number }) => {
   min-width: 140px;
   min-height: var(--dp-control-height-md, 36px);
   border-radius: var(--dp-radius-control-inner);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: var(--dp-control-height-md, 36px);
   color: var(--dp-text-primary);
 }

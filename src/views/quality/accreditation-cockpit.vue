@@ -511,7 +511,7 @@ onActivated(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .acc-standard-check__summary {
@@ -521,7 +521,7 @@ onActivated(() => {
 }
 .acc-standard-check__ok {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .acc-standard-check__grid {
@@ -557,12 +557,12 @@ onActivated(() => {
 }
 .acc-standard-check__desc {
   grid-column: 1 / -1;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 .acc-standard-check__fix {
   grid-column: 1 / -1;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
   color: var(--dp-color-primary);
 }
@@ -574,7 +574,7 @@ onActivated(() => {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px dashed var(--dp-border);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 .acc-course-coverage__title {
   font-weight: 600;

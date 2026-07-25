@@ -382,7 +382,7 @@ usePortfolioScopedLoader(
 .change-list {
   margin: 0;
   padding-left: 18px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.6;
 }
 </style>

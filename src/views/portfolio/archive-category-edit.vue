@@ -524,7 +524,7 @@ function onCategoryEditMoreAction(key: string) {
 }
 
 .archive-category-edit__status-hint {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 

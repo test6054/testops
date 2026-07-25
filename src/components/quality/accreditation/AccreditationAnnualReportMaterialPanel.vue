@@ -681,7 +681,7 @@ defineExpose({ loadMaterials, openCreate })
 .muted,
 .file-hint {
   color: var(--dp-text-tertiary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .file-hint {

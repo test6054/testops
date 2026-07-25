@@ -596,26 +596,26 @@ watch(
     margin-bottom: 12px;
     padding: 12px 16px;
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
     background: var(--dp-surface-soft);
   }
 
   &__invalidated-title {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   &__invalidated-text {
     margin-top: 4px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.6;
     color: var(--dp-text-secondary);
   }
 
   &__text-block {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.6;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -628,7 +628,7 @@ watch(
   &__footer-main {
     flex: 1;
     min-width: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 

@@ -423,7 +423,7 @@ watch(activeSectionKey, () => {
 .self-assessment-panel__hint {
   margin: 0 0 12px;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .self-assessment-panel__layout {
@@ -460,7 +460,7 @@ watch(activeSectionKey, () => {
 
 .self-assessment-panel__nav-title {
   flex: 1;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-primary);
 }
 
@@ -478,7 +478,7 @@ watch(activeSectionKey, () => {
 
 .self-assessment-panel__editor-title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
 }
 
@@ -486,7 +486,7 @@ watch(activeSectionKey, () => {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -495,7 +495,7 @@ watch(activeSectionKey, () => {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -511,12 +511,12 @@ watch(activeSectionKey, () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .self-assessment-panel__evidence-empty {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -528,7 +528,7 @@ watch(activeSectionKey, () => {
 .self-assessment-panel__ready {
   margin: 12px 0 0;
   color: var(--dp-success);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .self-assessment-panel__evidence-picker {
@@ -541,6 +541,6 @@ watch(activeSectionKey, () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 </style>

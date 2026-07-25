@@ -930,7 +930,7 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
   max-width: 100%;
   padding: 6px 10px;
   border: 1px solid var(--dp-border-subtle);
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   background: var(--dp-surface);
   color: var(--dp-text-primary);
   cursor: pointer;
@@ -958,7 +958,7 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
 
 .ai-assistants__chip-time {
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   white-space: nowrap;
 }
 </style>

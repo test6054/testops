@@ -98,6 +98,7 @@ export const portfolioPolicyApi = {
     documentStatus?: PortfolioPolicyDocumentStatusCode
     documentCode?: string
     documentTitle?: string
+    includeHistory?: boolean
   }) =>
     http.post<PageResult<PortfolioPolicyDocumentVO>>('/api/portfolio/policy-document/page', data),
   get: (data: { id: string }) =>

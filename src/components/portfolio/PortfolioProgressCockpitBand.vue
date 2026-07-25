@@ -45,6 +45,8 @@ const metrics = computed((): SignalMetric[] => {
       unit: '%',
       tone: row.completenessPercent >= 80 ? 'green' : 'orange',
       clickable: true,
+      showProgress: true,
+      progress: row.completenessPercent,
     },
     {
       key: 'pendingReview',

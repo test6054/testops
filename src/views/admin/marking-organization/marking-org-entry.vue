@@ -288,13 +288,13 @@ onActivated(() => {
 
   &__empty-desc {
     margin: var(--dp-space-2) 0 var(--dp-space-4);
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     color: var(--dp-text-secondary);
   }
 
   &__switch-hint {
     margin-left: var(--dp-space-2);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 }

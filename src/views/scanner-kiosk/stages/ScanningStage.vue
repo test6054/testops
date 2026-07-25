@@ -962,7 +962,7 @@ onMounted(() => {
   border: none;
   border-radius: var(--kiosk-radius-md);
   color: var(--kiosk-ink-on-canvas);
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
   cursor: pointer;
   transition: background var(--kiosk-dur-fast) var(--kiosk-easing);
 }
@@ -1110,7 +1110,7 @@ onMounted(() => {
   color: var(--kiosk-danger);
 }
 .thumb-warn-icon {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--kiosk-danger);
 }
 

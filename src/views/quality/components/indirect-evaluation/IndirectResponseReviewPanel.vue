@@ -1142,7 +1142,7 @@ defineExpose({
 
   &__sub-desc {
     margin-left: 4px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
 
     &--error {
@@ -1171,7 +1171,7 @@ defineExpose({
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__audit-action {
@@ -1196,7 +1196,7 @@ defineExpose({
   &__audit-list {
     margin: 0;
     padding-left: 16px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 }

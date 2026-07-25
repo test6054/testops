@@ -10,6 +10,7 @@ import type {
 } from '@/apis/portfolio/teacher-profile'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { TeacherTaughtCourseSourceTypeCode } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
@@ -42,9 +43,9 @@ import {
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { SemesterOptions } from '@/types/enums/semester-enum'
-import { TeacherTaughtCourseSourceTypeCode, TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
+import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -54,6 +55,8 @@ const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
   = usePortfolioArchiveWriteGuard()
 
 const loading = ref(false)
+
+
 const profileActiveTab = ref('education')
 const profileTabItems = [
   { key: 'education', label: '主要学历' },
@@ -475,7 +478,7 @@ async function saveCvRecord() {
 }
 
 function buildCvActions(row: CvRecord): UiTableRowActionItem[] {
-  const editable = row.sourceType === TeacherTaughtCourseSourceTypeCode.MANUAL && !readonlyProfile.value
+  const editable = row.sourceType === 'MANUAL' && !readonlyProfile.value
   return [
     { key: 'edit', label: '编辑', hidden: !editable, disabled: cvWriteBusy.value },
     {
@@ -493,7 +496,7 @@ async function handleCvAction(key: string, kind: CvKind, row: CvRecord) {
     openCvModal(kind, row)
     return
   }
-  if (key !== 'delete' || row.sourceType !== TeacherTaughtCourseSourceTypeCode.MANUAL || readonlyProfile.value) {
+  if (key !== 'delete' || row.sourceType !== 'MANUAL' || readonlyProfile.value) {
     return
   }
   const confirmed = await confirmAsync({
@@ -619,7 +622,7 @@ async function saveCourse() {
 }
 
 async function removeCourse(row: PortfolioTeacherTaughtCourseVO) {
-  if (row.sourceType !== TeacherTaughtCourseSourceTypeCode.MANUAL) {
+  if (row.sourceType !== 'MANUAL') {
     showFormValidationMessage('教务同步课程不可删除')
     return
   }
@@ -834,7 +837,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
             <template v-else-if="column.key === 'actions'">
               <UiButton
                 size="sm"
-                v-if="record.sourceType === TeacherTaughtCourseSourceTypeCode.MANUAL && !readonlyProfile"
+                v-if="record.sourceType === 'MANUAL' && !readonlyProfile"
                 variant="ghost"
                 :disabled="courseWriteBusy"
                 @click="openCourseModal(record)"
@@ -843,7 +846,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
               </UiButton>
               <UiButton
                 size="sm"
-                v-if="record.sourceType === TeacherTaughtCourseSourceTypeCode.MANUAL && !readonlyProfile"
+                v-if="record.sourceType === 'MANUAL' && !readonlyProfile"
                 variant="ghost"
                 status="danger"
                 :loading="courseDeletingId === record.id"

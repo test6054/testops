@@ -293,7 +293,7 @@ onMounted(() => {
 <style scoped>
 .archive-scan-batch-review__hint {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .archive-scan-batch-review__error {

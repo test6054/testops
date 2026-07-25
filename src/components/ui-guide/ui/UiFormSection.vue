@@ -46,7 +46,7 @@ withDefaults(defineProps<{
 }
 
 .ui-form-section__subtitle {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
 

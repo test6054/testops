@@ -288,7 +288,7 @@ function onDiscardClick(row: ExamScannerKioskSessionBatchVO, event: MouseEvent) 
 .batch-row--active .batch-row__main {
   border-color: var(--kiosk-primary);
   background: var(--kiosk-primary-soft);
-  box-shadow: 0 0 0 2px rgba(31, 95, 255, 0.15);
+  box-shadow: 0 0 0 2px var(--dp-focus-ring);
 }
 
 .batch-row--warn .batch-row__main {
@@ -296,7 +296,7 @@ function onDiscardClick(row: ExamScannerKioskSessionBatchVO, event: MouseEvent) 
 }
 
 .batch-row--warn.batch-row--active .batch-row__main {
-  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dp-orange-600) 20%, transparent);
 }
 
 .batch-row__no {

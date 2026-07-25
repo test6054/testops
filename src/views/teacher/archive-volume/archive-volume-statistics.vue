@@ -40,13 +40,9 @@
           v-if="statisticsSummaryLoadFailed"
           tone="error"
           title="统计摘要加载失败"
-          description="已保留上次成功结果，请重试当前筛选条件。"
+          description="请调整筛选条件后重新查询。"
           class="archive-volume-statistics__error"
-        >
-          <template #actions>
-            <UiButton size="sm" variant="outline" @click="loadStatistics">重新加载</UiButton>
-          </template>
-        </UiAlertStrip>
+        />
 
         <div v-if="statisticsSummary" class="archive-volume-statistics__export">
           <UiButton
@@ -64,13 +60,7 @@
         <div v-else-if="statisticsSummary" class="archive-volume-statistics__grid">
           <WorkbenchSurfaceCard flush>
             <template #head>院系完成率</template>
-            <UiAlertStrip v-if="departmentLoadFailed" tone="error" title="院系完成率加载失败">
-              <template #actions>
-                <UiButton size="sm" variant="outline" @click="loadDepartmentCompletions">
-                  重新加载
-                </UiButton>
-              </template>
-            </UiAlertStrip>
+            <UiAlertStrip v-if="departmentLoadFailed" tone="error" title="院系完成率加载失败" />
             <UiDataTable
               v-model:current="deptPagination.pageNum"
               v-model:page-size="deptPagination.pageSize"
@@ -106,13 +96,7 @@
 
           <WorkbenchSurfaceCard flush>
             <template #head>缺项材料分布</template>
-            <UiAlertStrip v-if="missingLoadFailed" tone="error" title="缺项材料分布加载失败">
-              <template #actions>
-                <UiButton size="sm" variant="outline" @click="loadMissingMaterials">
-                  重新加载
-                </UiButton>
-              </template>
-            </UiAlertStrip>
+            <UiAlertStrip v-if="missingLoadFailed" tone="error" title="缺项材料分布加载失败" />
             <UiDataTable
               v-model:current="missingPagination.pageNum"
               v-model:page-size="missingPagination.pageSize"
@@ -130,6 +114,16 @@
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'materialType'">
                   {{ materialTypeLabel(record.materialType) }}
+                </template>
+                <template v-else-if="column.key === 'proportion'">
+                  <UiTag
+                    v-if="statisticsSummary && statisticsSummary.totalVolumeCount > 0"
+                    :tone="missingProportionTone(record.missingVolumeCount / statisticsSummary.totalVolumeCount)"
+                    size="sm"
+                  >
+                    {{ Math.round((record.missingVolumeCount / statisticsSummary.totalVolumeCount) * 1000) / 10 }}%
+                  </UiTag>
+                  <span v-else>—</span>
                 </template>
               </template>
             </UiDataTable>
@@ -376,6 +370,7 @@ const deptColumns: ColumnsType<ArchiveDepartmentCompletionVO> = [
 const missingColumns: ColumnsType<ArchiveMissingMaterialStatVO> = [
   { title: '材料类型', key: 'materialType' },
   { title: '缺交卷数', dataIndex: 'missingVolumeCount', width: 120 },
+  { title: '占比', key: 'proportion', width: 100, align: 'right' },
 ]
 
 const destructionColumns: ColumnsType<ArchiveVolumeDestructionLedgerRowResponse> = [
@@ -400,6 +395,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     unit: card.unit,
     tone: card.badgeTone,
     clickable: card.clickable,
+    trend: card.trend,
+    helper: card.helper,
   }))
 })
 
@@ -411,6 +408,8 @@ interface OverviewAnalyticsCard {
   unit?: string
   badgeTone?: BadgeTone
   clickable?: boolean
+  trend?: number
+  helper?: string
 }
 
 const overviewAnalyticsCards = computed<OverviewAnalyticsCard[]>(() => {
@@ -437,6 +436,8 @@ const overviewAnalyticsCards = computed<OverviewAnalyticsCard[]>(() => {
       unit: '卷',
       badgeTone: 'green',
       clickable: summary.storedVolumeCount > 0,
+      trend: summary.storedVolumeCountTrendPercent ?? undefined,
+      helper: summary.helperStored ?? undefined,
     },
     {
       key: 'rate',
@@ -445,6 +446,8 @@ const overviewAnalyticsCards = computed<OverviewAnalyticsCard[]>(() => {
       signalValue: `${avgCompletionRate}%`,
       badgeTone: avgCompletionRate >= 90 ? 'green' : avgCompletionRate < 70 ? 'orange' : 'blue',
       clickable: false,
+      trend: summary.avgCompletionRateTrendPercent ?? undefined,
+      helper: summary.helperCompletion ?? undefined,
     },
     {
       key: 'overdue',
@@ -510,6 +513,13 @@ function handleSignalMetricClick(key: string) {
 
 function materialTypeLabel(code: ArchiveMaterialTypeCode) {
   return strictEnumLabel(ArchiveMaterialTypeDescription, code, 'materialType')
+}
+
+/** 缺项占比色阶：≥30% 红色警示、≥15% 橙色关注、其余蓝色常规。 */
+function missingProportionTone(ratio: number): BadgeTone {
+  if (ratio >= 0.3) return 'red'
+  if (ratio >= 0.15) return 'orange'
+  return 'blue'
 }
 
 function destructionStatusLabel(code: ArchiveDestructionStatusCode) {

@@ -190,7 +190,7 @@ const handleClick = (evt: MouseEvent) => {
 }
 
 .ui-metric-card__value {
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
   line-height: 1.25;
   font-weight: var(--dp-font-weight-metric);
   color: var(--dp-text-primary);
@@ -214,14 +214,14 @@ const handleClick = (evt: MouseEvent) => {
 
 .ui-metric-card__helper {
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
   color: var(--dp-text-secondary);
 }
 
 .ui-metric-card__trend {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 700;
 }
 
@@ -291,19 +291,19 @@ const handleClick = (evt: MouseEvent) => {
 
 .ui-metric-card--compact .ui-metric-card__icon :deep(.anticon),
 .ui-metric-card--compact .ui-metric-card__icon :deep(svg) {
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
 }
 
 .ui-metric-card--compact .ui-metric-card__value {
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
 }
 
 .ui-metric-card--compact .ui-metric-card__unit {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .ui-metric-card--compact .ui-metric-card__helper {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 @media (max-width: bp.$layout-mobile-max) {

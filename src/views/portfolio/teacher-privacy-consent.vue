@@ -281,13 +281,13 @@ watch(
 .privacy-consent__warn {
   margin: 0 0 var(--dp-space-3);
   color: var(--dp-warning-text);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.5;
 }
 .privacy-consent__version {
   margin: 0 0 var(--dp-space-2);
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .privacy-consent__body {
   margin: 0 0 var(--dp-space-4);
@@ -295,10 +295,10 @@ watch(
   max-height: 480px;
   overflow: auto;
   white-space: pre-wrap;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   background: var(--dp-bg-muted);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
 }
 .privacy-consent__hint {
   margin: 0 0 var(--dp-space-3);

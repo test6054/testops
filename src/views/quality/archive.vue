@@ -1668,7 +1668,7 @@ onMounted(async () => {
 
   &__panel-title {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -1707,7 +1707,7 @@ onMounted(async () => {
   &__file-name {
     margin-top: 8px;
     color: var(--dp-text-secondary);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 20px;
   }
 
@@ -1717,7 +1717,7 @@ onMounted(async () => {
 
   &__export-readiness-text {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     line-height: 22px;
     color: var(--dp-text-secondary);
   }
@@ -1726,12 +1726,12 @@ onMounted(async () => {
     margin: 8px 0 0;
     padding-left: 18px;
     color: var(--dp-text-secondary);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 20px;
   }
 
   &__form-hint {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 20px;
     color: var(--dp-text-muted);
   }
@@ -1743,13 +1743,13 @@ onMounted(async () => {
   }
 
   &__flow-title {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     line-height: 22px;
     color: var(--dp-text-primary);
   }
 
   &__flow-meta {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 20px;
     color: var(--dp-text-secondary);
   }

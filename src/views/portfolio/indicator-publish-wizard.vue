@@ -527,7 +527,7 @@ onMounted(loadReadiness)
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 12px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .readiness-error {
   margin: 0 0 12px;
@@ -543,7 +543,7 @@ onMounted(loadReadiness)
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .impact-task-summary {
   margin-top: 8px;
@@ -561,13 +561,13 @@ onMounted(loadReadiness)
 }
 .strategy-hint {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 .impact-changed-list {
   margin: 12px 0 0;
   padding-left: 18px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 </style>

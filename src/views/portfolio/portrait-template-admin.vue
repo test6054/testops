@@ -345,16 +345,16 @@ onMounted(loadList)
 }
 .template-item {
   padding: 8px;
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .template-item--active {
   background: var(--dp-fill-quaternary);
 }
 .meta {
   display: block;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 .form-row {
@@ -365,7 +365,7 @@ onMounted(loadList)
 .input {
   padding: 6px 8px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
 }
 .input--wide {
   flex: 1;

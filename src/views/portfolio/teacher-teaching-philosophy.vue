@@ -214,10 +214,10 @@ usePortfolioScopedLoader(loadList, () => targetTeacherId.value)
       </UiEmpty>
     </UiCard>
 
-    <UiCard v-else title="按年教学理念" :loading="loading">
+    <UiCard v-else title="教学理念记录" :loading="loading">
       <template #extra>
         <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openModal()">
-          新增学年
+          新增理念
         </UiButton>
       </template>
       <UiDataTable :columns="columns" :data-source="rows" row-key="id" :pagination="false">
@@ -251,7 +251,7 @@ usePortfolioScopedLoader(loadList, () => targetTeacherId.value)
 
   <UiDialog
     v-model:open="modalOpen"
-    :title="editing ? '修订教学理念' : '新增学年教学理念'"
+    :title="editing ? '修订教学理念' : '新增教学理念'"
     :confirm-loading="saving"
     @ok="save"
     @cancel="resetEditorContext"

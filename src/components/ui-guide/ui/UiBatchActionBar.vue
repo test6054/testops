@@ -73,12 +73,12 @@ const visible = computed(
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
 .ui-batch-action-bar__summary strong {
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
   line-height: 1;
   color: var(--dp-text-primary);
 }

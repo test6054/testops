@@ -2185,7 +2185,7 @@ onActivated(() => {
   }
 
   &__consistency-name {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2209,7 +2209,7 @@ onActivated(() => {
   }
 
   &__consistency-rate {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     font-weight: 600;
     text-align: right;
     font-variant-numeric: tabular-nums;
@@ -2281,7 +2281,7 @@ onActivated(() => {
   }
 
   &__panel-title {
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: 600;
     color: var(--dp-text-primary);
   }

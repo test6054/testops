@@ -47,7 +47,7 @@ withDefaults(defineProps<{
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
@@ -67,7 +67,7 @@ withDefaults(defineProps<{
 .ui-form-field__help,
 .ui-form-field__error {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
 }
 

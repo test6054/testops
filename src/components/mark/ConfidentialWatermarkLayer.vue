@@ -59,7 +59,7 @@ const tileCount = computed(() => (props.density === 'dense' ? 48 : 32))
   }
 
   &__tile {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.4;
     color: var(--dp-text-primary);
     white-space: nowrap;

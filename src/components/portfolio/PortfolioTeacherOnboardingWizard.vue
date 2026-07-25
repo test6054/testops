@@ -81,6 +81,13 @@
     </template>
 
     <template v-else-if="!blockedByTemplate && !blockedByReadiness">
+      <UiSteps :current="currentStep - 1" size="small" class="portfolio-onboarding-wizard__steps">
+        <UiStep title="了解" />
+        <UiStep title="分类树" />
+        <UiStep title="字段规格" />
+        <UiStep title="示范采集" />
+        <UiStep title="完成" />
+      </UiSteps>
       <UiCard :title="stepTitle" class="portfolio-onboarding-wizard__card">
         <p v-if="currentStep === 1" class="portfolio-onboarding-wizard__copy">
           启用我的教学档案袋：按分类树组织材料与档案记录，经审核后进入画像与发展评价。
@@ -164,6 +171,8 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiStep from '@/components/ui-guide/ui/UiStep.vue'
+import UiSteps from '@/components/ui-guide/ui/UiSteps.vue'
 import UiTree from '@/components/ui-guide/ui/UiTree.vue'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
@@ -453,6 +462,11 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+.portfolio-onboarding-wizard__steps {
+  padding: 0 var(--dp-space-4);
+  margin-bottom: var(--dp-space-4);
+}
+
 .portfolio-onboarding-wizard__card {
   margin: var(--dp-space-4);
 }

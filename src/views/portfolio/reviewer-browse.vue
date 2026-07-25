@@ -299,6 +299,6 @@ onMounted(async () => {
 .reviewer-browse__note {
   margin: 0 0 12px;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 </style>

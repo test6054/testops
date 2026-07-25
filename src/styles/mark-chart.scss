@@ -86,7 +86,7 @@
 .mark-distribution-section__title,
 .mark-scatter-section__title,
 .mark-heatmap-section__title {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
@@ -154,7 +154,7 @@
 }
 
 .mark-gauge-block__formula {
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
   color: var(--dp-text-primary);
   line-height: 1.4;
@@ -174,7 +174,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 

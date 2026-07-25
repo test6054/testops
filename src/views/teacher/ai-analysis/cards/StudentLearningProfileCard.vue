@@ -430,15 +430,15 @@ watch(selectedStudentUserId, (studentUserId) => {
 .diagnosis-rate {
   margin-left: auto;
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 .diagnosis-type {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .diagnosis-text {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
 }
@@ -446,7 +446,7 @@ watch(selectedStudentUserId, (studentUserId) => {
   color: var(--dp-text-primary);
 }
 .diagnosis-text--muted {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 .score-full {

@@ -160,7 +160,7 @@ const getDisplayValue = (item: UiDescriptionItem) => {
 
 .ui-description-grid__label {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 700;
   line-height: 1.5;
   color: var(--dp-text-secondary);
@@ -212,7 +212,7 @@ const getDisplayValue = (item: UiDescriptionItem) => {
 
 .ui-description-grid__helper {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-muted);
 }

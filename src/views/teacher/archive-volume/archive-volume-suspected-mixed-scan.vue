@@ -217,13 +217,13 @@ onMounted(async () => {
 }
 
 .archive-suspected-mixed-scan__filter-label {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
 .archive-suspected-mixed-scan__sub {
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 </style>

@@ -46,10 +46,8 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
@@ -67,7 +65,6 @@ import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { PortfolioImportQualityGradeDescription } from '@/types/enums/portfolio-import-quality-grade-enum'
-import { PortfolioPlanningAchievementLinkStatusCode } from '@/types/enums/portfolio-planning-achievement-link-status-enum'
 import {
   ALL_PORTFOLIO_PLANNING_SYNC_CONFLICT_STRATEGY_CODES,
   PortfolioPlanningSyncConflictStrategyCode,
@@ -80,7 +77,7 @@ import {
 } from '@/types/enums/portfolio-planning-sync-org-scope-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -194,6 +191,8 @@ function historyBatchStatusTone(status: PortfolioDevelopmentPlanHistoryImportBat
       return 'blue' as const
   }
 }
+
+
 async function openHistoryBatchDetail(id: string) {
   const requestToken = ++historyBatchDetailRequestToken.value
   historyBatchDetailOpen.value = true
@@ -428,8 +427,6 @@ const planTabItems = computed(() => {
 
 const activeTab = ref('plans')
 const exporting = ref(false)
-const exportConfirmOpen = ref(false)
-const exportPurpose = ref('')
 const submitting = ref(false)
 const pageRequestToken = ref(0)
 const yearStats = ref<PortfolioDevelopmentPlanYearStatVO[]>([])
@@ -810,17 +807,8 @@ function orgStatRowKey(record: unknown): string {
   return `${row.portfolioOrgId ?? 'none'}-${row.planStatus}`
 }
 
-function openExportConfirm() {
-  if (exporting.value) return
-  exportPurpose.value = ''
-  exportConfirmOpen.value = true
-}
-
 async function exportPlans() {
-  if (exporting.value) return
-  const purpose = exportPurpose.value.trim()
-  if (!purpose) {
-    showFormValidationMessage('请填写导出用途')
+  if (exporting.value) {
     return
   }
   exporting.value = true
@@ -828,10 +816,8 @@ async function exportPlans() {
     const result = await portfolioDevelopmentPlanApi.exportExcel({
       planYear: form.planYear,
       planType: PortfolioDevelopmentPlanTypeCode.TEACHER,
-      exportPurpose: purpose,
     })
     await downloadPortfolioExcelExport(result)
-    exportConfirmOpen.value = false
     void message.success('规划已导出')
   } catch (error) {
     showUserError(error, '导出规划失败')
@@ -1042,14 +1028,19 @@ watch(
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="教师年度规划">
+      <ContextBar
+        show-title
+        layout="workbench"
+        title="教师年度规划"
+        subtitle="教师编制 · 科室审核 · 完成度回流 · 历史规划导入"
+      >
         <template v-if="showAdminStats" #actions>
           <UiButton
             size="sm"
             variant="ghost"
             :loading="exporting"
             :disabled="exporting"
-            @click="openExportConfirm"
+            @click="exportPlans"
           >
             导出表格文件
           </UiButton>
@@ -1123,7 +1114,7 @@ watch(
               </UiTag>
             </template>
             <template v-else-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
 
@@ -1243,9 +1234,9 @@ watch(
                 <span>{{ record.catalogName || '未关联' }}</span>
                 <UiTag
                   v-if="record.achievementLinkStatus"
-                  :tone="record.achievementLinkStatus === PortfolioPlanningAchievementLinkStatusCode.LOCKED ? 'green' : 'blue'"
+                  :tone="record.achievementLinkStatus === 'LOCKED' ? 'green' : 'blue'"
                 >
-                  {{ record.achievementLinkStatus === PortfolioPlanningAchievementLinkStatusCode.LOCKED ? '已锁定' : '草稿关联' }}
+                  {{ record.achievementLinkStatus === 'LOCKED' ? '已锁定' : '草稿关联' }}
                 </UiTag>
                 <span v-if="record.achievementCompletionRate != null">完成度 {{ record.achievementCompletionRate }}%</span>
               </div>
@@ -1637,24 +1628,6 @@ watch(
         </template>
       </UiSpin>
     </UiDrawer>
-
-    <UiDialog
-      v-model:open="exportConfirmOpen"
-      title="导出"
-      ok-text="确认导出"
-      cancel-text="取消"
-      :confirm-loading="exporting"
-      @ok="exportPlans"
-    >
-      <label class="export-purpose__label">导出用途（必填）</label>
-      <UiTextarea
-        v-model="exportPurpose"
-        size="sm"
-        :rows="3"
-        placeholder="请填写本次导出用途（写入审计）"
-        :disabled="exporting"
-      />
-    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -1670,7 +1643,7 @@ watch(
   width: 96px;
   padding: 6px 8px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
 }
 .input--wide {
   flex: 1;
@@ -1684,14 +1657,14 @@ watch(
   width: 72px;
 }
 .stats {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .completion-grid {
   display: flex;
   flex-wrap: wrap;
   gap: var(--dp-space-3, 12px);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .history-settings,
 .history-batches {
@@ -1712,17 +1685,17 @@ watch(
 .history-settings h4 {
   margin: 0;
   color: var(--dp-text-primary);
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
 }
 .history-settings h4 {
   margin-bottom: 12px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .history-section-heading p {
   margin: 4px 0 0;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .history-settings-grid {
   display: grid;
@@ -1757,10 +1730,5 @@ watch(
 }
 :deep(.development-plan-admin__row-active) {
   background: var(--dp-color-primary-bg);
-}
-.export-purpose__label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
 }
 </style>

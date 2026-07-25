@@ -164,7 +164,7 @@ async function handleConfirm(): Promise<void> {
 .policy-config-modal__hint {
   margin: 0 0 var(--dp-space-3);
   color: var(--dp-gray-600);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .policy-config-modal__form {
@@ -177,7 +177,7 @@ async function handleConfirm(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: var(--dp-space-1);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-gray-500);
 }
 </style>

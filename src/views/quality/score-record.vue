@@ -1237,7 +1237,7 @@ function handleCourseChange(courseId: string | null) {
 .score-record {
   &__context-label {
     color: var(--dp-text-secondary);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 500;
   }
 
@@ -1280,7 +1280,7 @@ function handleCourseChange(courseId: string | null) {
 
   &__panel-meta {
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__batches-table {
@@ -1305,7 +1305,7 @@ function handleCourseChange(courseId: string | null) {
   &__detail-meta {
     margin-top: 4px;
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__detail-actions {
@@ -1334,7 +1334,7 @@ function handleCourseChange(courseId: string | null) {
 
   &__item-code {
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     margin-right: 4px;
   }
 
@@ -1348,7 +1348,7 @@ function handleCourseChange(courseId: string | null) {
 
   &__student-number {
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__rubrics {
@@ -1356,7 +1356,7 @@ function handleCourseChange(courseId: string | null) {
     gap: var(--dp-space-2);
     padding: 10px;
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
     background: var(--dp-surface-elevated);
   }
 
@@ -1365,7 +1365,7 @@ function handleCourseChange(courseId: string | null) {
     justify-content: space-between;
     align-items: center;
     color: var(--dp-text-secondary);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__rubric-row {
@@ -1395,7 +1395,7 @@ function handleCourseChange(courseId: string | null) {
 
   &__rubric-full {
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__rubric-score {

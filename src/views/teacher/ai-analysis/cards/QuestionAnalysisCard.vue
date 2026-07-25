@@ -876,7 +876,7 @@ watch(
   }
 
   &__question-stem {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
@@ -899,7 +899,7 @@ watch(
     justify-content: space-between;
     gap: var(--dp-space-3);
     margin-bottom: var(--dp-space-2);
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
   }
 
   &__brush-items {
@@ -916,7 +916,7 @@ watch(
     align-items: baseline;
     justify-content: space-between;
     gap: var(--dp-space-3);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__brush-meta {

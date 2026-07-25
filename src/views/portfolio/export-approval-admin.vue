@@ -392,6 +392,6 @@ watch(
 <style scoped>
 .export-approval-admin__reject-reason {
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 </style>

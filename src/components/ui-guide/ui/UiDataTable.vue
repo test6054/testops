@@ -441,14 +441,14 @@ const handlePageChange = (page: number, size: number) => {
 
 .ui-data-table__description {
   margin-top: 4px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-muted);
 }
 
 .ui-data-table__sorted-info {
   margin-top: 6px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-secondary);
 }

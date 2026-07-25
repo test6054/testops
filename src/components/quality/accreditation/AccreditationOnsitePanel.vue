@@ -569,7 +569,7 @@ defineExpose({ openCreate, loadPlans })
   gap: 8px;
 }
 .hint {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-tertiary);
   margin: 0;
 }
@@ -586,11 +586,11 @@ defineExpose({ openCreate, loadPlans })
 }
 .checklist-head h4 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .checklist-meta {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-tertiary);
 }
 .checklist-progress {
@@ -600,7 +600,7 @@ defineExpose({ openCreate, loadPlans })
   margin-bottom: 4px;
 }
 .checklist-count {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-tertiary);
   margin-left: 8px;
 }
@@ -609,7 +609,7 @@ defineExpose({ openCreate, loadPlans })
   margin: 0 0 4px;
 }
 .item-desc {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-tertiary);
   margin: 0 0 12px;
 }

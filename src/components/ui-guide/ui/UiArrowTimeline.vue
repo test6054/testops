@@ -242,7 +242,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
   border: 2px solid var(--dp-gray-300, #cbd5e1);
   background: var(--dp-surface, #fff);
   color: var(--dp-text-muted, #94a3b8);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
   flex-shrink: 0;
   transition:
@@ -253,7 +253,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 }
 
 .ui-arrow-timeline__dot-num {
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   font-weight: 700;
   line-height: 1;
 }
@@ -326,7 +326,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 }
 
 .ui-arrow-timeline__title {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
   color: var(--dp-text-primary, #1e293b);
   line-height: 1.3;
@@ -356,7 +356,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 }
 
 .ui-arrow-timeline__sub {
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   color: var(--dp-text-muted, #94a3b8);
   line-height: 1.3;
   white-space: nowrap;
@@ -386,7 +386,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 }
 
 .ui-arrow-timeline__metric-value {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 700;
   color: var(--dp-text-primary, #1e293b);
   line-height: 1.2;
@@ -429,7 +429,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 }
 
 .ui-arrow-timeline--compact .ui-arrow-timeline__title {
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
 }
 
 .ui-arrow-timeline--compact .ui-arrow-timeline__sub {

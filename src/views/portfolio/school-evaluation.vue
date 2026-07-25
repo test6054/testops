@@ -1055,7 +1055,7 @@ void loadPage()
   display: block;
   margin-top: var(--dp-space-1);
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 :deep(.school-evaluation__row-active) {

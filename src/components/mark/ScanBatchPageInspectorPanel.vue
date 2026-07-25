@@ -691,7 +691,7 @@ watch(
 
 .scan-batch-page-inspector__order {
   color: var(--dp-text);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 
@@ -699,7 +699,7 @@ watch(
   min-width: 0;
   overflow: hidden;
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -713,14 +713,14 @@ watch(
 .scan-batch-page-inspector__subline {
   margin: 6px 0 0;
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.4;
 }
 
 .scan-batch-page-inspector__tip {
   flex-shrink: 0;
   color: var(--dp-text-tertiary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   cursor: help;
 }
 
@@ -735,7 +735,7 @@ watch(
   align-items: center;
   gap: 4px;
   margin: 0 0 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 600;
 }
 

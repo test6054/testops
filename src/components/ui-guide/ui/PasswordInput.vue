@@ -192,7 +192,7 @@ const toggleVisibility = () => {
   padding: 0 12px;
   border: none;
   background: transparent;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: inherit;
   outline: none;
 }
@@ -269,7 +269,7 @@ const toggleVisibility = () => {
   height: 28px;
   padding: 0;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--dp-radius-panel);
   background: transparent;
   color: var(--dp-text-muted);
   cursor: pointer;

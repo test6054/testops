@@ -470,8 +470,8 @@ onMounted(loadHistory)
   margin-top: 16px;
   padding: 12px;
   background: var(--dp-surface-subtle);
-  border-radius: 4px;
-  font-size: 12px;
+  border-radius: var(--dp-radius-xs);
+  font-size: var(--dp-font-size-xs);
   overflow: auto;
 }
 </style>

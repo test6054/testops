@@ -411,7 +411,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 600;
   background: rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.7);
@@ -428,7 +428,7 @@ onUnmounted(() => {
 }
 
 .brand-step__label {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: rgba(255, 255, 255, 0.7);
 
   .brand-step--active & {
@@ -442,14 +442,14 @@ onUnmounted(() => {
   margin-bottom: var(--dp-space-4, 16px);
 
   h2 {
-    font-size: 20px;
+    font-size: var(--dp-font-size-2xl);
     font-weight: 700;
     color: var(--dp-text-primary);
     margin: 0 0 6px;
   }
 
   p {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     color: var(--dp-text-muted);
     margin: 0;
   }
@@ -477,7 +477,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
   background: var(--dp-gray-100);
   color: var(--dp-text-muted);
@@ -485,7 +485,7 @@ onUnmounted(() => {
 }
 
 .step-dot__label {
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   color: var(--dp-text-muted);
   transition: color 0.2s;
 }
@@ -531,7 +531,7 @@ onUnmounted(() => {
 
   p {
     margin: 6px 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     color: var(--dp-text-secondary);
   }
 }
@@ -549,7 +549,7 @@ onUnmounted(() => {
   a {
     color: var(--dp-blue-600);
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
 
     &.disabled {
       color: var(--dp-text-muted);
@@ -559,7 +559,7 @@ onUnmounted(() => {
 }
 
 .countdown-text {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 
@@ -571,7 +571,7 @@ onUnmounted(() => {
 }
 
 .strength-label {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
   white-space: nowrap;
 }
@@ -611,7 +611,7 @@ onUnmounted(() => {
 }
 
 .strength-text {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
   min-width: 30px;
 }
@@ -624,14 +624,14 @@ onUnmounted(() => {
 
   h3 {
     margin: 14px 0 6px;
-    font-size: 18px;
+    font-size: var(--dp-font-size-xl);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   p {
     margin: 0 0 20px;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     color: var(--dp-text-muted);
   }
 }
@@ -642,7 +642,7 @@ onUnmounted(() => {
   margin-top: 20px;
   padding-top: 20px;
   border-top: 1px solid var(--dp-border-light);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-muted);
 
   a {

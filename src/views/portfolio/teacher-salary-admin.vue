@@ -8,10 +8,8 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
-import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -24,7 +22,7 @@ import { useUserStore } from '@/stores/modules/user'
 import { PortfolioBusinessDataSourceTypeCode } from '@/types/enums/portfolio-business-data-source-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -35,6 +33,7 @@ const isDepartmentScoped = computed(
   () => route.path.includes('/department/') || !userStore.isTenantAdmin,
 )
 const pageTitle = computed(() => (isDepartmentScoped.value ? '院系教师工资' : '教师工资'))
+
 
 const form = reactive<{
   teacherUserId: string
@@ -57,10 +56,7 @@ const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange }
   = useQueryTable(portfolioTeacherSalaryApi.page)
 const operationKey = ref('')
-const exportConfirmOpen = ref(false)
-const exportPurpose = ref('')
 const operating = computed(() => Boolean(operationKey.value))
-const exporting = computed(() => operationKey.value === 'salary:export')
 
 function beginOperation(key: string): boolean {
   if (operating.value) return false
@@ -71,6 +67,8 @@ function beginOperation(key: string): boolean {
 function endOperation(key: string) {
   if (operationKey.value === key) operationKey.value = ''
 }
+
+
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
   { title: '月份', dataIndex: 'salaryMonth', key: 'salaryMonth', width: 96 },
@@ -142,23 +140,13 @@ async function saveSalary() {
   }
 }
 
-function openExportConfirm() {
-  exportPurpose.value = ''
-  exportConfirmOpen.value = true
-}
-
 async function exportCsv() {
-  const purpose = exportPurpose.value.trim()
-  if (!purpose) {
-    showFormValidationMessage('请填写导出用途')
-    return
-  }
   const operation = 'salary:export'
   if (!beginOperation(operation)) return
   if (
     !(await confirmAsync({
       title: '确认导出教师薪酬？',
-      content: `导出用途：${purpose}。文件包含敏感薪酬数据，操作将写入审计记录，请确认保管范围。`,
+      content: '导出文件包含敏感薪酬数据，操作将写入审计记录，请确认用途和保管范围。',
       type: 'warning',
     }))
   ) {
@@ -166,9 +154,8 @@ async function exportCsv() {
     return
   }
   try {
-    const result = await portfolioTeacherSalaryApi.export({ exportPurpose: purpose })
+    const result = await portfolioTeacherSalaryApi.export()
     await downloadPortfolioExcelExport(result)
-    exportConfirmOpen.value = false
     void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出教师薪酬失败')
@@ -247,7 +234,7 @@ async function exportCsv() {
           size="sm"
           :loading="operationKey === 'salary:export'"
           :disabled="operating"
-          @click="openExportConfirm"
+          @click="exportCsv"
         >
           导出
         </UiButton>
@@ -275,7 +262,7 @@ async function exportCsv() {
             {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
             <span v-else>—</span>
@@ -289,24 +276,6 @@ async function exportCsv() {
         </template>
       </UiDataTable>
     </UiCard>
-
-    <UiDialog
-      v-model:open="exportConfirmOpen"
-      title="导出"
-      ok-text="确认导出"
-      cancel-text="取消"
-      :confirm-loading="exporting"
-      @ok="exportCsv"
-    >
-      <label class="export-purpose__label">导出用途（必填）</label>
-      <UiTextarea
-        v-model="exportPurpose"
-        size="sm"
-        :rows="3"
-        placeholder="请填写本次导出用途（写入审计）"
-        :disabled="exporting"
-      />
-    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -315,10 +284,5 @@ async function exportCsv() {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-.export-purpose__label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
 }
 </style>

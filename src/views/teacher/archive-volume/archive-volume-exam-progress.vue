@@ -872,7 +872,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: var(--dp-space-2);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 

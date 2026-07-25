@@ -14,18 +14,6 @@ import type {
   PortfolioTeacherPortraitTrendVO,
   PortfolioTeacherPortraitVO,
 } from '@/apis/portfolio/types'
-import type {
-  PortfolioIndustryPackDictCategoryCode} from '@/types/enums/portfolio-industry-pack-dict-category-code-enum';
-import type {
-  PortfolioIndustryPackDictLevelCode} from '@/types/enums/portfolio-industry-pack-dict-level-code-enum';
-import type {
-  PortfolioIndustryPackDictRoleCode} from '@/types/enums/portfolio-industry-pack-dict-role-code-enum';
-import type {
-  PortfolioIndustryPackMajorCode} from '@/types/enums/portfolio-industry-pack-major-code-enum';
-import type {
-  PortfolioIndustryPackMaterialCode} from '@/types/enums/portfolio-industry-pack-material-code-enum';
-import type {
-  PortfolioIndustryPackRequiredFieldCode} from '@/types/enums/portfolio-industry-pack-required-field-code-enum';
 import type { PortfolioSuggestionTypeCode } from '@/types/enums/portfolio-suggestion-type-enum'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
@@ -65,25 +53,6 @@ import {
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { PortfolioEvaluationSceneCode } from '@/types/enums/portfolio-evaluation-scene-enum'
 import {
-  PortfolioIndustryPackDictCategoryCodeDescription,
-} from '@/types/enums/portfolio-industry-pack-dict-category-code-enum'
-import {
-  PortfolioIndustryPackDictLevelCodeDescription,
-} from '@/types/enums/portfolio-industry-pack-dict-level-code-enum'
-import {
-  PortfolioIndustryPackDictRoleCodeDescription,
-} from '@/types/enums/portfolio-industry-pack-dict-role-code-enum'
-import {
-  PortfolioIndustryPackMajorCodeDescription,
-} from '@/types/enums/portfolio-industry-pack-major-code-enum'
-import {
-  PortfolioIndustryPackMaterialCodeDescription,
-} from '@/types/enums/portfolio-industry-pack-material-code-enum'
-import {
-  PortfolioIndustryPackRequiredFieldCodeDescription,
-} from '@/types/enums/portfolio-industry-pack-required-field-code-enum'
-import { PortfolioPortraitCohortDisplayModeCode } from '@/types/enums/portfolio-portrait-cohort-display-mode-enum'
-import {
   ALL_PORTFOLIO_PORTRAIT_COHORT_TYPE_CODES,
   PortfolioPortraitCohortTypeCode,
   PortfolioPortraitCohortTypeDescription,
@@ -96,7 +65,7 @@ import {
 } from '@/types/enums/portfolio-training-recommend-status-enum'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import {
   buildPortraitCohortRangeChartOption,
   buildPortraitCompositeTrendChartOption,
@@ -113,6 +82,8 @@ const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { archiveWriteForbidden, archiveWriteBlockMessage, reloadLifecycleState }
   = usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+
+
 const loading = ref(false)
 const detailLoading = ref(false)
 const portrait = ref<PortfolioTeacherPortraitVO | null>(null)
@@ -187,11 +158,11 @@ const compositeItems = computed((): SignalMetric[] => {
       unit: '分',
       tone: 'blue',
     },
-    { key: 'core', label: '发展核心', value: String(row.developmentCoreScore), unit: '分' },
+    { key: 'core', label: '核心素质', value: String(row.developmentCoreScore), unit: '分' },
     { key: 'teaching', label: '教学能力', value: String(row.teachingScore), unit: '分' },
-    { key: 'research', label: '科研教研', value: String(row.researchScore), unit: '分' },
+    { key: 'research', label: '科研能力', value: String(row.researchScore), unit: '分' },
     { key: 'training', label: '培训发展', value: String(row.trainingScore), unit: '分' },
-    { key: 'practice', label: '企业实践', value: String(row.practiceScore), unit: '分' },
+    { key: 'practice', label: '实践指导', value: String(row.practiceScore), unit: '分' },
   ]
 })
 
@@ -238,31 +209,6 @@ const creditCurveOption = computed((): EChartsCoreOption => {
 })
 
 /** 教师范围变化后必须清空旧指标明细抽屉，避免继续展示上一位教师的画像证据。 */
-
-function resolveIndustryPackGapTitle(code?: string | null): string {
-  if (!code) return '—'
-  if (code in PortfolioIndustryPackMaterialCodeDescription) {
-    return PortfolioIndustryPackMaterialCodeDescription[code as PortfolioIndustryPackMaterialCode]
-  }
-  if (code in PortfolioIndustryPackRequiredFieldCodeDescription) {
-    return PortfolioIndustryPackRequiredFieldCodeDescription[code as PortfolioIndustryPackRequiredFieldCode]
-  }
-  if (code in PortfolioIndustryPackDictCategoryCodeDescription) {
-    return PortfolioIndustryPackDictCategoryCodeDescription[code as PortfolioIndustryPackDictCategoryCode]
-  }
-  if (code in PortfolioIndustryPackDictLevelCodeDescription) {
-    return PortfolioIndustryPackDictLevelCodeDescription[code as PortfolioIndustryPackDictLevelCode]
-  }
-  if (code in PortfolioIndustryPackDictRoleCodeDescription) {
-    return PortfolioIndustryPackDictRoleCodeDescription[code as PortfolioIndustryPackDictRoleCode]
-  }
-  if (code in PortfolioIndustryPackMajorCodeDescription) {
-    return PortfolioIndustryPackMajorCodeDescription[code as PortfolioIndustryPackMajorCode]
-  }
-  return code
-}
-
-
 function resetIndicatorDetailContext() {
   detailRequestToken.value += 1
   detailLoading.value = false
@@ -747,7 +693,7 @@ watch(creditCategory, (next, prev) => {
             class="teacher-portrait__cohort-tabs"
           />
           <UiAlert
-            v-if="cohort?.displayMode === PortfolioPortraitCohortDisplayModeCode.INSUFFICIENT || cohort?.displayMode === PortfolioPortraitCohortDisplayModeCode.LIMITED"
+            v-if="cohort?.displayMode === 'INSUFFICIENT' || cohort?.displayMode === 'LIMITED'"
             type="warning"
             class="teacher-portrait__cohort-alert"
           >
@@ -1108,7 +1054,7 @@ watch(creditCategory, (next, prev) => {
           <p>行业达标缺口清单：</p>
           <ul>
             <li v-for="(gap, idx) in portrait.industryPackSceneScore.hardGaps" :key="`gap-${idx}`">
-              [{{ gap.gapType }}] {{ resolveIndustryPackGapTitle(gap.gapTitle) }}
+              [{{ gap.gapType }}] {{ gap.gapTitle }}
               <span v-if="gap.remediationHint"> — {{ gap.remediationHint }}</span>
             </li>
           </ul>
@@ -1661,13 +1607,13 @@ watch(creditCategory, (next, prev) => {
 <style scoped lang="scss">
 .teacher-portrait__meta {
   margin: var(--dp-space-4) 0 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
 .teacher-portrait__hint-text {
   margin: 0 0 var(--dp-space-3);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
@@ -1744,7 +1690,7 @@ watch(creditCategory, (next, prev) => {
 .teacher-portrait__table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 
   th,
   td {
@@ -1781,13 +1727,13 @@ watch(creditCategory, (next, prev) => {
 
   dt {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
   dd {
     margin: var(--dp-space-1) 0 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }

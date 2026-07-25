@@ -125,7 +125,7 @@ function operationLabel(operationType: OperationLogResponse['operationType']): s
     border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-panel);
     color: var(--dp-text-secondary);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
 
     :deep(.ant-typography) {
       margin: 0;

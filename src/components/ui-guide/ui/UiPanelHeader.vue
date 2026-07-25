@@ -87,7 +87,7 @@ const props = withDefaults(defineProps<{
   align-items: center;
   gap: 6px;
   margin: 0;
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -124,7 +124,7 @@ const props = withDefaults(defineProps<{
 
 .ui-panel-header__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 700;
   line-height: 1.4;
   letter-spacing: -0.01em;
@@ -140,7 +140,7 @@ const props = withDefaults(defineProps<{
 
 .ui-panel-header__description {
   margin: var(--dp-space-2, 8px) 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.7;
   color: var(--dp-text-secondary);
 }

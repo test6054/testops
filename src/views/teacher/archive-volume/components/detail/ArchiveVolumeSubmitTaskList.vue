@@ -92,7 +92,7 @@ function dimensionLabel(dimension: ArchiveVolumeSubmitChecklistDimensionCode): s
 
 .archive-volume-submit-task-list__empty {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 

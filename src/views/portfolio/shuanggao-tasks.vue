@@ -9,7 +9,6 @@ import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
-import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -47,8 +46,8 @@ import {
   PortfolioDoubleHighTaskStatusDescription,
 } from '@/types/enums/portfolio-double-high-task-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { handleDownloadFile } from '@/utils/file-download'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 interface TaskFilterModel extends Record<string, unknown> {
@@ -215,6 +214,8 @@ const reviewOptions = [
 ]
 
 const query = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
+
+
 const columns: ColumnsType = [
   { title: '任务编码', dataIndex: 'taskCode', key: 'taskCode', width: 140 },
   { title: '任务标题', dataIndex: 'taskTitle', key: 'taskTitle', ellipsis: true },
@@ -522,27 +523,10 @@ async function handleAction(key: string, row: PortfolioDoubleHighTaskVO) {
         showFormValidationMessage('验收包尚未生成')
         return
       }
-      // §7.9：优先走导出审批下载，写入 EXPORT_DOWNLOAD 审计；无审批台账时拒绝直下文件
-      if (!row.acceptanceExportApprovalId) {
-        showFormValidationMessage('验收包缺少导出审批台账，请联系管理员重新归档生成')
-        return
-      }
-      try {
-        const result = await portfolioSecurityApi.downloadExport({
-          id: row.acceptanceExportApprovalId,
-        })
-        if (!result.fileNodeId) {
-          showFormValidationMessage('审批产物尚未生成')
-          return
-        }
-        await downloadPortfolioExcelExport({
-          fileNodeId: result.fileNodeId,
-          fileName: result.fileName || row.acceptanceFileName || `双高验收包-${row.taskCode}.zip`,
-        })
-        void message.success('已开始下载验收包')
-      } catch (error) {
-        showUserError(error, '下载验收包失败')
-      }
+      await handleDownloadFile({
+        fileId: row.acceptanceFileNodeId,
+        fileName: row.acceptanceFileName || `双高验收包-${row.taskCode}.zip`,
+      })
       return
     } else if (key === 'review') {
       activeTask.value = row
@@ -810,7 +794,7 @@ watch(
             <span v-else class="shuanggao-tasks__cell-muted">—</span>
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
 
@@ -946,7 +930,7 @@ watch(
           </p>
           <div v-if="detailTask.lifecycleStatus" class="shuanggao-tasks__lifecycle">
             责任人生命周期：
-            <UiTag :tone="portfolioLifecycleTagTone(detailTask)">
+            <UiTag :tone="portfolioLifecycleTagTone(detailTask.lifecycleStatus)">
               {{ detailTask.lifecycleStatusLabel || detailTask.lifecycleStatus }}
             </UiTag>
             <span v-if="detailTask.countsInCurrentFacultyStructure === false">（不计入当前在岗结构）</span>
@@ -1042,7 +1026,7 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .create-form__field--full,
@@ -1055,7 +1039,7 @@ watch(
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .create-form__stage-row {
@@ -1067,7 +1051,7 @@ watch(
 }
 
 .create-form__stage-index {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -1082,24 +1066,24 @@ watch(
 }
 
 .shuanggao-tasks__cell-text {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-primary);
 }
 
 .shuanggao-tasks__cell-muted {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
 
 .shuanggao-tasks__detail-title {
   margin: 0 0 var(--dp-space-2);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-primary);
 }
 
 .shuanggao-tasks__detail-meta {
   margin: 0 0 var(--dp-space-1);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
 }
@@ -1115,7 +1099,7 @@ watch(
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .shuanggao-tasks__stage-item {
@@ -1144,7 +1128,7 @@ watch(
   display: flex;
   flex-direction: column;
   gap: var(--dp-space-2);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 

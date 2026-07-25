@@ -773,7 +773,7 @@ watch(
   gap: 8px;
 }
 .teacher-segments strong {
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
 }
 .teacher-segments__samples {
   display: flex;
@@ -796,9 +796,9 @@ watch(
 .completeness-chip {
   padding: 2px 8px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
   background: transparent;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   cursor: pointer;
 }
 .completeness-chip--active {
@@ -808,7 +808,7 @@ watch(
 }
 .teacher-filter-hint {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 

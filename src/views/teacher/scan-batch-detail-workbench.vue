@@ -1645,7 +1645,7 @@ onUnmounted(() => {
 
 .scan-batch-detail-workbench__attribution-summary {
   color: var(--dp-text-tertiary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .scan-batch-detail-workbench__immersion {
@@ -1665,7 +1665,7 @@ onUnmounted(() => {
 .scan-batch-detail-workbench__stage {
   min-height: 0;
   border: 1px solid var(--dp-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--dp-radius-panel);
   background: var(--dp-bg-container);
 }
 
@@ -1713,7 +1713,7 @@ onUnmounted(() => {
 
 .scan-batch-detail-workbench__queue-title {
   color: var(--dp-text);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 
@@ -1721,7 +1721,7 @@ onUnmounted(() => {
 .scan-batch-detail-workbench__queue-diag {
   overflow: hidden;
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1770,7 +1770,7 @@ onUnmounted(() => {
   border-radius: 6px;
   background: var(--dp-bg-container);
   color: var(--dp-text);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   cursor: pointer;
 
   &--active {

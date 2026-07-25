@@ -60,11 +60,10 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { PortfolioTeacherLifecycleStatusCode } from '@/types/enums/portfolio-teacher-lifecycle-status-enum'
 import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -218,10 +217,6 @@ const identityColumns: ColumnsType = [
 const list = ref<PortfolioTeacherSummaryVO[]>([])
 const total = ref(0)
 const loading = ref(false)
-const exportConfirmOpen = ref(false)
-const transferExportConfirmOpen = ref(false)
-const transferExportPurpose = ref('')
-const exportPurpose = ref('')
 const loadError = ref(false)
 const pageRequestToken = ref(0)
 const operationKey = ref('')
@@ -283,6 +278,8 @@ function identityStatusLabel(status?: PortfolioTeacherIdentityVO['identityStatus
   }
   return strictEnumLabel(PortfolioTeacherIdentityStatusDescription, status, '教师身份状态')
 }
+
+
 function completenessRowLabel(record: PortfolioTeacherSummaryVO): string {
   if (record.completenessPercent == null) {
     return '—'
@@ -678,7 +675,7 @@ function openOneTable(userId: string) {
 }
 
 const lifecycleChangeOptions = computed(() => {
-  const status = lifecycleState.value?.lifecycleStatus ?? PortfolioTeacherLifecycleStatusCode.ACTIVE
+  const status = lifecycleState.value?.lifecycleStatus ?? 'ACTIVE'
   return PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS.filter((item) =>
     item.from.includes(status),
   ).map((item) => ({ label: item.label, value: item.value }))
@@ -776,29 +773,12 @@ async function applyLifecycleChange() {
   }
 }
 
-function openTransferExportConfirm() {
-  if (!detail.value?.userId) {
-    return
-  }
-  if (lifecycleState.value?.lifecycleStatus !== 'TRANSFER_FROZEN') {
-    void message.warning('仅迁出冻结态可导出迁出数据包')
-    return
-  }
-  transferExportPurpose.value = ''
-  transferExportConfirmOpen.value = true
-}
-
 async function exportTransferPackage() {
   if (!detail.value?.userId) {
     return
   }
   if (lifecycleState.value?.lifecycleStatus !== 'TRANSFER_FROZEN') {
     void message.warning('仅迁出冻结态可导出迁出数据包')
-    return
-  }
-  const purpose = transferExportPurpose.value.trim()
-  if (!purpose) {
-    showFormValidationMessage('请填写导出用途')
     return
   }
   const operation = `lifecycle:export:${detail.value.userId}`
@@ -808,12 +788,10 @@ async function exportTransferPackage() {
   try {
     const result = await portfolioTeacherLifecycleApi.exportTransferPackage({
       teacherUserId: detail.value.userId,
-      exportPurpose: purpose,
     })
-    transferExportConfirmOpen.value = false
     lifecycleState.value = {
       teacherUserId: result.teacherUserId,
-      lifecycleStatus: result.lifecycleStatus || PortfolioTeacherLifecycleStatusCode.TRANSFERRED,
+      lifecycleStatus: result.lifecycleStatus || 'TRANSFERRED',
       lifecycleStatusLabel: result.lifecycleStatusLabel,
       archiveWriteForbidden: true,
       evaluationHeld: true,
@@ -884,24 +862,13 @@ async function importTransferPackageFromFile(event: Event): Promise<void> {
   }
 }
 
-function openExportConfirm() {
-  exportPurpose.value = ''
-  exportConfirmOpen.value = true
-}
-
 async function exportRoster() {
-  const purpose = exportPurpose.value.trim()
-  if (!purpose) {
-    showFormValidationMessage('请填写导出用途')
-    return
-  }
   const operation = 'roster:export'
   if (!beginOperation(operation)) return
-  const request = { ...query, exportPurpose: purpose }
+  const request = { ...query }
   try {
     const result = await portfolioTeacherApi.exportRoster(request)
     await downloadPortfolioExcelExport(result)
-    exportConfirmOpen.value = false
     void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出教师名册失败')
@@ -968,7 +935,7 @@ watch(
           variant="primary"
           :loading="exporting"
           :disabled="interactionLocked"
-          @click="openExportConfirm"
+          @click="exportRoster"
         >
           导出名册
         </UiButton>
@@ -1016,7 +983,7 @@ watch(
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus, { archiveWriteForbidden: record.archiveWriteForbidden })">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -1146,11 +1113,11 @@ watch(
               应用变更
             </UiButton>
             <UiButton
-              v-if="lifecycleState?.lifecycleStatus === PortfolioTeacherLifecycleStatusCode.TRANSFER_FROZEN"
+              v-if="lifecycleState?.lifecycleStatus === 'TRANSFER_FROZEN'"
               size="sm"
               :disabled="interactionLocked"
               :loading="operationKey.startsWith('lifecycle:export:')"
-              @click="openTransferExportConfirm"
+              @click="exportTransferPackage"
             >
               导出迁出数据包
             </UiButton>
@@ -1380,21 +1347,6 @@ watch(
         </UiFormItem>
       </UiForm>
     </UiDialog>
-    <UiDialog
-      v-model:open="exportConfirmOpen"
-      title="导出教师名册"
-      ok-text="确认导出"
-      cancel-text="取消"
-      @ok="exportRoster"
-    >
-      <label class="export-purpose__label">导出用途（必填）</label>
-      <UiTextarea
-        v-model="exportPurpose"
-        size="sm"
-        :rows="3"
-        placeholder="请填写本次导出用途（写入审计），例如迎评检查、结构统计"
-      />
-    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -1410,20 +1362,20 @@ watch(
 
   h4 {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: 600;
   }
 }
 .teacher-directory__extension-error {
   margin: 12px 0 0;
   color: var(--dp-error);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .teacher-directory__lifecycle {
   margin-top: 16px;
   h4 {
     margin: 0 0 8px;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
 }
@@ -1438,14 +1390,14 @@ watch(
   margin-top: 12px;
   h5 {
     margin: 0 0 6px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
   }
   ul {
     margin: 0;
     padding-left: 18px;
     color: var(--dp-text-secondary);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 }
 
@@ -1467,7 +1419,7 @@ watch(
   margin-top: 16px;
   h4 {
     margin: 0 0 8px;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
 }
@@ -1475,7 +1427,7 @@ watch(
   margin: 0;
   padding-left: 18px;
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 .teacher-directory__contribution {
   margin: 0 0 12px;
@@ -1485,28 +1437,23 @@ watch(
   background: var(--dp-bg-subtle, #fafafa);
   h5 {
     margin: 0 0 6px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
   }
   p {
     margin: 0 0 4px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
   ul {
     margin: 4px 0 0;
     padding-left: 18px;
     color: var(--dp-text-secondary);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 }
 .teacher-directory__muted {
   margin: 0;
   color: var(--dp-text-muted);
-  font-size: 12px;
-}
-.export-purpose__label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-xs);
 }
 </style>

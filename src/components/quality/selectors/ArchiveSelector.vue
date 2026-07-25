@@ -146,7 +146,7 @@ defineExpose({ reload: loadOptions })
 
 <style scoped>
 .text-xs {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .text-gray-500 {

@@ -477,13 +477,13 @@ onMounted(() => {
 <style lang="scss" scoped>
 .scanner-agent-releases__sub {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-tertiary);
 }
 
 .scanner-agent-releases__hint {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
 }

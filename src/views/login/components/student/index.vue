@@ -324,7 +324,7 @@ onMounted(() => {
   border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: var(--dp-radius-control);
   color: var(--dp-red-500);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
 
   svg {

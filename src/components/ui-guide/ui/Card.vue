@@ -138,7 +138,7 @@ const hasHeader = computed(
 .dp-card__title :deep(.anticon) {
   width: 16px;
   height: 16px;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   color: var(--dp-text-secondary);
   flex-shrink: 0;
 }

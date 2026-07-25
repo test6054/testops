@@ -300,12 +300,12 @@ async function changePage(page: number) {
 }
 .dispatch-queue__meta {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--kiosk-ink-tertiary);
 }
 .dispatch-queue__failure {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--kiosk-danger);
 }
 .dispatch-queue__pager {

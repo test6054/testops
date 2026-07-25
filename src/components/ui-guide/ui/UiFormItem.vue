@@ -39,7 +39,7 @@ const props = withDefaults(
 
 <style scoped>
 .ui-form-item :deep(.ant-form-item-label > label) {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 600;
   color: var(--dp-text-primary);
   height: auto;
@@ -47,7 +47,7 @@ const props = withDefaults(
 
 .ui-form-item :deep(.ant-form-item-explain),
 .ui-form-item :deep(.ant-form-item-extra) {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.4;
   min-height: 0;
 }

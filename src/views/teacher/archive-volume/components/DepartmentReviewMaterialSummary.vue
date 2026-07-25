@@ -185,13 +185,13 @@ onMounted(() => {
 }
 
 .dept-review-summary__title {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
 
 .dept-review-summary__hint {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 
@@ -205,13 +205,13 @@ onMounted(() => {
 .dept-review-summary__item {
   dt {
     margin: 0 0 2px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
   dd {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-primary);
   }
 }
@@ -219,7 +219,7 @@ onMounted(() => {
 .dept-review-summary__missing {
   margin: 10px 0 0;
   padding-left: 18px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-color-error);
 }
 </style>

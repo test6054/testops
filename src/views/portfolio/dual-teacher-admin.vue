@@ -36,7 +36,7 @@ import { PORTFOLIO_DUAL_TEACHER_CERT_LEVEL_LABEL } from '@/types/enums/portfolio
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { hasTeacherTenantPermission } from '@/utils/permission'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -47,8 +47,6 @@ const collegeEligibilityById = ref<Record<string, PortfolioDualTeacherEligibilit
 const previewingId = ref('')
 const workflowId = ref('')
 const exporting = ref(false)
-const exportConfirmOpen = ref(false)
-const exportPurpose = ref('')
 const writing = computed(() => Boolean(previewingId.value || workflowId.value) || exporting.value)
 /** 当前操作目标教师；用于封存写禁预检 */
 const actionTeacherId = ref<string | undefined>()
@@ -90,6 +88,20 @@ onMounted(() => {
 
 function statusLabel(status: PortfolioDualTeacherApplicationVO['applicationStatus']) {
   return strictEnumLabel(PortfolioDualTeacherApplicationStatusDescription, status, '双师申请状态')
+}
+
+function statusTone(status: PortfolioDualTeacherApplicationVO['applicationStatus']) {
+  switch (status) {
+    case PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING:
+    case PortfolioDualTeacherApplicationStatusCode.ACADEMIC_PENDING:
+      return 'orange' as const
+    case PortfolioDualTeacherApplicationStatusCode.APPROVED:
+      return 'green' as const
+    case PortfolioDualTeacherApplicationStatusCode.REJECTED:
+      return 'red' as const
+    default:
+      return 'gray' as const
+  }
 }
 
 const importModalOpen = ref(false)
@@ -149,6 +161,8 @@ const columns: ColumnsType = [
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '操作', key: 'actions', width: 260 },
 ]
+
+
 async function previewEligibility(id: string) {
   if (writing.value) {
     return
@@ -204,8 +218,8 @@ function buildDualTeacherRowActions(
   const actions: UiTableRowActionItem[] = []
   if (
     record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.DRAFT
-    || record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.COLLEGE_RETURNED
-    || record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_RETURNED
+    || record.applicationStatus === 'COLLEGE_RETURNED'
+    || record.applicationStatus === 'ACADEMIC_RETURNED'
   ) {
     actions.push({ key: 'submit', label: '提交' })
   }
@@ -366,31 +380,17 @@ async function runWorkflow(
   }
 }
 
-function openExportConfirm() {
-  if (exporting.value) {
-    return
-  }
-  exportPurpose.value = ''
-  exportConfirmOpen.value = true
-}
-
 async function exportRoster() {
-  if (exporting.value) {
-    return
-  }
-  const purpose = exportPurpose.value.trim()
-  if (!purpose) {
-    showFormValidationMessage('请填写导出用途')
+  if (writing.value) {
     return
   }
   exporting.value = true
   try {
-    const result = await portfolioDualTeacherApi.exportRoster({ exportPurpose: purpose })
+    const result = await portfolioDualTeacherApi.exportRoster()
     await downloadPortfolioExcelExport(result)
-    exportConfirmOpen.value = false
-    void message.success('已开始下载双师认定台账')
+    void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
-    showUserError(error, '导出双师认定台账失败')
+    showUserError(error, '导出双师认定名册失败')
   } finally {
     exporting.value = false
   }
@@ -426,7 +426,7 @@ async function handleImportSuccess() {
             variant="primary"
             :loading="exporting"
             :disabled="writing"
-            @click="openExportConfirm"
+            @click="exportRoster"
           >
             导出台账
           </UiButton>
@@ -472,10 +472,12 @@ async function handleImportSuccess() {
             }}
           </template>
           <template v-else-if="column.key === 'applicationStatus'">
-            {{ statusLabel(record.applicationStatus) }}
+            <UiTag :tone="statusTone(record.applicationStatus)">
+              {{ statusLabel(record.applicationStatus) }}
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
 
@@ -534,24 +536,6 @@ async function handleImportSuccess() {
         v-model="opinionModal.opinion"
         :rows="3"
         placeholder="请填写审核意见（必填）"
-      />
-    </UiDialog>
-  
-    <UiDialog
-      v-model:open="exportConfirmOpen"
-      title="导出台账"
-      ok-text="确认导出"
-      cancel-text="取消"
-      :confirm-loading="exporting"
-      @ok="exportRoster"
-    >
-      <label class="dual-teacher-export-purpose__label">导出用途（必填）</label>
-      <UiTextarea
-        v-model="exportPurpose"
-        size="sm"
-        :rows="3"
-        placeholder="请填写本次导出用途（写入审计），例如迎评检查、结构统计"
-        :disabled="exporting"
       />
     </UiDialog>
   </StageWorkbenchShell>

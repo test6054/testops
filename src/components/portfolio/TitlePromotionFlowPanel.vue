@@ -126,7 +126,7 @@ const stageRailItems = computed<WorkbenchStage[]>(() => {
 <style lang="scss" scoped>
 .title-promotion-flow-panel__loading {
   color: var(--dp-text-secondary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .title-promotion-flow-panel__path-fork {
   display: flex;
@@ -145,7 +145,7 @@ const stageRailItems = computed<WorkbenchStage[]>(() => {
   border-radius: var(--dp-radius-control);
   background: var(--dp-surface);
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .title-promotion-flow-panel__path-lane--active {
   border-color: var(--dp-color-primary);
@@ -165,7 +165,7 @@ const stageRailItems = computed<WorkbenchStage[]>(() => {
 .title-promotion-flow-panel__guidance {
   margin: 0 0 8px;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
 }
 .title-promotion-flow-panel__metrics {
@@ -188,7 +188,7 @@ const stageRailItems = computed<WorkbenchStage[]>(() => {
   padding: 8px;
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .title-promotion-flow-panel__stage-note--emphasis {
   border-color: var(--dp-warning);
@@ -200,7 +200,7 @@ const stageRailItems = computed<WorkbenchStage[]>(() => {
 .title-promotion-flow-panel__criteria-title {
   margin-bottom: 8px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .title-promotion-flow-panel__criteria ul {
   margin: 0;
@@ -214,6 +214,6 @@ const stageRailItems = computed<WorkbenchStage[]>(() => {
   align-items: center;
   padding: 6px 0;
   border-bottom: 1px solid var(--dp-border);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 </style>

@@ -25,7 +25,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import {
   formatPortfolioTeacherDisplay,
   portfolioTeacherSelectOptionsFromSummaries,
@@ -409,7 +409,9 @@ watch(
             <UiTag
               v-if="reportDetail.lifecycleStatus"
               size="sm"
-              :tone="portfolioLifecycleTagTone(reportDetail)"
+              :tone="
+                portfolioLifecycleTagTone(reportDetail.lifecycleStatus)
+              "
             >
               {{ reportDetail.lifecycleStatusLabel || reportDetail.lifecycleStatus }}
             </UiTag>
@@ -439,7 +441,7 @@ watch(
 }
 .hint {
   margin: 12px 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .report-meta {
@@ -455,7 +457,7 @@ watch(
   gap: 4px;
 }
 .report-meta__extra {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .report-meta__identity {
@@ -473,8 +475,8 @@ watch(
   white-space: pre-wrap;
   word-break: break-word;
   background: var(--dp-fill-quaternary);
-  border-radius: 4px;
-  font-size: 13px;
+  border-radius: var(--dp-radius-xs);
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }
 </style>

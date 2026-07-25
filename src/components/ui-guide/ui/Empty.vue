@@ -141,7 +141,7 @@ const resolvedDescription = computed(() => {
 
 .ui-empty__description {
   max-width: 360px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
   color: var(--dp-text-secondary);
 }
@@ -157,7 +157,7 @@ const resolvedDescription = computed(() => {
   border-radius: var(--dp-radius-full, 999px);
   background: var(--dp-surface);
   color: var(--dp-text-primary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 500;
   line-height: 28px;
   cursor: pointer;

@@ -207,8 +207,8 @@ function handleChange(value: Key) {
   min-width: 20px;
   height: 18px;
   padding: 0 6px;
-  border-radius: 999px;
-  font-size: 11px;
+  border-radius: var(--dp-radius-full);
+  font-size: var(--dp-font-size-xxs);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -277,7 +277,7 @@ function handleChange(value: Key) {
 .ui-section-tabs__helper {
   margin: 0;
   padding-left: 2px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-muted);
 }
@@ -288,7 +288,7 @@ function handleChange(value: Key) {
 
 .ui-section-tabs--compact .ui-section-tabs__tab {
   padding: 6px 12px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .ui-section-tabs--compact .ui-section-tabs__count {

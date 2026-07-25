@@ -332,7 +332,7 @@ defineExpose({ refresh: loadTasks })
 }
 
 .archive-exam-export-tasks__picker-label {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 
   color: var(--dp-text-secondary);
 }
@@ -352,7 +352,7 @@ defineExpose({ refresh: loadTasks })
 
   gap: 6px;
 
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 
   color: var(--dp-text-primary);
 
@@ -368,6 +368,6 @@ defineExpose({ refresh: loadTasks })
 .archive-exam-export-tasks__file {
   font-family: var(--dp-font-mono);
 
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 </style>

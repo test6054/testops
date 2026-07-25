@@ -124,7 +124,7 @@ const onClick = (evt: MouseEvent) => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   border-radius: var(--dp-radius-control);
   border: 1px solid transparent;
@@ -152,13 +152,13 @@ const onClick = (evt: MouseEvent) => {
 
 .dp-btn--sm {
   padding: 0 12px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   min-height: var(--dp-button-height-sm);
 }
 
 .dp-btn--lg {
   padding: 0 16px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   min-height: var(--dp-button-height-lg);
 }
 
@@ -336,7 +336,7 @@ const onClick = (evt: MouseEvent) => {
 
 .dp-btn__icon :deep(svg),
 .dp-btn__icon :deep(.anticon) {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 @keyframes dp-btn-spin {

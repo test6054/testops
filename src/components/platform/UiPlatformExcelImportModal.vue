@@ -558,7 +558,7 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
 
   &__template-text {
     color: var(--dp-text-secondary);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__dropzone {
@@ -571,14 +571,14 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
   }
 
   &__dropzone-icon {
-    font-size: 18px;
+    font-size: var(--dp-font-size-xl);
     color: var(--dp-text-secondary);
     margin-bottom: 8px;
   }
 
   &__dropzone-hint {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     color: var(--dp-text-primary);
   }
 
@@ -588,7 +588,7 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
 
   &__dropzone-desc {
     margin: 8px 0 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
@@ -612,14 +612,14 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
 
   &__file-size {
     color: var(--dp-text-secondary);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__requirements {
     margin: 12px 0 0;
     padding-left: 18px;
     color: var(--dp-text-secondary);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__summary {
@@ -634,7 +634,7 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
   &__summary-stats {
     display: flex;
     gap: var(--dp-space-3, 12px);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
 
     .is-success {
       color: var(--dp-success);
@@ -652,18 +652,18 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
   }
 
   &__student-name {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__student-no {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
   &__async-hint {
     margin-top: 12px;
     color: var(--dp-text-secondary);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 }
 </style>

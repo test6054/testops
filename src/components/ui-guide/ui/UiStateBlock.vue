@@ -233,7 +233,7 @@ const containerStyle = computed(() => {
 }
 
 .ui-state-block__icon :deep(.ant-spin-dot) {
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
 }
 
 .ui-state-block__content {
@@ -252,7 +252,7 @@ const containerStyle = computed(() => {
 
 .ui-state-block__title {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
   font-weight: 800;
   line-height: 1.4;
   color: var(--dp-text-primary);
@@ -260,14 +260,14 @@ const containerStyle = computed(() => {
 
 .ui-state-block__description {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.7;
   color: var(--dp-text-secondary);
 }
 
 .ui-state-block__helper {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-muted);
 }

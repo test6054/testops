@@ -3,6 +3,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioArchiveRecordSourceTypeCode,
   PortfolioArchiveRecordStatusCode,
+  PortfolioMaterialRiskLevelCode,
   PortfolioReviewActionTypeCode,
 } from '@/apis/portfolio/enums'
 import type {
@@ -22,7 +23,6 @@ import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import {
   PortfolioArchiveRecordSourceTypeDescription,
   PortfolioArchiveRecordStatusDescription,
-  PortfolioMaterialRiskLevelCode,
   PortfolioMaterialRiskLevelDescription,
   PortfolioReviewActionTypeDescription,
   PortfolioReviewTaskStatusCode,
@@ -59,7 +59,7 @@ import {
   showUserError,
 } from '@/utils/error-handler'
 import { formatPortfolioArchiveEvidenceRef } from '@/utils/portfolio-archive-evidence'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -174,9 +174,11 @@ const filterForm = reactive<ReviewFilterModel>({
   categoryId: undefined,
 })
 
-const hasSensitiveRows = computed(() => rows.value.some((item) => item.riskLevel === PortfolioMaterialRiskLevelCode.SENSITIVE))
+const hasSensitiveRows = computed(() => rows.value.some((item) => item.riskLevel === 'SENSITIVE'))
 const showReviewActions = computed(() => Boolean(activeRow.value?.reviewActionAllowed))
 const activeAssociationBroken = computed(() => Boolean(activeRow.value?.associationBroken))
+
+
 const filterModel = computed<Record<string, unknown>>({
   get: () => filterForm,
   set: (value) => {
@@ -1046,7 +1048,7 @@ watch(
             <UiTag v-else tone="green">正常</UiTag>
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -1073,7 +1075,7 @@ watch(
               :items="[
                 {
                   key: 'review',
-                  label: record.riskLevel === PortfolioMaterialRiskLevelCode.SENSITIVE ? '单条复核' : '复核',
+                  label: record.riskLevel === 'SENSITIVE' ? '单条复核' : '复核',
                 },
                 {
                   key: 'masterpiece',
@@ -1184,7 +1186,7 @@ watch(
           class="review-lifecycle-hint"
         >
           教师生命周期：
-          <UiTag :tone="portfolioLifecycleTagTone(activeRow)">
+          <UiTag :tone="portfolioLifecycleTagTone(activeRow.lifecycleStatus)">
             {{ activeRow.lifecycleStatusLabel || activeRow.lifecycleStatus }}
           </UiTag>
           <span v-if="activeRow.countsInCurrentFacultyStructure === false">（不计入当前在岗结构）</span>
@@ -1312,13 +1314,13 @@ watch(
 }
 .review-section__title {
   margin: 0 0 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .review-sensitive-hint {
   margin: 0 0 12px;
   color: var(--dp-error);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .review-meta {
   margin: 0 0 12px;
@@ -1333,7 +1335,7 @@ watch(
 .review-broken-alert {
   margin: 12px 0;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--dp-radius-panel);
   border: 1px solid var(--dp-danger-border, #ffccc7);
   background: var(--dp-danger-bg, #fff2f0);
   color: var(--dp-danger, #cf1322);
@@ -1350,16 +1352,16 @@ watch(
   gap: 8px;
   margin: 8px 0 12px;
   color: var(--dp-text-secondary, #595959);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .review-ai-summary {
   margin: 0 0 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .review-ai-issues {
   margin: 0 0 12px 16px;
   padding: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-color-text-secondary);
 }
 .review-ai-absent {

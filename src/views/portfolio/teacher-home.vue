@@ -194,6 +194,21 @@ function todoCourseScopeLabel(item: PortfolioTodoSummaryVO): string {
   }
   return parts.join(' · ')
 }
+
+/** 待办截止日剩余天数与色彩区分：已逾期红色、3天内橙色、其余默认。 */
+function formatTodoDue(dueTime: string): { text: string, tone: 'danger' | 'warning' | 'default' } {
+  const due = new Date(dueTime)
+  const now = new Date()
+  const diffMs = due.getTime() - now.getTime()
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+  if (diffDays < 0) {
+    return { text: '已逾期', tone: 'danger' }
+  }
+  if (diffDays <= 3) {
+    return { text: `剩${diffDays}天`, tone: 'warning' }
+  }
+  return { text: `截止 ${dueTime}`, tone: 'default' }
+}
 const homeRequestToken = ref(0)
 const showSkipPrompt = ref(false)
 const skipPromptRecording = ref(false)
@@ -804,7 +819,7 @@ onUnmounted(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="我的工作台">
+      <ContextBar show-title layout="workbench" title="我的工作台" subtitle="档案袋填报进度与待办总览">
         <template #actions>
           <template v-if="!(canPickTeachers && !targetTeacherId)">
             <UiButton variant="primary" size="sm" @click="goIntake">材料采集</UiButton>
@@ -1062,20 +1077,30 @@ onUnmounted(() => {
                 <p v-if="todoCourseScopeLabel(item)" class="teacher-home__meta">
                   课程 {{ todoCourseScopeLabel(item) }}
                 </p>
-                <p v-if="item.dueTime" class="teacher-home__meta">截止 {{ item.dueTime }}</p>
-                <UiButton
-                  v-if="
-                    item.todoType === PortfolioTodoTypeCode.CORRECTION_REJECTED
-                      && canManageOwnPrivacy
-                  "
-                  size="sm"
-                  variant="soft"
-                  :loading="acknowledgingTodoKey === `${item.todoType}:${item.refId}`"
-                  :disabled="Boolean(acknowledgingTodoKey)"
-                  @click.stop="acknowledgeRejectedCorrection(item)"
+                <p
+                  v-if="item.dueTime" class="teacher-home__meta" :class="{
+                    'teacher-home__due--danger': formatTodoDue(item.dueTime).tone === 'danger',
+                    'teacher-home__due--warning': formatTodoDue(item.dueTime).tone === 'warning',
+                  }"
                 >
-                  确认知悉
-                </UiButton>
+                  {{ formatTodoDue(item.dueTime).text }}
+                </p>
+                <div class="teacher-home__todo-actions">
+                  <UiButton
+                    v-if="
+                      item.todoType === PortfolioTodoTypeCode.CORRECTION_REJECTED
+                        && canManageOwnPrivacy
+                    "
+                    size="sm"
+                    variant="soft"
+                    :loading="acknowledgingTodoKey === `${item.todoType}:${item.refId}`"
+                    :disabled="Boolean(acknowledgingTodoKey)"
+                    @click.stop="acknowledgeRejectedCorrection(item)"
+                  >
+                    确认知悉
+                  </UiButton>
+                  <UiButton size="sm" variant="ghost" @click.stop="openTodo(item)">去处理</UiButton>
+                </div>
               </li>
             </ul>
             <UiEmpty
@@ -1158,21 +1183,21 @@ onUnmounted(() => {
 
 .teacher-home__portrait-score {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
 
 .teacher-home__portrait-unit {
   margin-left: 2px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 500;
   color: var(--dp-text-muted);
 }
 
 .teacher-home__meta {
   margin: var(--dp-space-2) 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .teacher-home__meta--link {
@@ -1185,12 +1210,12 @@ onUnmounted(() => {
 
 .teacher-home__onboarding {
   margin: var(--dp-space-2) 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-warning);
 }
 
 .teacher-home__todo-count {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
 
@@ -1219,9 +1244,24 @@ onUnmounted(() => {
 
 .teacher-home__todo-title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 500;
   color: var(--dp-text-primary);
+}
+
+.teacher-home__due--danger {
+  color: var(--dp-danger, #d9363e);
+}
+
+.teacher-home__due--warning {
+  color: var(--dp-warning, #d46b08);
+}
+
+.teacher-home__todo-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+  margin-top: var(--dp-space-2);
 }
 
 .teacher-home__hint {

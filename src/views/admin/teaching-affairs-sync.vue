@@ -1089,7 +1089,7 @@ onBeforeUnmount(() => {
 
   &__flow-hint {
     margin-right: auto;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--c-text-4);
     white-space: nowrap;
   }
@@ -1111,12 +1111,12 @@ onBeforeUnmount(() => {
 
 .error-text {
   color: var(--dp-error);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .hint-text {
   color: var(--dp-text-tertiary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .progress-card {
@@ -1135,7 +1135,7 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: var(--dp-font-weight-title);
 }
 

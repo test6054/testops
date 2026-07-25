@@ -48,7 +48,7 @@ import {
   PortfolioEthicsSanctionStatusDescription,
 } from '@/types/enums/portfolio-ethics-sanction-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -213,6 +213,8 @@ function openReview(row: PortfolioEthicsSanctionVO) {
   reviewForm.newSanctionEndDate = undefined
   reviewOpen.value = true
 }
+
+
 async function openDetail(row: PortfolioEthicsSanctionVO) {
   const currentToken = detailRequestToken.value + 1
   detailRequestToken.value = currentToken
@@ -510,7 +512,7 @@ onMounted(async () => {
               </UiTag>
             </template>
             <template v-else-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
 
@@ -691,7 +693,7 @@ onMounted(async () => {
   gap: 8px;
 }
 .ethics-admin__form label {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .ethics-admin__constraint {
@@ -710,7 +712,7 @@ onMounted(async () => {
 .ethics-admin__logs {
   margin: 0;
   padding-left: 16px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }
 </style>

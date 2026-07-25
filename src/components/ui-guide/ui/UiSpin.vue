@@ -57,7 +57,7 @@ const antSize = computed<'small' | 'default' | 'large'>(() => {
 
 .ui-spin :deep(.ant-spin-text) {
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .ui-spin :deep(.ant-spin-dot-item) {

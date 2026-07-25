@@ -277,18 +277,18 @@ function handlePageChange(page: number, pageSize: number) {
 .policy-browse__meta {
   margin: 4px 0;
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 .policy-browse__snippet {
   margin: 0 0 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
 }
 .policy-browse__preview {
   white-space: pre-wrap;
   max-height: 420px;
   overflow: auto;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .policy-browse__pagination {
   margin-top: var(--dp-space-4);

@@ -70,7 +70,7 @@ function barWidth(score: number): string {
   }
 
   &__meta {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-tertiary);
   }
 
@@ -84,7 +84,7 @@ function barWidth(score: number): string {
   &__label {
     width: 56px;
     flex-shrink: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 500;
     color: var(--dp-text-secondary);
     overflow: hidden;
@@ -115,7 +115,7 @@ function barWidth(score: number): string {
     width: 44px;
     flex-shrink: 0;
     text-align: right;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
     font-variant-numeric: tabular-nums;
   }
@@ -124,7 +124,7 @@ function barWidth(score: number): string {
     width: 44px;
     flex-shrink: 0;
     text-align: right;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
     color: var(--dp-text-primary);
     font-variant-numeric: tabular-nums;
@@ -136,7 +136,7 @@ function barWidth(score: number): string {
     margin-top: var(--dp-space-3);
     padding-top: var(--dp-space-3);
     border-top: 1px solid var(--dp-border);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
 
     strong {

@@ -2040,7 +2040,7 @@ onMounted(async () => {
 
   &__section-title {
     margin: 12px 0 8px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -2112,7 +2112,7 @@ onMounted(async () => {
 
   &__prompt-state {
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__prompt-metrics {
@@ -2120,7 +2120,7 @@ onMounted(async () => {
     gap: 8px;
     flex-wrap: wrap;
     color: var(--dp-text-secondary);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__material-upload {

@@ -258,7 +258,7 @@ const sideStyle = computed(() => ({
   width: 8px;
   height: 8px;
   flex-shrink: 0;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 12%, transparent);
 }
 
@@ -299,7 +299,7 @@ const sideStyle = computed(() => ({
 
 .ui-statistic-chart-card__stat-label {
   min-width: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
   color: var(--dp-text-secondary);
 }
@@ -321,7 +321,7 @@ const sideStyle = computed(() => ({
 }
 
 .ui-statistic-chart-card__stat-unit {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
   color: var(--dp-text-muted);
 }
@@ -329,7 +329,7 @@ const sideStyle = computed(() => ({
 .ui-statistic-chart-card__stat-helper,
 .ui-statistic-chart-card__summary {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.7;
   color: var(--dp-text-secondary);
 }

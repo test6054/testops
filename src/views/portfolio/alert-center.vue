@@ -38,7 +38,7 @@ import {
   PortfolioComplianceScopeTypeDescription,
 } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import { showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -435,7 +435,9 @@ onMounted(() => {
                   <UiTag
                     v-if="record.lifecycleStatus"
                     size="sm"
-                    :tone="portfolioLifecycleTagTone(record)"
+                    :tone="
+                      portfolioLifecycleTagTone(record.lifecycleStatus)
+                    "
                   >
                     {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
                   </UiTag>
@@ -593,7 +595,7 @@ onMounted(() => {
 }
 
 .alert-center__sub {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 

@@ -266,7 +266,7 @@ function onLayoutQuestionChange(
 
   &__title {
     margin: 0 0 12px;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }

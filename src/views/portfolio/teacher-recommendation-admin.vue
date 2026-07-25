@@ -37,7 +37,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import {
   formatPortfolioTeacherDisplay,
   formatPortfolioTeacherPkDisplay,
@@ -81,6 +81,8 @@ const candidateColumns: ColumnsType = [
   { title: '评分', dataIndex: 'ruleScore', key: 'ruleScore', width: 80 },
   { title: '推荐理由', dataIndex: 'reasonText', key: 'reasonText' },
 ]
+
+
 const runColumns: ColumnsType = [
   { title: '运行编号', dataIndex: 'id', key: 'id', width: 100 },
   { title: '规则编号', dataIndex: 'ruleId', key: 'ruleId', width: 100 },
@@ -466,7 +468,7 @@ watch(
               />
             </template>
             <template v-else-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
               <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -574,10 +576,10 @@ watch(
 .explain-text {
   margin-top: 8px;
   padding: 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   white-space: pre-wrap;
   background: var(--dp-fill-quaternary);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
 }
 .explain-list {
   margin: 12px 0 0;
@@ -596,14 +598,14 @@ watch(
   min-width: 200px;
   padding: 8px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
 }
 .pk-title {
   font-weight: 600;
   margin-bottom: 8px;
 }
 .pk-row {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }
 </style>

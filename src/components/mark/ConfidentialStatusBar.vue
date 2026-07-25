@@ -42,7 +42,7 @@ withDefaults(
 
 .confidential-status-bar__icon {
   flex-shrink: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-purple-700);
 }
 
@@ -53,7 +53,7 @@ withDefaults(
   gap: 6px;
   margin: 0;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
 }
 

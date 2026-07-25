@@ -654,7 +654,7 @@ watch(
 <style lang="scss" scoped>
 .school-quality-card__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: var(--dp-font-weight-title);
   line-height: 1.5;
 }

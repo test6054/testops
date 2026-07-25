@@ -29,7 +29,7 @@ import {
   PortfolioDualTeacherCertLevelCode,
 } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -417,7 +417,9 @@ watch(
           <span>状态 {{ statusLabel(application.applicationStatus) }}</span>
           <UiTag
             v-if="application.lifecycleStatus"
-            :tone="portfolioLifecycleTagTone(application)"
+            :tone="
+              portfolioLifecycleTagTone(application.lifecycleStatus)
+            "
           >
             {{ application.lifecycleStatusLabel || application.lifecycleStatus }}
           </UiTag>
@@ -517,7 +519,7 @@ watch(
   flex-wrap: wrap;
   gap: var(--dp-space-3, 12px);
   margin-bottom: var(--dp-space-3, 12px);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .re-review-hint {
   color: var(--dp-color-warning);
@@ -533,7 +535,7 @@ watch(
   margin: 8px 0 0;
   padding: 0;
   list-style: none;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .attachment-list li {
   display: flex;

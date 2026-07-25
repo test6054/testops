@@ -230,7 +230,7 @@ const summaryReviewerCount = computed(() => {
 
   &__title {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
   }
 
@@ -247,20 +247,20 @@ const summaryReviewerCount = computed(() => {
   &__chip {
     display: inline-flex;
     padding: 0 6px;
-    border-radius: 4px;
+    border-radius: var(--dp-radius-xs);
     background: var(--dp-surface-sunken);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     font-weight: 500;
     line-height: 20px;
   }
 
   &__muted {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
   &__strategy {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 

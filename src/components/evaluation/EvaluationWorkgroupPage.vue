@@ -866,7 +866,7 @@ onActivated(() => {
     gap: 12px;
     padding: 12px;
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
     background: var(--dp-surface-elevated);
   }
 
@@ -880,14 +880,14 @@ onActivated(() => {
 
   &__member-editor-tip {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 
   &__member-row {
     padding: 12px;
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
     background: var(--dp-surface);
   }
 

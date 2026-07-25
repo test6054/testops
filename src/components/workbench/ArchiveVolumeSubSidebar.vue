@@ -323,7 +323,7 @@ function onMenuClick(info: MenuInfo): void {
     border-radius: var(--dp-radius-panel);
     background: transparent;
     color: var(--dp-text-secondary);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     text-align: left;
     cursor: pointer;
     transition:
@@ -413,7 +413,7 @@ function onMenuClick(info: MenuInfo): void {
 
   &__section-label {
     margin: 8px 8px 4px;
-    font-size: 11px;
+    font-size: var(--dp-font-size-xxs);
     font-weight: 600;
     letter-spacing: 0.02em;
     color: var(--dp-text-muted);
@@ -448,7 +448,7 @@ function onMenuClick(info: MenuInfo): void {
   }
 
   &__check {
-    font-size: 11px;
+    font-size: var(--dp-font-size-xxs);
   }
 
   &__index {
@@ -459,7 +459,7 @@ function onMenuClick(info: MenuInfo): void {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     font-weight: 600;
     background: var(--dp-surface-subtle);
     color: var(--dp-text-secondary);
@@ -494,7 +494,7 @@ function onMenuClick(info: MenuInfo): void {
   &__title {
     flex: 1;
     min-width: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.4;
     color: var(--dp-text-primary);
   }
@@ -550,7 +550,7 @@ function onMenuClick(info: MenuInfo): void {
     border-radius: 9px;
     background: var(--dp-warning-bg);
     color: var(--dp-warning);
-    font-size: 11px;
+    font-size: var(--dp-font-size-xxs);
     font-weight: 600;
     line-height: 18px;
     text-align: center;

@@ -1066,7 +1066,7 @@ onMounted(() => {
 }
 
 .archive-template-sets-panel__copy-all-label {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-color-text-secondary);
 }
 
@@ -1084,7 +1084,7 @@ onMounted(() => {
 
 .archive-template-sets-panel__audit-meta {
   margin: 0 0 var(--dp-space-3);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 

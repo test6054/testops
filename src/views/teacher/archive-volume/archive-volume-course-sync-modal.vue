@@ -283,7 +283,7 @@ async function handleSubmit() {
 .archive-volume-course-sync__file-name {
   display: block;
   margin-bottom: 4px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
   max-width: 180px;
   overflow: hidden;

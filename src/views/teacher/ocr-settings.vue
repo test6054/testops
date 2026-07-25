@@ -1262,14 +1262,14 @@ onBeforeUnmount(() => {
     align-items: center;
     gap: 8px;
     margin: 0;
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: var(--dp-font-weight-title);
     line-height: 1.5;
     color: var(--dp-text-primary);
   }
 
   &__panel-desc {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 }
@@ -1296,7 +1296,7 @@ onBeforeUnmount(() => {
   }
 
   &__name {
-    font-size: 20px;
+    font-size: var(--dp-font-size-2xl);
     font-weight: 600;
     line-height: 1.4;
     color: var(--dp-text-primary);
@@ -1305,7 +1305,7 @@ onBeforeUnmount(() => {
   &__desc,
   &__capability {
     margin: 0 0 8px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.6;
     color: var(--dp-text-secondary);
   }
@@ -1347,13 +1347,13 @@ onBeforeUnmount(() => {
 .result-text-content {
   background: var(--color-fill-2);
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
   padding: 12px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   max-height: 300px;
   overflow-y: auto;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }
 
@@ -1367,7 +1367,7 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   gap: 4px;
   align-items: center;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-tertiary);
 }
 
@@ -1382,7 +1382,7 @@ onBeforeUnmount(() => {
 
 .paddle-instance__msg {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
   white-space: pre-wrap;
   word-break: break-all;

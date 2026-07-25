@@ -62,6 +62,8 @@ const mappingSaving = computed(() => operationKey.value.startsWith('mapping:save
 const detail = ref<PortfolioPolicyDocumentDetailVO | null>(null)
 const supersedeSourceId = ref('')
 const editingId = ref<string | undefined>(undefined)
+/** 含历史版本筛选：勾选后列表包含被替代/已废止版本。 */
+const includeHistory = ref(false)
 
 const filterForm = reactive({
   policyLevel: undefined as PortfolioPolicyLevelCode | undefined,
@@ -179,6 +181,7 @@ async function loadPage() {
     policyLevel: filterForm.policyLevel,
     documentStatus: filterForm.documentStatus,
     documentTitle: filterForm.documentTitle.trim() || undefined,
+    includeHistory: includeHistory.value || undefined,
   }
   loading.value = true
   loadError.value = false
@@ -520,6 +523,13 @@ onMounted(() => {
     <UiCard>
       <div class="policy-admin__toolbar">
         <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
+        <a-checkbox
+          v-model:checked="includeHistory"
+          class="policy-admin__history-toggle"
+          @change="onSearch"
+        >
+          含历史版本
+        </a-checkbox>
         <UiButton size="sm" variant="primary" :disabled="writing" @click="openCreate">
           新建政策
         </UiButton>
@@ -747,9 +757,31 @@ onMounted(() => {
             </UiButton>
           </div>
           <ul v-if="detail.versionHistory.length" class="policy-admin__version-list">
-            <li v-for="item in detail.versionHistory" :key="item.id">
-              v{{ item.versionNo }} · {{ item.documentTitle }} ·
-              {{ statusLabel(item.documentStatus) }}
+            <li
+              v-for="item in detail.versionHistory"
+              :key="item.id"
+              class="policy-admin__version-item"
+            >
+              <span
+                class="policy-admin__version-badge"
+                :class="{
+                  'policy-admin__version-badge--muted':
+                    item.documentStatus !== PortfolioPolicyDocumentStatusCode.EFFECTIVE,
+                }"
+              >
+                v{{ item.versionNo }}
+              </span>
+              <UiTag
+                size="sm"
+                :tone="
+                  item.documentStatus === PortfolioPolicyDocumentStatusCode.EFFECTIVE
+                    ? 'green'
+                    : 'gray'
+                "
+              >
+                {{ statusLabel(item.documentStatus) }}
+              </UiTag>
+              <span class="policy-admin__version-title">{{ item.documentTitle }}</span>
             </li>
           </ul>
         </template>
@@ -848,6 +880,10 @@ onMounted(() => {
   align-items: flex-start;
   margin-bottom: 12px;
 }
+.policy-admin__history-toggle {
+  align-self: center;
+  white-space: nowrap;
+}
 .policy-admin__field {
   display: block;
   width: 100%;
@@ -855,7 +891,7 @@ onMounted(() => {
 }
 .policy-admin__preview {
   white-space: pre-wrap;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
   max-height: 420px;
   overflow: auto;
@@ -868,7 +904,7 @@ onMounted(() => {
 }
 .policy-admin__detail-meta dt {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 .policy-admin__detail-meta dd {
@@ -876,7 +912,7 @@ onMounted(() => {
 }
 .policy-admin__section-title {
   margin: 16px 0 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .policy-admin__mapping-row {
@@ -891,9 +927,42 @@ onMounted(() => {
   margin-top: 8px;
 }
 .policy-admin__version-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin: 0;
-  padding-left: 16px;
-  font-size: 13px;
+  padding: 0;
+  list-style: none;
+  font-size: var(--dp-font-size-sm);
+}
+.policy-admin__version-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-control);
+}
+.policy-admin__version-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 32px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--dp-radius-full);
+  background: var(--dp-blue-50);
+  color: var(--dp-blue-600);
+  font-size: var(--dp-font-size-xs);
+  font-weight: 600;
+}
+.policy-admin__version-badge--muted {
+  background: var(--dp-gray-100);
+  color: var(--dp-gray-600);
+}
+.policy-admin__version-title {
+  color: var(--dp-text-secondary);
 }
 .policy-admin__compare-bar {
   display: grid;
@@ -911,7 +980,7 @@ onMounted(() => {
   padding: 0;
   margin: 0;
   overflow: auto;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   list-style: none;
 }
 .policy-admin__diff li {

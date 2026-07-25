@@ -188,7 +188,7 @@ onBeforeUnmount(() => {
 
 .ui-ellipsis-text--mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 </style>
@@ -209,7 +209,7 @@ onBeforeUnmount(() => {
   background-color: color-mix(in srgb, var(--dp-text-primary) 92%, transparent) !important;
   border: none !important;
   box-shadow: var(--dp-shadow-md) !important;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 400;
   line-height: 1.6;
   white-space: normal;

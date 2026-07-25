@@ -79,10 +79,10 @@ onBeforeUnmount(() => {
   background: var(--dp-blue-50, var(--dp-color-primary-bg));
   border-bottom: 1px solid var(--dp-blue-200, var(--dp-color-primary-border));
   color: var(--dp-blue-600, var(--dp-color-primary));
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 
   &__icon {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
   }
 
   &__text {
@@ -94,7 +94,7 @@ onBeforeUnmount(() => {
     border: none;
     background: transparent;
     color: var(--dp-blue-600, var(--dp-color-primary));
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
     cursor: pointer;
     padding: 0;

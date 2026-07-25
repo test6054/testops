@@ -34,7 +34,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -113,6 +113,8 @@ const columns: ColumnsType<PortfolioCorrectionSummaryVO> = [
   { title: '原因', dataIndex: 'reason', key: 'reason' },
   { title: '操作', key: 'actions', width: 260 },
 ]
+
+
 /** 列表刷新或处理完成后必须清空失效的驳回上下文，避免继续操作旧工单。 */
 function resetRejectContext() {
   rejectDrawerOpen.value = false
@@ -231,14 +233,14 @@ function buildCorrectionRowActions(row: PortfolioCorrectionSummaryVO): UiTableRo
       disabled: busy,
     })
   }
-  if (row.requestStatus === PortfolioCorrectionRequestStatusCode.ACCEPTING) {
+  if (row.requestStatus === 'ACCEPTING') {
     actions.push(
       { key: 'reject', label: '驳回', tone: 'danger', disabled: busy },
       { key: 'archiveCorrect', label: '档案更正', disabled: busy },
       { key: 'sourceFix', label: '源系统整改', disabled: busy },
     )
   }
-  if (row.requestStatus === PortfolioCorrectionRequestStatusCode.PENDING_VERIFY || row.requestStatus === PortfolioCorrectionRequestStatusCode.ARCHIVE_CORRECTING) {
+  if (row.requestStatus === 'PENDING_VERIFY' || row.requestStatus === 'ARCHIVE_CORRECTING') {
     actions.push({
       key: 'close',
       label: '关闭',
@@ -381,7 +383,7 @@ void loadPage()
             {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
 
@@ -512,7 +514,7 @@ void loadPage()
 <style scoped lang="scss">
 .correction-admin__reject-meta {
   margin: 0 0 var(--dp-space-3);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
@@ -535,7 +537,7 @@ void loadPage()
   padding: var(--dp-space-3);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   overflow-wrap: anywhere;
 }
 
@@ -555,7 +557,7 @@ void loadPage()
   grid-template-columns: 88px minmax(0, 1fr);
   gap: var(--dp-space-2) var(--dp-space-3);
   margin: var(--dp-space-4) 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .correction-admin__impact-grid dt {

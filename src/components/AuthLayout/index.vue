@@ -125,17 +125,17 @@ const copyright = computed(() => appStore.getCopyright())
 }
 
 .auth-brand__product {
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
   line-height: 1.1;
   font-weight: 700;
   color: var(--dp-text-primary);
 }
 
 .auth-brand__product-sub {
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   font-weight: 700;
   letter-spacing: 0.14em;
-  color: rgba(35, 66, 111, 0.58);
+  color: color-mix(in srgb, var(--dp-gray-600) 58%, transparent);
 }
 
 .auth-brand__hero {
@@ -165,12 +165,12 @@ const copyright = computed(() => appStore.getCopyright())
   min-height: var(--dp-control-height-md, 36px);
   padding: 0 14px;
   border-radius: var(--dp-radius-full);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1;
   font-weight: 700;
   color: var(--dp-text-secondary);
-  background: rgba(239, 244, 251, 0.92);
-  border: 1px solid rgba(188, 202, 223, 0.9);
+  background: color-mix(in srgb, var(--dp-blue-50) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dp-blue-200) 90%, transparent);
   box-shadow: none;
 }
 
@@ -191,24 +191,24 @@ const copyright = computed(() => appStore.getCopyright())
   min-height: 34px;
   padding: 0 14px;
   border-radius: var(--dp-radius-full);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: rgba(242, 247, 255, 0.96);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: color-mix(in srgb, var(--dp-blue-50) 96%, transparent);
+  background: color-mix(in srgb, var(--dp-surface) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dp-surface) 12%, transparent);
 }
 
 .brand-tag--blue {
-  background: rgba(213, 233, 255, 0.14);
+  background: color-mix(in srgb, var(--dp-blue-200) 14%, transparent);
 }
 
 .brand-tag--green {
-  background: rgba(213, 246, 229, 0.12);
+  background: color-mix(in srgb, var(--dp-green-200) 12%, transparent);
 }
 
 .brand-tag--purple {
-  background: rgba(226, 222, 255, 0.12);
+  background: color-mix(in srgb, var(--dp-purple-200) 12%, transparent);
 }
 
 // ─── 右侧内容面板 ───
@@ -240,7 +240,7 @@ const copyright = computed(() => appStore.getCopyright())
   left: 0;
   right: 0;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 
   a {
@@ -322,7 +322,7 @@ const copyright = computed(() => appStore.getCopyright())
   .auth-brand__capability {
     min-height: 32px;
     padding: 0 12px;
-    font-size: 11px;
+    font-size: var(--dp-font-size-xxs);
   }
 
   .auth-footer {

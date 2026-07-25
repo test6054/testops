@@ -793,7 +793,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 .section-kicker {
   margin: 0 0 4px;
   color: var(--dp-blue-600);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
   letter-spacing: 0.08em;
 }
@@ -808,7 +808,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 .section-desc {
   margin: 6px 0 0;
   color: var(--dp-text-muted);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .confirmed {
@@ -855,7 +855,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 .training-date,
 .evidence-cell span {
   color: var(--dp-text-muted);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .evidence-cell {

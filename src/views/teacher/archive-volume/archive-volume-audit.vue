@@ -46,15 +46,19 @@
               {{ archiveVolumeEventTypeLabel(record.eventType) }}
             </UiTag>
           </template>
-          <template v-else-if="column.key === 'volumeId'">
+          <template v-else-if="column.key === 'archiveNo'">
             <button
               v-if="record.volumeId"
               type="button"
               class="link-cell"
               @click="goVolumeDetail(record.volumeId)"
             >
-              {{ record.volumeId }}
+              {{ record.archiveNo || '—' }}
             </button>
+            <span v-else>{{ record.archiveNo || '—' }}</span>
+            <span v-if="record.archiveTitle" class="archive-audit-page__muted">
+              · {{ record.archiveTitle }}
+            </span>
           </template>
           <template v-else-if="column.key === 'operatorUserId'">
             {{ record.operatorNickName || record.operatorUserId || '—' }}
@@ -172,7 +176,7 @@ const filterFields = computed<FilterField[]>(() => [
 
 const columns: ColumnsType<ArchiveVolumeAuditEventResponse> = [
   { title: '事件类型', key: 'eventType', dataIndex: 'eventType', width: 160, fixed: 'left' },
-  { title: '卷ID', key: 'volumeId', dataIndex: 'volumeId', width: 120 },
+  { title: '档案号', key: 'archiveNo', dataIndex: 'archiveNo', width: 160 },
   { title: '操作人', key: 'operatorUserId', width: 120 },
   { title: '说明', dataIndex: 'reason', key: 'reason', ellipsis: true, minWidth: 240 },
   { title: '前状态', dataIndex: 'beforeStatus', key: 'beforeStatus', width: 100 },

@@ -158,14 +158,14 @@ function goSecondary() {
   border-radius: var(--dp-radius-control);
   background: var(--dp-fill-tertiary);
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
   line-height: 22px;
 }
 
 .platform-error-page__title {
   margin: 0 0 8px;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
   line-height: 24px;
   color: var(--dp-text);
@@ -173,7 +173,7 @@ function goSecondary() {
 
 .platform-error-page__subtitle {
   margin: 0 0 16px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 20px;
   color: var(--dp-text-secondary);
 }

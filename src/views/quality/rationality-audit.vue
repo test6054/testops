@@ -483,7 +483,7 @@ async function submitAudit(
 
 .course-code {
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 18px;
 }
 </style>

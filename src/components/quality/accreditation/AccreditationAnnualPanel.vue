@@ -455,11 +455,11 @@ defineExpose({ openCreate, loadPlans })
 }
 .course-head h4 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .course-meta {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-tertiary);
 }
 .course-progress {
@@ -473,11 +473,11 @@ defineExpose({ openCreate, loadPlans })
   min-width: 160px;
 }
 .coverage-text {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-tertiary);
 }
 .hint {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-tertiary);
   margin: 0;
 }

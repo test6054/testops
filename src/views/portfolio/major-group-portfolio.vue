@@ -41,7 +41,7 @@ import {
   PortfolioMajorGroupSectionDescription,
 } from '@/types/enums/portfolio-major-group-section-code-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -625,7 +625,7 @@ watch(
 }
 .major-group-portfolio__compare-result dt {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .major-group-portfolio__compare-result dd {

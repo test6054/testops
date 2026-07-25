@@ -27,7 +27,7 @@ import {
   PortfolioAnnualReportTaskStatusDescription,
 } from '@/types/enums/portfolio-annual-report-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import {
   formatPortfolioTeacherDisplay,
   portfolioTeacherSelectOptionsFromSummaries,
@@ -394,7 +394,9 @@ watch(
               <UiTag
                 v-if="latestTask.lifecycleStatus"
                 size="sm"
-                :tone="portfolioLifecycleTagTone(latestTask)"
+                :tone="
+                  portfolioLifecycleTagTone(latestTask.lifecycleStatus)
+                "
               >
                 {{ latestTask.lifecycleStatusLabel || latestTask.lifecycleStatus }}
               </UiTag>
@@ -518,7 +520,7 @@ watch(
 
 .annual-report__meta dt {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -533,7 +535,7 @@ watch(
 .annual-report__block {
   margin: 8px 0 0;
   color: var(--dp-color-danger, #cf1322);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .annual-report__identity {

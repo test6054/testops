@@ -710,7 +710,7 @@ function onMenuClick({ key }: { key: Key }) {
 
   :deep(.ant-menu-item-group-title) {
     padding-left: 44px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     font-weight: 600;
     color: var(--dp-text-tertiary);
   }

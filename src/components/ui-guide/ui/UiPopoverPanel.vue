@@ -177,7 +177,7 @@ const handleOpenChange = (value: boolean) => {
 }
 
 .ui-popover-panel__surface--compact {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .ui-popover-panel__header {
@@ -194,7 +194,7 @@ const handleOpenChange = (value: boolean) => {
 
 .ui-popover-panel__description {
   margin: 6px 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
 }
@@ -213,7 +213,7 @@ const handleOpenChange = (value: boolean) => {
 }
 
 .ui-popover-panel__content-text {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.7;
   color: var(--dp-text-secondary);
 }

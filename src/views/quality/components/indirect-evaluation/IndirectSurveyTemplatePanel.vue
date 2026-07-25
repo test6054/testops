@@ -1636,7 +1636,7 @@ defineExpose({
 
   &__revision-title {
     margin: 0 0 12px;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -1659,14 +1659,14 @@ defineExpose({
   &__revision-meta {
     margin: 0 0 4px;
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.5;
   }
 
   &__revision-diff {
     margin: 0;
     color: var(--dp-text-secondary);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.5;
   }
 
@@ -1677,7 +1677,7 @@ defineExpose({
   &__revision-empty-tip {
     margin: 0;
     color: var(--dp-text-muted);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 }
 

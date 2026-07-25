@@ -1349,9 +1349,9 @@ watch(
     gap: 6px;
     padding: 2px 10px;
     border: 1px solid var(--dp-border);
-    border-radius: 4px;
+    border-radius: var(--dp-radius-xs);
     background: var(--dp-bg-container);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.5;
     color: var(--dp-text-secondary);
     cursor: pointer;
@@ -1390,7 +1390,7 @@ watch(
     align-items: center;
     gap: 8px;
     margin: 0;
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: var(--dp-font-weight-title);
     line-height: 1.5;
   }
@@ -1411,13 +1411,13 @@ watch(
   }
 
   &__label {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.5;
     color: var(--dp-text-secondary);
   }
 
   &__value {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     line-height: 1.5;
     font-weight: 500;
     color: var(--dp-text);
@@ -1435,13 +1435,13 @@ watch(
   }
 
   &__title {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 500;
     color: var(--dp-text);
   }
 
   &__count {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
@@ -1481,7 +1481,7 @@ watch(
   }
 
   &__no {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 }

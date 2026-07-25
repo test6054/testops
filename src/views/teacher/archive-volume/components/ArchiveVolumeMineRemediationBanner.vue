@@ -149,12 +149,12 @@ function remediationStatusTone(code: ArchiveRemediationStatusCode): BadgeTone {
 }
 
 .archive-volume-mine-remediation-banner__title {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 500;
 }
 
 .archive-volume-mine-remediation-banner__due {
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 </style>

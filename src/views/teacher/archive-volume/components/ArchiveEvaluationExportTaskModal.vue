@@ -81,32 +81,32 @@ async function handleCancel(): Promise<void> {
 <style scoped lang="scss">
 .archive-eval-export-modal__label {
   margin: 0 0 var(--dp-space-2);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
 .archive-eval-export-modal__status {
   margin: 0 0 var(--dp-space-2);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
 
 .archive-eval-export-modal__meta {
   margin: 0 0 var(--dp-space-2);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
 .archive-eval-export-modal__error {
   margin: 0 0 var(--dp-space-2);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-danger);
 }
 
 .archive-eval-export-modal__hint {
   margin: var(--dp-space-3) 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 </style>

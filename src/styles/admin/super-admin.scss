@@ -50,7 +50,7 @@
 
 .sa-workspace__title {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
@@ -92,7 +92,7 @@
 
 .sa-panel__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
@@ -130,7 +130,7 @@
 
 .sa-side-card__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
   color: var(--dp-text-primary);
 }

@@ -100,7 +100,7 @@ function handleActionLink(linkTarget: string) {
 .archive-setup-guide-banner__list {
   margin: var(--dp-space-2) 0 0;
   padding-left: 1.25em;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.5;
 }
 </style>

@@ -320,7 +320,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .archive-ext-fonds-retry__hint {
   margin: 0 0 16px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
   color: var(--dp-text-muted);
 }
@@ -353,7 +353,7 @@ onMounted(() => {
 }
 
 .archive-ext-fonds-retry__label {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -369,7 +369,7 @@ onMounted(() => {
 }
 
 .archive-ext-fonds-retry__muted {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
 </style>

@@ -1903,7 +1903,7 @@ watch(
 
 .archive-volume-detail__remediation-assignee {
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .archive-volume-detail__ops {
@@ -1916,7 +1916,7 @@ watch(
 
 .archive-volume-detail__overdue-hint {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -1951,7 +1951,7 @@ watch(
 .archive-volume-detail__submit-summary {
   display: grid;
   gap: var(--dp-space-2);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 

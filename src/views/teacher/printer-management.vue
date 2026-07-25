@@ -1056,7 +1056,7 @@ onBeforeUnmount(() => {
   &__hint {
     width: 100%;
     color: var(--dp-text-muted);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.5;
     text-align: left;
   }
@@ -1071,7 +1071,7 @@ onBeforeUnmount(() => {
     border-radius: 10px;
     background: var(--dp-gray-50);
     color: var(--dp-gray-900);
-    font-size: 20px;
+    font-size: var(--dp-font-size-2xl);
     font-weight: 600;
     letter-spacing: 0.08em;
     word-break: break-all;
@@ -1083,7 +1083,7 @@ onBeforeUnmount(() => {
     gap: 6px;
     width: 100%;
     color: var(--dp-text-muted);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__actions {

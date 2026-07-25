@@ -1356,7 +1356,7 @@ onActivated(() => {
 }
 
 .exam-list-page__exam-no {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.4;
   color: var(--dp-text-tertiary);
 }
@@ -1367,12 +1367,12 @@ onActivated(() => {
 
 .exam-list-page__term-year {
   font-family: var(--dp-font-mono);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .exam-list-page__term-semester {
   margin-top: 1px;
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   color: var(--dp-text-quaternary);
 }
 
@@ -1451,7 +1451,7 @@ onActivated(() => {
 .exam-list-page__progress-pct {
   flex-shrink: 0;
   min-width: 32px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-variant-numeric: tabular-nums;
   color: var(--dp-text-secondary);
 }

@@ -322,7 +322,7 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
 }
 
 .ledger-summary__hero-time {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 
@@ -334,7 +334,7 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 

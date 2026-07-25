@@ -9,7 +9,7 @@ import type { Key } from 'ant-design-vue/es/_util/type'
  */
 
 /** Badge徽标色调 */
-export type BadgeTone = 'gray' | 'blue' | 'orange' | 'green' | 'yellow' | 'red' | 'purple'
+export type BadgeTone = 'gray' | 'blue' | 'orange' | 'green' | 'yellow' | 'red' | 'purple' | 'ink'
 /** 提示条色调 */
 export type UiAlertStripTone = 'info' | 'success' | 'warning' | 'error'
 

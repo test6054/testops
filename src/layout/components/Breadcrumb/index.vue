@@ -88,7 +88,7 @@ function handleNavigate(path: string) {
 
   .breadcrumb-icon {
     margin-right: 4px;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
   }
 
   .breadcrumb-current {
@@ -99,7 +99,7 @@ function handleNavigate(path: string) {
   :deep(.ant-breadcrumb li) {
     display: flex;
     align-items: center;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     color: var(--dp-text-tertiary);
 
     a,

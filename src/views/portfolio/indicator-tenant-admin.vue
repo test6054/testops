@@ -782,7 +782,7 @@ onMounted(loadConfig)
 }
 .meta {
   margin-bottom: 12px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .export-purpose__label {

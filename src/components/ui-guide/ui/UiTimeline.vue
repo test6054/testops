@@ -50,7 +50,7 @@ const props = withDefaults(
 
 .ui-timeline :deep(.ant-timeline-item-content) {
   color: var(--dp-text-primary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.55;
   margin-inline-start: 18px;
 }

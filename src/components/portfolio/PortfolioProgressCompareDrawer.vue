@@ -142,7 +142,7 @@ watch(
 <style scoped lang="scss">
 .portfolio-progress-compare__delta {
   margin: 0 0 var(--dp-space-4);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
@@ -167,19 +167,19 @@ watch(
 
 .portfolio-progress-compare__row-head h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: var(--dp-font-weight-semibold);
 }
 
 .portfolio-progress-compare__percent {
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
   font-weight: var(--dp-font-weight-semibold);
   color: var(--dp-text-primary);
 }
 
 .portfolio-progress-compare__meta {
   margin: var(--dp-space-2) 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -190,13 +190,13 @@ watch(
 .portfolio-progress-compare__gaps-label {
   display: block;
   margin-bottom: var(--dp-space-2);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
 .portfolio-progress-compare__gaps ul {
   margin: 0;
   padding-left: 18px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 </style>

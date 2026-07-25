@@ -1039,7 +1039,7 @@ watch(markingPhase, () => {
     align-items: center;
     gap: var(--dp-space-2);
     margin: 0;
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: var(--dp-font-weight-title);
     line-height: 1.5;
     color: var(--dp-text-primary);

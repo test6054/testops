@@ -46,7 +46,7 @@ const dimensionViews = computed(() => buildFourPropertyDimensionViews(props.chec
   gap: var(--dp-space-2);
   padding: 8px 12px;
   border-top: 1px solid var(--dp-border-subtle);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.4;
 
   &:first-child {
@@ -63,7 +63,7 @@ const dimensionViews = computed(() => buildFourPropertyDimensionViews(props.chec
 }
 
 .archive-fp-rows__mark {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
   text-align: center;
 }
@@ -82,7 +82,7 @@ const dimensionViews = computed(() => buildFourPropertyDimensionViews(props.chec
 }
 
 .archive-fp-rows__status {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 
@@ -97,7 +97,7 @@ const dimensionViews = computed(() => buildFourPropertyDimensionViews(props.chec
 .archive-fp-rows__empty {
   margin: 0;
   padding: var(--dp-space-3);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
   border: 1px dashed var(--dp-border);
   border-radius: var(--dp-radius-control);
