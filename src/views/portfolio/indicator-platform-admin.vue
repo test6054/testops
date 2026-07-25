@@ -10,6 +10,8 @@ import type {
   PortfolioIndustryPackDefDto,
   PortfolioIndustryPackVO,
 } from '@/apis/portfolio/indicator-types'
+import type {
+  PortfolioIndicatorDimensionL1Code} from '@/types/enums/portfolio-indicator-dimension-l1-code-enum';
 import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
 import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
 import message from 'ant-design-vue/es/message'
@@ -26,6 +28,7 @@ import {
   PfIndicatorStatusDescription,
   PfScoreRuleTypeCode,
   PfScoreRuleTypeDescription,
+  PORTFOLIO_INDICATOR_DIMENSION_L1_OPTIONS,
 } from '@/apis/portfolio/indicator-types'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
@@ -52,6 +55,9 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
+import {
+  PortfolioIndicatorDimensionL1Description,
+} from '@/types/enums/portfolio-indicator-dimension-l1-code-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import {
   buildIndustryPackDefFromForm,
@@ -66,6 +72,10 @@ function dataSourceLabel(value: PfIndicatorDataSourceChannelCode): string {
 
 function indicatorStatusLabel(value: PfIndicatorStatusCode): string {
   return strictEnumLabel(PfIndicatorStatusDescription, value, '指标状态')
+}
+
+function dimensionL1Label(value: PortfolioIndicatorDimensionL1Code): string {
+  return strictEnumLabel(PortfolioIndicatorDimensionL1Description, value, '一级维度')
 }
 
 function scoreRuleTypeLabel(value: PfScoreRuleTypeCode): string {
@@ -128,6 +138,7 @@ const editForm = reactive({
   indicatorCode: '',
   indicatorName: '',
   levelNo: 3,
+  dimensionL1Code: undefined as PortfolioIndicatorDimensionL1Code | undefined,
   dimensionL1Name: '',
   dimensionL2Name: '',
   definitionText: '',
@@ -455,6 +466,7 @@ function fillEditForm(record: PortfolioIndicatorDefinitionVO) {
   editForm.indicatorCode = record.indicatorCode
   editForm.indicatorName = record.indicatorName
   editForm.levelNo = record.levelNo ?? 3
+  editForm.dimensionL1Code = record.dimensionL1Code
   editForm.dimensionL1Name = record.dimensionL1Name
   editForm.dimensionL2Name = record.dimensionL2Name
   editForm.definitionText = record.definitionText
@@ -481,10 +493,10 @@ async function saveDefinition() {
   if (
     !indicatorCode
     || !indicatorName
-    || !editForm.dimensionL1Name.trim()
+    || !editForm.dimensionL1Code
     || !editForm.dimensionL2Name.trim()
   ) {
-    showFormValidationMessage('请完整填写指标编码、名称和两级维度')
+    showFormValidationMessage('请完整填写指标编码、名称、一级维度正式码和二级维度')
     return
   }
   const operation = `save:definition:${editForm.id || indicatorCode}`
@@ -494,7 +506,7 @@ async function saveDefinition() {
     indicatorCode,
     indicatorName,
     levelNo: editForm.levelNo,
-    dimensionL1Name: editForm.dimensionL1Name.trim(),
+    dimensionL1Code: editForm.dimensionL1Code,
     dimensionL2Name: editForm.dimensionL2Name.trim(),
     definitionText: editForm.definitionText.trim(),
     defaultDataSource: editForm.defaultDataSource,
@@ -529,6 +541,7 @@ function openNewIndicator() {
   editForm.indicatorCode = ''
   editForm.indicatorName = ''
   editForm.levelNo = 3
+  editForm.dimensionL1Code = undefined
   editForm.dimensionL1Name = ''
   editForm.dimensionL2Name = ''
   editForm.definitionText = ''
@@ -1024,8 +1037,14 @@ onMounted(async () => {
           <UiFormItem label="指标名称">
             <UiInput size="sm" v-model="editForm.indicatorName" :disabled="writing" />
           </UiFormItem>
-          <UiFormItem label="一级维度">
-            <UiInput size="sm" v-model="editForm.dimensionL1Name" :disabled="writing" />
+          <UiFormItem label="一级维度正式码">
+            <UiSelect
+              size="sm"
+              v-model="editForm.dimensionL1Code"
+              :options="PORTFOLIO_INDICATOR_DIMENSION_L1_OPTIONS"
+              :disabled="writing"
+              placeholder="选择一级维度正式码"
+            />
           </UiFormItem>
           <UiFormItem label="二级维度">
             <UiInput size="sm" v-model="editForm.dimensionL2Name" :disabled="writing" />

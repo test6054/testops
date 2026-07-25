@@ -249,11 +249,11 @@ defineExpose({
     :title="title"
     width="960"
     :destroy-on-close="true"
-    :mask-closable="!saving"
+    :mask-closable="saving !== true"
     @update:open="emit('update:open', $event)"
     @close="handleClose"
   >
-    <UiSkeletonState v-if="loading" variant="card" compact />
+    <UiSkeletonState v-if="loading === true" variant="card" compact />
     <template v-else>
       <p class="archive-template-editor__tip">拖拽左侧手柄调整材料与自查项顺序</p>
       <slot name="meta" />
@@ -368,8 +368,8 @@ defineExpose({
     </template>
 
     <template #footer>
-      <UiButton size="sm" variant="outline" :disabled="saving" @click="handleClose">取消</UiButton>
-      <UiButton size="sm" variant="primary" :loading="saving" @click="handleSave">
+      <UiButton size="sm" variant="outline" :disabled="saving === true" @click="handleClose">取消</UiButton>
+      <UiButton size="sm" variant="primary" :loading="saving === true" @click="handleSave">
         {{
           saveLabel
         }}

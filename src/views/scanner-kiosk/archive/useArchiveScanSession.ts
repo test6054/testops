@@ -116,7 +116,7 @@ export function useArchiveScanSession() {
   }
 
   async function startSession() {
-    if (loading.value) {
+    if (loading.value === true) {
       return null
     }
     if (!volumeId.value || !materialType.value) {

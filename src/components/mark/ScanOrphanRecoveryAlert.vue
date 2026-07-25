@@ -8,12 +8,12 @@
       title="存在未绑定批次的扫描事件"
       :description="description"
     >
-      <template v-if="canManageOwnerBatchActions" #actions>
+      <template v-if="canManageOwnerBatchActions === true" #actions>
         <UiButton
           size="sm"
           variant="primary"
           :loading="recovering"
-          :disabled="!canRecover"
+          :disabled="canRecover !== true"
           @click="handleRecover"
         >
           一键补救
@@ -41,6 +41,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-950：残留 can* 控制流仅认 === true
 import type { ExamScannerBatchRecoverOrphanFailureItem } from '@/apis/mark/exam-scan'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
@@ -58,7 +59,7 @@ const props = withDefaults(
     orphanPendingEventCount: number
     orphanPendingPageCount: number
     /** MVR-326：仅认 BE canManageOwnerBatchActions */
-    canManageOwnerBatchActions?: boolean
+    canManageOwnerBatchActions?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
   }>(),
   {
     canManageOwnerBatchActions: false,
@@ -78,12 +79,12 @@ const canRecover = computed(
   () =>
     Boolean(props.examId)
     && props.orphanPendingEventCount > 0
-    && props.canManageOwnerBatchActions,
+    && props.canManageOwnerBatchActions === true,
 )
 
 const description = computed(() => {
   const scope = `${props.orphanPendingEventCount} 条事件、${props.orphanPendingPageCount} 页尚未归入扫描批次`
-  if (props.canManageOwnerBatchActions) {
+  if (props.canManageOwnerBatchActions === true) {
     return `${scope}，可按扫描设备自动聚合补救。`
   }
   return `${scope}，请联系考试主考老师执行补救。`
@@ -120,7 +121,7 @@ function clearFailures(): void {
 }
 
 async function handleRecover(): Promise<void> {
-  if (!canRecover.value) {
+  if (canRecover.value !== true) {
     return
   }
   if (recovering.value) {
@@ -134,6 +135,11 @@ async function handleRecover(): Promise<void> {
     type: 'warning',
   })
   if (!confirmed) {
+    return
+  }
+  // MVR-965：确认后再次认 canRecover，防对话框期间主考写权/孤立事件数漂移
+  if (canRecover.value !== true) {
+    void message.warning('当前不可补救孤立扫描事件（无主考写权或已无待补救事件）')
     return
   }
   if (recovering.value) {

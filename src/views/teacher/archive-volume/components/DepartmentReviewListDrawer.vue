@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
@@ -98,7 +100,7 @@ function closeDrawer() {
 async function handleApprove() {
   if (!props.volumeId || actionBusy.value) return
   // MVR-308：与 canApprove 同源二次拦截
-  if (!canApprove.value) {
+  if (canApprove.value !== true) {
     void message.warning('当前账号无院系审核通过权限')
     return
   }
@@ -118,7 +120,7 @@ async function handleApprove() {
 async function handleReject() {
   if (!props.volumeId || actionBusy.value) return
   // MVR-308：与 canApprove 同源二次拦截（驳回同审批职责）
-  if (!canApprove.value) {
+  if (canApprove.value !== true) {
     void message.warning('当前账号无院系审核驳回权限')
     return
   }
@@ -175,7 +177,7 @@ function openDetail(tabKey?: string) {
         <span v-if="detail.volume.departmentName">{{ detail.volume.departmentName }}</span>
       </div>
       <DepartmentReviewMaterialSummary
-        v-if="canShowSummary && volumeId"
+        v-if="canShowSummary === true && volumeId"
         :volume-id="volumeId"
         :detail="detail"
       />
@@ -186,12 +188,12 @@ function openDetail(tabKey?: string) {
         <UiTextAction @click="openDetail('materials')">打开详情 · 材料收集</UiTextAction>
         <UiTextAction @click="openDetail('integrity')">打开详情 · 完整性自检</UiTextAction>
       </div>
-      <div v-if="canApprove" class="dept-review-list-drawer__actions">
+      <div v-if="canApprove === true" class="dept-review-list-drawer__actions">
         <UiButton
           variant="primary"
           size="sm"
-          :loading="approving"
-          :disabled="actionBusy && !approving"
+          :loading="approving === true"
+          :disabled="actionBusy === true && approving !== true"
           @click="handleApprove"
         >
           审核通过
@@ -200,13 +202,13 @@ function openDetail(tabKey?: string) {
           v-if="!showRejectForm"
           variant="outline"
           size="sm"
-          :disabled="actionBusy"
+          :disabled="actionBusy === true"
           @click="showRejectForm = true"
         >
           驳回
         </UiButton>
       </div>
-      <div v-if="canApprove && showRejectForm" class="dept-review-list-drawer__reject">
+      <div v-if="canApprove === true && showRejectForm" class="dept-review-list-drawer__reject">
         <UiTextarea
           size="sm"
           v-model="rejectReason"
@@ -216,13 +218,13 @@ function openDetail(tabKey?: string) {
           :show-count="true"
         />
         <div class="dept-review-list-drawer__reject-actions">
-          <UiButton variant="outline" size="sm" :loading="rejecting" @click="handleReject">
+          <UiButton variant="outline" size="sm" :loading="rejecting === true" @click="handleReject">
             确认驳回
           </UiButton>
           <UiButton
             variant="ghost"
             size="sm"
-            :disabled="actionBusy"
+            :disabled="actionBusy === true"
             @click="showRejectForm = false"
           >
             取消

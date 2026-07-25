@@ -74,7 +74,7 @@ onMounted(() => {
     :max-tag-count="maxTagCount"
     allow-search
     :filter-option="false"
-    :loading="searching"
+    :loading="searching === true"
     @search="handleSearch"
     @dropdown-visible-change="(open: boolean) => open && handleSearch('')"
   />

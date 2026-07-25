@@ -9,7 +9,7 @@
         </template>
         <template #actions>
           <UiButton
-            v-if="canManageScannerDeviceWrites"
+            v-if="canManageScannerDeviceWrites === true"
             size="sm"
             variant="primary"
             @click="handleCreate"
@@ -88,7 +88,7 @@
       v-model:open="showFormModal"
       :title="formMode === 'create' ? '新增扫描设备' : '编辑扫描设备'"
       :width="720"
-      :confirm-loading="formSubmitting"
+      :confirm-loading="formSubmitting === true"
       @ok="handleFormSubmit"
       @cancel="showFormModal = false"
     >
@@ -224,13 +224,13 @@
           {{ detailInfo.scannerIp || '—' }}
         </UiDescriptionsItem>
         <UiDescriptionsItem label="Kiosk 防误触锁">
-          <UiTag :tone="!detailInfo.kioskLockEnabled ? 'orange' : 'green'">
-            {{ !detailInfo.kioskLockEnabled ? '已关闭' : '已启用' }}
+          <UiTag :tone="detailInfo.kioskLockEnabled !== true ? 'orange' : 'green'">
+            {{ detailInfo.kioskLockEnabled !== true ? '已关闭' : '已启用' }}
           </UiTag>
         </UiDescriptionsItem>
         <UiDescriptionsItem label="Web 补录工位">
-          <UiTag :tone="detailInfo.webSupplementEnabled ? 'blue' : 'gray'">
-            {{ detailInfo.webSupplementEnabled ? '已启用' : '未启用' }}
+          <UiTag :tone="detailInfo.webSupplementEnabled === true ? 'blue' : 'gray'">
+            {{ detailInfo.webSupplementEnabled === true ? '已启用' : '未启用' }}
           </UiTag>
         </UiDescriptionsItem>
         <UiDescriptionsItem label="扫描组件在线状态">
@@ -316,6 +316,8 @@
 </template>
 
 <script setup lang="ts">
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
@@ -509,7 +511,7 @@ const columns: ColumnsType<ExamScannerDeviceResponse> = [
 function buildDeviceActions(record: ExamScannerDeviceResponse): UiTableRowActionItem[] {
   // MVR-316：无运维写权仅保留详情，避免行内假可写
   const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
-  if (!canManageScannerDeviceWrites.value) {
+  if (canManageScannerDeviceWrites.value !== true) {
     return actions
   }
   actions.push(
@@ -690,7 +692,7 @@ function resetForm(): void {
 
 function handleCreate(): void {
   // MVR-316：与 BE requireTeacherMarkOpsPermission 二次拦截
-  if (!canManageScannerDeviceWrites.value) {
+  if (canManageScannerDeviceWrites.value !== true) {
     void message.warning('当前账号无扫描设备运维权限')
     return
   }
@@ -701,7 +703,7 @@ function handleCreate(): void {
 
 function handleEdit(record: ExamScannerDeviceResponse): void {
   // MVR-316：编辑设备与教师运维写闸同源
-  if (!canManageScannerDeviceWrites.value) {
+  if (canManageScannerDeviceWrites.value !== true) {
     void message.warning('当前账号无扫描设备运维权限')
     return
   }
@@ -726,15 +728,15 @@ function handleEdit(record: ExamScannerDeviceResponse): void {
 
 async function handleFormSubmit(): Promise<void> {
   // MVR-316：保存设备与 BE requireTeacherMarkOpsPermission 二次拦截
-  if (!canManageScannerDeviceWrites.value) {
+  if (canManageScannerDeviceWrites.value !== true) {
     void message.warning('当前账号无扫描设备运维权限')
     return
   }
-  if (formSubmitting.value) {
+  if (formSubmitting.value === true) {
     return
   }
   await formRef.value?.validate()
-  if (formSubmitting.value) {
+  if (formSubmitting.value === true) {
     return
   }
   formSubmitting.value = true
@@ -822,7 +824,7 @@ function scannerDeviceDiagnosticText(
 
 async function handleRebindAgent(record: ExamScannerDeviceResponse): Promise<void> {
   // MVR-316：重新绑定与教师运维写闸同源
-  if (!canManageScannerDeviceWrites.value) {
+  if (canManageScannerDeviceWrites.value !== true) {
     void message.warning('当前账号无扫描设备运维权限')
     return
   }
@@ -831,7 +833,12 @@ async function handleRebindAgent(record: ExamScannerDeviceResponse): Promise<voi
     content: `将重置服务端接入密钥并生成新激活码。原一体机需使用新激活码重新绑定。设备：${record.deviceName}`,
     type: 'warning',
     onOk: async () => {
-      if (deviceActionLoading.value) {
+      // MVR-938：onOk 再认 canManageScannerDeviceWrites，防确认等待期间运维权漂移
+      if (canManageScannerDeviceWrites.value !== true) {
+        void message.warning('当前账号无扫描设备运维权限')
+        return
+      }
+      if (deviceActionLoading.value === true) {
         return
       }
       deviceActionLoading.value = true
@@ -851,11 +858,11 @@ async function handleRebindAgent(record: ExamScannerDeviceResponse): Promise<voi
 
 async function handleCreateActivationCode(record: ExamScannerDeviceResponse): Promise<void> {
   // MVR-316：激活码与 BE requireTeacherMarkOpsPermission 二次拦截
-  if (!canManageScannerDeviceWrites.value) {
+  if (canManageScannerDeviceWrites.value !== true) {
     void message.warning('当前账号无扫描设备运维权限')
     return
   }
-  if (deviceActionLoading.value) {
+  if (deviceActionLoading.value === true) {
     return
   }
   activationCodeDeviceName.value = record.deviceName || record.scannerDeviceId || '扫描设备'
@@ -873,7 +880,7 @@ async function handleCreateActivationCode(record: ExamScannerDeviceResponse): Pr
 
 function handleUnbindAgent(record: ExamScannerDeviceResponse): void {
   // MVR-316：解绑与教师运维写闸同源
-  if (!canManageScannerDeviceWrites.value) {
+  if (canManageScannerDeviceWrites.value !== true) {
     void message.warning('当前账号无扫描设备运维权限')
     return
   }
@@ -882,7 +889,12 @@ function handleUnbindAgent(record: ExamScannerDeviceResponse): void {
     content: `确定解绑设备"${record.deviceName}"当前扫描组件吗？解绑后原一体机需要重新使用激活码绑定。`,
     type: 'warning',
     onOk: async () => {
-      if (deviceActionLoading.value) {
+      // MVR-932：确认后再次认 canManageScannerDeviceWrites
+      if (canManageScannerDeviceWrites.value !== true) {
+        void message.warning('当前账号无扫描设备运维权限')
+        return
+      }
+      if (deviceActionLoading.value === true) {
         return
       }
       deviceActionLoading.value = true
@@ -937,7 +949,7 @@ async function handleViewDetail(record: ExamScannerDeviceResponse): Promise<void
 // ─── 删除 ────────────────────────────────────────────
 function handleDelete(record: ExamScannerDeviceResponse): void {
   // MVR-316：删除与教师运维写闸同源
-  if (!canManageScannerDeviceWrites.value) {
+  if (canManageScannerDeviceWrites.value !== true) {
     void message.warning('当前账号无扫描设备运维权限')
     return
   }
@@ -946,7 +958,12 @@ function handleDelete(record: ExamScannerDeviceResponse): void {
     content: `确定删除设备"${record.deviceName}"吗？历史扫描事件保持引用，仅当前设备记录被逻辑删除。`,
     type: 'error',
     onOk: async () => {
-      if (deviceActionLoading.value) {
+      // MVR-932：确认后再次认 canManageScannerDeviceWrites
+      if (canManageScannerDeviceWrites.value !== true) {
+        void message.warning('当前账号无扫描设备运维权限')
+        return
+      }
+      if (deviceActionLoading.value === true) {
         return
       }
       deviceActionLoading.value = true

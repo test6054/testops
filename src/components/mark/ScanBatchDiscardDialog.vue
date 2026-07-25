@@ -41,12 +41,18 @@ import { showFormValidationMessage } from '@/utils/error-handler'
 
 defineOptions({ name: 'ScanBatchDiscardDialog' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   open: boolean
   confirmLoading?: boolean
   /** MVR-376：与 BE canManageOwnerBatchActions / requireExamOwnerPermission 同源 */
-  canManageOwnerBatchActions?: boolean
-}>()
+  canManageOwnerBatchActions?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+}>(),
+  {
+  canManageOwnerBatchActions: false,
+  confirmLoading: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
@@ -68,18 +74,18 @@ watch(
 )
 
 function handleCancel(): void {
-  if (props.confirmLoading) return
+  if (props.confirmLoading === true) return
   emit('update:open', false)
   emit('cancel')
 }
 
 function handleOk(): void {
   // MVR-376：弹窗二次闸，禁止仅靠父层隐藏入口
-  if (!props.canManageOwnerBatchActions) {
+  if (props.canManageOwnerBatchActions !== true) {
     showFormValidationMessage('当前账号无主考扫描写权限，无法废弃批次')
     return
   }
-  if (props.confirmLoading) return
+  if (props.confirmLoading === true) return
   const trimmed = reason.value.trim()
   if (!trimmed) {
     reasonError.value = '废弃原因不能为空'

@@ -1,15 +1,15 @@
-/** 过程课次模板字段编码 - PortfolioProcessSessionFieldCodeEnum */
+/** 过程课次模板字段编码 - PortfolioProcessSessionFieldCodeEnum；wire=常量名 */
 export enum PortfolioProcessSessionFieldCode {
-  SESSION_TITLE = 'sessionTitle',
-  SESSION_DATE = 'sessionDate',
-  COURSE_NAME = 'courseName',
-  COURSE_CODE = 'courseCode',
-  ACADEMIC_YEAR = 'academicYear',
-  SEMESTER = 'semester',
-  PREP = 'prep',
-  PROCESS = 'process',
-  FEEDBACK = 'feedback',
-  CONTENT = 'content',
+  SESSION_TITLE = 'SESSION_TITLE',
+  SESSION_DATE = 'SESSION_DATE',
+  COURSE_NAME = 'COURSE_NAME',
+  COURSE_CODE = 'COURSE_CODE',
+  ACADEMIC_YEAR = 'ACADEMIC_YEAR',
+  SEMESTER = 'SEMESTER',
+  PREP = 'PREP',
+  PROCESS = 'PROCESS',
+  FEEDBACK = 'FEEDBACK',
+  CONTENT = 'CONTENT',
 }
 
 export const PortfolioProcessSessionFieldDescription: Record<PortfolioProcessSessionFieldCode, string> = {

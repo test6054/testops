@@ -76,7 +76,7 @@ const canManageArchiveConfig = computed(
 
 const missingItems = computed(() => props.readiness?.missingItems ?? [])
 const actionLinks = computed(() => {
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     return []
   }
   return props.readiness?.actionLinks ?? []
@@ -85,7 +85,7 @@ const actionLinks = computed(() => {
 function handleActionLink(linkTarget: string) {
   const normalized = linkTarget.trim()
   if (!normalized) return
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     return
   }
   if (normalized.startsWith('/')) {

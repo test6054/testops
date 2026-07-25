@@ -61,7 +61,7 @@ const resolvedWatermarkLines = computed(() => {
   }
   return buildConfidentialWatermarkLines({ examLabel: props.examLabel })
 })
-const watermarkDensity = computed(() => (props.confidential ? 'dense' : 'normal'))
+const watermarkDensity = computed(() => (props.confidential === true ? 'dense' : 'normal'))
 
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 4
@@ -126,13 +126,13 @@ function nextRotation(current: ScanImageRotation, delta: 90 | 270): ScanImageRot
   throw new Error(`扫描图像旋转角度异常：${next}`)
 }
 function onConfidentialContextMenu(event: MouseEvent): void {
-  if (props.confidential) {
+  if (props.confidential === true) {
     event.preventDefault()
   }
 }
 
 function onCanvasPointerDown(event: PointerEvent): void {
-  if (!canPan.value) {
+  if (canPan.value !== true) {
     return
   }
   if (event.target instanceof HTMLElement && event.target.closest('.scan-stage__tools')) {

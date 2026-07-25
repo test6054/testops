@@ -138,7 +138,7 @@ const loading = ref(false)
 const fetchCaptchaConfig = async () => {
   try {
     const config = await getCaptchaConfig()
-    isCaptchaEnabled.value = config.enabled
+    isCaptchaEnabled.value = config.enabled === true
   } catch (error) {
     isCaptchaEnabled.value = false
   }
@@ -194,7 +194,7 @@ const handleLogin = async () => {
 const startLoginProcess = async () => {
   loading.value = true
   // 如果启用了验证码，先弹出滑块验证码
-  if (isCaptchaEnabled.value) {
+  if (isCaptchaEnabled.value === true) {
     showCaptcha.value = true
   } else {
     // 未启用验证码，直接登录
@@ -208,7 +208,7 @@ const doLogin = async () => {
     await authStore.accountLogin({
       username: form.username,
       password: form.password,
-      captchaVerification: isCaptchaEnabled.value ? captchaVerification.value : undefined,
+      captchaVerification: isCaptchaEnabled.value === true ? captchaVerification.value : undefined,
     })
 
     // 获取完整的用户信息（确保所有字段都正确加载）
@@ -229,7 +229,7 @@ const doLogin = async () => {
     }
 
     // 检查是否需要强制修改密码
-    if (userStore.userInfo.forcePasswordChange) {
+    if (userStore.userInfo.forcePasswordChange === true) {
       void message.warning('出于安全考虑，您需要修改密码后才能继续使用系统')
       await router.push('/change-password')
       return

@@ -1,13 +1,20 @@
 <script setup lang="ts">
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ArchiveVolumeMemberDisplayVO } from '@/apis/mark/archive-volume'
 import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { ArchiveVolumeMemberRoleCode } from '@/types/enums/archive-volume-member-role-enum'
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   collaborators: ArchiveVolumeMemberDisplayVO[]
-  canManage: boolean
-}>()
+  canManage?: boolean
+}>(),
+  {
+  canManage: false,
+  },
+)
 
 const emit = defineEmits<{
   manage: []
@@ -46,7 +53,7 @@ function joinNames(items: ArchiveVolumeMemberDisplayVO[]) {
     <span v-if="submitters.length"> · 提交 {{ joinNames(submitters) }}</span>
     <span v-if="viewers.length"> · 只读 {{ joinNames(viewers) }}</span>
     <UiButton
-      v-if="canManage"
+      v-if="canManage === true"
       size="sm"
       variant="ghost"
       class="collab-strip__manage"

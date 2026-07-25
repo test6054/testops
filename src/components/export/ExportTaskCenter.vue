@@ -484,7 +484,13 @@ const refreshTasks = async () => {
   void message.success('刷新成功')
 }
 
+const deletingJobId = ref<string | null>(null)
+
 async function requestDeleteTask(jobId: string): Promise<void> {
+  // MVR-942：删除确认防重入 + 确认后再次互斥
+  if (deletingJobId.value) {
+    return
+  }
   const ok = await confirmAsync({
     title: '确定删除这条导出记录吗？',
     content: '删除后任务记录与产物入口将不可恢复。',
@@ -494,15 +500,24 @@ async function requestDeleteTask(jobId: string): Promise<void> {
   if (!ok) {
     return
   }
+  if (deletingJobId.value) {
+    return
+  }
   await deleteTask(jobId)
 }
 
 const deleteTask = async (jobId: string) => {
+  if (deletingJobId.value) {
+    return
+  }
+  deletingJobId.value = jobId
   try {
     await exportTaskStore.deleteTask(jobId)
     void message.success('删除成功')
   } catch (error) {
     showUserError(error, '导出任务删除失败')
+  } finally {
+    deletingJobId.value = null
   }
 }
 

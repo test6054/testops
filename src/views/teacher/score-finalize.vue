@@ -3,12 +3,12 @@
     <template v-if="selectedExamId" #context>
       <ContextBar layout="workbench" show-title title="成绩确认与发布">
         <template #status>
-          <UiTag v-if="scoresFullyPublished" tone="green" size="sm">已全部发布</UiTag>
+          <UiTag v-if="scoresFullyPublished === true" tone="green" size="sm">已全部发布</UiTag>
           <UiTag v-else-if="blockingRiskReasons.length > 0" tone="orange" size="sm">
             存在阻塞风险
           </UiTag>
           <UiTag
-            v-else-if="effectiveRiskOverview?.readyToPublish || canBulkPublish"
+            v-else-if="effectiveRiskOverview?.readyToPublish === true || canBulkPublish === true"
             tone="green"
             size="sm"
           >
@@ -26,10 +26,10 @@
             题目分待确认 {{ unconfirmedQuestionGradeCount }}
           </UiButton>
           <UiButton
-            v-if="canBatchConfirmSafe"
+            v-if="canBatchConfirmSafe === true"
             variant="outline"
             size="sm"
-            :loading="batchConfirming"
+            :loading="batchConfirming === true"
             @click="handleBatchConfirmSafe"
           >
             批量确认无风险成绩
@@ -37,7 +37,7 @@
           <UiButton
             variant="primary"
             size="sm"
-            :disabled="!canBulkPublish"
+            :disabled="canBulkPublish !== true"
             @click="openBulkPublishModal"
           >
             <template #icon><ThunderboltOutlined /></template>
@@ -133,10 +133,10 @@
       >
         <template #actions>
           <UiButton
-            v-if="canRepairAbsenceScoreZeroFinal"
+            v-if="canRepairAbsenceScoreZeroFinal === true"
             variant="primary"
             size="sm"
-            :loading="repairingScoreZero"
+            :loading="repairingScoreZero === true"
             @click="handleRepairScoreZero"
           >
             一键补齐计零终分
@@ -255,7 +255,7 @@
             pagination-mode="server"
             :columns="columns"
             :data-source="candidates"
-            :loading="loading"
+            :loading="loading === true"
             :total="pagination.total"
             row-key="candidateRosterId"
             size="middle"
@@ -391,17 +391,17 @@
           <UiDescriptionsItem label="班级">
             {{ detailCandidate?.studentClassName }}
           </UiDescriptionsItem>
-          <UiDescriptionsItem v-if="hasDailyScoreConfig" label="考试分">
+          <UiDescriptionsItem v-if="hasDailyScoreConfig === true" label="考试分">
             <span class="score-summary-table__score">{{
               formatScorePoints(paperScore.examScore ?? paperScore.estimatedExamScore)
             }}</span>
           </UiDescriptionsItem>
-          <UiDescriptionsItem v-if="hasDailyScoreConfig" label="日常分">
+          <UiDescriptionsItem v-if="hasDailyScoreConfig === true" label="日常分">
             <span class="score-summary-table__score">{{
               formatScorePoints(paperScore.dailyScore)
             }}</span>
           </UiDescriptionsItem>
-          <UiDescriptionsItem :label="hasDailyScoreConfig ? '总成绩' : '总分'">
+          <UiDescriptionsItem :label="hasDailyScoreConfig === true ? '总成绩' : '总分'">
             <span class="score-summary-table__score score-summary-table__score--total">
               {{ formatScorePoints(paperScore.totalScore ?? paperScore.estimatedTotalScore) }}
             </span>
@@ -505,7 +505,7 @@
       :open="confirmOpen"
       title="确认最终成绩"
       :width="520"
-      :confirm-loading="confirming"
+      :confirm-loading="confirming === true"
       :hide-footer="false"
       @update:open="(v: boolean) => (confirmOpen = v)"
       @close="confirmOpen = false"
@@ -521,7 +521,7 @@
         </UiFormItem>
         <UiFormItem
           :label="
-            hasDailyScoreConfig
+            hasDailyScoreConfig === true
               ? '考试分（各题教师复核评分之和）'
               : '考试分（仅各题教师复核评分之和）'
           "
@@ -536,7 +536,7 @@
             disabled
           />
         </UiFormItem>
-        <UiFormItem v-if="hasDailyScoreConfig" label="日常成绩" :required="true">
+        <UiFormItem v-if="hasDailyScoreConfig === true" label="日常成绩" :required="true">
           <UiInputNumber
             size="sm"
             v-model="confirmDailyScore"
@@ -550,11 +550,11 @@
             日常满分 {{ dailyScoreFull }} 分
           </div>
         </UiFormItem>
-        <UiFormItem v-if="hasDailyScoreConfig" label="总成绩预览">
+        <UiFormItem v-if="hasDailyScoreConfig === true" label="总成绩预览">
           <UiInput size="sm" :value="formatScorePoints(confirmTotalScorePreview)" disabled />
         </UiFormItem>
         <UiFormItem>
-          <UiCheckbox v-model="confirmAndPublish" :disabled="hasUnreviewedBlockingRisks">
+          <UiCheckbox v-model="confirmAndPublish" :disabled="hasUnreviewedBlockingRisks === true">
             确认后立即发布并通知学生
           </UiCheckbox>
         </UiFormItem>
@@ -615,19 +615,19 @@
           </UiButton>
           <UiButton
             v-else-if="
-              canRepairAbsenceScoreZeroFinal
+              canRepairAbsenceScoreZeroFinal === true
                 && reason.reasonCode === FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
             "
             size="sm"
             variant="primary"
-            :loading="repairingScoreZero"
+            :loading="repairingScoreZero === true"
             @click="handleRepairScoreZero"
           >
             一键补齐计零终分
           </UiButton>
           <UiButton
             v-if="
-              canManageReviewerWrites
+              canManageReviewerWrites === true
                 && !isHardBlockingRiskReason(reason.reasonCode)
                 && !isQuestionConfirmRiskReason(reason.reasonCode)
                 && reason.reasonCode !== FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
@@ -652,7 +652,7 @@
       :open="withdrawOpen"
       :title="withdrawModalTitle"
       :width="520"
-      :confirm-loading="withdrawing"
+      :confirm-loading="withdrawing === true"
       :hide-footer="false"
       @update:open="(v: boolean) => (withdrawOpen = v)"
       @close="withdrawOpen = false"
@@ -702,7 +702,7 @@
             v-if="nextStep.kind === 'all-confirmed'"
             variant="primary"
             size="md"
-            :disabled="!canBulkPublish"
+            :disabled="canBulkPublish !== true"
             @click="handleNextStepGoPublish"
           >
             全场发布
@@ -725,8 +725,8 @@
       :open="bulkOpen"
       title="全场发布成绩"
       :width="720"
-      :mask-closable="!bulkRunning"
-      :closable="!bulkRunning"
+      :mask-closable="bulkRunning !== true"
+      :closable="bulkRunning !== true"
       :hide-footer="false"
       @update:open="
         (v: boolean) => {
@@ -772,14 +772,14 @@
         </UiListItem>
       </UiList>
       <template #footer>
-        <UiButton variant="outline" size="md" :disabled="bulkRunning" @click="bulkOpen = false">
+        <UiButton variant="outline" size="md" :disabled="bulkRunning === true" @click="bulkOpen = false">
           取消
         </UiButton>
         <UiButton
           variant="primary"
           size="md"
-          :loading="bulkRunning"
-          :disabled="!canBulkPublish"
+          :loading="bulkRunning === true"
+          :disabled="canBulkPublish !== true"
           @click="runBulkPublish"
         >
           确认全场发布
@@ -790,6 +790,8 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-951：函数式 can*(...) 写入口仅认 === true
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
@@ -1276,7 +1278,7 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 // ─── 状态机按钮可用性 ─────────────────────────────
 function canConfirm(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     return false
   }
   // MVR-207：场级硬拦（缺考待确认/未核对、阻塞事件、重复影像）禁用确认，与 BE confirm 硬拦同源
@@ -1298,7 +1300,7 @@ function confirmButtonLabel(record: ExamScoreSummaryItemResponse): string {
 }
 function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     return false
   }
   // MVR-207：缺考待确认/未核对 + 阻塞事件/重复影像；软风险仍在点击时集中复核。
@@ -1399,7 +1401,7 @@ function goScanBindingAttention(): void {
 
 async function toggleRiskReasonReviewed(reasonCode: FinalScoreRiskReasonCode): Promise<void> {
   // MVR-295/363：与 BE saveFinalScoreRiskReview / requireActiveExam + requireExamReviewerPermission 对齐
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无本场评阅写权限，无法标记风险复核')
     return
   }
@@ -1464,7 +1466,7 @@ function warnUnreviewedBlockingRisks(): boolean {
     void message.warning('存在缺考计零终分待补齐，请先一键补齐后再确认或发布成绩')
     return true
   }
-  if (!hasUnreviewedBlockingRisks.value) return false
+  if (hasUnreviewedBlockingRisks.value !== true) return false
   riskReviewDrawerOpen.value = true
   void message.warning('存在未复核的异常成绩，请先完成集中复核后再发布')
   return true
@@ -1499,7 +1501,7 @@ const repairingScoreZero = ref(false)
 async function handleRepairScoreZero(): Promise<void> {
   if (!selectedExamId.value || repairingScoreZero.value) return
   // MVR-295/368：与 BE repairScoreZeroFinalScores（评阅写、不叠 ACTIVE）二次拦截
-  if (!canRepairAbsenceScoreZeroFinal.value) {
+  if (canRepairAbsenceScoreZeroFinal.value !== true) {
     void message.warning('当前账号无本场评阅写权限，无法补齐计零终分')
     return
   }
@@ -1537,11 +1539,11 @@ const canBatchConfirmSafe = computed(() => {
   const overview = effectiveRiskOverview.value
   return Boolean(
     overview
-    && canManageReviewerWrites.value
+    && canManageReviewerWrites.value === true
     && overview.safeConfirmableCount > 0
     && !hasHardBlockingRisks.value
     && !hasFieldWideSafeBatchBlockers.value
-    && !hasDailyScoreConfig.value
+    && hasDailyScoreConfig.value !== true
     && !batchConfirming.value,
   )
 })
@@ -1561,18 +1563,18 @@ const hasFieldWideSafeBatchBlockers = computed(() => {
 })
 
 async function handleBatchConfirmSafe(): Promise<void> {
-  if (batchConfirming.value) {
+  if (batchConfirming.value === true) {
     return
   }
   // MVR-292：与 BE requireExamReviewerPermission / canManageReviewerWrites 二次拦截
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无本场评阅写权限，无法批量确认成绩')
     return
   }
   if (!selectedExamId.value || !effectiveRiskOverview.value) return
   if (warnFieldWideSafeBatchBlockers()) return
   const canContinue = await ensureScoreConfirmPreconditions()
-  if (!canContinue) {
+  if (canContinue !== true) {
     return
   }
   batchConfirming.value = true
@@ -1612,7 +1614,7 @@ const statMetrics = computed((): SignalMetric[] =>
 
 const delayedAutoConfirmNotice = computed(() => {
   const panel = scorePanel.value
-  if (!panel || panel.manualFinalScoreConfirmRequired || hasDailyScoreConfig.value) {
+  if (!panel || panel.manualFinalScoreConfirmRequired === true || hasDailyScoreConfig.value === true) {
     return null
   }
   const pending = panel.pendingDelayedFinalScoreConfirmCount
@@ -1624,7 +1626,7 @@ const delayedAutoConfirmNotice = computed(() => {
 
 /** 配置了日常分的考试：Worker 无法代填日常分，须逐人录日常分后手工确认。 */
 const dailyScoreManualConfirmNotice = computed(() => {
-  if (!hasDailyScoreConfig.value) {
+  if (hasDailyScoreConfig.value !== true) {
     return null
   }
   return '本场考试配置了日常分，系统不会延迟自动确认最终成绩。请在题目分全部教师确认后，逐人录入日常分并手工确认总成绩。'
@@ -1645,7 +1647,7 @@ const blockedDelayedAutoConfirmNotice = computed(() => {
 // ─── 全场发布与发布门禁 ─────────────────────────────
 const publishRiskBlocked = computed(() => {
   const overview = effectiveRiskOverview.value
-  return Boolean(overview && !overview.readyToPublish)
+  return Boolean(overview && overview.readyToPublish !== true)
 })
 
 /** 发布闸门：只置顶一条阻断，其余折叠，避免告警墙淹没「全场发布」。 */
@@ -1664,7 +1666,7 @@ const publishGatePriorityKeys = computed((): PublishGateKey[] => {
   if (blockedDelayedAutoConfirmNotice.value) keys.push('delayedAutoConfirm')
   if (hasPendingAbsence.value) keys.push('pendingAbsence')
   if (missingAbsenceScoreZeroFinalCount.value > 0) keys.push('scoreZero')
-  if (publishRiskBlocked.value) keys.push('risk')
+  if (publishRiskBlocked.value === true) keys.push('risk')
   if (correctedRepublishNotice.value) keys.push('corrected')
   return keys
 })
@@ -1703,7 +1705,7 @@ const canBulkPublish = computed(
   () =>
     Boolean(selectedExamId.value)
     // MVR-293：须叠 canManageReviewerWrites，避免非评阅写权用户顶栏假可点全场发布
-    && canManageReviewerWrites.value
+    && canManageReviewerWrites.value === true
     && publishableOverviewCount.value > 0
     && riskOverview.value?.readyToPublish === true
     && (riskOverview.value?.blockedCount ?? 0) === 0
@@ -1726,18 +1728,18 @@ function resetBulkState(): void {
 
 function openBulkPublishModal(): void {
   // MVR-293：与 BE requireExamReviewerPermission / canManageReviewerWrites 二次拦截
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无本场评阅写权限，无法全场发布成绩')
     return
   }
-  if (!canBulkPublish.value) {
+  if (canBulkPublish.value !== true) {
     void message.warning('当前考试没有可发布的最终成绩')
     return
   }
   void (async () => {
     await Promise.all([loadRiskOverview(), loadScorePanel()])
     const canContinue = await ensureScorePublishPreconditions()
-    if (!canContinue) {
+    if (canContinue !== true) {
       return
     }
     resetBulkState()
@@ -1749,12 +1751,12 @@ function openBulkPublishModal(): void {
 async function runBulkPublish(): Promise<void> {
   if (!selectedExamId.value || bulkRunning.value) return
   // MVR-293：与 BE batchPublishFinalScores 评阅写门禁二次拦截
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无本场评阅写权限，无法全场发布成绩')
     return
   }
   const canContinue = await ensureScorePublishPreconditions()
-  if (!canContinue) {
+  if (canContinue !== true) {
     bulkOpen.value = false
     return
   }
@@ -1863,7 +1865,7 @@ function buildFinalizeActions(record: ExamScoreSummaryItemResponse): UiTableRowA
       tone: !confirmable && publishable ? 'primary' : undefined,
       disabled: !publishable,
     },
-    { key: 'withdraw', label: withdrawButtonLabel(record), disabled: !canWithdraw(record) },
+    { key: 'withdraw', label: withdrawButtonLabel(record), disabled: canWithdraw(record) !== true },
   ]
 }
 
@@ -1887,7 +1889,7 @@ function handleFinalizeRowAction(key: string, record: ExamScoreSummaryItemRespon
 function canWithdraw(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
   // MVR-292：撤回/撤销确认须评阅写权，与 BE withdrawFinalScore 门禁对齐
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     return false
   }
   const s = record.finalScoreStatus
@@ -2183,7 +2185,7 @@ const confirmTotalScorePreview = computed<number | null>(() => {
   if (examScore == null) {
     return null
   }
-  if (hasDailyScoreConfig.value) {
+  if (hasDailyScoreConfig.value === true) {
     if (confirmDailyScore.value == null) {
       return null
     }
@@ -2235,7 +2237,7 @@ function resolveConfirmExamScorePreview(score: ExamPaperScoreResponse): number |
 async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
   // MVR-419：与 canConfirm(record) / 行内 disabled 同源二次闸（写权∧状态∧场级硬拦）
-  if (!canConfirm(record)) {
+  if (canConfirm(record) !== true) {
     if (record.finalScoreStatus === FinalScoreStatusCode.CORRECTED) {
       void message.warning(
         '成绩已更正，请直接重新发布；禁止确认覆盖官方更正分。如需再改请走成绩更正流程。',
@@ -2243,7 +2245,7 @@ async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<v
       return
     }
     void message.warning(
-      !canManageReviewerWrites.value
+      canManageReviewerWrites.value !== true
         ? '当前账号无本场评阅写权限，无法确认成绩'
         : '当前答卷不可确认（状态不允许或场级硬拦未解除）',
     )
@@ -2277,7 +2279,7 @@ async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<v
         '题目分尚未全部教师确认，或当前仅为智能预估分。请先完成题目复核/正评后再确认最终成绩。',
       )
     }
-    if (hasDailyScoreConfig.value) {
+    if (hasDailyScoreConfig.value === true) {
       confirmDailyScore.value = score.dailyScore ?? undefined
     }
   } catch (error) {
@@ -2320,7 +2322,7 @@ function closeNextStep(): void {
 function deriveNextStepSuggestion(): void {
   const overview = effectiveRiskOverview.value
   const b = candidateBuckets.value
-  if (overview?.readyToPublish) {
+  if (overview?.readyToPublish === true) {
     nextStep.value = {
       visible: true,
       kind: 'all-confirmed',
@@ -2369,7 +2371,7 @@ function handleNextStepConfirmContinue(): void {
 function handleNextStepGoPublish(): void {
   closeNextStep()
   // MVR-429：仅认 canBulkPublish，与 openBulkPublishModal 二次闸同源
-  if (canBulkPublish.value) {
+  if (canBulkPublish.value === true) {
     openBulkPublishModal()
     return
   }
@@ -2378,15 +2380,15 @@ function handleNextStepGoPublish(): void {
 
 async function handleConfirm(): Promise<void> {
   // MVR-419：与 canConfirm / openConfirmModal 同源二次闸
-  if (!confirmCandidate.value || !canConfirm(confirmCandidate.value)) {
+  if (!confirmCandidate.value || canConfirm(confirmCandidate.value) !== true) {
     void message.warning(
-      !canManageReviewerWrites.value
+      canManageReviewerWrites.value !== true
         ? '仅本场阅卷组织成员或主考可确认最终成绩'
         : '当前答卷不可确认（状态不允许或场级硬拦未解除）',
     )
     return
   }
-  if (confirming.value) {
+  if (confirming.value === true) {
     return
   }
   if (!selectedExamId.value || !confirmCandidate.value?.paperInstanceId) return
@@ -2400,7 +2402,7 @@ async function handleConfirm(): Promise<void> {
     void message.warning('题目分尚未全部教师确认，不能确认最终成绩。请先完成复核台确认或正评提交。')
     return
   }
-  if (hasDailyScoreConfig.value && confirmDailyScore.value == null) {
+  if (hasDailyScoreConfig.value === true && confirmDailyScore.value == null) {
     showFormValidationMessage('请录入日常成绩')
     return
   }
@@ -2411,7 +2413,7 @@ async function handleConfirm(): Promise<void> {
     await confirmFinalScore({
       examId,
       paperInstanceId,
-      dailyScore: hasDailyScoreConfig.value ? (confirmDailyScore.value ?? undefined) : undefined,
+      dailyScore: hasDailyScoreConfig.value === true ? (confirmDailyScore.value ?? undefined) : undefined,
     })
     if (confirmAndPublish.value) {
       if (warnUnreviewedBlockingRisks()) {
@@ -2422,7 +2424,7 @@ async function handleConfirm(): Promise<void> {
         return
       }
       const canContinue = await ensureSinglePaperPublishPreconditions()
-      if (!canContinue) {
+      if (canContinue !== true) {
         void message.success('成绩已确认，发布前请先完成缺考核对或风险处置')
         confirmOpen.value = false
         await refreshAfterScoreWrite()
@@ -2447,9 +2449,9 @@ async function handleConfirm(): Promise<void> {
 // ─── 发布成绩 ─────────────────────────────
 async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void> {
   // MVR-419：与 canPublish(record) / 行内 disabled 同源二次闸
-  if (!canPublish(record)) {
+  if (canPublish(record) !== true) {
     void message.warning(
-      !canManageReviewerWrites.value
+      canManageReviewerWrites.value !== true
         ? '仅本场阅卷组织成员或主考可发布最终成绩'
         : '当前答卷不可发布（状态不允许或场级硬拦未解除）',
     )
@@ -2461,7 +2463,7 @@ async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void
   if (!selectedExamId.value || !record.paperInstanceId) return
   if (warnUnreviewedBlockingRisks()) return
   const canContinue = await ensureSinglePaperPublishPreconditions()
-  if (!canContinue) {
+  if (canContinue !== true) {
     return
   }
   publishingPaperId.value = record.paperInstanceId
@@ -2493,9 +2495,9 @@ const withdrawModalTitle = computed(() =>
 
 function openWithdrawModal(record: ExamScoreSummaryItemResponse): void {
   // MVR-419：与 canWithdraw(record) / 行内 disabled 同源二次闸
-  if (!canWithdraw(record)) {
+  if (canWithdraw(record) !== true) {
     void message.warning(
-      !canManageReviewerWrites.value
+      canManageReviewerWrites.value !== true
         ? '当前账号无本场评阅写权限，无法撤回成绩'
         : '当前答卷不可撤回（状态不允许）',
     )
@@ -2507,13 +2509,13 @@ function openWithdrawModal(record: ExamScoreSummaryItemResponse): void {
 }
 
 async function handleWithdraw(): Promise<void> {
-  if (withdrawing.value) {
+  if (withdrawing.value === true) {
     return
   }
   // MVR-419：与 canWithdraw / openWithdrawModal 同源二次闸
-  if (!withdrawCandidate.value || !canWithdraw(withdrawCandidate.value)) {
+  if (!withdrawCandidate.value || canWithdraw(withdrawCandidate.value) !== true) {
     void message.warning(
-      !canManageReviewerWrites.value
+      canManageReviewerWrites.value !== true
         ? '当前账号无本场评阅写权限，无法撤回成绩'
         : '当前答卷不可撤回（状态不允许）',
     )

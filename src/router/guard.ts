@@ -176,7 +176,7 @@ async function runProtectedRouteGuard(to: RouteLocationNormalized): Promise<Navi
 
   const needsSecurityRefresh
     = to.path !== '/change-password'
-      && (!userStore.userInfo.forcePasswordChange || !userStore.userInfo.currentLoginProviderType)
+      && (userStore.userInfo.forcePasswordChange !== true || !userStore.userInfo.currentLoginProviderType)
 
   if (needsSecurityRefresh) {
     try {

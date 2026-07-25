@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// MVR-949：props.can* 写控制流仅认 === true
+// MVR-948：本地 can* 显隐/禁用仅认 === true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { Key } from 'ant-design-vue/es/table/interface'
 import type { ArchiveScanBatchSnapshotItemVO } from '@/apis/mark/archive-volume'
@@ -31,10 +33,16 @@ import {
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   volumeId: string
-  canReview: boolean
-}>()
+  canReview?: boolean
+}>(),
+  {
+  canReview: false,
+  },
+)
 
 const emit = defineEmits<{
   refreshed: []
@@ -70,7 +78,7 @@ const columns: ColumnsType<ArchiveScanBatchSnapshotItemVO> = [
 ]
 
 const rowSelection = computed(() =>
-  props.canReview
+  props.canReview === true
     ? {
         selectedRowKeys: selectedRowKeys.value,
         onChange: (keys: Key[]) => {
@@ -109,7 +117,7 @@ async function loadRows() {
 
 function openBatchAction(action: 'confirm-normal' | 'discard') {
   // MVR-305：与 canReview 同源二次拦截
-  if (!props.canReview) {
+  if (props.canReview !== true) {
     void message.warning('当前账号无扫描批次复核权限')
     return
   }
@@ -123,11 +131,11 @@ function openBatchAction(action: 'confirm-normal' | 'discard') {
 }
 
 async function submitBatchAction() {
-  if (actionLoading.value) {
+  if (actionLoading.value === true) {
     return
   }
   // MVR-305：与 canReview 同源二次拦截
-  if (!props.canReview) {
+  if (props.canReview !== true) {
     void message.warning('当前账号无扫描批次复核权限')
     return
   }
@@ -186,12 +194,12 @@ onMounted(() => {
         仅展示质检标记为疑似混扫的已提交批次，可确认正常或作废对应卷内材料。
       </p>
     </template>
-    <template v-if="canReview" #toolbar>
+    <template v-if="canReview === true" #toolbar>
       <UiButton
         size="sm"
         variant="outline"
         :disabled="selectedRowKeys.length === 0"
-        :loading="actionLoading"
+        :loading="actionLoading === true"
         @click="openBatchAction('confirm-normal')"
       >
         确认正常
@@ -200,12 +208,12 @@ onMounted(() => {
         size="sm"
         variant="ghost"
         :disabled="selectedRowKeys.length === 0"
-        :loading="actionLoading"
+        :loading="actionLoading === true"
         @click="openBatchAction('discard')"
       >
         批量作废
       </UiButton>
-      <UiButton size="sm" variant="outline" :disabled="loading" @click="loadRows"> 刷新 </UiButton>
+      <UiButton size="sm" variant="outline" :disabled="loading === true" @click="loadRows"> 刷新 </UiButton>
     </template>
     <p v-if="errorMessage" class="archive-scan-batch-review__error">{{ errorMessage }}</p>
     <UiDataTable
@@ -213,7 +221,7 @@ onMounted(() => {
       v-model:page-size="pagination.pageSize"
       :columns="columns"
       :data-source="rows"
-      :loading="loading"
+      :loading="loading === true"
       :total="pagination.total"
       :row-selection="rowSelection"
       row-key="sourceBatchId"
@@ -265,8 +273,8 @@ onMounted(() => {
       :title="`${actionLabel}疑似混扫批次`"
       ok-text="确认执行"
       cancel-text="取消"
-      :confirm-loading="actionLoading"
-      :mask-closable="!actionLoading"
+      :confirm-loading="actionLoading === true"
+      :mask-closable="actionLoading !== true"
       @ok="submitBatchAction"
     >
       <p>本次将处理 {{ selectedRowKeys.length }} 个批次，操作按整批事务执行。</p>

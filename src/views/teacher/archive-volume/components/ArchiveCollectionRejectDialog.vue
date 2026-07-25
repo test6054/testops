@@ -8,12 +8,17 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   open: boolean
   volumeId: string
   /** MVR-305：与 detailScope.canRejectCollection 对齐 */
-  canRejectCollection?: boolean
-}>()
+  canRejectCollection?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+}>(),
+  {
+  canRejectCollection: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -31,9 +36,9 @@ watch(
 )
 
 async function submit() {
-  if (submitting.value) return
+  if (submitting.value === true) return
   // MVR-305：与 canRejectCollection 同源二次拦截
-  if (!props.canRejectCollection) {
+  if (props.canRejectCollection !== true) {
     void message.warning('当前账号无驳回收材权限')
     return
   }
@@ -61,7 +66,7 @@ async function submit() {
     title="驳回收材"
     ok-text="确认驳回"
     cancel-text="取消"
-    :confirm-loading="submitting"
+    :confirm-loading="submitting === true"
     destroy-on-close
     @update:open="emit('update:open', $event)"
     @ok="submit"
@@ -83,12 +88,12 @@ async function submit() {
       <UiButton
         size="sm"
         variant="outline"
-        :disabled="submitting"
+        :disabled="submitting === true"
         @click="emit('update:open', false)"
       >
         取消
       </UiButton>
-      <UiButton size="sm" variant="primary" :loading="submitting" @click="submit">
+      <UiButton size="sm" variant="primary" :loading="submitting === true" @click="submit">
         确认驳回
       </UiButton>
     </template>

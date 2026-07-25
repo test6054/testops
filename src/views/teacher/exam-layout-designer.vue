@@ -132,7 +132,7 @@ const materialLayoutMode = computed(() => examDetail.value?.materialLayoutMode)
 const scanPaperStyleLabel = computed(() => examDetail.value?.scanPaperStyleText ?? '')
 
 const pageLoading = computed(
-  () => wbLoading.value || (examDetailLoading.value && !examDetail.value),
+  () => wbLoading.value === true || (examDetailLoading.value === true && !examDetail.value),
 )
 
 const hasPages = computed(() => documentHasPages(wbDocument.value))
@@ -140,7 +140,7 @@ const hasPages = computed(() => documentHasPages(wbDocument.value))
 type DesignerStatusAlertKind = 'detect' | 'identity'
 
 const designerStatusAlert = computed(() => {
-  if (wbDetecting.value) {
+  if (wbDetecting.value === true) {
     return {
       kind: 'detect' as DesignerStatusAlertKind,
       tone: 'info' as const,
@@ -149,7 +149,7 @@ const designerStatusAlert = computed(() => {
     }
   }
   if (
-    wbLayoutWritable.value
+    wbLayoutWritable.value === true
     && wbIdentitySetupPending.value
     && wbDocument.value?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE
   ) {
@@ -176,11 +176,11 @@ const contextPrimaryAction = computed(() => {
   if (wbPhase.value === LayoutDesignPhaseCode.SOURCE && !hasPages.value) {
     return {
       label: '上传并开始识别',
-      disabled: wbDetecting.value || !materialLayoutMode.value || wbLayoutCanvasReadonly.value,
+      disabled: wbDetecting.value === true || !materialLayoutMode.value || wbLayoutCanvasReadonly.value === true,
       handler: scrollToSourcePanel,
     }
   }
-  if (wbSaveBlockingReasons.value.length === 0 && !wbDetecting.value) {
+  if (wbSaveBlockingReasons.value.length === 0 && wbDetecting.value !== true) {
     return {
       label: '进入校验预览',
       disabled: !hasPages.value,
@@ -220,7 +220,7 @@ function handleFocusIdentityLayers(): void {
 }
 
 function handleAddStudentNoBlock(): void {
-  if (!wbDocument.value || wbLayoutCanvasReadonly.value) {
+  if (!wbDocument.value || wbLayoutCanvasReadonly.value === true) {
     return
   }
   const maxLayer = wbDocument.value.blocks.reduce(
@@ -268,10 +268,10 @@ function onLayoutDesignerMoreAction(key: string) {
           <UiTag v-if="materialLayoutModeLabel" tone="blue" size="sm">
             形态 {{ materialLayoutModeLabel }}
           </UiTag>
-          <UiTooltip v-if="!wbLayoutWritable && writeLockTooltip" :title="writeLockTooltip">
+          <UiTooltip v-if="wbLayoutWritable !== true && writeLockTooltip" :title="writeLockTooltip">
             <UiTag tone="orange" size="sm">制卷已锁定</UiTag>
           </UiTooltip>
-          <UiTag v-else-if="layoutModeLocked" tone="gray" size="sm">形态已锁定</UiTag>
+          <UiTag v-else-if="layoutModeLocked === true" tone="gray" size="sm">形态已锁定</UiTag>
           <UiTag v-if="layoutPaperLabel" tone="gray" size="sm">纸型 {{ layoutPaperLabel }}</UiTag>
           <UiTag v-if="scanPaperStyleLabel" tone="gray" size="sm">
             印张 {{ scanPaperStyleLabel }}
@@ -307,8 +307,8 @@ function onLayoutDesignerMoreAction(key: string) {
             <UiButton
               size="sm"
               :variant="contextPrimaryAction ? 'outline' : 'primary'"
-              :loading="wbSaving"
-              :disabled="wbSaveButtonDisabled"
+              :loading="wbSaving === true"
+              :disabled="wbSaveButtonDisabled === true"
               @click="wbHandleSave()"
             >
               保存设计
@@ -317,8 +317,8 @@ function onLayoutDesignerMoreAction(key: string) {
           <UiButton
             size="sm"
             variant="outline"
-            :loading="wbPreviewing"
-            :disabled="wbPreviewDisabled"
+            :loading="wbPreviewing === true"
+            :disabled="wbPreviewDisabled === true"
             @click="wbHandlePreview()"
           >
             预览 PDF
@@ -356,7 +356,7 @@ function onLayoutDesignerMoreAction(key: string) {
             <UiButton
               size="sm"
               variant="outline"
-              :loading="wbCancellingDetect"
+              :loading="wbCancellingDetect === true"
               :disabled="!wbActiveDetectTaskId || wbCancellingDetect"
               @click="wbHandleCancelDetect()"
             >
@@ -367,7 +367,7 @@ function onLayoutDesignerMoreAction(key: string) {
             <UiButton
               size="sm"
               variant="primary"
-              :disabled="wbLayoutCanvasReadonly"
+              :disabled="wbLayoutCanvasReadonly === true"
               @click="handleAddStudentNoBlock"
             >
               在第 1 页添加学号填涂区
@@ -375,7 +375,7 @@ function onLayoutDesignerMoreAction(key: string) {
             <UiButton
               size="sm"
               variant="outline"
-              :disabled="wbLayoutCanvasReadonly"
+              :disabled="wbLayoutCanvasReadonly === true"
               @click="handleFocusIdentityLayers"
             >
               打开识别图层

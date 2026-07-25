@@ -78,7 +78,7 @@ const canvasEmptyHint = computed(() => {
     return job.value.message || '上传完成后可在右侧缩略图查看各页。'
   }
   if (job.value?.status === LocalScanJobStatusCode.FAILED) {
-    if (workflow.isPreUploadScanFailure.value) {
+    if (workflow.isPreUploadScanFailure.value === true) {
       return '扫描未采集到页面，请点击底部「取消并清理」后重新开始'
     }
     return job.value.message || '请检查扫描仪连接与进纸器状态后重试。'
@@ -86,10 +86,10 @@ const canvasEmptyHint = computed(() => {
   return '送纸后将自动显示首张影像，请勿关闭工作台。'
 })
 const emptyScanTitle = computed(() =>
-  workflow.activeBackendScanSession.value ? '存在未结束扫描进程' : '暂无扫描批次',
+  workflow.activeBackendScanSession.value === true ? '存在未结束扫描进程' : '暂无扫描批次',
 )
 const emptyScanHint = computed(() =>
-  workflow.activeBackendScanSession.value
+  workflow.activeBackendScanSession.value === true
     ? workflow.activeBackendScanSessionReason.value
     : '请返回“准备扫描”点击“开始扫描”，单纯放纸不会自动创建扫描任务。',
 )
@@ -103,14 +103,14 @@ const effectiveEmptyScanHint = computed(() => {
   if (workflow.scanWorkspaceBootstrapping.value) {
     return '正在恢复本机扫描批次与扫描任务，请稍候…'
   }
-  if (workflow.activeBackendScanSession.value) {
+  if (workflow.activeBackendScanSession.value === true) {
     return (
       workflow.activeBackendScanSessionReason.value || '扫描进程仍在恢复中，请先刷新当前扫描状态。'
     )
   }
   return '本机尚未建立扫描任务。请返回「准备扫描」点击「开始扫描」，或点击下方「重新开始扫描」自动创建批次。'
 })
-const hasRecoverableBackendSession = computed(() => workflow.activeBackendScanSession.value)
+const hasRecoverableBackendSession = computed(() => workflow.activeBackendScanSession.value === true)
 
 // 视图状态：缩放 / 旋转 / 灰度（不进 workflow，仅 stage 内部）
 const ZOOM_MIN = 0.25
@@ -158,10 +158,10 @@ function gotoPage(pageNo: number) {
   syncExceptionPanel(pageNo)
 }
 function gotoPrev() {
-  if (canPrev.value) gotoPage(pages.value[currentIndex.value - 1].pageNo)
+  if (canPrev.value === true) gotoPage(pages.value[currentIndex.value - 1].pageNo)
 }
 function gotoNext() {
-  if (canNext.value) gotoPage(pages.value[currentIndex.value + 1].pageNo)
+  if (canNext.value === true) gotoPage(pages.value[currentIndex.value + 1].pageNo)
 }
 function gotoFirst() {
   if (pages.value.length) gotoPage(pages.value[0].pageNo)
@@ -184,7 +184,7 @@ async function refreshScanningState() {
 }
 
 async function restartScanFromEmptyState() {
-  if (!workflow.canStartDirectScan.value || workflow.loading.value) return
+  if (workflow.canStartDirectScan.value !== true || workflow.loading.value === true) return
   const started = await workflow.startDirectScan()
   if (!started && !workflow.currentJob.value) {
     await workflow.ensureScanningWorkspaceReady()
@@ -404,7 +404,7 @@ onMounted(() => {
                   v-if="hasRecoverableBackendSession"
                   type="button"
                   class="canvas-empty-btn canvas-empty-btn--primary"
-                  :disabled="workflow.loading.value"
+                  :disabled="workflow.loading.value === true"
                   @click="refreshScanningState"
                 >
                   <ReloadOutlined />
@@ -414,7 +414,7 @@ onMounted(() => {
                   <button
                     type="button"
                     class="canvas-empty-btn"
-                    :disabled="workflow.loading.value"
+                    :disabled="workflow.loading.value === true"
                     @click="goBackToSetup"
                   >
                     <ArrowLeftOutlined />
@@ -423,7 +423,7 @@ onMounted(() => {
                   <button
                     type="button"
                     class="canvas-empty-btn canvas-empty-btn--primary"
-                    :disabled="!workflow.canStartDirectScan.value || workflow.loading.value"
+                    :disabled="workflow.canStartDirectScan.value !== true || workflow.loading.value === true"
                     @click="restartScanFromEmptyState"
                   >
                     <PlayCircleOutlined />
@@ -458,7 +458,7 @@ onMounted(() => {
                 <button
                   type="button"
                   class="tool-btn"
-                  :disabled="!canPrev"
+                  :disabled="canPrev !== true"
                   title="第一页 [Home]"
                   @click="gotoFirst"
                 >
@@ -467,7 +467,7 @@ onMounted(() => {
                 <button
                   type="button"
                   class="tool-btn"
-                  :disabled="!canPrev"
+                  :disabled="canPrev !== true"
                   title="上一页 [←]"
                   @click="gotoPrev"
                 >
@@ -480,7 +480,7 @@ onMounted(() => {
                 <button
                   type="button"
                   class="tool-btn"
-                  :disabled="!canNext"
+                  :disabled="canNext !== true"
                   title="下一页 [→]"
                   @click="gotoNext"
                 >
@@ -489,7 +489,7 @@ onMounted(() => {
                 <button
                   type="button"
                   class="tool-btn"
-                  :disabled="!canNext"
+                  :disabled="canNext !== true"
                   title="末页 [End]"
                   @click="gotoLast"
                 >

@@ -10,7 +10,7 @@
       :model="{ score: scoreModel, annotationNote: annotationNoteModel, reviewSuggestion: reviewSuggestionModel }"
       :rules="rules"
       layout="vertical"
-      :disabled="!canSubmit"
+      :disabled="canSubmit !== true"
     >
       <template v-if="usesWholePaperWorkspace">
         <UiEmpty size="sm" v-if="wholeQuestions.length === 0" description="当前任务暂无负责题目" />
@@ -76,12 +76,12 @@
               :min="0"
               :max="question.fullScore"
               :step="0.5"
-              :disabled="isReadOnly"
+              :disabled="isReadOnly === true"
               class="marking-score-panel__score-input"
               placeholder="本题给分"
               @keydown.enter.prevent="emit('whole-question-enter', questionIndex)"
             />
-            <div v-if="!isReadOnly && canSubmit" class="marking-score-panel__quick-digits">
+            <div v-if="!isReadOnly && canSubmit === true" class="marking-score-panel__quick-digits">
               <UiButton
                 v-for="digit in quickDigitScores(question.fullScore)"
                 :key="digit"
@@ -102,7 +102,7 @@
                 <UiButton
                   size="sm"
                   variant="outline"
-                  :disabled="isReadOnly"
+                  :disabled="isReadOnly === true"
                   @click="emit('fill-ai-score', question)"
                 >
                   填入 AI 分
@@ -110,7 +110,7 @@
                 <UiButton
                   size="sm"
                   variant="outline"
-                  :disabled="isReadOnly || submitting || !canSubmit"
+                  :disabled="isReadOnly || submitting || canSubmit !== true"
                   @click="emit('accept-ai-score', question, questionIndex)"
                 >
                   {{ questionIndex === wholeQuestions.length - 1 ? '采纳并提交' : '采纳并继续' }}
@@ -118,7 +118,7 @@
                 <UiButton
                   size="sm"
                   variant="outline"
-                  :disabled="!canRescoreWholeQuestion(question)"
+                  :disabled="canRescoreWholeQuestion(question) !== true"
                   :loading="rescoringGradeResultId === question.gradeResultId"
                   @click="emit('rescore-whole', question)"
                 >
@@ -166,7 +166,7 @@
               v-model="getWholeQuestionForm(question.layoutQuestionId).annotationText"
               :rows="3"
               :maxlength="1000"
-              :disabled="isReadOnly"
+              :disabled="isReadOnly === true"
               placeholder="题目批注，可选"
               :show-count="true"
             />
@@ -175,7 +175,7 @@
               v-model="getWholeQuestionForm(question.layoutQuestionId).reviewSuggestion"
               :rows="3"
               :maxlength="1000"
-              :disabled="isReadOnly"
+              :disabled="isReadOnly === true"
               placeholder="面向学生的批阅建议，可选"
               :show-count="true"
             />
@@ -212,7 +212,7 @@
           <UiButton
             size="sm"
             variant="outline"
-            :disabled="isReadOnly"
+            :disabled="isReadOnly === true"
             @click="emit('quick-full-score')"
           >
             满分
@@ -220,7 +220,7 @@
           <UiButton
             size="sm"
             variant="outline"
-            :disabled="isReadOnly"
+            :disabled="isReadOnly === true"
             @click="emit('quick-half-score')"
           >
             {{ questionViewHalfScoreLabel }}
@@ -228,7 +228,7 @@
           <UiButton
             size="sm"
             variant="outline"
-            :disabled="isReadOnly"
+            :disabled="isReadOnly === true"
             @click="emit('quick-zero-score')"
           >
             零分
@@ -237,7 +237,7 @@
             v-if="questionView?.aiScore != null"
             size="sm"
             variant="outline"
-            :disabled="isReadOnly"
+            :disabled="isReadOnly === true"
             @click="emit('quick-ai-score')"
           >
             填入 AI 分
@@ -250,7 +250,7 @@
             v-if="questionView?.aiScore != null"
             size="sm"
             variant="outline"
-            :disabled="isReadOnly || submitting || !canSubmit"
+            :disabled="isReadOnly || submitting || canSubmit !== true"
             @click="emit('accept-ai-submit')"
           >
             采纳并提交
@@ -261,7 +261,7 @@
           <UiButton
             size="sm"
             variant="outline"
-            :disabled="!canRescoreQuestionView"
+            :disabled="canRescoreQuestionView !== true"
             :loading="rescoringGradeResultId === questionView?.gradeResultId"
             @click="emit('rescore-question')"
           >
@@ -290,7 +290,7 @@
           </p>
         </div>
         <div
-          v-if="!isReadOnly && canSubmit && questionView?.fullScore != null"
+          v-if="!isReadOnly && canSubmit === true && questionView?.fullScore != null"
           class="marking-score-panel__quick-digits"
         >
           <UiButton
@@ -329,13 +329,13 @@
         />
       </UiFormItem>
 
-      <UiFormItem v-if="canSubmit">
+      <UiFormItem v-if="canSubmit === true">
         <UiButton
           block
           size="sm"
           variant="primary"
           :loading="submitting"
-          :disabled="isReadOnly || !canSubmit"
+          :disabled="isReadOnly || canSubmit !== true"
           @click="emit('submit')"
         >
           确认给分并提交（Enter）· 进入{{ isWholePaperTask ? '下一未阅份' : '下一未阅' }}
@@ -346,6 +346,8 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-951：函数式 can*(...) 写入口仅认 === true
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type {
   MarkingQuestionViewResponse,
@@ -382,19 +384,21 @@ const expandedWholeQuestionKeyModel = defineModel<string>('expandedWholeQuestion
   required: true,
 })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   bindFormRef?: (el: FormInstance | null) => void
   bindScoreInputRef?: (el: { focus?: () => void } | null) => void
   rules: Record<string, Rule[]>
   usesWholePaperWorkspace: boolean
   isWholePaperTask: boolean
   isReadOnly: boolean
-  canSubmit: boolean
+  canSubmit?: boolean
   submitting: boolean
   questionView: MarkingQuestionViewResponse | null
   questionViewHalfScoreLabel: string
   isQuestionViewAiScorePending: boolean
-  canRescoreQuestionView: boolean
+  canRescoreQuestionView?: boolean
   wholeQuestions: QuestionMarkingGroupQuestionResponse[]
   rescoringGradeResultId: string | null
   getWholeQuestionForm: (layoutQuestionId: string) => WholeQuestionForm
@@ -405,7 +409,12 @@ const props = defineProps<{
   experienceAssistSourceExamName?: string
   experienceAssistConsistencyRate?: number
   experienceAssistMatchMode?: GradingExperienceReferenceMatchModeCode
-}>()
+}>(),
+  {
+  canSubmit: false,
+  canRescoreQuestionView: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'submit'): void

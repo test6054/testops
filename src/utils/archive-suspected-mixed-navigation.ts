@@ -36,7 +36,7 @@ export async function fetchArchiveSuspectedMixedPendingTotal(
   options?: FetchArchiveMixedPendingTotalOptions,
 ): Promise<number> {
   const grants = options?.grants ?? await listMyArchiveDutyGrants()
-  if (!canViewArchiveDepartmentQueueFromGrants(grants)) {
+  if (canViewArchiveDepartmentQueueFromGrants(grants) !== true) {
     return 0
   }
   const page = await pageSuspectedMixedScanBatches(

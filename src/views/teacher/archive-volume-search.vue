@@ -17,7 +17,7 @@
       <template #toolbar>
         <div class="archive-search-toolbar">
           <div class="archive-search-toolbar__profiles">
-            <template v-if="profilesLoadFailed">
+            <template v-if="profilesLoadFailed === true">
               <span class="archive-search-toolbar__profile-error">已保存检索加载失败</span>
               <UiButton variant="outline" size="sm" @click="loadSearchProfiles">
                 重新加载
@@ -44,7 +44,7 @@
               <UiButton
                 variant="outline"
                 size="sm"
-                :disabled="!selectedOwnedProfile"
+                :disabled="selectedOwnedProfile !== true"
                 @click="openSaveProfileModal('update')"
               >
                 更新方案
@@ -55,7 +55,7 @@
               <UiButton
                 variant="ghost"
                 size="sm"
-                :disabled="!selectedOwnedProfile"
+                :disabled="selectedOwnedProfile !== true"
                 @click="handleDeleteProfile"
               >
                 删除
@@ -375,7 +375,7 @@
       cancel-text="取消"
       :width="520"
       :hide-footer="false"
-      :confirm-loading="saveProfileLoading"
+      :confirm-loading="saveProfileLoading === true"
       @ok="handleSaveProfile"
     >
       <UiForm layout="vertical">
@@ -571,14 +571,14 @@ const resultMetaVolumeHint = computed(() => {
 const profileOptions = computed(() =>
   searchProfiles.value.map((profile) => ({
     value: profile.profileId,
-    label: profile.sharedFlag ? `${profile.profileName}（共享）` : profile.profileName,
+    label: profile.sharedFlag === true ? `${profile.profileName}（共享）` : profile.profileName,
   })),
 )
 
 const selectedOwnedProfile = computed(() => {
   if (!selectedProfileId.value) return false
   const profile = searchProfiles.value.find((item) => item.profileId === selectedProfileId.value)
-  return Boolean(profile?.ownedByCurrentUser)
+  return profile?.ownedByCurrentUser === true
 })
 
 const ocrStatusOptions = ARCHIVE_MATERIAL_OCR_STATUS_OPTIONS.map((item) => ({
@@ -979,6 +979,11 @@ async function handleRetryMaterialOcr(record: ArchiveVolumeSearchResponse): Prom
     cancelText: '取消',
   })
   if (!confirmed) return
+  // MVR-938：确认后再次认行级 canMaintainMaterial，防对话框期间权限/行态漂移
+  if (record.canMaintainMaterial !== true) {
+    void message.warning('当前账号无重跑材料文字识别权限')
+    return
+  }
   retryingOcrMaterialIds.add(record.materialId)
   try {
     await triggerArchiveVolumeMaterialOcr(record.materialId)
@@ -1018,7 +1023,7 @@ function closeOcrInlinePanel(): void {
 }
 
 function openSaveProfileModal(mode: 'update' | 'saveAs') {
-  if (profilesLoadFailed.value) {
+  if (profilesLoadFailed.value === true) {
     showFormValidationMessage('请先重新加载已保存检索')
     return
   }
@@ -1026,19 +1031,24 @@ function openSaveProfileModal(mode: 'update' | 'saveAs') {
     showFormValidationMessage('请至少填写一项检索条件后再保存')
     return
   }
-  if (mode === 'update' && !selectedOwnedProfile.value) {
+  if (mode === 'update' && selectedOwnedProfile.value !== true) {
     showFormValidationMessage('请选择本人拥有的方案后再更新')
     return
   }
   saveProfileMode.value = mode
   const existing = searchProfiles.value.find((item) => item.profileId === selectedProfileId.value)
   saveProfileForm.profileName = mode === 'update' ? (existing?.profileName ?? '') : ''
-  saveProfileForm.sharedFlag = mode === 'update' ? (existing?.sharedFlag ?? false) : false
+  saveProfileForm.sharedFlag = mode === 'update' ? (existing?.sharedFlag === true) : false
   saveProfileModalOpen.value = true
 }
 
 async function handleSaveProfile() {
-  if (profilesLoadFailed.value || saveProfileLoading.value) return
+  if (profilesLoadFailed.value === true || saveProfileLoading.value === true) return
+  // MVR-936：更新模式须本人拥有；另存/新建不要求当前选中
+  if (saveProfileMode.value === 'update' && selectedOwnedProfile.value !== true) {
+    showFormValidationMessage('请选择本人拥有的方案后再更新')
+    return
+  }
   const profileName = saveProfileForm.profileName.trim()
   if (!profileName) {
     showFormValidationMessage('请填写方案名称')
@@ -1048,7 +1058,7 @@ async function handleSaveProfile() {
   try {
     const saved = await saveArchiveVolumeSearchProfile({
       profileId:
-        saveProfileMode.value === 'update' && selectedOwnedProfile.value
+        saveProfileMode.value === 'update' && selectedOwnedProfile.value === true
           ? selectedProfileId.value
           : undefined,
       profileName,
@@ -1079,7 +1089,7 @@ function applySelectedProfile() {
 }
 
 function handleDeleteProfile() {
-  if (!selectedProfileId.value || !selectedOwnedProfile.value || deletingProfile.value) return
+  if (!selectedProfileId.value || selectedOwnedProfile.value !== true || deletingProfile.value === true) return
   void confirmAsync({
     title: '删除检索方案',
     content: '删除后不可恢复，确认删除当前方案？',
@@ -1087,7 +1097,12 @@ function handleDeleteProfile() {
     cancelText: '取消',
     type: 'error',
     onOk: async () => {
-      if (deletingProfile.value) return
+      // MVR-936：确认后再次认本人拥有方案，防对话框期间切到共享方案
+      if (!selectedProfileId.value || selectedOwnedProfile.value !== true) {
+        showFormValidationMessage('请选择本人拥有的方案后再删除')
+        return
+      }
+      if (deletingProfile.value === true) return
       deletingProfile.value = true
       try {
         await deleteArchiveVolumeSearchProfile(selectedProfileId.value!)

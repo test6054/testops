@@ -56,7 +56,7 @@
               <UiButton
                 size="sm"
                 variant="primary"
-                :disabled="recommendedPrimaryDisabled"
+                :disabled="recommendedPrimaryDisabled === true"
                 :title="recommendedPrimaryDisabledReason || undefined"
                 @click="emit('primary-action')"
               >

@@ -189,7 +189,7 @@ const marqueePreviewConfig = computed(() => {
 })
 
 function blockDraggable(): boolean {
-  return !props.readOnly && canvasTool.value === 'select'
+  return props.readOnly !== true && canvasTool.value === 'select'
 }
 
 function resolveMarqueeBlockType(): ExamLayoutBlockTypeCode {
@@ -291,7 +291,7 @@ function syncTransformer(): void {
   if (!transformer) {
     return
   }
-  if (props.readOnly || canvasTool.value !== 'select' || !props.focusedBlockId) {
+  if (props.readOnly === true || canvasTool.value !== 'select' || !props.focusedBlockId) {
     transformer.nodes([])
     transformer.getLayer()?.batchDraw()
     return
@@ -307,7 +307,7 @@ function syncTransformer(): void {
 
 function patchBlockRect(blockId: string, node: Konva.Rect): void {
   // MVR-417：与 readOnly / 父层 layoutCanvasReadonly 二次闸，禁止拖改/缩放绕过 disabled
-  if (props.readOnly || !props.document || !page.value) {
+  if (props.readOnly === true || !props.document || !page.value) {
     return
   }
   const scaleX = node.scaleX()
@@ -371,7 +371,7 @@ function resetMarqueeDraft(): void {
 
 function commitMarqueeDraft(): void {
   // MVR-417：框选落块叠 readOnly（识别中/关考只读漂移时不写入本地 document）
-  if (props.readOnly || !marqueeDraft.value || !props.document || !page.value) {
+  if (props.readOnly === true || !marqueeDraft.value || !props.document || !page.value) {
     resetMarqueeDraft()
     return
   }
@@ -407,7 +407,7 @@ function commitMarqueeDraft(): void {
 }
 
 function handleStageMouseDown(event: { target: Konva.Node }): void {
-  if (props.readOnly) {
+  if (props.readOnly === true) {
     return
   }
   if (canvasTool.value === 'marquee') {
@@ -571,7 +571,7 @@ onMounted(() => {
               <Text :config="labelConfig(block)" />
             </template>
             <Transformer
-              v-if="!readOnly && canvasTool === 'select'"
+              v-if="readOnly !== true && canvasTool === 'select'"
               ref="transformerRef"
               :config="{
                 rotateEnabled: false,

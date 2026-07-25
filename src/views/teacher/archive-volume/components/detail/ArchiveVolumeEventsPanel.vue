@@ -8,7 +8,7 @@
           <UiButton
             size="sm"
             variant="ghost"
-            :loading="exporting"
+            :loading="exporting === true"
             :disabled="events.length === 0"
             @click="handleExport"
           >
@@ -47,7 +47,7 @@ async function handleExport() {
     void message.warning('暂无审计事件可导出')
     return
   }
-  if (exporting.value) return
+  if (exporting.value === true) return
   exporting.value = true
   try {
     const result = await exportArchiveVolumeEvents(props.volumeId)

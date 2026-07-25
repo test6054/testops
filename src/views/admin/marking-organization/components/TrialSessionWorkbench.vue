@@ -29,7 +29,7 @@
     >
       <template #empty>
         <WorkflowPrerequisiteEmpty
-          v-if="createBlocked && prerequisiteEmpty"
+          v-if="createBlocked === true && prerequisiteEmpty"
           :model="prerequisiteEmpty"
         />
       </template>
@@ -88,6 +88,8 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-951：函数式 can*(...) 写入口仅认 === true
+// MVR-945：canManage* 控制流仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TrialSessionResponse } from '@/apis/mark/marking-organization'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
@@ -136,7 +138,8 @@ interface SessionPaginationState {
 
 defineOptions({ name: 'TrialSessionWorkbench' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   sessions: TrialSessionResponse[]
   groupOptions: GroupOption[]
   filterModel: MarkingOrgSessionFilterModel
@@ -144,10 +147,18 @@ const props = defineProps<{
   loading?: boolean
   canManage: boolean
   /** MVR-398：关闭试评仅主考、不叠 ACTIVE */
-  canCloseMarkingSessions?: boolean
+  canCloseMarkingSessions?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
   createBlocked?: boolean
   prerequisiteEmpty?: WorkflowPrerequisiteEmptyViewModel
-}>()
+}>(),
+  {
+  canManage: false,
+  canCloseMarkingSessions: false,
+  
+  createBlocked: false,
+  loading: false,
+},
+)
 
 const emit = defineEmits<{
   "refresh": []
@@ -235,10 +246,10 @@ const hasActiveFilter = computed(
 
 const sessionTableEmptyDescription = computed(() => {
   if (props.pagination.total === 0 && !hasActiveFilter.value) {
-    if (props.createBlocked) {
+    if (props.createBlocked === true) {
       return ''
     }
-    return props.canManage ? '暂无试评会话，点击顶部「创建试评」开始定标' : '暂无试评会话'
+    return props.canManage === true ? '暂无试评会话，点击顶部「创建试评」开始定标' : '暂无试评会话'
   }
   if (props.pagination.total === 0 && hasActiveFilter.value) {
     return '未找到匹配会话，请调整筛选条件'
@@ -291,22 +302,22 @@ function isGroupStartable(groupId: string | undefined): boolean {
 
 function canStart(record: TrialSessionResponse): boolean {
   return (
-    props.canManage && record.sessionStatus === TrialSessionStatusCode.TRIAL_CREATED
+    props.canManage === true && record.sessionStatus === TrialSessionStatusCode.TRIAL_CREATED
     && isGroupStartable(record.groupId)
   )
 }
 
 function canCalibrate(status: TrialSessionStatusCode): boolean {
   return (
-    props.canManage && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
+    props.canManage === true && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
       || status === TrialSessionStatusCode.TRIAL_SUBMITTED)
   )
 }
 
 function canClose(status: TrialSessionStatusCode): boolean {
-  // MVR-398：关闭试评认 canCloseMarkingSessions（主考，不叠 ACTIVE）
+  // MVR-398/967：关闭试评认 canCloseMarkingSessions===true（主考，不叠 ACTIVE）
   return (
-    props.canCloseMarkingSessions
+    props.canCloseMarkingSessions === true
     && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
       || status === TrialSessionStatusCode.TRIAL_SUBMITTED
       || status === TrialSessionStatusCode.CALIBRATED)
@@ -314,7 +325,7 @@ function canClose(status: TrialSessionStatusCode): boolean {
 }
 
 function canDelete(status: TrialSessionStatusCode): boolean {
-  return props.canManage && status === TrialSessionStatusCode.TRIAL_CREATED
+  return props.canManage === true && status === TrialSessionStatusCode.TRIAL_CREATED
 }
 
 function buildRowActions(record: TrialSessionResponse): UiTableRowActionItem[] {
@@ -322,24 +333,24 @@ function buildRowActions(record: TrialSessionResponse): UiTableRowActionItem[] {
     {
       key: 'start',
       label: '启动试评',
-      hidden: !canStart(record),
+      hidden: canStart(record) !== true,
       disabled: startingId.value === record.id,
     },
     {
       key: 'calibrate',
       label: '提交校准',
-      hidden: !canCalibrate(record.sessionStatus),
+      hidden: canCalibrate(record.sessionStatus) !== true,
     },
     {
       key: 'close',
       label: '关闭试评',
-      hidden: !canClose(record.sessionStatus),
+      hidden: canClose(record.sessionStatus) !== true,
     },
     {
       key: 'delete',
       label: '删除草稿',
       tone: 'danger',
-      hidden: !canDelete(record.sessionStatus),
+      hidden: canDelete(record.sessionStatus) !== true,
       disabled: deletingId.value === record.id,
     },
   ]
@@ -347,7 +358,7 @@ function buildRowActions(record: TrialSessionResponse): UiTableRowActionItem[] {
 
 function guardManageAction(): boolean {
   // MVR-377：仅认 BE canManageExamOwner===true（父层已叠 ACTIVE）
-  if (props.canManage) {
+  if (props.canManage === true) {
     return true
   }
   showFormValidationMessage('仅考试主考老师可管理试评会话')
@@ -359,7 +370,7 @@ async function submitStart(record: TrialSessionResponse): Promise<void> {
     return
   }
   // MVR-412：与 canStart 同源二次闸（主考∧ACTIVE∧TRIAL_CREATED∧题组 ACTIVE/CONFIGURED）
-  if (!canStart(record)) {
+  if (canStart(record) !== true) {
     showFormValidationMessage(
       isGroupStartable(record.groupId)
         ? '仅草稿试评会话可启动'
@@ -367,7 +378,7 @@ async function submitStart(record: TrialSessionResponse): Promise<void> {
     )
     return
   }
-  if (startingId.value || deletingId.value) {
+  if (Boolean(startingId.value) || Boolean(deletingId.value)) {
     return
   }
   startingId.value = record.id
@@ -387,11 +398,11 @@ async function submitDelete(record: TrialSessionResponse): Promise<void> {
     return
   }
   // MVR-408：删除二次闸，与 canDelete / BE TRIAL_CREATED 同源
-  if (!canDelete(record.sessionStatus)) {
+  if (canDelete(record.sessionStatus) !== true) {
     showFormValidationMessage('仅草稿试评会话可删除')
     return
   }
-  if (deletingId.value || startingId.value) {
+  if (Boolean(deletingId.value) || Boolean(startingId.value)) {
     return
   }
   deletingId.value = record.id
@@ -413,7 +424,7 @@ async function handleSessionRowAction(key: string, record: TrialSessionResponse)
   }
   if (key === 'calibrate') {
     // MVR-408：校准打开闸与 canCalibrate 同源
-    if (!canCalibrate(record.sessionStatus)) {
+    if (canCalibrate(record.sessionStatus) !== true) {
       showFormValidationMessage('当前试评会话状态不可提交校准')
       return
     }
@@ -423,7 +434,7 @@ async function handleSessionRowAction(key: string, record: TrialSessionResponse)
   }
   if (key === 'close') {
     // MVR-398：关闭试评打开闸认 canCloseMarkingSessions，关考后仍可收口
-    if (!props.canCloseMarkingSessions) {
+    if (props.canCloseMarkingSessions !== true) {
       showFormValidationMessage('仅考试主考老师可关闭试评会话')
       return
     }
@@ -432,7 +443,7 @@ async function handleSessionRowAction(key: string, record: TrialSessionResponse)
   }
   if (key === 'delete') {
     // MVR-397/408：删除确认前叠 canDelete（主考∧ACTIVE∧TRIAL_CREATED）
-    if (!canDelete(record.sessionStatus)) {
+    if (canDelete(record.sessionStatus) !== true) {
       showFormValidationMessage('仅草稿试评会话可删除')
       return
     }

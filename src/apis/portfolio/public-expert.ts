@@ -2,6 +2,7 @@ import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teach
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PortfolioArchiveRecordSourceTypeCode } from '@/types/enums/portfolio-archive-record-source-type-enum'
 import type { PortfolioEvaluationIdentityMaterialScopeCode } from '@/types/enums/portfolio-evaluation-identity-material-scope-enum'
+import type { PortfolioIdentityMaterialCategoryClassCode } from '@/types/enums/portfolio-identity-material-category-class-enum'
 import http from '@/config/axios'
 
 const PUBLIC_EXPERT = '/api/public/portfolio/expert-assignment'
@@ -27,7 +28,7 @@ export interface PortfolioPublicExpertReviewSubjectVO {
 export interface PortfolioPublicExpertReviewMaterialVO {
   materialRef: string
   maskedTeacherLabel: string
-  categoryCode?: string
+  categoryCode?: PortfolioIdentityMaterialCategoryClassCode
   categoryName?: string
   academicYear?: string
   documentVersionNo?: number

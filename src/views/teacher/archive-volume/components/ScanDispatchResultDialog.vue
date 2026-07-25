@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// MVR-948：本地 can* 显隐/禁用仅认 === true
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import message from 'ant-design-vue/es/message'
 import AQrcode from 'ant-design-vue/es/qrcode'
 import { computed, ref, watch } from 'vue'
@@ -154,7 +156,7 @@ async function downloadTraceLabel() {
   if (!fileId) {
     return
   }
-  if (downloading.value || cancelling.value) {
+  if (downloading.value === true || cancelling.value === true) {
     return
   }
   downloading.value = true
@@ -171,11 +173,11 @@ async function handleCancel() {
   if (!props.payload?.ticketId) {
     return
   }
-  if (cancelling.value || downloading.value) {
+  if (cancelling.value === true || downloading.value === true) {
     return
   }
   // MVR-309：二次拦截，对齐 canCancel
-  if (!canCancel.value) {
+  if (canCancel.value !== true) {
     return
   }
   cancelling.value = true
@@ -238,16 +240,16 @@ async function handleCancel() {
           v-if="payload.traceLabelFileId"
           size="sm"
           variant="outline"
-          :loading="downloading"
+          :loading="downloading === true"
           @click="downloadTraceLabel"
         >
           下载追溯标签
         </UiButton>
         <UiButton
-          v-if="canCancel"
+          v-if="canCancel === true"
           size="sm"
           variant="destructive"
-          :loading="cancelling"
+          :loading="cancelling === true"
           @click="handleCancel"
         >
           取消派单

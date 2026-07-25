@@ -47,7 +47,7 @@
         </template>
         <template #actions>
           <UiButton
-            v-if="hasPendingTodos"
+            v-if="hasPendingTodos === true"
             variant="primary"
             size="sm"
             @click="goPriorityExamList"
@@ -213,12 +213,12 @@
               <div class="marking-overview__panel-head">
                 <div class="marking-overview__panel-head-main">
                   <h3 class="marking-overview__panel-title">待处理事项</h3>
-                  <p v-if="hasPendingTodos" class="marking-overview__panel-desc">
+                  <p v-if="hasPendingTodos === true" class="marking-overview__panel-desc">
                     {{ pendingTodoHint }}
                   </p>
                 </div>
                 <UiButton
-                  v-if="hasPendingTodos"
+                  v-if="hasPendingTodos === true"
                   variant="outline"
                   size="sm"
                   @click="goPriorityExamList"
@@ -250,7 +250,7 @@
               />
               <template v-else>
                 <UiSectionTabs
-                  v-if="hasPendingTodos"
+                  v-if="hasPendingTodos === true"
                   v-model="pendingTodoTabKey"
                   :items="pendingTodoTabItems"
                   compact
@@ -468,8 +468,8 @@ const filteredExamCount = computed(() => overview.value?.filterContext.filteredE
 
 
 const examsPanelLoading = computed(() => {
-  if (signalLoading.value && !overview.value) return true
-  if (examsLoading.value && !!overview.value) return true
+  if (signalLoading.value === true && !overview.value) return true
+  if (examsLoading.value === true && overview.value != null) return true
   return filteredExamCount.value > 0
     && ongoingExamPage.value.total === 0
     && !examsLoadFailed.value
@@ -477,8 +477,8 @@ const examsPanelLoading = computed(() => {
 })
 
 const todosPanelLoading = computed(() => {
-  if (signalLoading.value && !overview.value) return true
-  if (todosLoading.value && !!overview.value) return true
+  if (signalLoading.value === true && !overview.value) return true
+  if (todosLoading.value === true && overview.value != null) return true
   const pendingTodoRowCount = overview.value?.signalMetrics?.pendingTodoRowCount ?? 0
   return pendingTodoRowCount > 0
     && pendingTodoPage.value.total === 0
@@ -498,7 +498,7 @@ const hasPendingTodos = computed(
 )
 
 const showTodoFocusLayout = computed(
-  () => !signalLoadFailed.value && (hasPendingTodos.value || (todosLoading.value && !!overview.value)),
+  () => !signalLoadFailed.value && (hasPendingTodos.value || (todosLoading.value === true && overview.value != null)),
 )
 const pendingTodoFocusTone = computed(() => resolvePendingTodoFocusTone(pendingTodoItems.value))
 const pendingTodoFocusClass = computed(() =>
@@ -534,9 +534,9 @@ function panelShowsEmptyState(panel: 'exams' | 'todos'): boolean {
     return true
   }
   if (panel === 'exams') {
-    return !examsLoading.value && !examsLoadFailed.value && !hasOngoingExams.value
+    return examsLoading.value !== true && examsLoadFailed.value !== true && hasOngoingExams.value !== true
   }
-  return !todosLoading.value && !todosLoadFailed.value && !hasPendingTodos.value
+  return todosLoading.value !== true && todosLoadFailed.value !== true && hasPendingTodos.value !== true
 }
 
 watch(pendingTodoTabKey, (tab, previousTab) => {

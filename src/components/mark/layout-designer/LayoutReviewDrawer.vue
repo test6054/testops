@@ -45,11 +45,11 @@ function handleFocus(block: ExamLayoutBlockDto | null): void {
 }
 
 async function persistAdjust(): Promise<void> {
-  if (saving.value) {
+  if (saving.value === true) {
     return
   }
-  // MVR-376：默认拒绝；仅 readonly===false（父层 layoutWritable）时可写
-  if (props.readonly) {
+  // MVR-376/959：默认拒绝；仅 readonly===false（父层 layoutWritable）时可写
+  if (props.readonly !== false) {
     void message.warning('考试已开印或已开始扫描，制卷设计不可修改')
     return
   }
@@ -106,7 +106,7 @@ async function persistAdjust(): Promise<void> {
         size="sm"
         variant="primary"
         :loading="saving"
-        :disabled="readonly"
+        :disabled="readonly !== false"
         @click="persistAdjust"
       >
         保存微调
@@ -116,7 +116,7 @@ async function persistAdjust(): Promise<void> {
       :document="document"
       :page-no="pageNo"
       :focused-block-id="focusedBlockId"
-      :read-only="readonly"
+      :read-only="readonly !== false"
       @focus-block="handleFocus"
       @patch="emit('patch', $event)"
     />

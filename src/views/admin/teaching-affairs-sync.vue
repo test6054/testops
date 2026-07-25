@@ -19,7 +19,7 @@
             v-if="!isExamWorkspaceRoute"
             :selected-exam-id="selectedExamId"
             :exam-options="examOptions"
-            :loading="examLoading"
+            :loading="examLoading === true"
             :searching="searching"
             :resolving-pinned="resolvingPinned"
             select-class="sync-page__exam-select"
@@ -30,7 +30,7 @@
         </template>
         <template #actions>
           <UiButton
-            v-if="canManageOwnerTeachingAffairsWrites"
+            v-if="canManageOwnerTeachingAffairsWrites === true"
             variant="primary"
             size="sm"
             :disabled="!selectedExamId"
@@ -43,7 +43,7 @@
             size="sm"
             variant="outline"
             :disabled="!selectedExamId"
-            :loading="loading"
+            :loading="loading === true"
             @click="loadAll"
           >
             <template #icon><ReloadOutlined /></template>
@@ -98,7 +98,7 @@
           pagination-mode="server"
           :columns="syncColumns"
           :data-source="syncTasks"
-          :loading="syncLoading"
+          :loading="syncLoading === true"
           :total="syncTaskTotal"
           flat
           row-key="id"
@@ -168,7 +168,7 @@
           v-model:page-size="passbackPagination.pageSize"
           :columns="passbackColumns"
           :data-source="passbackRecords"
-          :loading="passbackLoading"
+          :loading="passbackLoading === true"
           :total="passbackPagination.total"
           @page-change="handlePassbackPageChange"
           flat
@@ -209,7 +209,7 @@
     v-model:open="createModalOpen"
     title="新建同步任务"
     :width="640"
-    :confirm-loading="creating"
+    :confirm-loading="creating === true"
     ok-text="创建"
     @ok="handleCreate"
   >
@@ -218,8 +218,8 @@
       <UiButton
         variant="primary"
         size="sm"
-        :loading="creating"
-        :disabled="!createValid"
+        :loading="creating === true"
+        :disabled="createValid !== true"
         @click="handleCreate"
       >
         创建
@@ -274,7 +274,7 @@
           <UiButton
             size="sm"
             variant="outline"
-            :loading="progressLoading"
+            :loading="progressLoading === true"
             @click="handleRefreshProgress"
           >
             <template #icon><ReloadOutlined /></template>
@@ -355,10 +355,10 @@
       <UiDescriptionsItem label="操作" :span="1">
         <div class="dp-space" style="--dp-space-gap: 8px">
           <UiButton
-            v-if="detailTask.id && canManageOwnerTeachingAffairsWrites"
+            v-if="detailTask.id && canManageOwnerTeachingAffairsWrites === true"
             size="sm"
             variant="outline"
-            :loading="reconciling"
+            :loading="reconciling === true"
             @click="handleReconcile(detailTask)"
           >
             <template #icon><AuditOutlined /></template>
@@ -371,6 +371,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-948：教务同步写闸仅认 === true
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
@@ -602,7 +603,7 @@ function syncSyncPolling(): void {
 }
 
 async function loadAllQuietly(): Promise<void> {
-  if (!selectedExamId.value || loading.value) {
+  if (!selectedExamId.value || loading.value === true) {
     return
   }
   try {
@@ -631,26 +632,27 @@ function canCancel(status: SyncTaskStatusCode): boolean {
 
 function buildSyncTaskActions(record: ExamTeachingAffairsSyncTask): UiTableRowActionItem[] {
   const loading = actionLoadingId.value === record.id
-  const canWrite = canManageOwnerTeachingAffairsWrites.value
+  // MVR-952：写入口仅认 canManageOwnerTeachingAffairsWrites===true；状态函数保持布尔返回
+  const canWrite = canManageOwnerTeachingAffairsWrites.value === true
   return [
     {
       key: 'execute',
       label: '执行回写',
       tone: 'primary',
-      hidden: !canWrite || !canExecute(record),
+      hidden: canWrite !== true || canExecute(record) !== true,
       disabled: loading,
     },
     {
       key: 'retry',
       label: '重试',
-      hidden: !canWrite || !canRetry(record.taskStatus),
+      hidden: canWrite !== true || canRetry(record.taskStatus) !== true,
       disabled: loading,
     },
     {
       key: 'cancel',
       label: '取消',
       tone: 'danger',
-      hidden: !canWrite || !canCancel(record.taskStatus),
+      hidden: canWrite !== true || canCancel(record.taskStatus) !== true,
       disabled: loading,
     },
     { key: 'detail', label: '详情' },
@@ -679,7 +681,7 @@ async function withTaskAction(
   action: () => Promise<void>,
   hint: string,
 ): Promise<void> {
-  if (!canManageOwnerTeachingAffairsWrites.value) {
+  if (canManageOwnerTeachingAffairsWrites.value !== true) {
     return
   }
   if (!record.id) return
@@ -697,8 +699,8 @@ async function withTaskAction(
 }
 
 function handleExecute(record: ExamTeachingAffairsSyncTask): void {
-  // MVR-420：与 canExecute / 行内 disabled 同源二次闸（PENDING 且未重试）
-  if (!canExecute(record)) {
+  // MVR-420/952：与 canExecute / 行内 hidden 同源二次闸（PENDING 且未重试）
+  if (canExecute(record) !== true) {
     void message.warning('仅未执行的待处理任务可触发回写')
     return
   }
@@ -706,8 +708,8 @@ function handleExecute(record: ExamTeachingAffairsSyncTask): void {
 }
 
 function handleRetry(record: ExamTeachingAffairsSyncTask): void {
-  // MVR-420：与 canRetry / 行内 disabled 同源二次闸
-  if (!canRetry(record.taskStatus)) {
+  // MVR-420/952：与 canRetry / 行内 hidden 同源二次闸
+  if (canRetry(record.taskStatus) !== true) {
     void message.warning('仅失败或部分成功的任务可重试')
     return
   }
@@ -715,8 +717,8 @@ function handleRetry(record: ExamTeachingAffairsSyncTask): void {
 }
 
 function handleCancel(record: ExamTeachingAffairsSyncTask): void {
-  // MVR-420：与 canCancel / 行内 disabled 同源二次闸
-  if (!canCancel(record.taskStatus)) {
+  // MVR-420/952：与 canCancel / 行内 hidden 同源二次闸
+  if (canCancel(record.taskStatus) !== true) {
     void message.warning('当前任务状态不可取消')
     return
   }
@@ -744,7 +746,7 @@ const createValid = computed(() =>
 )
 
 function openCreateModal(): void {
-  if (!canManageOwnerTeachingAffairsWrites.value) {
+  if (canManageOwnerTeachingAffairsWrites.value !== true) {
     return
   }
   createForm.externalSystemType = ExternalSystemTypeCode.SIS
@@ -755,11 +757,11 @@ function openCreateModal(): void {
 }
 
 async function handleCreate(): Promise<void> {
-  if (!canManageOwnerTeachingAffairsWrites.value) {
+  if (canManageOwnerTeachingAffairsWrites.value !== true) {
     return
   }
-  if (!selectedExamId.value || !createValid.value) return
-  if (creating.value) return
+  if (!selectedExamId.value || createValid.value !== true) return
+  if (creating.value === true) return
   creating.value = true
   try {
     await createSyncTask({
@@ -845,7 +847,7 @@ async function handleRefreshProgress(): Promise<void> {
 }
 
 async function handleReconcile(record: ExamTeachingAffairsSyncTask): Promise<void> {
-  if (!canManageOwnerTeachingAffairsWrites.value) {
+  if (canManageOwnerTeachingAffairsWrites.value !== true) {
     return
   }
   if (!record.id) return

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// MVR-949：props.can* 写控制流仅认 === true
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
 import type {
   ArchivePhysicalLocationResponse,
   ArchiveVolumeDetailResponse,
@@ -22,11 +24,17 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   volumeId: string
   detail: ArchiveVolumeDetailResponse
-  canEdit: boolean
-}>()
+  canEdit?: boolean
+}>(),
+  {
+  canEdit: false,
+  },
+)
 
 const emit = defineEmits<{
   refreshed: []
@@ -99,9 +107,9 @@ async function loadLocationHistory() {
 }
 
 async function handleSave() {
-  if (submitting.value) return
+  if (submitting.value === true) return
   // MVR-303：与 canEdit 同源二次拦截
-  if (!props.canEdit) {
+  if (props.canEdit !== true) {
     void message.warning('当前账号无柜位维护权限')
     return
   }
@@ -179,8 +187,8 @@ onMounted(() => {
         </p>
       </div>
     </template>
-    <template v-if="canEdit" #toolbar>
-      <UiButton size="sm" variant="outline" :loading="submitting" @click="handleSave">
+    <template v-if="canEdit === true" #toolbar>
+      <UiButton size="sm" variant="outline" :loading="submitting === true" @click="handleSave">
         更新位置
       </UiButton>
     </template>
@@ -199,7 +207,7 @@ onMounted(() => {
               v-model="form.building"
               :maxlength="128"
               placeholder="例如 A区"
-              :disabled="!canEdit"
+              :disabled="canEdit !== true"
             />
           </UiFormItem>
         </UiCol>
@@ -210,7 +218,7 @@ onMounted(() => {
               v-model="form.room"
               :maxlength="128"
               placeholder="例如 03室"
-              :disabled="!canEdit"
+              :disabled="canEdit !== true"
             />
           </UiFormItem>
         </UiCol>
@@ -227,7 +235,7 @@ onMounted(() => {
               v-model="form.cabinet"
               :maxlength="128"
               placeholder="例如 03柜"
-              :disabled="!canEdit"
+              :disabled="canEdit !== true"
             />
           </UiFormItem>
         </UiCol>
@@ -243,7 +251,7 @@ onMounted(() => {
               v-model="form.slot"
               :maxlength="128"
               placeholder="例如 2层"
-              :disabled="!canEdit"
+              :disabled="canEdit !== true"
             />
           </UiFormItem>
         </UiCol>
@@ -254,10 +262,10 @@ onMounted(() => {
           v-model="form.physicalLocationNote"
           :maxlength="512"
           placeholder="可选补充说明"
-          :disabled="!canEdit"
+          :disabled="canEdit !== true"
         />
       </UiFormItem>
-      <p v-if="!canEdit" class="archive-volume-physical-location__readonly">
+      <p v-if="canEdit !== true" class="archive-volume-physical-location__readonly">
         当前卷状态不允许修改柜位
       </p>
     </UiForm>

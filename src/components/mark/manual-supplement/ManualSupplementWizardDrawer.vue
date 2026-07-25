@@ -285,7 +285,7 @@ const boundPaperOptions = computed(() =>
 const prepareBlockDescription = computed(() => {
   const context = prepareContext.value
   if (!context || context.canSubmitManualSupplement === true) return ''
-  if (context.hasActiveScanSession) {
+  if (context.hasActiveScanSession === true) {
     const batchText = context.activeBatchExternalNo ? `（${context.activeBatchExternalNo}）` : ''
     return `${context.activeScanSessionReason ?? context.blockReason ?? '当前设备存在未结束扫描进程'}${batchText}。请先在一体机或扫描监控结束该批次后再提交网页补扫。`
   }
@@ -299,7 +299,7 @@ const classScopeWarning = computed(() =>
 const submitDisabled = computed(
   () =>
     declaredClassIds.value.length === 0
-    || prepareLoading.value
+    || prepareLoading.value === true
     || prepareContext.value?.canSubmitManualSupplement !== true
     || (scenario.value === 'file-import' && webDevices.value.length === 0),
 )
@@ -532,13 +532,13 @@ async function goNext(): Promise<void> {
     return
   }
 
-  if (submitDisabled.value) {
+  if (submitDisabled.value === true) {
     void message.warning(
       prepareBlockDescription.value || classScopeWarning.value || '当前不可提交补录',
     )
     return
   }
-  if (submitting.value) {
+  if (submitting.value === true) {
     return
   }
 

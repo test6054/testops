@@ -8,6 +8,7 @@ import type {
 } from '@/apis/portfolio/teacher-platform'
 import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { PortfolioEvaluationSceneCode } from '@/types/enums/portfolio-evaluation-scene-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
@@ -390,7 +391,7 @@ onMounted(async () => {
               {{
                 record.involvedScenes?.length
                   ? record.involvedScenes
-                    .map((scene) => evaluationSceneLabel(scene))
+                    .map((scene: PortfolioEvaluationSceneCode) => evaluationSceneLabel(scene))
                     .join(' / ')
                   : '—'
               }}

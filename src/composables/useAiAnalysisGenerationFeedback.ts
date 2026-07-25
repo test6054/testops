@@ -14,7 +14,7 @@ export function useAiAnalysisGenerationFeedback() {
     },
   ): Promise<void> {
     // MVR-097：双点 / 键盘连触防重入
-    if (generating.value) {
+    if (generating.value === true) {
       return
     }
     generating.value = true

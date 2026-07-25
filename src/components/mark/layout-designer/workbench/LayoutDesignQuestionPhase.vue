@@ -2,11 +2,16 @@
 import type { ExamLayoutDocument, ExamLayoutQuestionDto } from '@/apis/mark/exam-layout-design'
 import LayoutQuestionLedgerPanel from '@/components/mark/layout-designer/workbench/LayoutQuestionLedgerPanel.vue'
 
-defineProps<{
+withDefaults(
+  defineProps<{
   document: ExamLayoutDocument | null
   focusedQuestionId: string | null
   readonly?: boolean
-}>()
+}>(),
+  {
+    readonly: true,
+  },
+)
 
 const emit = defineEmits<{
   "patch": [document: ExamLayoutDocument]

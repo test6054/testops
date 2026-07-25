@@ -126,7 +126,7 @@ function handleClusterDataChanged(): void {
 
 <template>
   <StageWorkbenchShell>
-    <template v-if="!examLocked" #context>
+    <template v-if="examLocked !== true" #context>
       <ContextBar layout="workbench" show-title title="AI 分析中心" />
     </template>
 
@@ -137,7 +137,7 @@ function handleClusterDataChanged(): void {
     <UiEmpty size="sm" v-if="overviewLoadFailed" title="加载失败" />
 
     <template v-else>
-      <ExamWorkspaceJourneySubNav v-if="examLocked" />
+      <ExamWorkspaceJourneySubNav v-if="examLocked === true" />
 
       <WorkbenchSurfaceCard flush>
         <template #head>

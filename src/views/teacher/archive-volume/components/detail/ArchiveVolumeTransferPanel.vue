@@ -14,7 +14,7 @@
     <UiAlertStrip
       v-if="
         detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
-          && detail.hasOpenRemediationTask
+          && detail.hasOpenRemediationTask === true
       "
       tone="warning"
       title="存在未关闭整改"
@@ -35,26 +35,26 @@
     <template #toolbar>
       <div
         v-if="
-          (canApproveTransferAction || canRejectTransferAction)
+          (canApproveTransferAction === true || canRejectTransferAction === true)
             && detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
         "
         class="archive-volume-transfer-panel__actions"
       >
         <UiButton
-          v-if="canApproveTransferAction"
+          v-if="canApproveTransferAction === true"
           variant="primary"
           size="sm"
-          :loading="approvingTransfer"
-          :disabled="rejectingTransfer || detail.hasOpenRemediationTask"
+          :loading="approvingTransfer === true"
+          :disabled="rejectingTransfer === true || detail.hasOpenRemediationTask === true"
           @click="handleApproveTransfer"
         >
           验收通过
         </UiButton>
         <UiButton
-          v-if="canRejectTransferAction"
+          v-if="canRejectTransferAction === true"
           size="sm"
           variant="outline"
-          :disabled="approvingTransfer"
+          :disabled="approvingTransfer === true"
           @click="openRejectTransfer"
         >
           退回补正
@@ -104,7 +104,7 @@
       :open="rejectTransferOpen"
       title="移交退回"
       :width="520"
-      :confirm-loading="rejectingTransfer"
+      :confirm-loading="rejectingTransfer === true"
       ok-text="确认退回"
       :hide-footer="false"
       @update:open="(v: boolean) => (rejectTransferOpen = v)"
@@ -127,6 +127,8 @@
 </template>
 
 <script setup lang="ts">
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeTransferRecordResponse,
@@ -160,14 +162,21 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeTransferPanel' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   volumeId: string
   detail: ArchiveVolumeDetailResponse
-  canReviewTransfer: boolean
-  canRejectTransfer: boolean
+  canReviewTransfer?: boolean
+  canRejectTransfer?: boolean
   /** 当前登录用户，用于 MVR-190 移交提交人自批屏蔽 */
   currentUserId?: string
-}>()
+}>(),
+  {
+  canReviewTransfer: false,
+  canRejectTransfer: false,
+  },
+)
 
 const emit = defineEmits<{
   refreshed: []
@@ -183,14 +192,14 @@ function isTransferSubmitterSelf(): boolean {
 
 const canApproveTransferAction = computed(
   () =>
-    props.canReviewTransfer
+    props.canReviewTransfer === true
     && props.detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
     && !isTransferSubmitterSelf(),
 )
 
 const canRejectTransferAction = computed(
   () =>
-    props.canRejectTransfer
+    props.canRejectTransfer === true
     && props.detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
     && !isTransferSubmitterSelf(),
 )
@@ -271,11 +280,11 @@ async function downloadTransferPackage() {
 async function handleApproveTransfer() {
   if (approvingTransfer.value || rejectingTransfer.value) return
   // MVR-348：与 canApproveTransferAction / BE requireTransferReviewer 二次拦截
-  if (!canApproveTransferAction.value) {
+  if (canApproveTransferAction.value !== true) {
     void message.warning('当前账号不可验收通过该移交（无权限、状态不符或本人提交）')
     return
   }
-  if (props.detail.hasOpenRemediationTask) {
+  if (props.detail.hasOpenRemediationTask === true) {
     showFormValidationMessage('存在未关闭整改，请先完成整改或退回移交')
     return
   }
@@ -294,7 +303,7 @@ async function handleApproveTransfer() {
 
 function openRejectTransfer() {
   // MVR-348：与 canRejectTransferAction 同源二次拦截
-  if (!canRejectTransferAction.value) {
+  if (canRejectTransferAction.value !== true) {
     void message.warning('当前账号无移交退回权限')
     return
   }
@@ -305,7 +314,7 @@ function openRejectTransfer() {
 async function submitRejectTransfer() {
   if (approvingTransfer.value || rejectingTransfer.value) return
   // MVR-300：与 canRejectTransferAction 同源二次拦截
-  if (!canRejectTransferAction.value) {
+  if (canRejectTransferAction.value !== true) {
     void message.warning('当前账号无移交退回权限')
     return
   }

@@ -10,7 +10,7 @@
     </template>
 
     <WorkbenchContextGateStrip
-      v-if="!canManage"
+      v-if="canManage !== true"
       tag="无权限"
       body="仅超级管理员或租户管理员可维护租户阅卷策略"
       tone="warning"
@@ -109,7 +109,7 @@
             </label>
 
             <div class="tenant-policy__actions">
-              <UiButton variant="primary" size="sm" :loading="saving" @click="handleSave">保存策略</UiButton>
+              <UiButton variant="primary" size="sm" :loading="saving === true" @click="handleSave">保存策略</UiButton>
             </div>
           </form>
         </WorkbenchSurfaceCard>
@@ -156,6 +156,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-948：租户评分策略写闸仅认 === true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   MarkTenantGradingOpsOverviewResponse,
@@ -256,7 +257,7 @@ const opsColumns: ColumnsType<MarkTenantGradingOpsOverviewResponse['exams'][numb
     dataIndex: 'readyForFormalMarking',
     key: 'readyForFormalMarking',
     width: 88,
-    customRender: ({ text }: { text: boolean }) => (text ? '是' : '否'),
+    customRender: ({ text }: { text: boolean }) => (text === true ? '是' : '否'),
   },
 ]
 
@@ -269,19 +270,19 @@ const consistencyPercent = computed({
 })
 
 function applyPolicy(policy: MarkTenantGradingPolicyResponse): void {
-  form.experienceAssistEnabled = policy.experienceAssistEnabled
+  form.experienceAssistEnabled = policy.experienceAssistEnabled === true
   form.minConsistencyRate = policy.minConsistencyRate
   form.maxHammingDistance = policy.maxHammingDistance
   form.maxExperienceItems = policy.maxExperienceItems
   form.sourceExamKind = policy.sourceExamKind ?? ExamKindCode.REGULAR
-  form.requireSameCourse = policy.requireSameCourse ?? true
-  form.requireEffectivenessEval = policy.requireEffectivenessEval ?? true
-  form.manualFinalScoreConfirmRequired = policy.manualFinalScoreConfirmRequired ?? true
+  form.requireSameCourse = policy.requireSameCourse === true
+  form.requireEffectivenessEval = policy.requireEffectivenessEval === true
+  form.manualFinalScoreConfirmRequired = policy.manualFinalScoreConfirmRequired === true
   form.delayedFinalScoreConfirmMinutes = policy.delayedFinalScoreConfirmMinutes ?? 10
 }
 
 async function loadPolicy(): Promise<void> {
-  if (!canManage.value) return
+  if (canManage.value !== true) return
   loading.value = true
   try {
     applyPolicy(await getTenantGradingPolicy())
@@ -293,7 +294,7 @@ async function loadPolicy(): Promise<void> {
 }
 
 async function loadOpsOverview(): Promise<void> {
-  if (!canManage.value) return
+  if (canManage.value !== true) return
   opsLoading.value = true
   try {
     opsOverview.value = await getTenantGradingOpsOverview()
@@ -305,8 +306,8 @@ async function loadOpsOverview(): Promise<void> {
 }
 
 async function handleSave(): Promise<void> {
-  if (!canManage.value) return
-  if (saving.value) {
+  if (canManage.value !== true) return
+  if (saving.value === true) {
     return
   }
   saving.value = true

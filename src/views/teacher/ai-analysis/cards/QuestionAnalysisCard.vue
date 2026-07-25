@@ -18,7 +18,7 @@
           @change="reload"
         />
         <UiButton
-          v-if="canManageReviewerWrites"
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
           :disabled="!selectedQuestionForCorrection"
@@ -27,20 +27,20 @@
           修正答案并生效
         </UiButton>
         <UiButton
-          v-if="canManageReviewerWrites"
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
-          :loading="generating && !generatingAllMode"
+          :loading="generating === true && generatingAllMode !== true"
           :disabled="!selectedLayoutQuestionId"
           @click="handleGenerateSelected"
         >
           生成当前题
         </UiButton>
         <UiButton
-          v-if="canManageReviewerWrites"
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
-          :loading="generating"
+          :loading="generating === true"
           @click="handleGenerateAll"
         >
           全量生成
@@ -70,7 +70,7 @@
           @change="reload"
         />
         <UiButton
-          v-if="canManageReviewerWrites"
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
           :disabled="!selectedQuestionForCorrection"
@@ -79,20 +79,20 @@
           修正答案并生效
         </UiButton>
         <UiButton
-          v-if="canManageReviewerWrites"
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
-          :loading="generating && !generatingAllMode"
+          :loading="generating === true && generatingAllMode !== true"
           :disabled="!selectedLayoutQuestionId"
           @click="handleGenerateSelected"
         >
           生成当前题
         </UiButton>
         <UiButton
-          v-if="canManageReviewerWrites"
+          v-if="canManageReviewerWrites === true"
           variant="primary"
           size="sm"
-          :loading="generating"
+          :loading="generating === true"
           @click="handleGenerateAll"
         >
           全量生成
@@ -100,7 +100,7 @@
         <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 刷新 </UiButton>
       </div>
       <UiAlertStrip
-        v-if="layoutRoiGap > 0 && !generating"
+        v-if="layoutRoiGap > 0 && generating !== true"
         tone="warning"
         class="question-analysis-card__roi-gap-strip"
         :title="`制卷识别区域未就绪（${layoutRoiGap} 道题）`"
@@ -109,7 +109,7 @@
       />
 
       <AiGenerationProgressPanel
-        v-if="generating"
+        v-if="generating === true"
         title="题目质量分析生成中"
         :waiting-text="
           generatingAllMode
@@ -190,10 +190,10 @@
           <template #empty-action>
             <div class="dp-space" v-if="tableEmptyKind === 'first-run'" style="--dp-space-gap: 8px">
               <UiButton
-                v-if="canManageReviewerWrites"
+                v-if="canManageReviewerWrites === true"
                 variant="outline"
                 size="sm"
-                :loading="generating"
+                :loading="generating === true"
                 @click="handleGenerateAll"
               >
                 全量生成
@@ -205,10 +205,10 @@
               style="--dp-space-gap: 8px"
             >
               <UiButton
-                v-if="canManageReviewerWrites"
+                v-if="canManageReviewerWrites === true"
                 variant="outline"
                 size="sm"
-                :loading="generating && !generatingAllMode"
+                :loading="generating === true && generatingAllMode !== true"
                 :disabled="!selectedLayoutQuestionId"
                 @click="handleGenerateSelected"
               >
@@ -278,6 +278,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type {
   ExamLayoutQuestionViewResponse,
   ExamTemplateResponse,
@@ -352,7 +353,7 @@ const chartRows = ref<ExamQuestionAnalysisRecordResponse[]>([])
 const tableRows = ref<ExamQuestionAnalysisRecordResponse[]>([])
 const chartLoading = ref(false)
 const tableLoading = ref(false)
-const loading = computed(() => chartLoading.value || tableLoading.value)
+const loading = computed(() => chartLoading.value === true || tableLoading.value === true)
 const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
 const generatingAllMode = ref(false)
 const generatingId = ref<string>('')
@@ -590,66 +591,72 @@ async function reloadCurrentScope(): Promise<void> {
 }
 
 async function handleGenerateAll(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
-  if (generating.value) return
+  if (generating.value === true) return
   generationSummary.value = ''
   generatingAllMode.value = true
-  await runGeneration(
-    () =>
-      generateAllQuestionAnalysis({
-        examId: props.examId,
-        classId: props.classId || undefined,
-      }),
-    {
-      successMessage: '已生成全部题目质量分析',
-      onSuccess: async () => {
-        await reload()
-        generationSummary.value = `已生成 ${chartRows.value.length} 道题目质量分析，可查看难度、区分度与正确率。`
-        emit('generated')
+  try {
+    await runGeneration(
+      () =>
+        generateAllQuestionAnalysis({
+          examId: props.examId,
+          classId: props.classId || undefined,
+        }),
+      {
+        successMessage: '已生成全部题目质量分析',
+        onSuccess: async () => {
+          await reload()
+          generationSummary.value = `已生成 ${chartRows.value.length} 道题目质量分析，可查看难度、区分度与正确率。`
+          emit('generated')
+        },
       },
-    },
-  )
-  generatingAllMode.value = false
+    )
+  } finally {
+    generatingAllMode.value = false
+  }
 }
 
 async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
-  if (!layoutQuestionId || generating.value) return
+  if (!layoutQuestionId || generating.value === true) return
   generationSummary.value = ''
   generatingAllMode.value = false
   generatingId.value = layoutQuestionId
-  await runGeneration(
-    () =>
-      generateQuestionAnalysis({
-        examId: props.examId,
-        layoutQuestionId,
-        classId: props.classId || undefined,
-      }),
-    {
-      successMessage: '已重新生成',
-      onSuccess: async () => {
-        await reload()
-        const matched
-          = tableRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
-            ?? chartRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
-        generationSummary.value = matched
-          ? `已生成题 ${matched.questionNo} 的质量分析，可查看难度、区分度与正确率。`
-          : '已生成该题质量分析，可查看难度、区分度与正确率。'
-        emit('generated')
+  try {
+    await runGeneration(
+      () =>
+        generateQuestionAnalysis({
+          examId: props.examId,
+          layoutQuestionId,
+          classId: props.classId || undefined,
+        }),
+      {
+        successMessage: '已重新生成',
+        onSuccess: async () => {
+          await reload()
+          const matched
+            = tableRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
+              ?? chartRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
+          generationSummary.value = matched
+            ? `已生成题 ${matched.questionNo} 的质量分析，可查看难度、区分度与正确率。`
+            : '已生成该题质量分析，可查看难度、区分度与正确率。'
+          emit('generated')
+        },
       },
-    },
-  )
-  generatingId.value = ''
+    )
+  } finally {
+    generatingId.value = ''
+  }
 }
 
 async function handleGenerateSelected(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
@@ -662,12 +669,12 @@ async function handleGenerateSelected(): Promise<void> {
 
 function handleRowAction(actionKey: string, item: ExamQuestionAnalysisRecordResponse): void {
   // MVR-387：写动作统一 !value（computed 已 === true 归一），禁止 truthy/本地身份放行
-  if (actionKey === 'correct-answer' && !canManageReviewerWrites.value) {
+  if (actionKey === 'correct-answer' && canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员或主考可修正答案并生效')
     return
   }
   if (actionKey === 'regenerate') {
-    if (!canManageReviewerWrites.value) {
+    if (canManageReviewerWrites.value !== true) {
       void message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
       return
     }
@@ -680,7 +687,7 @@ function handleRowAction(actionKey: string, item: ExamQuestionAnalysisRecordResp
 }
 
 function handleOpenSelectedQuestionCorrection(): void {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员或主考可修正答案并生效')
     return
   }

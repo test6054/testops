@@ -53,7 +53,7 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
 
   async function generateDraft() {
     const id = volumeId()
-    if (!id || saving.value || confirming.value || exporting.value) return
+    if (!id || saving.value === true || confirming.value === true || exporting.value === true) return
     const revision = catalog.value?.catalogRevision
     if (!revision || loadFailed.value) {
       void message.error('目录状态已失效，请重新加载后再操作')
@@ -94,7 +94,7 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
 
   async function saveCatalog() {
     const id = volumeId()
-    if (!id || saving.value || confirming.value || exporting.value) return
+    if (!id || saving.value === true || confirming.value === true || exporting.value === true) return
     const revision = catalog.value?.catalogRevision
     if (!revision || loadFailed.value) {
       void message.error('目录状态已失效，请重新加载后再操作')
@@ -124,7 +124,7 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
 
   async function confirmCatalog() {
     const id = volumeId()
-    if (!id || saving.value || confirming.value || exporting.value) return
+    if (!id || saving.value === true || confirming.value === true || exporting.value === true) return
     const revision = catalog.value?.catalogRevision
     if (!revision || loadFailed.value) {
       void message.error('目录状态已失效，请重新加载后再操作')
@@ -146,7 +146,7 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
 
   async function exportCatalog() {
     const id = volumeId()
-    if (!id || saving.value || confirming.value || exporting.value) return
+    if (!id || saving.value === true || confirming.value === true || exporting.value === true) return
     exporting.value = true
     try {
       const result = await exportArchiveVolumeCatalog(id)

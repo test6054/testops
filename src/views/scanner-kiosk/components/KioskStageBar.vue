@@ -15,7 +15,7 @@ const currentIndex = computed(() =>
   KIOSK_STAGES.findIndex((s) => s.id === stage.currentStage.value),
 )
 
-const stageSwitchBlocked = computed(() => workflow.pageRegisterRetryLoading.value)
+const stageSwitchBlocked = computed(() => workflow.pageRegisterRetryLoading.value === true)
 </script>
 
 <template>
@@ -29,8 +29,8 @@ const stageSwitchBlocked = computed(() => workflow.pageRegisterRetryLoading.valu
         active: s.id === stage.currentStage.value,
         completed: currentIndex > s.order,
       }"
-      :title="stageSwitchBlocked ? '页登记重试进行中，请稍候' : `Alt+${s.order + 1}: ${s.label}`"
-      :disabled="stageSwitchBlocked"
+      :title="stageSwitchBlocked === true ? '页登记重试进行中，请稍候' : `Alt+${s.order + 1}: ${s.label}`"
+      :disabled="stageSwitchBlocked === true"
       @click="stage.gotoStage(s.id)"
     >
       <span class="stage-index">{{ s.order + 1 }}</span>

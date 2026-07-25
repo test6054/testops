@@ -31,7 +31,7 @@
           class="archive-volume-ocr-search__search-btn"
           variant="primary"
           size="md"
-          :loading="loading"
+          :loading="loading === true"
           @click="handleSearch"
         >
           检索
@@ -55,7 +55,7 @@
         pagination-mode="server"
         :columns="hitColumns"
         :data-source="hitsLoadFailed ? [] : hits"
-        :loading="loading"
+        :loading="loading === true"
         :total="hitPageTotal"
         :show-header="false"
         flat
@@ -85,14 +85,14 @@
                 定位材料
               </UiTextAction>
               <UiTextAction
-                v-if="canViewMaterialOcr(record)"
+                v-if="canViewMaterialOcr(record) === true"
                 tone="primary"
                 @click="openMaterialOcrPreview(record)"
               >
                 {{ record.matchPageNo ? `预览第 ${record.matchPageNo} 页原文` : '预览原文' }}
               </UiTextAction>
               <UiTextAction
-                v-if="canViewMaterialOcr(record)"
+                v-if="canViewMaterialOcr(record) === true"
                 tone="primary"
                 @click="openMaterialOcr(record.materialId)"
               >
@@ -114,9 +114,9 @@
         <span class="archive-volume-ocr-search__overview-title">材料文字识别状态</span>
         <UiButton
           size="sm"
-          v-if="canMaintainMaterial && pendingOcrCount > 0"
+          v-if="canMaintainMaterial === true && pendingOcrCount > 0"
           variant="ghost"
-          :loading="batchOcrSubmitting"
+          :loading="batchOcrSubmitting === true"
           @click="handleBatchOcr"
         >
           批量文字识别
@@ -128,7 +128,7 @@
         pagination-mode="server"
         :columns="overviewColumns"
         :data-source="overviewLoadFailed ? [] : ocrMaterials"
-        :loading="overviewLoading"
+        :loading="overviewLoading === true"
         :total="overviewPageTotal"
         :sticky-header="false"
         flat
@@ -154,13 +154,13 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
-              v-if="canViewMaterialOcrMaterial(record) || canTriggerMaterialOcr(record)"
+              v-if="canViewMaterialOcrMaterial(record) === true || canTriggerMaterialOcr(record) === true"
               :items="[
-                { key: 'view', label: '查看文本', hidden: !canViewMaterialOcrMaterial(record) },
+                { key: 'view', label: '查看文本', hidden: canViewMaterialOcrMaterial(record) !== true },
                 {
                   key: 'trigger',
                   label: triggeringMaterialIds.has(record.materialId) ? '提交中' : '触发文字识别',
-                  hidden: !canTriggerMaterialOcr(record),
+                  hidden: canTriggerMaterialOcr(record) !== true,
                   disabled: triggeringMaterialIds.has(record.materialId),
                 },
               ]"
@@ -182,6 +182,8 @@
 </template>
 
 <script setup lang="ts">
+// MVR-951：函数式 can*(...) 写入口仅认 === true
+// MVR-950：残留 can* 控制流仅认 === true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveVolumeMaterialResponse,
@@ -221,12 +223,18 @@ import ArchiveVolumeMaterialOcrDetailModal from '@/views/teacher/archive-volume/
 
 defineOptions({ name: 'ArchiveVolumeOcrSearchPanel' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   volumeId: string
   canRegisterMaterial: boolean
   /** MVR-185：批量 OCR 可不在收材窗口 */
-  canMaintainMaterial?: boolean
-}>()
+  canMaintainMaterial?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+}>(),
+  {
+  canRegisterMaterial: false,
+  canMaintainMaterial: false,
+  },
+)
 
 const emit = defineEmits<{
   'refreshed': [options?: { silent?: boolean }]
@@ -347,7 +355,7 @@ function canViewMaterialOcrMaterial(record: ArchiveVolumeMaterialResponse): bool
 
 function canTriggerMaterialOcr(record: ArchiveVolumeMaterialResponse): boolean {
   return Boolean(
-    props.canMaintainMaterial
+    props.canMaintainMaterial === true
     && record.fileId
     && (record.ocrStatus === ArchiveMaterialOcrStatusCode.PENDING
       || record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
@@ -417,7 +425,7 @@ function goGlobalSearch(): void {
 
 async function handleBatchOcr(): Promise<void> {
   // MVR-312：与 canMaintainMaterial / 按钮 v-if 同源二次拦截
-  if (!props.canMaintainMaterial) {
+  if (props.canMaintainMaterial !== true) {
     void message.warning('当前账号无维护材料识别权限')
     return
   }
@@ -433,6 +441,17 @@ async function handleBatchOcr(): Promise<void> {
     cancelText: '取消',
   })
   if (!confirmed) return
+  // MVR-938：确认后再次认 canMaintainMaterial，防对话框期间权限漂移
+  if (props.canMaintainMaterial !== true) {
+    void message.warning('当前账号无维护材料识别权限')
+    return
+  }
+  if (pendingOcrCount.value <= 0) {
+    showFormValidationMessage('没有可触发文字识别的材料')
+    return
+  }
+  // MVR-970：确认后批量 OCR 防重入
+  if (batchOcrSubmitting.value === true) return
   batchOcrSubmitting.value = true
   try {
     const result = await batchTriggerArchiveVolumeMaterialOcr(props.volumeId)
@@ -452,9 +471,9 @@ async function handleBatchOcr(): Promise<void> {
 
 function confirmTriggerOcr(material: ArchiveVolumeMaterialResponse): void {
   // MVR-421：与 canTriggerMaterialOcr 同源二次闸（维护权∧fileId∧PENDING/FAILED/空态）
-  if (!canTriggerMaterialOcr(material)) {
+  if (canTriggerMaterialOcr(material) !== true) {
     void message.warning(
-      !props.canMaintainMaterial
+      props.canMaintainMaterial !== true
         ? '当前账号无维护材料识别权限'
         : '当前材料不可触发文字识别（无文件或识别状态不允许）',
     )
@@ -468,6 +487,15 @@ function confirmTriggerOcr(material: ArchiveVolumeMaterialResponse): void {
     okText: '入队',
     cancelText: '取消',
     onOk: async () => {
+      // MVR-938：onOk 再认 canTriggerMaterialOcr，防确认等待期间材料态/权限漂移
+      if (canTriggerMaterialOcr(material) !== true) {
+        void message.warning(
+          props.canMaintainMaterial !== true
+            ? '当前账号无维护材料识别权限'
+            : '当前材料不可触发文字识别（无文件或识别状态不允许）',
+        )
+        return
+      }
       if (triggeringMaterialIds.has(material.materialId)) return
       triggeringMaterialIds.add(material.materialId)
       try {

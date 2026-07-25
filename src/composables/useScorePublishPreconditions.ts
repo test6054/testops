@@ -191,7 +191,7 @@ export function useScorePublishPreconditions(options: {
     if (!ensureSoftRiskReviewedBeforePublish(overview)) {
       return false
     }
-    if (!overview.readyToPublish) {
+    if (overview.readyToPublish !== true) {
       void message.warning('当前考试尚未满足发布前置条件，请先完成成绩确认或风险复核后再发布')
       return false
     }

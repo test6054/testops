@@ -4,7 +4,7 @@
       <ContextBar layout="workbench" show-title title="复核任务中心">
         <template #actions>
           <UiButton
-            v-if="canManageReviewerWrites"
+            v-if="canManageReviewerWrites === true"
             variant="outline"
             size="sm"
             @click="goBatchConfirm"
@@ -127,6 +127,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   GradeSourceCode,
@@ -318,25 +319,29 @@ async function loadTasks(): Promise<void> {
   }
   loading.value = true
   try {
-    const [result, layoutSummary] = await Promise.all([
-      listReviewTasks({
-        examId: examId.value,
-        status: statusFilter.value,
-        excludeArbitration: true,
-        pageNum: pagination.current,
-        pageSize: pagination.pageSize,
-      }),
-      // MVR-291：空列表时 list 项无能力位，用制卷摘要 canManageReviewerWrites 补齐
-      getExamLayoutQuestionSummary(examId.value).catch(() => null),
-    ])
+    // MVR-980：先拉列表；空列表再用制卷摘要补齐 canManageReviewerWrites（禁止静默 catch 与损坏赋值）
+    const result = await listReviewTasks({
+      examId: examId.value,
+      status: statusFilter.value,
+      excludeArbitration: true,
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+    })
     const records = result.list
     rows.value = records
     pagination.total = result.total
     // MVR-328：列表有项时仅认行级 can===true；空列表用制卷摘要 can===true 补齐
-    canManageReviewerWrites.value
-      = records.length > 0
-        ? records[0].canManageReviewerWrites === true
-        : layoutSummary?.canManageReviewerWrites === true
+    if (records.length > 0) {
+      canManageReviewerWrites.value = records[0].canManageReviewerWrites === true
+    } else {
+      try {
+        const layoutSummary = await getExamLayoutQuestionSummary(examId.value)
+        canManageReviewerWrites.value = layoutSummary.canManageReviewerWrites === true
+      } catch (layoutError) {
+        canManageReviewerWrites.value = false
+        showUserError(layoutError, '复核写权限能力位加载失败，写入口暂不可用')
+      }
+    }
   } catch (error) {
     rows.value = []
     pagination.total = 0
@@ -397,7 +402,7 @@ function goBatchConfirm(): void {
     return
   }
   // MVR-291/394：无写能力不得导航进批量确认页（页内虽叠闸，避免假入口）
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无批量复核写权限')
     return
   }

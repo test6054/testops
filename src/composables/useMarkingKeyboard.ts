@@ -48,8 +48,8 @@ export function useMarkingKeyboard(options: UseMarkingKeyboardOptions) {
       // MVR-413：Enter 提交叠 canSubmit ∧ !isReadOnly，与给分二次闸同源
       if (
         options.submitting.value
-        || !options.canSubmit.value
-        || options.isReadOnly.value
+        || options.canSubmit.value !== true
+        || options.isReadOnly.value === true
         || isGradingEnterInputTarget(event.target)
       ) {
         return
@@ -76,7 +76,7 @@ export function useMarkingKeyboard(options: UseMarkingKeyboardOptions) {
       }
       return
     }
-    if (/^\d$/.test(event.key) && options.canSubmit.value && !options.isReadOnly.value) {
+    if (/^\d$/.test(event.key) && options.canSubmit.value === true && options.isReadOnly.value !== true) {
       const digit = Number(event.key)
       if (options.usesWholePaperWorkspace.value) {
         const question = resolveActiveWholeQuestion()

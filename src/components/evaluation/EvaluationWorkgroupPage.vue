@@ -162,7 +162,7 @@ const submitting = computed(() => operationKey.value.startsWith('save:'))
 
 /** 工作组保存和删除必须串行，避免成员覆盖导入与表单提交交叉写入。 */
 function beginOperation(key: string): boolean {
-  if (writing.value) return false
+  if (writing.value === true) return false
   operationKey.value = key
   return true
 }
@@ -238,7 +238,7 @@ function handleFilterProgramChange(value: string | null) {
 }
 
 function openCreate() {
-  if (interactionLocked.value) return
+  if (interactionLocked.value === true) return
   editorMode.value = 'create'
   Object.assign(editor, {
     id: undefined,
@@ -255,7 +255,7 @@ function openCreate() {
 }
 
 function openEdit(record: EvaluationWorkgroupVO) {
-  if (interactionLocked.value) return
+  if (interactionLocked.value === true) return
   editorMode.value = 'edit'
   Object.assign(editor, {
     id: record.id,
@@ -272,7 +272,7 @@ function openEdit(record: EvaluationWorkgroupVO) {
       note: member.note ?? '',
     })),
     responsibility: record.responsibility ?? '',
-    enabled: record.enabled ?? true,
+    enabled: record.enabled === true,
   })
   if (editor.members.length === 0) {
     editor.members.push(createEmptyMember())
@@ -466,7 +466,7 @@ const membersDrawerVisible = ref(false)
 const membersDrawerTarget = ref<EvaluationWorkgroupVO | null>(null)
 const membersDrawerRows = computed(() => membersDrawerTarget.value?.members ?? [])
 const interactionLocked = computed(
-  () => writing.value || editorVisible.value || importVisible.value || membersDrawerVisible.value,
+  () => writing.value === true || editorVisible.value === true || importVisible.value === true || membersDrawerVisible.value === true,
 )
 
 const memberColumns: ColumnsType = [
@@ -497,13 +497,13 @@ function convenerNameOf(record: EvaluationWorkgroupVO): string {
 }
 
 function openImportMembers(record: EvaluationWorkgroupVO) {
-  if (interactionLocked.value) return
+  if (interactionLocked.value === true) return
   importTargetWorkgroup.value = record
   importVisible.value = true
 }
 
 function openMembersDrawer(record: EvaluationWorkgroupVO) {
-  if (interactionLocked.value) return
+  if (interactionLocked.value === true) return
   membersDrawerTarget.value = record
   membersDrawerVisible.value = true
 }
@@ -559,7 +559,7 @@ onActivated(() => {
           <UiTag tone="blue" size="sm"> 教学档案袋 </UiTag>
         </template>
         <template #actions>
-          <UiButton variant="primary" size="sm" :disabled="interactionLocked" @click="openCreate">
+          <UiButton variant="primary" size="sm" :disabled="interactionLocked === true" @click="openCreate">
             新建工作组
           </UiButton>
         </template>
@@ -571,7 +571,7 @@ onActivated(() => {
     <UiCard class="detail-table-card ewg__table-card">
       <template #title>工作组台账</template>
       <template v-if="!isPortfolioDomain" #extra>
-        <UiButton variant="primary" size="sm" :disabled="interactionLocked" @click="openCreate">
+        <UiButton variant="primary" size="sm" :disabled="interactionLocked === true" @click="openCreate">
           新建工作组
         </UiButton>
       </template>
@@ -615,8 +615,8 @@ onActivated(() => {
             <UiTag tone="gray" size="sm">{{ workgroupLevelLabel(record.levelCode) }}</UiTag>
           </template>
           <template v-else-if="column.key === 'enabled'">
-            <UiTag :tone="record.enabled ? 'green' : 'gray'" size="sm">
-              {{ record.enabled ? '启用' : '停用' }}
+            <UiTag :tone="record.enabled === true ? 'green' : 'gray'" size="sm">
+              {{ record.enabled === true ? '启用' : '停用' }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'convenerUserName'">
@@ -642,8 +642,8 @@ onActivated(() => {
       v-model:open="editorVisible"
       :title="editorMode === 'create' ? '新建工作组' : '编辑工作组'"
       :confirm-loading="submitting"
-      :closable="!writing"
-      :mask-closable="!writing"
+      :closable="writing !== true"
+      :mask-closable="writing !== true"
       :width="720"
       @ok="submitEditor"
     >
@@ -655,13 +655,13 @@ onActivated(() => {
                 size="sm"
                 v-model="editor.levelCode"
                 :options="WORKGROUP_LEVEL_OPTIONS"
-                :disabled="editorMode === 'edit' || writing"
+                :disabled="editorMode === 'edit' || writing === true"
               />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">
             <UiFormItem label="启用状态">
-              <UiSwitch size="sm" v-model="editor.enabled" :disabled="writing" />
+              <UiSwitch size="sm" v-model="editor.enabled" :disabled="writing === true" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -670,24 +670,24 @@ onActivated(() => {
             size="sm"
             v-model="editor.workgroupCode"
             :maxlength="64"
-            :disabled="editorMode === 'edit' || writing"
+            :disabled="editorMode === 'edit' || writing === true"
             placeholder="租户内唯一编码"
           />
         </UiFormItem>
         <UiFormItem label="名称" required>
-          <UiInput size="sm" v-model="editor.workgroupName" :maxlength="128" :disabled="writing" />
+          <UiInput size="sm" v-model="editor.workgroupName" :maxlength="128" :disabled="writing === true" />
         </UiFormItem>
         <UiFormItem label="专业大类" required>
           <ProgramSelector
             :value="editor.programId || null"
-            :disabled="editorMode === 'edit' || writing"
+            :disabled="editorMode === 'edit' || writing === true"
             @change="handleEditorProgramChange"
           />
         </UiFormItem>
         <UiFormItem label="召集人" required>
           <TeacherSelector
             :value="getEditorConvenerId()"
-            :disabled="writing"
+            :disabled="writing === true"
             @change="handleEditorConvenerChange"
           />
         </UiFormItem>
@@ -698,14 +698,14 @@ onActivated(() => {
             :maxlength="1000"
             :rows="3"
             :show-count="true"
-            :disabled="writing"
+            :disabled="writing === true"
           />
         </UiFormItem>
         <UiFormItem label="成员清单">
           <div class="ewg__member-editor">
             <div class="ewg__member-editor-header">
               <p class="ewg__member-editor-tip">支持逐行录入，也可在保存后通过 Excel 覆盖导入。</p>
-              <UiButton variant="outline" size="sm" :disabled="writing" @click="appendMember">
+              <UiButton variant="outline" size="sm" :disabled="writing === true" @click="appendMember">
                 新增成员
               </UiButton>
             </div>
@@ -721,7 +721,7 @@ onActivated(() => {
                     v-model="member.userCode"
                     :maxlength="64"
                     placeholder="工号"
-                    :disabled="writing"
+                    :disabled="writing === true"
                   />
                 </UiCol>
                 <UiCol :span="5">
@@ -730,7 +730,7 @@ onActivated(() => {
                     v-model="member.userName"
                     :maxlength="64"
                     placeholder="姓名"
-                    :disabled="writing"
+                    :disabled="writing === true"
                   />
                 </UiCol>
                 <UiCol :span="5">
@@ -739,7 +739,7 @@ onActivated(() => {
                     v-model="member.role"
                     :options="WORKGROUP_MEMBER_ROLE_OPTIONS"
                     placeholder="角色"
-                    :disabled="writing"
+                    :disabled="writing === true"
                   />
                 </UiCol>
                 <UiCol :span="7">
@@ -748,13 +748,13 @@ onActivated(() => {
                     v-model="member.note"
                     :maxlength="255"
                     placeholder="备注：单位 / 联系方式 / 组织角色"
-                    :disabled="writing"
+                    :disabled="writing === true"
                   />
                 </UiCol>
                 <UiCol :span="2" class="ewg__member-row-action">
                   <UiTextAction
                     tone="danger"
-                    :disabled="editor.members.length === 1 || writing"
+                    :disabled="editor.members.length === 1 || writing === true"
                     @click="removeMember(index)"
                   >
                     删除
@@ -786,8 +786,8 @@ onActivated(() => {
       :title="`成员清单（${membersDrawerTarget?.workgroupName || ''}）`"
       :width="720"
       placement="right"
-      :closable="!writing"
-      :mask-closable="!writing"
+      :closable="writing !== true"
+      :mask-closable="writing !== true"
     >
       <UiEmpty size="sm" v-if="!membersDrawerRows.length" description="该工作组尚无成员" />
       <UiDataTable

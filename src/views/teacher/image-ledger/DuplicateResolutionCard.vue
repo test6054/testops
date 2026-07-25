@@ -11,7 +11,7 @@
       pagination-mode="server"
       :columns="columns"
       :data-source="rows"
-      :loading="loading"
+      :loading="loading === true"
       :load-error="loadError"
       :total="pageTotal"
       :sticky-header="false"
@@ -30,7 +30,7 @@
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
-            v-if="canManageOwnerLedgerWrites"
+            v-if="canManageOwnerLedgerWrites === true"
             :items="[{ key: 'resolve', label: '处置' }]"
             split
             @action="() => $emit('resolve', rows[index])"
@@ -60,12 +60,17 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'DuplicateResolutionCard' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   examId: string
   pendingDuplicateCount: number
   /** MVR-264：主考写能力；非主考不展示处置 */
-  canManageOwnerLedgerWrites?: boolean
-}>()
+  canManageOwnerLedgerWrites?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+}>(),
+  {
+  canManageOwnerLedgerWrites: false,
+  },
+)
 
 defineEmits<{ (e: 'resolve', record: ExamPaperDuplicateResolutionVO): void }>()
 

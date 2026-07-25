@@ -11,7 +11,7 @@
       <UiButton
         variant="primary"
         :loading="ac.submitting.value"
-        :disabled="ac.submitting.value || ac.templateLoading.value || ac.templateLoadFailed.value"
+        :disabled="ac.submitting.value === true || ac.templateLoading.value === true || ac.templateLoadFailed.value === true"
         @click="handleSubmit"
       >
         <template v-if="!ac.submitting.value" #icon><SaveOutlined /></template>
@@ -70,7 +70,7 @@
       <UiButton
         variant="primary"
         :loading="ac.submitting.value"
-        :disabled="ac.submitting.value || ac.templateLoading.value || ac.templateLoadFailed.value"
+        :disabled="ac.submitting.value === true || ac.templateLoading.value === true || ac.templateLoadFailed.value === true"
         @click="handleSubmit"
       >
         <template v-if="!ac.submitting.value" #icon><SaveOutlined /></template>

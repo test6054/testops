@@ -75,6 +75,7 @@
 </template>
 
 <script setup lang="ts">
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveVolumeAuditEventResponse,
@@ -246,7 +247,7 @@ function goList() {
 
 async function initPage() {
   await loadGrants()
-  if (grantsLoadFailed.value || !canViewGlobalAudit.value) {
+  if (grantsLoadFailed.value || canViewGlobalAudit.value !== true) {
     loadFailed.value = true
     return
   }

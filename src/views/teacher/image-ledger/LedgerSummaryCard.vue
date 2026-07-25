@@ -45,10 +45,10 @@
       </div>
       <div class="ledger-summary__hero-right">
         <UiButton
-          v-if="canManageOwnerLedgerWrites"
+          v-if="canManageOwnerLedgerWrites === true"
           variant="primary"
           size="sm"
-          :loading="balancing"
+          :loading="balancing === true"
           :disabled="!ledger"
           @click="$emit('balance')"
         >
@@ -97,13 +97,18 @@ import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'LedgerSummaryCard' })
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   ledger: ImageLedgerDetailResponse | null
   loading: boolean
   balancing: boolean
   /** MVR-264：主考写能力；非主考隐藏对账按钮 */
-  canManageOwnerLedgerWrites?: boolean
-}>()
+  canManageOwnerLedgerWrites?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+}>(),
+  {
+  canManageOwnerLedgerWrites: false,
+  },
+)
 defineEmits<{ (e: 'balance'): void }>()
 
 const statusLabel = computed(() => {

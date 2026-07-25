@@ -268,7 +268,7 @@ watch(
       return
     }
     resetScopeState()
-    if (props.disabled) {
+    if (props.disabled === true) {
       return
     }
     void loadExamOptions()
@@ -276,7 +276,7 @@ watch(
 )
 
 onMounted(() => {
-  if (!props.disabled) {
+  if (props.disabled !== true) {
     void loadExamOptions()
   }
 })

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// MVR-950：残留 can* 控制流仅认 === true
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { Rule } from 'ant-design-vue/es/form'
 import type { ClassInfoDto } from '@/apis/edu/class'
 import type { ArchiveTenantTemplateSetResponse } from '@/apis/mark/archive-platform-template'
@@ -59,11 +62,18 @@ import {
   selectValueToNullableString,
 } from '@/views/teacher/archive-volume/archive-task-create/select-value-bridge'
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   detail: ArchiveVolumeDetailResponse
-  canManageCollaborators: boolean
-  canUpdateArchiveDueTime: boolean
-}>()
+  canManageCollaborators?: boolean
+  canUpdateArchiveDueTime?: boolean
+}>(),
+  {
+  canManageCollaborators: false,
+  canUpdateArchiveDueTime: false,
+  },
+)
 
 const emit = defineEmits<{
   'open-materials': []
@@ -136,11 +146,11 @@ const identityLocked = computed(
     volume.value.sourceType === ArchiveVolumeSourceTypeCode.ONLINE_MARKING
     || Boolean(volume.value.examId),
 )
-const canEdit = computed(() => props.canManageCollaborators)
+const canEdit = computed(() => props.canManageCollaborators === true)
 const canEditTemplate = computed(
-  () => canEdit.value && volume.value.volumeStatus === ArchiveVolumeStatusCode.DRAFT,
+  () => canEdit.value === true && volume.value.volumeStatus === ArchiveVolumeStatusCode.DRAFT,
 )
-const canEditDue = computed(() => props.canUpdateArchiveDueTime)
+const canEditDue = computed(() => props.canUpdateArchiveDueTime === true)
 
 const academicYearStartOptions = generateAcademicYearStartOptions().map((year) => ({
   value: year,
@@ -173,7 +183,7 @@ const sourceTypeLabel = computed(() =>
 )
 
 const scoreSourceCodes = computed((): ArchiveScoreSourceCode[] => {
-  if (identityLocked.value) {
+  if (identityLocked.value === true) {
     return volume.value.scoreSource ? [volume.value.scoreSource] : []
   }
   if (volume.value.sourceType === ArchiveVolumeSourceTypeCode.HISTORY_IMPORT) {
@@ -245,7 +255,7 @@ function syncFormFromDetail(): void {
   form.examForm = v.examForm
   form.securityLevel = v.securityLevel
   form.permanentRetention = v.permanentRetention === true
-  form.retentionYears = form.permanentRetention ? undefined : v.retentionYears
+  form.retentionYears = form.permanentRetention === true ? undefined : v.retentionYears
   form.responsibleUserId = v.responsibleUserId ?? organizerFallbackId.value
   form.archiveDueTime = v.archiveDueTime || undefined
   form.reason = ''
@@ -307,7 +317,7 @@ async function loadTemplateSets(): Promise<void> {
 }
 
 async function loadRelatedExamOptions(keyword?: string): Promise<void> {
-  if (identityLocked.value || !form.courseId || !form.semester) {
+  if (identityLocked.value === true || !form.courseId || !form.semester) {
     return
   }
   relatedExamLoading.value = true
@@ -360,7 +370,7 @@ function handleTemplateChange(value: UiOptionValue | UiOptionValue[] | undefined
   }
   if (selected?.defaultPermanentRetention != null) {
     form.permanentRetention = selected.defaultPermanentRetention === true
-    form.retentionYears = form.permanentRetention
+    form.retentionYears = form.permanentRetention === true
       ? undefined
       : (selected.defaultRetentionYears ?? form.retentionYears)
   }
@@ -400,11 +410,16 @@ function buildRequest(): ArchiveVolumeTaskSettingsUpdateRequest | null {
     showFormValidationMessage('归档标题不能为空')
     return null
   }
-  if (!form.permanentRetention && (form.retentionYears == null || form.retentionYears < 1)) {
+  if (form.permanentRetention !== true && (form.retentionYears == null || form.retentionYears < 1)) {
     showFormValidationMessage('非永久保管须填写保管年限')
     return null
   }
   const dueChanged = form.archiveDueTime !== (volume.value.archiveDueTime || undefined)
+  if (dueChanged && props.canUpdateArchiveDueTime !== true) {
+    // MVR-930：截止覆盖仅认 BE canUpdateArchiveDueTime；无权限时禁止随其它字段一并改期
+    void message.warning('当前账号不可覆盖归档截止时刻')
+    return null
+  }
   if (dueChanged && !form.reason.trim()) {
     showFormValidationMessage('修改归档截止须填写覆盖原因')
     return null
@@ -423,7 +438,7 @@ function buildRequest(): ArchiveVolumeTaskSettingsUpdateRequest | null {
     scoreSource: form.scoreSource,
     examForm: form.examForm ?? null,
     securityLevel: form.securityLevel,
-    retentionYears: form.permanentRetention ? undefined : form.retentionYears,
+    retentionYears: form.permanentRetention === true ? undefined : form.retentionYears,
     permanentRetention: form.permanentRetention,
     responsibleUserId: form.responsibleUserId,
     expectedArchiveDueTime: volume.value.archiveDueTime ?? null,
@@ -433,8 +448,8 @@ function buildRequest(): ArchiveVolumeTaskSettingsUpdateRequest | null {
 }
 
 async function saveTaskSettings(): Promise<void> {
-  if (saving.value) return
-  if (!canEdit.value) {
+  if (saving.value === true) return
+  if (canEdit.value !== true) {
     void message.warning('当前账号无任务设置维护权限')
     return
   }
@@ -469,7 +484,7 @@ watch(
     props.detail.volume.teachingClassId,
   ],
   () => {
-    if (!saving.value) {
+    if (saving.value !== true) {
       syncFormFromDetail()
     }
   },
@@ -510,7 +525,7 @@ onMounted(() => {
         <p class="section-desc">
           与创建页同构，维护建卷身份与归档标题。
           {{
-            identityLocked
+            identityLocked === true
               ? '线上阅卷卷的课程/学年学期等由考试锚定，不可改。'
               : '草稿与收材阶段可完整编辑。'
           }}
@@ -522,7 +537,7 @@ onMounted(() => {
             class="av-task-settings__control-grow"
             placeholder="请选择课程"
             :allow-clear="false"
-            :disabled="!canEdit || identityLocked"
+            :disabled="canEdit !== true || identityLocked === true"
             @change="handleCourseChange"
           />
         </UiFormItem>
@@ -533,7 +548,7 @@ onMounted(() => {
             size="sm"
             placeholder="例如：2024-2025 高等数学期末考查"
             :maxlength="512"
-            :disabled="!canEdit"
+            :disabled="canEdit !== true"
           />
         </UiFormItem>
 
@@ -550,11 +565,11 @@ onMounted(() => {
                 size="sm"
                 v-model="departmentIdSelectValue"
                 :options="departmentOptions"
-                :loading="departmentLoading"
+                :loading="departmentLoading === true"
                 placeholder="请选择院系"
                 allow-search
                 option-filter-prop="label"
-                :disabled="!canEdit || identityLocked"
+                :disabled="canEdit !== true || identityLocked === true"
                 @change="handleDepartmentChange"
               />
             </UiFormItem>
@@ -570,7 +585,7 @@ onMounted(() => {
               <ClassSelector
                 v-model:value="form.teachingClassId"
                 :department-id="form.departmentId"
-                :disabled="!canEdit || identityLocked || !form.departmentId"
+                :disabled="canEdit !== true || identityLocked === true || !form.departmentId"
                 placeholder="请选择授课班级"
                 @change="handleClassChange"
               />
@@ -592,7 +607,7 @@ onMounted(() => {
                 v-model="form.academicYearStartYear"
                 :options="academicYearStartOptions"
                 placeholder="请选择起始年"
-                :disabled="!canEdit || identityLocked"
+                :disabled="canEdit !== true || identityLocked === true"
               />
             </UiFormItem>
           </UiCol>
@@ -617,7 +632,7 @@ onMounted(() => {
                 v-model="form.semester"
                 :options="SemesterOptions"
                 placeholder="请选择学期"
-                :disabled="!canEdit || identityLocked"
+                :disabled="canEdit !== true || identityLocked === true"
               />
             </UiFormItem>
           </UiCol>
@@ -628,7 +643,7 @@ onMounted(() => {
                 v-model="form.archiveNo"
                 placeholder="不填则保持原编号"
                 :maxlength="64"
-                :disabled="!canEdit"
+                :disabled="canEdit !== true"
               />
             </UiFormItem>
           </UiCol>
@@ -646,12 +661,12 @@ onMounted(() => {
                 size="sm"
                 v-model="relatedExamIdSelectValue"
                 :options="relatedExamOptions"
-                :loading="relatedExamLoading"
+                :loading="relatedExamLoading === true"
                 placeholder="可选，选择关联考试"
                 allow-search
                 allow-clear
                 option-filter-prop="label"
-                :disabled="!canEdit || identityLocked"
+                :disabled="canEdit !== true || identityLocked === true"
                 @search="loadRelatedExamOptions"
               />
             </UiFormItem>
@@ -672,11 +687,11 @@ onMounted(() => {
             size="sm"
             v-model="templateSetCodeSelectValue"
             :options="templateSetOptions"
-            :loading="templateLoading"
+            :loading="templateLoading === true"
             placeholder="请选择模板套"
             allow-search
             option-filter-prop="label"
-            :disabled="!canEditTemplate"
+            :disabled="canEditTemplate !== true"
             @change="handleTemplateChange"
           />
         </UiFormItem>
@@ -687,7 +702,7 @@ onMounted(() => {
             block
             :model-value="form.scoreSource"
             :options="scoreSourceRadioOptions"
-            :disabled="!canEdit || identityLocked"
+            :disabled="canEdit !== true || identityLocked === true"
             @update:model-value="onScoreSourceSelect"
           />
         </UiFormItem>
@@ -701,7 +716,7 @@ onMounted(() => {
                 :options="ARCHIVE_EXAM_FORM_OPTIONS"
                 allow-clear
                 placeholder="可选"
-                :disabled="!canEdit"
+                :disabled="canEdit !== true"
               />
             </UiFormItem>
           </UiCol>
@@ -717,7 +732,7 @@ onMounted(() => {
                 size="sm"
                 v-model="form.securityLevel"
                 :options="ARCHIVE_SECURITY_LEVEL_OPTIONS"
-                :disabled="!canEdit"
+                :disabled="canEdit !== true"
               />
             </UiFormItem>
           </UiCol>
@@ -727,7 +742,7 @@ onMounted(() => {
           <TeacherSelector
             :value="form.responsibleUserId"
             placeholder="请选择归档责任人"
-            :disabled="!canEdit"
+            :disabled="canEdit !== true"
             @change="handleResponsibleChange"
           />
         </UiFormItem>
@@ -742,10 +757,10 @@ onMounted(() => {
                   v-model="form.retentionYears"
                   :min="1"
                   :max="100"
-                  :disabled="!canEdit || form.permanentRetention"
+                  :disabled="canEdit !== true || form.permanentRetention === true"
                 />
                 <span class="retention-field__unit">年</span>
-                <UiCheckbox v-model="form.permanentRetention" :disabled="!canEdit">
+                <UiCheckbox v-model="form.permanentRetention" :disabled="canEdit !== true">
                   永久保管
                 </UiCheckbox>
               </div>
@@ -766,7 +781,7 @@ onMounted(() => {
                 format="YYYY-MM-DD HH:mm"
                 value-format="YYYY-MM-DD HH:mm:ss"
                 placeholder="选择归档截止时刻"
-                :disabled="!canEditDue"
+                :disabled="canEditDue !== true"
                 class="av-task-settings__control-grow"
               />
             </UiFormItem>
@@ -774,7 +789,7 @@ onMounted(() => {
         </UiRow>
 
         <UiFormItem
-          v-if="canEditDue && form.archiveDueTime !== (volume.archiveDueTime || undefined)"
+          v-if="canEditDue === true && form.archiveDueTime !== (volume.archiveDueTime || undefined)"
           label="覆盖原因"
           required
         >
@@ -790,8 +805,8 @@ onMounted(() => {
           <UiButton
             size="sm"
             variant="primary"
-            :loading="saving"
-            :disabled="!canEdit"
+            :loading="saving === true"
+            :disabled="canEdit !== true"
             @click="saveTaskSettings"
           >
             保存任务设置

@@ -42,7 +42,7 @@
             <div class="create-form__switch-row">
               <UiSwitch size="sm" v-model="markingTeamForm.anonymousMode" />
               <span class="create-form__switch-label">
-                {{ markingTeamForm.anonymousMode ? '启用匿名' : '关闭匿名' }}
+                {{ markingTeamForm.anonymousMode === true ? '启用匿名' : '关闭匿名' }}
               </span>
             </div>
           </UiFormItem>

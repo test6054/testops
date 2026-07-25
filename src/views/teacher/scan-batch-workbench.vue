@@ -160,7 +160,7 @@
               <span v-else class="muted">0</span>
             </template>
             <template v-else-if="column.key === 'orderAudit'">
-              <UiTag v-if="record.orderAuditAttentionPending" tone="orange" size="sm">
+              <UiTag v-if="record.orderAuditAttentionPending === true" tone="orange" size="sm">
                 余页待确认
               </UiTag>
               <UiTag v-else-if="record.orderAuditPassed === false" tone="red" size="sm">
@@ -186,6 +186,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-951：函数式 can*(...) 写入口仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamScannerDeviceResponse } from '@/apis/mark/exam-mark-scanner'
 import type { MarkingProgressResponse } from '@/apis/mark/exam-progress'
@@ -470,7 +471,7 @@ function batchPageRegisterTone(batch: ExamScannerBatchResponse): BadgeTone {
 }
 
 function canRetryBatchPageRegister(batch: ExamScannerBatchResponse): boolean {
-  if (!canManageOwnerBatchActions.value) {
+  if (canManageOwnerBatchActions.value !== true) {
     return false
   }
   const state = batch.pageRegisterState
@@ -486,7 +487,7 @@ function canRetryBatchPageRegister(batch: ExamScannerBatchResponse): boolean {
 function batchRowActions(batch: ExamScannerBatchResponse): UiTableRowActionItem[] {
   // 可重试时「重试登记」为唯一 primary；否则「详情」
   const actions: UiTableRowActionItem[] = []
-  if (canRetryBatchPageRegister(batch)) {
+  if (canRetryBatchPageRegister(batch) === true) {
     actions.push({
       key: 'retry-register',
       label: '重试登记',
@@ -505,9 +506,9 @@ async function retryBatchPageRegister(batch: ExamScannerBatchResponse): Promise<
     return
   }
   // MVR-421：与 canRetryBatchPageRegister / 行内显隐同源二次闸（主考写∧可恢复/待重试登记态）
-  if (!canRetryBatchPageRegister(batch)) {
+  if (canRetryBatchPageRegister(batch) !== true) {
     void message.warning(
-      canManageOwnerBatchActions.value
+      canManageOwnerBatchActions.value === true
         ? '当前批次不可重试扫描页登记（状态不允许）'
         : '仅考试主考可重试扫描页登记',
     )

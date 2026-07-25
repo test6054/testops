@@ -83,7 +83,7 @@ export function useExamConfidential(examId: Ref<string>) {
   )
 
   const watermarkLines = computed(() => (
-    confidential.value
+    confidential.value === true
       ? buildConfidentialWatermarkLines({ examLabel: examLabel.value })
       : []
   ))

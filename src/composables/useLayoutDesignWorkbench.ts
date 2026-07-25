@@ -125,14 +125,15 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     })
   }
 
-  const layoutCanvasReadonly = computed(() => !layoutWritable.value || detecting.value)
+  // MVR-956：layoutWritable 仅认 === true（BE loadExamLayoutDesign.writable）
+  const layoutCanvasReadonly = computed(() => layoutWritable.value !== true || detecting.value === true)
 
   const layoutRoiStats = computed(() => computeLayoutRoiStats(document.value))
 
   const identitySetupPending = computed(
     () =>
       options.examDetail()?.materialLayoutMode === ExamMaterialLayoutModeCode.FULL_PAPER
-      && !detecting.value
+      && detecting.value !== true
       && Boolean(document.value)
       && !hasIdentityBlock(document.value),
   )
@@ -140,14 +141,14 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
   const saveBlockingReasons = computed(() => validateLayoutDocumentForSave(document.value))
 
   const saveButtonDisabled = computed(
-    () => !layoutWritable.value || detecting.value || saveBlockingReasons.value.length > 0,
+    () => layoutWritable.value !== true || detecting.value === true || saveBlockingReasons.value.length > 0,
   )
 
   const saveButtonTooltip = computed((): string | undefined => {
-    if (detecting.value) {
+    if (detecting.value === true) {
       return '题目识别进行中，请等待完成后再保存'
     }
-    if (!layoutWritable.value && writeLockReason.value) {
+    if (layoutWritable.value !== true && writeLockReason.value) {
       return writeLockReason.value
     }
     if (saveBlockingReasons.value.length > 0) {
@@ -165,10 +166,10 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     if (!options.examDetail()?.materialLayoutMode) {
       return true
     }
-    if (detecting.value) {
+    if (detecting.value === true) {
       return true
     }
-    if (layoutWritable.value) {
+    if (layoutWritable.value === true) {
       if (!document.value) {
         return true
       }
@@ -190,8 +191,8 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
   }
 
   function patchDocument(next: ExamLayoutDocument): void {
-    if (layoutCanvasReadonly.value) {
-      if (detecting.value) {
+    if (layoutCanvasReadonly.value === true) {
+      if (detecting.value === true) {
         void message.warning('识别进行中，暂不可编辑制卷设计')
       } else if (writeLockReason.value) {
         void message.warning(writeLockReason.value)
@@ -228,7 +229,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
   }
 
   function handleAddIdentityBlock(block: ExamLayoutBlockDto): void {
-    if (!document.value || layoutCanvasReadonly.value) {
+    if (!document.value || layoutCanvasReadonly.value === true) {
       return
     }
     patchDocument({
@@ -339,7 +340,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     }
     const res = await loadExamLayoutDesign({ examId })
     // MVR-384：layoutWritable 承接 BE loadExamLayoutDesign.writable（合同 boolean）
-    layoutWritable.value = res.writable
+    layoutWritable.value = res.writable === true
     writeLockReason.value = res.writeLockReason
     detectPollingPolicy.value = res.detectPollingPolicy
     const detectTaskId = res.activeDetect?.detectTaskId
@@ -350,7 +351,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       !detectTaskId
       || !inFlightStatus
       || !isExamLayoutDetectInFlightStatus(inFlightStatus)
-      || !layoutWritable.value
+      || layoutWritable.value !== true
     ) {
       return false
     }
@@ -378,7 +379,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     try {
       const res = await loadExamLayoutDesign({ examId })
       // MVR-384：layoutWritable 承接 BE writable（合同 boolean）
-      layoutWritable.value = res.writable
+      layoutWritable.value = res.writable === true
       writeLockReason.value = res.writeLockReason
       detectPollingPolicy.value = res.detectPollingPolicy
       if (res.document) {
@@ -403,8 +404,8 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
         inFlightTaskId
         && inFlightStatus
         && isExamLayoutDetectInFlightStatus(inFlightStatus)
-        && layoutWritable.value
-        && !detecting.value,
+        && layoutWritable.value === true
+        && detecting.value !== true,
       )
       loading.value = false
       ensurePhaseQuery()
@@ -427,10 +428,10 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
 
   async function handleSave(): Promise<boolean> {
     const examId = options.examId()
-    if (!document.value || !examId || !layoutWritable.value || detecting.value) {
+    if (!document.value || !examId || layoutWritable.value !== true || detecting.value === true) {
       return false
     }
-    if (saving.value) {
+    if (saving.value === true) {
       return false
     }
     if (saveBlockingReasons.value.length > 0) {
@@ -460,13 +461,13 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     if (!examId) {
       return
     }
-    if (detecting.value) {
+    if (detecting.value === true) {
       void message.warning('识别进行中，请等待完成后再预览')
       return
     }
     // MVR-411：可写预览须本地 document + 保存校验；只读预览不传 document
-    const writablePreview = layoutWritable.value
-    if (writablePreview) {
+    const writablePreview = layoutWritable.value === true
+    if (writablePreview === true) {
       if (!document.value) {
         return
       }
@@ -503,10 +504,10 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     questions: ExamLayoutGenerateQuestionRequest[],
   ): Promise<void> {
     const examId = options.examId()
-    if (!examId || !layoutWritable.value || detecting.value) {
+    if (!examId || layoutWritable.value !== true || detecting.value === true) {
       return
     }
-    if (generating.value) {
+    if (generating.value === true) {
       return
     }
     generating.value = true
@@ -528,10 +529,10 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
 
   async function handleAutoDetect(sourcePdfFileId: string): Promise<void> {
     const examId = options.examId()
-    if (!examId || !layoutWritable.value) {
+    if (!examId || layoutWritable.value !== true) {
       return
     }
-    if (detecting.value) {
+    if (detecting.value === true) {
       void message.warning('当前试卷正在识别题目，请稍候再重新上传或识别')
       return
     }
@@ -577,8 +578,8 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
   async function handleCancelDetect(): Promise<void> {
     const examId = options.examId()
     // MVR-414：与 BE cancelDetect（owner+ACTIVE+assertLayoutWritable）二次闸；关考/只读漂移不发取消
-    if (!examId || !layoutWritable.value || !activeDetectTaskId.value || cancellingDetect.value) {
-      if (examId && !layoutWritable.value && activeDetectTaskId.value) {
+    if (!examId || layoutWritable.value !== true || !activeDetectTaskId.value || cancellingDetect.value === true) {
+      if (examId && layoutWritable.value !== true && activeDetectTaskId.value) {
         void message.warning(writeLockReason.value || '当前制卷只读，无法取消识别')
       }
       return
@@ -590,6 +591,11 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       okText: '取消识别',
     })
     if (!ok) {
+      return
+    }
+    // MVR-956：确认后再次认 layoutWritable 与进行中任务，防只读漂移后仍发取消
+    if (layoutWritable.value !== true || !activeDetectTaskId.value || cancellingDetect.value === true) {
+      void message.warning(writeLockReason.value || '当前制卷只读或识别任务已结束，无法取消识别')
       return
     }
     cancellingDetect.value = true

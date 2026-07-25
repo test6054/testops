@@ -39,7 +39,7 @@ const pageSize = ref(20)
 const total = ref(0)
 const volumes = ref<ScannerKioskArchiveVolumeItemVO[]>([])
 
-const canPick = computed(() => Boolean(props.scannerDeviceId && props.scannerStationId))
+const canPick = computed(() => Boolean(props.scannerDeviceId) && Boolean(props.scannerStationId))
 
 const columns = [
   {
@@ -101,7 +101,7 @@ function volumeAcceptsKioskPick(status?: string): boolean {
 }
 
 async function pickVolume(row: ScannerKioskArchiveVolumeItemVO) {
-  if (!canPick.value) {
+  if (canPick.value !== true) {
     showFormValidationMessage('工位未激活，无法创建临时派单')
     return
   }
@@ -173,7 +173,7 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
             }
           "
         />
-        <UiButton variant="outline" :disabled="loading" @click="loadVolumes">
+        <UiButton variant="outline" :disabled="loading === true" @click="loadVolumes">
           刷新
         </UiButton>
       </template>
@@ -209,7 +209,7 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
                   key: 'pick',
                   label: '开单',
                   disabled:
-                    !canPick
+                    canPick !== true
                     || record.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING
                     || pickingVolumeId === record.volumeId,
                 },

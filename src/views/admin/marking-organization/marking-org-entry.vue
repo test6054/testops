@@ -12,7 +12,7 @@
             {{ examStatusLabel }}
           </UiTag>
         </template>
-        <template v-if="canManageExamOwner && !resolving && selectedExamId" #actions>
+        <template v-if="canManageExamOwner === true && !resolving && selectedExamId" #actions>
           <UiButton variant="primary" size="sm" @click="openCreateDrawer"> 创建阅卷组织 </UiButton>
         </template>
       </ContextBar>
@@ -35,7 +35,7 @@
       v-else-if="selectedExamId"
       tag="未配置"
       :body="
-        canManageExamOwner
+        canManageExamOwner === true
           ? '本考试尚未创建阅卷组织；请用顶栏「创建阅卷组织」办理（创建后可编排题组与分配策略）'
           : '本考试尚未创建阅卷组织；由考试主考老师创建和分配'
       "
@@ -47,7 +47,7 @@
       :open="createDrawerOpen"
       title="新建阅卷组织"
       :width="520"
-      :confirm-loading="creating"
+      :confirm-loading="creating === true"
       @update:open="(v: boolean) => (createDrawerOpen = v)"
       @close="createDrawerOpen = false"
       @ok="submitCreate"
@@ -78,6 +78,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-945：canManage* 控制流仅认 === true
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { OrganizationCreateRequest } from '@/apis/mark/marking-organization'
 import type { SignalMetric } from '@/types/workbench'
@@ -179,7 +180,7 @@ async function redirectToDetailIfConfigured(): Promise<void> {
 }
 
 function guardExamOwnerAction(): boolean {
-  if (canManageExamOwner.value) return true
+  if (canManageExamOwner.value === true) return true
   showFormValidationMessage('仅考试主考老师可执行该操作')
   return false
 }
@@ -214,7 +215,7 @@ function openCreateDrawer(): void {
 }
 
 async function submitCreate(): Promise<void> {
-  if (creating.value) return
+  if (creating.value === true) return
   if (!guardExamOwnerAction()) return
   if (!selectedExamId.value || !createFormRef.value) return
   try {

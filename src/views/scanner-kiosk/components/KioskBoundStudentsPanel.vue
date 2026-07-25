@@ -57,7 +57,7 @@ watch(
       <button
         type="button"
         class="bound-refresh"
-        :disabled="workflow.boundPapersLoading.value || !effectiveBatchId"
+        :disabled="workflow.boundPapersLoading.value === true || !effectiveBatchId"
         @click="refresh"
       >
         <ReloadOutlined :spin="workflow.boundPapersLoading.value" />
@@ -70,7 +70,7 @@ watch(
     </p>
 
     <p
-      v-else-if="workflow.boundPapersLoading.value && workflow.boundPapers.value.length === 0"
+      v-else-if="workflow.boundPapersLoading.value === true && workflow.boundPapers.value.length === 0"
       class="bound-empty"
     >
       加载中…

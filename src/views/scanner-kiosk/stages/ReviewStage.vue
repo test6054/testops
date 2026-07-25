@@ -290,7 +290,7 @@ watch(
 function discardSelected() {
   if (!selectedItem.value || selectedItem.value.source !== 'ledger') return
   if (selectedItem.value.pageNo <= 0 || !selectedItem.value.localPageId) return
-  if (!workflow.canDiscardLedgerPage.value) return
+  if (workflow.canDiscardLedgerPage.value !== true) return
   workflow.discardLedgerPage({
     pageNo: selectedItem.value.pageNo,
     localPageId: selectedItem.value.localPageId,
@@ -324,7 +324,7 @@ const registerProgressText = computed(() => {
     <KioskScanSessionStrip class="review-strip" />
 
     <UiAlertStrip
-      v-if="workflow.pageRegisterPending.value && registerProgressText"
+      v-if="workflow.pageRegisterPending.value === true && registerProgressText"
       tone="warning"
       dense
       :closable="false"
@@ -337,7 +337,7 @@ const registerProgressText = computed(() => {
           type="button"
           class="op-btn op-btn--warn"
           :disabled="
-            !workflow.canRetryPageRegister.value || workflow.pageRegisterRetryLoading.value
+            workflow.canRetryPageRegister.value !== true || workflow.pageRegisterRetryLoading.value === true
           "
           @click="workflow.retryPageRegister()"
         >
@@ -361,11 +361,11 @@ const registerProgressText = computed(() => {
         <button
           type="button"
           class="issue-refresh"
-          :disabled="workflow.pageLedgerLoading.value"
+          :disabled="workflow.pageLedgerLoading.value === true"
           title="刷新账本"
           @click="workflow.onManualRefreshLedger"
         >
-          <ReloadOutlined :spin="workflow.pageLedgerLoading.value" />
+          <ReloadOutlined :spin="workflow.pageLedgerLoading.value === true" />
         </button>
       </header>
 
@@ -520,7 +520,7 @@ const registerProgressText = computed(() => {
       <section class="panel-section">
         <header><h4>处置操作</h4></header>
         <UiAlertStrip
-          v-if="workflow.pageRegisterBlocked.value || workflow.pageRegisterPending.value"
+          v-if="workflow.pageRegisterBlocked.value === true || workflow.pageRegisterPending.value === true"
           :tone="workflow.pageRegisterBlocked.value ? 'error' : 'warning'"
           dense
           :closable="false"
@@ -528,7 +528,7 @@ const registerProgressText = computed(() => {
           :description="workflow.pageRegisterDiagnostic.value || '批次已提交，但页登记尚未完成'"
           class="page-register-alert"
         >
-          <template v-if="workflow.pageRegisterPending.value && registerProgressText" #default>
+          <template v-if="workflow.pageRegisterPending.value === true && registerProgressText" #default>
             {{ registerProgressText }}
           </template>
           <template #actions>
@@ -536,7 +536,7 @@ const registerProgressText = computed(() => {
               type="button"
               class="op-btn op-btn--warn"
               :disabled="
-                !workflow.canRetryPageRegister.value || workflow.pageRegisterRetryLoading.value
+                workflow.canRetryPageRegister.value !== true || workflow.pageRegisterRetryLoading.value === true
               "
               @click="workflow.retryPageRegister()"
             >
@@ -548,8 +548,8 @@ const registerProgressText = computed(() => {
         <button
           type="button"
           class="op-btn"
-          :disabled="!workflow.canRetryUpload.value"
-          :title="workflow.canRetryUpload.value ? '重新上传失败的页' : '当前无可重试的失败页'"
+          :disabled="workflow.canRetryUpload.value !== true"
+          :title="workflow.canRetryUpload.value === true ? '重新上传失败的页' : '当前无可重试的失败页'"
           @click="workflow.retryCurrentUpload"
         >
           <SyncOutlined />
@@ -558,9 +558,9 @@ const registerProgressText = computed(() => {
         <button
           type="button"
           class="op-btn"
-          :disabled="!workflow.canRetryCommit.value"
+          :disabled="workflow.canRetryCommit.value !== true"
           :title="
-            workflow.canRetryCommit.value ? '所有页已上传，重新触发批次提交' : '不满足重试提交条件'
+            workflow.canRetryCommit.value === true ? '所有页已上传，重新触发批次提交' : '不满足重试提交条件'
           "
           @click="workflow.retryCurrentCommit"
         >
@@ -575,7 +575,7 @@ const registerProgressText = computed(() => {
               || selectedItem.source !== 'ledger'
               || selectedItem.pageNo <= 0
               || !selectedItem.localPageId
-              || !workflow.canDiscardLedgerPage.value
+              || workflow.canDiscardLedgerPage.value !== true
           "
           :title="
             selectedItem
@@ -594,7 +594,7 @@ const registerProgressText = computed(() => {
         <button
           type="button"
           class="op-btn op-btn--danger-ghost"
-          :disabled="!workflow.canRemoveCurrentJob.value"
+          :disabled="workflow.canRemoveCurrentJob.value !== true"
           :title="workflow.removeCurrentJobTitle.value"
           @click="workflow.removeCurrentScanJob"
         >

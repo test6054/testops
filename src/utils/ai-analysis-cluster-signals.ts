@@ -91,7 +91,7 @@ export function buildAiAnalysisClusterReadinessSteps(
     })
   }
 
-  if (!signal.clusterAnalysisReady) {
+  if (signal.clusterAnalysisReady !== true) {
     steps.push({
       code: 'ERROR_CLUSTER',
       label: '生成错因聚类分析',

@@ -34,7 +34,7 @@ export function useInfiniteScroll<T extends U, U = T>(
 
   // 加载数据
   async function loadData(isLoadMore = false) {
-    if (loading.value || (isLoadMore && loadingMore.value) || (isLoadMore && !hasMore.value)) {
+    if (loading.value === true || (isLoadMore && loadingMore.value === true) || (isLoadMore && hasMore.value !== true)) {
       return
     }
 
@@ -109,7 +109,7 @@ export function useInfiniteScroll<T extends U, U = T>(
 
   // 加载更多数据
   const loadMore = () => {
-    if (hasMore.value && !loading.value && !loadingMore.value) {
+    if (hasMore.value === true && loading.value !== true && loadingMore.value !== true) {
       return loadData(true)
     }
   }

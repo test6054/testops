@@ -75,14 +75,19 @@ defineOptions({ name: 'ManualSupplementCandidateTable' })
 const currentPage = defineModel<number>('current', { required: true })
 const currentPageSize = defineModel<number>('pageSize', { required: true })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   /** MVR-265：主考写能力；非主考不展示补扫/替换 */
-  canManageOwnerWrites?: boolean
+  canManageOwnerWrites?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
   items: ExamManualSupplementCandidateItemResponse[]
   loading: boolean
   total: number
   emptyDescription: string
-}>()
+}>(),
+  {
+  canManageOwnerWrites: false,
+  },
+)
 
 const emit = defineEmits<{
   'page-change': [pageNum: number, pageSize: number]
@@ -128,21 +133,21 @@ function buildActions(record: ExamManualSupplementCandidateItemResponse): UiTabl
   ) {
     actions.push({ key: 'handle-attention', label: '处理异常', tone: 'danger' })
   }
-  if (props.canManageOwnerWrites) {
-    if (record.supplementEligible && record.missingTemplatePageNos.length > 0) {
+  if (props.canManageOwnerWrites === true) {
+    if (record.supplementEligible === true && record.missingTemplatePageNos.length > 0) {
       actions.push({
         key: 'supplement-missing',
         label: record.missingTemplatePageNos.length === 1 ? '补扫缺页' : '补扫首缺页',
       })
     }
-    if (record.replaceEligible && record.paperInstanceId && record.scannedPageCount > 0) {
+    if (record.replaceEligible === true && record.paperInstanceId && record.scannedPageCount > 0) {
       actions.push({ key: 'replace-page', label: '替换页' })
     }
   }
   if (actions.length > 0) {
     return actions
   }
-  if (!props.canManageOwnerWrites) {
+  if (props.canManageOwnerWrites !== true) {
     return [{ key: 'readonly', label: '仅主考可补录', disabled: true }]
   }
   const blockReason = record.blockReason || record.replaceBlockReason
@@ -155,7 +160,7 @@ function handleAction(key: string, record: ExamManualSupplementCandidateItemResp
     return
   }
   // MVR-376：主考写动作须 canManageOwnerWrites；缺省/false 拒绝
-  if (!props.canManageOwnerWrites) {
+  if (props.canManageOwnerWrites !== true) {
     return
   }
   if (key === 'supplement-missing') {

@@ -108,8 +108,8 @@ const stationLedTone = computed<'green' | 'gray'>(() =>
 
 const showAgentOfflineHint = computed(
   () =>
-    !hubLoading.value
-    && !deviceActivation.loading.value
+    hubLoading.value !== true
+    && deviceActivation.loading.value !== true
     && !deviceActivation.localAgentReachable.value
     && (deviceActivation.isDeviceBound.value || !deviceActivation.needsActivationGate.value),
 )
@@ -124,13 +124,13 @@ const showTaskKindCards = computed(
 const showFailedAlert = computed(
   () =>
     showTaskKindCards.value
-    && !queueSummaryLoading.value
+    && queueSummaryLoading.value !== true
     && ((queueSummary.value?.failedTicketCount ?? 0) > 0
       || (queueSummary.value?.committingWorkOrderCount ?? 0) > 0),
 )
 
 const contextSubtitle = computed(() => {
-  if (hubLoading.value || deviceActivation.loading.value) {
+  if (hubLoading.value === true || deviceActivation.loading.value === true) {
     return '正在读取本机扫描服务与工位状态…'
   }
   if (hubErrorMessage.value) {
@@ -151,24 +151,24 @@ const contextSubtitle = computed(() => {
 const hubSignals = computed<HubSignalItem[]>(() => {
   const health = deviceActivation.health.value
   const agentOnline = deviceActivation.localAgentReachable.value
-  const bound = deviceActivation.isDeviceBound.value && !deviceActivation.needsActivationGate.value
+  const bound = deviceActivation.isDeviceBound.value === true && deviceActivation.needsActivationGate.value !== true
 
   let scanValue: string
   let scanLed: HubSignalItem['ledTone']
   let scanSub: string
-  if (!agentOnline) {
+  if (agentOnline !== true) {
     scanValue = '不可用'
     scanLed = 'gray'
     scanSub = '请先启动本机扫描服务'
-  } else if (!bound) {
+  } else if (bound !== true) {
     scanValue = '待激活'
     scanLed = 'orange'
     scanSub = '输入激活码完成一次绑定'
-  } else if (health?.scannerConnected && health.scanAllowed) {
+  } else if (health?.scannerConnected === true && health.scanAllowed === true) {
     scanValue = '就绪'
     scanLed = 'green'
     scanSub = '扫描仪已连接'
-  } else if (health?.scannerConnected) {
+  } else if (health?.scannerConnected === true) {
     scanValue = '受限'
     scanLed = 'orange'
     scanSub = '扫描仪已连接'
@@ -182,9 +182,9 @@ const hubSignals = computed<HubSignalItem[]>(() => {
     {
       key: 'agent',
       label: '扫描服务',
-      value: agentOnline ? '正常' : '离线',
-      ledTone: agentOnline ? 'green' : 'red',
-      sub: agentOnline ? '本地代理已连接' : '请先启动本机扫描服务',
+      value: agentOnline === true ? '正常' : '离线',
+      ledTone: agentOnline === true ? 'green' : 'red',
+      sub: agentOnline === true ? '本地代理已连接' : '请先启动本机扫描服务',
     },
     {
       key: 'binding',
@@ -272,7 +272,7 @@ const hubSignals = computed<HubSignalItem[]>(() => {
 })
 
 const showSignalBand = computed(
-  () => !hubLoading.value && !hubErrorMessage.value && !deviceActivation.needsActivationGate.value,
+  () => hubLoading.value !== true && !hubErrorMessage.value && !deviceActivation.needsActivationGate.value,
 )
 
 const archivePickFirst = computed(
@@ -506,7 +506,7 @@ onUnmounted(() => {
         type="button"
         class="hub-shell__refresh"
         title="刷新工位状态"
-        :disabled="hubLoading || deviceActivation.loading.value"
+        :disabled="hubLoading === true || deviceActivation.loading.value === true"
         @click="loadHubState"
       >
         <ReloadOutlined />
@@ -571,7 +571,7 @@ onUnmounted(() => {
           </template>
         </UiEmpty>
 
-        <div v-else-if="hubLoading || deviceActivation.loading.value" class="hub-shell__state">
+        <div v-else-if="hubLoading === true || deviceActivation.loading.value === true" class="hub-shell__state">
           <UiSkeletonState :rows="5" compact />
         </div>
 

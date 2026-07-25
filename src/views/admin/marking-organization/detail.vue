@@ -35,14 +35,14 @@
           <UiTag v-if="organization" tone="blue" size="sm">
             题组 {{ organization.groups.length }}
           </UiTag>
-          <UiTag v-if="organization?.anonymousMode" tone="green" size="sm">匿名阅卷</UiTag>
+          <UiTag v-if="organization?.anonymousMode === true" tone="green" size="sm">匿名阅卷</UiTag>
         </template>
         <template #actions>
-          <UiButton v-if="canManageExamOwner" variant="primary" size="sm" @click="goFormalSessions">
+          <UiButton v-if="canManageExamOwner === true" variant="primary" size="sm" @click="goFormalSessions">
             正评会话
           </UiButton>
           <UiButton
-            v-if="organization && canManageExamOwner"
+            v-if="organization && canManageExamOwner === true"
             variant="outline"
             size="sm"
             @click="openEditDrawer"
@@ -51,7 +51,7 @@
           </UiButton>
           <UiButton variant="outline" size="sm" @click="goTrialSessions"> 试评定标 </UiButton>
           <UiDropdownAction
-            v-if="organization && canDeleteOrganization"
+            v-if="organization && canDeleteOrganization === true"
             trigger-style="button"
             button-text="更多"
             :items="orgDetailMoreActionItems"
@@ -88,7 +88,7 @@
           description="未配置 ROI 的题目无法分配题组、按题导出或生成按题学情，请先在制卷工作台补全识别区域。"
         />
         <UiAlertStrip
-          v-if="!canManageExamOwner"
+          v-if="canManageExamOwner !== true"
           tone="info"
           class="org-detail__readonly-banner"
           title="当前为只读视图"
@@ -126,7 +126,7 @@
           @refresh="loadWorkbenchPanels"
         />
 
-        <WorkbenchSurfaceCard v-if="canReassignRecycledTasks" flush class="org-detail__secondary">
+        <WorkbenchSurfaceCard v-if="canReassignRecycledTasks === true" flush class="org-detail__secondary">
           <template #head>回收待分配</template>
           <RecycledTaskReassignPanel
             :exam-id="examId"
@@ -140,7 +140,7 @@
 
       <WorkbenchSurfaceCard v-else flush class="org-detail__surface">
         <UiAlertStrip
-          v-if="!canManageExamOwner"
+          v-if="canManageExamOwner !== true"
           tone="info"
           class="org-detail__readonly-banner"
           title="当前为只读视图"
@@ -164,8 +164,8 @@
                 {{ organization.groups.length }} 组
               </UiInfoGridItem>
               <UiInfoGridItem label="匿名阅卷">
-                <UiTag :tone="organization.anonymousMode ? 'green' : 'gray'" size="sm">
-                  {{ organization.anonymousMode ? '启用' : '关闭' }}
+                <UiTag :tone="organization.anonymousMode === true ? 'green' : 'gray'" size="sm">
+                  {{ organization.anonymousMode === true ? '启用' : '关闭' }}
                 </UiTag>
               </UiInfoGridItem>
               <UiInfoGridItem label="创建时间">
@@ -205,13 +205,13 @@
                 size="small"
               />
             </template>
-            <template v-if="canManageExamOwner" #toolbar-right>
+            <template v-if="canManageExamOwner === true" #toolbar-right>
               <UiButton variant="primary" size="sm" @click="openGroupModal">
                 <template #icon><PlusOutlined /></template>
                 新建题组
               </UiButton>
             </template>
-            <template v-if="canManageExamOwner" #empty-action>
+            <template v-if="canManageExamOwner === true" #empty-action>
               <UiButton variant="primary" size="sm" @click="openGroupModal">
                 <template #icon><PlusOutlined /></template>
                 新建题组
@@ -268,14 +268,14 @@
               <template v-else-if="column.key === 'action'">
                 <UiTableActions
                   :items="[
-                    { key: 'edit', label: '编辑', hidden: !canEditGroup(record) },
+                    { key: 'edit', label: '编辑', hidden: canEditGroup(record) !== true },
                     {
                       key: 'delete',
                       label: '删除',
                       tone: 'danger',
-                      hidden: !canDeleteGroup(record),
+                      hidden: canDeleteGroup(record) !== true,
                     },
-                    { key: 'close', label: '关闭', hidden: !canCloseGroup(record) },
+                    { key: 'close', label: '关闭', hidden: canCloseGroup(record) !== true },
                   ]"
                   split
                   @action="(key) => handleGroupRowAction(key, record)"
@@ -287,7 +287,7 @@
 
         <template v-else-if="activeTab === 'policy'">
           <UiForm
-            v-if="canManageExamOwner"
+            v-if="canManageExamOwner === true"
             :model="policyForm"
             layout="vertical"
             class="policy-form"
@@ -302,7 +302,7 @@
                     placeholder="选择题组（留空表示组织级默认）"
                     :options="groupSelectOptions"
                     allow-clear
-                    :disabled="!canManageExamOwner"
+                    :disabled="canManageExamOwner !== true"
                   />
                 </UiFormItem>
                 <UiFormItem label="分配模式" required>
@@ -310,7 +310,7 @@
                     size="sm"
                     v-model="policyForm.allocationMode"
                     :options="MARKING_ALLOCATION_MODE_OPTIONS"
-                    :disabled="!canManageExamOwner"
+                    :disabled="canManageExamOwner !== true"
                   />
                 </UiFormItem>
                 <UiFormItem label="批阅任务单元" required>
@@ -318,7 +318,7 @@
                     size="sm"
                     v-model="policyForm.allocationUnit"
                     :options="ALLOCATION_UNIT_OPTIONS"
-                    :disabled="!canManageExamOwner"
+                    :disabled="canManageExamOwner !== true"
                   />
                 </UiFormItem>
                 <UiFormItem label="匿名模式" required>
@@ -343,7 +343,7 @@
                     :min="1"
                     :max="100"
                     style="width: 100%"
-                    :disabled="!canManageExamOwner"
+                    :disabled="canManageExamOwner !== true"
                   />
                   <div class="policy-hint">
                     抽样题池来自当前题组题目范围；正评启动后会固化本次随机抽题结果，后续可在正评会话列表审计复盘。
@@ -356,7 +356,7 @@
                     :min="1"
                     :max="500"
                     style="width: 100%"
-                    :disabled="!canManageExamOwner"
+                    :disabled="canManageExamOwner !== true"
                   />
                 </UiFormItem>
                 <UiFormItem label="教师最大待处理任务数">
@@ -366,7 +366,7 @@
                     :min="1"
                     :max="500"
                     style="width: 100%"
-                    :disabled="!canManageExamOwner"
+                    :disabled="canManageExamOwner !== true"
                   />
                 </UiFormItem>
                 <UiFormItem label="匿名令牌策略">
@@ -375,13 +375,13 @@
                     v-model="policyForm.anonymousTokenPolicy"
                     :options="ANONYMOUS_TOKEN_POLICY_OPTIONS"
                     allow-clear
-                    :disabled="!canManageExamOwner"
+                    :disabled="canManageExamOwner !== true"
                   />
                 </UiFormItem>
                 <UiButton
                   size="sm"
                   variant="primary"
-                  v-if="canManageExamOwner"
+                  v-if="canManageExamOwner === true"
                   :loading="savingAllocation"
                   @click="submitAllocation"
                 >
@@ -399,7 +399,7 @@
                     placeholder="选择题组（留空表示组织级默认）"
                     :options="groupSelectOptions"
                     allow-clear
-                    :disabled="!canManageExamOwner"
+                    :disabled="canManageExamOwner !== true"
                   />
                 </UiFormItem>
                 <UiFormItem label="超时时间（分钟）">
@@ -409,7 +409,7 @@
                     :min="1"
                     :max="1440"
                     style="width: 100%"
-                    :disabled="!canManageExamOwner"
+                    :disabled="canManageExamOwner !== true"
                   />
                 </UiFormItem>
                 <UiFormItem label="教师最大待处理任务数">
@@ -419,7 +419,7 @@
                     :min="1"
                     :max="500"
                     style="width: 100%"
-                    :disabled="!canManageExamOwner"
+                    :disabled="canManageExamOwner !== true"
                   />
                 </UiFormItem>
                 <UiFormItem label="再分配模式">
@@ -428,13 +428,13 @@
                     v-model="policyForm.reassignMode"
                     :options="MARKING_REASSIGN_MODE_OPTIONS"
                     allow-clear
-                    :disabled="!canManageExamOwner"
+                    :disabled="canManageExamOwner !== true"
                   />
                 </UiFormItem>
                 <UiButton
                   variant="primary"
                   size="sm"
-                  v-if="canManageExamOwner"
+                  v-if="canManageExamOwner === true"
                   :loading="savingRecycle"
                   @click="submitRecycle"
                 >
@@ -520,7 +520,7 @@
       v-model:open="groupModalOpen"
       :title="groupModalTitle"
       :width="640"
-      :confirm-loading="savingGroup"
+      :confirm-loading="savingGroup === true"
       ok-text="提交"
       @ok="submitGroup"
     >
@@ -588,7 +588,7 @@
       :open="editDrawerOpen"
       title="编辑阅卷组织"
       :width="520"
-      :confirm-loading="updating"
+      :confirm-loading="updating === true"
       @update:open="(v: boolean) => (editDrawerOpen = v)"
       @close="editDrawerOpen = false"
       @ok="submitUpdate"
@@ -601,11 +601,11 @@
           <UiSwitch
             size="sm"
             v-model="editForm.anonymousMode"
-            :disabled="!canUpdateOrganizationAnonymousMode"
+            :disabled="canUpdateOrganizationAnonymousMode !== true"
           />
           <span class="org-detail__switch-hint">
             {{
-              canUpdateOrganizationAnonymousMode
+              canUpdateOrganizationAnonymousMode === true
                 ? '启用后阅卷教师不可见考生身份'
                 : '已进入试评/正评或任务后不可修改匿名模式；备注仍可保存'
             }}
@@ -631,7 +631,7 @@
       @update:open="(v: boolean) => (policyDrawerOpen = v)"
       @close="policyDrawerOpen = false"
     >
-      <template v-if="canManageExamOwner">
+      <template v-if="canManageExamOwner === true">
         <UiForm :model="policyForm" layout="vertical" class="policy-form">
           <UiRow :gutter="16">
             <UiCol :xs="24" :lg="12">
@@ -769,6 +769,8 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-945：canManage* 控制流仅认 === true
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
@@ -1025,8 +1027,8 @@ const orgSignalMetrics = computed((): SignalMetric[] => {
     {
       key: 'anonymous',
       label: '匿名模式',
-      value: org.anonymousMode ? '启用' : '关闭',
-      tone: org.anonymousMode ? 'green' : 'gray',
+      value: org.anonymousMode === true ? '启用' : '关闭',
+      tone: org.anonymousMode === true ? 'green' : 'gray',
     },
   ]
   if (overallPercent != null) {
@@ -1087,7 +1089,7 @@ const canUpdateOrganizationAnonymousMode = computed(
 const canDeleteOrganization = computed(() => organization.value?.canDeleteOrganization === true)
 
 function guardExamOwnerAction(): boolean {
-  if (canManageExamOwner.value) return true
+  if (canManageExamOwner.value === true) return true
   showFormValidationMessage('仅考试主考老师可执行该操作')
   return false
 }
@@ -1148,7 +1150,7 @@ const canReassignRecycledTasks = computed(() => {
     return false
   }
   // 主考路径已叠 ACTIVE
-  if (canManageExamOwner.value) {
+  if (canManageExamOwner.value === true) {
     return true
   }
   // 非主考再分配写须 ACTIVE；examDetail 未就绪默认拒绝
@@ -1165,7 +1167,7 @@ const canReassignRecycledTasks = computed(() => {
 })
 /** 整场回收任务列表：主考（ACTIVE）或组织负责人（BE canListAll；关考主考仍可由 BE 列表门禁承接，FE 与 canManageExamOwner 对齐不扩权） */
 const canViewAllRecycledTasks = computed(() => {
-  if (canManageExamOwner.value) {
+  if (canManageExamOwner.value === true) {
     return true
   }
   const userId = userStore.userInfo.userId
@@ -1184,7 +1186,7 @@ const detailTabItems = computed((): UiSectionTabItem[] => {
     },
     { key: 'policy', label: '任务策略' },
   ]
-  if (canReassignRecycledTasks.value) {
+  if (canReassignRecycledTasks.value === true) {
     items.push({ key: 'recycled', label: '回收待分配' })
   }
   return items
@@ -1494,7 +1496,7 @@ function openGroupModal(): void {
 function openGroupEdit(record: QuestionMarkingGroupResponse): void {
   if (!guardExamOwnerAction()) return
   // MVR-385/406：与 canEditGroup / BE canEditQuestionGroup 二次拦截
-  if (!canEditGroup(record)) {
+  if (canEditGroup(record) !== true) {
     showFormValidationMessage('当前题组不可编辑（已关闭或已有试评/正评/任务）')
     return
   }
@@ -1528,14 +1530,14 @@ function openPolicyDrawer(): void {
 }
 
 async function submitGroup(): Promise<void> {
-  if (savingGroup.value) {
+  if (savingGroup.value === true) {
     return
   }
   if (!guardExamOwnerAction()) return
   // MVR-396/406：更新已有题组须叠 canEditGroup；创建仅主考闸
   if (groupForm.groupId) {
     const existing = groups.value.find((group) => group.id === groupForm.groupId)
-    if (!existing || !canEditGroup(existing)) {
+    if (!existing || canEditGroup(existing) !== true) {
       showFormValidationMessage('当前题组不可编辑（已关闭或已有试评/正评/任务）')
       return
     }
@@ -1581,9 +1583,9 @@ function canDeleteGroup(record: QuestionMarkingGroupResponse): boolean {
 }
 
 function canCloseGroup(record: QuestionMarkingGroupResponse): boolean {
-  // MVR-407：关闭题组须主考∧ACTIVE；状态仅 ACTIVE/CONFIGURED
+  // MVR-407/952：关闭题组须主考∧ACTIVE（仅认 canManageExamOwner===true）；状态仅 ACTIVE/CONFIGURED
   return (
-    canManageExamOwner.value
+    canManageExamOwner.value === true
     && (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE
       || record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED)
   )
@@ -1596,7 +1598,7 @@ async function handleGroupRowAction(key: string, record: QuestionMarkingGroupRes
   }
   if (key === 'delete') {
     // MVR-385：与 canDeleteGroup / 仅 DRAFT 二次拦截
-    if (!canDeleteGroup(record)) {
+    if (canDeleteGroup(record) !== true) {
       showFormValidationMessage('仅无运行态引用的草稿题组可删除')
       return
     }
@@ -1607,7 +1609,7 @@ async function handleGroupRowAction(key: string, record: QuestionMarkingGroupRes
   }
   if (key === 'close') {
     // MVR-385：与 canCloseGroup / ACTIVE|CONFIGURED 二次拦截
-    if (!canCloseGroup(record)) {
+    if (canCloseGroup(record) !== true) {
       showFormValidationMessage('当前题组状态不可关闭')
       return
     }
@@ -1623,7 +1625,7 @@ async function submitGroupDelete(record: QuestionMarkingGroupResponse): Promise<
   }
   if (!guardExamOwnerAction()) return
   // MVR-385：handler 二次认 canDeleteGroup
-  if (!canDeleteGroup(record)) {
+  if (canDeleteGroup(record) !== true) {
     showFormValidationMessage('仅草稿题组可删除')
     return
   }
@@ -1646,7 +1648,7 @@ async function submitGroupClose(record: QuestionMarkingGroupResponse): Promise<v
   }
   if (!guardExamOwnerAction()) return
   // MVR-385：handler 二次认 canCloseGroup
-  if (!canCloseGroup(record)) {
+  if (canCloseGroup(record) !== true) {
     showFormValidationMessage('当前题组状态不可关闭')
     return
   }
@@ -1666,22 +1668,22 @@ async function submitGroupClose(record: QuestionMarkingGroupResponse): Promise<v
 function openEditDrawer(): void {
   if (!guardExamOwnerAction()) return
   if (!organization.value) return
-  editForm.anonymousMode = Boolean(organization.value.anonymousMode)
+  editForm.anonymousMode = organization.value.anonymousMode === true
   editForm.remark = organization.value.remark || ''
   editDrawerOpen.value = true
   void loadTeachers()
 }
 
 async function submitUpdate(): Promise<void> {
-  if (updating.value) {
+  if (updating.value === true) {
     return
   }
   if (!guardExamOwnerAction()) return
   if (!organization.value || !editFormRef.value) return
-  // MVR-404：匿名模式变更须 canUpdateOrganizationAnonymousMode；仅改备注始终可走
+  // MVR-404：匿名模式变更须 canUpdateOrganizationAnonymousMode === true；仅改备注始终可走
   const anonymityChanged
-    = Boolean(editForm.anonymousMode) !== Boolean(organization.value.anonymousMode)
-  if (anonymityChanged && !canUpdateOrganizationAnonymousMode.value) {
+    = (editForm.anonymousMode === true) !== (organization.value.anonymousMode === true)
+  if (anonymityChanged && canUpdateOrganizationAnonymousMode.value !== true) {
     showFormValidationMessage('已进入试评/正评或任务后不可修改匿名模式')
     return
   }
@@ -1695,9 +1697,9 @@ async function submitUpdate(): Promise<void> {
     const request: OrganizationUpdateRequest = {
       organizationId: requireMarkingOrganizationId(organization.value),
       anonymousMode:
-        canUpdateOrganizationAnonymousMode.value
-          ? editForm.anonymousMode
-          : Boolean(organization.value.anonymousMode),
+        canUpdateOrganizationAnonymousMode.value === true
+          ? editForm.anonymousMode === true
+          : organization.value.anonymousMode === true,
       remark: editForm.remark?.trim() || undefined,
     }
     organization.value = await updateOrganization(request)
@@ -1717,7 +1719,7 @@ const orgDetailMoreActionItems = computed(() => [
     label: '删除组织',
     danger: true,
     // MVR-405：菜单仅在 canDeleteOrganization 时展示；disabled 防并发
-    disabled: deleting.value || !canDeleteOrganization.value,
+    disabled: deleting.value || canDeleteOrganization.value !== true,
   },
 ])
 
@@ -1731,7 +1733,7 @@ async function requestDeleteOrganization(): Promise<void> {
   // MVR-396：删除组织打开确认前叠主考闸，禁止仅靠更多菜单显隐
   if (!guardExamOwnerAction()) return
   // MVR-405：与 BE canDeleteOrganization / runtimeRefs 二次闸
-  if (!canDeleteOrganization.value) {
+  if (canDeleteOrganization.value !== true) {
     showFormValidationMessage('组织下已有试评、正评或任务，不能删除')
     return
   }
@@ -1748,11 +1750,11 @@ async function requestDeleteOrganization(): Promise<void> {
 }
 
 async function submitDelete(): Promise<void> {
-  if (deleting.value) {
+  if (deleting.value === true) {
     return
   }
   if (!guardExamOwnerAction()) return
-  if (!canDeleteOrganization.value) {
+  if (canDeleteOrganization.value !== true) {
     showFormValidationMessage('组织下已有试评、正评或任务，不能删除')
     return
   }
@@ -1804,7 +1806,7 @@ const allocationPolicies = ref<AllocationPolicyResponse[]>([])
 const recyclePolicies = ref<RecyclePolicyResponse[]>([])
 
 const effectiveAnonymityMode = computed(() =>
-  organization.value?.anonymousMode ? AnonymityModeCode.ANONYMOUS : AnonymityModeCode.NAMED,
+  organization.value?.anonymousMode === true ? AnonymityModeCode.ANONYMOUS : AnonymityModeCode.NAMED,
 )
 
 const effectiveAnonymityModeOptions = computed(() =>
@@ -1898,11 +1900,18 @@ const groupSelectOptions = computed(() =>
 )
 
 function isPolicyGroupWritable(groupId?: string): boolean {
+  // 组织级默认策略可写；指定题组时仅 ACTIVE/CONFIGURED 可改，缺失/关闭拒绝
   if (!groupId) {
-    return true
+    return canManageExamOwner.value === true
   }
   const group = groups.value.find((item) => item.id === groupId)
-  return group != null && group.groupStatus !== QuestionMarkingGroupStatusCode.GROUP_CLOSED
+  if (!group) {
+    return false
+  }
+  return (
+    canManageExamOwner.value === true
+    && group.groupStatus !== QuestionMarkingGroupStatusCode.GROUP_CLOSED
+  )
 }
 
 const groupAllocationUnitMap = computed(() => {
@@ -1939,13 +1948,14 @@ function policyScopeLabel(groupId?: string): string {
 
 const savingAllocation = ref(false)
 async function submitAllocation(): Promise<void> {
-  if (savingAllocation.value) {
+  if (savingAllocation.value === true) {
     return
   }
   if (!guardExamOwnerAction()) return
   if (!organizationId.value) return
   // MVR-403：题组级分配策略禁 CLOSED（与 BE validateAllocationPolicySave 同源）
-  if (!isPolicyGroupWritable(policyForm.allocationGroupId)) {
+  // MVR-956：策略题组可写仅认 isPolicyGroupWritable===true
+  if (isPolicyGroupWritable(policyForm.allocationGroupId) !== true) {
     showFormValidationMessage('已关闭题组不能修改分配策略')
     return
   }
@@ -1976,13 +1986,14 @@ async function submitAllocation(): Promise<void> {
 
 const savingRecycle = ref(false)
 async function submitRecycle(): Promise<void> {
-  if (savingRecycle.value) {
+  if (savingRecycle.value === true) {
     return
   }
   if (!guardExamOwnerAction()) return
   if (!organizationId.value) return
   // MVR-403：题组级回收策略禁 CLOSED（与 BE assertGroupWritableForPolicySave 同源）
-  if (!isPolicyGroupWritable(policyForm.recycleGroupId)) {
+  // MVR-956：策略题组可写仅认 isPolicyGroupWritable===true
+  if (isPolicyGroupWritable(policyForm.recycleGroupId) !== true) {
     showFormValidationMessage('已关闭题组不能修改回收策略')
     return
   }

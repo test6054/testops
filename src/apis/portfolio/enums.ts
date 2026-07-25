@@ -47,6 +47,11 @@ import {
   PortfolioExternalTeacherDataStatusDescription,
 } from '@/types/enums/portfolio-external-teacher-data-status-enum'
 import {
+  ALL_PORTFOLIO_INDICATOR_DIMENSION_L1_CODES,
+  PortfolioIndicatorDimensionL1Code,
+  PortfolioIndicatorDimensionL1Description,
+} from '@/types/enums/portfolio-indicator-dimension-l1-code-enum'
+import {
   ALL_PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_CODES,
   PortfolioKeyTeacherRegistryTypeDescription,
 } from '@/types/enums/portfolio-key-teacher-registry-type-enum'
@@ -661,3 +666,9 @@ export {
   PortfolioVirtualTeachingRoomRoleCode,
   PortfolioVirtualTeachingRoomRoleDescription,
 } from '@/types/enums/portfolio-virtual-teaching-room-role-enum'
+
+export {
+  ALL_PORTFOLIO_INDICATOR_DIMENSION_L1_CODES,
+  PortfolioIndicatorDimensionL1Code,
+  PortfolioIndicatorDimensionL1Description,
+}

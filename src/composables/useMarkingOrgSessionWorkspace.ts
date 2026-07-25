@@ -205,7 +205,8 @@ export function useMarkingOrgSessionWorkspace(phase: MarkingOrgSessionPhase) {
   )
 
   function guardOrganizationOwnerAction(): boolean {
-    if (canManageOrganization.value) {
+    // MVR-953：仅认 canManageOrganization===true
+    if (canManageOrganization.value === true) {
       return true
     }
     void message.warning('仅考试主考老师可管理试评 / 正评会话')
@@ -214,7 +215,8 @@ export function useMarkingOrgSessionWorkspace(phase: MarkingOrgSessionPhase) {
 
   /** MVR-398：关闭会话打开闸；关考后主考仍可收口 */
   function guardCloseMarkingSessionAction(): boolean {
-    if (canCloseMarkingSessions.value) {
+    // MVR-953：仅认 canCloseMarkingSessions===true
+    if (canCloseMarkingSessions.value === true) {
       return true
     }
     void message.warning('仅考试主考老师可关闭试评 / 正评会话')

@@ -231,7 +231,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
-                v-if="canRetryPaperGrade(record)"
+                v-if="canRetryPaperGrade(record) === true"
                 :items="[
                   {
                     key: 'retry',
@@ -251,6 +251,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-951：函数式 can*(...) 写入口仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamProcessingTaskItemResponse } from '@/apis/mark/exam-processing-task'
 import type {
@@ -403,7 +404,7 @@ function processingTaskStatusTone(value: TaskStatusCode) {
 }
 
 function canRetryPaperGrade(record: ExamProcessingTaskItemResponse): boolean {
-  if (!canManageReviewerWrites.value) return false
+  if (canManageReviewerWrites.value !== true) return false
   if (!record.paperInstanceId) return false
   if (
     record.taskType !== ProcessingTaskTypeCode.SUBJECTIVE_AI_REVIEW
@@ -485,11 +486,11 @@ function handleProcessingTaskPageChange(pageEvent: { current: number, pageSize: 
 }
 
 async function retryPaperGradeForTask(record: ExamProcessingTaskItemResponse): Promise<void> {
-  if (retryingPaperInstanceId.value || !selectedExamId.value || !record.paperInstanceId) return
+  if (Boolean(retryingPaperInstanceId.value) || !selectedExamId.value || !record.paperInstanceId) return
   // MVR-420：与 canRetryPaperGrade / 行内显隐同源二次闸（写权∧AI 任务类型∧FAILED/BLOCKED/PROCESSING）
-  if (!canRetryPaperGrade(record)) {
+  if (canRetryPaperGrade(record) !== true) {
     void message.warning(
-      canManageReviewerWrites.value
+      canManageReviewerWrites.value === true
         ? '当前处理任务不可重试整卷智能复评（类型或状态不允许）'
         : '仅本场阅卷组织成员、主考或管理员可重试整卷 AI 批阅',
     )

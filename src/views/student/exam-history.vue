@@ -271,8 +271,8 @@ function buildExamHistoryActions(record: StudentExamItemVO): UiTableRowActionIte
     {
       key: 'appeal',
       label: '提交复核',
-      tone: canSubmitReview(record) ? 'primary' : 'default',
-      disabled: !canSubmitReview(record),
+      tone: canSubmitReview(record) === true ? 'primary' : 'default',
+      disabled: canSubmitReview(record) !== true,
     },
   ]
 }
@@ -282,7 +282,7 @@ function handleExamHistoryAction(key: string, record: StudentExamItemVO): void {
     goDetail(record.examId)
   } else if (key === 'appeal') {
     // MVR-320：与 canSubmitReview / BE canSubmitReviewRequest 二次拦截
-    if (!canSubmitReview(record)) {
+    if (canSubmitReview(record) !== true) {
       void message.warning('当前暂不能提交复核申请')
       return
     }

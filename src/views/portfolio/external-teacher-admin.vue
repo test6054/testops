@@ -14,6 +14,7 @@ import type {
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { PortfolioExternalTeacherContractStatusCode } from '@/types/enums/portfolio-external-teacher-contract-status-enum'
+import type { PortfolioGenderCode } from '@/types/enums/portfolio-gender-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -137,12 +138,13 @@ const attachmentInputRef = ref<HTMLInputElement>()
 const uploadingAttachment = ref(false)
 const editorEpoch = ref(0)
 
-const form = reactive<Omit<PortfolioExternalTeacherSaveRequest, 'contractStatus'> & {
+const form = reactive<Omit<PortfolioExternalTeacherSaveRequest, 'contractStatus' | 'gender'> & {
   contractStatus: PortfolioExternalTeacherContractStatusCode | ''
+  gender?: PortfolioGenderCode
 }>({
   id: undefined,
   fullName: '',
-  gender: '',
+  gender: undefined,
   major: '',
   title: '',
   age: undefined,
@@ -250,7 +252,7 @@ function batchStatusLabel(status: PortfolioExternalTeacherImportBatchStatusCode)
 function resetForm() {
   form.id = undefined
   form.fullName = ''
-  form.gender = ''
+  form.gender = undefined
   form.major = ''
   form.title = ''
   form.age = undefined
@@ -422,7 +424,7 @@ async function openEdit(id: string): Promise<void> {
     detailContribution.value = contribution
     form.id = detail.id
     form.fullName = detail.fullName
-    form.gender = detail.gender ?? ''
+    form.gender = detail.gender
     form.major = detail.major ?? ''
     form.title = detail.title ?? ''
     form.age = detail.age
@@ -472,7 +474,7 @@ async function saveRecord() {
     await portfolioExternalTeacherApi.save({
       id: form.id,
       fullName: form.fullName.trim(),
-      gender: form.gender?.trim() || undefined,
+      gender: form.gender,
       major: form.major?.trim() || undefined,
       title: form.title?.trim() || undefined,
       age: form.age,

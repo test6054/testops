@@ -3,7 +3,7 @@
     :open="open"
     title="创建正评会话"
     :width="560"
-    :confirm-loading="submitting"
+    :confirm-loading="submitting === true"
     ok-text="创建"
     @update:open="emit('update:open', $event)"
     @ok="submit"
@@ -27,7 +27,7 @@
         :session-readiness="sessionReadiness"
       />
       <WorkflowReadinessPanel
-        v-if="groupId && !selectedGroupCanCreate && selectedGroupWorkflowSteps.length"
+        v-if="groupId && selectedGroupCanCreate !== true && selectedGroupWorkflowSteps.length"
         title="该题组创建前还需完成"
         :steps="selectedGroupWorkflowSteps"
       />
@@ -36,7 +36,7 @@
           v-model="allocationUnit"
           placeholder="选择正评任务拆分方式"
           :options="ALLOCATION_UNIT_OPTIONS"
-          :disabled="!selectedGroupCanCreate"
+          :disabled="selectedGroupCanCreate !== true"
         />
       </UiFormItem>
     </UiForm>
@@ -70,7 +70,9 @@ interface GroupOption {
 
 defineOptions({ name: 'FormalSessionCreateDialog' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   open: boolean
   organizationId: string
   groupOptions: GroupOption[]
@@ -78,8 +80,12 @@ const props = defineProps<{
   groupCreateReadinessMap?: Record<string, SessionGroupCreateReadinessResponse>
   groupAllocationPolicyMap?: Record<string, AllocationPolicyResponse>
   sessionReadiness?: SessionCreateReadinessResponse | null
-  canManage: boolean
-}>()
+  canManage?: boolean // MVR-945：会话/试评管理写仅认 === true
+}>(),
+  {
+  canManage: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -160,7 +166,7 @@ watch(
 )
 
 async function submit(): Promise<void> {
-  if (!props.canManage) {
+  if (props.canManage !== true) {
     showFormValidationMessage('仅考试主考老师可管理正评会话')
     return
   }
@@ -168,11 +174,11 @@ async function submit(): Promise<void> {
     !props.organizationId
     || !groupId.value
     || !allocationUnit.value
-    || !selectedGroupCanCreate.value
+    || selectedGroupCanCreate.value !== true
   ) {
     return
   }
-  if (submitting.value) return
+  if (submitting.value === true) return
   submitting.value = true
   try {
     const sessionId = await createFormalSession({

@@ -79,7 +79,7 @@
                 {{ volumeStatusLabel(record.volumeStatus) }}
               </UiTag>
               <UiTag
-                v-if="record.hasOpenRemediationTask"
+                v-if="record.hasOpenRemediationTask === true"
                 tone="orange"
                 size="sm"
                 class="archive-supervision-panel__remediation-tag"
@@ -87,7 +87,7 @@
                 待整改
               </UiTag>
               <UiTag
-                v-if="record.securityMarkPending"
+                v-if="record.securityMarkPending === true"
                 tone="orange"
                 size="sm"
                 class="archive-supervision-panel__remediation-tag"
@@ -374,7 +374,7 @@
     :open="markProblemOpen"
     title="标记问题"
     :width="520"
-    :confirm-loading="markProblemSubmitting"
+    :confirm-loading="markProblemSubmitting === true"
     ok-text="提交"
     :hide-footer="false"
     @update:open="(v: boolean) => (markProblemOpen = v)"
@@ -407,6 +407,7 @@
 </template>
 
 <script setup lang="ts">
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveEvaluationCampaignResponse,
@@ -502,10 +503,10 @@ const { isTenantWideCollegeCoordinator, canViewSupervision, loadGrants } = useAr
 const activeTab = ref('statistics')
 /** MVR-353：标记问题叠状态/移交待验收/开放整改互斥，与 BE markSupervisionProblem 同源 */
 function canMarkSupervisionProblemOnVolume(record: ArchiveVolumeResponse): boolean {
-  if (!canViewSupervision.value) {
+  if (canViewSupervision.value !== true) {
     return false
   }
-  if (record.hasOpenRemediationTask) {
+  if (record.hasOpenRemediationTask === true) {
     return false
   }
   const status = record.volumeStatus
@@ -790,7 +791,7 @@ function goReadinessMatrix() {
 
 async function handleExportManifest() {
   // MVR-330：与 isTenantWideCollegeCoordinator / BE 导出门禁二次拦截
-  if (!isTenantWideCollegeCoordinator.value) {
+  if (isTenantWideCollegeCoordinator.value !== true) {
     void message.warning('仅全校学院协调人可导出评估材料包')
     return
   }
@@ -813,7 +814,7 @@ async function handleExportManifest() {
 
 async function handleExportArchive() {
   // MVR-330：与 isTenantWideCollegeCoordinator / BE 导出门禁二次拦截
-  if (!isTenantWideCollegeCoordinator.value) {
+  if (isTenantWideCollegeCoordinator.value !== true) {
     void message.warning('仅全校学院协调人可导出评估材料包')
     return
   }
@@ -1051,7 +1052,7 @@ async function openDetail(volumeId: string) {
 
 function openMarkProblem(volumeId: string) {
   // MVR-342/353：与 canViewSupervision / BE markSupervisionProblem 二次拦截
-  if (!canViewSupervision.value) {
+  if (canViewSupervision.value !== true) {
     void message.warning('当前账号无督导标记问题权限')
     return
   }
@@ -1078,7 +1079,7 @@ function handleSupervisionVolumeRowAction(key: string, volumeId: string) {
 
 async function submitMarkProblem() {
   // MVR-421：与 canMarkSupervisionProblemOnVolume / openMarkProblem 同源二次闸
-  if (!canViewSupervision.value) {
+  if (canViewSupervision.value !== true) {
     void message.warning('当前账号无督导标记问题权限')
     return
   }
@@ -1089,7 +1090,7 @@ async function submitMarkProblem() {
     )
     return
   }
-  if (markProblemSubmitting.value) return
+  if (markProblemSubmitting.value === true) return
   const description = markProblemDescription.value.trim()
   if (!description) {
     showFormValidationMessage('请填写问题描述')

@@ -295,7 +295,7 @@ const {
 } = useMarkExamSelector({ syncUrl: false })
 
 const examSelectorLoading = computed(
-  () => selectorLoading.value || selectorSearching.value || selectorResolvingPinned.value,
+  () => selectorLoading.value === true || selectorSearching.value === true || selectorResolvingPinned.value === true,
 )
 
 const {

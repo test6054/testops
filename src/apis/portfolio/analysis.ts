@@ -103,7 +103,7 @@ export interface PortfolioAnalysisTrainingRecommendVO {
   recommendTitle: string
   recommendReason: string
   indicatorCode?: string
-  dimensionCode: string
+  dimensionCode: PortfolioPortraitDimensionCode
   recommendStatus: PortfolioTrainingRecommendStatusCode
   trainingActivityId?: string
   ruleSnapshotId?: string

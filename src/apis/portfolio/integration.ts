@@ -240,9 +240,7 @@ export interface PortfolioNationalReportIssueVO {
   teacherUserId: string
   teacherNumber?: string
   teacherName?: string
-  /** 问题编码拼接串（逗号分隔） */
-  issueCodes?: string
-  /** 问题编码枚举列表 */
+  /** 问题编码枚举列表（API 合同） */
   issueCodeList?: PortfolioNationalReportIssueCode[]
   issueDetails?: string[]
   status: PortfolioNationalReportIssueStatusCode

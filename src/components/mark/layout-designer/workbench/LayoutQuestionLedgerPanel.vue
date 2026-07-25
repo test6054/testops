@@ -13,11 +13,16 @@ import { isLayoutQuestionRoiReady } from '@/utils/exam-layout-designer'
 import { ROI_NOT_CONFIGURED_LABEL } from '@/utils/format-exam-layout-question-summary'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   document: ExamLayoutDocument | null
   focusedQuestionId: string | null
   readonly?: boolean
-}>()
+}>(),
+  {
+    readonly: true,
+  },
+)
 
 const emit = defineEmits<{
   "patch": [document: ExamLayoutDocument]

@@ -14,6 +14,8 @@ import type { PfModelStatusCode } from '@/types/enums/pf-model-status-enum'
 import type { PfRuleChangeLevelCode } from '@/types/enums/pf-rule-change-level-enum'
 import type { PfScoreRuleTypeCode } from '@/types/enums/pf-score-rule-type-enum'
 import type { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
+import type {
+  PortfolioIndicatorDimensionL1Code} from '@/types/enums/portfolio-indicator-dimension-l1-code-enum';
 import type { PortfolioRuleTrackCode } from '@/types/enums/portfolio-rule-track-enum'
 import {
   ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES,
@@ -46,6 +48,10 @@ import {
   ALL_PF_SCORE_RULE_TYPE_CODES,
   PfScoreRuleTypeDescription,
 } from '@/types/enums/pf-score-rule-type-enum'
+import {
+  ALL_PORTFOLIO_INDICATOR_DIMENSION_L1_CODES,
+  PortfolioIndicatorDimensionL1Description,
+} from '@/types/enums/portfolio-indicator-dimension-l1-code-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
@@ -70,6 +76,12 @@ export const PF_INDICATOR_STATUS_OPTIONS: Array<{ value: PfIndicatorStatusCode, 
   = ALL_PF_INDICATOR_STATUS_CODES.map((value) => ({
     value,
     label: strictEnumLabel(PfIndicatorStatusDescription, value, '指标状态'),
+  }))
+
+export const PORTFOLIO_INDICATOR_DIMENSION_L1_OPTIONS: Array<{ value: PortfolioIndicatorDimensionL1Code, label: string }>
+  = ALL_PORTFOLIO_INDICATOR_DIMENSION_L1_CODES.map((value) => ({
+    value,
+    label: strictEnumLabel(PortfolioIndicatorDimensionL1Description, value, '一级维度'),
   }))
 
 export {
@@ -198,6 +210,7 @@ export interface PortfolioIndicatorDefinitionVO {
   indicatorCode: string
   indicatorName: string
   levelNo?: number
+  dimensionL1Code: PortfolioIndicatorDimensionL1Code
   dimensionL1Name: string
   dimensionL2Name: string
   definitionText: string
@@ -466,6 +479,7 @@ export interface PortfolioIndicatorDefinitionSaveRequest {
   indicatorCode: string
   indicatorName: string
   levelNo?: number
+  dimensionL1Code: PortfolioIndicatorDimensionL1Code
   dimensionL1Name?: string
   dimensionL2Name?: string
   definitionText?: string
@@ -914,7 +928,7 @@ export interface PortfolioIndicatorDashboardQueryRequest {
 }
 
 export interface PortfolioIndicatorDimensionStatVO {
-  dimensionL1Code: string
+  dimensionL1Code: PortfolioIndicatorDimensionL1Code
   dimensionL1Name: string
   totalCount: number
   enabledCount: number

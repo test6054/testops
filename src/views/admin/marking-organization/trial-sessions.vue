@@ -28,10 +28,10 @@
         </template>
         <template #actions>
           <UiButton
-            v-if="canManageOrganization"
+            v-if="canManageOrganization === true"
             variant="primary"
             size="sm"
-            :disabled="!canCreateSession"
+            :disabled="canCreateSession !== true"
             :title="sessionCreateWorkflow.disabledTooltip"
             @click="openCreateDialog"
           >
@@ -49,7 +49,7 @@
     <ExamWorkspaceJourneySubNav v-if="isExamWorkspaceRoute" />
 
     <UiAlertStrip
-      v-if="organization && canManageOrganization && sessionCreateReadinessLoadFailed"
+      v-if="organization && canManageOrganization === true && sessionCreateReadinessLoadFailed"
       tone="error"
       dense
       title="试评创建条件加载失败"
@@ -60,8 +60,8 @@
     <WorkflowReadinessPanel
       v-if="
         organization
-          && canManageOrganization
-          && !canCreateSession
+          && canManageOrganization === true
+          && canCreateSession !== true
           && !sessionCreateReadinessLoadFailed
           && sessionCreateWorkflow.steps.length
       "
@@ -83,7 +83,7 @@
       :loading="sessionsLoading"
       :can-manage="canManageOrganization"
       :can-close-marking-sessions="canCloseMarkingSessions"
-      :create-blocked="canManageOrganization && sessionCreateReadinessLoaded && !canCreateSession"
+      :create-blocked="canManageOrganization === true && sessionCreateReadinessLoaded === true && canCreateSession !== true"
       :prerequisite-empty="sessionCreateWorkflow.emptyState"
       @search="applySessionFilter"
       @reset="resetSessionFilter"
@@ -115,6 +115,8 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-945：canManage* 控制流仅认 === true
 import type { LifecycleAction } from './components/SessionLifecycleReasonModal.vue'
 import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
@@ -184,7 +186,7 @@ function openCreateDialog(): void {
   if (!guardOrganizationOwnerAction()) {
     return
   }
-  if (!canCreateSession.value) {
+  if (canCreateSession.value !== true) {
     void message.warning(sessionCreateWorkflow.value.disabledTooltip || `当前不可创建试评会话`)
     return
   }
@@ -198,9 +200,9 @@ const lifecycleSessionId = ref('')
 /** MVR-398：关闭动作认 canCloseMarkingSessions；其它写认 canManageOrganization */
 const lifecycleModalCanManage = computed(() => {
   if (lifecycleAction.value === 'closeFormal' || lifecycleAction.value === 'closeTrial') {
-    return canCloseMarkingSessions.value
+    return canCloseMarkingSessions.value === true
   }
-  return canManageOrganization.value
+  return canManageOrganization.value === true
 })
 
 function openLifecycleModal(action: LifecycleAction, sessionId: string): void {

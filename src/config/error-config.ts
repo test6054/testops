@@ -132,7 +132,7 @@ export function initGlobalErrorHandler(config?: Partial<GlobalErrorConfig>) {
   ErrorHandler.setDefaultConfig({
     showMessage: currentConfig.showMessage,
     useNotification: currentConfig.useNotificationForErrors,
-    silent: !currentConfig.enabled
+    silent: currentConfig.enabled !== true
   })
 }
 /**

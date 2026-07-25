@@ -10,8 +10,8 @@ const { workflow } = useKioskCtx()
 const activation = workflow.deviceActivation
 
 const visible = computed(() => workflow.needsActivationGate.value)
-const canActivate = computed(() => workflow.canActivateAgent.value)
-const loading = computed(() => workflow.loading.value || activation.loading.value)
+const canActivate = computed(() => workflow.canActivateAgent.value === true)
+const loading = computed(() => workflow.loading.value === true || activation.loading.value === true)
 
 function handleActivated() {
   void workflow.activateAgent()

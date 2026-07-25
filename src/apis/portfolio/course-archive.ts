@@ -4,12 +4,13 @@ import type {
   PortfolioTeachingWorkloadByIdentityVO,
 } from '@/apis/portfolio/types'
 import type { PortfolioEvaluationIdentityMaterialScopeCode } from '@/types/enums/portfolio-evaluation-identity-material-scope-enum'
+import type { PortfolioIdentityMaterialCategoryClassCode } from '@/types/enums/portfolio-identity-material-category-class-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 export interface PortfolioCourseArchiveFrameworkVO {
   categoryId: string
-  categoryCode: string
+  categoryCode: PortfolioIdentityMaterialCategoryClassCode
   categoryName: string
   sortOrder?: number
   completed: boolean

@@ -14,11 +14,11 @@
           <UiTag v-if="detail.examKind" :tone="examKindTone(detail.examKind)" size="sm">
             {{ examKindLabel(detail) }}
           </UiTag>
-          <UiTag v-if="detail.confidential" tone="purple" size="sm">涉密考试</UiTag>
+          <UiTag v-if="detail.confidential === true" tone="purple" size="sm">涉密考试</UiTag>
         </template>
         <template #actions>
           <UiButton
-            v-if="canEditExam"
+            v-if="canEditExam === true"
             size="sm"
             variant="outline"
             @click="openEditDrawer"
@@ -96,6 +96,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
 import type { ExamDetailResponse } from '@/apis/mark/exam'
 import type { ExamQuestionTypeDistributionResponse, ExamWorkbenchStageKeyCode } from '@/apis/mark/exam-progress'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
@@ -155,7 +156,7 @@ const { suggestedStageKey, orderedStages } = storeToRefs(markStageStore)
 const detail = computed(() => examDetail?.value ?? null)
 const pageLoading = computed(
   () =>
-    (snapshotLoading.value && !snapshot.value)
+    (snapshotLoading.value === true && !snapshot.value)
     || (examDetailLoading?.value === true && !detail.value),
 )
 
@@ -193,7 +194,7 @@ const canEditExam = computed(
 )
 
 function openEditDrawer(): void {
-  if (!examId.value || !canEditExam.value) return
+  if (!examId.value || canEditExam.value !== true) return
   editDrawerOpen.value = true
 }
 

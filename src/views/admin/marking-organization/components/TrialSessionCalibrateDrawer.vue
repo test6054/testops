@@ -3,7 +3,7 @@
     :open="open"
     title="提交校准结论"
     :width="560"
-    :confirm-loading="submitting"
+    :confirm-loading="submitting === true"
     ok-text="提交"
     @update:open="emit('update:open', $event)"
     @ok="submit"
@@ -62,11 +62,17 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TrialSessionCalibrateDrawer' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   open: boolean
   session: TrialSessionResponse | null
-  canManage: boolean
-}>()
+  canManage?: boolean // MVR-945：会话/试评管理写仅认 === true
+}>(),
+  {
+  canManage: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -88,7 +94,7 @@ watch(
 )
 
 async function submit(): Promise<void> {
-  if (!props.canManage) {
+  if (props.canManage !== true) {
     showFormValidationMessage('仅考试主考老师可管理试评会话')
     return
   }
@@ -104,7 +110,7 @@ async function submit(): Promise<void> {
   if (!props.session?.id || !calibrationSummary.value.trim()) {
     return
   }
-  if (submitting.value) {
+  if (submitting.value === true) {
     return
   }
   submitting.value = true

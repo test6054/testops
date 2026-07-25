@@ -22,7 +22,7 @@ export function useKioskExamRouteGuard(workflow: ExamKioskWorkflow) {
         route.name,
       ] as const,
     ([bootstrapPending, activationGate, needsBind, routeName]) => {
-      if (bootstrapPending || activationGate) return
+      if (bootstrapPending === true || activationGate === true) return
 
       const onBindRoute = routeName === SCANNER_EXAM_BIND_ROUTE
 

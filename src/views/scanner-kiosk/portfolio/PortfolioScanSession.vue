@@ -52,7 +52,7 @@ const canStart = computed(() =>
 const leaseLostMessage = '派单租约已失效，扫描会话可能已被中断，请返回队列'
 const scanActionsDisabled = computed(() => {
   if (!lease.leaseLost.value) return false
-  return !(scanFlow.canRetryWorkOrderCommit.value || scanFlow.canDiscard.value)
+  return !(scanFlow.canRetryWorkOrderCommit.value === true || scanFlow.canDiscard.value === true)
 })
 const completedNavigated = ref(false)
 const autoResumeAttempted = ref(false)
@@ -332,7 +332,7 @@ function goBack() {
         返回派单队列
       </UiButton>
       <UiButton
-        v-if="!scanFlow.currentJob.value && !scanFlow.canRetryWorkOrderCommit.value && !scanActionsDisabled"
+        v-if="!scanFlow.currentJob.value && scanFlow.canRetryWorkOrderCommit.value !== true && !scanActionsDisabled"
         variant="primary"
         :loading="session.loading.value || scanFlow.loading.value"
         :disabled="!canStart || bootstrap.needsActivationGate.value"
@@ -340,7 +340,7 @@ function goBack() {
       >
         开单并开始扫描
       </UiButton>
-      <template v-if="!scanActionsDisabled && !scanFlow.currentJob.value && scanFlow.canRetryWorkOrderCommit.value">
+      <template v-if="!scanActionsDisabled && !scanFlow.currentJob.value && scanFlow.canRetryWorkOrderCommit.value === true">
         <UiButton
           variant="outline"
           :loading="scanFlow.loading.value"
@@ -349,7 +349,7 @@ function goBack() {
           重试提交工单
         </UiButton>
         <UiButton
-          v-if="scanFlow.canDiscard.value"
+          v-if="scanFlow.canDiscard.value === true"
           variant="destructive"
           :loading="scanFlow.loading.value"
           @click="scanFlow.discardCurrentSession()"
@@ -359,7 +359,7 @@ function goBack() {
       </template>
       <template v-else-if="!scanActionsDisabled && scanFlow.currentJob.value">
         <UiButton
-          v-if="scanFlow.canEndBatch.value"
+          v-if="scanFlow.canEndBatch.value === true"
           variant="primary"
           :loading="scanFlow.loading.value"
           @click="scanFlow.endCurrentBatch()"
@@ -381,21 +381,21 @@ function goBack() {
           继续
         </UiButton>
         <UiButton
-          v-if="scanFlow.canRetryUpload.value"
+          v-if="scanFlow.canRetryUpload.value === true"
           variant="outline"
           @click="scanFlow.retryCurrentUpload()"
         >
           重试上传
         </UiButton>
         <UiButton
-          v-if="scanFlow.canRetryCommit.value"
+          v-if="scanFlow.canRetryCommit.value === true"
           variant="outline"
           @click="scanFlow.retryCurrentCommit()"
         >
           重试提交
         </UiButton>
         <UiButton
-          v-if="scanFlow.canDiscard.value"
+          v-if="scanFlow.canDiscard.value === true"
           variant="destructive"
           :loading="scanFlow.loading.value"
           @click="scanFlow.discardCurrentSession()"

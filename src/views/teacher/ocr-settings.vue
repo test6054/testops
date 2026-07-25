@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// MVR-948：本地 can* 显隐/禁用仅认 === true
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
@@ -151,7 +153,7 @@ function syncChannelFormFromConfig(): void {
 }
 
 const ocrChannelEmptyBody = computed(() => {
-  if (canManageOcrTenantChannel.value) {
+  if (canManageOcrTenantChannel.value === true) {
     return '租户尚未配置文字识别渠道；请在下方选择渠道并保存（仅超级管理员可写）。'
   }
   return '租户尚未配置文字识别渠道，请联系平台超级管理员完成配置。'
@@ -251,8 +253,8 @@ const ocrSignalMetrics = computed((): SignalMetric[] => {
     {
       key: 'enabled',
       label: '启用状态',
-      value: currentConfig.value.enabled ? '已启用' : '未启用',
-      tone: currentConfig.value.enabled ? 'green' : 'gray',
+      value: currentConfig.value.enabled === true ? '已启用' : '未启用',
+      tone: currentConfig.value.enabled === true ? 'green' : 'gray',
     },
   ]
 })
@@ -276,13 +278,11 @@ const paperCutCapability = computed(() => {
 })
 
 const canRecognize = computed(() =>
-  Boolean(
-    ocrDebugReady.value
-    && currentConfig.value?.providerType
-    && currentConfig.value.enabled
-    && debugForm.value.paperInstanceId
-    && debugForm.value.responseSliceId,
-  ),
+  ocrDebugReady.value === true
+  && Boolean(currentConfig.value?.providerType)
+  && currentConfig.value?.enabled === true
+  && Boolean(debugForm.value.paperInstanceId)
+  && Boolean(debugForm.value.responseSliceId),
 )
 const currentPaperSlice = computed(() =>
   paperSlices.value.find((item) => item.responseSliceId === debugForm.value.responseSliceId),
@@ -352,7 +352,7 @@ function platformProviderSummary(record: MarkOcrPlatformProviderResponse): strin
   if (isPaddleProviderType(record.providerType)) {
     return [
       '本地集群接入型供应商',
-      record.enabled ? '允许租户选择本地文字识别集群' : '当前不允许租户选择本地文字识别集群',
+      record.enabled === true ? '允许租户选择本地文字识别集群' : '当前不允许租户选择本地文字识别集群',
     ]
   }
   return [
@@ -406,7 +406,7 @@ async function loadConfig(): Promise<void> {
   try {
     // MVR-371：超管查询必须显式 tenantId，与 BE resolveOcrConfigTenantId 同源
     const tenantId = resolveOcrTenantId()
-    if (canManageOcrTenantChannel.value && !tenantId) {
+    if (canManageOcrTenantChannel.value === true && !tenantId) {
       currentConfig.value = null
       loadFailed.value = true
       void message.error('超级管理员查询 OCR 配置须先具备租户上下文（用户/租户会话）')
@@ -424,12 +424,12 @@ async function loadConfig(): Promise<void> {
 
 /** MVR-371：超管保存租户 OCR 渠道；与 BE saveConfig / requireOcrConfigWritePermission 二次拦截。 */
 async function handleSaveTenantChannel(): Promise<void> {
-  // MVR-430：仅认 canManageOcrTenantChannel === true，与 BE 超管写闸同源
-  if (!canManageOcrTenantChannel.value) {
+  // MVR-430：仅认 canManageOcrTenantChannel === true，与 BE 超管写闸同源；MVR-941 代码同步 !== true
+  if (canManageOcrTenantChannel.value !== true) {
     void message.warning('仅平台超级管理员可配置租户文字识别渠道')
     return
   }
-  if (channelSaving.value) {
+  if (channelSaving.value === true) {
     return
   }
   const tenantId = resolveOcrTenantId()
@@ -458,7 +458,7 @@ async function handleSaveTenantChannel(): Promise<void> {
 }
 
 async function loadPlatformProviders(): Promise<void> {
-  if (!ocrPlatformProviderManageAllowed.value) {
+  if (ocrPlatformProviderManageAllowed.value !== true) {
     platformProviders.value = []
     return
   }
@@ -475,7 +475,7 @@ async function loadPlatformProviders(): Promise<void> {
 
 function openPlatformProviderEditor(record: MarkOcrPlatformProviderResponse): void {
   // MVR-316：平台供应商编辑仅超级管理员
-  if (!ocrPlatformProviderManageAllowed.value) {
+  if (ocrPlatformProviderManageAllowed.value !== true) {
     void message.warning('仅平台超级管理员可维护平台文字识别供应商配置')
     return
   }
@@ -499,11 +499,11 @@ function openPlatformProviderEditor(record: MarkOcrPlatformProviderResponse): vo
 
 async function handlePlatformProviderSave(): Promise<void> {
   // MVR-316：与 ocrPlatformProviderManageAllowed / BE 超管门禁二次拦截
-  if (!ocrPlatformProviderManageAllowed.value) {
+  if (ocrPlatformProviderManageAllowed.value !== true) {
     void message.warning('仅平台超级管理员可维护平台文字识别供应商配置')
     return
   }
-  if (platformProviderSubmitting.value) {
+  if (platformProviderSubmitting.value === true) {
     return
   }
   platformProviderSubmitting.value = true
@@ -523,7 +523,7 @@ async function handlePlatformProviderHealthCheck(
   providerType: MarkOcrProviderTypeCode,
 ): Promise<void> {
   // MVR-316：平台健康检查仅超级管理员
-  if (!ocrPlatformProviderManageAllowed.value) {
+  if (ocrPlatformProviderManageAllowed.value !== true) {
     void message.warning('仅平台超级管理员可执行平台文字识别健康检查')
     return
   }
@@ -542,7 +542,7 @@ async function handlePlatformProviderHealthCheck(
 /** 触发当前租户 OCR 渠道健康探活，并刷新只读配置展示。 */
 async function handleHealthCheck(): Promise<void> {
   // MVR-371：健康检查写状态仅超管；与 ocrHealthCheckAllowed / BE 同源
-  if (!ocrHealthCheckAllowed.value) {
+  if (ocrHealthCheckAllowed.value !== true) {
     void message.warning('仅平台超级管理员可执行文字识别渠道健康检查')
     return
   }
@@ -567,7 +567,7 @@ async function handleHealthCheck(): Promise<void> {
 
 async function handleRecognize(): Promise<void> {
   // MVR-423：与 canRecognize / 按钮 disabled 同源二次闸（配置就绪∧启用∧已选试卷/切片）
-  if (!canRecognize.value) {
+  if (canRecognize.value !== true) {
     void message.warning('当前不可发起调试识别（配置未就绪、渠道未启用或未选试卷/切片）')
     return
   }
@@ -785,8 +785,8 @@ onBeforeUnmount(() => {
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
           </UiTag>
-          <UiTag :tone="currentConfig.enabled ? 'green' : 'gray'" size="sm">
-            {{ currentConfig.enabled ? '已启用' : '未启用' }}
+          <UiTag :tone="currentConfig.enabled === true ? 'green' : 'gray'" size="sm">
+            {{ currentConfig.enabled === true ? '已启用' : '未启用' }}
           </UiTag>
           <UiTag :tone="healthColor" size="sm">
             {{ healthLabel }}
@@ -794,7 +794,7 @@ onBeforeUnmount(() => {
         </template>
         <template #actions>
           <UiButton
-            v-if="ocrHealthCheckAllowed"
+            v-if="ocrHealthCheckAllowed === true"
             variant="outline"
             size="sm"
             :loading="healthChecking"
@@ -868,7 +868,7 @@ onBeforeUnmount(() => {
           <UiDescriptions :column="1" size="small" bordered>
             <UiDescriptionsItem label="已保存渠道">{{ currentProviderLabel }}</UiDescriptionsItem>
             <UiDescriptionsItem label="启用状态">
-              {{ currentConfig?.enabled ? '启用' : '关闭' }}
+              {{ currentConfig?.enabled === true ? '启用' : '关闭' }}
             </UiDescriptionsItem>
             <UiDescriptionsItem label="健康状态">
               <UiTag :tone="healthColor">{{ healthLabel }}</UiTag>
@@ -880,7 +880,7 @@ onBeforeUnmount(() => {
         </WorkbenchSurfaceCard>
       </div>
 
-      <WorkbenchSurfaceCard v-if="canManageOcrTenantChannel" class="ocr-settings__panel">
+      <WorkbenchSurfaceCard v-if="canManageOcrTenantChannel === true" class="ocr-settings__panel">
         <template #head>
           <h3 class="ocr-settings__panel-title">
             <ApiOutlined />
@@ -994,7 +994,7 @@ onBeforeUnmount(() => {
       </WorkbenchSurfaceCard>
 
       <WorkbenchSurfaceCard
-        v-if="ocrPlatformProviderManageAllowed"
+        v-if="ocrPlatformProviderManageAllowed === true"
         class="ocr-settings__panel ocr-settings__panel--provider-admin"
       >
         <template #head>
@@ -1036,8 +1036,8 @@ onBeforeUnmount(() => {
               {{ providerLabel(record.providerType) }}
             </template>
             <template v-else-if="column.key === 'enabled'">
-              <UiTag :tone="record.enabled ? 'green' : 'gray'" size="sm">
-                {{ record.enabled ? '已启用' : '未启用' }}
+              <UiTag :tone="record.enabled === true ? 'green' : 'gray'" size="sm">
+                {{ record.enabled === true ? '已启用' : '未启用' }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'credentials'">
@@ -1072,7 +1072,7 @@ onBeforeUnmount(() => {
         </UiDataTable>
       </WorkbenchSurfaceCard>
 
-      <WorkbenchSurfaceCard v-if="ocrDebugAllowed" class="ocr-settings__panel">
+      <WorkbenchSurfaceCard v-if="ocrDebugAllowed === true" class="ocr-settings__panel">
         <template #head>
           <h3 class="ocr-settings__panel-title">
             <ExperimentOutlined />
@@ -1094,7 +1094,7 @@ onBeforeUnmount(() => {
                   v-model="debugForm.paperInstanceId"
                   :options="paperCandidateOptions"
                   :loading="paperCandidatesLoading || examDetailLoading"
-                  :disabled="!debugForm.examId || !ocrDebugReady"
+                  :disabled="!debugForm.examId || ocrDebugReady !== true"
                   allow-search
                   :filter-option="false"
                   allow-clear
@@ -1113,7 +1113,7 @@ onBeforeUnmount(() => {
                   v-model="debugForm.responseSliceId"
                   :options="paperSliceOptions"
                   :loading="paperSlicesLoading || examDetailLoading"
-                  :disabled="!debugForm.examId || !debugForm.paperInstanceId || !ocrDebugReady"
+                  :disabled="!debugForm.examId || !debugForm.paperInstanceId || ocrDebugReady !== true"
                   allow-search
                   option-filter-prop="label"
                   placeholder="请选择当前卷面的正式作答切片"
@@ -1125,7 +1125,7 @@ onBeforeUnmount(() => {
           <UiButton
             variant="primary"
             size="sm"
-            :disabled="!canRecognize"
+            :disabled="canRecognize !== true"
             :loading="recognizing"
             @click="handleRecognize"
           >
@@ -1160,7 +1160,7 @@ onBeforeUnmount(() => {
         v-model:open="platformProviderEditorVisible"
         :title="`编辑 ${providerLabel(platformProviderEditor.providerType)} 平台配置`"
         :width="720"
-        :confirm-loading="platformProviderSubmitting"
+        :confirm-loading="platformProviderSubmitting === true"
         @ok="handlePlatformProviderSave"
       >
         <UiForm layout="vertical">

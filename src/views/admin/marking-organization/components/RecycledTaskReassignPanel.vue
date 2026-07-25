@@ -32,7 +32,7 @@
         </template>
         <template v-else-if="column.key === 'targetReviewer'">
           <UiSelect
-            v-if="canReassign"
+            v-if="canReassign === true"
             size="sm"
             v-model="targetReviewerByTaskId[record.id]"
             placeholder="选择目标教师"
@@ -43,7 +43,7 @@
         </template>
         <template v-else-if="column.key === 'action'">
           <UiTableActions
-            v-if="canReassign"
+            v-if="canReassign === true"
             :items="buildReassignActions(record)"
             split
             @action="() => submitReassign(record)"
@@ -78,14 +78,19 @@ import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'RecycledTaskReassignPanel' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   examId: string
   groups: QuestionMarkingGroupResponse[]
   viewAllRecycled: boolean
   leaderGroupIds: string[]
   /** MVR-317：与父 canReassignRecycledTasks / BE requireRecycledTaskReassignPermission 同源 */
-  canReassign?: boolean
-}>()
+  canReassign?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+}>(),
+  {
+  canReassign: false,
+  },
+)
 
 const loading = ref(false)
 const reassigningId = ref<string | null>(null)
@@ -164,7 +169,7 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 
 async function submitReassign(task: MarkingTaskResponse): Promise<void> {
   // MVR-317：回收再分配二次拦截
-  if (!props.canReassign) {
+  if (props.canReassign !== true) {
     void message.warning('当前账号无权再分配回收任务')
     return
   }

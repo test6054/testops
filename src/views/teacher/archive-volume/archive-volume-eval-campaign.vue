@@ -87,7 +87,7 @@
               <UiTableActions
                 v-if="
                   record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
-                    && canExportCampaign
+                    && canExportCampaign === true
                 "
                 :items="buildCampaignActions(record)"
                 split
@@ -217,7 +217,7 @@
                 {{ evaluationDimensionReadyLabel(record.overallReady, 'overallReady') }}
               </UiTag>
               <div
-                v-if="record.hasDomainOpenRemediation && !(record.openRemediationTaskCount ?? 0)"
+                v-if="record.hasDomainOpenRemediation === true && (record.openRemediationTaskCount ?? 0) === 0"
                 class="link-cell__sub"
               >
                 他人跟进中
@@ -243,7 +243,7 @@
             size="sm"
             v-model="mixedFilterForm.departmentId"
             :options="mixedDepartmentOptions"
-            :disabled="mixedDepartmentDisabled"
+            :disabled="mixedDepartmentDisabled === true"
             allow-clear
             placeholder="学院"
             style="width: 160px"
@@ -326,6 +326,7 @@
 </template>
 
 <script setup lang="ts">
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveEvaluationCampaignResolveItemVO,
@@ -446,7 +447,7 @@ const readinessFocusVolumeId = computed(() =>
 const mixedDepartmentDisabled = computed(() => listScopedDepartmentIds.value.length === 1)
 
 /** MVR-318：与 BE requireTenantWideCollegeCoordinator 对齐；院系级协调人不可导出假可点 */
-const canExportCampaign = computed(() => isTenantWideCollegeCoordinator.value)
+const canExportCampaign = computed(() => isTenantWideCollegeCoordinator.value === true)
 
 const backButtonLabel = computed(() => {
   const volumeId = route.query.volumeId
@@ -586,7 +587,7 @@ function buildCampaignActions(_record: ArchiveEvaluationCampaignResponse): UiTab
 
 function handleCampaignAction(key: string, record: ArchiveEvaluationCampaignResponse): void {
   // MVR-318：行动作入口与 canExportCampaign 同源
-  if (!canExportCampaign.value) {
+  if (canExportCampaign.value !== true) {
     void message.warning('仅全校学院协调人可导出迎评材料包')
     return
   }
@@ -603,19 +604,19 @@ function resolveReadinessTargetTab(record: ArchiveEvaluationVolumeReadinessRespo
   tab: ArchiveVolumeDetailTabKey
   remediationTaskId?: string
 } {
-  if (!record.overallReady && (record.openRemediationTaskCount ?? 0) > 0) {
+  if (record.overallReady !== true && (record.openRemediationTaskCount ?? 0) > 0) {
     return {
       tab: ArchiveVolumeDetailTabKey.MATERIALS,
       remediationTaskId: record.primaryOpenRemediationTaskId,
     }
   }
-  if (!record.catalogReady) {
+  if (record.catalogReady !== true) {
     return { tab: ArchiveVolumeDetailTabKey.MATERIALS }
   }
-  if (!record.integrityReady || !record.fourPropertyReady) {
+  if (record.integrityReady !== true || record.fourPropertyReady !== true) {
     return { tab: ArchiveVolumeDetailTabKey.INTEGRITY }
   }
-  if (!record.transferReady) {
+  if (record.transferReady !== true) {
     return { tab: ArchiveVolumeDetailTabKey.TRANSFER }
   }
   return { tab: ArchiveVolumeDetailTabKey.MATERIALS }
@@ -625,7 +626,7 @@ function buildReadinessActions(
   record: ArchiveEvaluationVolumeReadinessResponse,
 ): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
-  if (!record.overallReady) {
+  if (record.overallReady !== true) {
     actions.push({ key: 'handle', label: '去处理', tone: 'primary' })
   }
   if ((record.openRemediationTaskCount ?? 0) > 0) {
@@ -944,7 +945,7 @@ watch(onlyOpenRemediation, () => {
 
 async function handleExportArchive(record: ArchiveEvaluationCampaignResponse): Promise<void> {
   // MVR-318：与 canExportCampaign / BE requireTenantWideCollegeCoordinator 二次拦截
-  if (!canExportCampaign.value) {
+  if (canExportCampaign.value !== true) {
     void message.warning('仅全校学院协调人可导出迎评材料包')
     return
   }
@@ -957,6 +958,11 @@ async function handleExportArchive(record: ArchiveEvaluationCampaignResponse): P
     type: 'warning',
     okText: '确认导出',
     onOk: async () => {
+      // MVR-938：onOk 再认 canExportCampaign，防确认等待期间协调人权漂移
+      if (canExportCampaign.value !== true) {
+        void message.warning('仅全校学院协调人可导出迎评材料包')
+        return false
+      }
       exportingCampaignId.value = record.campaignId
       try {
         await runArchiveEvaluationExportFlow({
@@ -978,7 +984,7 @@ async function handleExportArchive(record: ArchiveEvaluationCampaignResponse): P
 
 async function handleExportEntity(record: ArchiveEvaluationCampaignResponse): Promise<void> {
   // MVR-318：与 canExportCampaign / BE requireTenantWideCollegeCoordinator 二次拦截
-  if (!canExportCampaign.value) {
+  if (canExportCampaign.value !== true) {
     void message.warning('仅全校学院协调人可导出迎评材料包')
     return
   }
@@ -991,6 +997,11 @@ async function handleExportEntity(record: ArchiveEvaluationCampaignResponse): Pr
     type: 'warning',
     okText: '确认导出',
     onOk: async () => {
+      // MVR-938：onOk 再认 canExportCampaign，防确认等待期间协调人权漂移
+      if (canExportCampaign.value !== true) {
+        void message.warning('仅全校学院协调人可导出迎评材料包')
+        return false
+      }
       exportingCampaignId.value = record.campaignId
       try {
         await runArchiveEvaluationExportFlow({

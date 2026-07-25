@@ -9,12 +9,17 @@ import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   open: boolean
   ticket?: ScanDispatchTicketVO | null
   /** MVR-317：父层已按 canForceReleaseTicket 过滤；handler 二次拦截 */
-  canForceRelease?: boolean
-}>()
+  canForceRelease?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+}>(),
+  {
+  canForceRelease: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -37,11 +42,11 @@ watch(
 
 async function handleSubmit() {
   // MVR-317：与 BE/父层 canForceReleaseTicket 二次拦截
-  if (!props.canForceRelease) {
+  if (props.canForceRelease !== true) {
     showFormValidationMessage('当前账号无权强制解锁该派单')
     return
   }
-  if (submitting.value) {
+  if (submitting.value === true) {
     return
   }
   const reason = form.releaseReason.trim()
@@ -76,7 +81,7 @@ async function handleSubmit() {
     :open="open"
     title="强制解锁派单"
     :width="520"
-    :confirm-loading="submitting"
+    :confirm-loading="submitting === true"
     ok-text="确认解锁"
     :hide-footer="false"
     @update:open="emit('update:open', $event)"

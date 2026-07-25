@@ -3,7 +3,7 @@
     <template #head>
       <div class="org-strategy__head">
         <h3 class="org-strategy__title">分配策略</h3>
-        <UiButton v-if="canManage" variant="outline" size="sm" @click="emit('edit-policy')">
+        <UiButton v-if="canManage === true" variant="outline" size="sm" @click="emit('edit-policy')">
           编辑策略
         </UiButton>
       </div>
@@ -47,6 +47,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-945：canManage* 控制流仅认 === true
 import type {
   AllocationPolicyResponse,
   RecyclePolicyResponse,
@@ -64,11 +65,17 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkingOrgStrategySummaryCard' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   allocationPolicy?: AllocationPolicyResponse
   recyclePolicy?: RecyclePolicyResponse
-  canManage: boolean
-}>()
+  canManage?: boolean
+}>(),
+  {
+  canManage: false,
+  },
+)
 
 const emit = defineEmits<{
   'edit-policy': []

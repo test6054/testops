@@ -3,7 +3,7 @@
     :open="open"
     title="处置重复影像"
     :width="600"
-    :confirm-loading="submitting"
+    :confirm-loading="submitting === true"
     :mask-closable="false"
     ok-text="提交"
     @update:open="$emit('update:open', $event)"
@@ -58,7 +58,8 @@ import {
 
 defineOptions({ name: 'DuplicateResolveModal' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   open: boolean
   examId: string
   resolution: ExamPaperDuplicateResolutionVO | null
@@ -66,8 +67,12 @@ const props = defineProps<{
    * MVR-372：与 BE canManageOwnerLedgerWrites（主考∧ACTIVE）同源。
    * 仅认 true；禁止缺声明默认放行。
    */
-  canManageOwnerLedgerWrites?: boolean
-}>()
+  canManageOwnerLedgerWrites?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+}>(),
+  {
+  canManageOwnerLedgerWrites: false,
+  },
+)
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
   (e: 'submitted'): void
@@ -90,11 +95,11 @@ watch(
 )
 
 async function handleOk(): Promise<void> {
-  if (submitting.value) {
+  if (submitting.value === true) {
     return
   }
   // MVR-372：写 handler 二次拦截；父页仅隐藏入口不能替代
-  if (!props.canManageOwnerLedgerWrites) {
+  if (props.canManageOwnerLedgerWrites !== true) {
     void message.warning('仅考试主考可处置重复影像')
     return
   }

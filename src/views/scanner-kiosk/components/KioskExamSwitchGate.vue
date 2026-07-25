@@ -22,7 +22,7 @@ const currentExamLabel = computed(() => {
 const scanReadyCount = computed(() => workflow.bindExamCandidateTotal.value)
 
 const statusLabel = computed(() => {
-  if (workflow.bindExamCandidateLoading.value) return '加载考试中'
+  if (workflow.bindExamCandidateLoading.value === true) return '加载考试中'
   if (workflow.bindExamCandidateLoadIssue.value) return '考试列表加载失败'
   if (scanReadyCount.value <= 0) return '暂无可切换考试'
   return `${scanReadyCount.value} 场可切换`
@@ -38,7 +38,7 @@ function closeGate() {
 }
 
 async function onConfirmSwitch(examId: string) {
-  if (switching.value) return
+  if (switching.value === true) return
   switching.value = true
   try {
     await workflow.bindKioskExam(examId)
@@ -96,9 +96,10 @@ watch(visible, (show) => {
           :exclude-exam-id="workflow.examId.value"
           class="exam-gate__panel"
           :class="{
-            'exam-gate__panel--busy': switching || workflow.bindExamCandidateLoading.value,
+            'exam-gate__panel--busy': switching === true || workflow.bindExamCandidateLoading.value === true,
           }"
-          :interaction-locked="switching"
+          :interaction-locked="switching === true"
+          :instant-bind="true"
           @confirm="onConfirmSwitch"
         />
 

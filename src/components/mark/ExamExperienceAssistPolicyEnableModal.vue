@@ -62,7 +62,11 @@ const props = withDefaults(
      * MVR-372：启用/改阈与 canManageReviewerWrites（评阅写∧ACTIVE）同源。
      * 仅认 true；禁止缺声明默认放行。
      */
-    canManageReviewerWrites?: boolean
+    canManageReviewerWrites?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+    /**
+     * MVR-931：正评冻结后禁止启用/改阈；仅认 true。
+     */
+    policyFrozen?: boolean
   }>(),
   { mode: 'enable' },
 )
@@ -86,6 +90,8 @@ const form = reactive<PolicyThresholdForm>({
   minConsistencyRate: 0.75,
   maxHammingDistance: 16,
   maxExperienceItems: 5,
+    canManageReviewerWrites: false,
+    policyFrozen: false,
 })
 
 const consistencyPercent = computed({
@@ -121,9 +127,13 @@ watch(open, (visible) => {
 })
 
 async function handleConfirm(): Promise<void> {
-  if (!props.examId || saving.value) return
-  // MVR-372：写 handler 二次拦截；策略页仅隐藏入口不能替代
-  if (!props.canManageReviewerWrites) {
+  if (!props.examId || saving.value === true) return
+  // MVR-372/931：写 handler 二次拦截；策略页仅隐藏入口不能替代
+  if (props.policyFrozen === true) {
+    void message.warning('经验辅助评阅策略已冻结，不可配置定标阈值')
+    return
+  }
+  if (props.canManageReviewerWrites !== true) {
     void message.warning('仅本场阅卷组织成员或主考可配置经验辅助评阅')
     return
   }

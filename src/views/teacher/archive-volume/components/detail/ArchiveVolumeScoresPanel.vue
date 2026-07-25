@@ -13,11 +13,11 @@
         </div>
       </div>
     </template>
-    <template v-if="canConfirmScoreCompletion" #toolbar>
+    <template v-if="canConfirmScoreCompletion === true" #toolbar>
       <UiButton
         size="sm"
         variant="primary"
-        :loading="scoreConfirmSubmitting"
+        :loading="scoreConfirmSubmitting === true"
         @click="handleConfirmScoreCompletion"
       >
         确认成绩完成
@@ -26,7 +26,7 @@
 
     <UiSkeletonState v-if="gateLoading" variant="card" compact />
     <div v-else class="archive-volume-scores-panel__gates">
-      <ArchiveExamScoreGatePanel v-if="showExamGate" :gate="examGate" :loading="gateLoading" />
+      <ArchiveExamScoreGatePanel v-if="showExamGate" :gate="examGate" :loading="gateLoading === true" />
       <div v-if="showTeachingAffairsGate" class="score-gate">
         <span
           class="score-gate__check"
@@ -49,7 +49,7 @@
         pagination-mode="server"
         :columns="scoreMaterialColumns"
         :data-source="materialsLoadFailed ? [] : scoreMaterials"
-        :loading="materialsLoading"
+        :loading="materialsLoading === true"
         :total="pageTotal"
         flat
         row-key="materialId"
@@ -83,6 +83,8 @@
 </template>
 
 <script setup lang="ts">
+// MVR-949：props.can* 写控制流仅认 === true
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveMaterialSubmissionStatusCode,
@@ -118,11 +120,17 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeScoresPanel' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   volumeId: string
   detail: ArchiveVolumeDetailResponse
-  canConfirmScoreCompletion: boolean
-}>()
+  canConfirmScoreCompletion?: boolean
+}>(),
+  {
+  canConfirmScoreCompletion: false,
+  },
+)
 
 const emit = defineEmits<{
   refreshed: []
@@ -262,11 +270,11 @@ async function loadExamGate() {
 }
 
 async function handleConfirmScoreCompletion() {
-  if (!props.volumeId || scoreConfirmSubmitting.value) {
+  if (!props.volumeId || scoreConfirmSubmitting.value === true) {
     return
   }
   // MVR-299：与工具栏 canConfirmScoreCompletion 同源二次拦截
-  if (!props.canConfirmScoreCompletion) {
+  if (props.canConfirmScoreCompletion !== true) {
     void message.warning('当前账号无成绩完成确认权限')
     return
   }

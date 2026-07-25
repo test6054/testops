@@ -413,7 +413,7 @@ function buildDispatchRowActions(record: ScanDispatchTicketVO): UiTableRowAction
   const actions: UiTableRowActionItem[] = [
     { key: 'open-kiosk', label: '打开工位', tone: 'primary' },
   ]
-  if (canCancelTicket(record)) {
+  if (canCancelTicket(record) === true) {
     actions.push({
       key: 'cancel',
       label: '取消派单',
@@ -421,7 +421,7 @@ function buildDispatchRowActions(record: ScanDispatchTicketVO): UiTableRowAction
       disabled: cancellingTicketId.value === record.ticketId,
     })
   }
-  if (canForceReleaseTicket(record)) {
+  if (canForceReleaseTicket(record) === true) {
     actions.push({ key: 'force-release', label: '强制解锁', tone: 'danger' })
   }
   actions.push({ key: 'logs', label: '处置日志' })
@@ -473,7 +473,7 @@ function canForceReleaseTicket(record: ScanDispatchTicketVO) {
 }
 
 function openForceRelease(record: ScanDispatchTicketVO) {
-  if (!canForceReleaseTicket(record) || !record.ticketId) {
+  if (canForceReleaseTicket(record) !== true || !record.ticketId) {
     forceReleaseAllowed.value = false
     return
   }
@@ -484,7 +484,7 @@ function openForceRelease(record: ScanDispatchTicketVO) {
 }
 
 async function cancelTicket(record: ScanDispatchTicketVO) {
-  if (!canCancelTicket(record) || !record.ticketId) {
+  if (canCancelTicket(record) !== true || !record.ticketId) {
     return
   }
   if (cancellingTicketId.value) {
@@ -495,6 +495,10 @@ async function cancelTicket(record: ScanDispatchTicketVO) {
     content: '取消后工位将无法再 claim 该派单，确定继续？',
     type: 'warning',
     onOk: async () => {
+      // MVR-952：确认后再次认 canCancelTicket，防确认等待期间状态/权限漂移
+      if (canCancelTicket(record) !== true || !record.ticketId) {
+        return false
+      }
       cancellingTicketId.value = record.ticketId
       try {
         await cancelScanDispatch({ ticketId: record.ticketId! })

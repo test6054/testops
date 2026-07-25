@@ -29,7 +29,7 @@ export function useArchiveS1AutoCreateAttention() {
   })
 
   const tipVisible = computed(() => {
-    if (loading.value && !summary.value && !loadFailed.value) {
+    if (loading.value === true && !summary.value && loadFailed.value !== true) {
       return false
     }
     if (loadFailed.value) {
@@ -98,7 +98,7 @@ export function useArchiveS1AutoCreateAttention() {
   )
 
   async function load(): Promise<void> {
-    if (loading.value) {
+    if (loading.value === true) {
       return
     }
     loading.value = true

@@ -17,14 +17,19 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import { isFullPaperWorkspace } from '@/utils/layout-design-workspace'
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   document: ExamLayoutDocument | null
   materialLayoutMode?: ExamMaterialLayoutModeCode
   pageNo: number
   focusedBlockId: string | null
   focusedQuestionId: string | null
   readonly?: boolean
-}>()
+}>(),
+  {
+    readonly: true,
+  },
+)
 
 const emit = defineEmits<{
   'update:page-no': [pageNo: number]

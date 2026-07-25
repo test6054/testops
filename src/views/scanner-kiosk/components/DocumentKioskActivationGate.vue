@@ -2,10 +2,16 @@
 import { useKioskDeviceActivation } from '../composables/useKioskDeviceActivation'
 import KioskDeviceActivationPanel from './KioskDeviceActivationPanel.vue'
 
-defineProps<{
+const props = withDefaults(
+  defineProps<{
   submitLoading?: boolean
   canActivate?: boolean
-}>()
+}>(),
+  {
+  canActivate: false,
+  submitLoading: false,
+  },
+)
 
 const emit = defineEmits<{
   submit: []
@@ -19,8 +25,8 @@ const activation = useKioskDeviceActivation()
     <div class="gate__panel">
       <KioskDeviceActivationPanel
         compact
-        :can-activate="canActivate"
-        :submit-loading="submitLoading"
+        :can-activate="canActivate === true"
+        :submit-loading="submitLoading === true"
         show-manual-cancel
         @submit="emit('submit')"
       />

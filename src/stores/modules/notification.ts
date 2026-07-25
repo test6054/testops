@@ -76,7 +76,7 @@ export const useNotificationStore = defineStore('notification', () => {
    */
   async function loadUnreadCount(): Promise<InboxUnreadCountResponse | null> {
     if (!isAuthenticated()) return null
-    if (unreadLoading.value) return unreadData.value
+    if (unreadLoading.value === true) return unreadData.value
     unreadLoading.value = true
     try {
       const data = await getUnreadCount()

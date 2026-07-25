@@ -3,7 +3,7 @@
     <template #head>
       <div class="archive-volume-access-panel__head">
         <h3 class="archive-volume-access-panel__title">查阅/借阅审批</h3>
-        <UiButton v-if="canRequestAccess" variant="primary" size="sm" @click="openAccessRequest">
+        <UiButton v-if="canRequestAccess === true" variant="primary" size="sm" @click="openAccessRequest">
           发起借阅
         </UiButton>
       </div>
@@ -79,7 +79,7 @@
         <div
           v-if="
             record.accessStatus === ArchiveAccessStatusCode.PENDING
-              && canApproveAccessRecord(record)
+              && canApproveAccessRecord(record) === true
           "
           class="approval-card__actions"
         >
@@ -97,7 +97,7 @@
               <UiButton
                 size="sm"
                 variant="outline"
-                :loading="rejectAccessSubmitting"
+                :loading="rejectAccessSubmitting === true"
                 @click="cancelReject"
               >
                 取消
@@ -105,7 +105,7 @@
               <UiButton
                 size="sm"
                 variant="outline"
-                :loading="rejectAccessSubmitting"
+                :loading="rejectAccessSubmitting === true"
                 @click="submitRejectAccess(record.accessRecordId)"
               >
                 确认驳回
@@ -127,7 +127,7 @@
               <UiButton
                 variant="primary"
                 size="sm"
-                :loading="approveAccessSubmitting"
+                :loading="approveAccessSubmitting === true"
                 @click="submitApproveAccess(record.accessRecordId)"
               >
                 确认批准
@@ -164,7 +164,7 @@
             variant="outline"
             :loading="accessDownloadBusyId === record.accessRecordId"
             :disabled="
-              !resolveAccessMaterialId(record) || !!accessDownloadBusyId || !!accessPreviewBusyId
+              !resolveAccessMaterialId(record) || Boolean(accessDownloadBusyId) || Boolean(accessPreviewBusyId)
             "
             @click="handleAccessDownload(record)"
           >
@@ -175,7 +175,7 @@
             variant="outline"
             :loading="accessPreviewBusyId === record.accessRecordId"
             :disabled="
-              !resolveAccessMaterialId(record) || !!accessDownloadBusyId || !!accessPreviewBusyId
+              !resolveAccessMaterialId(record) || Boolean(accessDownloadBusyId) || Boolean(accessPreviewBusyId)
             "
             @click="handleAccessPreview(record)"
           >
@@ -189,7 +189,7 @@
       :open="accessModalOpen"
       title="发起借阅"
       :width="520"
-      :confirm-loading="accessSubmitting"
+      :confirm-loading="accessSubmitting === true"
       ok-text="提交"
       :hide-footer="false"
       @update:open="(v: boolean) => (accessModalOpen = v)"
@@ -217,7 +217,7 @@
       :open="readPageModalOpen"
       title="记录阅读页码"
       :width="520"
-      :confirm-loading="readPageSubmitting"
+      :confirm-loading="readPageSubmitting === true"
       ok-text="保存"
       cancel-text="跳过"
       :hide-footer="false"
@@ -242,6 +242,9 @@
 </template>
 
 <script setup lang="ts">
+// MVR-950：残留 can* 控制流仅认 === true
+// MVR-949：props.can* 写控制流仅认 === true
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
 import type {
   ArchiveVolumeAccessReadPageRequest,
   ArchiveVolumeAccessRecordResponse,
@@ -282,13 +285,19 @@ import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'ArchiveVolumeAccessPanel' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   volumeId: string
-  canRequestAccess: boolean
+  canRequestAccess?: boolean
   canApproveAccessRecord: (record: ArchiveVolumeAccessRecordResponse) => boolean
   currentUserId: string
   materials: ArchiveVolumeMaterialResponse[]
-}>()
+}>(),
+  {
+  canRequestAccess: false,
+  },
+)
 
 const accessDownloadBusyId = ref<string | null>(null)
 const accessPreviewBusyId = ref<string | null>(null)
@@ -342,7 +351,7 @@ async function loadAccessRecords() {
 }
 
 async function handleAccessDownload(record: ArchiveVolumeAccessRecordResponse) {
-  if (accessDownloadBusyId.value || accessPreviewBusyId.value) return
+  if (Boolean(accessDownloadBusyId.value) || Boolean(accessPreviewBusyId.value)) return
   const materialId = resolveAccessMaterialId(record)
   const downloadToken = record.downloadToken
   if (!materialId) {
@@ -372,7 +381,7 @@ async function handleAccessDownload(record: ArchiveVolumeAccessRecordResponse) {
 }
 
 async function handleAccessPreview(record: ArchiveVolumeAccessRecordResponse) {
-  if (accessDownloadBusyId.value || accessPreviewBusyId.value) return
+  if (Boolean(accessDownloadBusyId.value) || Boolean(accessPreviewBusyId.value)) return
   const materialId = resolveAccessMaterialId(record)
   const downloadToken = record.downloadToken
   if (!materialId) {
@@ -426,7 +435,7 @@ function closeReadPageModal() {
 }
 
 async function submitReadPage() {
-  if (readPageSubmitting.value) return
+  if (readPageSubmitting.value === true) return
   if (!readPageForm.accessRecordId) {
     readPageModalOpen.value = false
     return
@@ -454,7 +463,7 @@ async function submitReadPage() {
 
 function openAccessRequest() {
   // MVR-299：与 canRequestAccess 同源二次拦截（必填 boolean，直接取反）
-  if (!props.canRequestAccess) {
+  if (props.canRequestAccess !== true) {
     void message.warning('当前账号无发起借阅权限')
     return
   }
@@ -468,8 +477,8 @@ function resolveAccessMaterialId(record: ArchiveVolumeAccessRecordResponse): str
 }
 
 async function submitAccessRequest() {
-  if (accessSubmitting.value) return
-  if (!props.canRequestAccess) {
+  if (accessSubmitting.value === true) return
+  if (props.canRequestAccess !== true) {
     void message.warning('当前账号无发起借阅权限')
     return
   }
@@ -507,10 +516,10 @@ function cancelApprove() {
 }
 
 async function submitApproveAccess(accessRecordId: string) {
-  if (approveAccessSubmitting.value) return
+  if (approveAccessSubmitting.value === true) return
   // MVR-299：审批写二次拦截（与行级 canApproveAccessRecord 对齐）
   const target = accessRecords.value.find((item) => item.accessRecordId === accessRecordId)
-  if (!target || !props.canApproveAccessRecord(target)) {
+  if (!target || props.canApproveAccessRecord(target) !== true) {
     void message.warning('当前账号无批准查阅权限')
     return
   }
@@ -544,9 +553,9 @@ function cancelReject() {
 }
 
 async function submitRejectAccess(accessRecordId: string) {
-  if (rejectAccessSubmitting.value) return
+  if (rejectAccessSubmitting.value === true) return
   const target = accessRecords.value.find((item) => item.accessRecordId === accessRecordId)
-  if (!target || !props.canApproveAccessRecord(target)) {
+  if (!target || props.canApproveAccessRecord(target) !== true) {
     void message.warning('当前账号无驳回查阅权限')
     return
   }

@@ -22,7 +22,7 @@ export function formatExamLayoutQuestionSummaryLabel(
     `第 ${question.questionNo} 题`,
     strictEnumLabel(MarkOcrSceneDescription, question.ocrScene, 'ocrScene'),
   ]
-  if (question.roiReady) {
+  if (question.roiReady === true) {
     if (question.sourcePageKind) {
       segments.push(
         strictEnumLabel(ExamPaperPageKindDescription, question.sourcePageKind, 'sourcePageKind'),
@@ -55,7 +55,7 @@ export function buildExamLayoutQuestionOptions(
   return questions.map((question) => ({
     value: question.layoutQuestionId,
     label: formatExamLayoutQuestionSummaryLabel(question),
-    disabled: !question.roiReady,
+    disabled: question.roiReady !== true,
     title: question.roiReady ? undefined : '请先在制卷工作台配置识别区域',
   }))
 }

@@ -37,9 +37,10 @@ export function canStartScanRegistration(
 ): boolean {
   const action = findWorkbenchNextAction(nextActions, WorkbenchNextActionKeyCode.START_SCAN)
   if (action) {
-    return action.enabled
+    // MVR-987：仅认 BE nextAction.enabled===true，禁止 truthy 回退假可进扫描
+    return action.enabled === true
   }
-  return !hasPrepHardBlocking(prepBlockingReasons)
+  return hasPrepHardBlocking(prepBlockingReasons) !== true
 }
 
 /** 是否允许进入批量复核：消费后端 nextActions.ENTER_REVIEW */
@@ -49,7 +50,8 @@ export function canEnterReviewBatch(
 ): boolean {
   const action = findWorkbenchNextAction(nextActions, WorkbenchNextActionKeyCode.ENTER_REVIEW)
   if (action) {
-    return action.enabled
+    // MVR-987：仅认 BE nextAction.enabled===true
+    return action.enabled === true
   }
   if (!progress) {
     return false
@@ -67,7 +69,7 @@ export function resolveNextActionDisabledReason(
   actionKey: WorkbenchNextActionKeyCode,
 ): string | undefined {
   const action = findWorkbenchNextAction(nextActions, actionKey)
-  if (!action || action.enabled) {
+  if (!action || action.enabled === true) {
     return undefined
   }
   return action.disabledReason
@@ -83,13 +85,13 @@ export function resolvePrimaryEnabledNextAction(
   }
   if (suggestedStageKey) {
     const matched = nextActions.find(
-      (item) => item.enabled && item.targetStageKey === suggestedStageKey,
+      (item) => item.enabled === true && item.targetStageKey === suggestedStageKey,
     )
     if (matched) {
       return matched
     }
   }
-  return nextActions.find((item) => item.enabled)
+  return nextActions.find((item) => item.enabled === true)
 }
 
 export function resolveNextActionRouteName(

@@ -207,7 +207,7 @@ export const portfolioDualTeacherApi = {
     http.post<void>('/api/portfolio/dual-teacher/academic-reject', data),
   academicReturn: (data: PortfolioDualTeacherWorkflowRequest) =>
     http.post<void>('/api/portfolio/dual-teacher/academic-return', data),
-  exportRoster: (data: PortfolioDualTeacherExportRequest = {}) =>
+  exportRoster: (data: PortfolioDualTeacherExportRequest) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/dual-teacher/export-roster', data),
   analyticsStats: () =>
     http.post<PortfolioDualTeacherAnalyticsVO>('/api/portfolio/dual-teacher/analytics/stats', {}),
@@ -429,7 +429,7 @@ export const portfolioExternalTeacherApi = {
       '/api/portfolio/external-teacher/import-batch/get',
       data,
     ),
-  exportRoster: (data: PortfolioExternalTeacherExportRequest = {}) =>
+  exportRoster: (data: PortfolioExternalTeacherExportRequest) =>
     http.post<PortfolioArchiveBagExportResultVO>(
       '/api/portfolio/external-teacher/export-roster',
       data,
@@ -933,7 +933,7 @@ export const portfolioKeyTeacherApi = {
   save: (data: PortfolioKeyTeacherSaveRequest) =>
     http.post<string>('/api/portfolio/key-teacher/save', data),
   revoke: (data: { id: string }) => http.post<void>('/api/portfolio/key-teacher/revoke', data),
-  exportRoster: (data: PortfolioKeyTeacherExportRequest = {}) =>
+  exportRoster: (data: PortfolioKeyTeacherExportRequest) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/key-teacher/export-roster', data),
   analyticsStats: () =>
     http.post<PortfolioKeyTeacherAnalyticsVO>('/api/portfolio/key-teacher/analytics/stats', {}),
@@ -1026,7 +1026,7 @@ export const portfolioDoubleDutyApi = {
   save: (data: PortfolioDoubleDutySaveRequest) =>
     http.post<string>('/api/portfolio/double-duty/save', data),
   revoke: (data: { id: string }) => http.post<void>('/api/portfolio/double-duty/revoke', data),
-  exportRoster: (data: PortfolioDoubleDutyExportRequest = {}) =>
+  exportRoster: (data: PortfolioDoubleDutyExportRequest) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/double-duty/export-roster', data),
   analyticsStats: () =>
     http.post<PortfolioDoubleDutyAnalyticsVO>('/api/portfolio/double-duty/analytics/stats', {}),
@@ -1090,7 +1090,7 @@ export const portfolioTeacherSalaryApi = {
     http.post<PageResult<PortfolioTeacherSalaryVO>>('/api/portfolio/teacher-salary/page', data),
   save: (data: PortfolioTeacherSalarySaveRequest) =>
     http.post<string>('/api/portfolio/teacher-salary/save', data),
-  export: (data: PortfolioTeacherSalaryExportRequest = {}) =>
+  export: (data: PortfolioTeacherSalaryExportRequest) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/teacher-salary/export', data),
 }
 
@@ -1170,7 +1170,7 @@ export const portfolioTeacherLibraryApi = {
     ),
   save: (data: PortfolioTeacherLibraryBorrowSaveRequest) =>
     http.post<string>('/api/portfolio/teacher-library/save', data),
-  export: (data: PortfolioTeacherLibraryBorrowExportRequest = {}) =>
+  export: (data: PortfolioTeacherLibraryBorrowExportRequest) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/teacher-library/export', data),
   stats: (data: PortfolioTeacherLibraryBorrowStatsRequest = {}) =>
     http.post<PortfolioTeacherLibraryBorrowStatsVO>('/api/portfolio/teacher-library/stats', data),

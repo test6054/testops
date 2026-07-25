@@ -160,7 +160,7 @@ export function useSurveyFill() {
 
   async function submitSurvey(): Promise<boolean> {
     if (!survey.value) return false
-    if (submitting.value) {
+    if (submitting.value === true) {
       return false
     }
 

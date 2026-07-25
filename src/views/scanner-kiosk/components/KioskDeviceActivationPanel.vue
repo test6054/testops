@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// MVR-949：props.can* 写控制流仅认 === true
 import { ThunderboltFilled } from '@ant-design/icons-vue'
 import { computed } from 'vue'
 import { useKioskDeviceActivation } from '../composables/useKioskDeviceActivation'
@@ -11,7 +12,7 @@ const props = withDefaults(
     showManualCancel?: boolean
   }>(),
   {
-    canActivate: false, // MVR-321：缺省拒绝激活假可写
+    canActivate: false, // MVR-321/971：缺省拒绝激活假可写
     submitLoading: false,
     showManualCancel: false,
   },
@@ -23,7 +24,7 @@ const emit = defineEmits<{
 
 const activation = useKioskDeviceActivation()
 
-const formDisabled = computed(() => props.submitLoading || !props.canActivate)
+const formDisabled = computed(() => props.submitLoading === true || props.canActivate !== true)
 
 const submitDisabled = computed(() => formDisabled.value || !activation.localAgentReachable.value)
 
@@ -35,7 +36,7 @@ const agentOfflineHint = computed(() =>
 
 function handleActivate() {
   // MVR-321：与 canActivate 二次拦截；缺省 false，禁止放行
-  if (!props.canActivate || submitDisabled.value) return
+  if (props.canActivate !== true || submitDisabled.value) return
   emit('submit')
 }
 </script>
@@ -71,7 +72,7 @@ function handleActivate() {
       <p v-if="agentOfflineHint" class="activation-panel__hint">
         {{ agentOfflineHint }}
       </p>
-      <p v-else-if="!canActivate" class="activation-panel__hint">
+      <p v-else-if="canActivate !== true" class="activation-panel__hint">
         当前扫描任务未结束，无法激活。请先结束或取消当前任务。
       </p>
       <p v-else-if="activation.activationErrorMessage.value" class="activation-panel__error">
@@ -84,13 +85,13 @@ function handleActivate() {
         @click="handleActivate"
       >
         <ThunderboltFilled />
-        <span>{{ submitLoading ? '激活中…' : '完成设备激活' }}</span>
+        <span>{{ submitLoading === true ? '激活中…' : '完成设备激活' }}</span>
       </button>
       <button
         v-if="showManualCancel && activation.manualActivationGateOpen.value"
         type="button"
         class="activation-panel__cancel"
-        :disabled="submitLoading"
+        :disabled="submitLoading === true"
         @click="activation.closeManualActivation()"
       >
         取消

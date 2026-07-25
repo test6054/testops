@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type {
   ArchiveVolumeSelfCheckConfirmRequest,
   ArchiveVolumeSignOffRoleCode,
@@ -24,12 +26,17 @@ import { showUserError } from '@/utils/error-handler'
 
 import ArchiveVolumeSubmitTaskList from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitTaskList.vue'
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   open: boolean
   volumeId: string
   /** MVR-305：与 capabilities.canSelfCheck 对齐 */
-  canConfirmSelfCheck?: boolean
-}>()
+  canConfirmSelfCheck?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+}>(),
+  {
+  canConfirmSelfCheck: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -68,7 +75,7 @@ const formSignOffReady = computed(() => {
   if (items.length !== ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES.length) return false
   return ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES.every(
     (role) =>
-      signOffState.value[role].confirmed
+      signOffState.value[role].confirmed === true
       && signOffState.value[role].signatoryName.trim().length > 0,
   )
 })
@@ -82,9 +89,9 @@ const sameScorerAndRechecker = computed(() => {
 
 const canConfirm = computed(() => {
   if (!checklist.value) return false
-  if (!checklist.value.baseReady) return false
-  if (!materialCompleteConfirmed.value || !gradingNormConfirmed.value) return false
-  if (!formSignOffReady.value) return false
+  if (checklist.value.baseReady !== true) return false
+  if (materialCompleteConfirmed.value !== true || gradingNormConfirmed.value !== true) return false
+  if (formSignOffReady.value !== true) return false
   if (sameScorerAndRechecker.value) return false
   return true
 })
@@ -143,13 +150,13 @@ function close() {
 }
 
 async function handleConfirm() {
-  if (submitting.value) return
+  if (submitting.value === true) return
   // MVR-305：权限闸优先于表单就绪 canConfirm
-  if (!props.canConfirmSelfCheck) {
+  if (props.canConfirmSelfCheck !== true) {
     void message.warning('当前账号无提交前自查确认权限')
     return
   }
-  if (!canConfirm.value) return
+  if (canConfirm.value !== true) return
   if (!checklist.value?.checklistVersion) {
     void message.error('清单版本缺失，请重新打开')
     return
@@ -255,8 +262,8 @@ async function handleConfirm() {
       <UiButton
         size="sm"
         variant="primary"
-        :loading="submitting"
-        :disabled="loading || loadFailed || !canConfirm || !canConfirmSelfCheck"
+        :loading="submitting === true"
+        :disabled="loading === true || loadFailed === true || canConfirm !== true || canConfirmSelfCheck !== true"
         @click="handleConfirm"
       >
         确认自查

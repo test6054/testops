@@ -257,10 +257,10 @@ export function buildArchiveExamGateLifecycleSteps(
   input: ArchiveExamGateLifecycleInput,
 ): ArchiveLifecycleStep[] {
   const doneFlags = [
-    Boolean(input.gateOpen),
-    Boolean(input.volumeCreated),
-    Boolean(input.collecting),
-    Boolean(input.submitted),
+    input.gateOpen === true,
+    input.volumeCreated === true,
+    input.collecting === true,
+    input.submitted === true,
   ]
   let activeIndex = doneFlags.findIndex((done) => !done)
   if (activeIndex < 0) {

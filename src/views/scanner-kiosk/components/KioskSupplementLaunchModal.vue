@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// MVR-950：残留 can* 控制流仅认 === true
 /**
  * 补扫启动面板：触摸屏大控件采集补扫必填项，确认后直接开批次。
  */
@@ -35,9 +36,9 @@ const canConfirm = computed(
     !preparing.value
     && !prepareFailed.value
     && !fieldBlockReason.value
-    && mutex.canDo('startSupplementScan')
+    && mutex.canDo('startSupplementScan') === true
     && !launching.value
-    && !workflow.loading.value,
+    && workflow.loading.value !== true,
 )
 
 const confirmBlockReason = computed(
@@ -93,7 +94,7 @@ function formatMissingPages(pageNos?: number[]) {
 }
 
 async function confirmSupplement() {
-  if (!canConfirm.value) return
+  if (canConfirm.value !== true) return
   launching.value = true
   try {
     const started = await workflow.startSupplementScan()
@@ -219,11 +220,11 @@ async function confirmSupplement() {
         <button
           type="button"
           class="action-btn action-btn--primary"
-          :disabled="!canConfirm"
+          :disabled="canConfirm !== true"
           :title="confirmBlockReason || '确认补扫'"
           @click="confirmSupplement"
         >
-          {{ launching || workflow.loading.value ? '处理中…' : '确认补扫' }}
+          {{ launching === true || workflow.loading.value === true ? '处理中…' : '确认补扫' }}
         </button>
       </div>
     </div>

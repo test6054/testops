@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// MVR-950：残留 can* 控制流仅认 === true
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
@@ -47,13 +48,13 @@ const canStart = computed(() =>
     && bootstrap.selectedScannerId.value
     && session.archiveContext.value != null
     && session.archiveContext.value.canRegisterMaterial === true
-    && !lease.leaseLost.value,
+    && lease.leaseLost.value !== true,
   ),
 )
 const leaseLostMessage = '派单租约已失效，扫描会话可能已被中断，请返回队列'
 const scanActionsDisabled = computed(() => {
-  if (!lease.leaseLost.value) return false
-  return !(scanFlow.canRetryWorkOrderCommit.value || scanFlow.canDiscard.value)
+  if (lease.leaseLost.value !== true) return false
+  return !(scanFlow.canRetryWorkOrderCommit.value === true || scanFlow.canDiscard.value === true)
 })
 const batchModeLabel = computed(() =>
   strictEnumLabel(ArchiveScanBatchModeDescription, session.batchMode.value, '归档扫描批次模式'),
@@ -185,7 +186,7 @@ watch(
 )
 
 async function handleStart() {
-  if (session.loading.value || scanFlow.loading.value) {
+  if (session.loading.value === true || scanFlow.loading.value === true) {
     return
   }
   if (lease.leaseLost.value) {
@@ -214,7 +215,7 @@ function goBack() {
 <template>
   <div class="archive-scan-session">
     <DocumentKioskActivationGate
-      :can-activate="bootstrap.canActivateAgent.value && !lease.leaseLost.value"
+      :can-activate="bootstrap.canActivateAgent.value === true && lease.leaseLost.value !== true"
       :submit-loading="bootstrap.loading.value"
       @submit="bootstrap.activateAgent"
     />
@@ -245,7 +246,7 @@ function goBack() {
         <select
           v-model="bootstrap.selectedScannerId.value"
           class="archive-scan-session__select"
-          :disabled="lease.leaseLost.value"
+          :disabled="lease.leaseLost.value === true"
         >
           <option
             v-for="scanner in bootstrap.scanners.value"
@@ -265,12 +266,12 @@ function goBack() {
       <UiButton
         v-if="
           !scanFlow.currentJob.value
-            && !scanFlow.canRetryWorkOrderCommit.value
+            && scanFlow.canRetryWorkOrderCommit.value !== true
             && !scanActionsDisabled
         "
         variant="primary"
         :loading="session.loading.value || scanFlow.loading.value"
-        :disabled="!canStart || bootstrap.needsActivationGate.value"
+        :disabled="canStart !== true || bootstrap.needsActivationGate.value"
         @click="handleStart"
       >
         开单并开始扫描
@@ -279,7 +280,7 @@ function goBack() {
         v-if="
           !scanActionsDisabled
             && !scanFlow.currentJob.value
-            && scanFlow.canRetryWorkOrderCommit.value
+            && scanFlow.canRetryWorkOrderCommit.value === true
         "
       >
         <UiButton
@@ -290,7 +291,7 @@ function goBack() {
           重试提交工单
         </UiButton>
         <UiButton
-          v-if="scanFlow.canDiscard.value"
+          v-if="scanFlow.canDiscard.value === true"
           variant="destructive"
           :loading="scanFlow.loading.value"
           @click="scanFlow.discardCurrentSession()"
@@ -300,7 +301,7 @@ function goBack() {
       </template>
       <template v-else-if="!scanActionsDisabled && scanFlow.currentJob.value">
         <UiButton
-          v-if="scanFlow.canEndBatch.value"
+          v-if="scanFlow.canEndBatch.value === true"
           variant="primary"
           :loading="scanFlow.loading.value"
           @click="scanFlow.endCurrentBatch()"
@@ -322,21 +323,21 @@ function goBack() {
           继续
         </UiButton>
         <UiButton
-          v-if="scanFlow.canRetryUpload.value"
+          v-if="scanFlow.canRetryUpload.value === true"
           variant="outline"
           @click="scanFlow.retryCurrentUpload()"
         >
           重试上传
         </UiButton>
         <UiButton
-          v-if="scanFlow.canRetryCommit.value"
+          v-if="scanFlow.canRetryCommit.value === true"
           variant="outline"
           @click="scanFlow.retryCurrentCommit()"
         >
           重试提交
         </UiButton>
         <UiButton
-          v-if="scanFlow.canDiscard.value"
+          v-if="scanFlow.canDiscard.value === true"
           variant="destructive"
           :loading="scanFlow.loading.value"
           @click="scanFlow.discardCurrentSession()"

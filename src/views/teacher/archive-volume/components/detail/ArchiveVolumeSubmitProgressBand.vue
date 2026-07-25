@@ -13,12 +13,17 @@ import ArchiveVolumeSubmitTaskList from '@/views/teacher/archive-volume/componen
 
 defineOptions({ name: 'ArchiveVolumeSubmitProgressBand' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   progress?: ArchiveVolumeSubmitProgressVO | null
   /** 与 capabilities.canSubmitVolume 同源，表示当前用户可提交档案馆 */
-  canSubmitVolume?: boolean
+  canSubmitVolume?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
   blockingItems?: ArchiveVolumeSubmitChecklistItemVO[]
-}>()
+}>(),
+  {
+  canSubmitVolume: false,
+  },
+)
 
 const emit = defineEmits<{
   navigate: [item: ArchiveVolumeSubmitChecklistItemVO]
@@ -39,7 +44,7 @@ watch(
 
 const pendingCount = computed(() => {
   const fromItems = props.blockingItems?.filter((item) => item.passed !== true).length ?? 0
-  if (!props.canSubmitVolume && fromItems > 0) {
+  if (props.canSubmitVolume !== true && fromItems > 0) {
     return fromItems
   }
   if (props.progress?.pendingBlockingCount != null) {
@@ -56,7 +61,7 @@ const currentLabel = computed(() => {
     'checklistPhaseKey',
   )
 })
-const submitReady = computed(() => props.canSubmitVolume)
+const submitReady = computed(() => props.canSubmitVolume === true)
 </script>
 
 <template>
@@ -66,7 +71,7 @@ const submitReady = computed(() => props.canSubmitVolume)
         <div class="archive-volume-submit-progress-band__main">
           <span class="archive-volume-submit-progress-band__label">当前阶段</span>
           <strong class="archive-volume-submit-progress-band__step">{{ currentLabel }}</strong>
-          <UiTag v-if="submitReady" tone="green" size="sm">可提交</UiTag>
+          <UiTag v-if="submitReady === true" tone="green" size="sm">可提交</UiTag>
           <UiTag v-else-if="pendingCount > 0" tone="orange" size="sm">
             还有 {{ pendingCount }} 项
           </UiTag>

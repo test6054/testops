@@ -105,7 +105,7 @@ onMounted(() => {
         :options="qualityFilterOptions"
         @change="() => loadRows()"
       />
-      <UiButton size="sm" variant="outline" :loading="loading" @click="loadRows">刷新</UiButton>
+      <UiButton size="sm" variant="outline" :loading="loading === true" @click="loadRows">刷新</UiButton>
     </template>
     <p v-if="errorMessage" class="archive-scan-batch-snapshot__error">{{ errorMessage }}</p>
     <UiDataTable
@@ -113,7 +113,7 @@ onMounted(() => {
       v-model:page-size="pagination.pageSize"
       :columns="columns"
       :data-source="rows"
-      :loading="loading"
+      :loading="loading === true"
       :total="pagination.total"
       row-key="sourceBatchId"
       size="middle"

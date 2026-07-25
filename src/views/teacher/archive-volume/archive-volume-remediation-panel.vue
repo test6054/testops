@@ -42,7 +42,7 @@
           </div>
           <UiButton size="sm" :disabled="!selectedCampaignId" @click="() => loadTasks()">刷新</UiButton>
           <UiButton
-            v-if="isTenantWideCollegeCoordinator"
+            v-if="isTenantWideCollegeCoordinator === true"
             size="sm"
             variant="outline"
             @click="openCampaignModal()"
@@ -51,7 +51,7 @@
           </UiButton>
           <UiButton
             v-if="
-              isTenantWideCollegeCoordinator
+              isTenantWideCollegeCoordinator === true
                 && selectedCampaign?.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
             "
             size="sm"
@@ -61,31 +61,31 @@
             编辑批次
           </UiButton>
           <p
-            v-if="isTenantWideCollegeCoordinator && selectedCampaignId"
+            v-if="isTenantWideCollegeCoordinator === true && selectedCampaignId"
             class="archive-volume-remediation-panel__export-hint"
           >
             导出范围：{{ ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT }}
           </p>
           <UiButton
-            v-if="isTenantWideCollegeCoordinator && selectedCampaignId"
+            v-if="isTenantWideCollegeCoordinator === true && selectedCampaignId"
             size="sm"
             variant="outline"
-            :loading="exporting"
+            :loading="exporting === true"
             @click="handleExportCampaign"
           >
             导出迎评清单
           </UiButton>
           <UiButton
-            v-if="isTenantWideCollegeCoordinator && selectedCampaignId"
+            v-if="isTenantWideCollegeCoordinator === true && selectedCampaignId"
             size="sm"
             variant="outline"
-            :loading="exportingArchive"
+            :loading="exportingArchive === true"
             @click="handleExportArchiveCampaign"
           >
             导出四级目录包
           </UiButton>
           <UiButton
-            v-if="canShowCreateRemediationTask"
+            v-if="canShowCreateRemediationTask === true"
             size="sm"
             variant="primary"
             @click="openCreateTaskModal"
@@ -95,7 +95,7 @@
         </div>
       </template>
 
-      <UiSkeletonState v-if="taskLoading" variant="card" compact />
+      <UiSkeletonState v-if="taskLoading === true" variant="card" compact />
       <UiAlertStrip
         v-else-if="!selectedCampaignId"
         tone="info"
@@ -216,7 +216,7 @@
       :open="campaignModalOpen"
       :title="campaignForm.campaignId ? '编辑迎评批次' : '新建迎评批次'"
       :width="560"
-      :confirm-loading="campaignSaving"
+      :confirm-loading="campaignSaving === true"
       ok-text="保存"
       :hide-footer="false"
       @update:open="(v: boolean) => (campaignModalOpen = v)"
@@ -305,7 +305,7 @@
       :open="createTaskOpen"
       title="创建整改任务"
       :width="560"
-      :confirm-loading="createTaskSubmitting"
+      :confirm-loading="createTaskSubmitting === true"
       ok-text="创建"
       :hide-footer="false"
       @update:open="(v: boolean) => (createTaskOpen = v)"
@@ -367,6 +367,8 @@
 </template>
 
 <script setup lang="ts">
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type {
   ArchiveEvaluationCampaignResponse,
@@ -552,7 +554,7 @@ function handleCampaignChange(value: SelectValue): void {
 
 const canShowCreateRemediationTask = computed(
   () =>
-    canCreateRemediationTask.value
+    canCreateRemediationTask.value === true
     && selectedCampaign.value?.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE,
 )
 
@@ -764,7 +766,7 @@ function handleTaskPageChange(pageNum: number, pageSize: number): void {
 
 function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
   // MVR-317：迎评批次维护仅租户级学院协调人
-  if (!isTenantWideCollegeCoordinator.value) {
+  if (isTenantWideCollegeCoordinator.value !== true) {
     void message.warning('仅租户级学院协调人可维护迎评批次')
     return
   }
@@ -784,11 +786,11 @@ function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
 
 async function submitCampaign() {
   // MVR-317：与 isTenantWideCollegeCoordinator 二次拦截
-  if (!isTenantWideCollegeCoordinator.value) {
+  if (isTenantWideCollegeCoordinator.value !== true) {
     void message.warning('仅租户级学院协调人可维护迎评批次')
     return
   }
-  if (campaignSaving.value) return
+  if (campaignSaving.value === true) return
   if (!campaignForm.campaignName.trim()) {
     showFormValidationMessage('请填写批次名称')
     return
@@ -833,11 +835,11 @@ async function submitCampaign() {
 
 async function handleExportCampaign() {
   // MVR-318：与 isTenantWideCollegeCoordinator / BE 导出门禁二次拦截
-  if (!isTenantWideCollegeCoordinator.value) {
+  if (isTenantWideCollegeCoordinator.value !== true) {
     void message.warning('仅全校学院协调人可导出迎评材料包')
     return
   }
-  if (!selectedCampaignId.value || exporting.value) return
+  if (!selectedCampaignId.value || exporting.value === true) return
   exporting.value = true
   try {
     await runArchiveEvaluationExportFlow({
@@ -856,11 +858,11 @@ async function handleExportCampaign() {
 
 async function handleExportArchiveCampaign() {
   // MVR-318：与 isTenantWideCollegeCoordinator / BE 导出门禁二次拦截
-  if (!isTenantWideCollegeCoordinator.value) {
+  if (isTenantWideCollegeCoordinator.value !== true) {
     void message.warning('仅全校学院协调人可导出迎评材料包')
     return
   }
-  if (!selectedCampaignId.value || exportingArchive.value) return
+  if (!selectedCampaignId.value || exportingArchive.value === true) return
   exportingArchive.value = true
   try {
     await runArchiveEvaluationExportFlow({
@@ -879,7 +881,7 @@ async function handleExportArchiveCampaign() {
 
 function openCreateTaskModal() {
   // MVR-339：与 canCreateRemediationTask / BE createRemediationTask 二次拦截
-  if (!canCreateRemediationTask.value) {
+  if (canCreateRemediationTask.value !== true) {
     void message.warning('仅学院协调人可创建整改任务')
     return
   }
@@ -896,11 +898,11 @@ function openCreateTaskModal() {
 
 async function submitCreateTask() {
   // MVR-342/353：入口与 open-stats canCreateRemediationTask 二次拦截（卷级再校验 detail canCreateRemediationTask）
-  if (!canCreateRemediationTask.value) {
+  if (canCreateRemediationTask.value !== true) {
     void message.warning('仅学院协调人可创建整改任务')
     return
   }
-  if (createTaskSubmitting.value) return
+  if (createTaskSubmitting.value === true) return
   if (!createTaskForm.volumeId.trim()) {
     showFormValidationMessage('请填写归档卷编号')
     return
@@ -917,7 +919,8 @@ async function submitCreateTask() {
   try {
     const volumeDetail = await getArchiveVolumeDetail(createTaskForm.volumeId.trim())
     // MVR-353：仅认 BE getDetail canCreateRemediationTask===true（职责+状态+移交/开放整改互斥）
-    if (!volumeDetail.canCreateRemediationTask) {
+    // MVR-953：仅认 BE canCreateRemediationTask===true
+    if (volumeDetail.canCreateRemediationTask !== true) {
       showFormValidationMessage(
         '当前卷不可新建整改（需学院协调职责，且卷为收材/待验收/已入库、非移交待验收、无开放整改）',
       )

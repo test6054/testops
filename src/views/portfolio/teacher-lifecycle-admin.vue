@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  PortfolioTeacherLifecycleApprovalStatusCode,
   PortfolioTeacherLifecycleChangeTypeCode,
   PortfolioTeacherLifecycleEventVO,
-  PortfolioTeacherLifecycleStatusCode,
 } from '@/apis/portfolio/teacher-lifecycle'
 import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref, watch } from 'vue'
@@ -14,6 +12,8 @@ import {
   PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS,
   PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL,
   portfolioTeacherLifecycleApi,
+  PortfolioTeacherLifecycleApprovalStatusCode,
+  PortfolioTeacherLifecycleStatusCode,
 } from '@/apis/portfolio/teacher-lifecycle'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -58,10 +58,10 @@ const approvalStatusOptions: Array<{
   label: string
   value: PortfolioTeacherLifecycleApprovalStatusCode
 }> = [
-  { label: '待审批', value: 'PENDING' },
-  { label: '已通过', value: 'APPROVED' },
-  { label: '已驳回', value: 'REJECTED' },
-  { label: '已生效', value: 'APPLIED' },
+  { label: '待审批', value: PortfolioTeacherLifecycleApprovalStatusCode.PENDING },
+  { label: '已通过', value: PortfolioTeacherLifecycleApprovalStatusCode.APPROVED },
+  { label: '已驳回', value: PortfolioTeacherLifecycleApprovalStatusCode.REJECTED },
+  { label: '已生效', value: PortfolioTeacherLifecycleApprovalStatusCode.APPLIED },
 ]
 
 const applyForm = reactive({
@@ -168,7 +168,7 @@ async function applyLifecycleDeepLink() {
   if (eventId) {
     // 深链默认看待审；若用户已手动选状态则保留
     if (!query.approvalStatus) {
-      query.approvalStatus = 'PENDING'
+      query.approvalStatus = PortfolioTeacherLifecycleApprovalStatusCode.PENDING
     }
     query.pageNum = 1
   } else if (teacherUserId) {
@@ -310,7 +310,7 @@ async function selfDeclareLifecycle() {
       reasonText: applyForm.reasonText?.trim() || undefined,
     })
     void message.success(`已提交自助申报（待审批 eventId=${event.id}）`)
-    query.approvalStatus = 'PENDING'
+    query.approvalStatus = PortfolioTeacherLifecycleApprovalStatusCode.PENDING
     await loadEvents()
   } catch (error) {
     showUserError(error, '自助申报失败')

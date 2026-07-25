@@ -208,7 +208,7 @@ watch(referenceDepartmentId, (next, prev) => {
   }
   classId.value = undefined
   setOrgClassLabel('', null)
-  if (!courseLocked.value) {
+  if (courseLocked.value !== true) {
     scopeCourseId.value = undefined
     setOrgCourseLabel('')
   }
@@ -220,12 +220,12 @@ function handleReset(): void {
   semester.value = defaultTerm.semester
   classId.value = undefined
   setOrgClassLabel('', null)
-  if (!examLocked.value) {
-    if (!departmentLocked.value) {
+  if (examLocked.value !== true) {
+    if (departmentLocked.value !== true) {
       referenceDepartmentId.value = undefined
       setOrgDepartmentLabel('')
     }
-    if (!courseLocked.value) {
+    if (courseLocked.value !== true) {
       scopeCourseId.value = undefined
       examFilterCourseId.value = undefined
       setOrgCourseLabel('')
@@ -251,7 +251,7 @@ function handleReset(): void {
       </UiButton>
     </template>
     <template #field-referenceDepartmentId>
-      <span v-if="departmentLocked" class="ai-analysis-scope-filter-bar__readonly">
+      <span v-if="departmentLocked === true" class="ai-analysis-scope-filter-bar__readonly">
         {{ referenceDepartmentLabel || '—' }}
       </span>
       <DepartmentSelector
@@ -264,7 +264,7 @@ function handleReset(): void {
       />
     </template>
     <template #field-scopeCourseId>
-      <span v-if="courseLocked" class="ai-analysis-scope-filter-bar__readonly">
+      <span v-if="courseLocked === true" class="ai-analysis-scope-filter-bar__readonly">
         {{ scopeCourseLabel || '—' }}
       </span>
       <CatalogCourseSelector

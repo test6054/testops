@@ -14,20 +14,20 @@
         </template>
         <template #actions>
           <UiButton
-            v-if="canManageReviewerWrites"
+            v-if="canManageReviewerWrites === true"
             size="sm"
             :variant="unreconciledAbsenceCount > 0 ? 'primary' : 'outline'"
-            :loading="reconciling"
+            :loading="reconciling === true"
             @click="handleReconcile(true)"
           >
             <template #icon><PlusOutlined /></template>
             核对并新建
           </UiButton>
           <UiButton
-            v-if="canManageReviewerWrites"
+            v-if="canManageReviewerWrites === true"
             size="sm"
             variant="ghost"
-            :loading="reconciling"
+            :loading="reconciling === true"
             @click="handleReconcile(false)"
           >
             <template #icon><SyncOutlined /></template>
@@ -78,10 +78,10 @@
       >
         <template #actions>
           <UiButton
-            v-if="canManageReviewerWrites"
+            v-if="canManageReviewerWrites === true"
             variant="primary"
             size="sm"
-            :loading="reconciling"
+            :loading="reconciling === true"
             @click="handleReconcile(true)"
           >
             核对并新建待确认记录
@@ -106,10 +106,10 @@
         </template>
         <template #actions>
           <UiButton
-            v-if="canManageReviewerWrites"
+            v-if="canManageReviewerWrites === true"
             variant="primary"
             size="sm"
-            :loading="reconciling"
+            :loading="reconciling === true"
             @click="handleReconcile(false)"
           >
             立即出勤核对
@@ -168,7 +168,7 @@
             <p class="absence-page__flow-hint">{{ ABSENCE_STATUS_FLOW_HINT }}</p>
             <UiButton
               size="sm"
-              v-if="canManageOwnerAbsenceMakeup && pendingMakeupCount > 0"
+              v-if="canManageOwnerAbsenceMakeup === true && pendingMakeupCount > 0"
               variant="outline"
               @click="openDeriveMakeupModal"
             >
@@ -277,7 +277,7 @@
           size="sm"
           variant="primary"
           :loading="confirming"
-          :disabled="!confirmValid"
+          :disabled="confirmValid !== true"
           @click="handleConfirm"
         >
           确认
@@ -362,7 +362,7 @@
           size="sm"
           variant="primary"
           :loading="deriving"
-          :disabled="!deriveValid || deriveDetailLoading"
+          :disabled="deriveValid !== true || deriveDetailLoading === true"
           @click="handleDeriveMakeup"
         >
           派生
@@ -373,6 +373,8 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-951：函数式 can*(...) 写入口仅认 === true
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   AbsenceReasonCode,
@@ -597,7 +599,7 @@ function isPendingMakeupRecord(record: AbsenceRecordResponse): boolean {
 }
 
 function buildAbsentStudentActions(_record: AbsentStudentRow): UiTableRowActionItem[] {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     return []
   }
   return [{ key: 'confirm', label: '确认缺考', tone: 'primary' }]
@@ -619,16 +621,16 @@ function canRevokeAbsenceRecord(record: AbsenceRecordResponse): boolean {
 }
 
 function requiresWithdrawBeforeRevoke(record: AbsenceRecordResponse): boolean {
-  return record.absenceStatus === AbsenceStatusCode.CONFIRMED && !canRevokeAbsenceRecord(record)
+  return record.absenceStatus === AbsenceStatusCode.CONFIRMED && canRevokeAbsenceRecord(record) !== true
 }
 
 function buildAbsenceRecordActions(record: AbsenceRecordResponse): UiTableRowActionItem[] {
   if (isPendingMakeupRecord(record)) {
-    return canManageOwnerAbsenceMakeup.value
-      ? [{ key: 'makeup', label: '派生补考', tone: 'primary' }]
+    return canManageOwnerAbsenceMakeup.value === true
+? [{ key: 'makeup', label: '派生补考', tone: 'primary' }]
       : []
   }
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     return []
   }
   if (requiresWithdrawBeforeRevoke(record)) {
@@ -640,7 +642,7 @@ function buildAbsenceRecordActions(record: AbsenceRecordResponse): UiTableRowAct
       },
     ]
   }
-  if (record.absenceStatus === AbsenceStatusCode.CONFIRMED && canRevokeAbsenceRecord(record)) {
+  if (record.absenceStatus === AbsenceStatusCode.CONFIRMED && canRevokeAbsenceRecord(record) === true) {
     return [{ key: 'revoke', label: '撤销' }]
   }
   if (record.absenceStatus === AbsenceStatusCode.PENDING) {
@@ -655,7 +657,7 @@ function handleAbsenceRecordAction(key: string, record: AbsenceRecordResponse): 
       openDeriveMakeupModal()
       break
     case 'revoke':
-      if (!canRevokeAbsenceRecord(record)) {
+      if (canRevokeAbsenceRecord(record) !== true) {
         void message.warning(
           record.revokeBlockedReason || '缺考零分成绩已发布，请先在成绩发布页撤回后再撤销缺考',
         )
@@ -814,7 +816,7 @@ function handleRecordPageChange(page: { current: number, pageSize: number }): vo
 
 async function handleReconcile(createPending: boolean): Promise<void> {
   if (!selectedExamId.value || reconciling.value) return
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员、主考或管理员可执行缺考核对')
     return
   }
@@ -825,7 +827,7 @@ async function handleReconcile(createPending: boolean): Promise<void> {
       createPendingAbsence: createPending,
     })
     absentStudentPagination.pageNum = 1
-    if (createPending && reconcileVO.value.createdPendingCount > 0) {
+    if (createPending === true && reconcileVO.value.createdPendingCount > 0) {
       void message.success(`已为 ${reconcileVO.value.createdPendingCount} 名缺考学生创建待确认记录`)
     }
     await loadRecords()
@@ -859,7 +861,7 @@ const confirmValid = computed(() =>
 )
 
 function openConfirmModal(studentUserId: string, displayName: string): void {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员、主考或管理员可确认缺考')
     return
   }
@@ -875,11 +877,11 @@ const repairingScoreZero = ref(false)
 const absenceMoreActionItems = computed(() => {
   const items: { key: string, label: string, disabled?: boolean }[] = []
   // MVR-326：派生补考仅主考；仅认 BE canManageOwnerAbsenceMakeup===true
-  if (canManageOwnerAbsenceMakeup.value && pendingMakeupCount.value > 0) {
+  if (canManageOwnerAbsenceMakeup.value === true && pendingMakeupCount.value > 0) {
     items.push({ key: 'deriveMakeup', label: `派生补考 ${pendingMakeupCount.value}` })
   }
   // MVR-287/430：补齐计零与 BE requireExamReviewerPermission 对齐；仅认 === true
-  if (canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value === true) {
     items.push({
       key: 'repairScoreZero',
       label: '补齐计零',
@@ -901,7 +903,7 @@ function onAbsenceMoreAction(key: string) {
 
 async function handleRepairScoreZero(): Promise<void> {
   if (!selectedExamId.value || repairingScoreZero.value) return
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员、主考或管理员可补齐计零终分')
     return
   }
@@ -922,8 +924,8 @@ async function handleRepairScoreZero(): Promise<void> {
 }
 
 async function handleConfirm(): Promise<void> {
-  if (!selectedExamId.value || !confirmValid.value || confirming.value) return
-  if (!canManageReviewerWrites.value) {
+  if (!selectedExamId.value || !confirmValid.value || confirming.value === true) return
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员、主考或管理员可确认缺考')
     return
   }
@@ -966,11 +968,11 @@ const revokeForm = reactive<{ studentUserId: string, revokeReason: string }>({
 })
 
 function openRevokeModal(record: AbsenceRecordResponse): void {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员、主考或管理员可撤销缺考')
     return
   }
-  if (!canRevokeAbsenceRecord(record)) {
+  if (canRevokeAbsenceRecord(record) !== true) {
     void message.warning(
       record.revokeBlockedReason || '缺考零分成绩已发布，请先在成绩发布页撤回后再撤销缺考',
     )
@@ -987,9 +989,9 @@ async function handleRevoke(): Promise<void> {
   if (!selectedExamId.value || revoking.value) return
   // MVR-420：与 canRevokeAbsenceRecord / openRevokeModal 同源二次闸（行级 BE canRevokeAbsence）
   const target = records.value.find((item) => item.studentUserId === revokeForm.studentUserId)
-  if (!target || !canRevokeAbsenceRecord(target)) {
+  if (!target || canRevokeAbsenceRecord(target) !== true) {
     void message.warning(
-      !canManageReviewerWrites.value
+      canManageReviewerWrites.value !== true
         ? '仅本场阅卷组织成员、主考或管理员可撤销缺考'
         : target?.revokeBlockedReason || '当前缺考记录不可撤销（状态漂移或须先撤回成绩）',
     )
@@ -1059,7 +1061,7 @@ function resetDeriveForm(): void {
 
 async function openDeriveMakeupModal(): Promise<void> {
   // MVR-297：派生补考仅主考；与 more 菜单 / BE requireExamOwnerPermission 对齐
-  if (!canManageOwnerAbsenceMakeup.value) {
+  if (canManageOwnerAbsenceMakeup.value !== true) {
     void message.warning('仅本场主考可派生补考名单')
     return
   }
@@ -1090,7 +1092,7 @@ async function openDeriveMakeupModal(): Promise<void> {
 }
 
 async function handleDeriveMakeup(): Promise<void> {
-  if (!canManageOwnerAbsenceMakeup.value) {
+  if (canManageOwnerAbsenceMakeup.value !== true) {
     void message.warning('仅本场主考可派生补考名单')
     return
   }

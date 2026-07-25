@@ -438,7 +438,7 @@ const domainSubtitlePrefix = computed(() => {
 })
 
 const recommendedDutyAction = computed(() => {
-  if (overviewLoading.value) {
+  if (overviewLoading.value === true) {
     return null
   }
   if (overviewLoadFailed.value) {
@@ -519,7 +519,7 @@ const recommendedDutyAction = computed(() => {
     }
   }
 
-  if (totalBacklogCount.value === 0 && !overviewLoading.value) {
+  if (totalBacklogCount.value === 0 && overviewLoading.value !== true) {
     const healthyAction = props.domain === 'archive'
       ? { key: 'healthy', actionLabel: '查看运营体检', tab: 'ops' as const }
       : { key: 'healthy', actionLabel: '查看处置日志', tab: 'log' as const }

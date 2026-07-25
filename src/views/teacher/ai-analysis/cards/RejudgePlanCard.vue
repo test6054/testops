@@ -114,6 +114,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-951：函数式 can*(...) 写入口仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExamRejudgePlan,
@@ -164,7 +165,7 @@ const emit = defineEmits<{ changed: [] }>()
 const userStore = useUserStore()
 const currentUserId = computed(() => userStore.userInfo?.userId || '')
 /** MVR-278：审批/执行写能力位；与 BE requireExamReviewerPermission 对齐 */
-const canManageReviewerWrites = ref(false)
+const canManageReviewerWrites = ref(false) // MVR-942：写路径仅认 === true
 
 const rows = ref<ExamRejudgePlan[]>([])
 const loading = ref(false)
@@ -296,8 +297,14 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 }
 
 async function handleApprove(planId: string): Promise<void> {
-  if (!canManageReviewerWrites.value) {
-    void message.warning('仅本场阅卷组织成员或主考可审批重判计划')
+  // MVR-944：与 canDecideRejudgePlan 同源二次闸（写权∧PENDING_APPROVAL∧非本人提交）
+  const row = rows.value.find((item) => item.id === planId)
+  if (!row || canDecideRejudgePlan(row) !== true) {
+    void message.warning(
+      canManageReviewerWrites.value === true
+        ? '当前重判计划不可审批（状态不允许或本人提交）'
+        : '仅本场阅卷组织成员或主考可审批重判计划',
+    )
     return
   }
   if (operatingId.value) return
@@ -318,7 +325,7 @@ async function handleApprove(planId: string): Promise<void> {
 
 function openRejectModal(planId: string): void {
   const row = rows.value.find((item) => item.id === planId)
-  if (!row || !canDecideRejudgePlan(row)) {
+  if (!row || canDecideRejudgePlan(row) !== true) {
     return
   }
   rejectPlanId.value = planId
@@ -327,8 +334,14 @@ function openRejectModal(planId: string): void {
 }
 
 async function handleReject(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
-    void message.warning('仅本场阅卷组织成员或主考可驳回重判计划')
+  // MVR-944：与 canDecideRejudgePlan 同源二次闸（写权∧PENDING_APPROVAL∧非本人提交）
+  const row = rows.value.find((item) => item.id === rejectPlanId.value)
+  if (!row || canDecideRejudgePlan(row) !== true) {
+    void message.warning(
+      canManageReviewerWrites.value === true
+        ? '当前重判计划不可驳回（状态不允许或本人提交）'
+        : '仅本场阅卷组织成员或主考可驳回重判计划',
+    )
     return
   }
   if (operatingId.value) return
@@ -356,7 +369,7 @@ async function handleReject(): Promise<void> {
 
 function openExecuteModal(planId: string): void {
   // MVR-386：打开执行弹窗与 canManageReviewerWrites / BE execute 二次拦截（对齐 MVR-380 BatchCorrection）
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员或主考可执行重判计划')
     return
   }
@@ -370,8 +383,14 @@ function openExecuteModal(planId: string): void {
 }
 
 async function handleExecute(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  // MVR-944：执行再认写权∧APPROVED，防弹窗期间计划态漂移
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员或主考可执行重判计划')
+    return
+  }
+  const row = rows.value.find((item) => item.id === executePlanId.value)
+  if (!row || row.planStatus !== 'APPROVED') {
+    void message.warning('当前重判计划不可执行（须已审批通过）')
     return
   }
   if (operatingId.value) return
@@ -437,7 +456,7 @@ function isRejudgePlanSubmitterSelf(row: ExamRejudgePlan): boolean {
 
 function canDecideRejudgePlan(row: ExamRejudgePlan): boolean {
   return (
-    canManageReviewerWrites.value
+    canManageReviewerWrites.value === true
     && row.planStatus === 'PENDING_APPROVAL'
     && !isRejudgePlanSubmitterSelf(row)
   )
@@ -450,20 +469,21 @@ function buildRejudgePlanActions(row: ExamRejudgePlan): UiTableRowActionItem[] {
     {
       key: 'approve',
       label: '通过',
-      hidden: !canDecide,
+      // MVR-952：canDecide 仅认 === true
+      hidden: canDecide !== true,
       disabled: operating('approve'),
     },
     {
       key: 'reject',
       label: '驳回',
       tone: 'danger',
-      hidden: !canDecide,
+      hidden: canDecide !== true,
       disabled: operating('reject'),
     },
     {
       key: 'execute',
       label: '执行',
-      hidden: !canManageReviewerWrites.value || row.planStatus !== 'APPROVED',
+      hidden: canManageReviewerWrites.value !== true || row.planStatus !== 'APPROVED',
       disabled: operating('execute'),
     },
   ]
@@ -472,16 +492,16 @@ function buildRejudgePlanActions(row: ExamRejudgePlan): UiTableRowActionItem[] {
 function handleRejudgePlanAction(key: string, row: ExamRejudgePlan): void {
   switch (key) {
     case 'approve':
-      if (!canDecideRejudgePlan(row)) return
+      if (canDecideRejudgePlan(row) !== true) return
       void handleApprove(row.id)
       break
     case 'reject':
-      if (!canDecideRejudgePlan(row)) return
+      if (canDecideRejudgePlan(row) !== true) return
       openRejectModal(row.id)
       break
     case 'execute':
       // MVR-386：行动作入口与 openExecuteModal 同源二次闸
-      if (!canManageReviewerWrites.value || row.planStatus !== 'APPROVED') {
+      if (canManageReviewerWrites.value !== true || row.planStatus !== 'APPROVED') {
         return
       }
       openExecuteModal(row.id)

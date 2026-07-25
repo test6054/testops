@@ -56,6 +56,7 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
+import { showUserError } from '@/utils/error-handler'
 import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { scoreHistogramToBarItems } from '@/utils/mark-statistics-chart'
@@ -190,8 +191,9 @@ async function reload(): Promise<void> {
       classId: props.classId || undefined,
     })
     distribution.value = isEmptyScoreDistribution(result) ? null : result
-  } catch (e) {
+  } catch (error) {
     distribution.value = null
+    showUserError(error, '分数分布加载失败')
   } finally {
     loading.value = false
   }

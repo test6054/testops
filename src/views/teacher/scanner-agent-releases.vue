@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScannerAgentReleaseResponse } from '@/apis/mark/scanner-agent-release'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
@@ -85,8 +87,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     {
       key: 'push-enabled',
       label: '主动推送',
-      value: published.pushEnabled ? '已启用' : '未启用',
-      tone: published.pushEnabled ? 'blue' : 'gray',
+      value: published.pushEnabled === true ? '已启用' : '未启用',
+      tone: published.pushEnabled === true ? 'blue' : 'gray',
       helper: published.pushScheduledTime
         ? `计划 ${formatDateTime(published.pushScheduledTime)}`
         : undefined,
@@ -126,7 +128,7 @@ function resetRegisterForm() {
 
 function openRegisterModal() {
   // MVR-316：注册入口与 canManage 同源
-  if (!canManage.value) {
+  if (canManage.value !== true) {
     void message.warning('仅平台超级管理员可维护扫描端发布包')
     return
   }
@@ -135,7 +137,7 @@ function openRegisterModal() {
 }
 
 async function loadReleases() {
-  if (!canManage.value) {
+  if (canManage.value !== true) {
     return
   }
   loading.value = true
@@ -164,11 +166,11 @@ async function loadReleases() {
 
 async function submitRegister() {
   // MVR-316：与 BE 超管发布包门禁二次拦截
-  if (!canManage.value) {
+  if (canManage.value !== true) {
     void message.warning('仅平台超级管理员可维护扫描端发布包')
     return
   }
-  if (saving.value) return
+  if (saving.value === true) return
   const version = registerForm.version.trim()
   if (!version) {
     showFormValidationMessage('请填写版本号')
@@ -215,7 +217,7 @@ function handleReleaseRowAction(key: string, record: ScannerAgentReleaseResponse
 
 function openPublishModal(record: ScannerAgentReleaseResponse) {
   // MVR-316：发布入口与 canManage 同源
-  if (!canManage.value) {
+  if (canManage.value !== true) {
     void message.warning('仅平台超级管理员可维护扫描端发布包')
     return
   }
@@ -226,14 +228,14 @@ function openPublishModal(record: ScannerAgentReleaseResponse) {
 
 async function submitPublish() {
   // MVR-316：与 BE 超管发布包门禁二次拦截
-  if (!canManage.value) {
+  if (canManage.value !== true) {
     void message.warning('仅平台超级管理员可维护扫描端发布包')
     return
   }
   if (!publishTarget.value) {
     return
   }
-  if (publishing.value) return
+  if (publishing.value === true) return
   publishing.value = true
   try {
     await publishScannerAgentRelease({
@@ -253,15 +255,15 @@ async function submitPublish() {
 
 async function confirmDelete(record: ScannerAgentReleaseResponse) {
   // MVR-316：删除与 canManage 二次拦截
-  if (!canManage.value) {
+  if (canManage.value !== true) {
     void message.warning('仅平台超级管理员可维护扫描端发布包')
     return
   }
-  if (record.published) {
+  if (record.published === true) {
     showFormValidationMessage('当前发布版本不能删除')
     return
   }
-  if (deleting.value) return
+  if (deleting.value === true) return
   const confirmed = await confirmAsync({
     title: `删除版本 ${record.version}？`,
     content: '仅未发布包可删除；删除后需重新上传安装包才能再次注册。',
@@ -269,6 +271,15 @@ async function confirmDelete(record: ScannerAgentReleaseResponse) {
     okText: '删除',
   })
   if (!confirmed) {
+    return
+  }
+  // MVR-934：确认后再次认 canManage，并复检未发布
+  if (canManage.value !== true) {
+    void message.warning('仅平台超级管理员可维护扫描端发布包')
+    return
+  }
+  if (record.published === true) {
+    showFormValidationMessage('当前发布版本不能删除')
     return
   }
   deleting.value = true
@@ -316,10 +327,10 @@ onMounted(() => {
       >
         <template #actions>
           <UiButton
-            v-if="canManage"
+            v-if="canManage === true"
             size="sm"
             variant="primary"
-            :disabled="loading"
+            :disabled="loading === true"
             @click="openRegisterModal"
           >
             注册新版本
@@ -332,7 +343,7 @@ onMounted(() => {
       <SignalBand v-if="signalMetrics.length" :metrics="signalMetrics" variant="panel" compact />
     </template>
 
-    <UiEmpty size="sm" v-if="!canManage" description="仅平台超级管理员可维护扫描端发布包" />
+    <UiEmpty size="sm" v-if="canManage !== true" description="仅平台超级管理员可维护扫描端发布包" />
 
     <WorkbenchSurfaceCard v-else flush>
       <template #toolbar>
@@ -366,14 +377,14 @@ onMounted(() => {
             <span v-else class="muted">-</span>
           </template>
           <template v-else-if="column.key === 'published'">
-            <UiTag :tone="record.published ? 'green' : 'gray'" size="sm">
-              {{ record.published ? '已发布' : '待发布' }}
+            <UiTag :tone="record.published === true ? 'green' : 'gray'" size="sm">
+              {{ record.published === true ? '已发布' : '待发布' }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'pushEnabled'">
-            <template v-if="record.published">
-              <UiTag :tone="record.pushEnabled ? 'blue' : 'gray'" size="sm">
-                {{ record.pushEnabled ? '已启用' : '未启用' }}
+            <template v-if="record.published === true">
+              <UiTag :tone="record.pushEnabled === true ? 'blue' : 'gray'" size="sm">
+                {{ record.pushEnabled === true ? '已启用' : '未启用' }}
               </UiTag>
               <div v-if="record.pushActivatedTime" class="scanner-agent-releases__sub">
                 已激活 {{ formatDateTime(record.pushActivatedTime) }}
@@ -389,7 +400,7 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
-              v-if="!record.published"
+              v-if="record.published !== true"
               :items="buildReleaseRowActions()"
               split
               @action="(key) => handleReleaseRowAction(key, record)"
@@ -404,7 +415,7 @@ onMounted(() => {
       v-model:open="registerOpen"
       title="注册扫描端发布包"
       :width="520"
-      :confirm-loading="saving"
+      :confirm-loading="saving === true"
       ok-text="注册"
       @ok="submitRegister"
     >
@@ -444,7 +455,7 @@ onMounted(() => {
       v-model:open="publishOpen"
       title="发布扫描端版本"
       :width="520"
-      :confirm-loading="publishing"
+      :confirm-loading="publishing === true"
       ok-text="确认发布"
       @ok="submitPublish"
     >

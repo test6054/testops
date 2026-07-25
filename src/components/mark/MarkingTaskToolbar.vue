@@ -10,7 +10,7 @@
       </UiTag>
       <template v-if="task?.anonymousToken && !revealedIdentity">
         <UiTooltip
-          v-if="!canManageOwnerIdentityReveal"
+          v-if="canManageOwnerIdentityReveal !== true"
           title="当前为匿名阅卷模式，仅考试主考老师可解匿名查看学生身份"
         >
           <UiTag tone="blue" size="sm">匿名保护中</UiTag>
@@ -47,7 +47,7 @@
               <dt>答卷补充</dt>
               <dd>{{ task.paperDisplay.secondaryText }}</dd>
             </div>
-            <div v-if="isReadOnly" class="marking-task-toolbar__summary-item">
+            <div v-if="isReadOnly === true" class="marking-task-toolbar__summary-item">
               <dt>查看模式</dt>
               <dd>已定稿 · 只读查看</dd>
             </div>
@@ -57,7 +57,7 @@
             </div>
           </dl>
         </template>
-        <template v-if="task.anonymousToken && !revealedIdentity && canManageOwnerIdentityReveal" #footer>
+        <template v-if="task.anonymousToken && !revealedIdentity && canManageOwnerIdentityReveal === true" #footer>
           <UiButton size="sm" variant="outline" @click="emit('reveal')">
             <template #icon><UnlockOutlined /></template>
             解匿名
@@ -116,7 +116,7 @@
               <UiButton
                 size="sm"
                 variant="outline"
-                :disabled="!canWithdrawEntry(entry)"
+                :disabled="canWithdrawEntry(entry) !== true"
                 @click="emit('withdraw-entry', entry)"
               >
                 撤销
@@ -130,6 +130,8 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-951：函数式 can*(...) 写入口仅认 === true
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type {
   AllocationUnitCode,
@@ -153,11 +155,12 @@ import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 
 defineOptions({ name: 'MarkingTaskToolbar' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   task: MarkingTaskResponse | null
   loading: boolean
   isReadOnly: boolean
-  canManageOwnerIdentityReveal?: boolean
+  canManageOwnerIdentityReveal?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
   revealedIdentity: AnonymousRevealResponse | null
   navigation: ReturnType<typeof useMarkingTaskNavigation>
   taskStatusTone: (status: MarkingTaskStatusCode) => BadgeTone
@@ -168,7 +171,11 @@ const props = defineProps<{
   canWithdrawEntry: (entry: MarkingRecentSubmitEntry) => boolean
   /** 批次 prev/next 由页面 #footer 承载时设为 true */
   hideBatchNav?: boolean
-}>()
+}>(),
+  {
+  canManageOwnerIdentityReveal: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'refresh'): void

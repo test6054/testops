@@ -93,7 +93,7 @@ export function useMarkingRecentSubmit() {
     entry: MarkingRecentSubmitEntry,
     onSuccess?: (task: MarkingTaskResponse) => void,
   ): Promise<MarkingTaskResponse | null> {
-    if (!canWithdrawEntry(entry)) {
+    if (canWithdrawEntry(entry) !== true) {
       void message.warning(
         `撤销窗口已过期（${formatMarkingWithdrawWindowLabel(entry.withdrawWindowMinutes)}）`,
       )

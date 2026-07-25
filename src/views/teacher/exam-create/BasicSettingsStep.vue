@@ -74,7 +74,7 @@
       >
         <UiRadioGroup
           v-model="examForm.scoreCompositionMode"
-          :disabled="nonRegularScoreLocked"
+          :disabled="nonRegularScoreLocked === true"
           size="sm"
           block
           :options="[
@@ -198,7 +198,7 @@
             <div class="create-form__switch-row">
               <UiSwitch size="sm" v-model="examForm.confidential" />
               <span class="create-form__switch-label">
-                {{ examForm.confidential ? '已开启强制水印' : '未开启' }}
+                {{ examForm.confidential === true ? '已开启强制水印' : '未开启' }}
               </span>
             </div>
           </UiFormItem>

@@ -131,7 +131,7 @@ const {
     />
 
     <UiAlertStrip
-      v-if="taskRecycledBlocked"
+      v-if="taskRecycledBlocked === true"
       tone="error"
       title="该任务已被组长回收，当前批阅将无法提交"
       description="影像区仍可查看。请手动返回任务池。"
@@ -254,7 +254,7 @@ const {
           @update:page-annotation="
             (pageId, value) => {
               // MVR-415：页批注与 isScoreReadOnly 同源，禁止关考/回收后假可写
-              if (isScoreReadOnly) return
+              if (isScoreReadOnly === true) return
               wholePageAnnotationForms[pageId] = value
             }
           "
@@ -374,7 +374,7 @@ const {
 
     <MarkingAiAssistDrawer
       v-model:open="executionsDrawerOpen"
-      :loading="executionsLoading"
+      :loading="executionsLoading === true"
       :executions="aiExecutions"
       :highlight-trace-id="highlightExecutionTraceId"
       :status-label="aiExecutionStatusLabel"

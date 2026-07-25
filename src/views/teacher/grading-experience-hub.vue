@@ -35,10 +35,10 @@
               }}</span>
               <span class="experience-page__flow-hint">{{ EXPERIENCE_CASE_FLOW_HINT }}</span>
               <UiButton
-                v-if="canManageReviewerWrites"
+                v-if="canManageReviewerWrites === true"
                 size="sm"
                 variant="primary"
-                :loading="generatingSignatures"
+                :loading="generatingSignatures === true"
                 @click="handleGenerateSignatures"
               >
                 <template #icon><ThunderboltOutlined /></template>
@@ -98,11 +98,11 @@
               }}</span>
               <span class="experience-page__flow-hint">{{ EXPERIENCE_CASE_FLOW_HINT }}</span>
               <UiButton
-                v-if="canManageReviewerWrites"
+                v-if="canManageReviewerWrites === true"
                 size="sm"
                 variant="primary"
                 :disabled="!experienceFilterForm.layoutQuestionId"
-                :loading="extracting"
+                :loading="extracting === true"
                 @click="handleExtract"
               >
                 <template #icon><ThunderboltOutlined /></template>
@@ -203,11 +203,11 @@
             <div class="experience-page__panel-actions">
               <span class="experience-page__flow-hint">{{ AI_ANALYSIS_FLOW_HINT }}</span>
               <UiButton
-                v-if="canManageReviewerWrites"
+                v-if="canManageReviewerWrites === true"
                 size="sm"
                 variant="primary"
                 :disabled="!clusterFilterForm.layoutQuestionId"
-                :loading="clustering"
+                :loading="clustering === true"
                 @click="handleGenerateCluster"
               >
                 <template #icon><ThunderboltOutlined /></template>
@@ -429,24 +429,24 @@
     <template #footer>
       <div
         class="dp-space"
-        v-if="canConfirmExperience || canDeprecateExperience"
+        v-if="canConfirmExperience === true || canDeprecateExperience === true"
         style="--dp-space-gap: 8px"
       >
         <UiButton
           variant="primary"
           size="sm"
-          v-if="canConfirmExperience"
-          :loading="confirmingExperience"
+          v-if="canConfirmExperience === true"
+          :loading="confirmingExperience === true"
           @click="handleConfirmExperience"
         >
           确认沉淀
         </UiButton>
         <UiButton
           size="sm"
-          v-if="canDeprecateExperience"
+          v-if="canDeprecateExperience === true"
           variant="outline"
           status="danger"
-          :loading="deprecatingExperience"
+          :loading="deprecatingExperience === true"
           @click="handleDeprecateExperience"
         >
           废弃案例
@@ -457,6 +457,8 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   AnswerClusterRecordResponse,
@@ -708,11 +710,11 @@ async function loadSignatures(): Promise<void> {
 }
 
 async function handleGenerateSignatures(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无阅卷写权限')
     return
   }
-  if (!selectedExamId.value || generatingSignatures.value) return
+  if (!selectedExamId.value || generatingSignatures.value === true) return
   generatingSignatures.value = true
   try {
     const result = await generateSignatures(selectedExamId.value)
@@ -851,7 +853,7 @@ function handleExperienceFilterSearch(): void {
 }
 
 async function handleExtract(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无阅卷写权限')
     return
   }
@@ -881,7 +883,7 @@ const deprecatingExperience = ref(false)
 
 const canConfirmExperience = computed(
   () =>
-    canManageExperienceCaseLifecycle.value
+    canManageExperienceCaseLifecycle.value === true
     && detailExperience.value?.caseStatus === ExperienceCaseStatusCode.DRAFT
     && detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS
     && Boolean(detailExperience.value?.id),
@@ -889,7 +891,7 @@ const canConfirmExperience = computed(
 
 const canDeprecateExperience = computed(
   () =>
-    canManageExperienceCaseLifecycle.value
+    canManageExperienceCaseLifecycle.value === true
     && detailExperience.value?.caseStatus === ExperienceCaseStatusCode.CONFIRMED
     && detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS
     && Boolean(detailExperience.value?.id),
@@ -897,9 +899,9 @@ const canDeprecateExperience = computed(
 
 async function handleConfirmExperience(): Promise<void> {
   // MVR-422：与 canConfirmExperience 同源二次闸（治理权∧DRAFT∧分析成功）
-  if (!canConfirmExperience.value) {
+  if (canConfirmExperience.value !== true) {
     void message.warning(
-      canManageExperienceCaseLifecycle.value
+      canManageExperienceCaseLifecycle.value === true
         ? '当前经验案例不可确认（须草稿且分析成功）'
         : '当前账号无经验案例治理权限',
     )
@@ -921,9 +923,9 @@ async function handleConfirmExperience(): Promise<void> {
 
 function handleDeprecateExperience(): void {
   // MVR-422：与 canDeprecateExperience 同源二次闸（治理权∧CONFIRMED∧分析成功）
-  if (!canDeprecateExperience.value) {
+  if (canDeprecateExperience.value !== true) {
     void message.warning(
-      canManageExperienceCaseLifecycle.value
+      canManageExperienceCaseLifecycle.value === true
         ? '当前经验案例不可废弃（须已确认且分析成功）'
         : '当前账号无经验案例治理权限',
     )
@@ -938,7 +940,16 @@ function handleDeprecateExperience(): void {
     cancelText: '取消',
     type: 'error',
     onOk: async () => {
-      if (deprecatingExperience.value) return
+      // MVR-938：onOk 再认 canDeprecateExperience，防确认等待期间案例态/治理权漂移
+      if (canDeprecateExperience.value !== true) {
+        void message.warning(
+          canManageExperienceCaseLifecycle.value === true
+            ? '当前经验案例不可废弃（须已确认且分析成功）'
+            : '当前账号无经验案例治理权限',
+        )
+        return
+      }
+      if (deprecatingExperience.value === true) return
       deprecatingExperience.value = true
       try {
         detailExperience.value = await deprecateExperienceCase(caseId)
@@ -987,7 +998,7 @@ async function loadLatestCluster(): Promise<void> {
 }
 
 async function handleGenerateCluster(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无阅卷写权限')
     return
   }

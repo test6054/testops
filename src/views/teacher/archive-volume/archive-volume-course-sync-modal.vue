@@ -3,7 +3,7 @@
     :open="open"
     title="课程平台材料同步"
     :width="880"
-    :confirm-loading="submitting"
+    :confirm-loading="submitting === true"
     ok-text="同步"
     :hide-footer="false"
     @update:open="emit('update:open', $event)"
@@ -112,12 +112,17 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   open: boolean
   volumeId: string
   /** MVR-377：与父 canRegisterMaterial / BE requireCanManageMaterials 同源 */
-  canRegisterMaterial?: boolean
-}>()
+  canRegisterMaterial?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+}>(),
+  {
+  canRegisterMaterial: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -214,11 +219,11 @@ async function onRowFileChange(event: Event) {
 
 async function handleSubmit() {
   // MVR-377：与 canRegisterMaterial / BE requireCanManageMaterials 二次拦截
-  if (!props.canRegisterMaterial) {
+  if (props.canRegisterMaterial !== true) {
     showFormValidationMessage('当前账号无材料登记权限，无法同步课程平台材料')
     return
   }
-  if (submitting.value) return
+  if (submitting.value === true) return
   if (!props.volumeId) return
   if (!form.value.sourceSystem.trim()) {
     showFormValidationMessage('请填写来源系统')

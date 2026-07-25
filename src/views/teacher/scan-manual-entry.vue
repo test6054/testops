@@ -32,7 +32,7 @@
         <template #actions>
           <UiButton size="sm" variant="outline" @click="goScanLedger"> 影像账本 </UiButton>
           <UiButton
-            v-if="canManageOwnerSupplementWrites"
+            v-if="canManageOwnerSupplementWrites === true"
             size="sm"
             variant="primary"
             @click="openFileImportWizard"
@@ -158,6 +158,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
@@ -542,10 +543,10 @@ function openMissingPageWizard(
   record: ExamManualSupplementCandidateItemResponse,
   targetPageNo?: number,
 ): void {
-  if (!canManageOwnerSupplementWrites.value) {
+  if (canManageOwnerSupplementWrites.value !== true) {
     return
   }
-  if (!record.supplementEligible) {
+  if (record.supplementEligible !== true) {
     return
   }
   wizardContext.value = buildWizardContext('missing-page', {
@@ -556,10 +557,10 @@ function openMissingPageWizard(
 }
 
 function openReplaceWizard(record: ExamManualSupplementCandidateItemResponse): void {
-  if (!canManageOwnerSupplementWrites.value) {
+  if (canManageOwnerSupplementWrites.value !== true) {
     return
   }
-  if (!record.replaceEligible) {
+  if (record.replaceEligible !== true) {
     return
   }
   wizardContext.value = buildWizardContext('replace', { ...record, targetPageNo: undefined })
@@ -567,7 +568,7 @@ function openReplaceWizard(record: ExamManualSupplementCandidateItemResponse): v
 }
 
 function openFileImportWizard(): void {
-  if (!canManageOwnerSupplementWrites.value) {
+  if (canManageOwnerSupplementWrites.value !== true) {
     return
   }
   if (!selectedExamId.value) return
@@ -603,7 +604,7 @@ function applyRouteDeepLink(): void {
   const scenario = parseScenario(route.query.scenario)
   if (!scenario || !selectedExamId.value) return
   // MVR-265：写场景 deep link 非主考不打开向导
-  if (!canManageOwnerSupplementWrites.value) {
+  if (canManageOwnerSupplementWrites.value !== true) {
     return
   }
   pendingDeepLink.value = true

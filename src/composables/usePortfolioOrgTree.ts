@@ -2,6 +2,7 @@ import type { PortfolioOrgTreeNodeVO } from '@/apis/portfolio/types'
 import { ref } from 'vue'
 import { PortfolioEduUserOrgTreeNodeTypeCode, PortfolioOrgUnitTypeCode } from '@/apis/portfolio/enums'
 import { portfolioOrgApi } from '@/apis/portfolio/org'
+import { ALL_PORTFOLIO_ORG_UNIT_TYPE_CODES } from '@/types/enums/portfolio-org-unit-type-enum'
 import { showUserError } from '@/utils/error-handler'
 
 export interface PortfolioOrgFlatOption {
@@ -103,9 +104,15 @@ export function flattenTeachingGroupOptions(
 export function isPortfolioUnitNode(
   nodeType?: PortfolioOrgTreeNodeVO['nodeType'],
 ): nodeType is PortfolioOrgUnitTypeCode {
-  return nodeType === PortfolioOrgUnitTypeCode.MAJOR_GROUP
-    || nodeType === PortfolioOrgUnitTypeCode.TEACHING_RESEARCH_OFFICE
-    || nodeType === PortfolioOrgUnitTypeCode.CAMPUS
+  if (!nodeType) {
+    return false
+  }
+  for (const code of ALL_PORTFOLIO_ORG_UNIT_TYPE_CODES) {
+    if (code === nodeType) {
+      return true
+    }
+  }
+  return false
 }
 
 export function usePortfolioOrgTree() {

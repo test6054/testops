@@ -18,23 +18,23 @@ function resolveGateProgressHint(gate: ArchiveVolumeExamGateResponse | null): st
   if (!gate) {
     return '—'
   }
-  if (gate.gateOpen) {
+  if (gate.gateOpen === true) {
     return '已完成'
   }
-  if (gate.examClosed && !gate.allScoresPublished) {
+  if (gate.examClosed === true && gate.allScoresPublished !== true) {
     return '考试状态异常，请联系管理员'
   }
-  if (gate.allScoresPublished && !gate.examClosed) {
+  if (gate.allScoresPublished === true && gate.examClosed !== true) {
     return (gate.gradablePaperCount ?? 0) <= 0
       ? '无可评阅试卷，关考后将自动创建归档卷'
       : '成绩已全部发布，可进行关考'
   }
-  if (!gate.examClosed) {
+  if (gate.examClosed !== true) {
     return (gate.unpublishedBoundPaperCount ?? 0) > 0
       ? `尚有 ${gate.unpublishedBoundPaperCount} 份试卷未发布成绩，请先完成各班级发布再关考`
       : '考试未关考'
   }
-  if (gate.allScoresPublished) {
+  if (gate.allScoresPublished === true) {
     return (gate.gradablePaperCount ?? 0) <= 0 ? '无可评阅试卷，成绩门禁已满足' : '成绩已全部发布'
   }
   const unpublished
@@ -82,10 +82,10 @@ export function buildCloseExamReadyContent(gate: ArchiveVolumeExamGateResponse):
 
 /** 归档双门禁：关考条件说明（禁止暴露 API 路径） */
 export function buildExamClosedGateHint(gate: ArchiveVolumeExamGateResponse): string {
-  if (gate.examClosed) {
+  if (gate.examClosed === true) {
     return '已在考试列表完成关考'
   }
-  if (gate.allScoresPublished) {
+  if (gate.allScoresPublished === true) {
     return '成绩已全部发布，请前往考试列表执行关考'
   }
   if ((gate.unpublishedBoundPaperCount ?? 0) > 0) {
@@ -98,7 +98,7 @@ export function buildExamClosedGateHint(gate: ArchiveVolumeExamGateResponse): st
 export function buildScoresPublishedGateHint(gate: ArchiveVolumeExamGateResponse): string {
   const published = gate.publishedScoreCount ?? 0
   const total = gate.gradablePaperCount ?? 0
-  if (gate.allScoresPublished) {
+  if (gate.allScoresPublished === true) {
     return total <= 0
       ? '无可评阅试卷，成绩门禁已满足'
       : `全部考生成绩已发布（${published}/${total}）`

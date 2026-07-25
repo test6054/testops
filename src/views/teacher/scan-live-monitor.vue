@@ -208,11 +208,11 @@
             >
               <template #toolbar-right>
                 <UiButton
-                  v-if="activeTab === 'abnormal' && canManageOwnerBatchActions"
+                  v-if="activeTab === 'abnormal' && canManageOwnerBatchActions === true"
                   variant="primary"
                   size="sm"
                   :disabled="selectedRowKeys.length === 0"
-                  :loading="batchBinding"
+                  :loading="batchBinding === true"
                   @click="handleBatchBind"
                 >
                   批量绑定 ({{ selectedRowKeys.length }})
@@ -276,7 +276,7 @@
         :open="bindDrawerOpen"
         title="试卷身份绑定"
         :width="560"
-        :confirm-loading="binding"
+        :confirm-loading="binding === true"
         :hide-footer="false"
         @update:open="(v: boolean) => (bindDrawerOpen = v)"
         @close="bindDrawerOpen = false"
@@ -405,7 +405,7 @@
         :open="batchBindDrawerOpen"
         title="批量试卷身份绑定"
         :width="880"
-        :confirm-loading="batchBinding"
+        :confirm-loading="batchBinding === true"
         :hide-footer="false"
         @update:open="(v: boolean) => (batchBindDrawerOpen = v)"
         @close="closeBatchBindDrawer"
@@ -560,6 +560,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
@@ -1098,7 +1099,7 @@ function scheduleMonitorBatchReload(): void {
 
 const connectionTone = computed<BadgeTone>(() => {
   const phase = scanLiveStream.connectionPhase.value
-  if (phase === 'ready' && scanLiveStream.ready.value) {
+  if (phase === 'ready' && scanLiveStream.ready.value === true) {
     return 'green'
   }
   if (phase === 'reconnecting' || phase === 'connecting') {
@@ -1109,7 +1110,7 @@ const connectionTone = computed<BadgeTone>(() => {
 
 const connectionLabel = computed(() => {
   const phase = scanLiveStream.connectionPhase.value
-  if (phase === 'ready' && scanLiveStream.ready.value) {
+  if (phase === 'ready' && scanLiveStream.ready.value === true) {
     return '实时同步中'
   }
   if (phase === 'reconnecting') {
@@ -1126,7 +1127,7 @@ const connectionLabel = computed(() => {
 })
 
 const connectionPulsing = computed(
-  () => scanLiveStream.connectionPhase.value === 'ready' && scanLiveStream.ready.value,
+  () => scanLiveStream.connectionPhase.value === 'ready' && scanLiveStream.ready.value === true,
 )
 
 watch(
@@ -1261,7 +1262,7 @@ async function loadConnectedScannerDevices(): Promise<void> {
 }
 
 function isScanLiveStreamReady(): boolean {
-  return scanLiveStream.connectionPhase.value === 'ready' && scanLiveStream.ready.value
+  return scanLiveStream.connectionPhase.value === 'ready' && scanLiveStream.ready.value === true
 }
 
 function isAttentionMonitorTab(): boolean {
@@ -1333,7 +1334,7 @@ function goToManualEntry(): void {
 
 function goToManualSupplementFromAttention(record: ScanAttentionItemResponse): void {
   // MVR-390：补扫入口与主考写闸同源，禁止无写权假入口
-  if (!canManageOwnerBatchActions.value) {
+  if (canManageOwnerBatchActions.value !== true) {
     void message.warning('当前账号非本场主考，无法发起补扫')
     return
   }
@@ -1687,7 +1688,7 @@ const pageDiscardReason = ref('')
 const pageDiscardReasonError = ref('')
 async function onDiscardPage(record: ScanAttentionItemResponse): Promise<void> {
   // MVR-390：打开废弃弹窗与 canManageOwnerBatchActions / BE 主考写门禁同源
-  if (!canManageOwnerBatchActions.value) {
+  if (canManageOwnerBatchActions.value !== true) {
     void message.warning('当前账号非本场主考，无法废弃扫描页')
     return
   }
@@ -1702,7 +1703,7 @@ async function onDiscardPage(record: ScanAttentionItemResponse): Promise<void> {
 }
 
 function closePageDiscardModal(): void {
-  if (pageDiscarding.value) return
+  if (pageDiscarding.value === true) return
   pageDiscardModalOpen.value = false
   pageDiscardTarget.value = null
   pageDiscardReason.value = ''
@@ -1710,7 +1711,7 @@ function closePageDiscardModal(): void {
 }
 
 async function confirmDiscardPage(): Promise<void> {
-  if (!canManageOwnerBatchActions.value) {
+  if (canManageOwnerBatchActions.value !== true) {
     return
   }
   const record = pageDiscardTarget.value
@@ -1718,7 +1719,7 @@ async function confirmDiscardPage(): Promise<void> {
     closePageDiscardModal()
     return
   }
-  if (pageDiscarding.value) {
+  if (pageDiscarding.value === true) {
     return
   }
   const trimmed = pageDiscardReason.value.trim()
@@ -1800,21 +1801,21 @@ const bindSourcePageLoadFailed = ref(false)
  */
 const bindIdentityEvidenceBlockReason = computed(() => {
   if (!bindDrawerOpen.value) return ''
-  if (bindShowIdentitySliceEvidence.value) {
-    if (bindIdentitySliceLoading.value) return '手写身份切片仍在加载，确认可见后才能提交身份绑定。'
+  if (bindShowIdentitySliceEvidence.value === true) {
+    if (bindIdentitySliceLoading.value === true) return '手写身份切片仍在加载，确认可见后才能提交身份绑定。'
     if (bindIdentitySliceLoadFailed.value)
       return '手写身份切片加载失败，请重新加载影像后再做身份绑定。'
     if (!bindIdentitySliceImageUrl.value) return '手写身份切片尚未显示，不能提交身份绑定。'
-    if (bindShowSourcePageEvidence.value) {
-      if (bindSourcePageLoading.value) return '原始扫描页仍在加载，确认可见后才能提交身份绑定。'
+    if (bindShowSourcePageEvidence.value === true) {
+      if (bindSourcePageLoading.value === true) return '原始扫描页仍在加载，确认可见后才能提交身份绑定。'
       if (bindSourcePageLoadFailed.value)
         return '原始扫描页加载失败，请重新加载影像后再做身份绑定。'
       if (!bindSourcePageImageUrl.value) return '原始扫描页尚未显示，不能提交身份绑定。'
     }
     return ''
   }
-  if (bindShowSourcePageEvidence.value) {
-    if (bindSourcePageLoading.value) return '原始扫描页仍在加载，确认可见后才能提交身份绑定。'
+  if (bindShowSourcePageEvidence.value === true) {
+    if (bindSourcePageLoading.value === true) return '原始扫描页仍在加载，确认可见后才能提交身份绑定。'
     if (bindSourcePageLoadFailed.value) return '原始扫描页加载失败，请重新加载影像后再做身份绑定。'
     if (!bindSourcePageImageUrl.value) return '原始扫描页尚未显示，不能提交身份绑定。'
   }
@@ -1822,9 +1823,9 @@ const bindIdentityEvidenceBlockReason = computed(() => {
 })
 
 const bindEvidenceTagLabel = computed(() => {
-  if (bindShowIdentitySliceEvidence.value && bindShowSourcePageEvidence.value) return '双证据'
-  if (bindShowIdentitySliceEvidence.value) return '切片证据'
-  if (bindShowSourcePageEvidence.value) return '原页证据'
+  if (bindShowIdentitySliceEvidence.value === true && bindShowSourcePageEvidence.value === true) return '双证据'
+  if (bindShowIdentitySliceEvidence.value === true) return '切片证据'
+  if (bindShowSourcePageEvidence.value === true) return '原页证据'
   return '名册人工确认'
 })
 
@@ -1909,7 +1910,7 @@ function releaseBindSourcePageImage(): void {
 async function loadBindIdentitySliceImage(): Promise<void> {
   releaseBindIdentitySliceImage()
   bindIdentitySliceLoadFailed.value = false
-  if (!bindShowIdentitySliceEvidence.value || !bindPageId.value || !selectedExamId.value) {
+  if (bindShowIdentitySliceEvidence.value !== true || !bindPageId.value || !selectedExamId.value) {
     return
   }
   bindIdentitySliceLoading.value = true
@@ -1927,7 +1928,7 @@ async function loadBindIdentitySliceImage(): Promise<void> {
 async function loadBindSourcePageImage(): Promise<void> {
   releaseBindSourcePageImage()
   bindSourcePageLoadFailed.value = false
-  if (!bindShowSourcePageEvidence.value || !bindPageId.value || !selectedExamId.value) {
+  if (bindShowSourcePageEvidence.value !== true || !bindPageId.value || !selectedExamId.value) {
     return
   }
   bindSourcePageLoading.value = true
@@ -1943,7 +1944,7 @@ async function loadBindSourcePageImage(): Promise<void> {
 }
 
 function openBindDrawer(record: ScanAttentionItemResponse): void {
-  if (!canManageOwnerBatchActions.value) {
+  if (canManageOwnerBatchActions.value !== true) {
     return
   }
   if (!record.paperInstanceId || !record.scanBatchId) {
@@ -1969,13 +1970,13 @@ function openBindDrawer(record: ScanAttentionItemResponse): void {
 
 async function handleBind(): Promise<void> {
   // MVR-316：与 BE requireExamOwnerPermission / canManageOwnerBatchActions 二次拦截
-  if (!canManageOwnerBatchActions.value) {
+  if (canManageOwnerBatchActions.value !== true) {
     void message.warning('当前账号非本场主考，无法进行身份绑定')
     return
   }
   if (!selectedExamId.value) return
   if (!bindFormRef.value) return
-  if (binding.value) {
+  if (binding.value === true) {
     return
   }
   if (bindIdentityEvidenceBlockReason.value) {
@@ -2034,10 +2035,10 @@ function handleMonitorBatchAction(key: string, batch: ExamScannerBatchResponse):
 
 function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
-  // MVR-263：主考写动作与 BE requireExamOwnerPermission 对齐，非主考仅保留导航/查看
-  const canOwnerWrite = canManageOwnerBatchActions.value
+  // MVR-263/952：主考写动作与 BE requireExamOwnerPermission 对齐；仅认 === true
+  const canOwnerWrite = canManageOwnerBatchActions.value === true
   if (record.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT) {
-    if (canOwnerWrite) {
+    if (canOwnerWrite === true) {
       actions.push({
         key: 'bind',
         label: '身份绑定',
@@ -2065,7 +2066,7 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
       tone: canOwnerWrite ? 'primary' : undefined,
       disabled: !record.scanBatchId,
     })
-    if (canOwnerWrite && record.paperInstanceId && record.scanBatchId) {
+    if (canOwnerWrite === true && record.paperInstanceId && record.scanBatchId) {
       actions.push({ key: 'supplement', label: '去补扫' })
     }
   } else if (record.attentionType === ScanAttentionTypeCode.RECOGNITION_REVIEW) {
@@ -2077,12 +2078,12 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
     || record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK
   ) {
     actions.push({ key: 'dispose', label: '查看处置', tone: 'primary' })
-    if (canOwnerWrite && record.paperInstanceId && record.scanBatchId) {
+    if (canOwnerWrite === true && record.paperInstanceId && record.scanBatchId) {
       actions.push({ key: 'supplement', label: '去补扫' })
     }
   }
   if (
-    canOwnerWrite
+    canOwnerWrite === true
     && record.sourceType === IncidentSourceTypeCode.SCANNED_PAGE
     && record.pageId
   ) {
@@ -2181,7 +2182,7 @@ const rowSelection = computed(() => ({
 
 async function handleBatchBind(): Promise<void> {
   // MVR-316：批量身份绑定与主考写闸同源
-  if (!canManageOwnerBatchActions.value) {
+  if (canManageOwnerBatchActions.value !== true) {
     void message.warning('当前账号非本场主考，无法批量身份绑定')
     return
   }
@@ -2223,7 +2224,7 @@ async function handleBatchBind(): Promise<void> {
 }
 
 function closeBatchBindDrawer(): void {
-  if (batchBinding.value) return
+  if (batchBinding.value === true) return
   batchBindDrawerOpen.value = false
   batchBindRows.value = []
   batchBindResult.value = null
@@ -2231,7 +2232,7 @@ function closeBatchBindDrawer(): void {
 
 async function submitBatchBind(): Promise<void> {
   // MVR-316：批量提交与 BE requireExamOwnerPermission 二次拦截
-  if (!canManageOwnerBatchActions.value) {
+  if (canManageOwnerBatchActions.value !== true) {
     void message.warning('当前账号非本场主考，无法批量身份绑定')
     return
   }
@@ -2239,7 +2240,7 @@ async function submitBatchBind(): Promise<void> {
     void message.error('请先选择考试')
     return
   }
-  if (batchBinding.value) {
+  if (batchBinding.value === true) {
     return
   }
   if (batchBindRows.value.length === 0) {

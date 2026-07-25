@@ -43,7 +43,7 @@
           </div>
           <div class="create-form-summary__row">
             <dt>涉密场次</dt>
-            <dd>{{ examForm.confidential ? '是（强制水印）' : '否' }}</dd>
+            <dd>{{ examForm.confidential === true ? '是（强制水印）' : '否' }}</dd>
           </div>
         </dl>
       </section>
@@ -57,7 +57,7 @@
           </div>
           <div class="create-form-summary__row">
             <dt>匿名阅卷</dt>
-            <dd>{{ markingTeamForm.anonymousMode ? '启用' : '关闭' }}</dd>
+            <dd>{{ markingTeamForm.anonymousMode === true ? '启用' : '关闭' }}</dd>
           </div>
           <div class="create-form-summary__row">
             <dt>阅卷教师</dt>

@@ -62,7 +62,7 @@
           size="sm"
           variant="primary"
           :loading="submitting"
-          :disabled="!canManageReviewerWrites"
+          :disabled="canManageReviewerWrites !== true"
           @click="handleSubmit"
         >
           预检并提交
@@ -93,7 +93,8 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useTenantMarkingWithdrawPolicy } from '@/composables/useTenantMarkingWithdrawPolicy'
 import { showUserError } from '@/utils/error-handler'
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   open: boolean
   examId: string
   groupId: string
@@ -104,8 +105,12 @@ const props = defineProps<{
    * MVR-372：与 claim-context.canManageReviewerWrites（评阅写∧ACTIVE）同源。
    * 仅认 true；禁止缺声明默认放行。
    */
-  canManageReviewerWrites?: boolean
-}>()
+  canManageReviewerWrites?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+}>(),
+  {
+  canManageReviewerWrites: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
@@ -179,11 +184,11 @@ async function confirmExtremeScore(): Promise<boolean> {
 }
 
 async function handleSubmit(): Promise<void> {
-  if (submitting.value) {
+  if (submitting.value === true) {
     return
   }
   // MVR-372：写 handler 二次拦截；任务池仅隐藏入口不能替代
-  if (!props.canManageReviewerWrites) {
+  if (props.canManageReviewerWrites !== true) {
     void message.warning('当前账号无阅卷写权限，不能批量给分')
     return
   }
@@ -194,6 +199,12 @@ async function handleSubmit(): Promise<void> {
   }
   const confirmed = await confirmExtremeScore()
   if (!confirmed) return
+  // MVR-962：确认后再次认写权与选择集，防对话框期间权限/勾选漂移
+  if (props.canManageReviewerWrites !== true) {
+    void message.warning('当前账号无阅卷写权限，不能批量给分')
+    return
+  }
+  if (!props.examId || !props.groupId || selectedTaskIds.value.length === 0) return
 
   const questionScores = buildQuestionScores()
   if (!questionScores) {

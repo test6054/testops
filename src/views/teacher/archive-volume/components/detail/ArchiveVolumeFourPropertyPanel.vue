@@ -3,15 +3,15 @@
     <section v-if="detail.volume.securityLevel" class="archive-quality-panel__section">
       <div class="archive-quality-panel__section-head">
         <h3 class="archive-quality-panel__section-title">密级与定密</h3>
-        <UiTag :tone="detail.volume.securityMarkPending ? 'orange' : 'green'" size="sm">
-          {{ detail.volume.securityMarkPending ? '待确认' : '已确认' }}
+        <UiTag :tone="detail.volume.securityMarkPending === true ? 'orange' : 'green'" size="sm">
+          {{ detail.volume.securityMarkPending === true ? '待确认' : '已确认' }}
         </UiTag>
         <div class="archive-quality-panel__section-actions">
           <UiButton
             v-if="detail.canConfirmSecurityMark === true"
             size="sm"
             variant="outline"
-            :loading="confirmingSecurityMark"
+            :loading="confirmingSecurityMark === true"
             @click="openConfirmSecurityMarkModal"
           >
             确认密级定密
@@ -20,7 +20,7 @@
             v-if="detail.canUpdateSecurityLevel === true"
             size="sm"
             variant="ghost"
-            :loading="updatingSecurityLevel"
+            :loading="updatingSecurityLevel === true"
             @click="openUpdateSecurityLevelModal"
           >
             变更密级
@@ -34,21 +34,21 @@
       <div class="archive-quality-panel__section-head">
         <h3 class="archive-quality-panel__section-title">四性检测</h3>
         <UiTag
-          v-if="displayedFourProperty && !detail.fourPropertyStale"
+          v-if="displayedFourProperty && detail.fourPropertyStale !== true"
           :tone="fourPropertySummary.passed === fourPropertySummary.total ? 'green' : 'orange'"
           size="sm"
         >
           {{ fourPropertySummary.passed }}/{{ fourPropertySummary.total }} 通过
         </UiTag>
-        <p v-if="detail.fourPropertyStale" class="archive-quality-panel__stale-hint">
+        <p v-if="detail.fourPropertyStale === true" class="archive-quality-panel__stale-hint">
           结论已失效，请重新检测
         </p>
         <div class="archive-quality-panel__section-actions">
           <UiButton
-            v-if="canRunFourProperty"
+            v-if="canRunFourProperty === true"
             size="sm"
             variant="primary"
-            :loading="checkingFourProperty"
+            :loading="checkingFourProperty === true"
             @click="runFourPropertyCheck"
           >
             {{
@@ -66,10 +66,10 @@
           检测真实性、完整性、可用性、安全性；密级变更或材料变更后须重新执行。
         </p>
         <UiButton
-          v-if="canRunFourProperty"
+          v-if="canRunFourProperty === true"
           size="sm"
           variant="primary"
-          :loading="checkingFourProperty"
+          :loading="checkingFourProperty === true"
           @click="runFourPropertyCheck"
         >
           执行四性检测
@@ -82,7 +82,7 @@
       :open="confirmSecurityMarkOpen"
       title="密级定密确认"
       :width="520"
-      :confirm-loading="confirmingSecurityMark"
+      :confirm-loading="confirmingSecurityMark === true"
       ok-text="确认定密"
       :hide-footer="false"
       @update:open="(v: boolean) => (confirmSecurityMarkOpen = v)"
@@ -110,7 +110,7 @@
       :open="updateSecurityLevelOpen"
       title="变更卷密级"
       :width="520"
-      :confirm-loading="updatingSecurityLevel"
+      :confirm-loading="updatingSecurityLevel === true"
       ok-text="保存"
       :hide-footer="false"
       @update:open="(v: boolean) => (updateSecurityLevelOpen = v)"
@@ -141,6 +141,8 @@
 </template>
 
 <script setup lang="ts">
+// MVR-949：props.can* 写控制流仅认 === true
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
 import type {
   ArchiveSecurityLevelCode,
   ArchiveVolumeDetailResponse,
@@ -173,12 +175,18 @@ import ArchiveFourPropertyGrid from '@/views/teacher/archive-volume/components/d
 
 defineOptions({ name: 'ArchiveVolumeFourPropertyPanel' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   volumeId: string
   detail: ArchiveVolumeDetailResponse
   displayedFourProperty: NonNullable<ArchiveVolumeDetailResponse['latestFourPropertyCheck']> | null
-  canRunFourProperty: boolean
-}>()
+  canRunFourProperty?: boolean
+}>(),
+  {
+  canRunFourProperty: false,
+  },
+)
 
 const emit = defineEmits<{
   "refreshed": []
@@ -216,7 +224,7 @@ const securityLevelLabelText = computed(() => {
 const securityBarTitle = computed(() => `卷密级：${securityLevelLabelText.value}`)
 
 const securityBarDescription = computed(() => {
-  if (props.detail.volume.securityMarkPending) {
+  if (props.detail.volume.securityMarkPending === true) {
     return '定密待确认，确认前不得视为密级已落实'
   }
   return '密级已确认，请勿截屏、复制或外传卷内材料'
@@ -228,7 +236,8 @@ function securityLevelLabel(code: ArchiveSecurityLevelCode) {
 
 function openConfirmSecurityMarkModal() {
   // MVR-390：打开弹窗与 canConfirmSecurityMark 二次拦截
-  if (!props.detail.canConfirmSecurityMark) {
+  // MVR-939：BE 能力位仅认 === true，禁止 truthy
+  if (props.detail.canConfirmSecurityMark !== true) {
     void message.warning('当前账号无定密确认权限')
     return
   }
@@ -237,10 +246,11 @@ function openConfirmSecurityMarkModal() {
 }
 
 async function submitConfirmSecurityMark() {
-  if (confirmingSecurityMark.value) {
+  if (confirmingSecurityMark.value === true) {
     return
   }
-  if (!props.detail.canConfirmSecurityMark) {
+  // MVR-939：BE 能力位仅认 === true
+  if (props.detail.canConfirmSecurityMark !== true) {
     void message.warning('当前账号无定密确认权限')
     return
   }
@@ -267,7 +277,8 @@ async function submitConfirmSecurityMark() {
 
 function openUpdateSecurityLevelModal() {
   // MVR-390：打开弹窗与 canUpdateSecurityLevel 二次拦截
-  if (!props.detail.canUpdateSecurityLevel) {
+  // MVR-939：BE 能力位仅认 === true，禁止 truthy
+  if (props.detail.canUpdateSecurityLevel !== true) {
     void message.warning('当前账号无密级变更权限')
     return
   }
@@ -277,10 +288,11 @@ function openUpdateSecurityLevelModal() {
 }
 
 async function submitUpdateSecurityLevel() {
-  if (updatingSecurityLevel.value) {
+  if (updatingSecurityLevel.value === true) {
     return
   }
-  if (!props.detail.canUpdateSecurityLevel) {
+  // MVR-939：BE 能力位仅认 === true
+  if (props.detail.canUpdateSecurityLevel !== true) {
     void message.warning('当前账号无密级变更权限')
     return
   }
@@ -316,11 +328,11 @@ async function submitUpdateSecurityLevel() {
 
 async function runFourPropertyCheck() {
   // MVR-347：与 canRunFourProperty 同源二次拦截
-  if (!props.canRunFourProperty) {
+  if (props.canRunFourProperty !== true) {
     void message.warning('当前账号或卷状态不可执行四性检测')
     return
   }
-  if (checkingFourProperty.value) return
+  if (checkingFourProperty.value === true) return
   checkingFourProperty.value = true
   try {
     const result = await checkArchiveVolumeFourProperty(props.volumeId)

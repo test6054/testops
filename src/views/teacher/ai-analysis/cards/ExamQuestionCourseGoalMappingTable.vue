@@ -42,7 +42,7 @@ const props = withDefaults(defineProps<{
   rows: MappingEditableRow[]
   goalOptions: Array<{ value: string, label: string }>
   /** MVR-270：仅主考可写；与 BE requireExamOwnerPermission 对齐 */
-  canManageOwnerWrites?: boolean
+  canManageOwnerWrites?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
 }>(), {
   canManageOwnerWrites: false,
 })
@@ -254,7 +254,7 @@ function handleFilterReset(): void {
             class="exam-goal-mapping-table__select"
             placeholder="选择课程目标"
             :options="goalOptions"
-            :disabled="!canManageOwnerWrites"
+            :disabled="canManageOwnerWrites !== true"
             allow-clear
             allow-search
             option-filter-prop="label"
@@ -273,7 +273,7 @@ function handleFilterReset(): void {
             :max="999"
             :step="0.1"
             :precision="4"
-            :disabled="!canManageOwnerWrites"
+            :disabled="canManageOwnerWrites !== true"
             @change="() => handleWeightChange(record)"
           />
         </template>
@@ -288,7 +288,7 @@ function handleFilterReset(): void {
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
-            v-if="canManageOwnerWrites"
+            v-if="canManageOwnerWrites === true"
             :items="[
               { key: 'save', label: '保存', tone: 'primary', disabled: record.saving },
               {

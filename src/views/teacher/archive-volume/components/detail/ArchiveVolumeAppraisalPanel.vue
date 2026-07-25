@@ -23,7 +23,7 @@
     <template #toolbar>
       <div class="archive-volume-appraisal-panel__actions">
         <UiButton
-          v-if="canRequestAppraisal"
+          v-if="canRequestAppraisal === true"
           size="sm"
           variant="primary"
           @click="handleRequestAppraisal"
@@ -31,7 +31,7 @@
           发起鉴定
         </UiButton>
         <UiButton
-          v-if="canRequestDestruction"
+          v-if="canRequestDestruction === true"
           size="sm"
           variant="outline"
           @click="openDestructionRequest"
@@ -39,7 +39,7 @@
           申请销毁
         </UiButton>
         <UiButton
-          v-if="canApproveDestructionAction"
+          v-if="canApproveDestructionAction === true"
           variant="primary"
           size="sm"
           @click="openDestructionApproval(ArchiveDestructionDecisionCode.APPROVED)"
@@ -47,7 +47,7 @@
           批准销毁
         </UiButton>
         <UiButton
-          v-if="canApproveDestructionAction"
+          v-if="canApproveDestructionAction === true"
           size="sm"
           variant="outline"
           @click="openDestructionApproval(ArchiveDestructionDecisionCode.REJECTED)"
@@ -55,7 +55,7 @@
           驳回销毁
         </UiButton>
         <UiButton
-          v-if="canExecuteDestruction"
+          v-if="canExecuteDestruction === true"
           variant="primary"
           size="sm"
           @click="handleExecuteDestruction"
@@ -63,7 +63,7 @@
           执行销毁
         </UiButton>
         <UiButton
-          v-if="canSuperviseDestruction"
+          v-if="canSuperviseDestruction === true"
           size="sm"
           variant="outline"
           @click="openSuperviseModal"
@@ -74,7 +74,7 @@
     </template>
 
     <UiAlertStrip
-      v-if="canRequestAppraisal"
+      v-if="canRequestAppraisal === true"
       tone="warning"
       title="保管期鉴定待启动"
       description="请发起鉴定申请；审批通过后记录续保或销毁决议，再进入销毁审批链。"
@@ -98,7 +98,7 @@
         <UiTag v-else tone="gray" size="sm">未启动</UiTag>
         <div class="archive-volume-appraisal-panel__section-actions">
           <UiButton
-            v-if="canRequestAppraisal"
+            v-if="canRequestAppraisal === true"
             size="sm"
             variant="ghost"
             @click="handleRequestAppraisal"
@@ -147,7 +147,7 @@
           <p class="approval-card__meta">{{ formatFlowRecordMeta(record) }}</p>
           <div v-if="showRecordActions(record)" class="approval-card__actions">
             <UiButton
-              v-if="canApproveAppraisal"
+              v-if="canApproveAppraisal === true"
               variant="primary"
               size="sm"
               @click="handleApproveAppraisal"
@@ -155,7 +155,7 @@
               鉴定审批通过
             </UiButton>
             <UiButton
-              v-if="canRejectAppraisal"
+              v-if="canRejectAppraisal === true"
               size="sm"
               variant="outline"
               @click="openRejectAppraisal"
@@ -163,7 +163,7 @@
               鉴定驳回
             </UiButton>
             <UiButton
-              v-if="canRecordAppraisalOpinion"
+              v-if="canRecordAppraisalOpinion === true"
               size="sm"
               variant="outline"
               @click="openAppraisalOpinion"
@@ -250,7 +250,7 @@
       :open="appraisalModalOpen"
       title="鉴定决议"
       :width="520"
-      :confirm-loading="appraisalSubmitting"
+      :confirm-loading="appraisalSubmitting === true"
       ok-text="提交"
       :hide-footer="false"
       @update:open="(v: boolean) => (appraisalModalOpen = v)"
@@ -276,7 +276,7 @@
             size="sm"
             :value="appraisalForm.retentionExtensionYears"
             :min="1"
-            :disabled="appraisalForm.permanentRetention"
+            :disabled="appraisalForm.permanentRetention === true"
             style="width: 100%"
             @update:value="syncAppraisalRetentionYears"
           />
@@ -300,7 +300,7 @@
       :open="destructionModalOpen"
       title="申请销毁"
       :width="520"
-      :confirm-loading="destructionSubmitting"
+      :confirm-loading="destructionSubmitting === true"
       ok-text="提交"
       :hide-footer="false"
       @update:open="(v: boolean) => (destructionModalOpen = v)"
@@ -324,7 +324,7 @@
       :open="rejectAppraisalOpen"
       title="鉴定驳回"
       :width="520"
-      :confirm-loading="rejectAppraisalSubmitting"
+      :confirm-loading="rejectAppraisalSubmitting === true"
       ok-text="确认驳回"
       :hide-footer="false"
       @update:open="(v: boolean) => (rejectAppraisalOpen = v)"
@@ -348,7 +348,7 @@
       :open="destructionApprovalOpen"
       :title="destructionApprovalTitle"
       :width="520"
-      :confirm-loading="destructionApprovalSubmitting"
+      :confirm-loading="destructionApprovalSubmitting === true"
       ok-text="提交"
       :hide-footer="false"
       @update:open="(v: boolean) => (destructionApprovalOpen = v)"
@@ -379,7 +379,7 @@
       :open="superviseModalOpen"
       title="监销确认"
       :width="520"
-      :confirm-loading="superviseSubmitting"
+      :confirm-loading="superviseSubmitting === true"
       ok-text="确认"
       :hide-footer="false"
       @update:open="(v: boolean) => (superviseModalOpen = v)"
@@ -407,6 +407,9 @@
 </template>
 
 <script setup lang="ts">
+// MVR-949：props.can* 写控制流仅认 === true
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type {
   ArchiveVolumeAppraisalFlowRecordResponse,
   ArchiveVolumeAppraisalRequest,
@@ -465,13 +468,20 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeAppraisalPanel' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   volumeId: string
   detail: ArchiveVolumeDetailResponse
-  canManageAppraisal: boolean
-  canApproveDestruction: boolean
+  canManageAppraisal?: boolean
+  canApproveDestruction?: boolean
   currentUserId: string
-}>()
+}>(),
+  {
+  canManageAppraisal: false,
+  canApproveDestruction: false,
+  },
+)
 
 const emit = defineEmits<{
   refreshed: [options?: { silent?: boolean }]
@@ -521,7 +531,7 @@ const superviseForm = reactive({
 
 const canRequestAppraisal = computed(() => {
   const vol = props.detail.volume
-  if (!props.canManageAppraisal) return false
+  if (props.canManageAppraisal !== true) return false
   const status = vol.appraisalStatus
   if (!(
     status === ArchiveAppraisalStatusCode.NOT_DUE
@@ -531,7 +541,7 @@ const canRequestAppraisal = computed(() => {
     return false
   }
   if (status === ArchiveAppraisalStatusCode.NOT_DUE) {
-    if (vol.permanentRetention) return false
+    if (vol.permanentRetention === true) return false
     if (!vol.retentionUntil) return false
     return vol.retentionUntil <= new Date().toISOString().slice(0, 10)
   }
@@ -540,23 +550,23 @@ const canRequestAppraisal = computed(() => {
 
 const canApproveAppraisal = computed(
   () =>
-    props.canManageAppraisal
+    props.canManageAppraisal === true
     && props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.REQUESTED
     && Boolean(props.detail.appraisalRequestUserId)
     && props.detail.appraisalRequestUserId !== props.currentUserId,
 )
 
-const canRejectAppraisal = computed(() => canApproveAppraisal.value)
+const canRejectAppraisal = computed(() => canApproveAppraisal.value === true)
 
 const canRecordAppraisalOpinion = computed(
   () =>
-    props.canManageAppraisal
+    props.canManageAppraisal === true
     && props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.APPROVED,
 )
 
 const canRequestDestruction = computed(
   () =>
-    props.canManageAppraisal
+    props.canManageAppraisal === true
     && props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.OPINION_RECORDED
     && props.detail.appraisalDecision === ArchiveAppraisalDecisionCode.DESTROY
     && (props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.NONE
@@ -564,9 +574,7 @@ const canRequestDestruction = computed(
 )
 
 const canApproveDestructionAction = computed(() => {
-  if (
-    !props.canApproveDestruction
-    || props.detail.volume.destructionStatus !== ArchiveDestructionStatusCode.REQUESTED
+  if (props.canApproveDestruction !== true || props.detail.volume.destructionStatus !== ArchiveDestructionStatusCode.REQUESTED
   ) {
     return false
   }
@@ -576,7 +584,7 @@ const canApproveDestructionAction = computed(() => {
 
 const canExecuteDestruction = computed(
   () =>
-    props.canApproveDestruction
+    props.canApproveDestruction === true
     && props.detail.volume.volumeStatus === ArchiveVolumeStatusCode.STORED
     && props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.APPROVED
     && Boolean(props.detail.destructionRequestUserId)
@@ -587,9 +595,7 @@ const canExecuteDestruction = computed(
 
 /** MVR-199：与 BE assertDestructionWitnessSeparated 同源，申请/审批/执行人不可见监销确认 */
 const canSuperviseDestruction = computed(() => {
-  if (
-    !props.canApproveDestruction
-    || props.detail.volume.destructionStatus !== ArchiveDestructionStatusCode.EXECUTED
+  if (props.canApproveDestruction !== true || props.detail.volume.destructionStatus !== ArchiveDestructionStatusCode.EXECUTED
     || !props.detail.destructionExecutionUserId
     || !props.currentUserId
   ) {
@@ -628,7 +634,7 @@ const destructionStepDescriptions = getArchiveDestructionStepDescriptions()
 
 const retentionDisplayText = computed(() => {
   const vol = props.detail.volume
-  if (vol.permanentRetention) return '永久保管'
+  if (vol.permanentRetention === true) return '永久保管'
   if (vol.retentionUntil) return vol.retentionUntil
   if (vol.retentionYears) return `${vol.retentionYears} 年`
   return '—'
@@ -671,14 +677,13 @@ function showRecordActions(record: ArchiveVolumeAppraisalFlowRecordResponse): bo
     record.appraisalStatus === ArchiveAppraisalStatusCode.REQUESTED
     && props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.REQUESTED
   ) {
-    return canApproveAppraisal.value || canRejectAppraisal.value
+    return canApproveAppraisal.value === true || canRejectAppraisal.value === true
   }
   if (
     record.appraisalStatus === ArchiveAppraisalStatusCode.APPROVED
     && props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.APPROVED
   ) {
-    return canRecordAppraisalOpinion.value
-  }
+    return canRecordAppraisalOpinion.value === true }
   return false
 }
 
@@ -764,9 +769,9 @@ function destructionStatusTone(code: ArchiveDestructionStatusCode): BadgeTone {
 }
 
 async function handleApproveAppraisal() {
-  if (appraisalSubmitting.value) return
+  if (appraisalSubmitting.value === true) return
   // MVR-301：与 canApproveAppraisal 同源二次拦截
-  if (!canApproveAppraisal.value) {
+  if (canApproveAppraisal.value !== true) {
     void message.warning('当前账号无鉴定审批通过权限')
     return
   }
@@ -784,7 +789,7 @@ async function handleApproveAppraisal() {
 
 function openRejectAppraisal() {
   // MVR-301：与 canRejectAppraisal 同源二次拦截
-  if (!canRejectAppraisal.value) {
+  if (canRejectAppraisal.value !== true) {
     void message.warning('当前账号无鉴定驳回权限')
     return
   }
@@ -793,9 +798,9 @@ function openRejectAppraisal() {
 }
 
 async function submitRejectAppraisal() {
-  if (rejectAppraisalSubmitting.value) return
+  if (rejectAppraisalSubmitting.value === true) return
   // MVR-301：与 canRejectAppraisal 同源二次拦截
-  if (!canRejectAppraisal.value) {
+  if (canRejectAppraisal.value !== true) {
     void message.warning('当前账号无鉴定驳回权限')
     return
   }
@@ -821,7 +826,7 @@ async function submitRejectAppraisal() {
 
 function openDestructionApproval(decision: ArchiveDestructionDecisionCode) {
   // MVR-301：与 canApproveDestructionAction 同源二次拦截
-  if (!canApproveDestructionAction.value) {
+  if (canApproveDestructionAction.value !== true) {
     void message.warning('当前账号无销毁审批权限')
     return
   }
@@ -831,9 +836,9 @@ function openDestructionApproval(decision: ArchiveDestructionDecisionCode) {
 }
 
 async function submitDestructionApproval() {
-  if (destructionApprovalSubmitting.value) return
+  if (destructionApprovalSubmitting.value === true) return
   // MVR-301：与 canApproveDestructionAction 同源二次拦截
-  if (!canApproveDestructionAction.value) {
+  if (canApproveDestructionAction.value !== true) {
     void message.warning('当前账号无销毁审批权限')
     return
   }
@@ -862,9 +867,9 @@ async function submitDestructionApproval() {
 }
 
 async function handleExecuteDestruction() {
-  if (destructionSubmitting.value) return
+  if (destructionSubmitting.value === true) return
   // MVR-301：与 canExecuteDestruction 同源二次拦截
-  if (!canExecuteDestruction.value) {
+  if (canExecuteDestruction.value !== true) {
     void message.warning('当前账号无执行销毁权限')
     return
   }
@@ -875,6 +880,11 @@ async function handleExecuteDestruction() {
     okText: '执行销毁',
   })
   if (!confirmed) return
+  // MVR-934：确认后再次认 canExecuteDestruction
+  if (canExecuteDestruction.value !== true) {
+    void message.warning('当前账号无执行销毁权限')
+    return
+  }
   destructionSubmitting.value = true
   try {
     await executeArchiveVolumeDestruction(props.volumeId)
@@ -919,7 +929,7 @@ function startDestructionPollIfNeeded() {
 
 function openSuperviseModal() {
   // MVR-301：与 canSuperviseDestruction 同源二次拦截
-  if (!canSuperviseDestruction.value) {
+  if (canSuperviseDestruction.value !== true) {
     void message.warning('当前账号无监销确认权限')
     return
   }
@@ -930,9 +940,9 @@ function openSuperviseModal() {
 }
 
 async function submitSupervise() {
-  if (superviseSubmitting.value) return
+  if (superviseSubmitting.value === true) return
   // MVR-301：与 canSuperviseDestruction 同源二次拦截
-  if (!canSuperviseDestruction.value) {
+  if (canSuperviseDestruction.value !== true) {
     void message.warning('当前账号无监销确认权限')
     return
   }
@@ -962,9 +972,9 @@ async function submitSupervise() {
 }
 
 async function handleRequestAppraisal() {
-  if (appraisalSubmitting.value) return
+  if (appraisalSubmitting.value === true) return
   // MVR-301：与 canRequestAppraisal 同源二次拦截
-  if (!canRequestAppraisal.value) {
+  if (canRequestAppraisal.value !== true) {
     void message.warning('当前账号无发起鉴定权限')
     return
   }
@@ -982,7 +992,7 @@ async function handleRequestAppraisal() {
 
 function openAppraisalOpinion() {
   // MVR-301：与 canRecordAppraisalOpinion 同源二次拦截
-  if (!canRecordAppraisalOpinion.value) {
+  if (canRecordAppraisalOpinion.value !== true) {
     void message.warning('当前账号无记录鉴定决议权限')
     return
   }
@@ -1005,15 +1015,15 @@ function syncAppraisalRetentionYears(value: string | number | null | undefined) 
 }
 
 async function submitAppraisalOpinion() {
-  if (appraisalSubmitting.value) return
+  if (appraisalSubmitting.value === true) return
   // MVR-301：与 canRecordAppraisalOpinion 同源二次拦截
-  if (!canRecordAppraisalOpinion.value) {
+  if (canRecordAppraisalOpinion.value !== true) {
     void message.warning('当前账号无记录鉴定决议权限')
     return
   }
   if (
     appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN
-    && !appraisalForm.permanentRetention
+    && appraisalForm.permanentRetention !== true
     && !appraisalForm.retentionExtensionYears
   ) {
     showFormValidationMessage('请填写延长保管年限或勾选永久保管')
@@ -1026,7 +1036,7 @@ async function submitAppraisalOpinion() {
       decision: appraisalForm.decision,
       retentionExtensionYears:
         appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN
-        && !appraisalForm.permanentRetention
+        && appraisalForm.permanentRetention !== true
           ? appraisalForm.retentionExtensionYears
           : undefined,
       permanentRetention:
@@ -1047,7 +1057,7 @@ async function submitAppraisalOpinion() {
 
 function openDestructionRequest() {
   // MVR-301：与 canRequestDestruction 同源二次拦截
-  if (!canRequestDestruction.value) {
+  if (canRequestDestruction.value !== true) {
     void message.warning('当前账号无发起销毁申请权限')
     return
   }
@@ -1056,9 +1066,9 @@ function openDestructionRequest() {
 }
 
 async function submitDestructionRequest() {
-  if (destructionSubmitting.value) return
+  if (destructionSubmitting.value === true) return
   // MVR-301：与 canRequestDestruction 同源二次拦截
-  if (!canRequestDestruction.value) {
+  if (canRequestDestruction.value !== true) {
     void message.warning('当前账号无发起销毁申请权限')
     return
   }

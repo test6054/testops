@@ -411,7 +411,7 @@ export function useExamKioskWorkflow() {
 
   /** Agent 已绑定时，将浏览器 push_token 与 DeviceBinding 对齐。 */
   async function recoverKioskBrowserSession(): Promise<boolean> {
-    if (!health.value?.bound) {
+    if (health.value?.bound !== true) {
       return false
     }
     if (hasMarkScannerKioskAuth()) {
@@ -447,7 +447,7 @@ export function useExamKioskWorkflow() {
   })
   /** Agent 已绑定但尚未完成首次 TWAIN/WIA 枚举，避免误报「未连接」。 */
   function needsScannerInventoryProbe(): boolean {
-    if (!localAgentReachable.value || !health.value?.bound) return false
+    if (!localAgentReachable.value || health.value?.bound !== true) return false
     if (kioskContext.value?.capabilities?.loaded) return false
     if (isLocalScannerConnected.value) return false
     const diagnostic = health.value.diagnosticMessage?.trim() || ''
@@ -676,7 +676,7 @@ export function useExamKioskWorkflow() {
   })
   const activeBackendScanSession = computed(() => Boolean(activeBackendBatch.value))
   const hasOrphanBackendScanSession = computed(
-    () => !currentJob.value && activeBackendScanSession.value,
+    () => !currentJob.value && activeBackendScanSession.value === true,
   )
   const activeBackendBatchExternalNo = computed(() => {
     return activeBackendBatch.value?.batchExternalNo?.trim() || ''
@@ -688,23 +688,23 @@ export function useExamKioskWorkflow() {
   })
   const currentJobBlocksWorkspace = computed(() => {
     const status = currentJob.value?.status
-    return Boolean(activeBackendScanSession.value || (status && status !== LocalScanJobStatusCode.REPORTED))
+    return activeBackendScanSession.value === true || Boolean(status && status !== LocalScanJobStatusCode.REPORTED)
   })
   /** 扫描阶段失败且未产生任何可上传页：允许取消并清理，不应走重试上传。 */
   const isPreUploadScanFailure = computed(() => {
     const job = currentJob.value
-    if (!job || job.reported) return false
+    if (!job || job.reported === true) return false
     if (job.status !== LocalScanJobStatusCode.FAILED) return false
     const uploadablePages = job.pages.filter((page) => page.status !== LocalScanPageStatusCode.DELETED).length
     return uploadablePages === 0 && job.scannedPages === 0 && job.uploadedPages === 0
   })
   const canCancelJob = computed(() => {
-    if (!currentJob.value && activeBackendScanSession.value) return true
+    if (!currentJob.value && activeBackendScanSession.value === true) return true
     const status = currentJob.value?.status
     return status === LocalScanJobStatusCode.CREATED
       || status === LocalScanJobStatusCode.SCANNING
       || status === LocalScanJobStatusCode.PAUSED
-      || isPreUploadScanFailure.value
+      || isPreUploadScanFailure.value === true
   })
   const canEndBatch = computed(() => {
     const status = currentJob.value?.status
@@ -712,7 +712,7 @@ export function useExamKioskWorkflow() {
   })
   const currentJobAllPagesUploadedButUnconfirmed = computed(() => {
     const job = currentJob.value
-    if (!job || job.reported) return false
+    if (!job || job.reported === true) return false
     const uploadablePages = visiblePages.value.filter((page) => page.status !== LocalScanPageStatusCode.DELETED)
     if (uploadablePages.length === 0 || job.uploadedPages <= 0) return false
     return uploadablePages.every(
@@ -721,9 +721,9 @@ export function useExamKioskWorkflow() {
   })
   const canRemoveCurrentJob = computed(() => {
     const job = currentJob.value
-    if (!job) return activeBackendScanSession.value
-    if (job.reported) return true
-    if (currentJobAllPagesUploadedButUnconfirmed.value) return false
+    if (!job) return activeBackendScanSession.value === true
+    if (job.reported === true) return true
+    if (currentJobAllPagesUploadedButUnconfirmed.value === true) return false
     return ![
       LocalScanJobStatusCode.READYTOUPLOAD,
       LocalScanJobStatusCode.UPLOADING,
@@ -731,22 +731,22 @@ export function useExamKioskWorkflow() {
     ].includes(job.status)
   })
   const removeCurrentJobTitle = computed(() => {
-    if (!currentJob.value && activeBackendScanSession.value) {
+    if (!currentJob.value && activeBackendScanSession.value === true) {
       return '本机未找到扫描任务，结束后端未完成扫描进程并返回准备扫描'
     }
-    if (currentJob.value?.reported) {
+    if (currentJob.value?.reported === true) {
       return '将扫描批次标记为已废弃，并清理本地扫描任务'
     }
-    if (currentJobAllPagesUploadedButUnconfirmed.value) {
+    if (currentJobAllPagesUploadedButUnconfirmed.value === true) {
       return '页面已上传完成但批次未确认，请先重试提交'
     }
     return '仅清理本机未上报的扫描任务；上传中的任务需等待完成或失败后处理'
   })
   const canRetryUpload = computed(() => {
-    if (loading.value) return false
+    if (loading.value === true) return false
     const job = currentJob.value
-    if (!job || job.reported) return false
-    if (isPreUploadScanFailure.value) return false
+    if (!job || job.reported === true) return false
+    if (isPreUploadScanFailure.value === true) return false
     const status = job.status
     if (
       status === LocalScanJobStatusCode.SCANNING
@@ -767,9 +767,9 @@ export function useExamKioskWorkflow() {
     ].includes(status)
   })
   const canRetryCommit = computed(() => {
-    if (loading.value) return false
+    if (loading.value === true) return false
     const job = currentJob.value
-    if (!job || job.reported) return false
+    if (!job || job.reported === true) return false
     const status = job.status
     if (
       status === LocalScanJobStatusCode.SCANNING
@@ -787,28 +787,28 @@ export function useExamKioskWorkflow() {
     )
   })
   const scanInfrastructureBlockedReason = computed(() => {
-    if (kioskBootstrapPending.value && examId.value) {
+    if (kioskBootstrapPending.value === true && examId.value) {
       return '工作台初始化中，请稍候'
     }
-    if (examBindingRequired.value) return '请先绑定本场扫描考试'
+    if (examBindingRequired.value === true) return '请先绑定本场扫描考试'
     if (!examId.value) return '当前工位未绑定考试'
-    if (!localAgentReachable.value && (health.value?.bound || hasMarkScannerKioskAuth())) {
+    if (!localAgentReachable.value && (health.value?.bound === true || hasMarkScannerKioskAuth())) {
       return LOCAL_AGENT_UNAVAILABLE_ERROR
     }
-    if (needsKioskBrowserSessionSync(health.value?.bound)) {
+    if (needsKioskBrowserSessionSync(health.value?.bound === true)) {
       return KIOSK_BROWSER_SESSION_SYNC_MESSAGE
     }
-    if (!health.value?.bound) return '一体机未激活'
-    if (health.value?.tokenResetRequired || health.value?.rebindRequired) return '一体机需要重新激活'
-    if (health.value?.upgradeRequired) return '本机扫描组件需要升级'
+    if (health.value?.bound !== true) return '一体机未激活'
+    if (health.value?.tokenResetRequired === true || health.value?.rebindRequired === true) return '一体机需要重新激活'
+    if (health.value?.upgradeRequired === true) return '本机扫描组件需要升级'
     if (health.value?.updateStatus === AgentUpdateStatusCode.DOWNLOADING) return '本机扫描组件更新包下载中'
     if (health.value?.updateStatus === AgentUpdateStatusCode.INSTALLING) return '本机扫描组件安装中'
     if (health.value?.updateStatus === AgentUpdateStatusCode.FAILED) {
       return health.value.updateDiagnosticMessage.trim() || '本机扫描组件更新失败'
     }
-    if (isScannerProbePending.value || needsScannerInventoryProbe()) return '扫描仪检测中，请稍候'
+    if (isScannerProbePending.value === true || needsScannerInventoryProbe()) return '扫描仪检测中，请稍候'
     if (!isLocalScannerConnected.value) return '本地扫描仪未连接'
-    if (health.value.lastHeartbeatAt && !health.value.scanAllowed) return '系统暂未允许开始扫描'
+    if (health.value.lastHeartbeatAt && health.value.scanAllowed !== true) return '系统暂未允许开始扫描'
     const capabilityScannerId = kioskContext.value?.capabilities?.localScannerId?.trim()
     if (!selectedScannerId.value && !capabilityScannerId) return '未检测到可用本地扫描仪'
     return ''
@@ -817,8 +817,8 @@ export function useExamKioskWorkflow() {
   const directScanBlockedReason = computed(() => {
     const infra = scanInfrastructureBlockedReason.value
     if (infra) return infra
-    if (activeBackendScanSession.value) return activeBackendScanSessionReason.value
-    if (currentJobBlocksWorkspace.value) return '当前扫描任务未结束'
+    if (activeBackendScanSession.value === true) return activeBackendScanSessionReason.value
+    if (currentJobBlocksWorkspace.value === true) return '当前扫描任务未结束'
     const context = kioskContext.value
     if (!context) return '工作台上下文未就绪'
     if (context.resumeAction === ScannerKioskResumeActionCode.RETRY_PAGE_REGISTER) {
@@ -847,8 +847,8 @@ export function useExamKioskWorkflow() {
   const supplementScanBlockedReason = computed(() => {
     const infra = scanInfrastructureBlockedReason.value
     if (infra) return infra
-    if (activeBackendScanSession.value) return activeBackendScanSessionReason.value
-    if (currentJobBlocksWorkspace.value) return '当前扫描任务未结束'
+    if (activeBackendScanSession.value === true) return activeBackendScanSessionReason.value
+    if (currentJobBlocksWorkspace.value === true) return '当前扫描任务未结束'
     const context = kioskContext.value
     if (!context) return '工作台上下文未就绪'
     if (context.canStartSupplementScan !== true) {
@@ -892,17 +892,17 @@ export function useExamKioskWorkflow() {
   const supplementBoundPapers = computed<ExamScannerBoundPaperItemVO[]>(
     () => kioskContext.value?.supplementBoundPapers ?? [],
   )
-  const canStartDirectScan = computed(() => !directScanBlockedReason.value && !loading.value)
+  const canStartDirectScan = computed(() => !directScanBlockedReason.value && loading.value !== true)
   const canStartSupplementScan = computed(
-    () => !supplementScanBlockedReason.value && !loading.value,
+    () => !supplementScanBlockedReason.value && loading.value !== true,
   )
   const canStartScan = canStartDirectScan
   /** 就绪页状态条与 workState/uploadStage 读首次扫描门禁；对外仍暴露 scanBlockedReason 别名。 */
   const scanBlockedReason = directScanBlockedReason
-  const canSwitchScanMode = computed(() => !currentJobBlocksWorkspace.value)
+  const canSwitchScanMode = computed(() => currentJobBlocksWorkspace.value !== true)
   /** 切换考试阻断原因；空字符串表示允许切换。上传中任务仍阻断；可取消任务在绑定时自动清理。 */
   const switchExamBlockedReason = computed(() => {
-    if (kioskContext.value?.kioskLockEnabled && kioskContext.value?.kioskBoundExamId) {
+    if (kioskContext.value?.kioskLockEnabled === true && Boolean(kioskContext.value?.kioskBoundExamId)) {
       return '工位已锁定本场考试，请在 Web 端扫描设备管理中关闭「Kiosk 防误触锁」后再切换'
     }
     const job = currentJob.value
@@ -911,7 +911,7 @@ export function useExamKioskWorkflow() {
     if (status === LocalScanJobStatusCode.CANCELLED) {
       return '当前有已取消的扫描任务，请先删除任务后再切换考试'
     }
-    if (isPreUploadScanFailure.value || canCancelJob.value) {
+    if (isPreUploadScanFailure.value === true || canCancelJob.value === true) {
       return ''
     }
     if (status !== LocalScanJobStatusCode.REPORTED) {
@@ -920,16 +920,16 @@ export function useExamKioskWorkflow() {
     return ''
   })
   const canSwitchExam = computed(() => !switchExamBlockedReason.value)
-  const canSwitchScanner = computed(() => !currentJobBlocksWorkspace.value)
+  const canSwitchScanner = computed(() => currentJobBlocksWorkspace.value !== true)
   const canActivateAgent = computed(
-    () => !currentJobBlocksWorkspace.value && !isAgentWorkspaceBlocked(health.value),
+    () => currentJobBlocksWorkspace.value !== true && isAgentWorkspaceBlocked(health.value) !== true,
   )
-  const canDiscardLedgerPage = computed(() => !currentJobBlocksWorkspace.value)
+  const canDiscardLedgerPage = computed(() => currentJobBlocksWorkspace.value !== true)
   /** 未绑定考试时需进入独立 bind 路由（由 useKioskExamRouteGuard 处理跳转）。 */
   const needsExamBindingGate = computed(
-    () => !examBindingBootstrapPending.value
-      && !needsActivationGate.value
-      && !kioskBrowserSessionSyncNeeded.value
+    () => examBindingBootstrapPending.value !== true
+      && needsActivationGate.value !== true
+      && kioskBrowserSessionSyncNeeded.value !== true
       && hasActiveDeviceActivation()
       && !examId.value,
   )
@@ -944,7 +944,7 @@ export function useExamKioskWorkflow() {
     troubleshooting?: string
   } => {
     if (!localAgentReachable.value) {
-      if (health.value?.bound || hasMarkScannerKioskAuth()) {
+      if (health.value?.bound === true || hasMarkScannerKioskAuth()) {
         return {
           tone: 'warning',
           statusText: '本机扫描服务未连接',
@@ -994,7 +994,7 @@ export function useExamKioskWorkflow() {
         detail: KIOSK_BROWSER_SESSION_SYNC_MESSAGE,
       }
     }
-    if (needsExamBindingGate.value) {
+    if (needsExamBindingGate.value === true) {
       return {
         tone: 'warning',
         statusText: '未绑定考试',
@@ -1002,7 +1002,7 @@ export function useExamKioskWorkflow() {
         detail: '系统将引导至考试绑定页，选择本场考试并确认后进入工作台。',
       }
     }
-    if (isScannerProbePending.value) {
+    if (isScannerProbePending.value === true) {
       return {
         tone: 'warning',
         statusText: '扫描仪检测中',
@@ -1030,7 +1030,7 @@ export function useExamKioskWorkflow() {
           : '确认扫描仪电源已打开、USB 线牢固，并退出其他占用扫描仪的软件后重试。',
       }
     }
-    if (health.value?.upgradeRequired || health.value?.updateStatus === AgentUpdateStatusCode.FAILED) {
+    if (health.value?.upgradeRequired === true || health.value?.updateStatus === AgentUpdateStatusCode.FAILED) {
       return {
         tone: 'warning',
         statusText: '扫描组件需处理',
@@ -1076,10 +1076,10 @@ export function useExamKioskWorkflow() {
       return { text: '等待放纸', tone: 'running' }
     }
     if (job) return { text: scanModeText(job.scanMode, '上传中'), tone: 'running' }
-    if (scanWorkspaceBootstrapping.value) {
+    if (scanWorkspaceBootstrapping.value === true) {
       return { text: '恢复批次中', tone: 'running' }
     }
-    if (activeBackendScanSession.value) {
+    if (activeBackendScanSession.value === true) {
       if (!localAgentReachable.value) {
         return { text: '等待本机扫描服务', tone: 'warning' }
       }
@@ -1091,10 +1091,10 @@ export function useExamKioskWorkflow() {
 
   const uploadStage = computed(() => {
     if (!currentJob.value) {
-      if (scanWorkspaceBootstrapping.value) {
+      if (scanWorkspaceBootstrapping.value === true) {
         return '正在恢复本机扫描任务与批次状态…'
       }
-      if (activeBackendScanSession.value) {
+      if (activeBackendScanSession.value === true) {
         if (!localAgentReachable.value) {
           return '服务端批次已创建，本机扫描服务离线；恢复连接后将自动续扫，或使用底部「结束未完成进程」清理'
         }
@@ -1391,7 +1391,7 @@ export function useExamKioskWorkflow() {
   ) {
     pageRegisterBlocked.value = blocked === true
     pageRegisterPending.value = pending === true && blocked !== true
-    const active = pageRegisterBlocked.value || pageRegisterPending.value
+    const active = pageRegisterBlocked.value === true || pageRegisterPending.value === true
     pageRegisterDiagnostic.value = active ? (diagnostic?.trim() ?? '') : ''
   }
 
@@ -1429,15 +1429,19 @@ export function useExamKioskWorkflow() {
       if (!examId.value) return false
       const ctx = kioskContext.value
       const needsRetry = ctx?.resumeAction === ScannerKioskResumeActionCode.RETRY_PAGE_REGISTER
-        || pageRegisterBlocked.value
-        || pageRegisterPending.value
+        || pageRegisterBlocked.value === true
+        || pageRegisterPending.value === true
       if (!needsRetry) return false
       return Boolean(activeBatchExternalNo.value.trim() || activeScanBatchId.value)
     },
   )
 
   async function retryPageRegister() {
-    if (!examId.value || pageRegisterRetryLoading.value) {
+    if (!examId.value || pageRegisterRetryLoading.value === true) {
+      return
+    }
+    if (canRetryPageRegister.value !== true) {
+      errorMessage.value = '当前无待重试页登记，或重试条件未满足'
       return
     }
     const workOrderBatchExternalNo = activeBatchExternalNo.value.trim()
@@ -1457,11 +1461,11 @@ export function useExamKioskWorkflow() {
           lifecycle.pageRegisterPending,
           lifecycle.pageRegisterDiagnostic,
         )
-        if (lifecycle.pageRegisterBlocked) {
+        if (lifecycle.pageRegisterBlocked === true) {
           errorMessage.value = `页登记仍被阻断：${pageRegisterDiagnostic.value || '请检查模板与页序配置'}`
           return
         }
-        if (lifecycle.pageRegisterPending) {
+        if (lifecycle.pageRegisterPending === true) {
           errorMessage.value = `页登记待重试：${pageRegisterDiagnostic.value || '请查看登记诊断'}`
           return
         }
@@ -1478,12 +1482,12 @@ export function useExamKioskWorkflow() {
         examId: examId.value,
         scanBatchId: activeScanBatchId.value,
       })
-      if (response.pageRegisterBlocked) {
+      if (response.pageRegisterBlocked === true) {
         applyPageRegisterState(true, false, response.pageRegisterDiagnostic)
         errorMessage.value = `页登记仍被阻断：${pageRegisterDiagnostic.value || '请检查模板与页序配置'}`
         return
       }
-      if (response.pageRegisterPending) {
+      if (response.pageRegisterPending === true) {
         applyPageRegisterState(false, true, response.pageRegisterDiagnostic)
         errorMessage.value = `页登记待重试：${pageRegisterDiagnostic.value || '请查看登记诊断'}`
         return
@@ -1510,7 +1514,7 @@ export function useExamKioskWorkflow() {
 
   /** 恢复本地非终态任务时同步后端批次锚点，避免已存在 activeBatch 却被界面判定为尚未创建本机批次。 */
   function anchorRecoveredLocalJob(job: ScanJobResponse) {
-    if (job.status === LocalScanJobStatusCode.REPORTED && job.reported) {
+    if (job.status === LocalScanJobStatusCode.REPORTED && job.reported === true) {
       snapshotReportedLocalJob(job)
       currentJob.value = null
       activeBatchExternalNo.value = ''
@@ -1678,12 +1682,12 @@ export function useExamKioskWorkflow() {
   }
 
   async function ensureLiveStreamConnected() {
-    if (!health.value?.bound) return
+    if (health.value?.bound !== true) return
     if (!hasMarkScannerKioskAuth()) {
       const recovered = await recoverKioskBrowserSession()
       if (!recovered) return
     }
-    if (sseStreaming.value) return
+    if (sseStreaming.value === true) return
     await startSse()
   }
 
@@ -1732,7 +1736,7 @@ export function useExamKioskWorkflow() {
       return (
         job.batchExternalNo === batchNo
         && job.status === LocalScanJobStatusCode.REPORTED
-        && job.reported
+        && job.reported === true
         && job.examId === examId.value
         && job.scannerDeviceId === deviceId
         && job.scannerStationId === stationId
@@ -1778,7 +1782,7 @@ export function useExamKioskWorkflow() {
     await syncAgentHealthAfterScannerProbe()
     if (isActivatedForMarkApis()) {
       const sessionReady = await ensureKioskBrowserAuthSynced()
-      if (sessionReady) {
+      if (sessionReady === true) {
         await ensureKioskExamBindingBootstrap()
         if (examId.value) {
           await refreshKioskContext()
@@ -1816,7 +1820,7 @@ export function useExamKioskWorkflow() {
 
   async function refreshHealth() {
     try {
-      const previousBound = health.value?.bound
+      const previousBound = health.value?.bound === true
       const authReadyBefore = isActivatedForMarkApis()
       const wasUnreachable = !localAgentReachable.value
       await deviceActivation.refreshDeviceActivationState()
@@ -1832,27 +1836,27 @@ export function useExamKioskWorkflow() {
         await refreshScanners()
         await syncAgentHealthAfterScannerProbe()
       }
-      if (previousBound && !health.value?.bound) {
+      if (previousBound && health.value?.bound !== true) {
         handleAgentBindingLost()
         return
       }
-      if (health.value?.tokenResetRequired || health.value?.rebindRequired) {
+      if (health.value?.tokenResetRequired === true || health.value?.rebindRequired === true) {
         handleAgentBindingLost()
         return
       }
       const sessionReady = await ensureKioskBrowserAuthSynced()
-      if (health.value?.bound && !sessionReady) {
+      if (health.value?.bound === true && !sessionReady) {
         errorMessage.value = KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE
       }
       else {
         errorMessage.value = ''
       }
-      if (health.value?.bound && sessionReady) {
+      if (health.value?.bound === true && sessionReady) {
         await ensureLiveStreamConnected()
         const authReadyAfter = isActivatedForMarkApis()
         if (authReadyAfter && !authReadyBefore) {
           await ensureKioskExamBindingBootstrap()
-          if (needsExamBindingGate.value) {
+          if (needsExamBindingGate.value === true) {
             await loadBindExamCandidates().catch((error) => {
               handleError(error)
             })
@@ -1895,7 +1899,7 @@ export function useExamKioskWorkflow() {
     const fallbackId = (preferred && available.some((scanner) => scanner.localScannerId === preferred)
       ? preferred
       : available[0].localScannerId)
-    if (!current || !canSwitchScanner.value) {
+    if (!current || canSwitchScanner.value !== true) {
       selectedScannerId.value = fallbackId
       lastStableScannerId = fallbackId
       return
@@ -1947,7 +1951,7 @@ export function useExamKioskWorkflow() {
       selectDefaultLocalScanner()
       return Boolean(selectedScannerId.value || isLocalScannerConnected.value)
     }
-    if (!localAgentReachable.value || !health.value?.bound) {
+    if (!localAgentReachable.value || health.value?.bound !== true) {
       return false
     }
     if (scannerInventoryEnsurePromise) {
@@ -2125,7 +2129,7 @@ export function useExamKioskWorkflow() {
     if (!scannerDeviceId || !scannerStationId) {
       kioskContext.value = null
       boundPapers.value = []
-      if (health.value?.bound) {
+      if (health.value?.bound === true) {
         errorMessage.value = '扫描设备身份缺失，请重新激活一体机'
       }
       return
@@ -2174,7 +2178,7 @@ export function useExamKioskWorkflow() {
       applyExamRecommendedScanConfig()
     }
     applyTenantProviderChainFromScanConfigOptions(scanConfigOptions)
-    examBindingRequired.value = Boolean(kioskContext.value?.examBindingRequired)
+    examBindingRequired.value = kioskContext.value?.examBindingRequired === true
     syncScannerSelectionFromContext()
     await refreshBoundPapers()
     syncRegisterStatePoll()
@@ -2207,7 +2211,7 @@ export function useExamKioskWorkflow() {
       scannerDeviceId,
       scannerStationId,
     })
-    examBindingRequired.value = Boolean(bootstrap.examBindingRequired)
+    examBindingRequired.value = bootstrap.examBindingRequired === true
     stationBoundExamId.value = bootstrap.kioskBoundExamId
       ? String(bootstrap.kioskBoundExamId)
       : ''
@@ -2264,7 +2268,7 @@ export function useExamKioskWorkflow() {
     const job = currentJob.value
     if (!job) {
       if (
-        activeBackendScanSession.value
+        activeBackendScanSession.value === true
         && examId.value
         && examId.value !== targetExamId
         && activeBackendBatchExternalNo.value
@@ -2290,7 +2294,7 @@ export function useExamKioskWorkflow() {
       clearReviewBatchAnchor()
       return
     }
-    if (!canCancelJob.value) {
+    if (canCancelJob.value !== true) {
       throw toUserError(null, switchExamBlockedReason.value || '当前扫描任务未结束，不能切换考试')
     }
     stopJobPolling()
@@ -2305,7 +2309,7 @@ export function useExamKioskWorkflow() {
         scannerStationId,
         discardPendingPages: true,
       })
-      if (isPreUploadScanFailure.value) {
+      if (isPreUploadScanFailure.value === true) {
         await deleteScanJob(job.scanJobId)
         currentJob.value = null
       } else {
@@ -2320,6 +2324,10 @@ export function useExamKioskWorkflow() {
   }
 
   async function bindKioskExam(targetExamId: string) {
+    // MVR-969：绑定考试防重入，避免确认/连点并发绑定
+    if (loading.value === true) {
+      throw toUserError(null, '正在处理中，请稍后再绑定考试')
+    }
     const scannerDeviceId = getActiveScannerDeviceId()
     const scannerStationId = getActiveScannerStationId()
     if (!scannerDeviceId || !scannerStationId) {
@@ -2346,7 +2354,7 @@ export function useExamKioskWorkflow() {
         scannerDeviceId,
         scannerStationId,
       })
-      examBindingRequired.value = Boolean(bootstrap.examBindingRequired)
+      examBindingRequired.value = bootstrap.examBindingRequired === true
       if (bootstrap.kioskBoundExamId) {
         examId.value = bootstrap.kioskBoundExamId
         stationBoundExamId.value = bootstrap.kioskBoundExamId
@@ -2391,7 +2399,7 @@ export function useExamKioskWorkflow() {
   }
 
   async function refreshScannersByUser() {
-    if (!canSwitchScanner.value) {
+    if (canSwitchScanner.value !== true) {
       errorMessage.value = '当前扫描任务未结束，不能刷新本地扫描仪'
       return
     }
@@ -2418,7 +2426,7 @@ export function useExamKioskWorkflow() {
       return
     }
     const sessionReady = await ensureKioskBrowserAuthSynced()
-    if (!sessionReady) {
+    if (sessionReady !== true) {
       bindExamCandidates.value = []
       bindExamCandidateTotal.value = 0
       bindExamCandidateLoadIssue.value = KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE
@@ -2756,7 +2764,7 @@ export function useExamKioskWorkflow() {
       return
     }
     if (!recoverableJob) {
-      if (activeBackendScanSession.value) {
+      if (activeBackendScanSession.value === true) {
         const pendingCount = activeBackendBatch.value?.pendingUploadCount ?? 0
         if (pendingCount > 0) {
           errorMessage.value = `服务端仍有 ${pendingCount} 页待提交，请恢复本地扫描任务；如需放弃请使用「结束未完成进程」`
@@ -2786,7 +2794,7 @@ export function useExamKioskWorkflow() {
 
   async function changeScanMode(mode: ScannerKioskScanModeCode) {
     if (scanMode.value === mode) return
-    if (currentJobBlocksWorkspace.value) {
+    if (currentJobBlocksWorkspace.value === true) {
       errorMessage.value = '当前扫描任务未结束，不能切换扫描模式'
       return
     }
@@ -2889,7 +2897,7 @@ export function useExamKioskWorkflow() {
       if (currentJob.value) {
         return true
       }
-      if (activeBackendScanSession.value) {
+      if (activeBackendScanSession.value === true) {
         await refreshKioskContext()
         await recoverLocalScanJob()
       }
@@ -2900,7 +2908,7 @@ export function useExamKioskWorkflow() {
   }
 
   async function prepareSupplementLaunch(): Promise<boolean> {
-    if (currentJobBlocksWorkspace.value) {
+    if (currentJobBlocksWorkspace.value === true) {
       errorMessage.value = '当前扫描任务未结束，不能开启补扫'
       return false
     }
@@ -2949,7 +2957,7 @@ export function useExamKioskWorkflow() {
   }
 
   async function startDirectScan(): Promise<boolean> {
-    if (!canStartDirectScan.value) {
+    if (canStartDirectScan.value !== true) {
       errorMessage.value = directScanBlockedReason.value || '当前不允许首次扫描'
       return false
     }
@@ -2972,7 +2980,7 @@ export function useExamKioskWorkflow() {
       errorMessage.value = fieldBlock
       return false
     }
-    if (!canStartSupplementScan.value) {
+    if (canStartSupplementScan.value !== true) {
       errorMessage.value = supplementScanBlockedReason.value || '当前不允许补扫'
       return false
     }
@@ -2985,7 +2993,7 @@ export function useExamKioskWorkflow() {
   }
 
   async function submitScanJob(): Promise<boolean> {
-    if (loading.value) return false
+    if (loading.value === true) return false
     if (!kioskContext.value) return false
     loading.value = true
     errorMessage.value = ''
@@ -2996,7 +3004,7 @@ export function useExamKioskWorkflow() {
     try {
       await refreshKioskContext()
       if (!kioskContext.value) return false
-      if (activeBackendScanSession.value) {
+      if (activeBackendScanSession.value === true) {
         errorMessage.value = activeBackendScanSessionReason.value
         return false
       }
@@ -3008,7 +3016,7 @@ export function useExamKioskWorkflow() {
         errorMessage.value = modeBlockedReason
         return false
       }
-      if (currentJobBlocksWorkspace.value) {
+      if (currentJobBlocksWorkspace.value === true) {
         errorMessage.value = '当前扫描任务未结束，不能新建扫描'
         return false
       }
@@ -3107,19 +3115,19 @@ export function useExamKioskWorkflow() {
   }
 
   async function cancelCurrentJob() {
-    if (loading.value) return
+    if (loading.value === true) return
     if (!currentJob.value) {
-      if (activeBackendScanSession.value) {
+      if (activeBackendScanSession.value === true) {
         await discardOrphanActiveBatch()
       }
       return
     }
-    if (!canCancelJob.value) {
+    if (canCancelJob.value !== true) {
       errorMessage.value = '当前任务已进入上传链路，不能取消'
       return
     }
     const job = currentJob.value
-    const cleanupFailedScan = isPreUploadScanFailure.value
+    const cleanupFailedScan = isPreUploadScanFailure.value === true
     stopJobPolling()
     loading.value = true
     successMessage.value = ''
@@ -3153,9 +3161,9 @@ export function useExamKioskWorkflow() {
   }
 
   async function retryCurrentUpload() {
-    if (!currentJob.value || loading.value) return
+    if (!currentJob.value || loading.value === true) return
     // MVR-385：与 canRetryUpload / 按钮 :disabled 二次拦截
-    if (!canRetryUpload.value) {
+    if (canRetryUpload.value !== true) {
       errorMessage.value = '当前任务状态不允许重试上传'
       return
     }
@@ -3177,7 +3185,7 @@ export function useExamKioskWorkflow() {
   }
 
   async function pauseCurrentJob() {
-    if (!currentJob.value || loading.value) return
+    if (!currentJob.value || loading.value === true) return
     if (currentJob.value.status !== LocalScanJobStatusCode.SCANNING) {
       errorMessage.value = '当前任务不在采集阶段，不能暂停'
       return
@@ -3200,7 +3208,11 @@ export function useExamKioskWorkflow() {
   }
 
   async function resumeCurrentJob() {
-    if (!currentJob.value || loading.value) return
+    if (!currentJob.value || loading.value === true) return
+    if (currentJob.value.status !== LocalScanJobStatusCode.PAUSED) {
+      errorMessage.value = '当前任务不在暂停阶段，不能恢复'
+      return
+    }
     loading.value = true
     errorMessage.value = ''
     try {
@@ -3220,8 +3232,8 @@ export function useExamKioskWorkflow() {
   }
 
   async function endCurrentBatch() {
-    if (!currentJob.value || loading.value) return
-    if (!canEndBatch.value) {
+    if (!currentJob.value || loading.value === true) return
+    if (canEndBatch.value !== true) {
       errorMessage.value = '当前任务不在采集阶段，不能结束批次'
       return
     }
@@ -3230,7 +3242,12 @@ export function useExamKioskWorkflow() {
       content: '确认结束本批次吗？已扫描页面会进入上传与提交流程。',
     })
     if (!confirmed) return
-    if (loading.value) return
+    // MVR-965：确认后再次认 canEndBatch，防确认等待期间任务态漂移
+    if (canEndBatch.value !== true) {
+      errorMessage.value = '当前任务不在采集阶段，不能结束批次'
+      return
+    }
+    if (loading.value === true) return
     loading.value = true
     errorMessage.value = ''
     try {
@@ -3297,7 +3314,7 @@ export function useExamKioskWorkflow() {
     if (lifecycle.committedExamBatchId) {
       activeScanBatchId.value = String(lifecycle.committedExamBatchId)
     }
-    if ((lifecycle.pageRegisterBlocked || lifecycle.pageRegisterPending) && lifecycle.batchExternalNo) {
+    if ((lifecycle.pageRegisterBlocked === true || lifecycle.pageRegisterPending === true) && lifecycle.batchExternalNo) {
       activeBatchExternalNo.value = lifecycle.batchExternalNo
     } else {
       activeBatchExternalNo.value = ''
@@ -3312,9 +3329,9 @@ export function useExamKioskWorkflow() {
       lifecycle.pageRegisterPending,
       lifecycle.pageRegisterDiagnostic,
     )
-    if (lifecycle.pageRegisterBlocked) {
+    if (lifecycle.pageRegisterBlocked === true) {
       errorMessage.value = `批次已提交，但自动页登记被阻断：${lifecycle.pageRegisterDiagnostic ?? '请在复核页重试页登记'}`
-    } else if (lifecycle.pageRegisterPending) {
+    } else if (lifecycle.pageRegisterPending === true) {
       successMessage.value = '批次已提交，页登记处理中，可在复核页重试页登记'
     } else {
       successMessage.value = KIOSK_BATCH_SUBMITTED_HINT
@@ -3322,9 +3339,9 @@ export function useExamKioskWorkflow() {
   }
 
   async function retryCurrentCommit() {
-    if (!currentJob.value || loading.value) return
+    if (!currentJob.value || loading.value === true) return
     // MVR-385：与 canRetryCommit / 按钮 :disabled 二次拦截
-    if (!canRetryCommit.value) {
+    if (canRetryCommit.value !== true) {
       errorMessage.value = '当前任务状态不允许重试提交'
       return
     }
@@ -3344,7 +3361,7 @@ export function useExamKioskWorkflow() {
         await reconcileMissingCurrentJob(message)
         return
       }
-      if (currentJob.value && currentJobAllPagesUploadedButUnconfirmed.value) {
+      if (currentJob.value && currentJobAllPagesUploadedButUnconfirmed.value === true) {
         try {
           await commitCurrentJobViaBrowser(currentJob.value)
           return
@@ -3360,23 +3377,23 @@ export function useExamKioskWorkflow() {
   }
 
   async function removeCurrentScanJob() {
-    if (loading.value) return
+    if (loading.value === true) return
     if (!currentJob.value) {
-      if (activeBackendScanSession.value) {
+      if (activeBackendScanSession.value === true) {
         await discardOrphanActiveBatch()
       }
       return
     }
     const job = currentJob.value
-    if (currentJobAllPagesUploadedButUnconfirmed.value) {
+    if (currentJobAllPagesUploadedButUnconfirmed.value === true) {
       errorMessage.value = '页面已上传完成但提交未确认，请先重试提交'
       return
     }
-    if (!canRemoveCurrentJob.value) {
+    if (canRemoveCurrentJob.value !== true) {
       errorMessage.value = '当前任务已进入上传链路，请等待上报完成或失败后再处理'
       return
     }
-    if (job.reported) {
+    if (job.reported === true) {
       const reason = await promptInputAsync({
         title: '废弃扫描任务',
         placeholder: '请输入废弃原因（必填，1-255 字）',
@@ -3397,7 +3414,12 @@ export function useExamKioskWorkflow() {
         okText: '废弃',
       })
       if (!confirmed) return
-      if (loading.value) return
+      // MVR-965：确认后再次认 canRemoveCurrentJob，防确认等待期间进入上传链路
+      if (canRemoveCurrentJob.value !== true) {
+        errorMessage.value = '当前任务已进入上传链路，请等待上报完成或失败后再处理'
+        return
+      }
+      if (loading.value === true) return
       loading.value = true
       try {
         if (!job.scanBatchId) {
@@ -3435,7 +3457,12 @@ export function useExamKioskWorkflow() {
       okText: '删除',
     })
     if (!confirmed) return
-    if (loading.value) return
+    // MVR-965：确认后再次认 canRemoveCurrentJob，防确认等待期间进入上传链路
+    if (canRemoveCurrentJob.value !== true) {
+      errorMessage.value = '当前任务已进入上传链路，请等待上报完成或失败后再处理'
+      return
+    }
+    if (loading.value === true) return
     loading.value = true
     try {
       if (getActiveBatchExternalNo()) {
@@ -3459,11 +3486,11 @@ export function useExamKioskWorkflow() {
   }
 
   async function discardLedgerPage(item: { localPageId?: string, pageNo: number }) {
-    if (loading.value) return
+    if (loading.value === true) return
     if (!Number.isFinite(item.pageNo)) {
       throw toUserError(null, '页级账本缺少页号')
     }
-    if (!canDiscardLedgerPage.value) {
+    if (canDiscardLedgerPage.value !== true) {
       errorMessage.value = '当前扫描任务未结束，不能废弃已落库扫描页'
       return
     }
@@ -3492,6 +3519,11 @@ export function useExamKioskWorkflow() {
       okText: '废弃本页',
     })
     if (!confirmed) return
+    // MVR-954：确认后再次认 canDiscardLedgerPage，防确认等待期间任务态漂移
+    if (canDiscardLedgerPage.value !== true) {
+      errorMessage.value = '当前扫描任务未结束，不能废弃已落库扫描页'
+      return
+    }
     loading.value = true
     errorMessage.value = ''
     try {
@@ -3540,7 +3572,10 @@ export function useExamKioskWorkflow() {
   }
 
   async function installAgentUpdatePackage() {
-    if (currentJobBlocksWorkspace.value) {
+    if (loading.value === true) {
+      return
+    }
+    if (currentJobBlocksWorkspace.value === true) {
       errorMessage.value = '当前扫描任务未结束，不能安装更新包'
       return
     }
@@ -3548,6 +3583,7 @@ export function useExamKioskWorkflow() {
       errorMessage.value = '当前没有可安装的更新包'
       return
     }
+    // MVR-969：安装更新防重入
     loading.value = true
     errorMessage.value = ''
     successMessage.value = ''
@@ -3687,6 +3723,11 @@ export function useExamKioskWorkflow() {
 
   /** 处理后端存在 IN_PROGRESS 批次但本机 Agent 没有任务的孤儿扫描进程，避免阻断新批次创建。 */
   async function discardOrphanActiveBatch() {
+    if (loading.value === true) return
+    // MVR-956：仅孤儿后端批次可走该收口；无活跃后端会话时不发关闭
+    if (hasOrphanBackendScanSession.value !== true && activeBackendScanSession.value !== true) {
+      return
+    }
     const confirmed = await confirmAsync({
       title: '结束未完成扫描进程',
       content: '本机未找到对应扫描任务。确认结束当前未完成扫描进程并返回准备扫描？',
@@ -3694,6 +3735,12 @@ export function useExamKioskWorkflow() {
       okText: '结束进程',
     })
     if (!confirmed) return
+    // MVR-956：确认后防重入；仍要求存在可收口的后端扫描会话
+    if (loading.value === true) return
+    if (hasOrphanBackendScanSession.value !== true && activeBackendScanSession.value !== true) {
+      errorMessage.value = '当前没有可结束的未完成扫描进程'
+      return
+    }
     stopJobPolling()
     loading.value = true
     successMessage.value = ''
@@ -3715,7 +3762,7 @@ export function useExamKioskWorkflow() {
 
   async function handleTerminalBatchClosure(job: ScanJobResponse) {
     activeBatchExternalNo.value = job.batchExternalNo || activeBatchExternalNo.value
-    if (job.status === LocalScanJobStatusCode.REPORTED && job.reported) {
+    if (job.status === LocalScanJobStatusCode.REPORTED && job.reported === true) {
       // Agent 逐页 commit 已将草稿转为 RECEIVED 并清理 Redis 锚点，不能再调 discard。
       snapshotReportedLocalJob(job)
       activeBatchExternalNo.value = ''
@@ -3732,11 +3779,11 @@ export function useExamKioskWorkflow() {
         ? scannerDiagnosticText(job.pageRegisterDiagnostic || job.message)
         : resolvePageRegisterBlockMessage()
       applyPageRegisterState(
-        job.pageRegisterBlocked || Boolean(pageRegisterBlockMessage),
+        job.pageRegisterBlocked === true || Boolean(pageRegisterBlockMessage),
         job.pageRegisterPending,
         job.pageRegisterDiagnostic || pageRegisterBlockMessage,
       )
-      if (job.pageRegisterPending) {
+      if (job.pageRegisterPending === true) {
         successMessage.value = '批次已提交，页登记处理中，可在复核页重试页登记'
       } else if (pageRegisterBlockMessage) {
         errorMessage.value = `批次已上传，但自动页登记被阻断：${pageRegisterBlockMessage}。请在复核页重试页登记。`
@@ -3863,7 +3910,7 @@ export function useExamKioskWorkflow() {
   watch(examId, (newVal, oldVal) => {
     if (newVal === oldVal) return
     if (restoringExamId) return
-    if (currentJobBlocksWorkspace.value) {
+    if (currentJobBlocksWorkspace.value === true) {
       errorMessage.value = switchExamBlockedReason.value || '当前扫描任务未结束，不能切换考试'
       restoringExamId = true
       examId.value = oldVal || ''
@@ -3888,7 +3935,7 @@ export function useExamKioskWorkflow() {
     refreshKioskContext().then(recoverLocalScanJob).catch((error) => {
       handleError(error)
     })
-    if (newVal && health.value?.bound && hasMarkScannerKioskAuth()) {
+    if (newVal && health.value?.bound === true && hasMarkScannerKioskAuth()) {
       refreshSse().catch((error) => {
         handleError(error)
       })
@@ -3900,7 +3947,7 @@ export function useExamKioskWorkflow() {
   watch(selectedScannerId, (newVal, oldVal) => {
     if (newVal === oldVal) return
     if (restoringScannerId) return
-    if (currentJobBlocksWorkspace.value) {
+    if (currentJobBlocksWorkspace.value === true) {
       errorMessage.value = '当前扫描任务未结束，不能切换本地扫描仪'
       restoringScannerId = true
       selectedScannerId.value = oldVal || lastStableScannerId
@@ -3913,8 +3960,9 @@ export function useExamKioskWorkflow() {
     const preferredId = newVal?.trim()
     if (preferredId) {
       agentPreferredLocalScannerId.value = preferredId
-      setPreferredLocalScanner(preferredId).catch(() => {
-        // 持久化失败不阻断当前会话选仪
+      setPreferredLocalScanner(preferredId).catch((error) => {
+        // 持久化失败不阻断当前会话选仪，但必须可见（MVR-984）
+        showUserError(error, '本地扫描仪偏好保存失败，当前会话仍可继续使用所选设备')
       })
     }
   })
@@ -3987,7 +4035,7 @@ export function useExamKioskWorkflow() {
         await ensureLiveStreamConnected()
       }
     } finally {
-      if (examBindingBootstrapPending.value) {
+      if (examBindingBootstrapPending.value === true) {
         await ensureKioskExamBindingBootstrap()
       }
       kioskBootstrapPending.value = false

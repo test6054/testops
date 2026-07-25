@@ -128,7 +128,7 @@
               <UiTag tone="blue" size="sm">{{ userInfo.sourceFrom || '本系统' }}</UiTag>
             </article>
 
-            <article v-if="userInfo.forcePasswordChange" class="security-item">
+            <article v-if="userInfo.forcePasswordChange === true" class="security-item">
               <div class="security-item__main">
                 <h4 class="security-item__title">强制修改密码</h4>
                 <p class="security-item__desc">检测到管理员要求强制修改密码，请尽快前往修改。</p>

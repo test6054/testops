@@ -6,7 +6,7 @@
     <template v-if="!embedded" #toolbar>
       <div class="ai-analysis-card-toolbar">
         <UiButton
-          v-if="canManageReviewerWrites" variant="outline" size="sm" :loading="generating" @click="handleGenerate"
+          v-if="canManageReviewerWrites === true" variant="outline" size="sm" :loading="generating === true" @click="handleGenerate"
         >
           重新生成
         </UiButton>
@@ -19,7 +19,7 @@
     <template v-if="embedded" #actions>
       <div class="ai-analysis-card-toolbar">
         <UiButton
-          v-if="canManageReviewerWrites" variant="outline" size="sm" :loading="generating" @click="handleGenerate"
+          v-if="canManageReviewerWrites === true" variant="outline" size="sm" :loading="generating === true" @click="handleGenerate"
         >
           重新生成
         </UiButton>
@@ -75,6 +75,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type {
   ErrorCauseClusterItemVO,
   ErrorCauseClusterResponse,
@@ -186,7 +187,7 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }

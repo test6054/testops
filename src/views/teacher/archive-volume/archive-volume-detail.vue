@@ -15,7 +15,7 @@
       <UiEmpty size="md" show-icon title="无法加载归档任务" :description="detailLoadError">
         <template #action>
           <div class="archive-volume-detail__load-error-actions">
-            <UiButton variant="primary" size="sm" :loading="loading" @click="() => loadDetail()">
+            <UiButton variant="primary" size="sm" :loading="loading === true" @click="() => loadDetail()">
               重新加载
             </UiButton>
             <UiButton variant="outline" size="sm" @click="goArchiveList"> 返回列表 </UiButton>
@@ -72,7 +72,7 @@
         class="archive-volume-detail__alert"
       />
       <UiAlertStrip
-        v-else-if="isArchiveGateVisible('fourProperty') && detail.fourPropertyStale"
+        v-else-if="isArchiveGateVisible('fourProperty') && detail.fourPropertyStale === true"
         tone="warning"
         title="四性结论已失效"
         description="四性结论已失效，请确认密级定密后重新执行四性检测"
@@ -99,7 +99,7 @@
         v-else-if="
           isArchiveGateVisible('fourProperty')
             && detail.latestFourPropertyCheck
-            && !detail.latestFourPropertyCheck.overallPassed
+            && detail.latestFourPropertyCheck.overallPassed !== true
             && detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
         "
         tone="warning"
@@ -147,30 +147,30 @@
           </UiButton>
           <UiButton
             v-if="
-              canAdvanceRemediation
+              canAdvanceRemediation === true
                 && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN
             "
             size="sm"
             variant="outline"
-            :loading="remediationUpdating"
+            :loading="remediationUpdating === true"
             @click="advanceRemediation(ArchiveRemediationStatusCode.IN_PROGRESS)"
           >
             开始处理
           </UiButton>
           <UiButton
             v-if="
-              canAdvanceRemediation
+              canAdvanceRemediation === true
                 && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             size="sm"
             variant="outline"
-            :loading="remediationUpdating"
+            :loading="remediationUpdating === true"
             @click="advanceRemediation(ArchiveRemediationStatusCode.RESUBMITTED)"
           >
             标记已重提
           </UiButton>
           <UiButton
-            v-if="canManageCoordinatorRemediation"
+            v-if="canManageCoordinatorRemediation === true"
             size="sm"
             variant="ghost"
             @click="openRemediationTaskDetail"
@@ -220,7 +220,7 @@
               </UiButton>
               <UiButton
                 v-if="
-                  detailScope.showSubmitActions && detailScope.canSubmitVolume !== true && !isQualityTab
+                  detailScope.showSubmitActions === true && detailScope.canSubmitVolume !== true && !isQualityTab
                 "
                 variant="outline"
                 size="sm"
@@ -233,13 +233,13 @@
                 v-if="detailScope.canSubmitVolume === true && !isQualityTab"
                 variant="primary"
                 size="sm"
-                :loading="submitting"
+                :loading="submitting === true"
                 @click="handleSubmit"
               >
                 提交归档
               </UiButton>
               <UiButton
-                v-if="detailScope.showSelfCheckButton && !isQualityTab"
+                v-if="detailScope.showSelfCheckButton === true && !isQualityTab"
                 variant="outline"
                 size="sm"
                 @click="selfCheckModalOpen = true"
@@ -287,7 +287,7 @@
             <ArchiveVolumeCatalogEditor
               :volume-id="volumeId"
               :catalog-status="detail.catalogStatus"
-              :readonly="!detailScope.canEditCatalog"
+              :readonly="detailScope.canEditCatalog !== true"
               class="archive-volume-detail__catalog-editor"
               @refreshed="loadDetail"
             />
@@ -348,7 +348,7 @@
             v-else-if="activeTab === 'self-check'"
             :volume-id="volumeId"
             :self-check-status="detail.selfCheckStatus"
-            :readonly="!detailScope.canEditSelfCheck"
+            :readonly="detailScope.canEditSelfCheck !== true"
             @refreshed="loadDetail"
             @open-sign-off="selfCheckModalOpen = true"
           />
@@ -469,7 +469,7 @@
       <UiEmpty size="md" show-icon title="无法加载归档任务" description="请重新加载或返回归档列表">
         <template #action>
           <div class="archive-volume-detail__load-error-actions">
-            <UiButton variant="primary" size="sm" :loading="loading" @click="() => loadDetail()">
+            <UiButton variant="primary" size="sm" :loading="loading === true" @click="() => loadDetail()">
               重新加载
             </UiButton>
             <UiButton variant="outline" size="sm" @click="goArchiveList"> 返回列表 </UiButton>
@@ -495,7 +495,7 @@
       title="归档已逾期"
       ok-text="确认提交"
       cancel-text="取消"
-      :confirm-loading="submitting"
+      :confirm-loading="submitting === true"
       @ok="confirmOverdueSubmit"
     >
       <p class="archive-volume-detail__overdue-hint">
@@ -514,6 +514,9 @@
 </template>
 
 <script setup lang="ts">
+// MVR-948：detailScope.can* 控制流仅认 === true
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type {
   ArchiveRemediationTaskResponse,
   ArchiveVolumeAccessRecordResponse,
@@ -716,7 +719,7 @@ const qualityGuide = computed(
         return {
           title: '先执行完整性自检',
           description: '对照必交材料检查缺件，通过后再做自检清单与四性',
-          actionLabel: detailScope.canRunIntegrityCheck ? '执行完整性自检' : undefined,
+          actionLabel: detailScope.canRunIntegrityCheck === true ? '执行完整性自检' : undefined,
           actionKey: 'integrity',
         }
       }
@@ -736,7 +739,7 @@ const qualityGuide = computed(
     if (tab === 'self-check') {
       if (
         d.selfCheckStatus === ArchiveSelfCheckStatusCode.COMPLETED
-        || d.volume.selfCheckConfirmed
+        || d.volume.selfCheckConfirmed === true
       ) {
         return {
           title: '自检清单已完成',
@@ -749,7 +752,7 @@ const qualityGuide = computed(
       }
     }
     if (tab === 'four-property') {
-      if (d.volume.securityMarkPending) {
+      if (d.volume.securityMarkPending === true) {
         return {
           title: '确认密级定密',
           description: `当前卷密级：${
@@ -761,25 +764,25 @@ const qualityGuide = computed(
                 )
               : '—'
           }`,
-          actionLabel: d.canConfirmSecurityMark ? '确认密级定密' : undefined,
+          actionLabel: d.canConfirmSecurityMark === true ? '确认密级定密' : undefined,
           actionKey: 'security-mark',
         }
       }
-      if (d.fourPropertyStale || !displayedFourProperty.value) {
+      if (d.fourPropertyStale === true || !displayedFourProperty.value) {
         return {
-          title: d.fourPropertyStale ? '四性结论已失效，请重新检测' : '尚未执行四性检测',
+          title: d.fourPropertyStale === true ? '四性结论已失效，请重新检测' : '尚未执行四性检测',
           description: '材料或密级变更后须重新执行四性检测',
-          actionLabel: canRunFourPropertyCheck.value ? '执行四性检测' : undefined,
+          actionLabel: canRunFourPropertyCheck.value === true ? '执行四性检测' : undefined,
           actionKey: 'four-property',
         }
       }
       return {
         title: '四性检测已完成',
-        description: displayedFourProperty.value.overallPassed
+        description: displayedFourProperty.value.overallPassed === true
           ? '四性结论有效'
           : '存在未通过项，请修复后重检',
         actionLabel:
-          canRunFourPropertyCheck.value && !displayedFourProperty.value.overallPassed
+          canRunFourPropertyCheck.value === true && displayedFourProperty.value.overallPassed !== true
             ? '重新执行四性检测'
             : undefined,
         actionKey: 'four-property',
@@ -794,10 +797,10 @@ const showWorkbenchActions = computed(() => {
     return false
   }
   return (
-    detailScope.canStartCollecting
-    || detailScope.showSubmitActions
-    || detailScope.canSubmitVolume
-    || detailScope.showSelfCheckButton
+    detailScope.canStartCollecting === true
+    || detailScope.showSubmitActions === true
+    || detailScope.canSubmitVolume === true
+    || detailScope.showSelfCheckButton === true
   )
 })
 
@@ -841,7 +844,7 @@ const displayedFourProperty = computed(
 const showSecurityFourPropertyAlert = computed(() => {
   const d = detail.value
   const check = displayedFourProperty.value
-  if (!d || !check || d.fourPropertyStale) return false
+  if (!d || !check || d.fourPropertyStale === true) return false
   return check.securityPassed === false
 })
 
@@ -856,7 +859,7 @@ const canRunFourPropertyCheck = computed(() => {
   if (d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING) {
     return detailScope.capabilities.canManageMaterials === true
   }
-  return d.volume.volumeStatus === ArchiveVolumeStatusCode.SUBMITTED && canReviewTransfer.value
+  return d.volume.volumeStatus === ArchiveVolumeStatusCode.SUBMITTED && canReviewTransfer.value === true
 })
 
 // MVR-188：与 BE getDetail canConfirmScoreCompletion / confirmScoreCompletion 同源
@@ -871,7 +874,7 @@ const submitBlockReason = computed(() => {
 const scoreSubmitBlockReason = computed(() => {
   const d = detail.value
   if (!d || !detailScope.volumeAcceptsSubmitStatus(d.volume.volumeStatus)) return null
-  if (!d.capabilities?.canSubmitVolume) return null
+  if (d.capabilities?.canSubmitVolume !== true) return null
   if (isScoreSubmitReady(d.volume)) return null
   if (d.volume.scoreSource === 'MARK_INTERNAL') {
     return '线上阅卷双门禁未满足'
@@ -929,11 +932,11 @@ const showFourPropertyGate = computed(() => {
   if (!d.latestFourPropertyCheck && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING) {
     return true
   }
-  if (d.fourPropertyStale) return true
+  if (d.fourPropertyStale === true) return true
   if (showSecurityFourPropertyAlert.value) return true
   return (
     !!d.latestFourPropertyCheck
-    && !d.latestFourPropertyCheck.overallPassed
+    && d.latestFourPropertyCheck.overallPassed !== true
     && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
   )
 })
@@ -998,8 +1001,8 @@ const materialsSignalMetrics = computed((): SignalMetric[] => {
       key: 'phase',
       label: '提交阶段',
       value: phaseLabel,
-      tone: d.submitProgress?.submitReady ? 'green' : 'orange',
-      iconTone: d.submitProgress?.submitReady ? 'green' : 'orange',
+      tone: d.submitProgress?.submitReady === true ? 'green' : 'orange',
+      iconTone: d.submitProgress?.submitReady === true ? 'green' : 'orange',
       helper:
         d.submitProgress?.pendingBlockingCount && d.submitProgress.pendingBlockingCount > 0
           ? `${d.submitProgress.pendingBlockingCount} 项阻塞`
@@ -1107,7 +1110,7 @@ const selfCheckSignalMetrics = computed((): SignalMetric[] => {
       value: statusLabel,
       tone: status === ArchiveSelfCheckStatusCode.COMPLETED ? 'green' : 'orange',
       iconTone: status === ArchiveSelfCheckStatusCode.COMPLETED ? 'green' : 'orange',
-      helper: d.volume.selfCheckConfirmed ? '已签字确认' : '待勾选与签字',
+      helper: d.volume.selfCheckConfirmed === true ? '已签字确认' : '待勾选与签字',
       clickable: false,
     },
   ]
@@ -1118,15 +1121,15 @@ const fourPropertySignalMetrics = computed((): SignalMetric[] => {
   if (!d) return []
   const four = displayedFourProperty.value
   const fourSummary = four ? countFourPropertyPassed(buildFourPropertyDimensionViews(four)) : null
-  const securityPending = d.volume.securityMarkPending
+  const securityPending = d.volume.securityMarkPending === true
   return [
     {
       key: 'four-property',
       label: '四性检测',
       value: fourSummary ? `${fourSummary.passed}/${fourSummary.total}` : '未执行',
-      tone: d.fourPropertyStale ? 'orange' : four?.overallPassed ? 'green' : 'orange',
-      iconTone: d.fourPropertyStale ? 'orange' : four?.overallPassed ? 'green' : 'orange',
-      helper: d.fourPropertyStale ? '结论已失效' : '真实性/完整性/可用性/安全性',
+      tone: d.fourPropertyStale === true ? 'orange' : four?.overallPassed === true ? 'green' : 'orange',
+      iconTone: d.fourPropertyStale === true ? 'orange' : four?.overallPassed === true ? 'green' : 'orange',
+      helper: d.fourPropertyStale === true ? '结论已失效' : '真实性/完整性/可用性/安全性',
       clickable: false,
     },
     {
@@ -1408,7 +1411,7 @@ const remediationOpenDescription = computed(() => {
     if (
       d?.hasBlockingRemediationForSubmit
       && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
-      && detailScope.canSubmitVolume
+      && detailScope.canSubmitVolume === true
     ) {
       parts.push('须关闭整改任务后再提交归档')
     }
@@ -1417,7 +1420,7 @@ const remediationOpenDescription = computed(() => {
   if (
     d?.hasBlockingRemediationForSubmit
     && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
-    && detailScope.canSubmitVolume
+    && detailScope.canSubmitVolume === true
   ) {
     return '存在未关闭整改任务，须关闭后再提交归档'
   }
@@ -1480,7 +1483,7 @@ const canExportManifest = computed(() => {
 const canEditPhysicalLocation = computed(() => {
   const d = detail.value
   // MVR-374：与 detailScope.canRegisterMaterial / BE 材料写同源，仅认 === true
-  if (!detailScope.canRegisterMaterial || !d) return false
+  if (detailScope.canRegisterMaterial !== true || !d) return false
   return d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
 })
 
@@ -1507,7 +1510,7 @@ const canManageCoordinatorRemediation = computed(() => {
   const d = detail.value
   const task = focusedRemediationTask.value
   if (
-    !d?.hasOpenRemediationTask
+    d?.hasOpenRemediationTask !== true
     || !task
     || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
   ) {
@@ -1551,7 +1554,7 @@ function goArchiveList(): void {
 /** OCR 终态后刷新卷详情与提交清单；不变量：提示基于刷新后的 fourPropertyStale，避免使用旧 props 判断。 */
 async function handleMaterialOcrCompleted() {
   await loadDetail({ silent: true })
-  if (detail.value?.fourPropertyStale) {
+  if (detail.value?.fourPropertyStale === true) {
     void message.info('文字识别已完成，请重新执行完整性/四性检测')
   }
 }
@@ -1566,7 +1569,7 @@ watch(manageActionTick, (tick) => {
   }
   if (tick.key === 'reject') {
     // MVR-382：与 canRejectCollection / BE 驳回收材门禁二次拦截
-    if (!detailScope.canRejectCollection) {
+    if (detailScope.canRejectCollection !== true) {
       void message.warning('当前账号不可驳回收材')
       return
     }
@@ -1597,7 +1600,8 @@ function handleQualityGuideAction(): void {
   }
   if (key === 'self-check-sign') {
     // MVR-382：与 canSelfCheck 同源，禁止无写权打开签字确认
-    if (!detailScope.capabilities.canSelfCheck) {
+    // MVR-939：BE 能力位仅认 === true
+    if (detailScope.capabilities.canSelfCheck !== true) {
       void message.warning('当前账号不可进行自查签字确认')
       return
     }
@@ -1615,12 +1619,12 @@ function handleQualityGuideAction(): void {
 
 async function runFourPropertyCheckFromGuide() {
   // MVR-347：与 canRunFourPropertyCheck 同源；无权限时只切页不发写请求
-  if (!canRunFourPropertyCheck.value) {
+  if (canRunFourPropertyCheck.value !== true) {
     void message.warning('当前账号或卷状态不可执行四性检测')
     setActiveTab('four-property')
     return
   }
-  if (checkingFourProperty.value) {
+  if (checkingFourProperty.value === true) {
     return
   }
   checkingFourProperty.value = true
@@ -1637,11 +1641,11 @@ async function runFourPropertyCheckFromGuide() {
 
 async function runIntegrityCheck() {
   // MVR-347：与 detailScope.canRunIntegrityCheck / BE capabilities 同源二次拦截
-  if (!detailScope.canRunIntegrityCheck) {
+  if (detailScope.canRunIntegrityCheck !== true) {
     void message.warning('当前账号或卷状态不可执行完整性自检')
     return
   }
-  if (checkingIntegrity.value) {
+  if (checkingIntegrity.value === true) {
     return
   }
   checkingIntegrity.value = true
@@ -1663,11 +1667,12 @@ async function handleStartCollectingStarted() {
 }
 
 async function executeSubmit(overdueReason?: string) {
-  if (submitting.value) {
+  if (submitting.value === true) {
     return
   }
   // MVR-305：与 canSubmitVolume 同源二次拦截
-  if (!detailScope.canSubmitVolume) {
+  // MVR-939：BE 能力位仅认 === true
+  if (detailScope.canSubmitVolume !== true) {
     void message.warning('当前账号无提交归档权限')
     return
   }
@@ -1696,12 +1701,16 @@ function requiresOverdueSubmitReason(d: ArchiveVolumeDetailResponse): boolean {
 async function handleSubmit() {
   const d = detail.value
   if (!d) return
+  // MVR-937：提交入口防重入，避免连点打开逾期弹窗或并发 executeSubmit
+  if (submitting.value === true) {
+    return
+  }
   // MVR-305：与 canSubmitVolume 同源二次拦截
-  if (!detailScope.canSubmitVolume) {
+  if (detailScope.canSubmitVolume !== true) {
     void message.warning('当前账号无提交归档权限')
     return
   }
-  if (d.volume.requireSelfCheckConfirm && !d.volume.selfCheckConfirmed) {
+  if (d.volume.requireSelfCheckConfirm === true && d.volume.selfCheckConfirmed !== true) {
     selfCheckModalOpen.value = true
     return
   }
@@ -1713,7 +1722,11 @@ async function handleSubmit() {
 }
 
 async function confirmOverdueSubmit() {
-  if (!detailScope.canSubmitVolume) {
+  // MVR-937：逾期提交确认防重入
+  if (submitting.value === true) {
+    return
+  }
+  if (detailScope.canSubmitVolume !== true) {
     void message.warning('当前账号无提交归档权限')
     return
   }
@@ -1727,11 +1740,11 @@ async function confirmOverdueSubmit() {
 
 async function handleExport() {
   // MVR-341：与侧栏 canExportManifest 状态闸一致；BE requireVolumeReadable 仍为权威
-  if (!canExportManifest.value) {
+  if (canExportManifest.value !== true) {
     void message.warning('当前卷状态不可导出 manifest')
     return
   }
-  if (exporting.value) {
+  if (exporting.value === true) {
     return
   }
   exporting.value = true
@@ -1774,13 +1787,13 @@ async function loadFocusedRemediationTask() {
 
 async function advanceRemediation(taskStatus: ArchiveRemediationStatusCode) {
   // MVR-317/382：与 canAdvanceRemediation / BE canUpdateTask 二次拦截
-  if (!canAdvanceRemediation.value) {
+  if (canAdvanceRemediation.value !== true) {
     void message.warning('当前账号不可推进该整改任务')
     return
   }
   const task = focusedRemediationTask.value
   if (!task?.taskId) return
-  if (remediationUpdating.value) {
+  if (remediationUpdating.value === true) {
     return
   }
   remediationUpdating.value = true

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
 import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
@@ -105,9 +107,9 @@ const statusLabel = computed(() => {
 })
 
 async function handleRequest() {
-  if (actionBusy.value) return
+  if (actionBusy.value === true) return
   // MVR-300：与 canRequest 同源二次拦截
-  if (!canRequest.value) {
+  if (canRequest.value !== true) {
     void message.warning('当前账号无发起院系审核权限')
     return
   }
@@ -120,6 +122,11 @@ async function handleRequest() {
   })
   confirming.value = false
   if (!confirmed) return
+  // MVR-935：确认后再次认 canRequest
+  if (canRequest.value !== true) {
+    void message.warning('当前账号无发起院系审核权限')
+    return
+  }
   requesting.value = true
   try {
     await requestArchiveVolumeDepartmentReview({
@@ -137,9 +144,9 @@ async function handleRequest() {
 }
 
 async function handleApprove() {
-  if (actionBusy.value) return
+  if (actionBusy.value === true) return
   // MVR-300：与 canApprove 同源二次拦截
-  if (!canApprove.value) {
+  if (canApprove.value !== true) {
     void message.warning('当前账号无院系审核通过权限')
     return
   }
@@ -156,9 +163,9 @@ async function handleApprove() {
 }
 
 async function handleReject() {
-  if (actionBusy.value) return
+  if (actionBusy.value === true) return
   // MVR-300：与 canApprove 同源二次拦截（驳回同审批职责）
-  if (!canApprove.value) {
+  if (canApprove.value !== true) {
     void message.warning('当前账号无院系审核驳回权限')
     return
   }
@@ -184,9 +191,9 @@ async function handleReject() {
 }
 
 async function handleWithdraw() {
-  if (actionBusy.value) return
+  if (actionBusy.value === true) return
   // MVR-300：与 canWithdraw 同源二次拦截
-  if (!canWithdraw.value) {
+  if (canWithdraw.value !== true) {
     void message.warning('当前账号无撤回院系审核权限')
     return
   }
@@ -199,6 +206,11 @@ async function handleWithdraw() {
   })
   confirming.value = false
   if (!confirmed) return
+  // MVR-934：确认后再次认 canWithdraw
+  if (canWithdraw.value !== true) {
+    void message.warning('当前账号无撤回院系审核权限')
+    return
+  }
   withdrawing.value = true
   try {
     await withdrawArchiveVolumeDepartmentReview({ volumeId: props.volumeId })
@@ -224,40 +236,40 @@ function navigateTab(tabKey: string) {
     </template>
     <template v-if="showPanel" #toolbar>
       <UiButton
-        v-if="canRequest"
+        v-if="canRequest === true"
         size="sm"
         variant="primary"
-        :loading="requesting"
-        :disabled="actionBusy && !requesting"
+        :loading="requesting === true"
+        :disabled="actionBusy === true && requesting !== true"
         @click="handleRequest"
       >
         发起院系审核
       </UiButton>
       <UiButton
-        v-if="canApprove"
+        v-if="canApprove === true"
         size="sm"
         variant="primary"
-        :loading="approving"
-        :disabled="actionBusy && !approving"
+        :loading="approving === true"
+        :disabled="actionBusy === true && approving !== true"
         @click="handleApprove"
       >
         审核通过
       </UiButton>
       <UiButton
-        v-if="canApprove"
+        v-if="canApprove === true"
         size="sm"
         variant="outline"
-        :disabled="actionBusy"
+        :disabled="actionBusy === true"
         @click="rejectOpen = true"
       >
         驳回
       </UiButton>
       <UiButton
-        v-if="canWithdraw"
+        v-if="canWithdraw === true"
         size="sm"
         variant="outline"
-        :loading="withdrawing"
-        :disabled="actionBusy && !withdrawing"
+        :loading="withdrawing === true"
+        :disabled="actionBusy === true && withdrawing !== true"
         @click="handleWithdraw"
       >
         撤回审核
@@ -277,7 +289,7 @@ function navigateTab(tabKey: string) {
       </p>
       <UiInput
         size="sm"
-        v-if="canRequest"
+        v-if="canRequest === true"
         v-model="requestReason"
         placeholder="申请说明（可选）"
         class="dept-review-panel__input"
@@ -296,7 +308,7 @@ function navigateTab(tabKey: string) {
       :open="rejectOpen"
       title="驳回院系审核"
       :width="480"
-      :confirm-loading="rejecting"
+      :confirm-loading="rejecting === true"
       ok-text="确认驳回"
       :hide-footer="false"
       @update:open="(v: boolean) => (rejectOpen = v)"

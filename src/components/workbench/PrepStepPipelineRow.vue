@@ -23,7 +23,7 @@ const props = withDefaults(
     /** default：考试准备页完整卡片；compact：制卷设计器单行 chip，节省垂直空间。 */
     variant?: 'default' | 'compact'
   }>(),
-  { variant: 'default' },
+  { variant: 'default', locked: false },
 )
 
 const emit = defineEmits<{
@@ -48,7 +48,7 @@ function stepTone(step: PrepStepCard) {
 }
 
 function handleSelect(step: PrepStepCard): void {
-  if (props.locked && step.key !== 'materialLayout') {
+  if (props.locked === true && step.key !== 'materialLayout') {
     return
   }
   emit('select', step)
@@ -91,7 +91,7 @@ function handleSelect(step: PrepStepCard): void {
           `prep-step-pipeline__step--${step.status}`,
           {
             'prep-step-pipeline__step--current': currentStepKey === step.key,
-            'prep-step-pipeline__step--locked': locked && step.key !== 'materialLayout',
+            'prep-step-pipeline__step--locked': locked === true && step.key !== 'materialLayout',
             'prep-step-pipeline__step--chip': props.variant === 'compact',
           },
         ]"

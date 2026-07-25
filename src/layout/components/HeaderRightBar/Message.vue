@@ -6,8 +6,8 @@
         <button
           type="button"
           class="notif-mark-all"
-          :class="{ 'notif-mark-all--disabled': !hasUnreadMessages || readAllLoading }"
-          :disabled="!hasUnreadMessages || readAllLoading"
+          :class="{ 'notif-mark-all--disabled': hasUnreadMessages !== true || readAllLoading === true }"
+          :disabled="hasUnreadMessages !== true || readAllLoading === true"
           @click="handleReadAll"
         >
           {{ readAllLoading ? '处理中...' : '全部已读' }}
@@ -295,7 +295,7 @@ const goToMessageCenter = () => {
 }
 
 const handleReadAll = async () => {
-  if (!hasUnreadMessages.value || readAllLoading.value) return
+  if (hasUnreadMessages.value !== true || readAllLoading.value === true) return
 
   try {
     readAllLoading.value = true

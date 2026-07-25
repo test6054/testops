@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ArchiveVolumeMemberDisplayVO } from '@/apis/mark/archive-volume'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
@@ -25,11 +26,16 @@ import { archiveVolumeMemberSourceLabel } from '@/types/enums/archive-volume-mem
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   volumeId: string
   collaborators: ArchiveVolumeMemberDisplayVO[]
-  canManageCollaborators?: boolean
-}>()
+  canManageCollaborators?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+}>(),
+  {
+  canManageCollaborators: false,
+  },
+)
 
 const emit = defineEmits<{
   changed: []
@@ -212,7 +218,7 @@ const columns = computed((): ColumnType<CollaboratorTreeRow>[] => {
     { title: '加入时间', key: 'createTimeLabel', width: 156 },
     { title: '能力 / 备注', key: 'meta', ellipsis: true },
   ]
-  return props.canManageCollaborators
+  return props.canManageCollaborators === true
     ? [...base, { title: '操作', key: 'actions', width: 200 }]
     : base
 })
@@ -308,8 +314,8 @@ function handleRosterReset(): void {
 }
 
 async function handleAdd(): Promise<void> {
-  if (submitting.value) return
-  if (!props.canManageCollaborators) {
+  if (submitting.value === true) return
+  if (props.canManageCollaborators !== true) {
     void message.warning('当前账号无协作老师管理权限')
     return
   }
@@ -340,9 +346,9 @@ async function handleAdd(): Promise<void> {
 }
 
 async function handleRoleChange(row: CollaboratorMemberRow, nextRole: ArchiveVolumeMemberRoleCode) {
-  if (!props.canManageCollaborators || !row.roleEditable) return
+  if (props.canManageCollaborators !== true || !row.roleEditable) return
   if (nextRole === row.memberRole) return
-  if (roleUpdatingMemberId.value || submitting.value) return
+  if (roleUpdatingMemberId.value || submitting.value === true) return
   roleUpdatingMemberId.value = row.memberId
   try {
     await addArchiveVolumeMember({
@@ -367,8 +373,8 @@ async function handleMemberAction(key: string, row: CollaboratorMemberRow): Prom
 }
 
 async function handleRemove(row: CollaboratorMemberRow) {
-  if (!row.memberId || submitting.value) return
-  if (!props.canManageCollaborators) {
+  if (!row.memberId || submitting.value === true) return
+  if (props.canManageCollaborators !== true) {
     void message.warning('当前账号无协作老师管理权限')
     return
   }
@@ -383,7 +389,16 @@ async function handleRemove(row: CollaboratorMemberRow) {
     okText: '移除',
     cancelText: '取消',
   })
-  if (!confirmed || submitting.value) return
+  if (!confirmed || submitting.value === true) return
+  // MVR-944：确认后再次认 canManageCollaborators ∧ removable，防对话框期间权限/行态漂移
+  if (props.canManageCollaborators !== true) {
+    void message.warning('当前账号无协作老师管理权限')
+    return
+  }
+  if (!row.removable) {
+    void message.warning('归档责任人不可移除，请通过更换责任人流转')
+    return
+  }
   submitting.value = true
   try {
     await removeArchiveVolumeMember({ volumeId: props.volumeId, memberId: row.memberId })
@@ -402,7 +417,7 @@ async function handleRemove(row: CollaboratorMemberRow) {
     <SignalBand :metrics="signalMetrics" variant="panel" compact class="av-collab__signal" />
 
     <UiFilterBar
-      v-if="canManageCollaborators"
+      v-if="canManageCollaborators === true"
       v-model="addFormModel"
       :fields="addFilterFields"
       variant="panel"
@@ -413,12 +428,12 @@ async function handleRemove(row: CollaboratorMemberRow) {
         <ArchiveDutyUserSelect
           :value="String(addFormModel.userId ?? '') || null"
           placeholder="搜索并选择本租户教师"
-          :disabled="submitting"
+          :disabled="submitting === true"
           @update:value="(value) => update(value ?? '')"
         />
       </template>
       <template #actions>
-        <UiButton variant="primary" size="sm" :loading="submitting" @click="handleAdd">
+        <UiButton variant="primary" size="sm" :loading="submitting === true" @click="handleAdd">
           添加或更新角色
         </UiButton>
       </template>
@@ -484,16 +499,16 @@ async function handleRemove(row: CollaboratorMemberRow) {
           <span v-else-if="isMemberRow(record)">{{ record.remark }}</span>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <template v-if="isMemberRow(record) && canManageCollaborators">
+          <template v-if="isMemberRow(record) && canManageCollaborators === true">
             <div class="av-collab__actions">
               <UiSelect
-                v-if="record.roleEditable"
+                v-if="record.roleEditable === true"
                 size="sm"
                 class="av-collab__role-select"
                 :allow-clear="false"
                 :model-value="record.memberRole"
                 :options="roleSelectOptions"
-                :disabled="submitting || roleUpdatingMemberId === record.memberId"
+                :disabled="submitting === true || Boolean(roleUpdatingMemberId) && roleUpdatingMemberId === record.memberId"
                 @update:model-value="
                   (value) => {
                     if (value == null) return

@@ -54,7 +54,7 @@ const expectedPagesFormula = computed(() => {
   if (planned == null || planned <= 0 || pages == null || pages <= 0) return ''
   return `${planned} 人 × ${pages} 页`
 })
-const hasActiveScanSession = computed(() => workflow.activeBackendScanSession.value)
+const hasActiveScanSession = computed(() => workflow.activeBackendScanSession.value === true)
 const attentionCount = computed(() => {
   const raw = workflow.kioskMetrics.value.attentionCount
   if (raw === '-' || raw === '—') return null
@@ -126,11 +126,11 @@ const primaryCtaDisabled = computed(
   () =>
     showRegisterStateSkeleton.value
     || (resumeAction.value === ScannerKioskResumeActionCode.RETRY_PAGE_REGISTER
-      && (!workflow.canRetryPageRegister.value || workflow.pageRegisterRetryLoading.value))
+      && (workflow.canRetryPageRegister.value !== true || workflow.pageRegisterRetryLoading.value === true))
     || (resumeAction.value !== ScannerKioskResumeActionCode.RETRY_PAGE_REGISTER
       && resumeAction.value !== ScannerKioskResumeActionCode.RESUME_SCANNING
       && resumeAction.value !== ScannerKioskResumeActionCode.VIEW_REGISTER_EXCEPTION
-      && !workflow.canStartDirectScan.value),
+      && workflow.canStartDirectScan.value !== true),
 )
 const scanStats = computed(() => workflow.kioskMetrics.value)
 
@@ -222,7 +222,7 @@ async function confirmCalibrationIfNeeded(): Promise<boolean> {
 }
 
 async function startDirectScan() {
-  if (!workflow.canStartDirectScan.value) return
+  if (workflow.canStartDirectScan.value !== true) return
   const ok = await confirmCalibrationIfNeeded()
   if (!ok) return
   const started = await workflow.startDirectScan()
@@ -232,7 +232,7 @@ async function startDirectScan() {
 }
 
 async function openSupplementModal() {
-  if (!mutex.canDo('openSupplementLaunch')) return
+  if (mutex.canDo('openSupplementLaunch') !== true) return
   supplementModalOpen.value = true
 }
 
@@ -438,7 +438,7 @@ onMounted(() => {
             <button
               type="button"
               class="scan-cta scan-cta--supplement"
-              :disabled="!mutex.canDo('openSupplementLaunch')"
+              :disabled="mutex.canDo('openSupplementLaunch') !== true"
               :title="supplementOpenReason || '补扫'"
               @click="openSupplementModal"
             >
@@ -492,7 +492,7 @@ onMounted(() => {
             <button
               type="button"
               class="scan-cta scan-cta--supplement"
-              :disabled="!mutex.canDo('openSupplementLaunch')"
+              :disabled="mutex.canDo('openSupplementLaunch') !== true"
               :title="supplementOpenReason || '补扫'"
               @click="openSupplementModal"
             >
@@ -506,7 +506,7 @@ onMounted(() => {
           v-if="
             !showRegisterStateSkeleton
               && !resumeAction
-              && workflow.canStartDirectScan.value
+              && workflow.canStartDirectScan.value === true
               && contract?.firstScanTemplateHint
           "
           class="scan-control__guide scan-control__guide--first-scan"
@@ -515,7 +515,7 @@ onMounted(() => {
         </p>
 
         <button
-          v-if="hasActiveScanSession"
+          v-if="hasActiveScanSession === true"
           type="button"
           class="continue-btn"
           :title="activeSessionReason || '返回当前未结束批次'"
@@ -523,7 +523,7 @@ onMounted(() => {
         >
           继续本批次
         </button>
-        <p v-if="hasActiveScanSession && activeSessionReason" class="scan-control__guide">
+        <p v-if="hasActiveScanSession === true && activeSessionReason" class="scan-control__guide">
           {{ activeSessionReason }}
         </p>
 

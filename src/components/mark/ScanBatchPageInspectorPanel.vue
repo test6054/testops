@@ -196,14 +196,14 @@
             size="sm"
             block
             :loading="binding"
-            :disabled="!canSubmitBind"
+            :disabled="canSubmitBind !== true"
             @click="submitBind"
           >
             确认绑定
           </UiButton>
         </UiForm>
       </section>
-      <div v-else-if="showBindBlocked" class="scan-batch-page-inspector__blocked">
+      <div v-else-if="showBindBlocked === true" class="scan-batch-page-inspector__blocked">
         <UiTag tone="orange" size="sm">无法绑定</UiTag>
         <UiTooltip :title="bindBlockedHint" placement="topLeft">
           <InfoCircleOutlined class="scan-batch-page-inspector__tip" />
@@ -239,8 +239,8 @@
             variant="primary"
             size="sm"
             block
-            :loading="reassigning"
-            :disabled="!canSubmitReassign"
+            :loading="reassigning === true"
+            :disabled="canSubmitReassign !== true"
             @click="submitReassign"
           >
             调整到目标试卷
@@ -252,6 +252,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
 import type {
   ExamScannerBatchAttributionItemVO,
   ExamScannerBatchPageInspectorVO,
@@ -292,7 +293,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ScanBatchPageInspectorPanel' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   inspector: ExamScannerBatchPageInspectorVO | null
   loading?: boolean
   examId?: string
@@ -300,8 +302,12 @@ const props = defineProps<{
   attributionItems?: ExamScannerBatchAttributionItemVO[]
   preferredTargetPaperInstanceId?: string
   /** MVR-262：主考写权限；false 时隐藏绑定/归卷写区 */
-  canManageOwnerWrites?: boolean
-}>()
+  canManageOwnerWrites?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+}>(),
+  {
+  canManageOwnerWrites: false,
+  },
+)
 
 const emit = defineEmits<{
   bound: []
@@ -445,10 +451,10 @@ const boundIdentityLine = computed(() => {
 })
 
 const showBindForm = computed(() => {
-  // MVR-376：须主考写权限（父侧已从 BE canManageOwnerBatchActions 收敛为 boolean）
+  // MVR-376/967：须主考写权限（仅认 props.canManageOwnerWrites===true）
   const page = props.inspector?.page
   return Boolean(
-    props.canManageOwnerWrites && page
+    props.canManageOwnerWrites === true && page
     && page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING
     && page.bindingStatus !== ScanBatchWorkbenchBindingStatusCode.BOUND
     && page.paperInstanceId
@@ -522,9 +528,9 @@ const currentPaperLabel = computed(() => {
 
 const showReassignSection = computed(() => {
   const page = props.inspector?.page
-  // MVR-376：须主考写权限（父侧已从 BE canManageOwnerBatchActions 收敛为 boolean）
+  // MVR-376/967：须主考写权限（仅认 props.canManageOwnerWrites===true）
   return Boolean(
-    props.canManageOwnerWrites && page
+    props.canManageOwnerWrites === true && page
     && props.examId
     && props.scanBatchId
     && page.pageId
@@ -535,7 +541,7 @@ const showReassignSection = computed(() => {
 })
 
 const canSubmitReassign = computed(() =>
-  Boolean(showReassignSection.value && targetPaperInstanceId.value && !reassigning.value),
+  Boolean(showReassignSection.value && targetPaperInstanceId.value && reassigning.value !== true),
 )
 
 const canSubmitBind = computed(() =>
@@ -570,16 +576,20 @@ function syncBindFormFromPage(): void {
 }
 
 async function submitBind(): Promise<void> {
-  // MVR-376：与 canManageOwnerWrites / BE requireExamOwnerPermission 二次拦截
-  if (!props.canManageOwnerWrites) {
+  // MVR-376/929：与 canManageOwnerWrites ∧ canSubmitBind / 按钮 disabled 同源二次闸
+  if (props.canManageOwnerWrites !== true) {
     showFormValidationMessage('当前账号无主考扫描写权限，无法绑定身份')
+    return
+  }
+  if (canSubmitBind.value !== true) {
+    showFormValidationMessage('当前页不可绑定身份（状态不满足或未选择确认考生）')
     return
   }
   const page = props.inspector?.page
   if (!page?.paperInstanceId || !props.examId || !props.scanBatchId) {
     return
   }
-  if (binding.value) {
+  if (binding.value === true) {
     return
   }
   const rosterId = confirmedCandidateRosterId.value
@@ -611,16 +621,20 @@ async function submitBind(): Promise<void> {
 }
 
 async function submitReassign(): Promise<void> {
-  // MVR-376：与 canManageOwnerWrites / BE requireExamOwnerPermission 二次拦截
-  if (!props.canManageOwnerWrites) {
+  // MVR-376/929：与 canManageOwnerWrites ∧ canSubmitReassign / 按钮 disabled 同源二次闸
+  if (props.canManageOwnerWrites !== true) {
     showFormValidationMessage('当前账号无主考扫描写权限，无法人工调卷')
+    return
+  }
+  if (canSubmitReassign.value !== true) {
+    showFormValidationMessage('当前页不可人工调卷（状态不满足或未选择目标试卷）')
     return
   }
   const page = props.inspector?.page
   if (!page?.pageId || !props.examId || !props.scanBatchId || !targetPaperInstanceId.value) {
     return
   }
-  if (reassigning.value) {
+  if (reassigning.value === true) {
     return
   }
   reassigning.value = true

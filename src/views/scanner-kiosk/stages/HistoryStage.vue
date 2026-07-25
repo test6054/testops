@@ -286,11 +286,11 @@ watch(
           <button
             type="button"
             class="history-refresh"
-            :disabled="workflow.batchHistoryLoading.value"
+            :disabled="workflow.batchHistoryLoading.value === true"
             title="刷新历史批次"
             @click="reloadHistory"
           >
-            <ReloadOutlined :spin="workflow.batchHistoryLoading.value" />
+            <ReloadOutlined :spin="workflow.batchHistoryLoading.value === true" />
             <span>刷新</span>
           </button>
         </div>
@@ -303,7 +303,7 @@ watch(
           <input
             v-model="workflow.batchHistoryFilter.scanStartTimeFrom"
             type="datetime-local"
-            :disabled="workflow.batchHistoryLoading.value"
+            :disabled="workflow.batchHistoryLoading.value === true"
           />
         </label>
         <span class="time-tilde">至</span>
@@ -312,13 +312,13 @@ watch(
           <input
             v-model="workflow.batchHistoryFilter.scanStartTimeTo"
             type="datetime-local"
-            :disabled="workflow.batchHistoryLoading.value"
+            :disabled="workflow.batchHistoryLoading.value === true"
           />
         </label>
         <button
           type="button"
           class="time-apply"
-          :disabled="workflow.batchHistoryLoading.value"
+          :disabled="workflow.batchHistoryLoading.value === true"
           @click="workflow.applyBatchHistoryTimeRange"
         >
           应用
@@ -327,7 +327,7 @@ watch(
           type="button"
           class="time-clear"
           :disabled="
-            workflow.batchHistoryLoading.value
+            workflow.batchHistoryLoading.value === true
               || (!workflow.batchHistoryFilter.scanStartTimeFrom
                 && !workflow.batchHistoryFilter.scanStartTimeTo)
           "
@@ -338,7 +338,7 @@ watch(
       </div>
 
       <div
-        v-if="workflow.batchHistoryLoading.value && workflow.batchHistoryList.value.length === 0"
+        v-if="workflow.batchHistoryLoading.value === true && workflow.batchHistoryList.value.length === 0"
         class="history-empty"
       >
         加载历史批次中…
@@ -458,7 +458,7 @@ watch(
         <button
           type="button"
           class="pager-btn"
-          :disabled="workflow.batchHistoryFilter.pageNum <= 1 || workflow.batchHistoryLoading.value"
+          :disabled="workflow.batchHistoryFilter.pageNum <= 1 || workflow.batchHistoryLoading.value === true"
           @click="workflow.changeBatchHistoryPage(workflow.batchHistoryFilter.pageNum - 1)"
         >
           上一页
@@ -471,7 +471,7 @@ watch(
           class="pager-btn"
           :disabled="
             workflow.batchHistoryFilter.pageNum >= historyTotalPages
-              || workflow.batchHistoryLoading.value
+              || workflow.batchHistoryLoading.value === true
           "
           @click="workflow.changeBatchHistoryPage(workflow.batchHistoryFilter.pageNum + 1)"
         >

@@ -3,7 +3,7 @@
  * 与质量评价 /quality 平级，独立 Layout 域；API 前缀 /api/portfolio/*
  */
 import type { RouteRecordRaw } from 'vue-router'
-import type { PortfolioWorkShellCode } from '@/apis/portfolio/types'
+import { PortfolioWorkShellCode } from '@/types/enums/portfolio-work-shell-enum'
 import { RoleEnum } from '@/utils/permission'
 import { PORTFOLIO_ROUTE_PREFIX } from '@/utils/portfolio-route'
 
@@ -17,13 +17,13 @@ const PORTFOLIO_ADMIN_ROUTE_META = {
 }
 
 const PORTFOLIO_TEACHER_MENU_GROUP = 'portfolio-teacher'
-const TEACHER_WORK_SHELLS: PortfolioWorkShellCode[] = ['TEACHER']
-const DEPARTMENT_REVIEW_WORK_SHELLS: PortfolioWorkShellCode[] = ['DEPARTMENT_REVIEW']
-const SCHOOL_GOVERNANCE_WORK_SHELLS: PortfolioWorkShellCode[] = ['SCHOOL_GOVERNANCE']
-const CONFIGURATION_WORK_SHELLS: PortfolioWorkShellCode[] = ['CONFIGURATION']
-const EXTERNAL_EXPERT_WORK_SHELLS: PortfolioWorkShellCode[] = ['EXTERNAL_EXPERT']
+const TEACHER_WORK_SHELLS: PortfolioWorkShellCode[] = [PortfolioWorkShellCode.TEACHER]
+const DEPARTMENT_REVIEW_WORK_SHELLS: PortfolioWorkShellCode[] = [PortfolioWorkShellCode.DEPARTMENT_REVIEW]
+const SCHOOL_GOVERNANCE_WORK_SHELLS: PortfolioWorkShellCode[] = [PortfolioWorkShellCode.SCHOOL_GOVERNANCE]
+const CONFIGURATION_WORK_SHELLS: PortfolioWorkShellCode[] = [PortfolioWorkShellCode.CONFIGURATION]
+const EXTERNAL_EXPERT_WORK_SHELLS: PortfolioWorkShellCode[] = [PortfolioWorkShellCode.EXTERNAL_EXPERT]
 /** 专家深链审阅/填报：专家壳 + 学校治理（授权管理预览） */
-const EXPERT_REVIEW_WORK_SHELLS: PortfolioWorkShellCode[] = ['EXTERNAL_EXPERT', 'SCHOOL_GOVERNANCE']
+const EXPERT_REVIEW_WORK_SHELLS: PortfolioWorkShellCode[] = [PortfolioWorkShellCode.EXTERNAL_EXPERT, PortfolioWorkShellCode.SCHOOL_GOVERNANCE]
 
 const portfolioTeacherMenuMeta = {
   menuGroup: PORTFOLIO_TEACHER_MENU_GROUP,

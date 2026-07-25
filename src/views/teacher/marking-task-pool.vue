@@ -54,7 +54,7 @@
                 size="sm"
                 v-model="claimForm.groupId"
                 :options="claimGroupOptions"
-                :loading="claimContextLoading"
+                :loading="claimContextLoading === true"
                 placeholder="选择题组"
                 style="width: 240px"
                 allow-search
@@ -78,8 +78,8 @@
                 <UiButton
                   variant="primary"
                   size="sm"
-                  :disabled="!canClaim"
-                  :loading="claiming"
+                  :disabled="canClaim !== true"
+                  :loading="claiming === true"
                   @click="submitClaim"
                 >
                   <template #icon><PlusOutlined /></template>
@@ -98,7 +98,7 @@
                 任务列表
               </h3>
               <UiButton
-                v-if="canManageReviewerTaskWrites"
+                v-if="canManageReviewerTaskWrites === true"
                 variant="outline"
                 size="sm"
                 @click="toggleBatchMode"
@@ -144,7 +144,7 @@
             pagination-mode="server"
             :columns="columns"
             :data-source="tasks"
-            :loading="loading"
+            :loading="loading === true"
             :total="taskPageTotal"
             row-key="id"
             size="middle"
@@ -254,6 +254,8 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   FormalSessionResponse,
@@ -473,7 +475,7 @@ function handleSelectionChange(keys: (string | number)[]): void {
 }
 
 function toggleBatchMode(): void {
-  if (!canManageReviewerTaskWrites.value) {
+  if (canManageReviewerTaskWrites.value !== true) {
     void message.warning('当前账号无阅卷任务写权限，无法进入批量给分')
     return
   }
@@ -487,7 +489,7 @@ function clearBatchSelection(): void {
 }
 
 async function openBatchDrawer(): Promise<void> {
-  if (!canManageReviewerTaskWrites.value) {
+  if (canManageReviewerTaskWrites.value !== true) {
     void message.warning('当前账号无阅卷任务写权限')
     return
   }
@@ -582,10 +584,10 @@ const groupLeaderStream = useMarkingTaskStream({
 })
 
 function allRequiredTaskStreamsReady(): boolean {
-  if (!teacherTaskStream.ready.value) {
+  if (teacherTaskStream.ready.value !== true) {
     return false
   }
-  return !(isGroupLeader.value && !groupLeaderStream.ready.value)
+  return !(isGroupLeader.value === true && groupLeaderStream.ready.value !== true)
 }
 
 function getPollingIntervalMs(): number {
@@ -652,7 +654,7 @@ async function loadTasks(options?: { silent?: boolean, resetPage?: boolean }): P
     }
     return
   }
-  if (options?.silent && loading.value) {
+  if (options?.silent && loading.value === true) {
     return
   }
   if (options?.resetPage) {
@@ -904,7 +906,7 @@ function onClaimGroupChange(): void {
 const claiming = ref(false)
 
 async function submitClaim(): Promise<void> {
-  if (claiming.value) {
+  if (claiming.value === true) {
     return
   }
   if (claimContext.value?.canClaimTasks !== true) {
@@ -915,7 +917,7 @@ async function submitClaim(): Promise<void> {
     void message.warning('当前正评会话已暂停，暂停期间无法领取新任务')
     return
   }
-  if (!canClaim.value) {
+  if (canClaim.value !== true) {
     void message.warning(isTrialTaskPool.value ? '请选择题组和试评会话' : '请选择题组和正评会话')
     return
   }

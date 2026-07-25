@@ -4,7 +4,7 @@
     title="编辑材料标签"
     :width="520"
     ok-text="保存"
-    :confirm-loading="saving"
+    :confirm-loading="saving === true"
     :hide-footer="false"
     @update:open="emit('update:open', $event)"
     @close="emit('update:open', false)"
@@ -32,15 +32,20 @@ import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/
 
 defineOptions({ name: 'ArchiveVolumeMaterialTagModal' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   open: boolean
   materialId?: string
   volumeId?: string
   fileName?: string
   initialTags?: string[]
   /** MVR-311：与 BE requireVolumeMaterialSearchMaintainPermission / canMaintainMaterial 同源 */
-  canMaintainMaterial?: boolean
-}>()
+  canMaintainMaterial?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+}>(),
+  {
+  canMaintainMaterial: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -61,9 +66,9 @@ watch(
 )
 
 async function handleSave() {
-  if (saving.value) return
+  if (saving.value === true) return
   // MVR-311：写 handler 二次拦截
-  if (!props.canMaintainMaterial) {
+  if (props.canMaintainMaterial !== true) {
     void message.warning('当前账号无维护材料标签权限')
     return
   }

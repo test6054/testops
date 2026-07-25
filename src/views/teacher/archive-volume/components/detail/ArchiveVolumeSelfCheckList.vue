@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ArchiveSelfCheckStatusCode } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
@@ -46,7 +47,7 @@ const canManageArchiveConfig = computed(
 )
 
 const emptySelfCheckBody = computed(() =>
-  canManageArchiveConfig.value
+  canManageArchiveConfig.value === true
     ? '暂无自查项，请先在设置页配置模板'
     : '暂无自查项，请联系租户管理员在归档配置中配置模板',
 )
@@ -81,7 +82,7 @@ function statusTone(code: ArchiveSelfCheckStatusCode): BadgeTone {
 
 async function handleToggle(templateItemId: string, checked: boolean) {
   // MVR-306/380：与 readonly（!canEditSelfCheck）同源；仅 readonly===false 可写
-  if (props.readonly) {
+  if (props.readonly !== false) {
     void message.warning('当前账号无自查项编辑权限')
     return
   }
@@ -92,7 +93,7 @@ async function handleToggle(templateItemId: string, checked: boolean) {
 }
 
 function handleRowClick(item: { templateItemId: string, checked?: boolean }) {
-  if (props.readonly || checking.value || loadFailed.value) return
+  if (props.readonly !== false || checking.value || loadFailed.value) return
   void handleToggle(item.templateItemId, !item.checked)
 }
 
@@ -121,17 +122,17 @@ defineExpose({ loadSelfCheck })
           <UiButton
             size="sm"
             variant="ghost"
-            :loading="exporting"
+            :loading="exporting === true"
             :disabled="items.length === 0"
             @click="exportSelfCheck"
           >
             导出
           </UiButton>
           <UiButton
-            v-if="!readonly && allRequiredChecked"
+            v-if="readonly === false && allRequiredChecked"
             size="sm"
             variant="primary"
-            :disabled="loadFailed"
+            :disabled="loadFailed === true"
             @click="emit('open-sign-off')"
           >
             进入签字确认
@@ -148,7 +149,7 @@ defineExpose({ loadSelfCheck })
         description="重新加载成功前不能勾选或进入签字确认"
       >
         <template #actions>
-          <UiButton size="sm" variant="outline" :loading="loading" @click="loadSelfCheck">
+          <UiButton size="sm" variant="outline" :loading="loading === true" @click="loadSelfCheck">
             重新加载
           </UiButton>
         </template>
@@ -162,7 +163,7 @@ defineExpose({ loadSelfCheck })
         :body="emptySelfCheckBody"
         cta-label="打开归档设置"
         list-route-name="TeacherArchiveVolumeSettings"
-        :hide-cta="!canManageArchiveConfig"
+        :hide-cta="canManageArchiveConfig !== true"
       />
 
       <ul v-else class="archive-volume-self-check-list__items" role="list">
@@ -171,7 +172,7 @@ defineExpose({ loadSelfCheck })
           :key="item.templateItemId"
           class="self-check-row"
           :class="{
-            'self-check-row--interactive': !readonly && !checking && !loadFailed,
+            'self-check-row--interactive': readonly === false && !checking && !loadFailed,
             'self-check-row--done': item.checked,
           }"
           @click="handleRowClick(item)"

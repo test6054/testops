@@ -205,6 +205,7 @@
 </template>
 
 <script setup lang="ts">
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveMaterialSearchAuditRowResponse,
@@ -264,10 +265,10 @@ const {
 const ledgerTab = ref('volume')
 const ledgerTabs = computed(() => {
   const tabs = [{ key: 'volume', label: '单卷台账' }]
-  if (canViewAccessLedger.value) {
+  if (canViewAccessLedger.value === true) {
     tabs.push({ key: 'tenant', label: '全局查阅台账' })
   }
-  if (canViewSearchAudit.value) {
+  if (canViewSearchAudit.value === true) {
     tabs.push({ key: 'searchAudit', label: '检索留痕' })
   }
   return tabs

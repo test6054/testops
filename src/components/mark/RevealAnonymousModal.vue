@@ -16,12 +16,17 @@ defineOptions({ name: 'RevealAnonymousModal' })
 
 const open = defineModel<boolean>('open', { required: true })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   examId: string
   taskId: string
   /** MVR-375：与 BE canManageOwnerIdentityReveal / requireExamOwnerPermission 同源 */
-  canManageOwnerIdentityReveal?: boolean
-}>()
+  canManageOwnerIdentityReveal?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+}>(),
+  {
+  canManageOwnerIdentityReveal: false,
+  },
+)
 
 const emit = defineEmits<{
   revealed: [value: AnonymousRevealResponse]
@@ -55,7 +60,7 @@ function resetForm(): void {
 /** 提交解匿名请求，后端负责考试创建人权限、密码二次校验和审计留痕。 */
 async function submitReveal(): Promise<void> {
   // MVR-375：与父层 canManageOwnerIdentityReveal / BE requireExamOwnerPermission 二次拦截
-  if (!props.canManageOwnerIdentityReveal) {
+  if (props.canManageOwnerIdentityReveal !== true) {
     showFormValidationMessage('当前账号无解匿名权限')
     return
   }
@@ -65,7 +70,7 @@ async function submitReveal(): Promise<void> {
   } catch {
     return
   }
-  if (submitting.value) {
+  if (submitting.value === true) {
     return
   }
   submitting.value = true

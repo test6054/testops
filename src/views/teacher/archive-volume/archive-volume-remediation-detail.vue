@@ -17,7 +17,7 @@
             "
             variant="primary"
             size="sm"
-            :loading="updating"
+            :loading="updating === true"
             @click="advanceStatus(ArchiveRemediationStatusCode.IN_PROGRESS)"
           >
             开始处理
@@ -30,7 +30,7 @@
             "
             variant="primary"
             size="sm"
-            :loading="updating"
+            :loading="updating === true"
             @click="advanceStatus(ArchiveRemediationStatusCode.RESUBMITTED)"
           >
             提交整改
@@ -131,7 +131,7 @@
               {{ taskDetail.evidenceItems.length }} 个文件
             </span>
             <UiButton
-              v-if="canUploadEvidence"
+              v-if="canUploadEvidence === true"
               size="sm"
               variant="outline"
               class="archive-remediation-detail__evidence-upload"
@@ -261,19 +261,19 @@
               class="archive-remediation-detail__assignee"
             />
             <UiButton
-              v-if="canSaveAssigneeReassign"
+              v-if="canSaveAssigneeReassign === true"
               size="sm"
               variant="outline"
-              :loading="reassigning"
+              :loading="reassigning === true"
               @click="reassignAssignee"
             >
               保存改派
             </UiButton>
             <UiButton
-              v-if="canCloseRemediationAsCoordinator"
+              v-if="canCloseRemediationAsCoordinator === true"
               size="sm"
               variant="outline"
-              :loading="updating"
+              :loading="updating === true"
               @click="openCloseVerifyModal"
             >
               复检关闭
@@ -284,7 +284,7 @@
               v-if="taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN"
               variant="primary"
               size="sm"
-              :loading="updating"
+              :loading="updating === true"
               @click="advanceStatus(ArchiveRemediationStatusCode.IN_PROGRESS)"
             >
               开始处理
@@ -292,7 +292,7 @@
             <UiButton
               v-if="taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS"
               size="sm"
-              :loading="updating"
+              :loading="updating === true"
               @click="advanceStatus(ArchiveRemediationStatusCode.RESUBMITTED)"
             >
               标记已重提
@@ -323,7 +323,7 @@
       :open="evidenceUploadOpen"
       title="上传整改证据"
       :width="520"
-      :confirm-loading="evidenceUploadSubmitting"
+      :confirm-loading="evidenceUploadSubmitting === true"
       ok-text="提交"
       :hide-footer="false"
       @update:open="(v: boolean) => (evidenceUploadOpen = v)"
@@ -346,7 +346,7 @@
       :open="closeVerifyModalOpen"
       title="复检关闭"
       :width="520"
-      :confirm-loading="updating"
+      :confirm-loading="updating === true"
       ok-text="确认关闭"
       :hide-footer="false"
       @update:open="(v: boolean) => (closeVerifyModalOpen = v)"
@@ -370,6 +370,8 @@
 </template>
 
 <script setup lang="ts">
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveEvaluationCampaignResponse,
@@ -651,16 +653,16 @@ function evidenceStatusTone(code: ArchiveRemediationEvidenceStatusCode) {
 }
 
 function openEvidenceUploadModal() {
-  if (!canUploadEvidence.value) return
+  if (canUploadEvidence.value !== true) return
   evidenceUploadFileId.value = undefined
   evidenceUploadFileName.value = ''
   evidenceUploadOpen.value = true
 }
 
 async function submitEvidenceUpload() {
-  if (evidenceUploadSubmitting.value) return
+  if (evidenceUploadSubmitting.value === true) return
   // MVR-310：与 canUploadEvidence / BE assertRemediationEvidenceRegisterAllowed 同源
-  if (!canUploadEvidence.value) {
+  if (canUploadEvidence.value !== true) {
     showFormValidationMessage('当前账号不可上传整改证据')
     return
   }
@@ -738,9 +740,9 @@ async function loadTask() {
 }
 
 async function advanceStatus(status: ArchiveRemediationStatusCode) {
-  if (!taskDetail.value || updating.value) return
+  if (!taskDetail.value || updating.value === true) return
   // MVR-310：与 canActOnTask / BE updateRemediationTask 协调人|责任人闸同源
-  if (!canActOnTask.value) {
+  if (canActOnTask.value !== true) {
     showFormValidationMessage('当前账号无权更新整改任务状态')
     return
   }
@@ -764,7 +766,7 @@ async function advanceStatus(status: ArchiveRemediationStatusCode) {
 async function reassignAssignee() {
   if (!taskDetail.value || !editAssigneeUserId.value || reassigning.value) return
   // MVR-310：改派仅协调人；与 showCoordinatorActions / BE coordinator 分支同源
-  if (!showCoordinatorActions.value || !canSaveAssigneeReassign.value) {
+  if (!showCoordinatorActions.value || canSaveAssigneeReassign.value !== true) {
     showFormValidationMessage('当前账号无权改派整改责任人')
     return
   }
@@ -783,7 +785,7 @@ async function reassignAssignee() {
 }
 
 function openCloseVerifyModal() {
-  if (!canCloseRemediationAsCoordinator.value) {
+  if (canCloseRemediationAsCoordinator.value !== true) {
     showFormValidationMessage('整改责任人不得复检关闭本人任务')
     return
   }
@@ -792,8 +794,8 @@ function openCloseVerifyModal() {
 }
 
 async function submitCloseWithVerification() {
-  if (!taskDetail.value || updating.value) return
-  if (!canCloseRemediationAsCoordinator.value) {
+  if (!taskDetail.value || updating.value === true) return
+  if (canCloseRemediationAsCoordinator.value !== true) {
     showFormValidationMessage('整改责任人不得复检关闭本人任务')
     return
   }

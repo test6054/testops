@@ -54,7 +54,7 @@
             刷新
           </UiButton>
           <UiButton
-            v-if="selectedExamId && !organization && !loading && canManageExamOwner"
+            v-if="selectedExamId && !organization && !loading && canManageExamOwner === true"
             variant="primary"
             size="sm"
             @click="openCreateDrawer"
@@ -83,7 +83,7 @@
 
     <WorkbenchSurfaceCard v-else-if="organization" class="org-index__overview-card">
       <UiAlertStrip
-        v-if="!canManageExamOwner"
+        v-if="canManageExamOwner !== true"
         tone="info"
         class="org-index__readonly-banner"
         title="当前为只读视图"
@@ -127,8 +127,8 @@
           </UiTag>
         </UiDescriptionsItem>
         <UiDescriptionsItem label="匿名阅卷">
-          <UiTag :tone="organization.anonymousMode ? 'green' : 'gray'" size="sm">
-            {{ organization.anonymousMode ? '启用' : '关闭' }}
+          <UiTag :tone="organization.anonymousMode === true ? 'green' : 'gray'" size="sm">
+            {{ organization.anonymousMode === true ? '启用' : '关闭' }}
           </UiTag>
         </UiDescriptionsItem>
         <UiDescriptionsItem label="题组数量">
@@ -150,19 +150,19 @@
 
       <div class="org-index__actions">
         <UiButton size="sm" @click="goDetail">
-          {{ canManageExamOwner ? '管理题组与策略' : '查看题组与策略' }}
+          {{ canManageExamOwner === true ? '管理题组与策略' : '查看题组与策略' }}
         </UiButton>
-        <UiButton v-if="canManageExamOwner" size="sm" variant="outline" @click="openEditDrawer">
+        <UiButton v-if="canManageExamOwner === true" size="sm" variant="outline" @click="openEditDrawer">
           编辑组织
         </UiButton>
         <UiButton size="sm" variant="outline" @click="goTrialSessions">试评定标</UiButton>
         <UiButton size="sm" variant="outline" @click="goFormalSessions">正评会话</UiButton>
         <UiButton
-          v-if="canDeleteOrganization"
+          v-if="canDeleteOrganization === true"
           size="sm"
           variant="outline"
           status="danger"
-          :loading="deleting"
+          :loading="deleting === true"
           @click="requestDeleteOrganization"
         >
           删除组织
@@ -174,11 +174,11 @@
       v-else
       tag="未配置"
       :body="
-        canManageExamOwner
+        canManageExamOwner === true
           ? '本考试尚未创建阅卷组织；创建后可编排题组、配置分配策略并启动试评/正评'
           : '本考试尚未创建阅卷组织；由考试主考老师创建和分配'
       "
-      :hide-cta="!canManageExamOwner"
+      :hide-cta="canManageExamOwner !== true"
       cta-label="立即创建阅卷组织"
       class="org-index__panel--empty"
       @cta="openCreateDrawer"
@@ -189,7 +189,7 @@
       :open="createDrawerOpen"
       title="新建阅卷组织"
       :width="520"
-      :confirm-loading="creating"
+      :confirm-loading="creating === true"
       @update:open="(v: boolean) => (createDrawerOpen = v)"
       @close="createDrawerOpen = false"
       @ok="submitCreate"
@@ -219,7 +219,7 @@
       :open="editDrawerOpen"
       title="编辑阅卷组织"
       :width="520"
-      :confirm-loading="updating"
+      :confirm-loading="updating === true"
       @update:open="(v: boolean) => (editDrawerOpen = v)"
       @close="editDrawerOpen = false"
       @ok="submitUpdate"
@@ -232,7 +232,7 @@
           <UiSwitch
             size="sm"
             v-model="editForm.anonymousMode"
-            :disabled="!canUpdateOrganizationAnonymousMode"
+            :disabled="canUpdateOrganizationAnonymousMode !== true"
           />
           <span class="org-index__switch-hint">
             {{
@@ -258,6 +258,9 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-948：本地 can* 显隐/禁用仅认 === true
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-945：canManage* 控制流仅认 === true
 /**
  * 阅卷交付 - 阅卷组织详情入口
  *
@@ -363,7 +366,7 @@ const loading = ref(false)
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
 function guardExamOwnerAction(): boolean {
-  if (canManageExamOwner.value) return true
+  if (canManageExamOwner.value === true) return true
   showFormValidationMessage('仅考试主考老师可执行该操作')
   return false
 }
@@ -412,8 +415,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
       {
         key: 'anonymous',
         label: '匿名阅卷',
-        value: org.anonymousMode ? '已启用' : '关闭',
-        tone: org.anonymousMode ? 'green' : 'gray',
+        value: org.anonymousMode === true ? '已启用' : '关闭',
+        tone: org.anonymousMode === true ? 'green' : 'gray',
       },
       {
         key: 'status',
@@ -439,7 +442,7 @@ const signalMetrics = computed<SignalMetric[]>(() => {
         label: '阅卷设置',
         value: '待配置',
         tone: 'orange',
-        clickable: canManageExamOwner.value,
+        clickable: canManageExamOwner.value === true,
       },
     ]
   }
@@ -447,7 +450,7 @@ const signalMetrics = computed<SignalMetric[]>(() => {
 })
 
 function handleOrgSignalClick(key: string): void {
-  if (key === 'org-pending' && canManageExamOwner.value) {
+  if (key === 'org-pending' && canManageExamOwner.value === true) {
     openCreateDrawer()
   }
 }
@@ -501,7 +504,7 @@ function openCreateDrawer(): void {
 }
 
 async function submitCreate(): Promise<void> {
-  if (creating.value) return
+  if (creating.value === true) return
   if (!guardExamOwnerAction()) return
   if (!selectedExamId.value || !createFormRef.value) return
   try {
@@ -530,21 +533,21 @@ async function submitCreate(): Promise<void> {
 function openEditDrawer(): void {
   if (!guardExamOwnerAction()) return
   if (!organization.value) return
-  editForm.anonymousMode = Boolean(organization.value.anonymousMode)
+  editForm.anonymousMode = organization.value.anonymousMode === true
   editForm.remark = organization.value.remark || ''
   editDrawerOpen.value = true
 }
 
 async function submitUpdate(): Promise<void> {
-  if (updating.value) {
+  if (updating.value === true) {
     return
   }
   if (!guardExamOwnerAction()) return
   if (!organization.value || !editFormRef.value) return
   // MVR-404：匿名模式变更须 canUpdateOrganizationAnonymousMode；仅改备注始终可走
   const anonymityChanged
-    = Boolean(editForm.anonymousMode) !== Boolean(organization.value.anonymousMode)
-  if (anonymityChanged && !canUpdateOrganizationAnonymousMode.value) {
+    = (editForm.anonymousMode === true) !== (organization.value.anonymousMode === true)
+  if (anonymityChanged && canUpdateOrganizationAnonymousMode.value !== true) {
     showFormValidationMessage('已进入试评/正评或任务后不可修改匿名模式')
     return
   }
@@ -557,9 +560,9 @@ async function submitUpdate(): Promise<void> {
   try {
     const request: OrganizationUpdateRequest = {
       organizationId: requireMarkingOrganizationId(organization.value),
-      anonymousMode: canUpdateOrganizationAnonymousMode.value
-        ? editForm.anonymousMode
-        : Boolean(organization.value.anonymousMode),
+      anonymousMode: canUpdateOrganizationAnonymousMode.value === true
+        ? editForm.anonymousMode === true
+        : organization.value.anonymousMode === true,
       remark: editForm.remark?.trim() || undefined,
     }
     organization.value = await updateOrganization(request)
@@ -576,7 +579,7 @@ async function submitUpdate(): Promise<void> {
 async function requestDeleteOrganization(): Promise<void> {
   if (!guardExamOwnerAction()) return
   // MVR-405：与 BE canDeleteOrganization / runtimeRefs 二次闸
-  if (!canDeleteOrganization.value) {
+  if (canDeleteOrganization.value !== true) {
     showFormValidationMessage('组织下已有试评、正评或任务，不能删除')
     return
   }
@@ -594,12 +597,12 @@ async function requestDeleteOrganization(): Promise<void> {
 
 async function submitDelete(): Promise<void> {
   if (!guardExamOwnerAction()) return
-  if (!canDeleteOrganization.value) {
+  if (canDeleteOrganization.value !== true) {
     showFormValidationMessage('组织下已有试评、正评或任务，不能删除')
     return
   }
   if (!organization.value) return
-  if (deleting.value) return
+  if (deleting.value === true) return
   deleting.value = true
   try {
     await deleteOrganization({ organizationId: requireMarkingOrganizationId(organization.value) })

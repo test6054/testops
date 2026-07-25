@@ -96,10 +96,10 @@ export function buildArchiveVolumeDimPills(record: ArchiveVolumeResponse): Archi
       label: strictEnumLabel(ArchiveAppraisalStatusDescription, record.appraisalStatus, 'appraisalStatus'),
     })
   }
-  if (record.hasOpenRemediationTask) {
+  if (record.hasOpenRemediationTask === true) {
     pills.push({ tone: 'warn', label: '待整改' })
   }
-  if (record.securityMarkPending) {
+  if (record.securityMarkPending === true) {
     pills.push({ tone: 'warn', label: '定密待确认' })
   }
   if (record.securityLevel === 'CONFIDENTIAL') {

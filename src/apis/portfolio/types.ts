@@ -34,7 +34,9 @@ import type { PortfolioEvaluationTaskAdvanceActionCode } from '@/types/enums/por
 import type { PortfolioEvaluationTaskStatusEnum } from '@/types/enums/portfolio-evaluation-task-status-enum'
 import type { PortfolioGapTaskStatusCode } from '@/types/enums/portfolio-gap-task-status-enum'
 import type { PortfolioGuidanceTypeCode } from '@/types/enums/portfolio-guidance-type-enum'
+import type { PortfolioIdentityMaterialCategoryClassCode } from '@/types/enums/portfolio-identity-material-category-class-enum'
 import type { PortfolioIndustryEducationProjectTypeCode } from '@/types/enums/portfolio-industry-education-project-type-enum'
+import type { PortfolioIndustryPackDimensionCode } from '@/types/enums/portfolio-industry-pack-dimension-code-enum'
 import type { PortfolioIndustryPackHardGapTypeCode } from '@/types/enums/portfolio-industry-pack-hard-gap-type-enum'
 import type { PortfolioIntegrationChannelCodeEnum } from '@/types/enums/portfolio-integration-channel-code-enum'
 import type { PortfolioMaterialIntakeValidationCode } from '@/types/enums/portfolio-material-intake-validation-code-enum'
@@ -2053,7 +2055,7 @@ export interface PortfolioEducatingOutcomeContributionVO {
 
 /** §8.57 行业包维度得分 */
 export interface PortfolioIndustryPackDimensionScoreVO {
-  dimensionCode: string
+  dimensionCode: PortfolioIndustryPackDimensionCode
   dimensionLabel: string
   weight: number
   score: number
@@ -2063,7 +2065,7 @@ export interface PortfolioIndustryPackDimensionScoreVO {
 /** §8.57 行业硬性缺口 */
 export interface PortfolioIndustryPackHardGapItemVO {
   gapType: PortfolioIndustryPackHardGapTypeCode
-  dimensionCode?: string
+  dimensionCode?: PortfolioIndustryPackDimensionCode
   gapTitle: string
   remediationHint?: string
   hardRequired?: boolean
@@ -2827,7 +2829,7 @@ export type { PortfolioEvaluationIdentityMaterialScopeCode }
 
 export interface PortfolioEvaluationIdentityMaterialItemVO {
   archiveRecordId?: string
-  categoryCode?: string
+  categoryCode?: PortfolioIdentityMaterialCategoryClassCode
   categoryName?: string
   academicYear?: string
   sourceType?: PortfolioArchiveRecordSourceTypeCode

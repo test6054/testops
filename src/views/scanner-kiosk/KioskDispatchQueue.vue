@@ -146,8 +146,8 @@ async function changePage(page: number) {
 <template>
   <div class="dispatch-queue">
     <DocumentKioskActivationGate
-      :can-activate="bootstrap.canActivateAgent.value"
-      :submit-loading="bootstrap.loading.value"
+      :can-activate="bootstrap.canActivateAgent.value === true"
+      :submit-loading="bootstrap.loading.value === true"
       @submit="bootstrap.activateAgent"
     />
     <header class="dispatch-queue__head">
@@ -159,7 +159,7 @@ async function changePage(page: number) {
         <UiButton variant="ghost" @click="goHub">回扫描台首页</UiButton>
         <UiButton
           variant="outline"
-          :disabled="queue.loading.value"
+          :disabled="queue.loading.value === true"
           @click="queue.loadQueue"
         >
           刷新
@@ -179,7 +179,7 @@ async function changePage(page: number) {
     <p v-if="queue.errorMessage.value" class="dispatch-queue__error">
       {{ queue.errorMessage.value }}
     </p>
-    <UiSkeletonState v-if="queue.loading.value" :rows="6" compact />
+    <UiSkeletonState v-if="queue.loading.value === true" :rows="6" compact />
     <ul v-else class="dispatch-queue__list">
       <li v-for="item in queue.tickets.value" :key="item.ticketId">
         <button type="button" class="dispatch-queue__item" @click="openTicket(item)">
@@ -221,7 +221,7 @@ async function changePage(page: number) {
     >
       <UiButton
         variant="outline"
-        :disabled="queue.pageNum.value <= 1 || queue.loading.value"
+        :disabled="queue.pageNum.value <= 1 || queue.loading.value === true === true"
         @click="changePage(queue.pageNum.value - 1)"
       >
         上一页
@@ -231,7 +231,7 @@ async function changePage(page: number) {
         variant="outline"
         :disabled="
           queue.pageNum.value >= Math.ceil(queue.total.value / queue.pageSize.value)
-            || queue.loading.value
+            || queue.loading.value === true
         "
         @click="changePage(queue.pageNum.value + 1)"
       >

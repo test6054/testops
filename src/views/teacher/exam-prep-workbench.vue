@@ -158,9 +158,9 @@ const contextPrimaryAction = computed(() => {
   }
   // MVR-267：保存制卷形态仅主考；与 BE requireExamOwnerPermission 对齐
   if (
-    canManageOwnerExamPrepWrites.value
+    canManageOwnerExamPrepWrites.value === true
     && layoutDirty.value
-    && !layoutModeLocked.value
+    && layoutModeLocked.value !== true
     && draftLayoutMode.value
   ) {
     return {
@@ -198,7 +198,7 @@ const layoutDirty = computed(() => {
 })
 
 const pageLoading = computed(
-  () => examDetailLoading.value || (workbenchContext?.loading.value && !snapshot.value),
+  () => examDetailLoading.value === true || (workbenchContext?.loading.value === true && !snapshot.value),
 )
 
 async function loadExamFullScore(examId: string): Promise<void> {
@@ -217,10 +217,10 @@ async function loadExamFullScore(examId: string): Promise<void> {
 }
 
 async function handleSaveLayoutMode(): Promise<void> {
-  if (layoutSaving.value) {
+  if (layoutSaving.value === true) {
     return
   }
-  if (!canManageOwnerExamPrepWrites.value) {
+  if (canManageOwnerExamPrepWrites.value !== true) {
     return
   }
   if (!selectedExamId.value || !draftLayoutMode.value) {
@@ -301,7 +301,7 @@ function goPrepBlockingAction(): void {
 }
 
 function goScanEntry(): void {
-  if (!selectedExamId.value || !startScanAction.value?.enabled) {
+  if (!selectedExamId.value || startScanAction.value?.enabled !== true) {
     return
   }
   const routeName = resolveNextActionRouteName(
@@ -313,7 +313,7 @@ function goScanEntry(): void {
 }
 
 function goReviewEntry(): void {
-  if (!selectedExamId.value || !enterReviewAction.value?.enabled) {
+  if (!selectedExamId.value || enterReviewAction.value?.enabled !== true) {
     return
   }
   const routeName = resolveNextActionRouteName(

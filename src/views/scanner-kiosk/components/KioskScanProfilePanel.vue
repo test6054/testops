@@ -81,7 +81,7 @@ const profileReady = computed(() => paramItems.value.length > 0)
     </header>
     <p v-if="scanConfigHint" class="scan-profile-panel__hint">{{ scanConfigHint }}</p>
     <p v-if="scanConfigAdvisory" class="scan-profile-panel__advisory">{{ scanConfigAdvisory }}</p>
-    <dl v-if="profileReady" class="scan-profile-panel__grid">
+    <dl v-if="profileReady === true" class="scan-profile-panel__grid">
       <div v-for="item in paramItems" :key="item.label">
         <dt>{{ item.label }}</dt>
         <dd>{{ item.value }}</dd>

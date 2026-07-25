@@ -62,7 +62,8 @@ defineOptions({ name: 'QuestionExperienceAssistBindingModal' })
 
 const open = defineModel<boolean>('open', { default: false })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   examId?: string
   layoutQuestionId?: string
   questionNo?: string
@@ -70,8 +71,17 @@ const props = defineProps<{
    * MVR-372：绑定与 canManageReviewerWrites（评阅写∧ACTIVE）同源。
    * 仅认 true；禁止缺声明默认放行。
    */
-  canManageReviewerWrites?: boolean
-}>()
+  canManageReviewerWrites?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+  /**
+   * MVR-931：正评冻结后禁止绑定写；仅认 true。
+   */
+  policyFrozen?: boolean
+}>(),
+  {
+  canManageReviewerWrites: false,
+  policyFrozen: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
@@ -112,9 +122,13 @@ async function loadCandidates(): Promise<void> {
 }
 
 async function handleSave(): Promise<void> {
-  if (!props.examId || !props.layoutQuestionId || saving.value) return
-  // MVR-372：写 handler 二次拦截；策略页仅隐藏入口不能替代
-  if (!props.canManageReviewerWrites) {
+  if (!props.examId || !props.layoutQuestionId || saving.value === true) return
+  // MVR-372/931：写 handler 二次拦截；策略页仅隐藏入口不能替代
+  if (props.policyFrozen === true) {
+    void message.warning('经验辅助评阅策略已冻结，不可绑定题目定标')
+    return
+  }
+  if (props.canManageReviewerWrites !== true) {
     void message.warning('仅本场阅卷组织成员或主考可绑定定标经验')
     return
   }

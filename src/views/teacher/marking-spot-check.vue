@@ -26,7 +26,7 @@
           pagination-mode="server"
           :columns="columns"
           :data-source="pendingItems"
-          :loading="loading"
+          :loading="loading === true"
           :total="pagination.total"
           flat
           row-key="id"
@@ -84,7 +84,7 @@
       v-model:open="modalOpen"
       title="处理抽检结论"
       :width="640"
-      :confirm-loading="submitting"
+      :confirm-loading="submitting === true"
       ok-text="提交结论"
       @ok="submitConclusion"
     >
@@ -93,8 +93,8 @@
         <UiButton
           size="sm"
           variant="primary"
-          :loading="submitting"
-          :disabled="!valid"
+          :loading="submitting === true"
+          :disabled="valid !== true"
           @click="submitConclusion"
         >
           提交结论
@@ -174,6 +174,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-951：函数式 can*(...) 写入口仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { MyPendingSpotCheckItemResponse } from '@/apis/mark/marking-quality'
 import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
@@ -348,7 +349,7 @@ function canHandleSpotCheckItem(item: MyPendingSpotCheckItemResponse): boolean {
 }
 
 function buildSpotCheckActions(item: MyPendingSpotCheckItemResponse): UiTableRowActionItem[] {
-  if (!canHandleSpotCheckItem(item)) {
+  if (canHandleSpotCheckItem(item) !== true) {
     return []
   }
   return [{ key: 'handle', label: '处理结论', tone: 'primary' }]
@@ -362,7 +363,7 @@ function handleSpotCheckAction(key: string, item: MyPendingSpotCheckItemResponse
 
 function openHandleModal(item: MyPendingSpotCheckItemResponse): void {
   // MVR-393：打开结案弹窗二次拦截
-  if (!canHandleSpotCheckItem(item)) {
+  if (canHandleSpotCheckItem(item) !== true) {
     void message.warning('当前抽检任务不可处理，请刷新后重试')
     return
   }
@@ -375,9 +376,9 @@ function openHandleModal(item: MyPendingSpotCheckItemResponse): void {
 
 async function submitConclusion(): Promise<void> {
   if (!valid.value || !targetItem.value) return
-  if (submitting.value) return
+  if (submitting.value === true) return
   // MVR-393：提交与 BE 自检/状态门禁二次拦截
-  if (!canHandleSpotCheckItem(targetItem.value)) {
+  if (canHandleSpotCheckItem(targetItem.value) !== true) {
     void message.warning('当前抽检任务不可处理，请刷新后重试')
     modalOpen.value = false
     targetItem.value = null

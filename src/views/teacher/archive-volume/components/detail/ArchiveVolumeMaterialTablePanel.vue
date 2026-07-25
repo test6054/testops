@@ -6,7 +6,7 @@
         <span class="archive-volume-material-table__meta">{{ materialReadySummary }}</span>
       </div>
     </template>
-    <template v-if="canRegisterMaterial" #toolbar>
+    <template v-if="canRegisterMaterial === true" #toolbar>
       <div class="archive-volume-material-table__actions">
         <UiButton size="sm" variant="primary" @click="openUploadModal">登记材料</UiButton>
         <UiDropdownAction
@@ -19,7 +19,7 @@
       </div>
     </template>
     <p
-      v-if="canGenerateExamReports && courseObjectiveMappingHint"
+      v-if="canGenerateExamReports === true && courseObjectiveMappingHint"
       class="archive-volume-material-table__mapping-hint"
     >
       {{ courseObjectiveMappingHint }}
@@ -47,7 +47,7 @@
       pagination-mode="server"
       :columns="materialColumns"
       :data-source="materialsLoadFailed ? [] : materials"
-      :loading="materialsLoading"
+      :loading="materialsLoading === true"
       :total="pageTotal"
       flat
       row-key="materialId"
@@ -102,31 +102,31 @@
         </template>
         <template v-else-if="column.key === 'materialActions'">
           <UiTextAction
-            v-if="canPreviewMaterialFile(record)"
+            v-if="canPreviewMaterialFile(record) === true"
             tone="primary"
             @click="handlePreviewMaterial(record)"
           >
             预览
           </UiTextAction>
           <UiTextAction
-            v-if="canPreviewMaterialFile(record)"
+            v-if="canPreviewMaterialFile(record) === true"
             tone="primary"
             @click="handleDownloadMaterial(record)"
           >
             下载
           </UiTextAction>
-          <UiTextAction v-if="canMaintainMaterial" tone="primary" @click="openTagModal(record)">
+          <UiTextAction v-if="canMaintainMaterial === true" tone="primary" @click="openTagModal(record)">
             编辑标签
           </UiTextAction>
           <UiTextAction
-            v-if="canViewMaterialOcr(record)"
+            v-if="canViewMaterialOcr(record) === true"
             tone="primary"
             @click="openMaterialOcrDetail(record)"
           >
             查看文字识别
           </UiTextAction>
           <UiTextAction
-            v-if="canRetryMaterialOcr(record)"
+            v-if="canRetryMaterialOcr(record) === true"
             tone="primary"
             :disabled="retryingMaterialIds.has(record.materialId)"
             @click="confirmRetryMaterialOcr(record)"
@@ -155,7 +155,7 @@
       <UiDataTable
         :columns="sharedRefColumns"
         :data-source="sharedRefsLoadFailed ? [] : sharedRefs"
-        :loading="sharedRefsLoading"
+        :loading="sharedRefsLoading === true"
         pagination-mode="none"
         flat
         row-key="refId"
@@ -169,7 +169,7 @@
           </template>
           <template v-else-if="column.key === 'sharedRefActions'">
             <UiTextAction
-              v-if="canRemoveSharedMaterialRef"
+              v-if="canRemoveSharedMaterialRef === true"
               tone="danger"
               :disabled="removingSharedRefId === record.refId"
               @click="confirmRemoveSharedRef(record)"
@@ -186,7 +186,7 @@
       :open="uploadModalOpen"
       title="登记归档材料"
       :width="520"
-      :confirm-loading="uploading"
+      :confirm-loading="uploading === true"
       ok-text="登记"
       :hide-footer="false"
       @update:open="(v: boolean) => (uploadModalOpen = v)"
@@ -238,7 +238,7 @@
       :open="sharedRefModalOpen"
       title="引用合用材料"
       :width="520"
-      :confirm-loading="sharedRefSubmitting"
+      :confirm-loading="sharedRefSubmitting === true"
       ok-text="保存引用"
       :hide-footer="false"
       @update:open="(v: boolean) => (sharedRefModalOpen = v)"
@@ -325,6 +325,11 @@
 </template>
 
 <script setup lang="ts">
+// MVR-951：函数式 can*(...) 写入口仅认 === true
+// MVR-949：props.can* 写控制流仅认 === true
+// MVR-948：本地 can* 显隐/禁用仅认 === true
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveMaterialSubmissionStatusCode,
@@ -396,16 +401,23 @@ import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/
 
 defineOptions({ name: 'ArchiveVolumeMaterialTablePanel' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   volumeId: string
   detail: ArchiveVolumeDetailResponse
   selectedCatalogKeys: string[]
   canRegisterMaterial: boolean
   /** MVR-185：标签/OCR 可不在收材窗口 */
-  canMaintainMaterial?: boolean
+  canMaintainMaterial?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
   /** MVR-183：解除合用引用可不在收材窗口 */
   canRemoveSharedMaterialRef?: boolean
-}>()
+}>(),
+  {
+  canRegisterMaterial: false,
+  canMaintainMaterial: false,
+  canRemoveSharedMaterialRef: false,
+  },
+)
 
 const emit = defineEmits<{
   "refreshed": [options?: { silent?: boolean }]
@@ -528,7 +540,7 @@ const materialMoreActionItems = computed(() => {
     { key: 'course-sync', label: '课程平台同步' },
     { key: 'shared-ref', label: '引用合用材料' },
   ]
-  if (canGenerateExamReports.value) {
+  if (canGenerateExamReports.value === true) {
     items.push(
       { key: 'exam-analysis', label: '生成试卷分析' },
       { key: 'course-objective', label: '生成达成度报告' },
@@ -548,7 +560,7 @@ function onMaterialMoreAction(key: string): void {
   }
   if (key === 'course-sync') {
     // MVR-377：与 canRegisterMaterial / BE requireCanManageMaterials 二次拦截
-    if (!props.canRegisterMaterial) {
+    if (props.canRegisterMaterial !== true) {
       showFormValidationMessage('当前账号无材料登记权限')
       return
     }
@@ -646,8 +658,8 @@ function sharedRefTypeLabel(refType?: ArchiveSharedMaterialRefTypeCode): string 
 async function confirmRemoveSharedRef(
   record: ArchiveVolumeSharedMaterialRefResponse,
 ): Promise<void> {
-  if (removingSharedRefId.value || !props.canRemoveSharedMaterialRef) {
-    if (!props.canRemoveSharedMaterialRef) {
+  if (Boolean(removingSharedRefId.value) || props.canRemoveSharedMaterialRef !== true) {
+    if (props.canRemoveSharedMaterialRef !== true) {
       void message.warning('当前账号无解除合用材料引用权限')
     }
     return
@@ -658,7 +670,14 @@ async function confirmRemoveSharedRef(
     type: 'warning',
     okText: '解除引用',
     cancelText: '取消',
-    onOk: () => removeSharedRef(record),
+    onOk: async () => {
+      // MVR-974：onOk 再认 canRemoveSharedMaterialRef，防确认等待期间权限漂移
+      if (props.canRemoveSharedMaterialRef !== true) {
+        void message.warning('当前账号无解除合用材料引用权限')
+        return
+      }
+      await removeSharedRef(record)
+    },
   })
 }
 
@@ -667,7 +686,7 @@ async function removeSharedRef(record: ArchiveVolumeSharedMaterialRefResponse): 
     return
   }
   // MVR-302：与 canRemoveSharedMaterialRef 同源二次拦截
-  if (!props.canRemoveSharedMaterialRef) {
+  if (props.canRemoveSharedMaterialRef !== true) {
     void message.warning('当前账号无解除合用材料引用权限')
     return
   }
@@ -696,7 +715,7 @@ const effectiveExamId = computed(
 
 /** MVR-294/374：与 BE requireCanManageMaterials 对齐，仅认 canRegisterMaterial prop */
 const canGenerateExamReports = computed(
-  () => Boolean(effectiveExamId.value) && props.canRegisterMaterial,
+  () => Boolean(effectiveExamId.value) && props.canRegisterMaterial === true,
 )
 
 const courseObjectiveMappingPath = computed(() => {
@@ -729,7 +748,7 @@ const registerCatalogLabel = computed(() => {
 })
 
 const courseObjectiveMappingHint = computed(() => {
-  if (props.detail.courseObjectiveReportReady) return null
+  if (props.detail.courseObjectiveReportReady === true) return null
   const total = props.detail.courseObjectiveTotalQuestionCount
   const mapped = props.detail.courseObjectiveMappedQuestionCount
   const goalTotal = props.detail.courseObjectiveTotalGoalCount
@@ -753,9 +772,9 @@ const courseObjectiveMappingHint = computed(() => {
 })
 
 async function handleGenerateExamAnalysis(): Promise<void> {
-  if (generatingExamAnalysis.value || generatingCourseObjective.value) return
+  if (generatingExamAnalysis.value === true || generatingCourseObjective.value === true) return
   // MVR-294：与 BE requireCanManageMaterials 二次拦截
-  if (!props.canRegisterMaterial) {
+  if (props.canRegisterMaterial !== true) {
     void message.warning('当前账号无权登记本卷材料，无法生成试卷分析报告')
     return
   }
@@ -775,9 +794,9 @@ async function handleGenerateExamAnalysis(): Promise<void> {
 }
 
 async function handleGenerateCourseObjective(): Promise<void> {
-  if (generatingExamAnalysis.value || generatingCourseObjective.value) return
+  if (generatingExamAnalysis.value === true || generatingCourseObjective.value === true) return
   // MVR-294：与 BE requireCanManageMaterials 二次拦截
-  if (!props.canRegisterMaterial) {
+  if (props.canRegisterMaterial !== true) {
     void message.warning('当前账号无权登记本卷材料，无法生成课程目标达成报告')
     return
   }
@@ -821,7 +840,7 @@ function materialOcrStatusTone(code: ArchiveMaterialOcrStatusCode): BadgeTone {
 
 function canRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): boolean {
   // MVR-185：OCR 重试与收材窗口解耦
-  if (!props.canMaintainMaterial) return false
+  if (props.canMaintainMaterial !== true) return false
   return material.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED && Boolean(material.fileId)
 }
 
@@ -860,7 +879,7 @@ function openMaterialOcrDetail(material: ArchiveVolumeMaterialResponse): void {
 }
 
 function openTagModal(material: ArchiveVolumeMaterialResponse): void {
-  if (!props.canMaintainMaterial) return
+  if (props.canMaintainMaterial !== true) return
   tagEditMaterial.value = material
   tagModalOpen.value = true
 }
@@ -872,8 +891,8 @@ function emitRefreshed(options?: { silent?: boolean }) {
 
 function confirmRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): void {
   // MVR-422：与 canRetryMaterialOcr 同源二次闸（维护权∧FAILED∧fileId）
-  if (!canRetryMaterialOcr(material)) {
-    if (!props.canMaintainMaterial) {
+  if (canRetryMaterialOcr(material) !== true) {
+    if (props.canMaintainMaterial !== true) {
       void message.warning('当前账号无维护材料识别权限')
     } else {
       void message.warning('当前材料不可重试文字识别（非失败态或无文件）')
@@ -888,6 +907,15 @@ function confirmRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): void 
     okText: '入队',
     cancelText: '取消',
     onOk: async () => {
+      // MVR-938：onOk 再认 canRetryMaterialOcr，防确认等待期间材料态/权限漂移
+      if (canRetryMaterialOcr(material) !== true) {
+        if (props.canMaintainMaterial !== true) {
+          void message.warning('当前账号无维护材料识别权限')
+        } else {
+          void message.warning('当前材料不可重试文字识别（非失败态或无文件）')
+        }
+        return
+      }
       if (retryingMaterialIds.has(material.materialId)) return
       retryingMaterialIds.add(material.materialId)
       try {
@@ -980,7 +1008,7 @@ function resolveSelectedCatalogContext(): {
 
 function openUploadModal() {
   // MVR-302：与 canRegisterMaterial 同源二次拦截
-  if (!props.canRegisterMaterial) {
+  if (props.canRegisterMaterial !== true) {
     void message.warning('当前账号无材料登记权限')
     return
   }
@@ -1025,7 +1053,7 @@ function resolveArchiveScanQuery(): Record<string, string> | null {
 
 function openArchiveScan() {
   // MVR-302：扫描收材登记与 canRegisterMaterial 对齐
-  if (!props.canRegisterMaterial) {
+  if (props.canRegisterMaterial !== true) {
     void message.warning('当前账号无材料登记权限')
     return
   }
@@ -1045,7 +1073,7 @@ function handleDispatchCreated(payload: ScanDispatchResultPayload) {
 
 function openSharedRefModal() {
   // MVR-302：合用引用登记与 canRegisterMaterial 对齐
-  if (!props.canRegisterMaterial) {
+  if (props.canRegisterMaterial !== true) {
     void message.warning('当前账号无材料登记权限')
     return
   }
@@ -1057,11 +1085,11 @@ function openSharedRefModal() {
 }
 
 async function submitMaterial() {
-  if (uploading.value) {
+  if (uploading.value === true) {
     return
   }
   // MVR-302：与 canRegisterMaterial 同源二次拦截
-  if (!props.canRegisterMaterial) {
+  if (props.canRegisterMaterial !== true) {
     void message.warning('当前账号无材料登记权限')
     return
   }
@@ -1103,11 +1131,11 @@ async function submitMaterial() {
 }
 
 async function submitSharedRef() {
-  if (sharedRefSubmitting.value) {
+  if (sharedRefSubmitting.value === true) {
     return
   }
   // MVR-302：与 canRegisterMaterial 同源二次拦截
-  if (!props.canRegisterMaterial) {
+  if (props.canRegisterMaterial !== true) {
     void message.warning('当前账号无材料登记权限')
     return
   }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// MVR-950：残留 can* 控制流仅认 === true
 /**
  * 独立路由：考试绑定（全屏，非 Teleport 遮罩）。
  */
@@ -18,7 +19,7 @@ const binding = ref(false)
 const scanReadyCount = computed(() => workflow.bindExamCandidateTotal.value)
 
 const statusLabel = computed(() => {
-  if (workflow.bindExamCandidateLoading.value) return '加载考试中'
+  if (workflow.bindExamCandidateLoading.value === true) return '加载考试中'
   if (workflow.bindExamCandidateLoadIssue.value) return '考试列表加载失败'
   if (scanReadyCount.value <= 0) return '暂无可扫描考试'
   return `${scanReadyCount.value} 场可扫描`
@@ -40,14 +41,14 @@ const selectedExamStillVisible = computed(() => {
 const canConfirmBind = computed(
   () =>
     selectedExamStillVisible.value
-    && !binding.value
-    && !workflow.bindExamCandidateLoading.value
+    && binding.value !== true
+    && workflow.bindExamCandidateLoading.value !== true
     && !workflow.bindExamCandidateLoadIssue.value,
 )
 
 async function submitBind() {
   const targetExamId = selectedExamId.value?.trim()
-  if (!targetExamId || binding.value || !canConfirmBind.value) return
+  if (!targetExamId || binding.value === true || canConfirmBind.value !== true) return
   binding.value = true
   workflow.errorMessage.value = ''
   try {
@@ -130,8 +131,8 @@ onMounted(() => {
       <KioskExamPickPanel
         v-model:selected-exam-id="selectedExamId"
         class="exam-gate__panel"
-        :class="{ 'exam-gate__panel--busy': binding || workflow.bindExamCandidateLoading.value }"
-        :interaction-locked="binding"
+        :class="{ 'exam-gate__panel--busy': binding === true || workflow.bindExamCandidateLoading.value === true }"
+        :interaction-locked="binding === true"
         :instant-bind="false"
       />
 
@@ -143,7 +144,7 @@ onMounted(() => {
         <button
           type="button"
           class="exam-gate__confirm-btn"
-          :disabled="!canConfirmBind"
+          :disabled="canConfirmBind !== true"
           @click="submitBind"
         >
           {{ binding ? '绑定中…' : '确认绑定并进入' }}

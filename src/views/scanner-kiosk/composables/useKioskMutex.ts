@@ -67,26 +67,26 @@ export function useKioskMutex(workflow: ExamKioskWorkflow) {
       switchScanner: jobInflightBlocked.value,
 
       retryPageRegister:
-        workflow.loading.value || workflow.pageRegisterRetryLoading.value
+        workflow.loading.value === true || workflow.pageRegisterRetryLoading.value === true
           ? '正在处理中'
-          : workflow.canRetryPageRegister.value
+          : workflow.canRetryPageRegister.value === true
             ? ''
-            : workflow.pageRegisterPending.value || workflow.pageRegisterBlocked.value
+            : workflow.pageRegisterPending.value === true || workflow.pageRegisterBlocked.value === true
               ? '页登记重试条件未满足'
               : '当前无待重试页登记',
       startDirectScan:
         workflow.directScanBlockedReason.value
-        || (workflow.loading.value ? '正在处理中' : ''),
+        || (workflow.loading.value === true ? '正在处理中' : ''),
       openSupplementLaunch:
         workflow.supplementScanBlockedReason.value
-        || (workflow.loading.value ? '正在处理中' : ''),
+        || (workflow.loading.value === true ? '正在处理中' : ''),
       startSupplementScan:
         workflow.supplementScanBlockedReason.value
         || workflow.supplementLaunchFieldBlockedReason.value
-        || (workflow.loading.value ? '正在处理中' : ''),
+        || (workflow.loading.value === true ? '正在处理中' : ''),
 
       pauseJob:
-        workflow.loading.value
+        workflow.loading.value === true
           ? '正在处理中'
           : status === LocalScanJobStatusCode.SCANNING
             ? ''
@@ -96,55 +96,55 @@ export function useKioskMutex(workflow: ExamKioskWorkflow) {
                   ? '本批次已进入上传/提交阶段，不能暂停'
                   : '当前任务不在采集阶段',
       resumeJob:
-        workflow.loading.value
+        workflow.loading.value === true
           ? '正在处理中'
           : status === LocalScanJobStatusCode.PAUSED
             ? ''
             : !job
                 ? '当前没有可恢复的任务'
                 : '当前任务不在暂停阶段',
-      endBatch: workflow.loading.value
+      endBatch: workflow.loading.value === true
         ? '正在处理中'
-        : workflow.canEndBatch.value
+        : workflow.canEndBatch.value === true
           ? ''
           : !job
               ? '当前没有进行中的批次'
               : status && UPLOAD_PHASE_JOB_STATUSES.includes(status)
                 ? '本批次已进入上传/提交阶段，请使用重试上传或重试提交'
                 : '当前任务不在采集阶段，不能结束批次',
-      cancelJob: workflow.loading.value
+      cancelJob: workflow.loading.value === true
         ? '正在处理中'
-        : workflow.canCancelJob.value
+        : workflow.canCancelJob.value === true
           ? ''
           : !job
-              ? workflow.hasOrphanBackendScanSession.value
+              ? workflow.hasOrphanBackendScanSession.value === true
                 ? '当前未完成进程不可结束'
                 : '当前没有可取消的任务'
               : job.status === LocalScanJobStatusCode.FAILED
                 ? '扫描已产生页面，请使用重试上传或删除任务'
                 : '当前任务已进入上传链路，不能取消',
-      retryUpload: workflow.loading.value
+      retryUpload: workflow.loading.value === true
         ? '正在处理中'
-        : workflow.canRetryUpload.value
+        : workflow.canRetryUpload.value === true
           ? ''
-          : workflow.isPreUploadScanFailure.value
+          : workflow.isPreUploadScanFailure.value === true
             ? '扫描未产生页面，请取消任务后重新开始'
             : '当前任务不允许重试上传',
-      retryCommit: workflow.loading.value
+      retryCommit: workflow.loading.value === true
         ? '正在处理中'
-        : workflow.canRetryCommit.value
+        : workflow.canRetryCommit.value === true
           ? ''
           : '当前任务不允许重试提交',
-      removeJob: workflow.loading.value
+      removeJob: workflow.loading.value === true
         ? '正在处理中'
-        : workflow.canRemoveCurrentJob.value
+        : workflow.canRemoveCurrentJob.value === true
         ? ''
-        : workflow.currentJobAllPagesUploadedButUnconfirmed.value
+        : workflow.currentJobAllPagesUploadedButUnconfirmed.value === true
             ? '页面已上传完成但批次未确认，请先重试提交'
             : workflow.removeCurrentJobTitle.value,
-      discardLedgerPage: workflow.loading.value
+      discardLedgerPage: workflow.loading.value === true
         ? '正在处理中'
-        : workflow.canDiscardLedgerPage.value
+        : workflow.canDiscardLedgerPage.value === true
           ? ''
           : jobInflightBlocked.value,
 

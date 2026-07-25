@@ -21,7 +21,7 @@
             v-if="showRetryPackagingAction"
             variant="outline"
             size="sm"
-            :loading="packagingActionLoading"
+            :loading="packagingActionLoading === true"
             @click="retryPackaging"
           >
             重新打包
@@ -129,7 +129,7 @@
                 pagination-mode="server"
                 :columns="volumeTableColumns"
                 :data-source="healthyVolumes"
-                :loading="volumesLoading"
+                :loading="volumesLoading === true"
                 :total="volumePagination.total"
                 flat
                 row-key="volumeId"
@@ -186,6 +186,7 @@
 </template>
 
 <script setup lang="ts">
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type {
   ArchiveVolumeExamArchiveReviewVO,
   ArchiveVolumeExamVolumeProgressItemVO,
@@ -256,12 +257,12 @@ const { goScorePublish } = useScoreReleaseNavigation()
 
 const showGateScorePublishAction = computed(() => {
   const gate = examGate.value
-  return Boolean(gate && !gate.gateOpen && !gate.allScoresPublished)
+  return Boolean(gate && gate.gateOpen !== true && gate.allScoresPublished !== true)
 })
 
 const showGateCloseExamAction = computed(() => {
   const gate = examGate.value
-  return Boolean(gate && !gate.gateOpen && gate.allScoresPublished && !gate.examClosed)
+  return Boolean(gate && gate.gateOpen !== true && gate.allScoresPublished === true && gate.examClosed !== true)
 })
 
 const primaryOpenVolumeId = computed(() => {
@@ -271,7 +272,7 @@ const primaryOpenVolumeId = computed(() => {
 
 const archiveGateMoreItems = computed(() => {
   const items: { key: string, label: string }[] = []
-  if (canManageOwnerArchivePackageWrites.value && canCreatePackage.value) {
+  if (canManageOwnerArchivePackageWrites.value === true && canCreatePackage.value === true) {
     items.push({ key: 'createExportPackage', label: '创建导出归档包' })
   }
   if (showGateScorePublishAction.value) {
@@ -355,10 +356,10 @@ const canManageOwnerArchivePackageWrites = computed(
 )
 
 const canCreatePackage = computed(() => {
-  if (!canManageOwnerArchivePackageWrites.value) {
+  if (canManageOwnerArchivePackageWrites.value !== true) {
     return false
   }
-  if (!gateOpen.value || packagingActionLoading.value) {
+  if (gateOpen.value !== true || packagingActionLoading.value === true) {
     return false
   }
   const status = archivePackage.value?.archiveStatus
@@ -373,8 +374,8 @@ const canCreatePackage = computed(() => {
 
 const showRetryPackagingAction = computed(
   () =>
-    canManageOwnerArchivePackageWrites.value
-    && gateOpen.value
+    canManageOwnerArchivePackageWrites.value === true
+    && gateOpen.value === true
     && archivePackage.value?.archiveStatus === ArchivePackageStatusCode.PACKAGING_FAILED,
 )
 
@@ -386,10 +387,10 @@ const reviewStatusLabel = computed(() => {
   if (archivePackage.value?.archiveStatusLabel) {
     return archivePackage.value.archiveStatusLabel
   }
-  if (!gate.gateOpen && gate.allScoresPublished && !gate.examClosed) {
+  if (gate.gateOpen !== true && gate.allScoresPublished === true && gate.examClosed !== true) {
     return '待关考'
   }
-  if (!gate.gateOpen) {
+  if (gate.gateOpen !== true) {
     return '双门禁未满足'
   }
   if (primaryOpenVolumeId.value) {
@@ -418,7 +419,7 @@ const reviewStatusTone = computed(() => {
   ) {
     return 'red' as const
   }
-  if (!gateOpen.value) {
+  if (gateOpen.value !== true) {
     return 'orange' as const
   }
   return 'gray' as const
@@ -426,11 +427,11 @@ const reviewStatusTone = computed(() => {
 
 const reviewSignals = computed<SignalMetric[]>(() => {
   const pkg = archivePackage.value
-  const retentionLabel = pkg?.permanentRetention
+  const retentionLabel = pkg?.permanentRetention === true
     ? '永久'
     : pkg?.retentionYears != null
       ? `${pkg.retentionYears} 年`
-      : gateOpen.value
+      : gateOpen.value === true
         ? `${DEFAULT_RETENTION_YEARS} 年`
         : '—'
   return [
@@ -470,7 +471,7 @@ const reviewSignals = computed<SignalMetric[]>(() => {
 
 const showVolumeCollapse = computed(
   () =>
-    gateOpen.value
+    gateOpen.value === true
     && (volumePagination.total > 0
       || hasAutoCreateFailure.value
       || examGate.value?.autoCreatePendingStatus != null),
@@ -491,10 +492,10 @@ const volumeCollapseHeader = computed(() => {
 
 const showVolumeAutoCreateStatus = computed(
   () =>
-    gateOpen.value
+    gateOpen.value === true
     && (hasAutoCreateFailure.value
       || examGate.value?.autoCreatePendingStatus != null
-      || showRetryAutoCreate.value),
+      || showRetryAutoCreate.value === true),
 )
 
 const volumeTableColumns = computed(() => {
@@ -544,7 +545,7 @@ const showNonOwnerHint = computed(() => {
   return (
     hasAutoCreateFailure.value
     || gate.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
-    || (gate.gateOpen === true && !gate.autoCreateFailureStubPresent)
+    || (gate.gateOpen === true && gate.autoCreateFailureStubPresent !== true)
   )
 })
 
@@ -691,7 +692,7 @@ async function loadReview() {
 }
 
 function syncPackagingPoll() {
-  if (isPackaging.value) {
+  if (isPackaging.value === true) {
     startPackagingPoll()
     return
   }
@@ -716,10 +717,10 @@ function stopPackagingPoll() {
 }
 
 async function createPackage() {
-  if (!canManageOwnerArchivePackageWrites.value) {
+  if (canManageOwnerArchivePackageWrites.value !== true) {
     return
   }
-  if (!examId.value || !canCreatePackage.value || packagingActionLoading.value) {
+  if (!examId.value || canCreatePackage.value !== true || packagingActionLoading.value === true) {
     return
   }
   packagingActionLoading.value = true
@@ -744,15 +745,15 @@ async function createPackage() {
 
 async function retryPackaging() {
   // MVR-424：与 showRetryPackagingAction / 按钮显隐同源二次闸（主考写∧双门禁开∧PACKAGING_FAILED）
-  if (!showRetryPackagingAction.value) {
+  if (showRetryPackagingAction.value !== true) {
     void message.warning(
-      canManageOwnerArchivePackageWrites.value
+      canManageOwnerArchivePackageWrites.value === true
         ? '当前不可重新打包（门禁未开或归档包非失败态）'
         : '当前账号无归档打包写权限',
     )
     return
   }
-  if (!examId.value || packagingActionLoading.value) {
+  if (!examId.value || packagingActionLoading.value === true) {
     return
   }
   packagingActionLoading.value = true
@@ -810,11 +811,11 @@ function goExamListForClose() {
 }
 
 async function retryAutoCreate() {
-  if (!examId.value || retrying.value || polling.value) {
+  if (!examId.value || retrying.value === true || polling.value === true) {
     return
   }
   // MVR-313：与 showRetryAutoCreate / BE requireExamOwnerPermission 同源
-  if (!showRetryAutoCreate.value) {
+  if (showRetryAutoCreate.value !== true) {
     void message.warning('当前不可重新触发自动建卷')
     return
   }

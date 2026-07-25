@@ -149,7 +149,7 @@
     v-model:open="createModalOpen"
     title="创建导出任务"
     :width="640"
-    :confirm-loading="creating"
+    :confirm-loading="creating === true"
     ok-text="创建"
     @ok="handleCreate"
   >
@@ -159,7 +159,7 @@
         variant="primary"
         size="sm"
         :loading="creating"
-        :disabled="!createValid"
+        :disabled="createValid !== true"
         @click="handleCreate"
       >
         创建
@@ -669,7 +669,7 @@ const exportTypeOptions = computed(() =>
     value: code,
     label: exportTypeLabel(code),
     // 非主考禁用影像归档包，避免点后 BE 主考拒收
-    disabled: code === ExportTypeCode.IMAGE_ARCHIVE && !canManageOwnerImageArchiveExport.value,
+    disabled: code === ExportTypeCode.IMAGE_ARCHIVE && canManageOwnerImageArchiveExport.value !== true,
   })),
 )
 
@@ -804,7 +804,7 @@ function buildExportTaskActions(record: ExportTaskResponse): UiTableRowActionIte
       key: 'download',
       label: '下载',
       tone: 'primary',
-      hidden: !canDownloadExportTask(record),
+      hidden: canDownloadExportTask(record) !== true,
       disabled: downloadingId.value === record.taskId,
     },
     { key: 'detail', label: '详情' },
@@ -946,7 +946,7 @@ function resetCreateForm(): void {
 watch([canManageOwnerImageArchiveExport, () => createForm.exportType], () => {
   if (
     createForm.exportType === ExportTypeCode.IMAGE_ARCHIVE
-    && !canManageOwnerImageArchiveExport.value
+    && canManageOwnerImageArchiveExport.value !== true
   ) {
     createForm.exportType = ExportTypeCode.SCORE_EXCEL
     createForm.exportScope = firstSupportedExportScope(createForm.exportType)
@@ -992,11 +992,11 @@ async function openCreateModal(): Promise<void> {
 }
 
 async function handleCreate(): Promise<void> {
-  if (!selectedExamId.value || !createValid.value) return
-  if (creating.value) return
+  if (!selectedExamId.value || createValid.value !== true) return
+  if (creating.value === true) return
   if (
     createForm.exportType === ExportTypeCode.IMAGE_ARCHIVE
-    && !canManageOwnerImageArchiveExport.value
+    && canManageOwnerImageArchiveExport.value !== true
   ) {
     void message.warning('仅考试主考可创建影像归档包导出任务')
     return
@@ -1081,7 +1081,7 @@ function formatScopeItem(item: ExportScopeItemResponse): string {
 // ─── 下载 ─────────────────────────────────────
 
 async function handleDownload(record: ExportTaskResponse): Promise<void> {
-  if (!canDownloadExportTask(record)) {
+  if (canDownloadExportTask(record) !== true) {
     void message.warning('该任务尚未生成文件')
     return
   }

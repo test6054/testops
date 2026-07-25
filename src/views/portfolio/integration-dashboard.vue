@@ -23,6 +23,7 @@ import type {
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
 import type { PortfolioDevelopmentRecordTypeCode } from '@/types/enums/portfolio-development-record-type-enum'
+import type { PortfolioHrEmploymentStatusCode } from '@/types/enums/portfolio-hr-employment-status-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
@@ -233,7 +234,7 @@ const dsForm = reactive({
     teacherNumber: string
     teacherName: string
     title: string
-    employmentStatus: string
+    employmentStatus: PortfolioHrEmploymentStatusCode | ''
   }>,
 })
 
@@ -436,7 +437,7 @@ function buildConnectionConfig(): PortfolioIntegrationConnectionConfigDto | unde
           teacherNumber: item.teacherNumber.trim(),
           teacherName: item.teacherName.trim() || undefined,
           title: item.title.trim() || undefined,
-          employmentStatus: item.employmentStatus.trim() || undefined,
+          employmentStatus: (item.employmentStatus.trim() || undefined) as PortfolioHrEmploymentStatusCode | undefined,
         })),
     }
   }
@@ -747,7 +748,7 @@ const dictEntryColumns: ColumnsType = [
 const nationalIssueColumns: ColumnsType = [
   { title: '工号', dataIndex: 'teacherNumber', key: 'teacherNumber', width: 120 },
   { title: '姓名', dataIndex: 'teacherName', key: 'teacherName', width: 120 },
-  { title: '问题编码', dataIndex: 'issueCodes', key: 'issueCodes', width: 200 },
+  { title: '问题编码', dataIndex: 'issueCodeList', key: 'issueCodeList', width: 200, customRender: ({ text }: { text?: string[] }) => (text && text.length ? text.join(',') : '—') },
   { title: '明细', key: 'issueDetails', ellipsis: true },
   { title: '状态', dataIndex: 'statusLabel', key: 'statusLabel', width: 100 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },

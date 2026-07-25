@@ -56,7 +56,7 @@
           flat
           :columns="columns"
           :data-source="taskRows"
-          :loading="loading"
+          :loading="loading === true"
           :total="pageTotal"
           row-key="reviewTaskId"
           size="middle"
@@ -407,7 +407,8 @@ function buildArbitrationActions(record: ReviewTaskItemResponse): UiTableRowActi
       key: 'workspace',
       label: '进入仲裁',
       tone: 'primary',
-      hidden: !isActionableTask(record) || record.canManageReviewerWrites !== true,
+      // MVR-955：isActionableTask 与 BE canManageReviewerWrites 均严格比较
+      hidden: isActionableTask(record) !== true || record.canManageReviewerWrites !== true,
     },
   ]
 }
@@ -611,7 +612,7 @@ function goReviewWorkspace(record: ReviewTaskItemResponse): void {
     void message.warning('当前账号无本场复核写权限，无法进入仲裁工作台')
     return
   }
-  if (!isActionableTask(record)) {
+  if (isActionableTask(record) !== true) {
     void message.warning('当前任务状态不可进入仲裁工作台')
     return
   }

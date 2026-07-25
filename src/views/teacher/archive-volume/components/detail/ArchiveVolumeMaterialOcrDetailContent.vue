@@ -1,7 +1,7 @@
 <template>
   <UiAlertStrip v-if="loadError" tone="error" title="文字识别详情加载失败">
     <template #actions>
-      <UiButton size="sm" variant="outline" :loading="loading" @click="loadDetail">
+      <UiButton size="sm" variant="outline" :loading="loading === true" @click="loadDetail">
         重新加载
       </UiButton>
     </template>

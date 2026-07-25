@@ -78,7 +78,7 @@ function onSnapChange(value: SelectValue, _option?: DefaultOptionType | DefaultO
 
 <template>
   <div class="layout-canvas-toolbar">
-    <div v-if="!readOnly" class="layout-canvas-toolbar__group">
+    <div v-if="readOnly === false" class="layout-canvas-toolbar__group">
       <UiRadioGroup
         :model-value="canvasTool"
         size="sm"
@@ -102,7 +102,7 @@ function onSnapChange(value: SelectValue, _option?: DefaultOptionType | DefaultO
       <UiCheckbox :checked="showGrid" @change="toggleGrid">对齐网格</UiCheckbox>
       <UiCheckbox :checked="showSafeMargin" @change="toggleSafeMargin">安全边距</UiCheckbox>
       <UiSelect
-        v-if="!readOnly"
+        v-if="readOnly === false"
         :model-value="snapGridMm"
         size="small"
         style="width: 108px"

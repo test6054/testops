@@ -283,7 +283,7 @@ export function useArchiveTaskCreate() {
     } catch {
       return false
     }
-    if (!planForm.permanentRetention && planForm.retentionYears == null) {
+    if (planForm.permanentRetention !== true && planForm.retentionYears == null) {
       showFormValidationMessage('请填写保管年限或勾选永久保管')
       return false
     }
@@ -314,11 +314,11 @@ export function useArchiveTaskCreate() {
   }
 
   async function handleCreateTask(): Promise<ArchiveTaskCreateSectionKey | null> {
-    if (submitting.value) {
+    if (submitting.value === true) {
       return null
     }
     submitErrorMessage.value = ''
-    if (templateLoading.value || templateLoadFailed.value) {
+    if (templateLoading.value === true || templateLoadFailed.value === true) {
       void message.error(
         templateLoading.value ? '目录模板正在加载，请稍候' : '目录模板加载失败，请重新加载',
       )
@@ -365,7 +365,7 @@ export function useArchiveTaskCreate() {
         teachingClassId: basicForm.teachingClassId,
         departmentId: basicForm.departmentId,
         relatedExamId: basicForm.relatedExamId ?? undefined,
-        retentionYears: planForm.permanentRetention ? undefined : planForm.retentionYears,
+        retentionYears: planForm.permanentRetention === true ? undefined : planForm.retentionYears,
         permanentRetention: planForm.permanentRetention,
         responsibleUserId: planForm.responsibleUserId ?? undefined,
         archiveDueTimeOverride: planForm.archiveDueTimeOverride,

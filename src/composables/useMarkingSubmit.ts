@@ -212,7 +212,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
 
   function persistDraftIfNeeded(): void {
     const currentTask = options.task.value
-    if (!currentTask || !options.canSubmit.value || options.isReadOnly.value) return
+    if (!currentTask || options.canSubmit.value !== true || options.isReadOnly.value === true) return
     const tenantId = options.tenantId.value
     if (!tenantId) return
     const key = buildGradingDraftKey(tenantId, currentTask.examId, currentTask.id)
@@ -247,9 +247,9 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       return
     }
     // MVR-413：与 canSubmit / isScoreReadOnly / BE requireActiveExam 二次闸，禁止关考后批量应用假可写
-    if (options.isReadOnly.value || !options.canSubmit.value) {
+    if (options.isReadOnly.value === true || options.canSubmit.value !== true) {
       showFormValidationMessage(
-        options.isReadOnly.value
+        options.isReadOnly.value === true
           ? '当前不可给分（已定稿/已回收或考试已关闭）'
           : '当前任务状态不可提交给分',
       )
@@ -409,14 +409,14 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   }
 
   async function submit(): Promise<void> {
-    if (submitting.value) {
+    if (submitting.value === true) {
       return
     }
     // MVR-413：handler 二次闸，与 canSubmit / isScoreReadOnly / BE requireActiveExam 同源；
     // 覆盖 AI 采纳、整卷末题 Enter、键盘 Enter 等非按钮入口，禁止仅靠 disabled 拦截。
-    if (options.isReadOnly.value || !options.canSubmit.value) {
+    if (options.isReadOnly.value === true || options.canSubmit.value !== true) {
       showFormValidationMessage(
-        options.isReadOnly.value
+        options.isReadOnly.value === true
           ? '当前不可给分（已定稿/已回收或考试已关闭）'
           : '当前任务状态不可提交给分',
       )
@@ -490,11 +490,11 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   }
 
   async function acceptAiScoreAndSubmit(): Promise<void> {
-    if (options.questionView.value?.aiScore == null || submitting.value) return
+    if (options.questionView.value?.aiScore == null || submitting.value === true) return
     // MVR-413：与 submit 二次闸同源，避免采纳入口绕过按钮 disabled
-    if (options.isReadOnly.value || !options.canSubmit.value) {
+    if (options.isReadOnly.value === true || options.canSubmit.value !== true) {
       showFormValidationMessage(
-        options.isReadOnly.value
+        options.isReadOnly.value === true
           ? '当前不可给分（已定稿/已回收或考试已关闭）'
           : '当前任务状态不可提交给分',
       )
@@ -505,7 +505,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   }
 
   const hasGradingDraft = computed(() => {
-    if (!options.canSubmit.value || options.isReadOnly.value) {
+    if (options.canSubmit.value !== true || options.isReadOnly.value === true) {
       return false
     }
     if (options.usesWholePaperWorkspace.value) {

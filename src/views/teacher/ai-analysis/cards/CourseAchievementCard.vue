@@ -6,10 +6,10 @@
         查看历史
       </UiButton>
       <UiButton
-        v-if="canManageReviewerWrites"
+        v-if="canManageReviewerWrites === true"
         variant="primary"
         size="sm"
-        :loading="generating"
+        :loading="generating === true"
         @click="handleGenerate"
       >
         生成达成度分析
@@ -75,6 +75,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type {
   CourseAchievementItemResponse,
   CourseObjectiveAchievementResponse,
@@ -169,7 +170,7 @@ const scopeReady = computed(() =>
 /** 按 Tab 范围同步本课程本学期全部考核环节。 */
 async function syncScopedExams(): Promise<void> {
   const semester = effectiveSemester.value
-  if (!scopeReady.value || !semester) {
+  if (scopeReady.value !== true || !semester) {
     scopedExamSummaries.value = []
     scopedExamIds.value = []
     return
@@ -216,7 +217,7 @@ watch(
   async () => {
     clearHistory()
     await syncScopedExams()
-    if (scopeReady.value) {
+    if (scopeReady.value === true) {
       await reload({ silent: true })
     }
   },
@@ -391,7 +392,7 @@ const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
 )
 
 async function handleGenerate(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
@@ -415,7 +416,7 @@ async function handleGenerate(): Promise<void> {
     showFormValidationMessage('当前范围内考核环节不足 2 场，无法生成达成度分析')
     return
   }
-  if (generating.value) return
+  if (generating.value === true) return
   generating.value = true
   try {
     const generated = await generateAchievement({

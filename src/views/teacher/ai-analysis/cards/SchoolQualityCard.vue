@@ -4,10 +4,10 @@
       <AiAnalysisHistorySelect v-model="historySelectedId" :rows="historyRows" :loading="loading" />
       <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
       <UiButton
-        v-if="canManageReviewerWrites"
+        v-if="canManageReviewerWrites === true"
         variant="primary"
         size="sm"
-        :loading="generating"
+        :loading="generating === true"
         @click="handleGenerate"
       >
         生成分析
@@ -27,7 +27,7 @@
       <template #field-examIds>
         <AnalysisExamMultiSelect
           v-model="form.examIds"
-          :disabled="!examSelectReady"
+          :disabled="examSelectReady !== true"
           :disabled-title="examSelectHint"
           :scope-course-id="examSelectScopeCourseId"
           :scope-class-id="examSelectScopeClassId"
@@ -92,6 +92,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type {
   SchoolQualityAnalysisResponse,
@@ -510,11 +511,11 @@ const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
 )
 
 async function handleGenerate(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
-  if (generating.value) return
+  if (generating.value === true) return
   const examIds = form.examIds
   if (
     form.analysisDimension === SchoolQualityDimensionCode.COURSE

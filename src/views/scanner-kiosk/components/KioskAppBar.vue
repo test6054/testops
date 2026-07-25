@@ -46,7 +46,7 @@ const examPillTitle = computed(() => {
 })
 
 function handleExamPillClick() {
-  if (!workflow.canSwitchExam.value) {
+  if (workflow.canSwitchExam.value !== true) {
     workflow.errorMessage.value = workflow.switchExamBlockedReason.value
     return
   }

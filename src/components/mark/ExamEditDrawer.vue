@@ -143,7 +143,7 @@
           />
         </UiFormItem>
         <UiFormItem label="涉密场次" name="confidential">
-          <UiSwitch size="sm" v-model="examForm.confidential" :disabled="detailLoading" />
+          <UiSwitch size="sm" v-model="examForm.confidential" :disabled="detailLoading === true" />
         </UiFormItem>
       </section>
     </UiForm>
@@ -152,11 +152,11 @@
         取消
       </UiButton>
       <UiButton
-        v-if="canManageOwnerExamLifecycleWrites"
+        v-if="canManageOwnerExamLifecycleWrites === true"
         size="sm"
         variant="primary"
         :loading="saving"
-        :disabled="detailLoading"
+        :disabled="detailLoading === true"
         @click="handleSave"
       >
         保存
@@ -166,6 +166,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ExamUpdateRequest } from '@/apis/mark/exam'
 import type { SemesterCode } from '@/types/enums/semester-enum'
@@ -332,7 +333,7 @@ async function loadDetail(examId: string): Promise<void> {
   try {
     const detail = await getExamDetail(examId)
     canManageOwnerExamLifecycleWrites.value = detail.canManageOwnerExamLifecycleWrites === true
-    if (!canManageOwnerExamLifecycleWrites.value) {
+    if (canManageOwnerExamLifecycleWrites.value !== true) {
       void message.warning('仅考试主考可修改考试主信息')
       emit('update:open', false)
       return
@@ -391,12 +392,16 @@ function buildUpdateRequest(): ExamUpdateRequest | null {
 }
 
 async function handleSave(): Promise<void> {
+  // MVR-970：保存防重入，避免连点并发 updateExam
+  if (saving.value === true) {
+    return
+  }
   // MVR-428：仅认 BE 下发 canManageOwnerExamLifecycleWrites === true，禁止 truthy 回退
-  if (!canManageOwnerExamLifecycleWrites.value) {
+  if (canManageOwnerExamLifecycleWrites.value !== true) {
     void message.warning('仅考试主考可修改考试主信息')
     return
   }
-  if (detailLoading.value) {
+  if (detailLoading.value === true) {
     void message.warning('考试详情加载中，请稍候再保存')
     return
   }

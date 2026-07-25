@@ -86,13 +86,13 @@ export function canSubmitArchiveVolume(input: SubmitGateInput): boolean {
   const blockingRemediation
     = input.hasBlockingRemediationForSubmit ?? volume.hasBlockingRemediationForSubmit
   if (!volumeStatusAllowsSubmit(volume.volumeStatus, departmentReviewEnabled)) return false
-  if (blockingRemediation) return false
-  if (!canActAsSubmitOwner(input)) return false
+  if (blockingRemediation === true) return false
+  if (canActAsSubmitOwner(input) !== true) return false
   if (volume.submitReady === true) return true
   if (volume.submitReady === false) return false
-  if (fourPropertyStale) return false
-  if (volume.securityMarkPending) return false
-  if (!fourPropertyPassed) return false
+  if (fourPropertyStale === true) return false
+  if (volume.securityMarkPending === true) return false
+  if (fourPropertyPassed !== true) return false
   if (
     volume.integrityStatus !== ArchiveIntegrityStatusCode.PASSED
     && volume.integrityStatus !== ArchiveIntegrityStatusCode.WAIVED
@@ -100,8 +100,8 @@ export function canSubmitArchiveVolume(input: SubmitGateInput): boolean {
     return false
 }
   if (!isScoreSubmitReady(volume)) return false
-  if (volume.requireSelfCheckConfirm) {
-    if (!volume.selfCheckConfirmed || volume.signOffReady !== true) {
+  if (volume.requireSelfCheckConfirm === true) {
+    if (volume.selfCheckConfirmed !== true || volume.signOffReady !== true) {
       return false
     }
   }
@@ -157,7 +157,7 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
   if (input.hasBlockingRemediationForSubmit ?? volume.hasBlockingRemediationForSubmit) {
     return '存在未关闭整改任务，须关闭后再提交'
   }
-  if (!canActAsSubmitOwner(input)) return null
+  if (canActAsSubmitOwner(input) !== true) return null
 
   const checklistMessage = findFirstBlockingMessage(input.blockingItems)
   if (checklistMessage) {
@@ -168,10 +168,10 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
   }
 
   if (volume.submitReady === false) {
-    if (volume.requireSelfCheckConfirm && !volume.selfCheckConfirmed) {
+    if (volume.requireSelfCheckConfirm === true && volume.selfCheckConfirmed !== true) {
       return '请先完成提交前自查确认'
     }
-    if (volume.requireSelfCheckConfirm && volume.signOffReady === false) {
+    if (volume.requireSelfCheckConfirm === true && volume.signOffReady === false) {
       return '签字核查项未全部确认'
     }
     return '提交前置未满足，请完成编目、自查与完整性/四性/成绩检查'
@@ -183,13 +183,13 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
   ) {
     return '完整性未通过，请先执行完整性检查或授权豁免'
   }
-  if (input.fourPropertyStale ?? volume.fourPropertyStale) {
+  if ((input.fourPropertyStale ?? volume.fourPropertyStale) === true) {
     return '四性结论已失效，请重新检测'
   }
-  if (volume.securityMarkPending) {
+  if (volume.securityMarkPending === true) {
     return '密级定密待确认，请先完成定密确认并重新执行四性检测'
   }
-  const fourPassed = input.fourPropertyPassed ?? (volume.submitReady === true ? true : undefined)
+  const fourPassed = input.fourPropertyPassed === true ? true : input.fourPropertyPassed === false ? false : undefined
   if (fourPassed === false) {
     return '四性检测未通过，请先执行四性检测'
   }
@@ -199,10 +199,10 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
     }
     return '成绩证明未完成，请先确认成绩或上传证明文件'
   }
-  if (volume.requireSelfCheckConfirm && !volume.selfCheckConfirmed) {
+  if (volume.requireSelfCheckConfirm === true && volume.selfCheckConfirmed !== true) {
     return '请先完成提交前自查确认'
   }
-  if (volume.requireSelfCheckConfirm && volume.signOffReady === false) {
+  if (volume.requireSelfCheckConfirm === true && volume.signOffReady === false) {
     return '签字核查项未全部确认'
   }
   return null
@@ -235,7 +235,7 @@ export function canSubmitArchiveVolumeDetail(
       detail.capabilities?.departmentReviewEnabled ?? detail.volume.departmentReviewEnabled,
     volumeRole: detail.volumeRole,
     fourPropertyStale: detail.fourPropertyStale,
-    fourPropertyPassed: detail.latestFourPropertyCheck?.overallPassed,
+    fourPropertyPassed: detail.latestFourPropertyCheck?.overallPassed === true ? true : detail.latestFourPropertyCheck?.overallPassed === false ? false : undefined,
     hasBlockingRemediationForSubmit: detail.hasBlockingRemediationForSubmit,
   })
 }
@@ -253,7 +253,7 @@ export function describeSubmitBlockReasonForDetail(
       detail.capabilities?.departmentReviewEnabled ?? detail.volume.departmentReviewEnabled,
     volumeRole: detail.volumeRole,
     fourPropertyStale: detail.fourPropertyStale,
-    fourPropertyPassed: detail.latestFourPropertyCheck?.overallPassed,
+    fourPropertyPassed: detail.latestFourPropertyCheck?.overallPassed === true ? true : detail.latestFourPropertyCheck?.overallPassed === false ? false : undefined,
     hasBlockingRemediationForSubmit: detail.hasBlockingRemediationForSubmit,
     blockingItems,
   })

@@ -149,7 +149,7 @@ const emit = defineEmits<{
   (e: 'viewport-ready', element: HTMLElement | null): void
 }>()
 const resolvedWatermarkLines = computed(() => {
-  if (!props.viewerWatermark) {
+  if (props.viewerWatermark !== true) {
     return []
   }
   if (props.watermarkLines?.length) {
@@ -157,13 +157,13 @@ const resolvedWatermarkLines = computed(() => {
   }
   return buildConfidentialWatermarkLines({ examLabel: props.examLabel })
 })
-const watermarkDensity = computed(() => (props.confidential ? 'dense' : 'normal'))
+const watermarkDensity = computed(() => (props.confidential === true ? 'dense' : 'normal'))
 const scanPagesErrorText = computed(() =>
   getUserProcessFailureMessage(props.error?.message, '扫描页加载失败'),
 )
 
 function onConfidentialContextMenu(event: MouseEvent): void {
-  if (props.confidential) {
+  if (props.confidential === true) {
     event.preventDefault()
   }
 }

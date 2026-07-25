@@ -70,6 +70,7 @@ const statsLoadError = ref(false)
 const statsRequestToken = ref(0)
 const operationKey = ref('')
 const operating = computed(() => Boolean(operationKey.value))
+const exporting = computed(() => operationKey.value === 'borrow:export')
 
 function beginOperation(key: string): boolean {
   if (operating.value) return false

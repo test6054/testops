@@ -298,7 +298,7 @@ watch(selectedTenantId, async (tenantId, prev) => {
     }
     return
   }
-  if (tenantId === resolvedTenantId.value && !configLoading.value && !configLoadFailed.value) {
+  if (tenantId === resolvedTenantId.value && configLoading.value !== true && configLoadFailed.value !== true) {
     return
   }
   await loadSsoForTenant(String(tenantId))

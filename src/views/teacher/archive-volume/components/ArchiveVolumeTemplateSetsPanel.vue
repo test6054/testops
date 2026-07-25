@@ -21,7 +21,7 @@
           pagination-mode="none"
           :columns="platformColumns"
           :data-source="platformSets"
-          :loading="templateSetsLoading"
+          :loading="templateSetsLoading === true"
           :show-pagination="false"
           flat
           row-key="templateSetCode"
@@ -54,7 +54,7 @@
           </template>
         </UiDataTable>
         <div
-          v-if="!templateSetsLoadFailed && canManageArchiveConfig"
+          v-if="!templateSetsLoadFailed && canManageArchiveConfig === true"
           class="archive-template-sets-panel__copy-bar"
         >
           <div class="archive-template-sets-panel__copy-all">
@@ -64,11 +64,11 @@
               v-model="copyAllPrefix"
               placeholder="如 DEFAULT_"
               style="width: 160px"
-              :disabled="copyAllLoading"
+              :disabled="copyAllLoading === true"
             />
             <UiCheckbox v-model="copyAllOverride">覆盖已存在</UiCheckbox>
           </div>
-          <UiButton size="sm" variant="primary" :loading="copyAllLoading" @click="submitCopyAll">
+          <UiButton size="sm" variant="primary" :loading="copyAllLoading === true" @click="submitCopyAll">
             一键复制全部模板
           </UiButton>
         </div>
@@ -89,7 +89,7 @@
           pagination-mode="none"
           :columns="tenantColumns"
           :data-source="tenantSets"
-          :loading="templateSetsLoading"
+          :loading="templateSetsLoading === true"
           :show-pagination="false"
           flat
           row-key="templateSetCode"
@@ -113,7 +113,7 @@
                 {{ record.forkSourceReleaseTag }}
               </span>
               <span v-else>—</span>
-              <UiTag v-if="canResyncTenantSet(record)" tone="orange" size="sm">可重新同步</UiTag>
+              <UiTag v-if="canResyncTenantSet(record) === true" tone="orange" size="sm">可重新同步</UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
@@ -132,7 +132,7 @@
       v-model:material-rows="materialRows"
       v-model:self-check-rows="selfCheckRows"
       :title="editorDrawerTitle"
-      :loading="detailLoading"
+      :loading="detailLoading === true"
       :saving="saving"
       mode="tenant"
       :category-group-map="categoryGroupMap"
@@ -179,7 +179,7 @@
 
     <ArchiveTemplateSetPreviewDrawer
       v-model:open="previewOpen"
-      :loading="previewLoading"
+      :loading="previewLoading === true"
       :preview="previewData"
       :category-group-map="previewCategoryGroupMap"
       :fork-source-set-code="previewForkSourceSetCode"
@@ -189,7 +189,7 @@
       :open="copyOpen"
       title="复制平台模板到本校"
       :width="520"
-      :confirm-loading="copyLoading"
+      :confirm-loading="copyLoading === true"
       ok-text="确认复制"
       :hide-footer="false"
       @update:open="(v: boolean) => (copyOpen = v)"
@@ -237,8 +237,8 @@
         <UiButton
           size="sm"
           variant="primary"
-          :loading="resyncLoading"
-          :disabled="!canSubmitResync"
+          :loading="resyncLoading === true"
+          :disabled="canSubmitResync !== true"
           @click="submitResync"
         >
           确认同步
@@ -271,7 +271,7 @@
         pagination-mode="server"
         :columns="auditColumns"
         :data-source="auditRows"
-        :loading="auditLoading"
+        :loading="auditLoading === true"
         flat
         row-key="auditId"
         size="middle"
@@ -303,6 +303,9 @@
 </template>
 
 <script setup lang="ts">
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchivePlatformTemplatePreviewResponse,
@@ -653,7 +656,7 @@ async function loadTenantSetDetail(templateSetCode: string) {
 
 async function openEditDrawer(templateSetCode: string) {
   // MVR-381：与 canManageArchiveConfig / BE requireTenantAdminForConfig 二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可编辑归档模板')
     return
   }
@@ -676,7 +679,7 @@ function findTenantSetByPlatformSource(sourceSetCode: string) {
 async function openPlatformTemplate(record: ArchiveTenantTemplateSetResponse) {
   const tenantSet = findTenantSetByPlatformSource(record.templateSetCode)
   // MVR-381：无配置写权仅预览；有权且已有本校副本才进编辑
-  if (tenantSet && canManageArchiveConfig.value) {
+  if (tenantSet && canManageArchiveConfig.value === true) {
     await openEditDrawer(tenantSet.templateSetCode)
     return
   }
@@ -686,7 +689,7 @@ async function openPlatformTemplate(record: ArchiveTenantTemplateSetResponse) {
 function openCopyModal(record: ArchiveTenantTemplateSetResponse, defaultTargetSetCode = '') {
   if (templateSetsLoadFailed.value) return
   // MVR-381：复制入口与 canManageArchiveConfig 二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可复制归档模板')
     return
   }
@@ -697,11 +700,11 @@ function openCopyModal(record: ArchiveTenantTemplateSetResponse, defaultTargetSe
 }
 
 async function submitCopy() {
-  if (copyLoading.value) {
+  if (copyLoading.value === true) {
     return
   }
   // MVR-314：模板配置写二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
@@ -734,11 +737,11 @@ async function submitCopy() {
 }
 
 async function submitCopyAll() {
-  if (copyAllLoading.value) {
+  if (copyAllLoading.value === true) {
     return
   }
   // MVR-314：模板配置写二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
@@ -769,11 +772,11 @@ async function submitCopyAll() {
 function openResyncModal(record: ArchiveTenantTemplateSetResponse) {
   if (templateSetsLoadFailed.value) return
   // MVR-381/421：重同步入口与 canManageArchiveConfig ∧ canResyncTenantSet 二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可重新同步归档模板')
     return
   }
-  if (!canResyncTenantSet(record)) {
+  if (canResyncTenantSet(record) !== true) {
     void message.warning('当前模板集无需或无法重新同步（无更新的平台源版本）')
     return
   }
@@ -786,16 +789,16 @@ function buildPlatformTemplateRowActions(
   record: ArchiveTenantTemplateSetResponse,
 ): UiTableRowActionItem[] {
   const tenantSet = findTenantSetByPlatformSource(record.templateSetCode)
-  const canManage = canManageArchiveConfig.value
+  const canManage = canManageArchiveConfig.value === true
   return [
     {
       key: 'open',
-      label: tenantSet && canManage ? '编辑' : '预览',
+      label: tenantSet && canManage === true ? '编辑' : '预览',
     },
     {
       key: 'copy',
       label: '复制到本校',
-      hidden: !!tenantSet || !canManage,
+      hidden: !!tenantSet || canManage !== true,
     },
   ]
 }
@@ -808,14 +811,14 @@ function handlePlatformTemplateRowAction(key: string, record: ArchiveTenantTempl
 function buildTenantTemplateRowActions(
   record: ArchiveTenantTemplateSetResponse,
 ): UiTableRowActionItem[] {
-  const canManage = canManageArchiveConfig.value
+  const canManage = canManageArchiveConfig.value === true
   return [
-    { key: 'edit', label: '编辑', hidden: !canManage },
+    { key: 'edit', label: '编辑', hidden: canManage !== true },
     { key: 'history', label: '版本历史' },
     {
       key: 'resync',
       label: '重新同步',
-      hidden: !canManage || !canResyncTenantSet(record),
+      hidden: canManage !== true || canResyncTenantSet(record) !== true,
     },
   ]
 }
@@ -869,12 +872,12 @@ function handleAuditPageChange(page: { current: number, pageSize: number }): voi
 }
 
 async function submitRestoreFromAudit(auditId: string): Promise<void> {
-  if (restoringAuditId.value || auditLoading.value) {
+  if (Boolean(restoringAuditId.value) || auditLoading.value === true) {
     return
   }
   // MVR-314：模板配置写二次拦截
   // MVR-431：恢复写闸与 canManageArchiveConfig 严格叠闸
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
@@ -887,6 +890,11 @@ async function submitRestoreFromAudit(auditId: string): Promise<void> {
     content: '恢复将覆盖当前模板集内容；若已有归档任务引用该套模板，恢复将被拒绝。',
     type: 'warning',
     onOk: async () => {
+      // MVR-938：onOk 再认 canManageArchiveConfig，防确认等待期间配置写权漂移
+      if (canManageArchiveConfig.value !== true) {
+        void message.warning('仅超级管理员或租户管理员可维护归档模板')
+        return
+      }
       restoringAuditId.value = auditId
       try {
         await restoreArchiveTenantTemplateFromAudit({ auditId })
@@ -904,19 +912,19 @@ async function submitRestoreFromAudit(auditId: string): Promise<void> {
 }
 
 async function submitResync() {
-  if (resyncLoading.value) {
+  if (resyncLoading.value === true) {
     return
   }
   // MVR-314/421：模板配置写 ∧ 可重同步源版本二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
-  if (!resyncTarget.value || !canResyncTenantSet(resyncTarget.value)) {
+  if (!resyncTarget.value || canResyncTenantSet(resyncTarget.value) !== true) {
     void message.warning('当前模板集无需或无法重新同步（无更新的平台源版本）')
     return
   }
-  if (!canSubmitResync.value || templateSetsLoadFailed.value) return
+  if (canSubmitResync.value !== true || templateSetsLoadFailed.value) return
   resyncLoading.value = true
   try {
     await resyncArchiveTenantTemplateSet({
@@ -935,11 +943,11 @@ async function submitResync() {
 }
 
 async function saveTenantSet() {
-  if (saving.value) {
+  if (saving.value === true) {
     return
   }
   // MVR-314：模板配置写二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }

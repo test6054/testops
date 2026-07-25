@@ -78,7 +78,7 @@
       />
 
       <UiAlertStrip
-        v-if="workbench?.batch?.orderAuditAttentionPending"
+        v-if="workbench?.batch?.orderAuditAttentionPending === true"
         tone="warning"
         :closable="false"
         dense
@@ -86,11 +86,11 @@
         description="完整卷已登记；余页保留在扫描页中。可忽略并继续封存，或在页轨中人工合并到目标试卷实例。"
         class="scan-batch-detail-workbench__collate-alert"
       >
-        <template v-if="canManageOwnerBatchActions" #actions>
+        <template v-if="canManageOwnerBatchActions === true" #actions>
           <UiButton
             size="sm"
             variant="primary"
-            :loading="collateAttentionDismissing"
+            :loading="collateAttentionDismissing === true"
             @click="onDismissCollateAttention"
           >
             忽略并继续
@@ -412,6 +412,8 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-951：函数式 can*(...) 写入口仅认 === true
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExamScanBatchPageRegisterRetryResponse,
@@ -640,7 +642,7 @@ const scanBatchMoreActionItems = computed(() => {
         action === ScanBatchWorkbenchTopActionCode.DISCARD
         || action === ScanBatchWorkbenchTopActionCode.REBUILD_COMPOSITE_PAGES,
     }))
-  if (canViewOriginalImage.value) {
+  if (canViewOriginalImage.value === true) {
     items.push({ key: 'preview-original', label: '查看原始影像', danger: false })
   }
   // 有主操作时「返回」进更多；无主操作时模板已直出返回
@@ -848,11 +850,9 @@ const selectedPage = computed(() => {
 })
 
 const showPreviewTabs = computed(() =>
-  Boolean(
-    canViewOriginalImage.value
-    && selectedPage.value?.identitySliceFileId
-    && selectedPage.value.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
-  ),
+  canViewOriginalImage.value === true
+  && Boolean(selectedPage.value?.identitySliceFileId)
+  && selectedPage.value?.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
 )
 
 const previewTabItems = computed(() => [
@@ -890,7 +890,7 @@ const previewEmptyDescription = computed(() => {
     return page.diagnostic.trim()
   }
   if (!page.previewUrl) {
-    if (canViewOriginalImage.value) {
+    if (canViewOriginalImage.value === true) {
       return '匿名展示影像尚未生成，正在尝试加载原始影像…'
     }
     return '匿名展示影像尚未生成，请使用顶栏「补跑脱敏」或检查制卷身份填涂区配置。'
@@ -1201,7 +1201,7 @@ async function loadPreview(): Promise<void> {
   if (!page.previewUrl) {
     if (
       page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING
-      && canViewOriginalImage.value
+      && canViewOriginalImage.value === true
       && page.pageId
     ) {
       await loadOriginalPreview(requestSeq)
@@ -1231,7 +1231,7 @@ async function loadPreview(): Promise<void> {
 
 async function loadOriginalPreview(requestSeq = ++previewRequestSeq): Promise<void> {
   const page = selectedPage.value
-  if (!page?.pageId || !selectedExamId.value || !canViewOriginalImage.value) {
+  if (!page?.pageId || !selectedExamId.value || canViewOriginalImage.value !== true) {
     return
   }
   if (requestSeq === previewRequestSeq) {
@@ -1312,7 +1312,7 @@ function setPreferredReassignTarget(paperInstanceId: string): void {
 
 async function openOrderAudit(): Promise<void> {
   // MVR-393：「人工合并」属主考写路径入口，打开前叠 canManageOwnerBatchActions===true
-  if (!canManageOwnerBatchActions.value) {
+  if (canManageOwnerBatchActions.value !== true) {
     void message.warning('仅本场主考可打开人工合并')
     return
   }
@@ -1341,7 +1341,7 @@ async function onDismissCollateAttention(): Promise<void> {
     return
   }
   // MVR-313：与 canManageOwnerBatchActions / BE requireExamOwnerPermission 同源
-  if (!canManageOwnerBatchActions.value) {
+  if (canManageOwnerBatchActions.value !== true) {
     void message.warning('仅主考可忽略余页异常')
     return
   }
@@ -1350,6 +1350,14 @@ async function onDismissCollateAttention(): Promise<void> {
     content: '余页将保留在扫描页中，不创建试卷实例。确认后可继续封存批次。',
     type: 'warning',
     onOk: async () => {
+      // MVR-953：确认后再次认主考写权，防对话框期间权限/批次态漂移
+      if (canManageOwnerBatchActions.value !== true) {
+        void message.warning('仅主考可忽略余页异常')
+        return false
+      }
+      if (collateAttentionDismissing.value === true) {
+        return false
+      }
       collateAttentionDismissing.value = true
       try {
         await dismissScanBatchCollateAttention({
@@ -1372,11 +1380,11 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
   if (!batch?.scanBatchId || !selectedExamId.value) {
     return
   }
-  if (actionLoading.value) {
+  if (actionLoading.value === true) {
     return
   }
   // MVR-298：顶栏写动作二次拦截；BE resolveTopActions 已对非主考返回空列表，防拆栏/缓存陈旧
-  if (!canManageOwnerBatchActions.value) {
+  if (canManageOwnerBatchActions.value !== true) {
     void message.warning('仅本场主考可执行批次写操作')
     return
   }
@@ -1431,7 +1439,12 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
       type: 'warning',
       width: 520,
       onOk: async () => {
-        if (actionLoading.value) {
+        // MVR-933：确认后再次认主考写权，防对话框期间权限/批次态漂移
+        if (canManageOwnerBatchActions.value !== true) {
+          void message.warning('仅本场主考可执行批次写操作')
+          return false
+        }
+        if (actionLoading.value === true) {
           return false
         }
         actionLoading.value = action
@@ -1470,7 +1483,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
       void message.warning(attributionSealBlockReason.value)
       return
     }
-    if (!canSealBatch(batch)) {
+    if (canSealBatch(batch) !== true) {
       void message.warning(batchSealBlockedReason(batch) || '当前批次不满足封存条件')
       return
     }
@@ -1482,7 +1495,20 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
       type: 'warning',
       width: 520,
       onOk: async () => {
-        if (actionLoading.value) {
+        // MVR-933：确认后再次认主考写权 + canSealBatch，防对话框期间状态漂移
+        if (canManageOwnerBatchActions.value !== true) {
+          void message.warning('仅本场主考可执行批次写操作')
+          return false
+        }
+        if (attributionSealBlockReason.value) {
+          void message.warning(attributionSealBlockReason.value)
+          return false
+        }
+        if (canSealBatch(batch) !== true) {
+          void message.warning(batchSealBlockedReason(batch) || '当前批次不满足封存条件')
+          return false
+        }
+        if (actionLoading.value === true) {
           return false
         }
         actionLoading.value = action
@@ -1502,7 +1528,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
   }
   if (action === ScanBatchWorkbenchTopActionCode.DISCARD) {
     // MVR-322：打开废弃弹窗前叠主考写能力位
-    if (!canManageOwnerBatchActions.value) {
+    if (canManageOwnerBatchActions.value !== true) {
       void message.warning('当前账号不可废弃扫描批次')
       return
     }
@@ -1511,7 +1537,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
   }
   if (action === ScanBatchWorkbenchTopActionCode.SUPPLEMENT) {
     // MVR-322：补扫弹窗同主考写能力位
-    if (!canManageOwnerBatchActions.value) {
+    if (canManageOwnerBatchActions.value !== true) {
       void message.warning('当前账号不可提交补扫')
       return
     }
@@ -1526,7 +1552,7 @@ async function handleSupplementSuccess(): Promise<void> {
 
 async function confirmDiscardBatch(reason: string): Promise<void> {
   // MVR-322/376：与 canManageOwnerBatchActions / BE 主考写门禁二次拦截
-  if (!canManageOwnerBatchActions.value) {
+  if (canManageOwnerBatchActions.value !== true) {
     void message.warning('当前账号不可废弃扫描批次')
     discardModalOpen.value = false
     return
@@ -1536,7 +1562,7 @@ async function confirmDiscardBatch(reason: string): Promise<void> {
     discardModalOpen.value = false
     return
   }
-  if (actionLoading.value) {
+  if (actionLoading.value === true) {
     return
   }
   actionLoading.value = ScanBatchWorkbenchTopActionCode.DISCARD

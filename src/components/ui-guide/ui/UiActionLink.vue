@@ -43,7 +43,7 @@ const emit = defineEmits<{
 }>()
 
 const handleClick = (event: MouseEvent) => {
-  if (props.disabled) {
+  if (props.disabled === true) {
     event.preventDefault()
     event.stopPropagation()
     return

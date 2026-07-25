@@ -195,7 +195,7 @@ export function useAiAnalysisScope() {
   /** 教学/聚类顶栏课程筛选：edu-user 目录真源；未选课程时不传 courseId，按学年学期查全部可见考试。 */
   function setExamFilterCourse(courseId: string | null, option?: CourseListVO): void {
     const lockedCourseId = lockTerm?.value?.courseId
-    if (examLocked.value && lockedCourseId) {
+    if (examLocked.value === true && lockedCourseId) {
       examFilterCourseId.value = lockedCourseId
       return
     }
@@ -207,7 +207,7 @@ export function useAiAnalysisScope() {
     else if (!courseId) {
       scopeCourseLabel.value = ''
     }
-    if (!examLocked.value) {
+    if (examLocked.value !== true) {
       scopeCourseId.value = courseId ?? undefined
     }
   }
@@ -340,7 +340,7 @@ export function useAiAnalysisScope() {
         ? [pinnedExam.value, ...exams.value.filter(exam => exam.examId !== pinnedExam.value!.examId)]
         : exams.value
       if (examId.value && !mergedExams.some(exam => exam.examId === examId.value)) {
-        if (!examLocked.value) {
+        if (examLocked.value !== true) {
           examId.value = undefined
         }
       }
@@ -408,25 +408,25 @@ export function useAiAnalysisScope() {
 
   watch(academicYear, (value) => {
     const lockedYear = lockTerm?.value?.academicYear
-    if (examLocked.value && lockedYear && value !== lockedYear) {
+    if (examLocked.value === true && lockedYear && value !== lockedYear) {
       academicYear.value = lockedYear
     }
   })
 
   watch(semester, (value) => {
     const lockedSemester = lockTerm?.value?.semester
-    if (examLocked.value && lockedSemester && value !== lockedSemester) {
+    if (examLocked.value === true && lockedSemester && value !== lockedSemester) {
       semester.value = lockedSemester
     }
   })
 
   watch(examFilterCourseId, (value) => {
     const lockedCourseId = lockTerm?.value?.courseId
-    if (examLocked.value && lockedCourseId && value !== lockedCourseId) {
+    if (examLocked.value === true && lockedCourseId && value !== lockedCourseId) {
       examFilterCourseId.value = lockedCourseId
       return
     }
-    if (examLocked.value) {
+    if (examLocked.value === true) {
       return
     }
     if (!value) {
@@ -448,14 +448,14 @@ export function useAiAnalysisScope() {
 
   watch(scopeCourseId, (value) => {
     const lockedCourseId = lockTerm?.value?.courseId
-    if (examLocked.value && lockedCourseId && value !== lockedCourseId) {
+    if (examLocked.value === true && lockedCourseId && value !== lockedCourseId) {
       scopeCourseId.value = lockedCourseId
     }
   })
 
   watch(referenceDepartmentId, (value) => {
     const lockedDepartmentId = lockTerm?.value?.referenceDepartmentId
-    if (examLocked.value && lockedDepartmentId && value !== lockedDepartmentId) {
+    if (examLocked.value === true && lockedDepartmentId && value !== lockedDepartmentId) {
       referenceDepartmentId.value = lockedDepartmentId
     }
   })
@@ -474,7 +474,7 @@ export function useAiAnalysisScope() {
     classId.value = undefined
     classLabel.value = ''
     if (!id) {
-      if (!examLocked.value) {
+      if (examLocked.value !== true) {
         clearOrgScope()
       }
       return

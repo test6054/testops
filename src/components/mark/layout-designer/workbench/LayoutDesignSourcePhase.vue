@@ -6,7 +6,8 @@ import type {
 } from '@/apis/mark/exam-layout-design'
 import LayoutEntryGateway from '@/components/mark/layout-designer/LayoutEntryGateway.vue'
 
-defineProps<{
+withDefaults(
+  defineProps<{
   document: ExamLayoutDocument | null
   examId: string
   materialLayoutMode?: ExamMaterialLayoutModeCode
@@ -14,7 +15,11 @@ defineProps<{
   detecting?: boolean
   readonly?: boolean
   hasPages: boolean
-}>()
+}>(),
+  {
+    readonly: true,
+  },
+)
 
 defineEmits<{
   'generate-sheet': [paperSpec: string, questions: ExamLayoutGenerateQuestionRequest[]]

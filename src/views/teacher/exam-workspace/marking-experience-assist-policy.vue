@@ -25,21 +25,21 @@
             <div
               v-if="
                 policy?.tenantExperienceAssistEnabled
-                  && (canManageReviewerWrites || canDisableExperienceAssist)
+                  && (canManageReviewerWrites === true || canDisableExperienceAssist === true)
               "
               class="experience-assist-policy__head-actions"
             >
               <UiButton
-                v-if="canManageReviewerWrites"
+                v-if="canManageReviewerWrites === true"
                 variant="primary"
                 size="sm"
-                :disabled="!canEnable || policy?.enabled"
+                :disabled="canEnable !== true || policy?.enabled"
                 @click="openPolicyConfigModal('enable')"
               >
                 启用本场
               </UiButton>
               <UiButton
-                v-if="canEditConfig"
+                v-if="canEditConfig === true"
                 size="sm"
                 variant="outline"
                 @click="openPolicyConfigModal('edit')"
@@ -47,11 +47,11 @@
                 编辑配置
               </UiButton>
               <UiButton
-                v-if="canDisableExperienceAssist"
+                v-if="canDisableExperienceAssist === true"
                 size="sm"
                 variant="outline"
-                :disabled="!canDisable"
-                :loading="saving"
+                :disabled="canDisable !== true"
+                :loading="saving === true"
                 @click="handleDisable"
               >
                 禁用本场
@@ -131,8 +131,8 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'baselineReady'">
-              <UiTag :tone="record.baselineReady ? 'green' : 'red'" size="sm">
-                {{ record.baselineReady ? '已锁定' : '未锁定' }}
+              <UiTag :tone="record.baselineReady === true ? 'green' : 'red'" size="sm">
+                {{ record.baselineReady === true ? '已锁定' : '未锁定' }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'assistResolutionStatus'">
@@ -165,6 +165,7 @@
       :layout-question-id="bindingTarget?.layoutQuestionId"
       :question-no="bindingTarget?.questionNo"
       :can-manage-reviewer-writes="canManageReviewerWrites"
+      :policy-frozen="policy?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN"
       @saved="handleBindingSaved"
     />
     <ExamExperienceAssistPolicyEnableModal
@@ -175,12 +176,15 @@
       :effective-max-hamming-distance="policy?.effectiveMaxHammingDistance"
       :effective-max-experience-items="policy?.effectiveMaxExperienceItems"
       :can-manage-reviewer-writes="canManageReviewerWrites"
+      :policy-frozen="policy?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN"
       @saved="handlePolicySaved"
     />
   </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExamGradingExperienceAssistPolicyResponse,
@@ -350,7 +354,7 @@ const explicitBindingHint = computed(
 )
 
 const bindingGuideText = computed(() => {
-  if (requiresExplicitBinding.value) {
+  if (requiresExplicitBinding.value === true) {
     return '补考/重修/缓考/重考须先锁定标答基线，再为每道主观题显式绑定历史期末考试正考经验，全部就绪后再启用本场。'
   }
   return '正考须先锁定标答基线；同课程相似题可自动匹配，非相似题须显式绑定。列表以本场主观题为准。'
@@ -365,7 +369,7 @@ const policyStatusLabel = computed(() => {
       '经验辅助策略状态',
     )
   }
-  if (policy.value?.enabled) {
+  if (policy.value?.enabled === true) {
     return strictEnumLabel(
       GradingExperienceAssistPolicyStatusDescription,
       GradingExperienceAssistPolicyStatusCode.ENABLED,
@@ -381,7 +385,7 @@ const policyStatusLabel = computed(() => {
 
 const policyTone = computed((): BadgeTone => {
   if (policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN) return 'gray'
-  return policy.value?.enabled ? 'green' : 'orange'
+  return policy.value?.enabled === true ? 'green' : 'orange'
 })
 
 /**
@@ -392,30 +396,24 @@ const canManageReviewerWrites = computed(() => policy.value?.canManageReviewerWr
 const canDisableExperienceAssist = computed(() => policy.value?.canDisableExperienceAssist === true)
 
 const canEnable = computed(() =>
-  Boolean(
-    canManageReviewerWrites.value
-    && policy.value?.tenantExperienceAssistEnabled
-    && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN
-    && !bindingsLoading.value
-    && unresolvedSubjectiveCount.value === 0,
-  ),
+  canManageReviewerWrites.value === true
+  && policy.value?.tenantExperienceAssistEnabled === true
+  && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN
+  && bindingsLoading.value !== true
+  && unresolvedSubjectiveCount.value === 0,
 )
 
 const canDisable = computed(() =>
-  Boolean(
-    canDisableExperienceAssist.value
-    && policy.value?.enabled
-    && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
-  ),
+  canDisableExperienceAssist.value === true
+  && policy.value?.enabled === true
+  && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
 )
 
 const canEditConfig = computed(() =>
-  Boolean(
-    canManageReviewerWrites.value
-    && policy.value?.tenantExperienceAssistEnabled
-    && policy.value?.enabled
-    && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
-  ),
+  canManageReviewerWrites.value === true
+  && policy.value?.tenantExperienceAssistEnabled === true
+  && policy.value?.enabled === true
+  && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
 )
 
 const baselineMissingCount = computed(() => readiness.value?.baselineMissingCount ?? 0)
@@ -442,7 +440,7 @@ const policyAlert = computed(
           '正评任务已生成，不能再变更启用状态或题目绑定；已生效的定标经验仍会在 AI 复评中引用。',
       }
     }
-    if (subjectiveQuestionCount.value === 0 && policy.value?.enabled) {
+    if (subjectiveQuestionCount.value === 0 && policy.value?.enabled === true) {
       return {
         tone: 'warning',
         title: '待主观题入库',
@@ -450,7 +448,7 @@ const policyAlert = computed(
           '本场已启用经验辅助评阅，但尚无主观题；请完成制卷录入或扫描推导后再做定标绑定。',
       }
     }
-    if (baselineMissingCount.value > 0 && !policy.value?.enabled) {
+    if (baselineMissingCount.value > 0 && policy.value?.enabled !== true) {
       return {
         tone: 'warning',
         title: '标答评分基线未锁定',
@@ -460,7 +458,7 @@ const policyAlert = computed(
     if (
       requiresExplicitBinding.value
       && unboundSubjectiveCount.value > 0
-      && !policy.value?.enabled
+      && policy.value?.enabled !== true
     ) {
       return {
         tone: 'warning',
@@ -469,9 +467,9 @@ const policyAlert = computed(
       }
     }
     if (
-      !requiresExplicitBinding.value
+      requiresExplicitBinding.value !== true
       && needsExplicitBindingCount.value > 0
-      && policy.value?.enabled
+      && policy.value?.enabled === true
     ) {
       return {
         tone: 'warning',
@@ -479,7 +477,7 @@ const policyAlert = computed(
         description: `共 ${needsExplicitBindingCount.value} 道非相似题须显式绑定定标经验，否则正评前无法生成任务。`,
       }
     }
-    if (requiresExplicitBinding.value) {
+    if (requiresExplicitBinding.value === true) {
       return {
         tone: 'info',
         title: '本场须逐题显式定标',
@@ -519,8 +517,22 @@ function formatRate(rate?: number): string {
 }
 
 function openPolicyConfigModal(mode: ExamExperienceAssistPolicyConfigMode): void {
-  if (!canManageReviewerWrites.value) {
-    void message.warning('仅本场阅卷组织成员或主考可配置经验辅助评阅')
+  // MVR-927：与 canEnable / canEditConfig 按钮 disabled 同源二次闸（写权∧租户开∧非 FROZEN∧业务前置）
+  if (mode === 'enable') {
+    if (canEnable.value !== true) {
+      void message.warning(
+        canManageReviewerWrites.value === true
+          ? '当前不可启用经验辅助评阅（租户未开、策略冻结或仍有未解析主观题）'
+          : '仅本场阅卷组织成员或主考可配置经验辅助评阅',
+      )
+      return
+    }
+  } else if (canEditConfig.value !== true) {
+    void message.warning(
+      canManageReviewerWrites.value === true
+        ? '当前不可修改经验辅助评阅配置（未启用、租户未开或策略冻结）'
+        : '仅本场阅卷组织成员或主考可配置经验辅助评阅',
+    )
     return
   }
   policyConfigModalMode.value = mode
@@ -587,10 +599,14 @@ async function handlePolicySaved(
 }
 
 async function handleDisable(): Promise<void> {
-  if (!examId.value || saving.value) return
-  // MVR-362：禁用与 canDisableExperienceAssist 同源（关考后仍可关）
-  if (!canDisableExperienceAssist.value) {
-    void message.warning('仅本场阅卷组织成员或主考可禁用经验辅助评阅')
+  if (!examId.value || saving.value === true) return
+  // MVR-362/927：与 canDisable / 按钮 disabled 同源二次闸（治理权∧已启用∧非 FROZEN）
+  if (canDisable.value !== true) {
+    void message.warning(
+      canDisableExperienceAssist.value === true
+        ? '当前不可禁用经验辅助评阅（未启用或策略冻结）'
+        : '仅本场阅卷组织成员或主考可禁用经验辅助评阅',
+    )
     return
   }
   saving.value = true
@@ -610,12 +626,12 @@ function buildBindingRowActions(
   row: ExamQuestionExperienceAssistBindingResponse,
 ): UiTableRowActionItem[] {
   const frozen = policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN
-  const writeBlocked = !canManageReviewerWrites.value
+  const writeBlocked = canManageReviewerWrites.value !== true
   const actions: UiTableRowActionItem[] = [
     {
       key: 'bind',
       label: row.experienceCaseId ? '更换' : '绑定',
-      disabled: frozen || writeBlocked,
+      disabled: frozen === true || writeBlocked === true,
     },
   ]
   if (row.experienceCaseId) {
@@ -623,7 +639,7 @@ function buildBindingRowActions(
       key: 'unbind',
       label: '解除绑定',
       tone: 'danger',
-      disabled: frozen || writeBlocked || unbindingQuestionId.value === row.layoutQuestionId,
+      disabled: frozen === true || writeBlocked === true || unbindingQuestionId.value === row.layoutQuestionId,
     })
   }
   return actions
@@ -643,7 +659,12 @@ function handleBindingRowAction(
 }
 
 function openBindingModal(row: ExamQuestionExperienceAssistBindingResponse): void {
-  if (!canManageReviewerWrites.value) {
+  // MVR-927：与行内 disabled（FROZEN ∨ 无写权）同源二次闸
+  if (policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN) {
+    void message.warning('经验辅助评阅策略已冻结，不可绑定题目定标')
+    return
+  }
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员或主考可绑定题目经验')
     return
   }
@@ -652,13 +673,15 @@ function openBindingModal(row: ExamQuestionExperienceAssistBindingResponse): voi
 }
 
 function confirmUnbind(row: ExamQuestionExperienceAssistBindingResponse): void {
-  if (
-    !examId.value
-    || policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN
-  ) {
+  if (!examId.value) {
     return
   }
-  if (!canManageReviewerWrites.value) {
+  // MVR-927：与行内 disabled（FROZEN ∨ 无写权）同源二次闸
+  if (policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN) {
+    void message.warning('经验辅助评阅策略已冻结，不可解除题目定标')
+    return
+  }
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员或主考可解除题目经验绑定')
     return
   }
@@ -674,7 +697,12 @@ function confirmUnbind(row: ExamQuestionExperienceAssistBindingResponse): void {
 
 async function handleUnbind(row: ExamQuestionExperienceAssistBindingResponse): Promise<void> {
   if (!examId.value || unbindingQuestionId.value != null) return
-  if (!canManageReviewerWrites.value) {
+  // MVR-927：写提交再认 FROZEN ∧ 写权，避免确认后状态漂移仍发写
+  if (policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN) {
+    void message.warning('经验辅助评阅策略已冻结，不可解除题目定标')
+    return
+  }
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员或主考可解除题目经验绑定')
     return
   }

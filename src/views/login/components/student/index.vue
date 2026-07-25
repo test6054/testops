@@ -183,7 +183,7 @@ watch(
 const fetchCaptchaConfig = async () => {
   try {
     const config = await getCaptchaConfig()
-    isCaptchaEnabled.value = config.enabled
+    isCaptchaEnabled.value = config.enabled === true
   } catch (error) {
     isCaptchaEnabled.value = false
   }
@@ -215,7 +215,7 @@ const handleLogin = async () => {
   if (!validate()) return
   loading.value = true
 
-  if (isCaptchaEnabled.value) {
+  if (isCaptchaEnabled.value === true) {
     showCaptcha.value = true
   } else {
     await doLogin()
@@ -233,7 +233,7 @@ const doLogin = async () => {
       studentNo: form.studentNo,
       password: form.password,
       schoolName,
-      captchaVerification: isCaptchaEnabled.value ? captchaVerification.value : undefined,
+      captchaVerification: isCaptchaEnabled.value === true ? captchaVerification.value : undefined,
     })
 
     // 获取用户信息
@@ -253,7 +253,7 @@ const doLogin = async () => {
     }
 
     // 检查是否需要强制修改密码
-    if (userStore.userInfo.forcePasswordChange) {
+    if (userStore.userInfo.forcePasswordChange === true) {
       void message.warning('出于安全考虑，您需要修改密码后才能继续使用系统')
       await router.push('/change-password')
       return

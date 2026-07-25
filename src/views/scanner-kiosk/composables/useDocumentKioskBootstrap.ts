@@ -16,7 +16,7 @@ export function useDocumentKioskBootstrap() {
   const loading = computed(() => activation.loading.value)
   const health = computed(() => activation.health.value)
   const setup = computed(() => activation.setup.value)
-  const canActivateAgent = computed(() => !isAgentWorkspaceBlocked(activation.health.value))
+  const canActivateAgent = computed(() => isAgentWorkspaceBlocked(activation.health.value) !== true)
 
   async function refreshAgentState() {
     await activation.refreshDeviceActivationState()

@@ -7,8 +7,8 @@
     destroy-on-close
     @update:open="emit('update:open', $event)"
   >
-    <UiSpin :spinning="loading" tip="加载 AI 历史...">
-      <UiEmpty size="sm" v-if="!loading && executions.length === 0" description="暂无 AI 执行记录" />
+    <UiSpin :spinning="loading === true" tip="加载 AI 历史...">
+      <UiEmpty size="sm" v-if="loading !== true && executions.length === 0" description="暂无 AI 执行记录" />
       <UiTimeline v-else>
         <UiTimelineItem
           v-for="(item, index) in executions"
@@ -174,7 +174,7 @@ function focusExecutionTrace(traceId?: string | null): void {
 }
 
 async function scrollToHighlightedTrace(): Promise<void> {
-  if (!props.open || !resolvedHighlightTraceId.value || props.loading) return
+  if (props.open !== true || !resolvedHighlightTraceId.value || props.loading === true) return
   await nextTick()
   itemRefMap
     .get(resolvedHighlightTraceId.value)

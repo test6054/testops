@@ -29,7 +29,7 @@ const emit = defineEmits<{
     :document="document"
     :page-no="pageNo"
     :focused-block-id="focusedBlockId"
-    :read-only="readOnly"
+    :read-only="readOnly !== false"
     @focus-block="emit('focus-block', $event)"
     @patch="emit('patch', $event)"
   />

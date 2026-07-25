@@ -17,7 +17,8 @@ import {
   resolveBlockTypeLabel,
 } from '@/utils/exam-layout-designer'
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   document: ExamLayoutDocument | null
   pageNo: number
   focusedBlockId: string | null
@@ -25,7 +26,11 @@ const props = defineProps<{
    * MVR-389：默认拒绝假可写；仅父层显式 readonly===false 可增删/调层识别块。
    */
   readonly?: boolean
-}>()
+}>(),
+  {
+    readonly: true,
+  },
+)
 
 const emit = defineEmits<{
   'focus-block': [block: ExamLayoutBlockDto | null]

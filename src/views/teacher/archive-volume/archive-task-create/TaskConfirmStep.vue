@@ -134,7 +134,7 @@ const securityLevelText = computed(() =>
 )
 
 const retentionText = computed(() => {
-  if (planForm.permanentRetention) return '永久保管'
+  if (planForm.permanentRetention === true) return '永久保管'
   if (planForm.retentionYears != null) return `${planForm.retentionYears} 年`
   return '—'
 })

@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import { computed } from 'vue'
 import {
   EXAM_PRINT_SOURCE_MODE_OPTIONS,
@@ -24,7 +25,7 @@ const props = withDefaults(
     layoutSaving: boolean
     materialLayoutSaved: boolean
     /** MVR-267：仅主考可写；与 BE requireExamOwnerPermission 对齐 */
-    canManageOwnerWrites?: boolean
+    canManageOwnerWrites?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
     advisoryReason?: string
     description?: string
     statusText?: string
@@ -39,7 +40,7 @@ const emit = defineEmits<{
 }>()
 
 /** 生命周期锁或非主考时表单只读；canManageOwnerWrites 缺省 false */
-const formReadonly = computed(() => props.layoutModeLocked || !props.canManageOwnerWrites)
+const formReadonly = computed(() => props.layoutModeLocked === true || props.canManageOwnerWrites !== true)
 
 const printSourceHint = computed(() => {
   if (draftLayoutMode.value !== ExamMaterialLayoutModeCode.FULL_PAPER) {
@@ -55,7 +56,8 @@ const printSourceHint = computed(() => {
 })
 
 function handleSave(): void {
-  if (!props.canManageOwnerWrites || props.layoutModeLocked) {
+  // MVR-962：layoutModeLocked 仅认 === true；写权仅认 canManageOwnerWrites===true
+  if (props.canManageOwnerWrites !== true || props.layoutModeLocked === true) {
     return
   }
   emit('save')
@@ -73,7 +75,7 @@ function handleSave(): void {
           'material-layout-modal__mode-option--active':
             draftLayoutMode === ExamMaterialLayoutModeCode.ANSWER_SHEET,
         }"
-        :disabled="formReadonly"
+        :disabled="formReadonly === true"
         @click="draftLayoutMode = ExamMaterialLayoutModeCode.ANSWER_SHEET"
       >
         <span class="material-layout-modal__mode-option-title">独立答卷页（教考分离）</span>
@@ -88,7 +90,7 @@ function handleSave(): void {
           'material-layout-modal__mode-option--active':
             draftLayoutMode === ExamMaterialLayoutModeCode.FULL_PAPER,
         }"
-        :disabled="formReadonly"
+        :disabled="formReadonly === true"
         @click="draftLayoutMode = ExamMaterialLayoutModeCode.FULL_PAPER"
       >
         <span class="material-layout-modal__mode-option-title">整卷作答</span>
@@ -106,7 +108,7 @@ function handleSave(): void {
         <UiSelect
           size="sm"
           v-model="draftPrintSource"
-          :disabled="formReadonly"
+          :disabled="formReadonly === true"
           placeholder="选择印刷来源"
           :options="EXAM_PRINT_SOURCE_MODE_OPTIONS"
           style="width: 200px"
@@ -114,10 +116,10 @@ function handleSave(): void {
       </UiFormItem>
     </UiForm>
     <p v-if="printSourceHint" class="material-layout-modal__hint">{{ printSourceHint }}</p>
-    <p v-if="layoutModeLocked" class="material-layout-modal__hint">
+    <p v-if="layoutModeLocked === true" class="material-layout-modal__hint">
       已开印或已扫描，制卷形态不可修改
     </p>
-    <p v-else-if="!canManageOwnerWrites" class="material-layout-modal__hint">
+    <p v-else-if="canManageOwnerWrites !== true" class="material-layout-modal__hint">
       仅考试主考可修改制卷形态
     </p>
     <p v-else-if="!materialLayoutSaved" class="material-layout-modal__hint">
@@ -128,7 +130,7 @@ function handleSave(): void {
       <UiButton size="sm" variant="outline" @click="open = false">关闭</UiButton>
       <UiButton
         size="sm"
-        v-if="canManageOwnerWrites && !layoutModeLocked"
+        v-if="canManageOwnerWrites === true && layoutModeLocked !== true"
         :variant="layoutDirty ? 'primary' : 'outline'"
         :disabled="!draftLayoutMode || !layoutDirty"
         :loading="layoutSaving"

@@ -66,8 +66,8 @@ function createKioskDeviceActivation() {
   const activationModalForced = computed(
     () =>
       !health.value?.bound
-      || Boolean(health.value?.tokenResetRequired)
-      || Boolean(health.value?.rebindRequired),
+      || health.value?.tokenResetRequired === true
+      || health.value?.rebindRequired === true,
   )
   const needsActivationGate = computed(
     () => activationModalForced.value || manualActivationGateOpen.value,
@@ -299,7 +299,7 @@ function createKioskDeviceActivation() {
 
   async function activateDevice(options?: KioskDeviceActivateOptions): Promise<boolean> {
     // MVR-110：激活中禁止重入，避免并发 clear 绑定与双发后端激活
-    if (loading.value) {
+    if (loading.value === true) {
       return false
     }
     if (options?.guard) {

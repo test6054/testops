@@ -36,7 +36,7 @@ const pageSize = ref(20)
 const total = ref(0)
 const tasks = ref<PortfolioGapTaskSummaryInternalVO[]>([])
 
-const canPick = computed(() => Boolean(props.scannerDeviceId && props.scannerStationId))
+const canPick = computed(() => Boolean(props.scannerDeviceId) && Boolean(props.scannerStationId))
 
 const columns = [
   { title: '分类', key: 'categoryName', dataIndex: 'categoryName', width: 120 },
@@ -105,7 +105,7 @@ function gapCourseScopeLabel(row: PortfolioGapTaskSummaryInternalVO): string {
 }
 
 async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
-  if (!canPick.value) {
+  if (canPick.value !== true) {
     showFormValidationMessage('工位未激活，无法进入补采扫描')
     return
   }
@@ -192,7 +192,7 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
               :items="[
-                { key: 'pick', label: '开单', disabled: !canPick || pickingTaskId === record.id },
+                { key: 'pick', label: '开单', disabled: canPick !== true || pickingTaskId === record.id },
               ]"
               split
               @action="() => openGapScan(record)"

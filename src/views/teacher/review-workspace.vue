@@ -200,7 +200,7 @@
               <UiButton
                 size="sm"
                 variant="ghost"
-                :loading="executionsLoading"
+                :loading="executionsLoading === true"
                 :disabled="!detail"
                 @click="() => openExecutionsDrawer()"
               >
@@ -209,8 +209,8 @@
               <UiButton
                 size="sm"
                 variant="outline"
-                :disabled="!canRescoreByAi"
-                :loading="rescoring"
+                :disabled="canRescoreByAi !== true"
+                :loading="rescoring === true"
                 @click="openRescoreConfirm"
               >
                 <template #icon><RobotOutlined /></template>
@@ -233,8 +233,8 @@
               <UiButton
                 size="sm"
                 variant="outline"
-                :disabled="!canAdoptAiSuggestion"
-                :loading="submitting"
+                :disabled="canAdoptAiSuggestion !== true"
+                :loading="submitting === true"
                 @click="adoptAiSuggestionAndSubmit"
               >
                 {{ adoptSuggestionLabel }}
@@ -242,7 +242,7 @@
               <UiButton
                 size="sm"
                 variant="outline"
-                :disabled="!canAdoptAiSuggestion"
+                :disabled="canAdoptAiSuggestion !== true"
                 @click="adoptAiSuggestion"
               >
                 {{ fillSuggestionLabel }}
@@ -250,7 +250,7 @@
               <UiButton
                 size="sm"
                 variant="ghost"
-                :disabled="!canConfirm"
+                :disabled="canConfirm !== true"
                 @click="clearAiSuggestionToManual"
               >
                 {{ clearSuggestionLabel }}
@@ -267,7 +267,7 @@
               :model="gradeForm"
               :rules="gradeFormRules"
               layout="vertical"
-              :disabled="!canConfirm"
+              :disabled="canConfirm !== true"
             >
               <MarkScoreTriple
                 class="review-workspace__score-triple"
@@ -290,7 +290,7 @@
                   <UiButton
                     size="sm"
                     variant="outline"
-                    :disabled="!canConfirm"
+                    :disabled="canConfirm !== true"
                     @click="setQuickScore(detail.fullScore)"
                   >
                     满分
@@ -298,7 +298,7 @@
                   <UiButton
                     size="sm"
                     variant="outline"
-                    :disabled="!canConfirm"
+                    :disabled="canConfirm !== true"
                     @click="setQuickScore(Math.round((detail.fullScore / 2) * 10) / 10)"
                   >
                     半分
@@ -306,7 +306,7 @@
                   <UiButton
                     size="sm"
                     variant="outline"
-                    :disabled="!canConfirm"
+                    :disabled="canConfirm !== true"
                     @click="setQuickScore(0)"
                   >
                     零分
@@ -315,7 +315,7 @@
                     v-if="detail?.aiScore != null"
                     size="sm"
                     variant="outline"
-                    :disabled="!canConfirm"
+                    :disabled="canConfirm !== true"
                     @click="setQuickScore(detail.aiScore)"
                   >
                     {{ isHardJudgeSource ? '填入硬判分' : '填入智能分' }}
@@ -393,17 +393,17 @@
             <UiButton
               variant="outline"
               size="md"
-              :disabled="!canConfirm"
-              :loading="submitting"
+              :disabled="canConfirm !== true"
+              :loading="submitting === true"
               @click="openSubmitConfirm(false)"
             >
               仅提交
             </UiButton>
             <UiButton
-              v-if="canReject"
+              v-if="canReject === true"
               variant="outline"
               size="md"
-              :loading="rejecting"
+              :loading="rejecting === true"
               @click="openRejectConfirm"
             >
               驳回
@@ -411,8 +411,8 @@
             <UiButton
               variant="primary"
               size="md"
-              :disabled="!canConfirm || !detail.gradeResultId || queueTotal <= 1"
-              :loading="submitting"
+              :disabled="canConfirm !== true || !detail.gradeResultId || queueTotal <= 1"
+              :loading="submitting === true"
               @click="openSubmitConfirm(true)"
             >
               提交并取下一份
@@ -424,7 +424,7 @@
 
     <MarkingAiAssistDrawer
       v-model:open="executionsDrawerOpen"
-      :loading="executionsLoading"
+      :loading="executionsLoading === true"
       :executions="aiExecutions"
       :highlight-trace-id="highlightExecutionTraceId"
       :status-label="statusLabel"
@@ -437,6 +437,9 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-948：本地 can* 显隐/禁用仅认 === true
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
 import type {
@@ -629,26 +632,26 @@ const immersionSubtitle = computed(() => {
   return parts.join(' · ')
 })
 
-const canSubmit = computed(() => !!examId.value && !!taskId.value)
+const canSubmit = computed(() => Boolean(examId.value) && Boolean(taskId.value))
 
 /** MVR-283：与 getReviewTaskDetail 下发的 canManageReviewerWrites 对齐（Service 门禁优先）。 */
 const canManageReviewerWrites = computed(() => detail.value?.canManageReviewerWrites === true)
 
 const canConfirm = computed(() => {
   // MVR-283：无阅卷写能力位不得暴露确认/采纳/快捷给分
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     return false
   }
   const status = detail.value?.status
   return (
     (status === ReviewTaskStatusCode.PENDING || status === ReviewTaskStatusCode.IN_PROGRESS)
-    && !claimBlockedByOther.value
+    && claimBlockedByOther.value !== true
   )
 })
 
 /** 仅首次复核任务可驳回升级仲裁；仲裁任务本身不可再次驳回。 */
 const canReject = computed(() => {
-  if (!canConfirm.value || !detail.value?.gradeResultId) return false
+  if (canConfirm.value !== true || !detail.value?.gradeResultId) return false
   return detail.value.reviewType !== ReviewTaskTypeCode.QUESTION_REVIEW_ARBITRATION
 })
 
@@ -810,7 +813,7 @@ function handleReviewWorkspaceKeydown(event: KeyboardEvent): void {
     navigateQueueRelative(1)
     return
   }
-  if (/^\d$/.test(event.key) && detail.value && canConfirm.value) {
+  if (/^\d$/.test(event.key) && detail.value && canConfirm.value === true) {
     const digit = Number(event.key)
     if (digit <= detail.value.fullScore) {
       event.preventDefault()
@@ -847,8 +850,8 @@ function syncExperienceAssistMetaFromDetail(taskDetail: ReviewTaskDetailResponse
 /** 是否可以调用单题 AI 复评，需同时满足：存在 gradeResultId、状态为 PENDING/IN_PROGRESS、未提交中 */
 const canRescoreByAi = computed<boolean>(() => {
   // MVR-283：无阅卷写能力位不得暴露 AI 复评
-  if (!canManageReviewerWrites.value) return false
-  if (rescoring.value || submitting.value) return false
+  if (canManageReviewerWrites.value !== true) return false
+  if (rescoring.value === true || submitting.value === true) return false
   if (!examId.value) return false
   if (!detail.value) return false
   return (
@@ -859,7 +862,7 @@ const canRescoreByAi = computed<boolean>(() => {
 
 // ─── 加载主流程 ───────────────────────────
 async function loadTask(): Promise<void> {
-  if (!canSubmit.value) return
+  if (canSubmit.value !== true) return
   const expectedExamId = examId.value
   const expectedTaskId = taskId.value
   const generation = ++loadTaskGeneration
@@ -945,7 +948,7 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
       = preview.status === ReviewTaskStatusCode.IN_PROGRESS
         && !!preview.assignedTeacherUserId
         && preview.assignedTeacherUserId !== currentUserId.value
-    if (heldByOther && canManageOwnerReviewOverride.value) {
+    if (heldByOther && canManageOwnerReviewOverride.value === true) {
       ownerOverrideMode.value = true
       claimBlockedByOther.value = false
       return preview
@@ -961,7 +964,7 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
 
 /** 主考代办写分前采集强制审计原因；非代办模式返回 undefined。 */
 async function resolveOwnerOverrideReason(): Promise<string | undefined | null> {
-  if (!ownerOverrideMode.value) {
+  if (ownerOverrideMode.value !== true) {
     return undefined
   }
   return promptInputAsync({
@@ -978,7 +981,7 @@ async function resolveOwnerOverrideReason(): Promise<string | undefined | null> 
 /** FIX-10: 快捷给分按钮 */
 function setQuickScore(score: number): void {
   // MVR-416：与 canConfirm / canManageReviewerWrites 二次闸，禁止仅靠按钮 disabled
-  if (!canConfirm.value) return
+  if (canConfirm.value !== true) return
   gradeForm.teacherReviewScore = score
 }
 
@@ -1021,7 +1024,7 @@ const gradeFormRules: Record<string, Rule[]> = {
  * gradeStatus 保持 NEED_REVIEW、teacherReviewScore 置空；教师复核评分仍需教师提交复核入口写入。
  */
 function openRescoreConfirm(): void {
-  if (!canRescoreByAi.value) return
+  if (canRescoreByAi.value !== true) return
   void confirmAsync({
     title: '重新生成单题智能复评？',
     content: '系统会重新生成单题智能复评结果。复评只更新智能评分和评分说明，不会写入教师复核评分。',
@@ -1034,13 +1037,13 @@ function openRescoreConfirm(): void {
 
 /** 实际发起调用，成功后由 loadTask 重拉全量详情以同步重写后的 AI 评分和诊断 */
 async function doRescoreByAi(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无阅卷写权限')
     return
   }
 
-  if (rescoring.value) return
-  if (!canRescoreByAi.value || !examId.value || !detail.value) return
+  if (rescoring.value === true) return
+  if (canRescoreByAi.value !== true || !examId.value || !detail.value) return
   rescoring.value = true
   try {
     const result = await rescoreQuestionByAi({
@@ -1098,7 +1101,7 @@ const isHardJudgeSource = computed<boolean>(() => {
 
 /** 是否可采纳系统建议分（AI 或硬判）：任务可提交且存在 aiScore */
 const canAdoptAiSuggestion = computed<boolean>(() => {
-  if (!canConfirm.value) return false
+  if (canConfirm.value !== true) return false
   return detail.value?.aiScore != null
 })
 
@@ -1115,7 +1118,7 @@ const clearSuggestionLabel = computed(() =>
 
 /** 一键采纳系统建议分到教师复核评分表单 */
 function adoptAiSuggestion(): void {
-  if (!canAdoptAiSuggestion.value) return
+  if (canAdoptAiSuggestion.value !== true) return
   const aiScore = detail.value?.aiScore
   if (aiScore == null) return
   gradeForm.teacherReviewScore = aiScore
@@ -1129,7 +1132,7 @@ function adoptAiSuggestion(): void {
 
 /** 采纳建议分并立即提交教师复核结论 */
 async function adoptAiSuggestionAndSubmit(): Promise<void> {
-  if (!canAdoptAiSuggestion.value) return
+  if (canAdoptAiSuggestion.value !== true) return
   const aiScore = detail.value?.aiScore
   if (aiScore == null) return
   gradeForm.teacherReviewScore = aiScore
@@ -1151,7 +1154,7 @@ async function adoptAiSuggestionAndSubmit(): Promise<void> {
 /** 清空建议分转人工评分，仅重置表单 */
 function clearAiSuggestionToManual(): void {
   // MVR-416：与 canConfirm 二次闸，禁止只读/无写权态假可清空写分表单
-  if (!canConfirm.value) return
+  if (canConfirm.value !== true) return
   gradeForm.teacherReviewScore = undefined
   void message.info(
     isHardJudgeSource.value
@@ -1221,9 +1224,9 @@ function timelineColor(status: AiExecutionStatusCode): string {
  */
 async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
   // MVR-418：与 canConfirm / 按钮 disabled 同源二次闸（写权∧PENDING/IN_PROGRESS∧非他人领取）
-  if (!canConfirm.value) {
+  if (canConfirm.value !== true) {
     void message.warning(
-      canManageReviewerWrites.value
+      canManageReviewerWrites.value === true
         ? '当前任务不可提交复核（状态不可写或已被他人领取）'
         : '当前账号无阅卷写权限',
     )
@@ -1263,16 +1266,16 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
 /** 提交核心：仅提交教师复核给分，成功返回 true；失败已提示并返回 false */
 async function submitGrade(): Promise<boolean> {
   // MVR-418：与 canConfirm / BE ensureWritableReviewTask 同源二次闸
-  if (!canConfirm.value) {
+  if (canConfirm.value !== true) {
     void message.warning(
-      canManageReviewerWrites.value
+      canManageReviewerWrites.value === true
         ? '当前任务不可提交复核（状态不可写或已被他人领取）'
         : '当前账号无阅卷写权限',
     )
     return false
   }
   if (!examId.value || !detail.value) return false
-  if (submitting.value || rejecting.value) {
+  if (submitting.value === true || rejecting.value === true) {
     return false
   }
   const ownerOverrideReason = await resolveOwnerOverrideReason()
@@ -1313,8 +1316,8 @@ async function submitGrade(): Promise<boolean> {
       return false
     }
     if (isBusinessConflict(error) && getUserErrorMessage(error, '').includes('已被其他教师领取')) {
-      claimBlockedByOther.value = !canManageOwnerReviewOverride.value
-      ownerOverrideMode.value = canManageOwnerReviewOverride.value
+      claimBlockedByOther.value = canManageOwnerReviewOverride.value !== true
+      ownerOverrideMode.value = canManageOwnerReviewOverride.value === true
       void message.warning(getUserErrorMessage(error, '复核任务已被其他教师领取'))
       return false
     }
@@ -1327,9 +1330,9 @@ async function submitGrade(): Promise<boolean> {
 
 function openRejectConfirm(): void {
   // MVR-418：与 canReject 同源二次闸（可确认且非仲裁任务）
-  if (!canReject.value) {
+  if (canReject.value !== true) {
     void message.warning(
-      canManageReviewerWrites.value
+      canManageReviewerWrites.value === true
         ? '当前任务不可驳回（状态不可写、已被他人领取或仲裁任务不可再驳回）'
         : '当前账号无阅卷写权限',
     )
@@ -1348,16 +1351,16 @@ function openRejectConfirm(): void {
 
 async function handleReject(): Promise<void> {
   // MVR-418：与 canReject / openRejectConfirm 同源二次闸
-  if (!canReject.value) {
+  if (canReject.value !== true) {
     void message.warning(
-      canManageReviewerWrites.value
+      canManageReviewerWrites.value === true
         ? '当前任务不可驳回（状态不可写、已被他人领取或仲裁任务不可再驳回）'
         : '当前账号无阅卷写权限',
     )
     return
   }
   if (!examId.value || !detail.value?.gradeResultId) return
-  if (rejecting.value || submitting.value) {
+  if (rejecting.value === true || submitting.value === true) {
     return
   }
   const ownerOverrideReason = await resolveOwnerOverrideReason()
@@ -1397,8 +1400,8 @@ async function handleReject(): Promise<void> {
       return
     }
     if (isBusinessConflict(error) && getUserErrorMessage(error, '').includes('已被其他教师领取')) {
-      claimBlockedByOther.value = !canManageOwnerReviewOverride.value
-      ownerOverrideMode.value = canManageOwnerReviewOverride.value
+      claimBlockedByOther.value = canManageOwnerReviewOverride.value !== true
+      ownerOverrideMode.value = canManageOwnerReviewOverride.value === true
       void message.warning(getUserErrorMessage(error, '复核任务已被其他教师领取'))
       return
     }
@@ -1430,7 +1433,7 @@ async function handleSubmitAndNext(): Promise<void> {
  */
 async function takeNextTask(): Promise<void> {
   // MVR-317：领取下一份复核与 canManageReviewerWrites / BE 评阅写门禁同源
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无阅卷写权限，无法领取复核任务')
     return
   }
@@ -1474,7 +1477,7 @@ watch(
   () => [examId.value, taskId.value],
   () => {
     resetTaskState()
-    if (canSubmit.value) {
+    if (canSubmit.value === true) {
       void loadTask()
     }
   },

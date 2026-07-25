@@ -12,7 +12,8 @@ import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/ArchiveMaterialTagSelect.vue'
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   open: boolean
   volumeId: string
   catalogCode?: string
@@ -22,10 +23,15 @@ const props = defineProps<{
   physicalStorageLocation?: string
   initialMaterialTags?: string[]
   /** MVR-318：与父 canRegisterMaterial / BE requireCanScan 同源 */
-  canRegisterMaterial?: boolean
+  canRegisterMaterial?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
   /** PC 详情页回跳路径，写入 Kiosk 派单 URL 供 commit 后返回 */
   returnTo?: string
-}>()
+}>(),
+  {
+  canCancelTicket: false,
+  canRegisterMaterial: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -64,11 +70,11 @@ watch(
 
 async function handleSubmit() {
   // MVR-318：创建派单与 canRegisterMaterial / BE requireCanScan 二次拦截
-  if (!props.canRegisterMaterial) {
+  if (props.canRegisterMaterial !== true) {
     showFormValidationMessage('当前账号无扫描派单权限')
     return
   }
-  if (submitting.value) return
+  if (submitting.value === true) return
   if (!props.physicalStorageLocation?.trim()) {
     showFormValidationMessage('请先登记归档卷柜位')
     return
@@ -116,7 +122,7 @@ async function handleSubmit() {
     :open="open"
     title="创建扫描派单"
     :width="560"
-    :confirm-loading="submitting"
+    :confirm-loading="submitting === true"
     ok-text="派单"
     :hide-footer="false"
     @update:open="emit('update:open', $event)"

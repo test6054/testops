@@ -264,7 +264,7 @@ const okText = computed(() => {
   if (phase.value === 'preview') {
     return '确认导入'
   }
-  if (props.previewBeforeCommit) {
+  if (props.previewBeforeCommit === true) {
     return '预览校验'
   }
   return '开始导入'
@@ -280,11 +280,11 @@ const okDisabled = computed(() => {
     if (errorRows === 0) {
       return successRows === 0
     }
-    if (props.allowPartialCommit && successRows > 0) {
+    if (props.allowPartialCommit === true && successRows > 0) {
       return false
     }
     return !(
-      props.allowManualConflictCommit
+      props.allowManualConflictCommit === true
       && previewDiagnostics.value.some((item) => item.errorCode === 'MANUAL_CONFIRM')
     )
   }
@@ -400,7 +400,7 @@ function handleDrop(event: DragEvent) {
 }
 
 async function stageSelectedFile(file: File) {
-  if (submitting.value) {
+  if (submitting.value === true) {
     return
   }
   submitting.value = true
@@ -470,10 +470,10 @@ async function handleOk() {
   if (!stagedFileNodeId.value) {
     return
   }
-  if (submitting.value) return
+  if (submitting.value === true) return
   submitting.value = true
   try {
-    if (props.previewBeforeCommit && phase.value === 'preview') {
+    if (props.previewBeforeCommit === true && phase.value === 'preview') {
       const importResult = await submitImport(true)
       if (!importResult) return
       result.value = importResult
@@ -488,10 +488,10 @@ async function handleOk() {
       }
       return
     }
-    const commit = !props.previewBeforeCommit
+    const commit = props.previewBeforeCommit !== true
     const importResult = await submitImport(commit)
     if (!importResult) return
-    if (props.previewBeforeCommit) {
+    if (props.previewBeforeCommit === true) {
       previewSnapshot.value = importResult
       rosterPreviewPage.value = 1
       phase.value = 'preview'

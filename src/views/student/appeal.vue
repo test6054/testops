@@ -189,7 +189,7 @@
     <UiDialog
       v-model:open="submitModalOpen"
       title="提交复核申请"
-      :confirm-loading="submitting"
+      :confirm-loading="submitting === true"
       ok-text="提交"
       cancel-text="取消"
       :width="640"
@@ -459,7 +459,7 @@ const selectedAppealableExam = computed<StudentExamItemVO | null>(() => {
 const selectedExamCannotSubmitReview = computed(() => {
   const exam = selectedAppealableExam.value
   if (!exam) return true
-  return !canSubmitReview(exam)
+  return canSubmitReview(exam) !== true
 })
 
 const selectedExamSubmitBlockedReason = computed(() => {
@@ -480,7 +480,7 @@ const selectedExamSubmitBlockedReason = computed(() => {
   if (exam.maxRequestCount != null && (exam.usedReviewRequestCount ?? 0) >= exam.maxRequestCount) {
     return `已达到最大申请次数限制：${exam.maxRequestCount}`
   }
-  if (!canSubmitReview(exam)) {
+  if (canSubmitReview(exam) !== true) {
     return '当前暂不能提交复核申请'
   }
   return ''
@@ -797,7 +797,7 @@ function openSubmitModal() {
 }
 
 async function submit() {
-  if (submitting.value) {
+  if (submitting.value === true) {
     return
   }
   if (!selectedAppealableExam.value) {

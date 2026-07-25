@@ -34,7 +34,7 @@
             <div class="dp-space" style="--dp-space-gap: 8px">
               <UiButton size="sm" @click="goDetail(latestPublished.examId)">查看明细</UiButton>
               <UiButton
-                v-if="canSubmitReview(latestPublished)"
+                v-if="canSubmitReview(latestPublished) === true"
                 variant="outline"
                 size="sm"
                 @click="goAppeal(latestPublished.examId)"
@@ -434,8 +434,8 @@ function buildExamScoreActions(record: StudentExamItemVO): UiTableRowActionItem[
     {
       key: 'appeal',
       label: '提交复核',
-      tone: canSubmitReview(record) ? 'primary' : 'default',
-      disabled: !canSubmitReview(record),
+      tone: canSubmitReview(record) === true ? 'primary' : 'default',
+      disabled: canSubmitReview(record) !== true,
     },
   ]
 }
@@ -445,7 +445,7 @@ function handleExamScoreAction(key: string, record: StudentExamItemVO): void {
     goDetail(record.examId)
   } else if (key === 'appeal') {
     // MVR-320：与 canSubmitReview / BE canSubmitReviewRequest 二次拦截
-    if (!canSubmitReview(record)) {
+    if (canSubmitReview(record) !== true) {
       void message.warning('当前暂不能提交复核申请')
       return
     }
@@ -463,7 +463,7 @@ function goAppeal(examId: string) {
     = (latestPublished.value?.examId === examId ? latestPublished.value : null)
       ?? rows.value.find((e) => e.examId === examId)
       ?? publishedTopExams.value.find((e) => e.examId === examId)
-  if (cached && !canSubmitReview(cached)) {
+  if (cached && canSubmitReview(cached) !== true) {
     void message.warning('当前暂不能提交复核申请')
     return
   }

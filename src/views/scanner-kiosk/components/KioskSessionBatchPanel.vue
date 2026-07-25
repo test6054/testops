@@ -48,7 +48,7 @@ const batches = computed(() => {
 })
 
 const hasSessionBatchRows = computed(
-  () => batches.value.length > 0 || workflow.activeBackendScanSession.value,
+  () => batches.value.length > 0 || workflow.activeBackendScanSession.value === true,
 )
 const expectedPageCount = computed(
   () => workflow.kioskContext.value?.taskContract?.expectedPageCount ?? null,
@@ -69,7 +69,7 @@ const setupEmptyHint = computed(() => {
 })
 
 const scanningEmptyHint = computed(() => {
-  if (workflow.activeBackendScanSession.value) {
+  if (workflow.activeBackendScanSession.value === true) {
     const batch = workflow.activeBackendBatch.value
     const batchLabel = batch?.batchNo || batch?.batchExternalNo
     if (batchLabel) {
@@ -142,6 +142,12 @@ async function discardSessionBatch(row: ExamScannerKioskSessionBatchVO) {
     okText: '删除',
   })
   if (!confirmed) return
+  // MVR-965：确认后再次认批次非扫描中且无并发 loading，防确认等待期间开始扫描/重复提交
+  if (workflow.loading.value === true) return
+  if (row.status === ScanBatchStatusCode.IN_PROGRESS && workflow.currentJob.value) {
+    workflow.errorMessage.value = '当前批次正在扫描，请先结束或暂停后再删除'
+    return
+  }
   workflow.loading.value = true
   workflow.errorMessage.value = ''
   try {

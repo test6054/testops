@@ -50,7 +50,7 @@
               v-if="s1AttentionLoadFailed"
               size="sm"
               variant="outline"
-              :loading="s1AttentionLoading"
+              :loading="s1AttentionLoading === true"
               @click="loadS1AutoCreateAttention"
             >
               重试
@@ -91,7 +91,7 @@
             </UiButton>
           </template>
         </UiEmpty>
-        <UiForm v-else :disabled="dutyLoading || saving || !canManageArchiveConfig">
+        <UiForm v-else :disabled="dutyLoading === true || saving === true || canManageArchiveConfig !== true">
           <WorkbenchSurfaceCard flush>
             <template #head>
               <span>档案管理岗位</span>
@@ -103,14 +103,14 @@
                 </span>
                 <div class="archive-volume-settings__section-actions">
                   <UiButton
-                    v-if="canManageArchiveConfig"
+                    v-if="canManageArchiveConfig === true"
                     size="sm"
                     variant="outline"
                     @click="addDutyRow"
                   >
                     新增授权
                   </UiButton>
-                  <UiButton size="sm" variant="primary" :loading="saving" @click="saveDutyGrants">
+                  <UiButton size="sm" variant="primary" :loading="saving === true" @click="saveDutyGrants">
                     保存职责授权
                   </UiButton>
                 </div>
@@ -120,7 +120,7 @@
               pagination-mode="none"
               :columns="dutyColumns"
               :data-source="dutyRows"
-              :loading="dutyLoading"
+              :loading="dutyLoading === true"
               :show-pagination="false"
               flat
               row-key="rowKey"
@@ -163,7 +163,7 @@
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
-                    v-if="canManageArchiveConfig"
+                    v-if="canManageArchiveConfig === true"
                     :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
                     split
                     @action="() => removeDutyRow(index)"
@@ -184,7 +184,7 @@
             <UiButton size="sm" variant="outline" @click="loadPolicy">重新加载</UiButton>
           </template>
         </UiEmpty>
-        <UiForm v-else :disabled="policyLoading || saving || !canManageArchiveConfig">
+        <UiForm v-else :disabled="policyLoading === true || saving === true || canManageArchiveConfig !== true">
           <WorkbenchSurfaceCard flush>
             <template #head>
               <span>密级访问矩阵</span>
@@ -196,7 +196,7 @@
                 </span>
                 <div class="archive-volume-settings__section-actions">
                   <UiButton
-                    v-if="canManageArchiveConfig"
+                    v-if="canManageArchiveConfig === true"
                     size="sm"
                     variant="outline"
                     @click="addPolicyRow"
@@ -206,7 +206,7 @@
                   <UiButton
                     size="sm"
                     variant="primary"
-                    :loading="saving"
+                    :loading="saving === true"
                     @click="saveSecurityPolicyRows"
                   >
                     保存密级策略
@@ -218,7 +218,7 @@
               pagination-mode="none"
               :columns="policyColumns"
               :data-source="policyRows"
-              :loading="policyLoading"
+              :loading="policyLoading === true"
               :show-pagination="false"
               flat
               row-key="rowKey"
@@ -244,7 +244,7 @@
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
-                    v-if="canManageArchiveConfig"
+                    v-if="canManageArchiveConfig === true"
                     :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
                     split
                     @action="() => removePolicyRow(index)"
@@ -264,7 +264,7 @@
             </UiButton>
           </template>
         </UiEmpty>
-        <UiForm v-else :disabled="collaborationLoading || saving || !canManageArchiveConfig">
+        <UiForm v-else :disabled="collaborationLoading === true || saving === true || canManageArchiveConfig !== true">
           <WorkbenchSurfaceCard flush>
             <template #head>
               <span>协作与提交策略</span>
@@ -277,7 +277,7 @@
                 <UiButton
                   size="sm"
                   variant="primary"
-                  :loading="saving"
+                  :loading="saving === true"
                   @click="saveCollaborationPolicyForm"
                 >
                   保存协作策略
@@ -339,7 +339,7 @@
             </UiButton>
           </template>
         </UiEmpty>
-        <UiForm v-else :disabled="deadlineLoading || saving || !canManageArchiveConfig">
+        <UiForm v-else :disabled="deadlineLoading === true || saving === true || canManageArchiveConfig !== true">
           <WorkbenchSurfaceCard flush>
             <template #head>
               <span>归档时限策略</span>
@@ -351,7 +351,7 @@
                 </span>
                 <div class="archive-volume-settings__section-actions">
                   <UiButton
-                    v-if="canManageArchiveConfig"
+                    v-if="canManageArchiveConfig === true"
                     size="sm"
                     variant="outline"
                     @click="addDeadlineRow"
@@ -361,7 +361,7 @@
                   <UiButton
                     size="sm"
                     variant="primary"
-                    :loading="saving"
+                    :loading="saving === true"
                     @click="saveDeadlinePolicyRows"
                   >
                     保存时限策略
@@ -373,7 +373,7 @@
               pagination-mode="none"
               :columns="deadlineColumns"
               :data-source="deadlineRows"
-              :loading="deadlineLoading"
+              :loading="deadlineLoading === true"
               :show-pagination="false"
               flat
               row-key="rowKey"
@@ -421,7 +421,7 @@
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
-                    v-if="canManageArchiveConfig"
+                    v-if="canManageArchiveConfig === true"
                     :items="[
                       {
                         key: 'delete',
@@ -448,6 +448,8 @@
 </template>
 
 <script setup lang="ts">
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveDeadlinePolicyItemRequest,
@@ -731,7 +733,7 @@ function newRowKey() {
 
 function addDutyRow() {
   // MVR-391：与 canManageArchiveConfig / BE requireTenantAdminForConfig 二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
@@ -745,7 +747,7 @@ function addDutyRow() {
 }
 
 function removeDutyRow(index: number) {
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
@@ -753,7 +755,7 @@ function removeDutyRow(index: number) {
 }
 
 function handleTenantWideChange(index: number) {
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     return
   }
   if (dutyRows.value[index]?.tenantWide) {
@@ -787,7 +789,7 @@ async function loadDepartments() {
 
 function addPolicyRow() {
   // MVR-391：与 canManageArchiveConfig 二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
@@ -799,7 +801,7 @@ function addPolicyRow() {
 }
 
 function removePolicyRow(index: number) {
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
@@ -820,7 +822,7 @@ function buildDefaultDeadlineRow(isTenantDefault: boolean): DeadlineRow {
 
 function addDeadlineRow() {
   // MVR-391：与 canManageArchiveConfig 二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
@@ -828,7 +830,7 @@ function addDeadlineRow() {
 }
 
 function removeDeadlineRow(index: number) {
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
@@ -878,9 +880,9 @@ async function loadCollaborationPolicy() {
 }
 
 async function saveCollaborationPolicyForm() {
-  if (collaborationLoadFailed.value || saving.value) return
+  if (collaborationLoadFailed.value || saving.value === true) return
   // MVR-314：配置写二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
@@ -926,10 +928,10 @@ async function loadDeadlinePolicy() {
 }
 
 async function saveDeadlinePolicyRows() {
-  if (deadlineLoadFailed.value || departmentLoadFailed.value || saving.value) return
+  if (deadlineLoadFailed.value || departmentLoadFailed.value || saving.value === true) return
   if (!validateDeadlineRows()) return
   // MVR-314：配置写二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
@@ -992,10 +994,10 @@ async function loadPolicy() {
 }
 
 async function saveDutyGrants() {
-  if (dutyLoadFailed.value || departmentLoadFailed.value || saving.value) return
+  if (dutyLoadFailed.value || departmentLoadFailed.value || saving.value === true) return
   if (!validateDutyRows()) return
   // MVR-314：配置写二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
@@ -1019,9 +1021,9 @@ async function saveDutyGrants() {
 }
 
 async function saveSecurityPolicyRows() {
-  if (policyLoadFailed.value || saving.value) return
+  if (policyLoadFailed.value || saving.value === true) return
   // MVR-314：配置写二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }

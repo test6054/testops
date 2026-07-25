@@ -3,7 +3,7 @@
     <template #head>
       <div class="org-assignment__head">
         <h3 class="org-assignment__title">试题分配规则</h3>
-        <UiButton v-if="canManage" variant="primary" size="sm" @click="emit('create-group')">
+        <UiButton v-if="canManage === true" variant="primary" size="sm" @click="emit('create-group')">
           <template #icon><PlusOutlined /></template>
           新建题组
         </UiButton>
@@ -44,7 +44,7 @@
         </template>
         <template v-else-if="column.key === 'action'">
           <UiTableActions
-            v-if="canManage && record.editable"
+            v-if="canManage === true && record.editable"
             :items="[{ key: 'edit', label: '编辑' }]"
             split
             @action="() => emit('edit-group', record.groupId)"
@@ -74,6 +74,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-945：canManage* 控制流仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   AllocationPolicyResponse,
@@ -99,11 +100,17 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkingOrgAssignmentTable' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   groups: QuestionMarkingGroupResponse[]
   allocationPolicies: AllocationPolicyResponse[]
-  canManage: boolean
-}>()
+  canManage?: boolean
+}>(),
+  {
+  canManage: false,
+  },
+)
 
 const emit = defineEmits<{
   'create-group': []

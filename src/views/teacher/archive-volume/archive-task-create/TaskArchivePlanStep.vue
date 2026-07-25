@@ -103,7 +103,7 @@
                 v-model="planForm.retentionYears"
                 :min="1"
                 :max="100"
-                :disabled="planForm.permanentRetention"
+                :disabled="planForm.permanentRetention === true"
               />
               <span class="retention-field__unit">年</span>
               <UiCheckbox v-model="planForm.permanentRetention">永久保管</UiCheckbox>

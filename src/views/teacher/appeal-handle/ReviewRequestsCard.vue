@@ -63,7 +63,7 @@
         v-model:open="handleOpen"
         :title="handleTitle"
         :width="520"
-        :confirm-loading="handling"
+        :confirm-loading="handling === true"
         :mask-closable="false"
         :hide-footer="false"
         ok-text="提交"
@@ -137,6 +137,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-951：函数式 can*(...) 写入口仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   GradeReviewEvidenceFileRefVO,
@@ -283,14 +284,14 @@ function canHandleReviewRequest(record: GradeReviewRequestItemResponse): boolean
 
 function buildReviewRequestActions(record: GradeReviewRequestItemResponse): UiTableRowActionItem[] {
   // MVR-279：无阅卷写能力位时不展示领取/处理动作
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     return []
   }
   // 行内仅 1 个 primary：领取 / 通过
-  if (canClaimReviewRequest(record)) {
+  if (canClaimReviewRequest(record) === true) {
     return [{ key: 'claim', label: '领取', tone: 'primary' }]
   }
-  if (!canHandleReviewRequest(record)) {
+  if (canHandleReviewRequest(record) !== true) {
     return []
   }
   return [
@@ -305,11 +306,11 @@ async function handleReviewRequestAction(
 ): Promise<void> {
   if (key === 'claim') {
     // MVR-395：与 canClaimReviewRequest / BE PENDING+双人制 二次拦截，禁止仅行动作显隐
-    if (!canManageReviewerWrites.value) {
+    if (canManageReviewerWrites.value !== true) {
       void message.warning('当前账号无复核申请处理权限')
       return
     }
-    if (!canClaimReviewRequest(record)) {
+    if (canClaimReviewRequest(record) !== true) {
       void message.warning('当前申请不可领取（状态已变或申请人本人不可领）')
       return
     }
@@ -339,11 +340,11 @@ function openHandleModal(
   record: GradeReviewRequestItemResponse,
   conclusion: GradeReviewRequestStatusCode,
 ): void {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无复核申请处理权限')
     return
   }
-  if (!canHandleReviewRequest(record)) {
+  if (canHandleReviewRequest(record) !== true) {
     return
   }
   targetRequest.value = record
@@ -426,14 +427,14 @@ async function submitHandle(): Promise<void> {
     void message.warning('未选中申请')
     return
   }
-  if (handling.value) {
+  if (handling.value === true) {
     return
   }
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无复核申请处理权限')
     return
   }
-  if (!canHandleReviewRequest(targetRequest.value)) {
+  if (canHandleReviewRequest(targetRequest.value) !== true) {
     void message.warning('当前申请状态不可处理')
     return
   }

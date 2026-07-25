@@ -21,7 +21,8 @@ const props = withDefaults(
     instantBind?: boolean
   }>(),
   {
-    instantBind: true,
+    interactionLocked: false,
+    instantBind: false,
   },
 )
 
@@ -75,9 +76,9 @@ watch(
 )
 
 function activateExam(examId: string) {
-  if (props.interactionLocked || workflow.bindExamCandidateLoading.value) return
+  if (props.interactionLocked === true || workflow.bindExamCandidateLoading.value === true) return
   emit('update:selected-exam-id', examId)
-  if (props.instantBind) {
+  if (props.instantBind === true) {
     emit('confirm', examId)
   }
 }
@@ -95,7 +96,7 @@ function onSearchSubmit() {
 }
 
 function formatBatchBadge(candidate: ExamScannerKioskBindExamCandidateVO): string {
-  if (candidate.hasActiveScanSession) {
+  if (candidate.hasActiveScanSession === true) {
     const batchNo = candidate.activeBatchExternalNo?.trim()
     return batchNo ? `扫描中 · ${batchNo}` : '扫描中'
   }
@@ -141,15 +142,15 @@ function goNextPage() {
       <button
         type="button"
         class="exam-pick__refresh"
-        :disabled="workflow.bindExamCandidateLoading.value"
+        :disabled="workflow.bindExamCandidateLoading.value === true"
         @click="workflow.refreshBindExamCandidatesByUser"
       >
-        <ReloadOutlined :spin="workflow.bindExamCandidateLoading.value" />
+        <ReloadOutlined :spin="workflow.bindExamCandidateLoading.value === true" />
         <span>刷新</span>
       </button>
     </div>
 
-    <div v-if="workflow.bindExamCandidateLoading.value" class="exam-pick__state">
+    <div v-if="workflow.bindExamCandidateLoading.value === true" class="exam-pick__state">
       <UiSpin size="lg" />
       <span>加载可扫描考试中…</span>
     </div>
@@ -181,7 +182,7 @@ function goNextPage() {
         v-if="workflow.bindExamCandidateLoadIssue.value"
         type="button"
         class="exam-pick__retry"
-        :disabled="workflow.bindExamCandidateLoading.value"
+        :disabled="workflow.bindExamCandidateLoading.value === true"
         @click="workflow.refreshBindExamCandidatesByUser"
       >
         重新加载
@@ -195,11 +196,11 @@ function goNextPage() {
         role="option"
         class="exam-tile"
         :class="{
-          'exam-tile--resume': exam.hasActiveScanSession,
+          'exam-tile--resume': exam.hasActiveScanSession === true,
           'exam-tile--selected': selectedExamId === exam.examId,
         }"
         :aria-selected="selectedExamId === exam.examId"
-        :disabled="interactionLocked || workflow.bindExamCandidateLoading.value"
+        :disabled="interactionLocked === true || workflow.bindExamCandidateLoading.value === true"
         @click="activateExam(exam.examId)"
       >
         <span class="exam-tile__icon" aria-hidden="true">
@@ -237,7 +238,7 @@ function goNextPage() {
         <div class="exam-tile__foot">
           <span
             class="exam-tile__badge"
-            :class="{ 'exam-tile__badge--active': exam.hasActiveScanSession }"
+            :class="{ 'exam-tile__badge--active': exam.hasActiveScanSession === true }"
           >{{ formatBatchBadge(exam) }}</span>
         </div>
       </button>
@@ -248,7 +249,7 @@ function goNextPage() {
         type="button"
         class="pager-btn"
         :disabled="
-          workflow.bindExamCandidateFilter.pageNum <= 1 || workflow.bindExamCandidateLoading.value
+          workflow.bindExamCandidateFilter.pageNum <= 1 || workflow.bindExamCandidateLoading.value === true
         "
         @click="goPrevPage"
       >
@@ -261,7 +262,7 @@ function goNextPage() {
         class="pager-btn"
         :disabled="
           workflow.bindExamCandidateFilter.pageNum >= totalPages
-            || workflow.bindExamCandidateLoading.value
+            || workflow.bindExamCandidateLoading.value === true
         "
         @click="goNextPage"
       >

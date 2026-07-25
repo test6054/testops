@@ -106,7 +106,7 @@ function updateCatalogLineValue(
   value: string | number | undefined,
 ): void {
   // MVR-380：单元格编辑二次拦截；withDefaults 后 readonly 恒为 boolean，默认 true 拒写
-  if (props.readonly) {
+  if (props.readonly !== false) {
     return
   }
   if (typeof index !== 'number' || index < 0) {
@@ -142,7 +142,7 @@ function updateCatalogLineValue(
 
 async function handleGenerateDraft() {
   // MVR-299/380：readonly 二次拦截（父级 canEditCatalog）
-  if (props.readonly) {
+  if (props.readonly !== false) {
     void message.warning('当前账号无目录编辑权限')
     return
   }
@@ -152,8 +152,12 @@ async function handleGenerateDraft() {
 
 async function handleSave() {
   // MVR-299/380：readonly 二次拦截（父级 canEditCatalog）
-  if (props.readonly) {
+  if (props.readonly !== false) {
     void message.warning('当前账号无目录编辑权限')
+    return
+  }
+  // MVR-937：入口再认 saving/confirming，与 composable 内闸双保险
+  if (saving.value === true || confirming.value === true || exporting.value === true) {
     return
   }
   await saveCatalog()
@@ -162,8 +166,12 @@ async function handleSave() {
 
 async function handleConfirm() {
   // MVR-299/380：readonly 二次拦截（父级 canEditCatalog）
-  if (props.readonly) {
+  if (props.readonly !== false) {
     void message.warning('当前账号无目录编辑权限')
+    return
+  }
+  // MVR-937：入口再认 saving/confirming，与 composable 内闸双保险
+  if (saving.value === true || confirming.value === true || exporting.value === true) {
     return
   }
   await confirmCatalog()
@@ -190,12 +198,12 @@ defineExpose({ loadCatalog })
         </UiTag>
       </div>
     </template>
-    <template v-if="!readonly && editableLines.length > 0" #toolbar>
+    <template v-if="readonly === false && editableLines.length > 0" #toolbar>
       <div class="archive-volume-catalog-editor__actions">
         <UiButton
           size="sm"
           variant="outline"
-          :loading="saving"
+          :loading="saving === true"
           :disabled="isConfirmed || loadFailed"
           @click="handleGenerateDraft"
         >
@@ -204,7 +212,7 @@ defineExpose({ loadCatalog })
         <UiButton
           size="sm"
           variant="outline"
-          :loading="saving"
+          :loading="saving === true"
           :disabled="isConfirmed || loadFailed || editableLines.length === 0"
           @click="handleSave"
         >
@@ -213,7 +221,7 @@ defineExpose({ loadCatalog })
         <UiButton
           size="sm"
           variant="primary"
-          :loading="confirming"
+          :loading="confirming === true"
           :disabled="isConfirmed || loadFailed || editableLines.length === 0"
           @click="handleConfirm"
         >
@@ -222,7 +230,7 @@ defineExpose({ loadCatalog })
         <UiButton
           size="sm"
           variant="ghost"
-          :loading="exporting"
+          :loading="exporting === true"
           :disabled="editableLines.length === 0"
           @click="exportCatalog"
         >
@@ -239,7 +247,7 @@ defineExpose({ loadCatalog })
       :inline="false"
     >
       <template #actions>
-        <UiButton size="sm" variant="outline" :loading="loading" @click="loadCatalog">
+        <UiButton size="sm" variant="outline" :loading="loading === true" @click="loadCatalog">
           重新加载
         </UiButton>
       </template>
@@ -250,11 +258,11 @@ defineExpose({ loadCatalog })
     <div v-else-if="editableLines.length === 0" class="archive-volume-catalog-editor__empty-strip">
       <span class="archive-volume-catalog-editor__empty-text">尚未生成目录草稿</span>
       <UiButton
-        v-if="!readonly"
+        v-if="readonly === false"
         size="sm"
         variant="primary"
-        :loading="saving"
-        :disabled="loadFailed"
+        :loading="saving === true"
+        :disabled="loadFailed === true"
         @click="handleGenerateDraft"
       >
         生成草稿
@@ -262,7 +270,7 @@ defineExpose({ loadCatalog })
     </div>
 
     <ArchiveVolumeCatalogPreview
-      v-else-if="readonly || isConfirmed"
+      v-else-if="readonly !== false || isConfirmed"
       :lines="editableLines"
       :catalog-status="effectiveStatus"
     />
@@ -278,7 +286,7 @@ defineExpose({ loadCatalog })
       size="middle"
     >
       <template #bodyCell="{ column, record, index }">
-        <template v-if="readonly || isConfirmed">
+        <template v-if="readonly !== false || isConfirmed">
           {{ catalogCellValue(record, column.dataIndex) }}
         </template>
         <template v-else-if="column.key === 'lineNo'">

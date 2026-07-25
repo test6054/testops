@@ -44,14 +44,22 @@ import {
   deriveQuestionType,
 } from '@/utils/layout-question-templates'
 
-const props = defineProps<{
-  document: ExamLayoutDocument | null
-  examId: string
-  materialLayoutMode?: ExamMaterialLayoutModeCode
-  generating?: boolean
-  detecting?: boolean
-  readonly?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    document: ExamLayoutDocument | null
+    examId: string
+    materialLayoutMode?: ExamMaterialLayoutModeCode
+    generating?: boolean
+    detecting?: boolean
+    /** MVR-973：默认拒绝；仅父层显式 false 可写 */
+    readonly?: boolean
+  }>(),
+  {
+    readonly: true,
+    generating: false,
+    detecting: false,
+  },
+)
 
 const emit = defineEmits<{
   'generate-sheet': [paperSpec: string, questions: ExamLayoutGenerateQuestionRequest[]]
@@ -128,7 +136,7 @@ watch(
 const isAnswerSheetMode = computed(() => props.materialLayoutMode === 'ANSWER_SHEET')
 const isFullPaperMode = computed(() => props.materialLayoutMode === 'FULL_PAPER')
 /** 只读或未选材料版式模式时不可写 */
-const entryReadonly = computed(() => props.readonly || !props.materialLayoutMode)
+const entryReadonly = computed(() => props.readonly !== false || !props.materialLayoutMode)
 
 const paperSpecOptions = ExamLayoutPaperSpecOptions
 
@@ -337,7 +345,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
   if (!fileId) {
     return
   }
-  if (props.detecting) {
+  if (props.detecting === true) {
     void message.warning('识别进行中，请等待完成后再更换源文件')
     sourcePdfFileId.value = props.document?.sourcePdfFileId ?? ''
     return
@@ -535,7 +543,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
           size="sm"
           block
           variant="primary"
-          :loading="generating"
+          :loading="generating === true"
           :disabled="entryReadonly"
           @click="handleGenerateSheet"
         >

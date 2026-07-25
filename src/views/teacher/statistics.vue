@@ -60,7 +60,7 @@
               <UiButton
                 variant="ghost"
                 size="sm"
-                :disabled="!hasLinkageContext"
+                :disabled="hasLinkageContext !== true"
                 @click="clearLinkage"
               >
                 清空联动
@@ -246,7 +246,7 @@ const currentExamId = computed(() => selectedExamId.value || '')
 const canManageReviewerWrites = ref(false)
 provide(
   AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY,
-  computed(() => canManageReviewerWrites.value),
+  computed(() => canManageReviewerWrites.value === true),
 )
 
 async function loadReviewerWriteCapability(examId: string): Promise<void> {
@@ -305,7 +305,7 @@ const teachingImprovementRef = ref<InstanceType<typeof TeachingImprovementCard> 
 const activeClassId = ref<string>('')
 const activeStudentUserId = ref<string>('')
 
-const hasLinkageContext = computed(() => !!activeClassId.value || !!activeStudentUserId.value)
+const hasLinkageContext = computed(() => Boolean(activeClassId.value) || Boolean(activeStudentUserId.value))
 
 const activeClassName = computed(() => {
   if (activeClassId.value) {

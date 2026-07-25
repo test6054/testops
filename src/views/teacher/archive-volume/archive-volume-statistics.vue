@@ -201,6 +201,7 @@
 </template>
 
 <script setup lang="ts">
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveDepartmentCompletionVO,
@@ -271,8 +272,8 @@ const {
 const statsTab = ref('overview')
 const statsTabs = computed(() => {
   const items: Array<{ key: string, label: string }> = []
-  if (canViewStatisticsKpi.value) items.push({ key: 'overview', label: '迎评统计' })
-  if (canViewDestructionLedger.value) items.push({ key: 'destruction', label: '销毁清册' })
+  if (canViewStatisticsKpi.value === true) items.push({ key: 'overview', label: '迎评统计' })
+  if (canViewDestructionLedger.value === true) items.push({ key: 'destruction', label: '销毁清册' })
   return items
 })
 const loading = ref(false)
@@ -680,7 +681,7 @@ function goList() {
 
 async function exportOverviewExcel() {
   // MVR-340：与 canViewStatisticsKpi / BE requireStatisticsViewer 二次拦截
-  if (!canViewStatisticsKpi.value) {
+  if (canViewStatisticsKpi.value !== true) {
     void message.warning('当前账号无导出迎评统计权限')
     return
   }
@@ -691,6 +692,8 @@ async function exportOverviewExcel() {
   if (!request) {
     return
   }
+  // MVR-969：导出防重入，与 exportDestructionExcel 同源
+  if (exportOverviewLoading.value === true) return
   exportOverviewLoading.value = true
   try {
     const result = await exportArchiveVolumeStatisticsExcel(request)
@@ -704,11 +707,11 @@ async function exportOverviewExcel() {
 
 async function exportDestructionExcel() {
   // MVR-340：与 canViewDestructionLedger / BE requireDestructionLedgerViewer 二次拦截
-  if (!canViewDestructionLedger.value) {
+  if (canViewDestructionLedger.value !== true) {
     void message.warning('当前账号无导出销毁清册权限')
     return
   }
-  if (exportDestructionLoading.value) return
+  if (exportDestructionLoading.value === true) return
   exportDestructionLoading.value = true
   try {
     const result = await exportDestructionLedgerExcel({
@@ -748,15 +751,15 @@ async function initPage() {
   if (grantsLoadFailed.value) {
     return
   }
-  if (!canViewStatisticsKpi.value && !canViewDestructionLedger.value) {
+  if (canViewStatisticsKpi.value !== true && canViewDestructionLedger.value !== true) {
     showUserError(new Error('缺少归档统计或销毁清册职责'))
     void router.replace({ name: 'TeacherArchiveVolumeList' })
     return
   }
-  statsTab.value = canViewStatisticsKpi.value ? 'overview' : 'destruction'
+  statsTab.value = canViewStatisticsKpi.value === true ? 'overview' : 'destruction'
   await loadDepartments()
   if (
-    canViewStatisticsKpi.value
+    canViewStatisticsKpi.value === true
     && filterForm.academicYearStartYear != null
     && filterForm.semester
   ) {

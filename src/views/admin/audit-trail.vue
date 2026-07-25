@@ -15,7 +15,7 @@
             v-if="!isExamWorkspaceRoute"
             :selected-exam-id="selectedExamId"
             :exam-options="examOptions"
-            :loading="examLoading"
+            :loading="examLoading === true"
             :searching="searching"
             :resolving-pinned="resolvingPinned"
             select-class="audit-trail__exam-select"
@@ -30,7 +30,7 @@
             variant="outline"
             size="sm"
             :disabled="!selectedExamId"
-            :loading="loading"
+            :loading="loading === true"
             @click="reloadAll"
           >
             <template #icon><ReloadOutlined /></template>
@@ -64,7 +64,7 @@
         <UiDataTable
           :columns="logColumns"
           :data-source="operationLogs"
-          :loading="logLoading"
+          :loading="logLoading === true"
           row-key="id"
           size="middle"
           class="audit-table"
@@ -132,7 +132,7 @@
           pagination-mode="server"
           :columns="incidentColumns"
           :data-source="incidents"
-          :loading="incidentLoading"
+          :loading="incidentLoading === true"
           row-key="id"
           size="middle"
           class="audit-table"
@@ -203,7 +203,7 @@
         <UiDataTable
           :columns="sampleColumns"
           :data-source="diagnosticSamples"
-          :loading="sampleLoading"
+          :loading="sampleLoading === true"
           row-key="id"
           size="middle"
           class="audit-table"
@@ -251,7 +251,7 @@
     <UiDialog
       v-model:open="resolveModalOpen"
       title="解决重大事件"
-      :confirm-loading="resolving"
+      :confirm-loading="resolving === true"
       ok-text="提交"
       cancel-text="取消"
       :width="560"
@@ -620,7 +620,7 @@ function openResolveModal(incident: ExamIncidentRecord) {
 }
 
 async function submitResolve() {
-  if (resolving.value || !resolvingIncident.value) return
+  if (resolving.value === true || !resolvingIncident.value) return
   if (canResolveIncident(resolvingIncident.value) !== true) {
     void message.warning('仅本场阅卷组织成员、主考或管理员可处置重大事件')
     return
@@ -719,7 +719,7 @@ function handleSamplePageChange(pageInfo: { current: number, pageSize: number })
 }
 
 // ─── 整体编排 ──────────────────────────────────
-const loading = computed(() => logLoading.value || incidentLoading.value || sampleLoading.value)
+const loading = computed(() => logLoading.value === true || incidentLoading.value === true || sampleLoading.value === true)
 
 function reloadAll() {
   loadLogs()

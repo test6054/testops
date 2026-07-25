@@ -265,7 +265,7 @@ export const useUserStore = defineStore(
       userInfo.passwordLastChangedTime = userData.passwordLastChangedTime
       userInfo.currentLoginProviderType = userData.currentLoginProviderType || ''
       userInfo.sourceFrom = userData.sourceFrom || ''
-      return userInfo.forcePasswordChange
+      return userInfo.forcePasswordChange === true
     }
 
     return {

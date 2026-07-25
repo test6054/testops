@@ -60,6 +60,7 @@ const operationKey = ref('')
 const exportConfirmOpen = ref(false)
 const exportPurpose = ref('')
 const operating = computed(() => Boolean(operationKey.value))
+const exporting = computed(() => operationKey.value === 'salary:export')
 
 function beginOperation(key: string): boolean {
   if (operating.value) return false

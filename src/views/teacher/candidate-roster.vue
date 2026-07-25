@@ -4,11 +4,11 @@
       <ContextBar layout="workbench" show-title title="考生名册">
         <template #status>
           <UiTag v-if="rosterPanel?.filterScopeApplied" tone="blue" size="sm">筛选范围内</UiTag>
-          <UiTag v-if="rosterLocked" tone="orange" size="sm">已有扫描</UiTag>
-          <UiTag v-else-if="archiveClassScopeRecoveryAllowed" tone="orange" size="sm">
+          <UiTag v-if="rosterLocked === true" tone="orange" size="sm">已有扫描</UiTag>
+          <UiTag v-else-if="archiveClassScopeRecoveryAllowed === true" tone="orange" size="sm">
             关考后可修正
           </UiTag>
-          <UiTag v-else-if="classScopeReadOnly" tone="gray" size="sm">只读</UiTag>
+          <UiTag v-else-if="classScopeReadOnly === true" tone="gray" size="sm">只读</UiTag>
         </template>
       </ContextBar>
     </template>
@@ -42,7 +42,7 @@
               <span>考试范围</span>
             </h3>
             <UiButton
-              v-if="canAddClassScope"
+              v-if="canAddClassScope === true"
               size="sm"
               variant="outline"
               @click="openAddClassModal"
@@ -95,7 +95,7 @@
             variant="primary"
             size="sm"
             :loading="persistClassScopeSaving"
-            :disabled="classScopeReadOnly"
+            :disabled="classScopeReadOnly === true"
             @click="persistInferredClassScope"
           >
             保存为参考班级
@@ -104,7 +104,7 @@
       </UiAlertStrip>
 
       <UiAlertStrip
-        v-if="archiveClassScopeRecoveryAllowed"
+        v-if="archiveClassScopeRecoveryAllowed === true"
         tone="warning"
         title="自动建卷失败，可修正参考班级"
         description="关考后不可增删考生，仅可修正参考班级。保存后系统将自动重触发建卷。"
@@ -112,7 +112,7 @@
       />
 
       <WorkbenchSurfaceCard class="roster-page__table-card" flush>
-        <template v-if="candidateRosterWriteAllowed" #toolbar>
+        <template v-if="candidateRosterWriteAllowed === true" #toolbar>
           <div class="roster-page__filter-stack">
             <div
               v-if="allowsManualCandidateEdit"
@@ -205,7 +205,7 @@
           :items="tableCandidates"
           :loading="tableLoading"
           :total="pagination.total ?? 0"
-          :show-remove-action="allowsManualCandidateEdit && candidateRosterWriteAllowed"
+          :show-remove-action="allowsManualCandidateEdit === true && candidateRosterWriteAllowed === true"
           @page-change="handlePageChange"
           @action="handleWorkbenchAction"
         />
@@ -236,7 +236,7 @@
       :width="520"
       :hide-footer="false"
       ok-text="加入名册"
-      :confirm-loading="singleAddSubmitting"
+      :confirm-loading="singleAddSubmitting === true"
       @ok="handleSingleAddSubmit"
     >
       <UiForm layout="vertical">
@@ -269,7 +269,7 @@
       :width="520"
       :hide-footer="false"
       ok-text="确认新增"
-      :confirm-loading="addClassSubmitting"
+      :confirm-loading="addClassSubmitting === true"
       @ok="handleAddClassSubmit"
     >
       <UiForm layout="vertical">
@@ -301,6 +301,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-948：本地 can* 显隐/禁用仅认 === true
 import type { TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { ClassStudentTreeConfirmPayload } from '@/apis/edu/class'
 import type { ExamClassRefVO } from '@/apis/mark/exam'
@@ -523,8 +524,8 @@ const rosterSignalMetrics = computed((): SignalMetric[] => {
   fallbackMetrics.push({
     key: 'locked',
     label: '名册状态',
-    value: rosterLocked.value ? '已锁定' : '可编辑',
-    tone: rosterLocked.value ? 'orange' : 'green',
+    value: rosterLocked.value === true ? '已锁定' : '可编辑',
+    tone: rosterLocked.value === true ? 'orange' : 'green',
   })
   return fallbackMetrics
 })
@@ -541,28 +542,28 @@ const singleAddStudent = ref<UserDto | null>(null)
 
 const classScopeReadOnly = computed(() => {
   // MVR-280：无 BE 名册写能力位时整页只读（含班级范围保存）
-  if (!canManageRosterWrites.value) {
+  if (canManageRosterWrites.value !== true) {
     return true
   }
-  if (rosterWriteForbidden.value) {
+  if (rosterWriteForbidden.value === true) {
     return true
   }
   if (examStatus.value === ExamStatusCode.CLOSED) {
-    return !archiveClassScopeRecoveryAllowed.value
+    return archiveClassScopeRecoveryAllowed.value !== true
   }
   return false
 })
 
 const showRosterContextBar = computed(
-  () => rosterLocked.value || archiveClassScopeRecoveryAllowed.value || classScopeReadOnly.value,
+  () => rosterLocked.value === true || archiveClassScopeRecoveryAllowed.value === true || classScopeReadOnly.value === true,
 )
 
 const candidateRosterWriteAllowed = computed(
   () =>
-    canManageRosterWrites.value
+    canManageRosterWrites.value === true
     && examStatus.value !== ExamStatusCode.CLOSED
-    && !classScopeReadOnly.value
-    && !rosterLocked.value,
+    && classScopeReadOnly.value !== true
+    && rosterLocked.value !== true,
 )
 
 const allowsManualCandidateEdit = computed(
@@ -576,14 +577,14 @@ const rosterScopeModeDisplay = computed(() => {
   return strictEnumLabel(ExamRosterScopeModeDescription, rosterScopeMode.value, '名册范围模式')
 })
 
-const canAddClassScope = computed(() => !classScopeReadOnly.value && !!departmentId.value)
+const canAddClassScope = computed(() => classScopeReadOnly.value !== true && Boolean(departmentId.value))
 
 const addableClassOptions = computed(() =>
   classSelectOptions.value.filter((item) => !classIds.value.includes(item.value)),
 )
 
 const showInferredClassScopeNotice = computed(
-  () => !classScopeReadOnly.value && !classScopePersisted.value && classIds.value.length > 0,
+  () => classScopeReadOnly.value !== true && classScopePersisted.value !== true && classIds.value.length > 0,
 )
 
 const scopedClassTags = computed(() =>
@@ -723,7 +724,7 @@ async function loadClassOptionsForExam(_examId: string): Promise<void> {
 
 async function openAddClassModal(): Promise<void> {
   // MVR-391：与 canManageRosterWrites / classScopeReadOnly 二次拦截
-  if (!canManageRosterWrites.value || classScopeReadOnly.value) {
+  if (canManageRosterWrites.value !== true || classScopeReadOnly.value === true) {
     void message.warning('当前账号或考试状态不可维护班级范围')
     return
   }
@@ -743,8 +744,12 @@ async function openAddClassModal(): Promise<void> {
 }
 
 async function handleAddClassSubmit(): Promise<void> {
+  // MVR-970：新增班级防重入
+  if (addClassSubmitting.value === true) {
+    return
+  }
   // MVR-391：与 canManageRosterWrites / classScopeReadOnly 二次拦截
-  if (!canManageRosterWrites.value || classScopeReadOnly.value) {
+  if (canManageRosterWrites.value !== true || classScopeReadOnly.value === true) {
     void message.warning('当前账号或考试状态不可维护班级范围')
     return
   }
@@ -906,15 +911,15 @@ async function loadExamContext(): Promise<void> {
 
 async function persistInferredClassScope(): Promise<void> {
   // MVR-316：与 BE requireExamRosterWritePermission / canManageRosterWrites 二次拦截
-  if (!canManageRosterWrites.value) {
+  if (canManageRosterWrites.value !== true) {
     void message.warning('当前账号无名册维护权限')
     return
   }
   if (
     !selectedExamId.value
     || !classIds.value.length
-    || classScopeReadOnly.value
-    || persistClassScopeSaving.value
+    || classScopeReadOnly.value === true
+    || persistClassScopeSaving.value === true
   ) {
     return
   }
@@ -950,7 +955,7 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 
 function openSelectDrawer(): void {
   // MVR-316：批量纳入考生与名册写能力位同源
-  if (!candidateRosterWriteAllowed.value) {
+  if (candidateRosterWriteAllowed.value !== true) {
     void message.warning('当前账号无考生名册写权限')
     return
   }
@@ -962,7 +967,7 @@ function openSelectDrawer(): void {
 }
 
 function openImportModal(): void {
-  if (!canManageRosterWrites.value) {
+  if (canManageRosterWrites.value !== true) {
     void message.warning('当前账号无名册维护权限')
     return
   }
@@ -978,7 +983,7 @@ async function mergeCandidatesWithPreview(
   candidates: ExamCandidateRosterRequest[],
 ): Promise<number> {
   // MVR-318：内部合并入口与 candidateRosterWriteAllowed 同源
-  if (!candidateRosterWriteAllowed.value) {
+  if (candidateRosterWriteAllowed.value !== true) {
     void message.warning('当前账号无考生名册写权限')
     return 0
   }
@@ -996,7 +1001,7 @@ async function mergeCandidatesWithPreview(
 
 async function confirmSaveFullScope(): Promise<void> {
   // MVR-316：与 candidateRosterWriteAllowed / BE requireExamRosterWritePermission 二次拦截
-  if (!candidateRosterWriteAllowed.value) {
+  if (candidateRosterWriteAllowed.value !== true) {
     void message.warning('当前账号无考生名册写权限')
     return
   }
@@ -1004,7 +1009,7 @@ async function confirmSaveFullScope(): Promise<void> {
     showFormValidationMessage('请先选择班级范围')
     return
   }
-  if (fullScopeSaving.value) {
+  if (fullScopeSaving.value === true) {
     return
   }
   const confirmed = await confirmAsync({
@@ -1014,6 +1019,15 @@ async function confirmSaveFullScope(): Promise<void> {
     okText: '全量保存',
     cancelText: '取消',
     onOk: async () => {
+      // MVR-936：确认后再次认 candidateRosterWriteAllowed
+      if (candidateRosterWriteAllowed.value !== true) {
+        void message.warning('当前账号无考生名册写权限')
+        return false
+      }
+      if (!selectedExamId.value || !classIds.value.length) {
+        showFormValidationMessage('请先选择班级范围')
+        return false
+      }
       fullScopeSaving.value = true
       try {
         await saveCurrentExamScope({
@@ -1036,14 +1050,14 @@ async function confirmSaveFullScope(): Promise<void> {
 
 async function handleStudentsSelected(selection: ClassStudentTreeConfirmPayload): Promise<void> {
   // MVR-316：抽屉确认纳入须二次拦截，避免绕过工具栏可见性
-  if (!candidateRosterWriteAllowed.value) {
+  if (candidateRosterWriteAllowed.value !== true) {
     void message.warning('当前账号无考生名册写权限')
     return
   }
   if (!selectedExamId.value) {
     return
   }
-  if (contextLoading.value) {
+  if (contextLoading.value === true) {
     return
   }
   const mergeRequest = buildExamCandidateMergeRequests(
@@ -1067,7 +1081,7 @@ async function handleStudentsSelected(selection: ClassStudentTreeConfirmPayload)
 }
 
 function openSingleAddModal(): void {
-  if (!canManageRosterWrites.value) {
+  if (canManageRosterWrites.value !== true) {
     void message.warning('当前账号无名册维护权限')
     return
   }
@@ -1083,14 +1097,14 @@ function handleSingleStudentChange(_userId: string | null, option?: UserDto): vo
 
 async function handleSingleAddSubmit(): Promise<void> {
   // MVR-316：单人加入名册与 candidateRosterWriteAllowed 同源二次拦截
-  if (!candidateRosterWriteAllowed.value) {
+  if (candidateRosterWriteAllowed.value !== true) {
     void message.warning('当前账号无考生名册写权限')
     return
   }
   if (!selectedExamId.value) {
     return
   }
-  if (singleAddSubmitting.value) {
+  if (singleAddSubmitting.value === true) {
     return
   }
   if (!singleAddClassId.value) {
@@ -1166,14 +1180,21 @@ function handleWorkbenchAction(
   }
   if (key === 'remove') {
     // MVR-313：与 candidateRosterWriteAllowed / BE requireExamRosterWritePermission 同源
-    if (!candidateRosterWriteAllowed.value) {
+    if (candidateRosterWriteAllowed.value !== true) {
       return
     }
     void confirmAsync({
       title: '确认移除该考生？',
       content: '移除后需重新加入名册。',
       type: 'warning',
-      onOk: () => removeCandidate(record.studentUserId),
+      onOk: async () => {
+        // MVR-965：onOk 再认 candidateRosterWriteAllowed，防确认等待期间写权/锁定漂移
+        if (candidateRosterWriteAllowed.value !== true) {
+          void message.warning('当前账号无考生名册写权限或名册已锁定')
+          return
+        }
+        await removeCandidate(record.studentUserId)
+      },
     })
   }
 }
@@ -1183,7 +1204,7 @@ async function removeCandidate(studentUserId: string): Promise<void> {
     return
   }
   // MVR-313：写 handler 二次拦截
-  if (!candidateRosterWriteAllowed.value) {
+  if (candidateRosterWriteAllowed.value !== true) {
     void message.warning('当前账号无考生名册写权限')
     return
   }
@@ -1206,11 +1227,11 @@ async function removeCandidate(studentUserId: string): Promise<void> {
 }
 
 watch(classIds, (ids) => {
-  if (classScopeHydrating.value || !selectedExamId.value || classScopeReadOnly.value) {
+  if (classScopeHydrating.value === true || !selectedExamId.value || classScopeReadOnly.value === true) {
     return
   }
   // MVR-394：自动保存班级范围与 canManageRosterWrites 二次拦截（classScopeReadOnly 已含，显式默认拒绝）
-  if (!canManageRosterWrites.value) {
+  if (canManageRosterWrites.value !== true) {
     return
   }
   if (sameClassIds(ids, lastSavedClassIds.value)) {

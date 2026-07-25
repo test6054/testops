@@ -46,7 +46,7 @@
     </template>
 
     <div class="file-preview-dialog__body">
-      <div v-if="api.filePreviewLoading.value" class="file-preview-dialog__state">
+      <div v-if="api.filePreviewLoading.value === true" class="file-preview-dialog__state">
         <UiSpin size="lg" tip="正在打开文件..." />
       </div>
 

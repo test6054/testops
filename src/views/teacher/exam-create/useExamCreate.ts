@@ -519,7 +519,7 @@ export function useExamCreate() {
   }
 
   async function validateRosterStep(): Promise<boolean> {
-    if (rosterPreviewSyncing.value) {
+    if (rosterPreviewSyncing.value === true) {
       void message.error('名册预览加载中，请稍候再提交')
       return false
     }
@@ -632,7 +632,7 @@ export function useExamCreate() {
   }
 
   async function handleCreateExam(): Promise<ExamCreateSectionKey | null> {
-    if (submitting.value) {
+    if (submitting.value === true) {
       return null
     }
     const failedSection = await validateAllSteps()

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// MVR-948：本地 can* 显隐/禁用仅认 === true
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
@@ -33,7 +35,7 @@ const canCancel = computed(() => {
 
 async function handleCancel(): Promise<void> {
   // MVR-318：仅排队/生成中可取消（与 canCancel 可见性同源）
-  if (!canCancel.value) {
+  if (canCancel.value !== true) {
     return
   }
   await cancelArchiveEvaluationExportTask()
@@ -65,7 +67,7 @@ async function handleCancel(): Promise<void> {
     <template #footer>
       <UiButton
         size="sm"
-        v-if="canCancel"
+        v-if="canCancel === true"
         variant="outline"
         :loading="taskView?.cancelling"
         @click="handleCancel"

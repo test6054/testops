@@ -102,14 +102,14 @@ export function useDispatchSession() {
   }
 
   async function claimTicket() {
-    if (actionLoading.value) {
+    if (actionLoading.value === true) {
       return false
     }
     if (!assertLeaseActive()) {
       return false
     }
     // MVR-383：handler 二次拦截，与按钮 :disabled 及 BE claim 同源
-    if (!canClaimTicket.value) {
+    if (canClaimTicket.value !== true) {
       errorMessage.value = '当前派单不可领取，请确认扫描权限与任务快照是否完整'
       return false
     }
@@ -136,7 +136,7 @@ export function useDispatchSession() {
   }
 
   async function confirmOpen() {
-    if (actionLoading.value) {
+    if (actionLoading.value === true) {
       return false
     }
     if (!assertLeaseActive()) {
@@ -198,7 +198,7 @@ export function useDispatchSession() {
   }
 
   async function suspendTicket() {
-    if (actionLoading.value) {
+    if (actionLoading.value === true) {
       return false
     }
     if (!assertLeaseActive()) {
@@ -275,7 +275,7 @@ export function useDispatchSession() {
   }
 
   async function resumeTicket() {
-    if (actionLoading.value) {
+    if (actionLoading.value === true) {
       return false
     }
     if (!assertLeaseActive()) {

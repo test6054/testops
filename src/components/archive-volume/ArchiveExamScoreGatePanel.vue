@@ -108,17 +108,17 @@ const missingStudents = computed(() => {
 
 /** 双门禁单项：已满足为 pass，流程中待办为 pending，状态矛盾为 fail。 */
 function resolveExamClosedState(gate: ArchiveVolumeExamGateResponse): GateCheckState {
-  if (gate.examClosed) {
-    return gate.allScoresPublished ? 'pass' : 'fail'
+  if (gate.examClosed === true) {
+    return gate.allScoresPublished === true ? 'pass' : 'fail'
   }
   return 'pending'
 }
 
 function resolveScoresPublishedState(gate: ArchiveVolumeExamGateResponse): GateCheckState {
-  if (gate.allScoresPublished) {
+  if (gate.allScoresPublished === true) {
     return 'pass'
   }
-  if (gate.examClosed) {
+  if (gate.examClosed === true) {
     return 'fail'
   }
   return 'pending'

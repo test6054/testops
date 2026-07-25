@@ -233,7 +233,7 @@ const emptyDescription = computed(() => {
   if (!rosterForm.classIds.length) {
     return '请选择参考班级'
   }
-  if (classScopeSyncing.value) {
+  if (classScopeSyncing.value === true) {
     return '正在加载考生名册…'
   }
   if (rosterForm.scopeMode === ExamRosterScopeModeCode.BY_CLASS) {
@@ -294,7 +294,7 @@ function isSameClassIdSet(left: string[], right: string[]): boolean {
 }
 
 function syncByClassScope(addedClassIds: string[]): void {
-  if (classScopeSyncing.value) return
+  if (classScopeSyncing.value === true) return
   const classIds = [...rosterForm.classIds]
   const syncSeq = ++classScopeSyncSeq
   if (!classIds.length) {
@@ -418,7 +418,7 @@ watch(
 watch(
   () => `${rosterForm.scopeMode}:${[...rosterForm.classIds].sort().join(',')}`,
   () => {
-    if (classScopeSyncing.value) return
+    if (classScopeSyncing.value === true) return
     const currentClassIds = [...rosterForm.classIds]
     const addedClassIds = currentClassIds.filter((id) => !trackedClassIds.includes(id))
     trackedClassIds = [...currentClassIds]

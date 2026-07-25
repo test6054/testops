@@ -6,18 +6,18 @@
     <template v-if="!embedded" #toolbar>
       <div class="ai-analysis-card-toolbar">
         <UiButton
-          v-if="canManageReviewerWrites"
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
-          :loading="generating"
+          :loading="generating === true"
           @click="handleGenerate"
         >
           重新生成
         </UiButton>
-        <UiButton variant="outline" size="sm" :disabled="!canShareRecord" @click="copyShareText">
+        <UiButton variant="outline" size="sm" :disabled="canShareRecord !== true" @click="copyShareText">
           复制分享
         </UiButton>
-        <UiButton variant="outline" size="sm" :disabled="!canShareRecord" @click="exportRecordText">
+        <UiButton variant="outline" size="sm" :disabled="canShareRecord !== true" @click="exportRecordText">
           导出文本
         </UiButton>
         <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
@@ -29,10 +29,10 @@
     <template v-if="embedded" #actions>
       <div class="ai-analysis-card-toolbar">
         <UiButton
-          v-if="canManageReviewerWrites"
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
-          :loading="generating"
+          :loading="generating === true"
           @click="handleGenerate"
         >
           重新生成
@@ -89,6 +89,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type {
   TeachingAnalysisRecordResponse,
   TeachingImprovementItemResponse,
@@ -189,7 +190,7 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }

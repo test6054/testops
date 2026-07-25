@@ -31,7 +31,7 @@
       <WorkbenchSurfaceCard class="ledger-page__surface">
         <LedgerSummaryCard
           :ledger="ledger"
-          :loading="loadingDetail"
+          :loading="loadingDetail === true"
           :balancing="balancing"
           :can-manage-owner-ledger-writes="canManageOwnerLedgerWrites"
           @balance="handleBalance"
@@ -100,7 +100,7 @@ const loadingDetail = ref(false)
 const balancing = ref(false)
 
 /** MVR-264/324：仅认 BE canManageOwnerLedgerWrites===true；禁止缺省回退 isExamOwner */
-const canManageOwnerLedgerWrites = computed(() => ledger.value?.canManageOwnerLedgerWrites === true)
+const canManageOwnerLedgerWrites = computed(() => ledger.value?.canManageOwnerLedgerWrites === true) // MVR-941：能力位控制流仅认 === true
 
 const ledgerSignalMetrics = computed((): SignalMetric[] => {
   const data = ledger.value
@@ -170,10 +170,10 @@ async function loadAll(): Promise<void> {
 
 async function handleBalance(): Promise<void> {
   if (!selectedExamId.value) return
-  if (!canManageOwnerLedgerWrites.value) {
+  if (canManageOwnerLedgerWrites.value !== true) {
     return
   }
-  if (balancing.value) {
+  if (balancing.value === true) {
     return
   }
   const confirmed = await confirmAsync({
@@ -185,6 +185,11 @@ async function handleBalance(): Promise<void> {
     cancelText: '取消',
   })
   if (!confirmed) {
+    return
+  }
+  // MVR-934：确认后再次认 canManageOwnerLedgerWrites
+  if (canManageOwnerLedgerWrites.value !== true) {
+    void message.warning('仅本场主考可执行影像账本对账')
     return
   }
   balancing.value = true
@@ -210,7 +215,7 @@ const resolveTarget = ref<ExamPaperDuplicateResolutionVO | null>(null)
 
 function openResolve(record: ExamPaperDuplicateResolutionVO): void {
   // MVR-391：打开处置弹窗仅认 canManageOwnerLedgerWrites===true
-  if (!canManageOwnerLedgerWrites.value) {
+  if (canManageOwnerLedgerWrites.value !== true) {
     void message.warning('仅本场主考可处置重复影像')
     return
   }

@@ -6,7 +6,7 @@
     ok-text="提交补扫"
     cancel-text="取消"
     :width="640"
-    :confirm-loading="submitting"
+    :confirm-loading="submitting === true"
     @update:open="emit('update:open', $event)"
     @ok="handleSubmit"
     @cancel="handleCancel"
@@ -122,7 +122,7 @@ const prepareBlockDescription = computed(() => {
   if (!context || context.canSubmitManualSupplement === true) {
     return ''
   }
-  if (context.hasActiveScanSession) {
+  if (context.hasActiveScanSession === true) {
     const batchLabelText = context.activeBatchExternalNo
       ? `（${context.activeBatchExternalNo}）`
       : ''
@@ -134,7 +134,7 @@ const prepareBlockDescription = computed(() => {
 const submitDisabled = computed(
   () =>
     declaredClassIds.value.length === 0
-    || prepareLoading.value
+    || prepareLoading.value === true
     || prepareContext.value?.canSubmitManualSupplement !== true,
 )
 
@@ -189,11 +189,11 @@ function handleCancel(): void {
 }
 
 async function handleSubmit(): Promise<void> {
-  if (submitDisabled.value) {
+  if (submitDisabled.value === true) {
     void message.warning(prepareBlockDescription.value || '当前不可提交补扫')
     return
   }
-  if (submitting.value) {
+  if (submitting.value === true) {
     return
   }
   await formCoreRef.value?.validate()

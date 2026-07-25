@@ -3,7 +3,7 @@
     :open="open"
     title="创建试评会话"
     :width="560"
-    :confirm-loading="submitting"
+    :confirm-loading="submitting === true"
     ok-text="创建"
     @update:open="emit('update:open', $event)"
     @ok="submit"
@@ -27,7 +27,7 @@
         :session-readiness="sessionReadiness"
       />
       <WorkflowReadinessPanel
-        v-if="groupId && !selectedGroupCanCreate && selectedGroupWorkflowSteps.length"
+        v-if="groupId && selectedGroupCanCreate !== true && selectedGroupWorkflowSteps.length"
         title="该题组创建前还需完成"
         :steps="selectedGroupWorkflowSteps"
       />
@@ -61,7 +61,9 @@ interface GroupOption {
 
 defineOptions({ name: 'TrialSessionCreateDialog' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   open: boolean
   organizationId: string
   groupOptions: GroupOption[]
@@ -69,8 +71,12 @@ const props = defineProps<{
   groupCreateReadinessMap?: Record<string, SessionGroupCreateReadinessResponse>
   groupAllocationPolicyMap?: Record<string, AllocationPolicyResponse>
   sessionReadiness?: SessionCreateReadinessResponse | null
-  canManage: boolean
-}>()
+  canManage?: boolean // MVR-945：会话/试评管理写仅认 === true
+}>(),
+  {
+  canManage: false,
+  },
+)
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -128,14 +134,14 @@ watch(
 )
 
 async function submit(): Promise<void> {
-  if (!props.canManage) {
+  if (props.canManage !== true) {
     showFormValidationMessage('仅考试主考老师可管理试评会话')
     return
   }
-  if (!props.organizationId || !groupId.value || !selectedGroupCanCreate.value) {
+  if (!props.organizationId || !groupId.value || selectedGroupCanCreate.value !== true) {
     return
   }
-  if (submitting.value) return
+  if (submitting.value === true) return
   submitting.value = true
   try {
     const sessionId = await createTrialSession({

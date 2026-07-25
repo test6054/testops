@@ -30,7 +30,7 @@ const props = withDefaults(
   defineProps<{
     examId: string
     /** 双门禁已满足时才允许创建导出任务 */
-    canCreate?: boolean
+    canCreate?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
     /** MVR-271：影像归档包仅主考；与 BE requireExamOwnerPermission 对齐 */
     canManageOwnerImageArchiveExport?: boolean
   }>(),
@@ -88,7 +88,7 @@ const selectableExportTypes = computed(() =>
     disabled:
       busyExportTypes.value.has(exportType)
       || (exportType === ExportTypeCode.IMAGE_ARCHIVE
-        && !props.canManageOwnerImageArchiveExport),
+        && props.canManageOwnerImageArchiveExport !== true),
 
     checked: selectedTypes.value.includes(exportType),
   })),
@@ -174,11 +174,11 @@ async function loadTasks(): Promise<void> {
 
 async function createSelectedTasks(): Promise<void> {
   // MVR-424：与 v-if canCreate / 父页 gateOpen 同源二次闸；影像包再认主考 can*
-  if (!props.canCreate) {
+  if (props.canCreate !== true) {
     void message.warning('双门禁未满足，暂不可创建导出任务')
     return
   }
-  if (!props.examId || !hasSelectedTypes.value || creating.value) {
+  if (!props.examId || hasSelectedTypes.value !== true || creating.value === true) {
     return
   }
 
@@ -188,7 +188,7 @@ async function createSelectedTasks(): Promise<void> {
     const blockedImageArchive = selectedTypes.value.some(
       (exportType) =>
         exportType === ExportTypeCode.IMAGE_ARCHIVE
-        && !props.canManageOwnerImageArchiveExport,
+        && props.canManageOwnerImageArchiveExport !== true,
     )
     if (blockedImageArchive) {
       void message.warning('仅考试主考可创建影像归档包导出任务')
@@ -238,7 +238,7 @@ defineExpose({ refresh: loadTasks })
       <UiButton variant="ghost" size="sm" @click="goExportTasksPage"> 查看全部 </UiButton>
     </template>
 
-    <div v-if="canCreate" class="archive-exam-export-tasks__picker">
+    <div v-if="canCreate === true" class="archive-exam-export-tasks__picker">
       <div class="archive-exam-export-tasks__picker-label">勾选后创建</div>
 
       <div class="archive-exam-export-tasks__options">
@@ -262,8 +262,8 @@ defineExpose({ refresh: loadTasks })
       <UiButton
         variant="outline"
         size="sm"
-        :disabled="!hasSelectedTypes"
-        :loading="creating"
+        :disabled="hasSelectedTypes !== true"
+        :loading="creating === true"
         @click="createSelectedTasks"
       >
         创建选中
@@ -289,7 +289,7 @@ defineExpose({ refresh: loadTasks })
       pagination-mode="none"
       :columns="columns"
       :data-source="displayTasks"
-      :loading="loading"
+      :loading="loading === true"
       :show-pagination="false"
       flat
       row-key="taskId"

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeMaterialResponse,
@@ -50,7 +51,7 @@ const canConfirm = computed(() => props.detail.capabilities?.canConfirmDigitalMa
 
 const showPanel = computed(
   () =>
-    canConfirm.value
+    canConfirm.value === true
     && confirmableMaterials.value.length > 0
     && (props.detail.volume.sourceType === ArchiveVolumeSourceTypeCode.ONLINE_MARKING
       || confirmableMaterials.value.some(
@@ -73,9 +74,9 @@ function toggleAll(checked: boolean) {
 }
 
 async function handleConfirm() {
-  if (confirming.value) return
+  if (confirming.value === true) return
   // MVR-299：与 showPanel/canConfirmDigitalMaterials 同源二次拦截
-  if (!canConfirm.value) {
+  if (canConfirm.value !== true) {
     void message.warning('当前账号无电子材料确认权限')
     return
   }
@@ -109,7 +110,7 @@ async function handleConfirm() {
       <UiButton
         size="sm"
         variant="primary"
-        :loading="confirming"
+        :loading="confirming === true"
         :disabled="selectedIds.length === 0"
         @click="handleConfirm"
       >

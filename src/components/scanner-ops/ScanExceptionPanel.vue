@@ -396,7 +396,7 @@ function handleForceReleased(): void {
 }
 
 function openForceRelease(row: ExceptionDashboardRow) {
-  if (!canForceReleaseTicket(row) || !row.ticketId) {
+  if (canForceReleaseTicket(row) !== true || !row.ticketId) {
     forceReleaseAllowed.value = false
     return
   }
@@ -407,7 +407,7 @@ function openForceRelease(row: ExceptionDashboardRow) {
 }
 
 async function cancelTicket(row: ExceptionDashboardRow) {
-  if (!canCancelTicket(row) || !row.ticketId) {
+  if (canCancelTicket(row) !== true || !row.ticketId) {
     return
   }
   if (cancellingTicketId.value) {
@@ -418,6 +418,10 @@ async function cancelTicket(row: ExceptionDashboardRow) {
     content: '取消后工位将无法再 claim 该派单，确定继续？',
     type: 'warning',
     onOk: async () => {
+      // MVR-952：确认后再次认 canCancelTicket，防确认等待期间状态/权限漂移
+      if (canCancelTicket(row) !== true || !row.ticketId) {
+        return false
+      }
       cancellingTicketId.value = row.ticketId
       try {
         await cancelScanDispatch({ ticketId: row.ticketId! })
@@ -457,7 +461,7 @@ function buildExceptionRowActions(row: ExceptionDashboardRow): UiTableRowActionI
   if (row.itemKind === ScannerExceptionItemKindCode.TICKET && row.ticketId) {
     actions.push({ key: 'view-dispatch', label: '查看派单' })
   }
-  if (canRetryPageRegisterRow(row)) {
+  if (canRetryPageRegisterRow(row) === true) {
     actions.push({
       key: 'retry-register',
       label: '重试页登记',
@@ -495,7 +499,7 @@ function buildExceptionRowActions(row: ExceptionDashboardRow): UiTableRowActionI
     actions.push({ key: 'manual-merge', label: '人工合并' })
   }
   actions.push({ key: 'logs', label: '处置日志' })
-  if (canCancelTicket(row)) {
+  if (canCancelTicket(row) === true) {
     actions.push({
       key: 'cancel',
       label: '取消派单',
@@ -503,7 +507,7 @@ function buildExceptionRowActions(row: ExceptionDashboardRow): UiTableRowActionI
       disabled: cancellingTicketId.value === row.ticketId,
     })
   }
-  if (canForceReleaseTicket(row)) {
+  if (canForceReleaseTicket(row) === true) {
     actions.push({ key: 'force-release', label: '强制解锁', tone: 'danger' })
   }
   const primaryKey = actions.some((item) => item.key === 'goto-handle' && item.label === '手工绑定')
@@ -648,6 +652,14 @@ async function dismissPartialTail(row: ExceptionDashboardRow) {
     content: '余页将保留在扫描页中，不创建试卷实例。确认后可继续封存批次。',
     type: 'warning',
     onOk: async () => {
+      // MVR-953：确认后再次认主考写权，防对话框期间权限/批次态漂移
+      if (row.canManageOwnerExamWrites !== true) {
+        void message.warning('仅本场主考可忽略余页异常')
+        return false
+      }
+      if (partialTailDismissingKey.value) {
+        return false
+      }
       partialTailDismissingKey.value = row.rowKey
       try {
         await dismissScanBatchCollateAttention({
@@ -675,7 +687,7 @@ async function retryPageRegister(row: ExceptionDashboardRow) {
     return
   }
   // MVR-307：与 canRetryPageRegisterRow / canManageOwnerExamWrites 同源
-  if (!canRetryPageRegisterRow(row)) {
+  if (canRetryPageRegisterRow(row) !== true) {
     void message.warning('仅本场主考可重试页登记')
     return
   }

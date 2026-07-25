@@ -8,5 +8,5 @@ const { examLocked } = useAiAnalysisScopeContext()
 </script>
 
 <template>
-  <AiAnalysisScopeFilterBar v-if="!examLocked" mode="exam" />
+  <AiAnalysisScopeFilterBar v-if="examLocked !== true" mode="exam" />
 </template>

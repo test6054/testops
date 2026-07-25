@@ -137,7 +137,7 @@ function candidateBindingBlockReason(rosterId: string): string {
     = candidateCache.value.get(rosterId)
       ?? candidates.value.find((item) => item.candidateRosterId === rosterId)
   if (!candidate) return '所选考生不在当前考试名册中，请重新搜索名册'
-  if (!isCandidateBindable(candidate)) {
+  if (isCandidateBindable(candidate) !== true) {
     return `${candidate.studentName}（${candidate.studentNo}）当前状态为${candidateStatusLabel(candidate.status)}，不能绑定试卷`
   }
   return ''
@@ -209,7 +209,7 @@ function onCandidateChange(event: Event) {
 }
 
 async function submitBind() {
-  if (binding.value || !canBindCandidate.value) return
+  if (binding.value === true || canBindCandidate.value !== true) return
   const examId = workflow.examId.value
   const profile = getKioskBindingProfile()
   if (!examId || !profile) return
@@ -273,7 +273,7 @@ function gotoReview() {
       <small v-if="processingStatusText">处理任务：{{ processingStatusText }}</small>
     </div>
 
-    <div v-if="canBindCandidate" class="exception-panel__form">
+    <div v-if="canBindCandidate === true" class="exception-panel__form">
       <label class="field">
         <span>考号 / 学号</span>
         <input
@@ -298,7 +298,7 @@ function gotoReview() {
         <select
           v-model="candidateRosterId"
           class="field__input"
-          :disabled="candidatesLoading"
+          :disabled="candidatesLoading === true"
           @change="onCandidateChange"
         >
           <option value="">请选择考生</option>
@@ -306,14 +306,14 @@ function gotoReview() {
             v-for="c in candidates"
             :key="c.candidateRosterId"
             :value="c.candidateRosterId"
-            :disabled="!isCandidateBindable(c)"
+            :disabled="isCandidateBindable(c) !== true"
           >
             {{ c.studentNo }} · {{ c.studentName }}（{{ c.className || '未分班' }}）
           </option>
         </select>
       </label>
       <p v-if="candidatesLoadError" class="exception-panel__error">{{ candidatesLoadError }}</p>
-      <button type="button" class="action-primary" :disabled="binding" @click="submitBind">
+      <button type="button" class="action-primary" :disabled="binding === true" @click="submitBind">
         确认考号并绑定
       </button>
     </div>

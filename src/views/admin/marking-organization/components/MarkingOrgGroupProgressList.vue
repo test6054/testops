@@ -37,7 +37,7 @@
           <span class="org-group-progress__percent">{{ progressPercent(group.id) }}%</span>
         </div>
         <div
-          v-if="group.canEditQuestionGroup"
+          v-if="group.canEditQuestionGroup === true"
           class="org-group-progress__actions"
         >
           <!-- MVR-407：仅认 BE canEditQuestionGroup===true；禁止仅认非 CLOSED 假可编辑 -->
@@ -49,6 +49,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
 import type { QuestionMarkingGroupResponse } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
@@ -64,11 +65,17 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkingOrgGroupProgressList' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   groups: QuestionMarkingGroupResponse[]
   groupProgressById: Record<string, GroupProgressSnapshot>
-  canManage: boolean
-}>()
+  canManage?: boolean
+}>(),
+  {
+  canManage: false,
+  },
+)
 
 const emit = defineEmits<{
   'edit-group': [groupId: string]

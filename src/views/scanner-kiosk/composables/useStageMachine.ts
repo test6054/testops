@@ -76,7 +76,7 @@ export function useStageMachine(workflow: ExamKioskWorkflow) {
     const ctx = workflow.kioskContext.value
 
     if (!workflow.examId.value || !ctx) return 'setup'
-    if (workflow.activeBackendScanSession.value) return 'scanning'
+    if (workflow.activeBackendScanSession.value === true) return 'scanning'
     if (job) return 'scanning'
     if (workflow.reviewScanJob.value) return 'review'
     return 'setup'
@@ -88,13 +88,13 @@ export function useStageMachine(workflow: ExamKioskWorkflow) {
   })
 
   function gotoStage(stageId: KioskStageId) {
-    if (workflow.pageRegisterRetryLoading.value) {
+    if (workflow.pageRegisterRetryLoading.value === true) {
       return
     }
     if (stageId === currentStage.value) return
     const job = workflow.currentJob.value
     const hasScanSession = Boolean(
-      workflow.activeBackendScanSession.value
+      workflow.activeBackendScanSession.value === true
       || (job && SCANNING_JOB_STATUS.has(job.status)),
     )
     if (stageId === 'scanning' && !hasScanSession && !job && !workflow.reviewScanJob.value) {

@@ -49,7 +49,7 @@
               placeholder="选择本设备已绑定试卷"
               :options="boundPaperOptions"
               :loading="prepareLoading"
-              :disabled="prepareLoading || paperSelectDisabled"
+              :disabled="prepareLoading === true || paperSelectDisabled === true"
               allow-search
               option-filter-prop="label"
               allow-clear

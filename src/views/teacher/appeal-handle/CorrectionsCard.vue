@@ -3,7 +3,7 @@
     <template #head>
       <div class="appeal-section__header">
         <UiButton
-          v-if="canManageReviewerWrites"
+          v-if="canManageReviewerWrites === true"
           size="sm"
           variant="primary"
           @click="openCreateModal"
@@ -63,7 +63,7 @@
         v-model:open="createOpen"
         title="新建成绩更正"
         :width="560"
-        :confirm-loading="submitting"
+        :confirm-loading="submitting === true"
         :mask-closable="false"
         :hide-footer="false"
         ok-text="提交"
@@ -76,7 +76,7 @@
                 <UiSelect
                   size="sm"
                   v-model="form.reviewRequestId"
-                  :loading="reviewRequestLoading"
+                  :loading="reviewRequestLoading === true"
                   :options="reviewRequestOptions"
                   placeholder="选择已通过的复核申请"
                   allow-search
@@ -149,6 +149,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExamGradeCorrectionRecordResponse,
@@ -378,7 +379,7 @@ const totalCorrectionScoreMax = computed(() =>
 )
 
 async function openCreateModal(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无成绩更正写权限')
     return
   }
@@ -504,7 +505,7 @@ function handleReviewRequestChange(): void {
 
 async function submit(): Promise<void> {
   // MVR-318：成绩更正写权限前置，避免仅靠表单校验后拦截
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无成绩更正写权限')
     return
   }
@@ -553,7 +554,7 @@ async function submit(): Promise<void> {
     void message.warning('补考成绩策略为封顶60分，单题更正后合成总成绩不能超过60分')
     return
   }
-  if (submitting.value) {
+  if (submitting.value === true) {
     return
   }
   submitting.value = true

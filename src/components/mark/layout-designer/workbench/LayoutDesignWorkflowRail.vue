@@ -52,7 +52,7 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
     <div class="layout-design-workflow-rail__bar">
       <span class="layout-design-workflow-rail__label">制卷流程</span>
       <span class="layout-design-workflow-rail__meta">{{ completedCount }}/{{ steps.length }}</span>
-      <UiTag v-if="!layoutWritable" tone="gray" size="sm">只读</UiTag>
+      <UiTag v-if="layoutWritable !== true" tone="gray" size="sm">只读</UiTag>
       <nav class="layout-design-workflow-rail__track">
         <UiTooltip
           v-for="step in steps"

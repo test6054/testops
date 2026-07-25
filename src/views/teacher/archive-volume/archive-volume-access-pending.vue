@@ -64,7 +64,7 @@
             <span class="approval-card__reason-label">查阅事由</span>
             {{ record.accessReason }}
           </p>
-          <div v-if="canApprove(record)" class="approval-card__actions">
+          <div v-if="canApprove(record) === true" class="approval-card__actions">
             <template v-if="rejectingId === record.accessRecordId">
               <UiTextarea
                 size="sm"
@@ -76,13 +76,13 @@
                 :show-count="true"
               />
               <div class="approval-card__action-row">
-                <UiButton size="sm" variant="outline" :loading="submitting" @click="cancelReject">
+                <UiButton size="sm" variant="outline" :loading="submitting === true" @click="cancelReject">
                   取消
                 </UiButton>
                 <UiButton
                   size="sm"
                   variant="outline"
-                  :loading="submitting"
+                  :loading="submitting === true"
                   @click="submitReject(record.accessRecordId)"
                 >
                   确认驳回
@@ -104,7 +104,7 @@
                 <UiButton
                   variant="primary"
                   size="sm"
-                  :loading="submitting"
+                  :loading="submitting === true"
                   @click="submitApprove(record.accessRecordId)"
                 >
                   确认批准
@@ -140,6 +140,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-951：函数式 can*(...) 写入口仅认 === true
 import type { ArchiveVolumeAccessRecordResponse } from '@/apis/mark/archive-volume'
 import message from 'ant-design-vue/es/message'
 import { onMounted, ref } from 'vue'
@@ -217,7 +218,7 @@ function goVolumeDetail(volumeId: string): void {
 function startApprove(accessRecordId: string): void {
   // MVR-310：与 canApprove 同源，防拆栏后启动审批态
   const target = records.value.find((item) => item.accessRecordId === accessRecordId)
-  if (!target || !canApprove(target)) {
+  if (!target || canApprove(target) !== true) {
     return
   }
   approvingId.value = accessRecordId
@@ -234,7 +235,7 @@ function cancelApprove(): void {
 function startReject(accessRecordId: string): void {
   // MVR-310：与 canApprove 同源，防拆栏后启动驳回态
   const target = records.value.find((item) => item.accessRecordId === accessRecordId)
-  if (!target || !canApprove(target)) {
+  if (!target || canApprove(target) !== true) {
     return
   }
   rejectingId.value = accessRecordId
@@ -249,10 +250,10 @@ function cancelReject(): void {
 }
 
 async function submitApprove(accessRecordId: string): Promise<void> {
-  if (submitting.value) return
+  if (submitting.value === true) return
   // MVR-310：写 handler 二次拦截，与行级 canApprove / BE requireAccessApprover 对齐
   const target = records.value.find((item) => item.accessRecordId === accessRecordId)
-  if (!target || !canApprove(target)) {
+  if (!target || canApprove(target) !== true) {
     void message.warning('当前账号无批准查阅权限')
     return
   }
@@ -277,10 +278,10 @@ async function submitReject(accessRecordId: string): Promise<void> {
     showFormValidationMessage('请填写驳回原因')
     return
   }
-  if (submitting.value) return
+  if (submitting.value === true) return
   // MVR-310：写 handler 二次拦截，与行级 canApprove / BE requireAccessApprover 对齐
   const target = records.value.find((item) => item.accessRecordId === accessRecordId)
-  if (!target || !canApprove(target)) {
+  if (!target || canApprove(target) !== true) {
     void message.warning('当前账号无驳回查阅权限')
     return
   }

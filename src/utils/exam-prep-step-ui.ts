@@ -106,10 +106,10 @@ function resolvePrepStepDescription(step: ExamWorkbenchPrepStepResponse, detail:
       {
         const layoutReady = detail.layoutConfigured === true && detail.layoutRegionReady === true
         const pageSynced = detail.pageTemplateReady === true
-        if (layoutReady && pageSynced) {
+        if (layoutReady === true && pageSynced === true) {
           return `整卷母版「${detail.layoutName ?? ''}」已就绪，${detail.totalPages ?? 0} 页已同步`
         }
-        if (layoutReady) {
+        if (layoutReady === true) {
           return '整卷 PDF 已上传，请确认身份区 / 客观填涂区并等待拆页同步'
         }
         return '上传与印制版一致的整卷 PDF，配置身份区与客观题填涂区'

@@ -678,7 +678,7 @@ function openOneTable(userId: string) {
 }
 
 const lifecycleChangeOptions = computed(() => {
-  const status = lifecycleState.value?.lifecycleStatus ?? 'ACTIVE'
+  const status = lifecycleState.value?.lifecycleStatus ?? PortfolioTeacherLifecycleStatusCode.ACTIVE
   return PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS.filter((item) =>
     item.from.includes(status),
   ).map((item) => ({ label: item.label, value: item.value }))
@@ -813,7 +813,7 @@ async function exportTransferPackage() {
     transferExportConfirmOpen.value = false
     lifecycleState.value = {
       teacherUserId: result.teacherUserId,
-      lifecycleStatus: result.lifecycleStatus || 'TRANSFERRED',
+      lifecycleStatus: result.lifecycleStatus || PortfolioTeacherLifecycleStatusCode.TRANSFERRED,
       lifecycleStatusLabel: result.lifecycleStatusLabel,
       archiveWriteForbidden: true,
       evaluationHeld: true,

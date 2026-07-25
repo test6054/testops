@@ -144,6 +144,7 @@
 </template>
 
 <script setup lang="ts">
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ClassInfoDto } from '@/apis/edu/class'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
@@ -276,7 +277,7 @@ function resetRelatedExamOptions(): void {
 }
 
 async function loadRelatedExamOptions(keyword?: string): Promise<void> {
-  if (!isCurrentTermOffline.value || !canLoadRelatedExams.value) {
+  if (!isCurrentTermOffline.value || canLoadRelatedExams.value !== true) {
     resetRelatedExamOptions()
     return
   }

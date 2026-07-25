@@ -164,8 +164,8 @@ export function useMarkingTaskDetailState() {
    */
   const isScoreReadOnly = computed(
     () =>
-      isReadOnly.value
-      || taskRecycledBlocked.value
+      isReadOnly.value === true
+      || taskRecycledBlocked.value === true
       || examDetail.value?.status !== ExamStatusCode.ACTIVE,
   )
   const isWholePaperTask = computed(() => task.value?.taskUnit === AllocationUnitCode.WHOLE_PAPER)
@@ -176,12 +176,12 @@ export function useMarkingTaskDetailState() {
       || task.value?.taskUnit === AllocationUnitCode.RANDOM_QUESTIONS,
   )
   const canSubmit = computed(() => {
-    if (taskRecycledBlocked.value) return false
+    if (taskRecycledBlocked.value === true) return false
     // MVR-409：关考后禁止给分提交；缺 exam 状态默认拒绝（与 BE requireActiveExam 同源）
     if (examDetail.value?.status !== ExamStatusCode.ACTIVE) {
       return false
     }
-    if (sessionPausedAlert.value) {
+    if (sessionPausedAlert.value === true) {
       return task.value?.taskStatus === MarkingTaskStatusCode.IN_PROGRESS
     }
     const status = task.value?.taskStatus
@@ -392,7 +392,7 @@ export function useMarkingTaskDetailState() {
 
   async function handleWithdrawEntry(entry: (typeof recentList.value)[number]): Promise<void> {
     // MVR-410：撤回二次闸，与 canWithdrawMarkingEntry / BE requireActiveExam 同源
-    if (!canWithdrawMarkingEntry(entry)) {
+    if (canWithdrawMarkingEntry(entry) !== true) {
       showFormValidationMessage(
         examDetail.value?.status !== ExamStatusCode.ACTIVE
           ? '考试已关闭，不能撤回给分'
@@ -430,7 +430,7 @@ export function useMarkingTaskDetailState() {
     getWholeQuestionForm,
     goToTask: navigation.goToTask,
     submit: async () => {
-      if (taskRecycledBlocked.value) {
+      if (taskRecycledBlocked.value === true) {
         void message.warning('该任务已被组长回收，当前批阅将无法提交')
         return
       }
@@ -439,7 +439,7 @@ export function useMarkingTaskDetailState() {
     scrollToWholePage,
     applyQuickScore: (score: number) => {
       // MVR-414：键盘快捷给分二次闸，与 isScoreReadOnly / 面板 disabled 同源
-      if (isScoreReadOnly.value) return
+      if (isScoreReadOnly.value === true) return
       form.score = score
     },
     onWithdraw: () => {
@@ -506,7 +506,7 @@ export function useMarkingTaskDetailState() {
   }
 
   async function applyLocalDraftIfNeeded(detail: MarkingTaskResponse): Promise<void> {
-    if (!canSubmit.value || !tenantId.value) return
+    if (canSubmit.value !== true || !tenantId.value) return
     const key = buildGradingDraftKey(tenantId.value, detail.examId, detail.id)
     const draft = await loadGradingDraft(key)
     if (!draft) return
@@ -717,14 +717,14 @@ export function useMarkingTaskDetailState() {
 
   const canRescoreQuestionView = computed(() => {
     // MVR-410：智能复评与给分同源，关考/回收后只读
-    if (isScoreReadOnly.value || submitCtx.submitting.value || rescoringGradeResultId.value)
+    if (isScoreReadOnly.value === true || submitCtx.submitting.value === true || Boolean(rescoringGradeResultId.value))
       return false
     return !!questionView.value?.gradeResultId && !!task.value?.examId
   })
 
   function canRescoreWholeQuestion(question: QuestionMarkingGroupQuestionResponse): boolean {
-    // MVR-410：智能复评与给分同源，关考/回收后只读
-    if (isScoreReadOnly.value || submitCtx.submitting.value) return false
+    // MVR-410/966：智能复评与给分同源，关考/回收后只读；复评中禁止再开
+    if (isScoreReadOnly.value === true || submitCtx.submitting.value === true || Boolean(rescoringGradeResultId.value)) return false
     if (!question.gradeResultId || !task.value?.examId) return false
     return question.questionType === 'SUBJECTIVE'
   }
@@ -741,9 +741,16 @@ export function useMarkingTaskDetailState() {
     gradeResultId: string,
     refresh: () => Promise<void>,
   ): Promise<void> {
-    // MVR-410：与 isScoreReadOnly / BE rescore requireActiveExam 二次闸
-    if (isScoreReadOnly.value) {
+    // MVR-410/966：与 isScoreReadOnly / BE rescore requireActiveExam 二次闸；防确认后并发复评
+    if (isScoreReadOnly.value === true) {
       showFormValidationMessage('当前任务不可智能复评（已定稿、已回收或考试已关闭）')
+      return
+    }
+    if (submitCtx.submitting.value === true) {
+      showFormValidationMessage('正在提交给分，请稍后再触发智能复评')
+      return
+    }
+    if (rescoringGradeResultId.value) {
       return
     }
     rescoringGradeResultId.value = gradeResultId
@@ -767,7 +774,7 @@ export function useMarkingTaskDetailState() {
   }
 
   function openRescoreConfirmForQuestionView(): void {
-    if (!canRescoreQuestionView.value || !task.value?.examId || !questionView.value?.gradeResultId)
+    if (canRescoreQuestionView.value !== true || !task.value?.examId || !questionView.value?.gradeResultId)
       return
     void confirmAsync({
       title: '重新生成单题 AI 复评？',
@@ -775,22 +782,35 @@ export function useMarkingTaskDetailState() {
       type: 'info',
       okText: '生成 AI 复评',
       cancelText: '取消',
-      onOk: () =>
-        doRescoreByAi(task.value!.examId, questionView.value!.gradeResultId!, reloadQuestionView),
+      onOk: async () => {
+        // MVR-966：onOk 再认 canRescoreQuestionView，防确认等待期间只读/提交态漂移
+        if (canRescoreQuestionView.value !== true || !task.value?.examId || !questionView.value?.gradeResultId) {
+          showFormValidationMessage('当前任务不可智能复评（已定稿、已回收、考试已关闭或正在提交）')
+          return
+        }
+        await doRescoreByAi(task.value.examId, questionView.value.gradeResultId, reloadQuestionView)
+      },
     })
   }
 
   function openRescoreConfirmForWholeQuestion(
     question: QuestionMarkingGroupQuestionResponse,
   ): void {
-    if (!canRescoreWholeQuestion(question) || !task.value?.examId || !question.gradeResultId) return
+    if (canRescoreWholeQuestion(question) !== true || !task.value?.examId || !question.gradeResultId) return
     void confirmAsync({
       title: `重新生成第 ${question.questionNo} 题 AI 复评？`,
       content: '系统会重新生成单题 AI 复评结果，不会直接写入教师给分。',
       type: 'info',
       okText: '生成 AI 复评',
       cancelText: '取消',
-      onOk: () => doRescoreByAi(task.value!.examId, question.gradeResultId!, reloadWholePaperView),
+      onOk: async () => {
+        // MVR-966：onOk 再认 canRescoreWholeQuestion，防确认等待期间只读/题态漂移
+        if (canRescoreWholeQuestion(question) !== true || !task.value?.examId || !question.gradeResultId) {
+          showFormValidationMessage('当前任务不可智能复评（已定稿、已回收、考试已关闭或非主观题）')
+          return
+        }
+        await doRescoreByAi(task.value.examId, question.gradeResultId, reloadWholePaperView)
+      },
     })
   }
 
@@ -930,7 +950,7 @@ export function useMarkingTaskDetailState() {
 
   function handleWholeQuestionScoreEnter(questionIndex: number): void {
     // MVR-414：整卷题号 Enter 推进/提交叠 canSubmit ∧ !isScoreReadOnly
-    if (submitCtx.submitting.value || !canSubmit.value || isScoreReadOnly.value) return
+    if (submitCtx.submitting.value || canSubmit.value !== true || isScoreReadOnly.value === true) return
     const question = wholeQuestions.value[questionIndex]
     if (!question) return
     const questionForm = getWholeQuestionForm(question.layoutQuestionId)
@@ -948,7 +968,7 @@ export function useMarkingTaskDetailState() {
   function fillWholeQuestionAiScore(question: QuestionMarkingGroupQuestionResponse): void {
     if (question.aiScore == null) return
     // MVR-414：仅改本地表单也须叠 isScoreReadOnly，禁止只读态假可写/草稿漂移
-    if (isScoreReadOnly.value) {
+    if (isScoreReadOnly.value === true) {
       showFormValidationMessage('当前不可给分（已定稿/已回收或考试已关闭）')
       return
     }
@@ -960,11 +980,11 @@ export function useMarkingTaskDetailState() {
     question: QuestionMarkingGroupQuestionResponse,
     questionIndex: number,
   ): Promise<void> {
-    if (question.aiScore == null || submitCtx.submitting.value) return
+    if (question.aiScore == null || submitCtx.submitting.value === true) return
     // MVR-413：与 canSubmit / isScoreReadOnly 二次闸；末题提交依赖 submit 内闸
-    if (isScoreReadOnly.value || !canSubmit.value) {
+    if (isScoreReadOnly.value === true || canSubmit.value !== true) {
       showFormValidationMessage(
-        isScoreReadOnly.value
+        isScoreReadOnly.value === true
           ? '当前不可给分（已定稿/已回收或考试已关闭）'
           : '当前任务状态不可提交给分',
       )
@@ -984,7 +1004,7 @@ export function useMarkingTaskDetailState() {
     score: number,
   ): void {
     // MVR-414：整卷快捷数字与 isScoreReadOnly 二次闸（非 UI 入口亦不可写）
-    if (isScoreReadOnly.value) return
+    if (isScoreReadOnly.value === true) return
     if (score > question.fullScore) return
     getWholeQuestionForm(question.layoutQuestionId).score = score
   }
@@ -994,7 +1014,7 @@ export function useMarkingTaskDetailState() {
    * MVR-414：与 isScoreReadOnly 同源二次闸，避免模板直写 form.score 绕过只读
    */
   function applyPrimaryQuickScore(score: number | undefined): void {
-    if (isScoreReadOnly.value) return
+    if (isScoreReadOnly.value === true) return
     if (score === undefined || Number.isNaN(Number(score))) return
     form.score = Number(score)
   }
@@ -1005,7 +1025,8 @@ export function useMarkingTaskDetailState() {
 
   function openRevealDialog(): void {
     // MVR-375：与 BE canManageOwnerIdentityReveal 二次拦截，禁止仅入口隐藏
-    if (!canManageOwnerIdentityReveal.value) {
+    // MVR-953：仅认 canManageOwnerIdentityReveal===true
+    if (canManageOwnerIdentityReveal.value !== true) {
       showFormValidationMessage('当前账号无解匿名权限')
       return
     }

@@ -7,7 +7,7 @@ import { findWorkbenchNextAction } from '@/utils/exam-workspace-entry-gates'
 export function isExperienceAssistCalibrationActionPending(
   action: ExamWorkbenchNextActionResponse | undefined,
 ): boolean {
-  return Boolean(action?.enabled && action.actionPrompts?.length)
+  return action?.enabled === true && (action.actionPrompts?.length ?? 0) > 0
 }
 
 /** 从 nextActions 解析试评经验定标动作。 */

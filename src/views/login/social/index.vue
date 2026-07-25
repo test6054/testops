@@ -23,7 +23,7 @@ const loading = ref(false)
 
 // 三方账号登录
 const handleSocialLogin = () => {
-  if (loading.value) return
+  if (loading.value === true) return
   loading.value = true
   const { redirect, ...othersQuery } = router.currentRoute.value.query
   authStore
@@ -53,7 +53,7 @@ const handleSocialLogin = () => {
 
 // 绑定三方账号（用户已登录状态，使用当前会话的认证信息绑定）
 const handleBindSocial = () => {
-  if (loading.value) return
+  if (loading.value === true) return
   loading.value = true
   const { ...othersQuery } = router.currentRoute.value.query
 

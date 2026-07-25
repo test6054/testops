@@ -5,10 +5,10 @@
       <UiRadioGroup v-model="form.examScopeMode" size="sm" :options="examScopeModeOptions" />
       <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
       <UiButton
-        v-if="canManageReviewerWrites"
+        v-if="canManageReviewerWrites === true"
         variant="primary"
         size="sm"
-        :loading="generating"
+        :loading="generating === true"
         @click="handleGenerate"
       >
         生成成长曲线
@@ -50,7 +50,7 @@
       <template #field-examIds>
         <AnalysisExamMultiSelect
           v-model="form.examIds"
-          :disabled="!growthExamSelectReady"
+          :disabled="growthExamSelectReady !== true"
           disabled-title="请先在上方范围栏选择学年与学期"
           :scope-course-id="examSelectScopeCourseId"
           :scope-teaching-academic-year="effectiveTeachingAcademicYear"
@@ -128,6 +128,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type {
   SemesterAbilityGrowthResponse,
   SemesterGrowthTrendCode,
@@ -643,11 +644,11 @@ watch(
 )
 
 async function handleGenerate(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
-  if (generating.value) return
+  if (generating.value === true) return
   if (
     !ensureRequiredAcademicYearSemester(
       effectiveTeachingAcademicYear.value,

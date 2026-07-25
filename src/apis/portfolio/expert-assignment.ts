@@ -4,6 +4,7 @@ import type { PageResult } from '@/types'
 import type { PortfolioArchiveRecordSourceTypeCode } from '@/types/enums/portfolio-archive-record-source-type-enum'
 import type { PortfolioEvaluationIdentityMaterialScopeCode } from '@/types/enums/portfolio-evaluation-identity-material-scope-enum'
 import type { PortfolioExpertAssignmentStatusCode } from '@/types/enums/portfolio-expert-assignment-status-enum'
+import type { PortfolioIdentityMaterialCategoryClassCode } from '@/types/enums/portfolio-identity-material-category-class-enum'
 import http from '@/config/axios'
 
 /** 对齐后端 PortfolioExpertMaterialScope */
@@ -60,7 +61,7 @@ export interface PortfolioExpertReviewMaterialItemVO {
   archiveRecordId?: string
   /** 档案分类 ID；脱敏时为空；后端 Long */
   categoryId?: string
-  categoryCode?: string
+  categoryCode?: PortfolioIdentityMaterialCategoryClassCode
   categoryName?: string
   academicYear?: string
   documentVersionNo?: number

@@ -7,7 +7,7 @@
             {{ finalScoreStatusLabel(detail) }}
           </UiTag>
           <UiTag v-else tone="gray" size="sm">未生成</UiTag>
-          <UiTag v-if="isExamConfidential" tone="purple" size="sm">涉密考试</UiTag>
+          <UiTag v-if="isExamConfidential === true" tone="purple" size="sm">涉密考试</UiTag>
           <UiTag
             v-if="detail?.bindingStatus"
             :tone="bindingStatusTone(detail.bindingStatus)"
@@ -32,7 +32,7 @@
             刷新
           </UiButton>
           <UiButton
-            v-if="detail && canSubmitReview(detail)"
+            v-if="detail && canSubmitReview(detail) === true"
             variant="primary"
             size="sm"
             @click="goAppeal(detail.examId)"
@@ -49,7 +49,7 @@
     <UiEmpty size="sm" v-else-if="!detail" description="暂无本场成绩详情" class="score-detail__empty" />
 
     <template v-else-if="detail">
-      <ConfidentialStatusBar v-if="isExamConfidential" class="score-detail__confidential-strip" />
+      <ConfidentialStatusBar v-if="isExamConfidential === true" class="score-detail__confidential-strip" />
 
       <UiAlertStrip
         v-if="detail.finalScoreStatus === FinalScoreStatusCode.CORRECTED"
@@ -250,7 +250,7 @@
               </section>
 
               <div
-                v-if="selectedQuestion && canApplyReviewOnQuestion(selectedQuestion)"
+                v-if="selectedQuestion && canApplyReviewOnQuestion(selectedQuestion) === true"
                 class="answer-panel__actions"
               >
                 <UiButton size="sm" variant="primary" @click="goAppealForQuestion(selectedQuestion)">
@@ -788,7 +788,7 @@ async function loadDetail() {
 
 function goAppeal(id: string) {
   // MVR-320：与 canSubmitReview / BE canSubmitReviewRequest 二次拦截
-  if (!detail.value || !canSubmitReview(detail.value)) {
+  if (!detail.value || canSubmitReview(detail.value) !== true) {
     void message.warning('当前暂不能提交复核申请')
     return
   }
@@ -796,13 +796,13 @@ function goAppeal(id: string) {
 }
 
 function canApplyReviewOnQuestion(q: StudentQuestionScoreVO): boolean {
-  if (!detail.value || !canSubmitReview(detail.value)) return false
+  if (!detail.value || canSubmitReview(detail.value) !== true) return false
   return q.teacherReviewScore < q.fullScore
 }
 
 function goAppealForQuestion(q: StudentQuestionScoreVO): void {
   // MVR-320：与 canApplyReviewOnQuestion / BE canSubmitReviewRequest 二次拦截
-  if (!canApplyReviewOnQuestion(q)) {
+  if (canApplyReviewOnQuestion(q) !== true) {
     void message.warning('当前暂不能提交复核申请')
     return
   }

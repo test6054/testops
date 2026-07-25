@@ -1,7 +1,7 @@
 <template>
   <div class="review-task-detail-page grading-immersion-page grading-workspace-page">
     <WorkbenchContextGateStrip
-      v-if="!hasParams"
+      v-if="hasParams !== true"
       tag="缺少上下文"
       body="缺少复核任务，请从复核列表进入"
       cta-label="返回复核列表"
@@ -10,7 +10,7 @@
     />
 
     <UiSkeletonState
-      v-else-if="loading && !detail"
+      v-else-if="loading === true && !detail"
       variant="card"
       :card-count="2"
       compact
@@ -19,7 +19,7 @@
 
     <UiEmpty
       size="sm"
-      v-else-if="!loading && !detail"
+      v-else-if="loading !== true && !detail"
       description="复核任务加载失败或不存在"
       class="review-task-detail-page__empty"
     >
@@ -117,7 +117,7 @@
                 size="sm"
                 variant="ghost"
                 :disabled="!detail.gradeResultId"
-                :loading="executionsLoading"
+                :loading="executionsLoading === true"
                 @click="() => openExecutionsDrawer()"
               >
                 查看 AI 历史
@@ -125,8 +125,8 @@
               <UiButton
                 size="sm"
                 variant="outline"
-                :disabled="!canRescoreByAi"
-                :loading="rescoring"
+                :disabled="canRescoreByAi !== true"
+                :loading="rescoring === true"
                 @click="openRescoreConfirm"
               >
                 重新 AI 复评
@@ -212,7 +212,7 @@
           </div>
           <div class="review-task-detail-page__footer-actions">
             <UiButton variant="ghost" size="md" @click="goBack">返回</UiButton>
-            <UiButton v-if="canEnterWorkspace" size="md" variant="primary" @click="goWorkspace">
+            <UiButton v-if="canEnterWorkspace === true" size="md" variant="primary" @click="goWorkspace">
               <template #icon><EditOutlined /></template>
               进入复核
             </UiButton>
@@ -223,7 +223,7 @@
 
     <MarkingAiAssistDrawer
       v-model:open="executionsDrawerOpen"
-      :loading="executionsLoading"
+      :loading="executionsLoading === true"
       :executions="aiExecutions"
       :highlight-trace-id="highlightExecutionTraceId"
       :status-label="statusLabel"
@@ -236,6 +236,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-948：本地 can* 显隐/禁用仅认 === true
 import type { CSSProperties } from 'vue'
 import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
 import type {
@@ -330,7 +331,7 @@ const {
 const isExamConfidential = computed(() => isExamConfidentialFlag(examConfidentialRef.value))
 const examConfidentialLabel = computed(() => examConfidentialLabelRef.value)
 const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
-const hasParams = computed(() => !!examId.value && !!taskId.value)
+const hasParams = computed(() => Boolean(examId.value) && Boolean(taskId.value))
 const taskSource = computed(() => (route.query.source === 'arbitration' ? 'arbitration' : 'review'))
 
 const detail = ref<ReviewTaskDetailResponse | null>(null)
@@ -375,8 +376,8 @@ const canManageReviewerWrites = computed(() => detail.value?.canManageReviewerWr
 
 const canRescoreByAi = computed(() => {
   // MVR-282：无阅卷写能力位不得暴露 AI 复评
-  if (!canManageReviewerWrites.value) return false
-  if (rescoring.value || loading.value || !detail.value?.gradeResultId) return false
+  if (canManageReviewerWrites.value !== true) return false
+  if (rescoring.value === true || loading.value === true || !detail.value?.gradeResultId) return false
   return (
     detail.value.status === ReviewTaskStatusCode.PENDING
     || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
@@ -422,7 +423,7 @@ function goBack(): void {
 }
 
 function openRescoreConfirm(): void {
-  if (!canRescoreByAi.value) return
+  if (canRescoreByAi.value !== true) return
   void confirmAsync({
     title: '重新生成单题 AI 复评？',
     content: '系统会重新生成单题 AI 复评结果，不会直接写入教师复核评分。',
@@ -434,11 +435,13 @@ function openRescoreConfirm(): void {
 }
 
 async function doRescoreByAi(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  // MVR-961：确认后再次认写权/可复评/防重入，防对话框期间状态漂移
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无阅卷写权限')
     return
   }
-  if (!canRescoreByAi.value || !examId.value || !detail.value) return
+  if (rescoring.value === true) return
+  if (canRescoreByAi.value !== true || !examId.value || !detail.value) return
   rescoring.value = true
   try {
     const result = await rescoreQuestionByAi({
@@ -542,7 +545,7 @@ async function loadAnnotations(): Promise<void> {
 }
 
 async function loadTask(): Promise<void> {
-  if (!hasParams.value) return
+  if (hasParams.value !== true) return
   loading.value = true
   try {
     detail.value = await getReviewTaskDetail({
@@ -561,7 +564,7 @@ async function loadTask(): Promise<void> {
 }
 
 function goWorkspace(): void {
-  if (!hasParams.value) return
+  if (hasParams.value !== true) return
   void router.push({
     name: 'TeacherExamWorkspaceReviewWorkspace',
     params: { examId: examId.value, taskId: taskId.value },

@@ -41,7 +41,7 @@ const consistencyLabel = computed(() => {
 })
 
 function handleClick(): void {
-  if (!props.clickable) return
+  if (props.clickable !== true) return
   emit('open-ai-history')
 }
 </script>

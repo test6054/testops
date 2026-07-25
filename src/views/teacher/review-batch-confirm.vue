@@ -10,7 +10,7 @@
         </template>
         <template #actions>
           <UiButton variant="ghost" size="sm" @click="goSingleReview"> 单题复核 </UiButton>
-          <template v-if="canManageReviewerWrites">
+          <template v-if="canManageReviewerWrites === true">
             <UiButton
               size="sm"
               variant="outline"
@@ -244,7 +244,7 @@ function updateScore(gradeResultId: string, value: number | string | null): void
 }
 
 function applyAiScores(): void {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无批量复核写权限')
     return
   }
@@ -273,25 +273,29 @@ async function loadTasks(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
   try {
-    const [result, layoutSummary] = await Promise.all([
-      listReviewTasks({
-        examId: selectedExamId.value,
-        status: ReviewTaskStatusCode.PENDING,
-        excludeArbitration: true,
-        pageNum: pagination.current,
-        pageSize: pagination.pageSize,
-      }),
-      // 空列表时 list 项无能力位，用制卷摘要下发的 canManageReviewerWrites 补齐
-      getExamLayoutQuestionSummary(selectedExamId.value).catch(() => null),
-    ])
+    // MVR-980：先拉列表；空列表再用制卷摘要补齐 canManageReviewerWrites（禁止静默 catch 与损坏赋值）
+    const result = await listReviewTasks({
+      examId: selectedExamId.value,
+      status: ReviewTaskStatusCode.PENDING,
+      excludeArbitration: true,
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+    })
     const records = result.list
     rows.value = records
     pagination.total = result.total
     // MVR-328：列表有项时仅认行级 can===true；空列表用制卷摘要 can===true 补齐
-    canManageReviewerWrites.value
-      = records.length > 0
-        ? records[0].canManageReviewerWrites === true
-        : layoutSummary?.canManageReviewerWrites === true
+    if (records.length > 0) {
+      canManageReviewerWrites.value = records[0].canManageReviewerWrites === true
+    } else {
+      try {
+        const layoutSummary = await getExamLayoutQuestionSummary(selectedExamId.value)
+        canManageReviewerWrites.value = layoutSummary.canManageReviewerWrites === true
+      } catch (layoutError) {
+        canManageReviewerWrites.value = false
+        showUserError(layoutError, '复核写权限能力位加载失败，写入口暂不可用')
+      }
+    }
     initScoreDraft(records)
     selectedRowKeys.value = selectedRowKeys.value.filter((id) =>
       records.some((row) => row.gradeResultId === id),
@@ -324,7 +328,7 @@ function goSingleReview(): void {
 
 function openConfirm(): void {
   // MVR-394：仅认 canManageReviewerWrites===true
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无批量复核写权限')
     return
   }
@@ -343,13 +347,18 @@ function openConfirm(): void {
 }
 
 async function submitBatch(): Promise<void> {
+  // MVR-960：确认后再次认写权/选择/得分完整性，防对话框期间权限或勾选漂移
   if (!selectedExamId.value || selectedRowKeys.value.length === 0) return
-  // MVR-394：仅认 canManageReviewerWrites===true
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无批量复核写权限')
     return
   }
-  if (submitting.value) {
+  if (submitting.value === true) {
+    return
+  }
+  const missingScore = selectedRowKeys.value.some((id) => scoreDraftMap[id] == null)
+  if (missingScore) {
+    showFormValidationMessage('请为每条选中记录填写确认得分')
     return
   }
   submitting.value = true

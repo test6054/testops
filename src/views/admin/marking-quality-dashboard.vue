@@ -456,7 +456,7 @@
               <UiButton
                 size="sm"
                 variant="outline"
-                :disabled="!scopeValid"
+                :disabled="scopeValid !== true"
                 :loading="progressLoading"
                 @click="loadProgress"
               >
@@ -464,10 +464,10 @@
                 查询最新
               </UiButton>
               <UiButton
-                v-if="canManageQualityMonitorWrites"
+                v-if="canManageQualityMonitorWrites === true"
                 variant="primary"
                 size="sm"
-                :disabled="!scopeValid"
+                :disabled="scopeValid !== true"
                 :loading="snapshotting"
                 @click="handleSnapshot"
               >
@@ -547,12 +547,12 @@
             v-else
             tag="无快照"
             :body="
-              canManageQualityMonitorWrites
+              canManageQualityMonitorWrites === true
                 ? '暂无进度快照，请先生成当前进度'
                 : '暂无进度快照；生成快照需考试主考或阅卷组织负责人'
             "
             cta-label="立即快照"
-            :hide-cta="!canManageQualityMonitorWrites"
+            :hide-cta="canManageQualityMonitorWrites !== true"
             class="quality-dashboard__alert"
             @cta="handleSnapshot"
           />
@@ -587,10 +587,10 @@
           </template>
           <template #toolbar>
             <UiButton
-              v-if="canManageQualityMonitorWrites"
+              v-if="canManageQualityMonitorWrites === true"
               variant="primary"
               size="sm"
-              :disabled="!scopeValid"
+              :disabled="scopeValid !== true"
               :loading="refreshing"
               @click="handleRefreshMetrics"
             >
@@ -665,7 +665,7 @@
 
       <template v-else-if="activeTab === 'spotcheck'">
         <WorkbenchSurfaceCard
-          v-if="!canManageQualityMonitorWrites"
+          v-if="canManageQualityMonitorWrites !== true"
           class="quality-dashboard__inner-panel"
         >
           <UiEmpty
@@ -722,7 +722,7 @@
                 variant="primary"
                 size="sm"
                 :loading="creatingSpot"
-                :disabled="!scopeValid || !spotForm.sampleRate"
+                :disabled="scopeValid !== true || !spotForm.sampleRate"
                 @click="handleCreateSpotCheck"
               >
                 <template #icon><PlusOutlined /></template>
@@ -862,7 +862,7 @@
 
       <template v-else-if="activeTab === 'reprocess'">
         <WorkbenchSurfaceCard
-          v-if="!canManageOwnerBatchReprocess"
+          v-if="canManageOwnerBatchReprocess !== true"
           class="quality-dashboard__inner-panel"
         >
           <UiEmpty
@@ -910,8 +910,8 @@
               <UiButton
                 size="sm"
                 variant="destructive"
-                :loading="reprocessing"
-                :disabled="!reprocessValid"
+                :loading="reprocessing === true"
+                :disabled="reprocessValid !== true"
                 @click="requestReprocess"
               >
                 <template #icon><WarningOutlined /></template>
@@ -926,6 +926,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-948：质量监控写闸仅认 === true
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamWorkbenchQualityPanelResponse } from '@/apis/mark/exam-progress'
@@ -1083,7 +1084,7 @@ function resolveInitialTab(): QualityTabKey {
 const activeTab = ref<QualityTabKey>(resolveInitialTab())
 
 watch(canManageOwnerBatchReprocess, (allowed) => {
-  if (!allowed && activeTab.value === 'reprocess') {
+  if (allowed !== true && activeTab.value === 'reprocess') {
     activeTab.value = isExamWorkspaceRoute.value ? 'overview' : 'progress'
   }
 })
@@ -1099,7 +1100,7 @@ const qualityTabItems = computed((): UiSectionTabItem[] => {
     { key: 'spotcheck', label: '抽检' },
   )
   // MVR-273：非主考不展示重处理页签，避免假可写
-  if (canManageOwnerBatchReprocess.value) {
+  if (canManageOwnerBatchReprocess.value === true) {
     items.push({ key: 'reprocess', label: '异常批次重处理' })
   }
   return items
@@ -1504,12 +1505,12 @@ async function loadProgress(): Promise<void> {
 }
 
 async function handleSnapshot(): Promise<void> {
-  if (!canManageQualityMonitorWrites.value) {
+  if (canManageQualityMonitorWrites.value !== true) {
     void message.warning('仅考试主考或阅卷组织负责人可生成进度快照')
     return
   }
   if (!scopeValid.value) return
-  if (snapshotting.value) return
+  if (snapshotting.value === true) return
   snapshotting.value = true
   try {
     progress.value = await takeProgressSnapshot({
@@ -1641,12 +1642,12 @@ function handleReviewerFilterReset(): void {
 }
 
 async function handleRefreshMetrics(): Promise<void> {
-  if (!canManageQualityMonitorWrites.value) {
+  if (canManageQualityMonitorWrites.value !== true) {
     void message.warning('仅考试主考或阅卷组织负责人可重算教师质量指标')
     return
   }
   if (!scopeValid.value) return
-  if (refreshing.value) return
+  if (refreshing.value === true) return
   refreshing.value = true
   try {
     await refreshReviewerMetrics({
@@ -1676,12 +1677,12 @@ const spotForm = reactive<{
 })
 
 async function handleCreateSpotCheck(): Promise<void> {
-  if (!canManageQualityMonitorWrites.value) {
+  if (canManageQualityMonitorWrites.value !== true) {
     void message.warning('仅考试主考或阅卷组织负责人可创建抽检任务')
     return
   }
   if (!scopeValid.value || !spotForm.sampleRate) return
-  if (creatingSpot.value) return
+  if (creatingSpot.value === true) return
   creatingSpot.value = true
   try {
     const created = await createSpotCheckTasks({
@@ -1714,15 +1715,18 @@ const reprocessForm = reactive<{
 })
 
 const reprocessValid = computed(() =>
-  Boolean(
-    canManageOwnerBatchReprocess.value
-    && selectedExamId.value
-    && reprocessForm.scanBatchId
-    && reprocessForm.reason.trim(),
-  ),
+  canManageOwnerBatchReprocess.value === true
+  && Boolean(selectedExamId.value)
+  && Boolean(reprocessForm.scanBatchId)
+  && Boolean(reprocessForm.reason.trim()),
 )
 
 async function requestReprocess(): Promise<void> {
+  // MVR-948：打开确认前叠主考重处理闸
+  if (canManageOwnerBatchReprocess.value !== true) {
+    void message.warning('仅考试主考可触发异常批次重处理')
+    return
+  }
   const ok = await confirmAsync({
     title: '确认触发异常批次重处理？',
     content: '将按当前筛选范围重新投递异常扫描批次，可能产生队列负载。',
@@ -1732,16 +1736,21 @@ async function requestReprocess(): Promise<void> {
   if (!ok) {
     return
   }
+  // MVR-948：确认后再次认 canManageOwnerBatchReprocess，防对话框期间权限漂移
+  if (canManageOwnerBatchReprocess.value !== true) {
+    void message.warning('仅考试主考可触发异常批次重处理')
+    return
+  }
   await handleReprocess()
 }
 
 async function handleReprocess(): Promise<void> {
-  if (!canManageOwnerBatchReprocess.value) {
+  if (canManageOwnerBatchReprocess.value !== true) {
     void message.warning('仅考试主考可触发异常批次重处理')
     return
   }
-  if (!reprocessValid.value) return
-  if (reprocessing.value) return
+  if (reprocessValid.value !== true) return
+  if (reprocessing.value === true) return
   reprocessing.value = true
   try {
     await reprocessBatch({

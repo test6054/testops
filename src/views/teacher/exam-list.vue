@@ -240,6 +240,8 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-951：函数式 can*(...) 写入口仅认 === true
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { ExamPageQueryRequest, ExamWorkbenchSummaryResponse } from '@/apis/mark/exam'
 import type {
@@ -538,12 +540,12 @@ const currentDataSource = computed<ExamWorkbenchSummaryResponse[]>(() => {
 
 const currentLoading = computed<boolean>(() => {
   if (listTab.value === 'priority') {
-    return priorityLoading.value
+    return priorityLoading.value === true
   }
   if (listTab.value === 'ongoing') {
-    return ongoingLoading.value
+    return ongoingLoading.value === true
   }
-  return allLoading.value
+  return allLoading.value === true
 })
 
 const currentPagination = computed<TablePaginationConfig>(() => {
@@ -1050,7 +1052,7 @@ function goCreateExam(): void {
 }
 
 function openEditModal(exam: ExamWorkbenchSummaryResponse): void {
-  if (!canManageOwnerExamLifecycle(exam)) {
+  if (canManageOwnerExamLifecycle(exam) !== true) {
     return
   }
   editingExamId.value = exam.examId
@@ -1081,7 +1083,7 @@ function buildExamRowActions(exam: ExamWorkbenchSummaryResponse): UiTableRowActi
     })
   }
   // MVR-272：编辑/关闭/删除均仅主考；与 BE requireExamOwnerPermission 对齐
-  if (exam.status !== ExamStatusCode.CLOSED && canManageOwnerExamLifecycle(exam)) {
+  if (exam.status !== ExamStatusCode.CLOSED && canManageOwnerExamLifecycle(exam) === true) {
     actions.push({ key: 'edit', label: '编辑' })
     actions.push({ key: 'close', label: '关闭' })
     actions.push({ key: 'delete', label: '删除', tone: 'danger' })
@@ -1101,19 +1103,19 @@ function handleExamRowAction(key: string, exam: ExamWorkbenchSummaryResponse): v
       goExamArchiveReview(exam)
       break
     case 'edit':
-      if (!canManageOwnerExamLifecycle(exam)) {
+      if (canManageOwnerExamLifecycle(exam) !== true) {
         return
       }
       openEditModal(exam)
       break
     case 'close':
-      if (!canManageOwnerExamLifecycle(exam)) {
+      if (canManageOwnerExamLifecycle(exam) !== true) {
         return
       }
       confirmClose(exam)
       break
     case 'delete':
-      if (!canManageOwnerExamLifecycle(exam)) {
+      if (canManageOwnerExamLifecycle(exam) !== true) {
         return
       }
       confirmDelete(exam)
@@ -1122,7 +1124,7 @@ function handleExamRowAction(key: string, exam: ExamWorkbenchSummaryResponse): v
 }
 
 function confirmClose(exam: ExamWorkbenchSummaryResponse): void {
-  if (!canManageOwnerExamLifecycle(exam) || examActionLoading.value) {
+  if (canManageOwnerExamLifecycle(exam) !== true || examActionLoading.value) {
     return
   }
   void (async () => {
@@ -1146,14 +1148,19 @@ function confirmClose(exam: ExamWorkbenchSummaryResponse): void {
       }
       void confirmAsync({
         title: `关闭考试 ${exam.examName}？`,
-        content: gate.allScoresPublished
+        content: gate.allScoresPublished === true
           ? buildCloseExamReadyContent(gate)
           : '关闭后考试进入 CLOSED 状态，可进入考后归档与质量评价；关闭后不可再编辑考试主信息。',
         okText: '关闭考试',
         cancelText: '取消',
         type: 'warning',
         onOk: async () => {
-          if (examActionLoading.value) {
+          // MVR-932：确认后再次认 canManageOwnerExamLifecycle，防状态/权限漂移
+          if (canManageOwnerExamLifecycle(exam) !== true) {
+            void message.warning('仅本场主考可关闭考试')
+            return false
+          }
+          if (examActionLoading.value === true) {
             return false
           }
           examActionLoading.value = true
@@ -1176,7 +1183,7 @@ function confirmClose(exam: ExamWorkbenchSummaryResponse): void {
 }
 
 function confirmDelete(exam: ExamWorkbenchSummaryResponse): void {
-  if (!canManageOwnerExamLifecycle(exam) || examActionLoading.value) {
+  if (canManageOwnerExamLifecycle(exam) !== true || examActionLoading.value) {
     return
   }
   void confirmAsync({
@@ -1186,7 +1193,12 @@ function confirmDelete(exam: ExamWorkbenchSummaryResponse): void {
     cancelText: '取消',
     type: 'error',
     onOk: async () => {
-      if (examActionLoading.value) {
+      // MVR-932：确认后再次认 canManageOwnerExamLifecycle，防状态/权限漂移
+      if (canManageOwnerExamLifecycle(exam) !== true) {
+        void message.warning('仅本场主考可删除考试')
+        return false
+      }
+      if (examActionLoading.value === true) {
         return false
       }
       examActionLoading.value = true

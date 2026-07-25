@@ -1,10 +1,14 @@
-/** 参评材料分类身份类 - PortfolioIdentityMaterialCategoryClassEnum */
+/**
+ * 参评材料档案分类身份类合同编码。
+ * 与后端 PortfolioIdentityMaterialCategoryClassEnum.name() 对齐。
+ */
 export enum PortfolioIdentityMaterialCategoryClassCode {
   DOCUMENT = 'DOCUMENT',
   TITLE = 'TITLE',
   DEGREE = 'DEGREE',
   ETHICS = 'ETHICS',
   QUALIFICATION = 'QUALIFICATION',
+  CERTIFICATE = 'CERTIFICATE',
   APPOINTMENT = 'APPOINTMENT',
   BASIC = 'BASIC',
   PROFILE = 'PROFILE',
@@ -14,17 +18,28 @@ export enum PortfolioIdentityMaterialCategoryClassCode {
   SKILL_MASTER = 'SKILL_MASTER',
   CRAFTSMAN = 'CRAFTSMAN',
   TEACHING = 'TEACHING',
+  ENTERPRISE_PRACTICE = 'ENTERPRISE_PRACTICE',
+  PROCESS_SESSION = 'PROCESS_SESSION',
+  COURSE_FRAME_BASIC = 'COURSE_FRAME_BASIC',
+  COURSE_FRAME_DESIGN = 'COURSE_FRAME_DESIGN',
+  COURSE_FRAME_IMPLEMENTATION = 'COURSE_FRAME_IMPLEMENTATION',
+  COURSE_FRAME_EFFECT = 'COURSE_FRAME_EFFECT',
+  COURSE_FRAME_REFLECTION = 'COURSE_FRAME_REFLECTION',
   RESEARCH = 'RESEARCH',
   HONOR = 'HONOR',
   ACHIEVEMENT = 'ACHIEVEMENT',
 }
 
-export const PortfolioIdentityMaterialCategoryClassDescription: Record<PortfolioIdentityMaterialCategoryClassCode, string> = {
+export const PortfolioIdentityMaterialCategoryClassDescription: Record<
+  PortfolioIdentityMaterialCategoryClassCode,
+  string
+> = {
   [PortfolioIdentityMaterialCategoryClassCode.DOCUMENT]: '基础文档',
   [PortfolioIdentityMaterialCategoryClassCode.TITLE]: '职称材料',
   [PortfolioIdentityMaterialCategoryClassCode.DEGREE]: '学历学位',
   [PortfolioIdentityMaterialCategoryClassCode.ETHICS]: '师德师风',
   [PortfolioIdentityMaterialCategoryClassCode.QUALIFICATION]: '资格资质',
+  [PortfolioIdentityMaterialCategoryClassCode.CERTIFICATE]: '证书证明',
   [PortfolioIdentityMaterialCategoryClassCode.APPOINTMENT]: '聘任材料',
   [PortfolioIdentityMaterialCategoryClassCode.BASIC]: '基本信息',
   [PortfolioIdentityMaterialCategoryClassCode.PROFILE]: '画像材料',
@@ -34,6 +49,13 @@ export const PortfolioIdentityMaterialCategoryClassDescription: Record<Portfolio
   [PortfolioIdentityMaterialCategoryClassCode.SKILL_MASTER]: '技能大师材料',
   [PortfolioIdentityMaterialCategoryClassCode.CRAFTSMAN]: '大国工匠材料',
   [PortfolioIdentityMaterialCategoryClassCode.TEACHING]: '教学材料',
+  [PortfolioIdentityMaterialCategoryClassCode.ENTERPRISE_PRACTICE]: '企业实践',
+  [PortfolioIdentityMaterialCategoryClassCode.PROCESS_SESSION]: '过程课次',
+  [PortfolioIdentityMaterialCategoryClassCode.COURSE_FRAME_BASIC]: '课程基本情况',
+  [PortfolioIdentityMaterialCategoryClassCode.COURSE_FRAME_DESIGN]: '课程教学设计',
+  [PortfolioIdentityMaterialCategoryClassCode.COURSE_FRAME_IMPLEMENTATION]: '课程教学实施',
+  [PortfolioIdentityMaterialCategoryClassCode.COURSE_FRAME_EFFECT]: '课程实施效果',
+  [PortfolioIdentityMaterialCategoryClassCode.COURSE_FRAME_REFLECTION]: '课程教学反思',
   [PortfolioIdentityMaterialCategoryClassCode.RESEARCH]: '科研材料',
   [PortfolioIdentityMaterialCategoryClassCode.HONOR]: '荣誉材料',
   [PortfolioIdentityMaterialCategoryClassCode.ACHIEVEMENT]: '成果材料',

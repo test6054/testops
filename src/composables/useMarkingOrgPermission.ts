@@ -14,7 +14,7 @@ export function useMarkingOrgPermission(
   const canManageExamOwner = computed(() => organization.value?.canManageExamOwner === true)
 
   function guardExamOwnerAction(): boolean {
-    return canManageExamOwner.value
+    return canManageExamOwner.value === true
   }
 
   return {

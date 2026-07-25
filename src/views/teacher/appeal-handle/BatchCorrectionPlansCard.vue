@@ -4,7 +4,7 @@
       <div class="appeal-section__header">
         <span class="appeal-section__flow-hint">{{ BATCH_CORRECTION_FLOW_HINT }}</span>
         <UiButton
-          v-if="canManageReviewerWrites"
+          v-if="canManageReviewerWrites === true"
           size="sm"
           variant="primary"
           @click="openCreateModal"
@@ -72,7 +72,7 @@
         v-model:open="createOpen"
         title="新建批量更正计划"
         :width="840"
-        :confirm-loading="creating"
+        :confirm-loading="creating === true"
         :mask-closable="false"
         :hide-footer="false"
         ok-text="保存草稿"
@@ -234,6 +234,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-951：函数式 can*(...) 写入口仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   BatchCorrectionPlanCreateRequest,
@@ -587,7 +588,7 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 }
 
 async function openCreateModal(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员或主考可创建批量更正计划')
     return
   }
@@ -805,13 +806,13 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
 
 async function handleCreate(): Promise<void> {
   // MVR-313：与 openCreateModal / canManageReviewerWrites 同源二次拦截
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('仅本场阅卷组织成员或主考可创建批量更正计划')
     return
   }
   const request = buildCreateRequest()
   if (!request) return
-  if (creating.value || operatingId.value) {
+  if (creating.value === true || Boolean(operatingId.value)) {
     return
   }
   creating.value = true
@@ -829,12 +830,12 @@ async function handleCreate(): Promise<void> {
 }
 
 async function handleSubmitPlan(planId: string): Promise<void> {
-  if (operatingId.value || creating.value) {
+  if (Boolean(operatingId.value) || creating.value === true) {
     return
   }
   // MVR-313：与 canSubmit / BE 提交门禁同源
   const row = rows.value.find((item) => item.id === planId)
-  if (!row || !canSubmit(row)) {
+  if (!row || canSubmit(row) !== true) {
     void message.warning('当前账号不可提交该批量更正计划')
     return
   }
@@ -854,10 +855,10 @@ async function handleSubmitPlan(planId: string): Promise<void> {
 
 async function handleApprove(planId: string): Promise<void> {
   const row = rows.value.find((item) => item.id === planId)
-  if (!row || !canDecideBatchCorrectionPlan(row)) {
+  if (!row || canDecideBatchCorrectionPlan(row) !== true) {
     return
   }
-  if (operatingId.value || creating.value) {
+  if (Boolean(operatingId.value) || creating.value === true) {
     return
   }
   operatingId.value = planId
@@ -876,7 +877,7 @@ async function handleApprove(planId: string): Promise<void> {
 
 function openRejectModal(planId: string): void {
   const row = rows.value.find((item) => item.id === planId)
-  if (!row || !canDecideBatchCorrectionPlan(row)) {
+  if (!row || canDecideBatchCorrectionPlan(row) !== true) {
     return
   }
   rejectPlanId.value = planId
@@ -890,12 +891,12 @@ async function handleReject(): Promise<void> {
     showFormValidationMessage('请输入驳回原因')
     return
   }
-  if (operatingId.value || creating.value) {
+  if (Boolean(operatingId.value) || creating.value === true) {
     return
   }
   // MVR-313：与 canDecideBatchCorrectionPlan 同源二次拦截
   const row = rows.value.find((item) => item.id === rejectPlanId.value)
-  if (!row || !canDecideBatchCorrectionPlan(row)) {
+  if (!row || canDecideBatchCorrectionPlan(row) !== true) {
     void message.warning('当前账号不可驳回该批量更正计划')
     return
   }
@@ -919,7 +920,7 @@ function openExecuteModal(planId: string): void {
   const row = rows.value.find((item) => item.id === planId)
   // MVR-380：与 handleExecute / canManageReviewerWrites 二次拦截
   if (
-    !canManageReviewerWrites.value
+    canManageReviewerWrites.value !== true
     || !row
     || row.approvalStatus !== BatchCorrectionApprovalStatusCode.APPROVED
   ) {
@@ -939,13 +940,13 @@ async function handleExecute(): Promise<void> {
   }
   const planId = executePlanId.value
   if (!planId) return
-  if (operatingId.value || creating.value) {
+  if (Boolean(operatingId.value) || creating.value === true) {
     return
   }
   // MVR-313：执行写二次拦截，与行动作 hidden 条件同源
   const row = rows.value.find((item) => item.id === planId)
   if (
-    !canManageReviewerWrites.value
+    canManageReviewerWrites.value !== true
     || !row
     || row.approvalStatus !== BatchCorrectionApprovalStatusCode.APPROVED
   ) {
@@ -991,7 +992,7 @@ function isOperating(planId: string, action: OperationAction): boolean {
 
 function canSubmit(row: ExamBatchGradeCorrectionPlan): boolean {
   return (
-    canManageReviewerWrites.value
+    canManageReviewerWrites.value === true
     && (row.approvalStatus === BatchCorrectionApprovalStatusCode.DRAFT
       || row.approvalStatus === BatchCorrectionApprovalStatusCode.REJECTED)
   )
@@ -1008,7 +1009,7 @@ function isBatchCorrectionSubmitterSelf(row: ExamBatchGradeCorrectionPlan): bool
 
 function canDecideBatchCorrectionPlan(row: ExamBatchGradeCorrectionPlan): boolean {
   return (
-    canManageReviewerWrites.value
+    canManageReviewerWrites.value === true
     && row.approvalStatus === BatchCorrectionApprovalStatusCode.PENDING_APPROVAL
     && !isBatchCorrectionSubmitterSelf(row)
   )
@@ -1024,27 +1025,28 @@ function buildBatchCorrectionPlanActions(
     {
       key: 'submit',
       label: '提交',
-      hidden: !canSubmit(row),
+      hidden: canSubmit(row) !== true,
       disabled: operating('submit'),
     },
     {
       key: 'approve',
       label: '通过',
-      hidden: !canDecide,
+      // MVR-952：canDecide 仅认 === true
+      hidden: canDecide !== true,
       disabled: operating('approve'),
     },
     {
       key: 'reject',
       label: '驳回',
       tone: 'danger',
-      hidden: !canDecide,
+      hidden: canDecide !== true,
       disabled: operating('reject'),
     },
     {
       key: 'execute',
       label: '执行',
       hidden:
-        !canManageReviewerWrites.value
+        canManageReviewerWrites.value !== true
         || row.approvalStatus !== BatchCorrectionApprovalStatusCode.APPROVED,
       disabled: operating('execute'),
     },
@@ -1066,23 +1068,33 @@ function buildBatchCorrectionPlanActions(
 function handleBatchCorrectionPlanAction(key: string, row: ExamBatchGradeCorrectionPlan): void {
   switch (key) {
     case 'submit':
-      if (!canSubmit(row)) return
+      if (canSubmit(row) !== true) return
       void confirmAsync({
         title: '确认提交审批？',
         okText: '提交',
         cancelText: '取消',
         type: 'warning',
-        onOk: () => handleSubmitPlan(row.id),
+        onOk: async () => {
+          // MVR-942：确认后再次走 handleSubmitPlan 内 canSubmit 闸
+          await handleSubmitPlan(row.id)
+        },
       })
       break
     case 'approve':
-      if (row.approvalStatus !== BatchCorrectionApprovalStatusCode.PENDING_APPROVAL) return
+      // MVR-944：打开确认前叠 canDecide（写权∧PENDING∧非本人），避免仅靠状态判断
+      if (canDecideBatchCorrectionPlan(row) !== true) {
+        void message.warning('当前账号不可审批该批量更正计划')
+        return
+      }
       void confirmAsync({
         title: '确认审批通过？',
         okText: '通过',
         cancelText: '取消',
         type: 'warning',
-        onOk: () => handleApprove(row.id),
+        onOk: async () => {
+          // MVR-942/944：确认后再次走 handleApprove 内 canDecide 闸
+          await handleApprove(row.id)
+        },
       })
       break
     case 'reject':

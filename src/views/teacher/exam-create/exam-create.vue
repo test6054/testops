@@ -11,7 +11,7 @@
       <UiButton
         variant="primary"
         :loading="ec.submitting.value"
-        :disabled="ec.submitting.value || ec.rosterPreviewSyncing.value"
+        :disabled="ec.submitting.value === true || ec.rosterPreviewSyncing.value === true"
         @click="handleSubmit"
       >
         <template v-if="!ec.submitting.value" #icon><SaveOutlined /></template>
@@ -48,7 +48,7 @@
       <UiButton
         variant="primary"
         :loading="ec.submitting.value"
-        :disabled="ec.submitting.value || ec.rosterPreviewSyncing.value"
+        :disabled="ec.submitting.value === true || ec.rosterPreviewSyncing.value === true"
         @click="handleSubmit"
       >
         <template v-if="!ec.submitting.value" #icon><SaveOutlined /></template>

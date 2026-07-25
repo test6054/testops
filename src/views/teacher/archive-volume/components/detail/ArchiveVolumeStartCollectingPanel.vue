@@ -1,4 +1,9 @@
 <script setup lang="ts">
+// MVR-950：残留 can* 控制流仅认 === true
+// MVR-949：props.can* 写控制流仅认 === true
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveMaterialCatalogTemplateResponse,
@@ -42,12 +47,20 @@ import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ArchiveVolumeCollaboratorStrip from '@/views/teacher/archive-volume/components/ArchiveVolumeCollaboratorStrip.vue'
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   detail: ArchiveVolumeDetailResponse
-  canStartCollecting: boolean
-  canManageCollaborators: boolean
-  canUpdateArchiveDueTime: boolean
-}>()
+  canStartCollecting?: boolean
+  canManageCollaborators?: boolean
+  canUpdateArchiveDueTime?: boolean
+}>(),
+  {
+  canStartCollecting: false,
+  canManageCollaborators: false,
+  canUpdateArchiveDueTime: false,
+  },
+)
 
 const emit = defineEmits<{
   started: []
@@ -75,7 +88,7 @@ const volume = computed(() => props.detail.volume)
 const collaborators = computed(() => props.detail.collaborators ?? [])
 const isDraft = computed(() => volume.value.volumeStatus === ArchiveVolumeStatusCode.DRAFT)
 const canEditSettings = computed(
-  () => isDraft.value && props.canManageCollaborators,
+  () => isDraft.value && props.canManageCollaborators === true,
 )
 
 const readinessRows = computed((): ArchiveVolumeStartCollectingCheckItem[] => {
@@ -92,7 +105,7 @@ const readyCount = computed(() => readinessRows.value.filter((row) => row.ready)
 const canCommit = computed(
   () =>
     isDraft.value
-    && props.canStartCollecting
+    && props.canStartCollecting === true
     && precheck.value?.canStart === true
     && blockingCount.value === 0
     && !precheckError.value,
@@ -253,7 +266,7 @@ function syncEditorsFromVolume(): void {
 }
 
 async function loadTemplateSets(): Promise<void> {
-  if (!isDraft.value || !props.canManageCollaborators) {
+  if (!isDraft.value || props.canManageCollaborators !== true) {
     templateSets.value = []
     return
   }
@@ -329,8 +342,8 @@ function onCheckItemActivate(row: ArchiveVolumeStartCollectingCheckItem): void {
 }
 
 async function saveTaskSettings(): Promise<void> {
-  if (savingSettings.value || !canEditSettings.value) return
-  if (!props.canManageCollaborators) {
+  if (savingSettings.value || canEditSettings.value !== true) return
+  if (props.canManageCollaborators !== true) {
     void message.warning('当前账号无任务设置维护权限')
     return
   }
@@ -356,6 +369,11 @@ async function saveTaskSettings(): Promise<void> {
   }
   if (!nextDue) {
     showFormValidationMessage('请设置归档截止时刻')
+    return
+  }
+  if (dueChanged && props.canUpdateArchiveDueTime !== true) {
+    // MVR-928：截止覆盖仅认 BE canUpdateArchiveDueTime；无权限时禁止随标题/模板一并改期
+    void message.warning('当前账号不可覆盖归档截止时刻')
     return
   }
   if (dueChanged && !dueReason.value.trim()) {
@@ -391,7 +409,7 @@ async function saveTaskSettings(): Promise<void> {
     scoreSource: v.scoreSource,
     examForm: v.examForm ?? null,
     securityLevel: v.securityLevel,
-    retentionYears: v.permanentRetention ? undefined : v.retentionYears,
+    retentionYears: v.permanentRetention === true ? undefined : v.retentionYears,
     permanentRetention: v.permanentRetention === true,
     responsibleUserId: v.responsibleUserId,
     expectedArchiveDueTime: v.archiveDueTime ?? null,
@@ -412,13 +430,13 @@ async function saveTaskSettings(): Promise<void> {
 }
 
 async function handleStart(): Promise<void> {
-  if (starting.value) return
-  if (!props.canStartCollecting) {
+  if (starting.value === true) return
+  if (props.canStartCollecting !== true) {
     void message.warning('当前账号无开始收材权限')
     return
   }
   await loadPrecheck()
-  if (!precheck.value?.canStart || blockingCount.value > 0) {
+  if (precheck.value?.canStart !== true || blockingCount.value > 0) {
     void message.warning('请先补齐开收前必填项')
     return
   }
@@ -431,6 +449,16 @@ async function handleStart(): Promise<void> {
     cancelText: '取消',
   })
   if (!confirmed) return
+  // MVR-934：确认后再次认 canStartCollecting + precheck.canStart，防对话框期间预检/权限漂移
+  // MVR-939：precheck.canStart 仅认 === true
+  if (props.canStartCollecting !== true) {
+    void message.warning('当前账号无开始收材权限')
+    return
+  }
+  if (precheck.value?.canStart !== true || blockingCount.value > 0) {
+    void message.warning('请先补齐开收前必填项')
+    return
+  }
   starting.value = true
   try {
     await startArchiveCollecting(volume.value.volumeId)
@@ -472,7 +500,7 @@ async function handleStart(): Promise<void> {
               完整设置
             </UiButton>
             <UiButton
-              v-if="canEditSettings"
+              v-if="canEditSettings === true"
               size="sm"
               variant="primary"
               :loading="savingSettings || loadingPrecheck"
@@ -486,7 +514,7 @@ async function handleStart(): Promise<void> {
         <div class="av-start__field">
           <label class="av-start__label">归档标题</label>
           <UiInput
-            v-if="canManageCollaborators"
+            v-if="canManageCollaborators === true"
             size="sm"
             v-model="titleEditValue"
             placeholder="归档任务标题"
@@ -498,11 +526,11 @@ async function handleStart(): Promise<void> {
         <div class="av-start__field">
           <label class="av-start__label">目录模板套</label>
           <UiSelect
-            v-if="canManageCollaborators"
+            v-if="canManageCollaborators === true"
             size="sm"
             v-model="templateEditValue"
             :options="templateSetOptions"
-            :loading="loadingTemplates"
+            :loading="loadingTemplates === true"
             allow-search
             option-filter-prop="label"
             placeholder="选择目录模板套"
@@ -520,7 +548,7 @@ async function handleStart(): Promise<void> {
 
         <div class="av-start__field">
           <label class="av-start__label">归档截止</label>
-          <template v-if="canUpdateArchiveDueTime">
+          <template v-if="canUpdateArchiveDueTime === true">
             <UiDatePicker
               size="sm"
               v-model="dueEditValue"
@@ -549,7 +577,7 @@ async function handleStart(): Promise<void> {
       <section class="av-start__section">
         <div class="av-start__heading-row">
           <h4 class="av-start__heading">材料目录</h4>
-          <UiButton size="sm" variant="ghost" :loading="loadingPrecheck" @click="loadPrecheck">
+          <UiButton size="sm" variant="ghost" :loading="loadingPrecheck === true" @click="loadPrecheck">
             刷新预检
           </UiButton>
         </div>
@@ -629,7 +657,7 @@ async function handleStart(): Promise<void> {
         <div class="av-start__heading-row">
           <h4 class="av-start__heading">协作分工</h4>
           <UiButton
-            v-if="canManageCollaborators"
+            v-if="canManageCollaborators === true"
             size="sm"
             variant="ghost"
             @click="navigateTo('collaborators')"
@@ -646,7 +674,7 @@ async function handleStart(): Promise<void> {
       </section>
 
       <section class="av-start__commit">
-        <template v-if="canStartCollecting">
+        <template v-if="canStartCollecting === true">
           <p v-if="precheckError" class="av-start__hint av-start__hint--warn">
             预检未通过加载，无法确认开收。
           </p>
@@ -660,7 +688,7 @@ async function handleStart(): Promise<void> {
             variant="primary"
             size="md"
             :loading="starting || loadingPrecheck"
-            :disabled="!canCommit"
+            :disabled="canCommit !== true"
             @click="handleStart"
           >
             确认开始收材

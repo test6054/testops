@@ -51,7 +51,7 @@ const bindingProfile = computed(() => getKioskBindingProfile())
 const agentStatusTone = computed(() => {
   const h = health.value
   if (!h) return 'muted'
-  if (!h.bound) return 'danger'
+  if (h.bound !== true) return 'danger'
   if (!h.scannerConnected) return 'warning'
   return 'success'
 })
@@ -64,7 +64,7 @@ const agentStatusText = computed(() => {
 
 const deviceOnlineText = computed(() => {
   const d = device.value
-  if (!d) return health.value?.bound ? '已绑定' : '未绑定'
+  if (!d) return health.value?.bound === true ? '已绑定' : '未绑定'
   return workflow.endpointOnlineStatusLabel(d.onlineStatus)
 })
 
@@ -118,7 +118,7 @@ const sseStatusText = computed(() =>
 )
 const storageCredentialText = computed(() => {
   const h = health.value
-  if (!h?.bound) return '—'
+  if (h?.bound !== true) return '—'
   if (!('storageUploadCredentialFresh' in h)) return '待 Agent 升级后可见'
   if (!h.storageUploadCredentialFresh) return '已过期，心跳续期后自动重试上传'
   const expiresAt = h.storageUploadCredentialExpiresAt
@@ -127,9 +127,9 @@ const storageCredentialText = computed(() => {
 })
 const liveEventCount = computed(() => workflow.liveEvents.value.length)
 
-const upgradeRequired = computed(() => Boolean(health.value?.upgradeRequired))
-const tokenResetRequired = computed(() => Boolean(health.value?.tokenResetRequired))
-const rebindRequired = computed(() => Boolean(health.value?.rebindRequired))
+const upgradeRequired = computed(() => health.value?.upgradeRequired === true)
+const tokenResetRequired = computed(() => health.value?.tokenResetRequired === true)
+const rebindRequired = computed(() => health.value?.rebindRequired === true)
 const kioskBrowserSessionSyncNeeded = computed(() => workflow.kioskBrowserSessionSyncNeeded.value)
 const agentUpdateStatus = computed(() => health.value?.updateStatus ?? AgentUpdateStatusCode.NONE)
 const agentUpdateAvailable = computed(() => Boolean(health.value?.updateAvailable))
@@ -270,7 +270,7 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
               v-if="agentUpdateInstallable"
               type="button"
               class="ghost-btn"
-              :disabled="workflow.loading.value"
+              :disabled="workflow.loading.value === true"
               @click="workflow.installAgentUpdatePackage()"
             >
               安装已下载更新包
@@ -308,7 +308,7 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
             </div>
             <div>
               <dt>服务允许扫描</dt>
-              <dd>{{ health?.scanAllowed ? '是' : '否' }}</dd>
+              <dd>{{ health?.scanAllowed === true ? '是' : '否' }}</dd>
             </div>
             <div>
               <dt>本地超时任务</dt>
@@ -349,7 +349,7 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
             <button
               type="button"
               class="ghost-btn"
-              :disabled="workflow.loading.value"
+              :disabled="workflow.loading.value === true"
               @click="handleRefreshScanners"
             >
               <ReloadOutlined />
@@ -373,12 +373,12 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
               class="scanner-item"
               :class="{
                 active: workflow.selectedScannerId.value === s.localScannerId,
-                disabled: !s.available,
+                disabled: s.available !== true,
               }"
             >
               <button
                 type="button"
-                :disabled="!s.available"
+                :disabled="s.available !== true"
                 @click="handleSelectScanner(s.localScannerId)"
               >
                 <span class="scanner-radio" />
@@ -387,7 +387,7 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
                   <span class="scanner-meta">
                     <span>{{ s.localScannerId }}</span>
                     <span class="dot" />
-                    <span>{{ s.available ? '可用' : '不可用' }}</span>
+                    <span>{{ s.available === true ? '可用' : '不可用' }}</span>
                   </span>
                 </div>
               </button>
@@ -455,7 +455,7 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
             <button
               type="button"
               class="primary-btn primary-btn--compact"
-              :disabled="!workflow.canActivateAgent.value || workflow.loading.value"
+              :disabled="workflow.canActivateAgent.value !== true || workflow.loading.value === true"
               @click="handleReactivate"
             >
               <ThunderboltFilled />

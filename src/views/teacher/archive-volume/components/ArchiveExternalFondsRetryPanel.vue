@@ -7,7 +7,7 @@
       科研 / 毕设 / 学籍自动建卷进入待重试或人工介入后，从队列定位并重新触发（须学院教务协调职责）。
     </p>
     <WorkbenchContextGateStrip
-      v-if="!loading && !loadError && !canManageExternalFondsRetry"
+      v-if="!loading && !loadError && canManageExternalFondsRetry !== true"
       tag="无写权限"
       body="当前账号可查看队列，但重试须 COLLEGE_COORDINATOR 职责。请联系租户管理员在「职责授权」中配置教务协调后操作。"
       hide-cta
@@ -32,12 +32,12 @@
         allow-clear
         @enter="reload"
       />
-      <UiButton size="sm" :loading="loading" @click="reload">查询</UiButton>
+      <UiButton size="sm" :loading="loading === true" @click="reload">查询</UiButton>
     </div>
     <UiDataTable
       :columns="columns"
       :data-source="rows"
-      :loading="loading"
+      :loading="loading === true"
       :load-error="loadError"
       row-key="pendingId"
       size="small"
@@ -72,7 +72,7 @@
         <template v-else-if="column.key === 'actions'">
           <UiButton
             v-if="
-              canManageExternalFondsRetry
+              canManageExternalFondsRetry === true
                 && record.pendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
             "
             variant="primary"
@@ -84,7 +84,7 @@
           </UiButton>
           <span
             v-else-if="
-              !canManageExternalFondsRetry
+              canManageExternalFondsRetry !== true
                 && record.pendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
             "
             class="archive-ext-fonds-retry__muted"
@@ -101,7 +101,7 @@
       :total="total"
       @change="onPageChange"
     />
-    <UiForm v-if="canManageExternalFondsRetry" class="archive-ext-fonds-retry__form">
+    <UiForm v-if="canManageExternalFondsRetry === true" class="archive-ext-fonds-retry__form">
       <div class="archive-ext-fonds-retry__row">
         <label class="archive-ext-fonds-retry__label">手动补录外部键重试</label>
         <UiSelect
@@ -123,7 +123,7 @@
         <UiButton
           variant="primary"
           size="sm"
-          :loading="manualSubmitting"
+          :loading="manualSubmitting === true"
           @click="submitManualRetry"
         >
           按外部键重新触发
@@ -134,6 +134,8 @@
 </template>
 
 <script setup lang="ts">
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveExternalFondsPendingResponse } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
@@ -255,8 +257,12 @@ function onPageChange(): void {
 }
 
 async function retryRow(record: ArchiveExternalFondsPendingResponse): Promise<void> {
-  if (!canManageExternalFondsRetry.value) {
+  if (canManageExternalFondsRetry.value !== true) {
     void message.error('仅具备学院教务协调职责的用户可重试外部全宗自动建卷')
+    return
+  }
+  // MVR-937：任一重试/手工提交进行中禁止并发触发
+  if (Boolean(retryingKey.value) || manualSubmitting.value === true) {
     return
   }
   retryingKey.value = rowRetryKey(record)
@@ -276,8 +282,12 @@ async function retryRow(record: ArchiveExternalFondsPendingResponse): Promise<vo
 }
 
 async function submitManualRetry(): Promise<void> {
-  if (!canManageExternalFondsRetry.value) {
+  if (canManageExternalFondsRetry.value !== true) {
     void message.error('仅具备学院教务协调职责的用户可重试外部全宗自动建卷')
+    return
+  }
+  // MVR-937：与行级重试互斥，禁止并发
+  if (manualSubmitting.value === true || Boolean(retryingKey.value)) {
     return
   }
   const externalSourceSystem = manualForm.externalSourceSystem.trim()

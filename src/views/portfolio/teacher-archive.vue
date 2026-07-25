@@ -923,7 +923,7 @@ async function confirmExportBag() {
   exportApplying.value = true
   bagLoading.value = true
   try {
-    // §7.9：TEACHER_ARCHIVE 须走导出审批，禁止 material-package/build 直下
+    // §7.9：TEACHER_ARCHIVE 走导出审批；审批通过后由 ExportArtifactService 生成 ZIP
     await portfolioSecurityApi.applyExport({
       exportType: PortfolioExportTypeCode.TEACHER_ARCHIVE,
       businessRef: {

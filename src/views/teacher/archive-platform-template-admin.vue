@@ -44,7 +44,7 @@ import ArchiveVolumeTemplateSetsPanel from '@/views/teacher/archive-volume/compo
 defineOptions({ name: 'ArchivePlatformTemplateAdminPage' })
 
 const authStore = useAuthStore()
-const isSuperAdmin = computed(() => authStore.isAdmin)
+const isSuperAdmin = computed(() => authStore.isAdmin === true) // MVR-941：超管能力位仅认 === true
 
 const pageTitle = '归档模板配置'
 
@@ -111,7 +111,7 @@ function resetEditor() {
 
 function openCreateEditor() {
   // MVR-381：与 isSuperAdmin / BE requireSuperAdminPermission 二次拦截
-  if (!isSuperAdmin.value) {
+  if (isSuperAdmin.value !== true) {
     void message.warning('仅平台超级管理员可维护平台归档模板库')
     return
   }
@@ -139,7 +139,7 @@ function mapMaterialRow(
 
 async function openEditEditor(setCode: string) {
   // MVR-381：与 isSuperAdmin / BE requireSuperAdminPermission 二次拦截
-  if (!isSuperAdmin.value) {
+  if (isSuperAdmin.value !== true) {
     void message.warning('仅平台超级管理员可维护平台归档模板库')
     return
   }
@@ -186,11 +186,11 @@ async function loadPlatformSets() {
 
 async function submitSave() {
   // MVR-317/429：与 BE requireSuperAdminPermission 二次拦截；仅认 isSuperAdmin === true
-  if (!isSuperAdmin.value) {
+  if (isSuperAdmin.value !== true) {
     void message.warning('仅平台超级管理员可维护平台归档模板库')
     return
   }
-  if (saving.value) {
+  if (saving.value === true) {
     return
   }
   if (loadFailed.value) {
@@ -283,13 +283,13 @@ onMounted(loadPlatformSets)
   <StageWorkbenchShell>
     <template #context>
       <ContextBar :title="pageTitle">
-        <template v-if="isSuperAdmin" #status>
+        <template v-if="isSuperAdmin === true" #status>
           <UiTag tone="blue" size="sm">平台模板</UiTag>
         </template>
       </ContextBar>
     </template>
 
-    <ArchiveVolumeTemplateSetsPanel v-if="!isSuperAdmin" />
+    <ArchiveVolumeTemplateSetsPanel v-if="isSuperAdmin !== true" />
 
     <template v-else>
       <WorkbenchSurfaceCard flush class="archive-platform-admin__surface">
@@ -305,7 +305,7 @@ onMounted(loadPlatformSets)
               <UiButton
                 size="sm"
                 variant="primary"
-                :disabled="loadFailed || loading"
+                :disabled="loadFailed === true || loading === true"
                 @click="openCreateEditor"
               >
                 新建模板套

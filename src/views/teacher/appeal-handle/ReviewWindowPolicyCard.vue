@@ -26,7 +26,7 @@
                 format="YYYY-MM-DD HH:mm"
                 value-format="YYYY-MM-DD HH:mm:ss"
                 style="width: 100%"
-                :disabled="!canManageReviewerWrites"
+                :disabled="canManageReviewerWrites !== true"
               />
             </UiFormItem>
           </UiCol>
@@ -39,7 +39,7 @@
                 format="YYYY-MM-DD HH:mm"
                 value-format="YYYY-MM-DD HH:mm:ss"
                 style="width: 100%"
-                :disabled="!canManageReviewerWrites"
+                :disabled="canManageReviewerWrites !== true"
               />
             </UiFormItem>
           </UiCol>
@@ -53,7 +53,7 @@
                 :min="1"
                 :max="10"
                 style="width: 100%"
-                :disabled="!canManageReviewerWrites"
+                :disabled="canManageReviewerWrites !== true"
               />
             </UiFormItem>
           </UiCol>
@@ -63,7 +63,7 @@
                 size="sm"
                 v-model="form.visibleMaterialScope"
                 :options="scopeOptions"
-                :disabled="!canManageReviewerWrites"
+                :disabled="canManageReviewerWrites !== true"
               />
             </UiFormItem>
           </UiCol>
@@ -75,14 +75,14 @@
                 mode="multiple"
                 allow-clear
                 :options="GRADE_REVIEW_REASON_TYPE_OPTIONS"
-                :disabled="!canManageReviewerWrites"
+                :disabled="canManageReviewerWrites !== true"
               />
             </UiFormItem>
           </UiCol>
         </UiRow>
       </UiForm>
 
-      <div v-if="canManageReviewerWrites" class="dp-space" style="--dp-space-gap: 8px">
+      <div v-if="canManageReviewerWrites === true" class="dp-space" style="--dp-space-gap: 8px">
         <UiButton size="sm" variant="primary" :loading="saving" @click="handleSave">
           保存策略
         </UiButton>
@@ -90,7 +90,7 @@
           size="sm"
           variant="outline"
           :loading="savingAndActivating"
-          :disabled="!canActivateReviewWindow"
+          :disabled="canActivateReviewWindow !== true"
           :title="activateBlockReason || undefined"
           @click="handleSaveAndActivate"
         >
@@ -100,7 +100,7 @@
           size="sm"
           variant="ghost"
           :loading="activating"
-          :disabled="!canActivateReviewWindow"
+          :disabled="canActivateReviewWindow !== true"
           :title="activateBlockReason || undefined"
           @click="handleActivate"
         >
@@ -111,7 +111,7 @@
           status="danger"
           variant="outline"
           :loading="closing"
-          :disabled="!hasPersistedPolicy || policy?.policyStatus === 'CLOSED'"
+          :disabled="hasPersistedPolicy !== true || policy?.policyStatus === 'CLOSED'"
           @click="handleClose"
         >
           关闭窗口
@@ -128,6 +128,8 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-948：本地 can* 显隐/禁用仅认 === true
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
 import type { ExamReviewWindowPolicy, GradeReviewReasonTypeCode } from '@/apis/mark/grade-review'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
@@ -332,11 +334,11 @@ async function handleSaveAndActivate(): Promise<void> {
 }
 
 async function persistPolicy(activateImmediately: boolean): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无复核窗口写权限')
     return
   }
-  if (saving.value || savingAndActivating.value) {
+  if (saving.value === true || savingAndActivating.value === true) {
     return
   }
   if (!form.openTime || !form.closeTime) {
@@ -355,7 +357,7 @@ async function persistPolicy(activateImmediately: boolean): Promise<void> {
     void message.warning('复核窗口已激活，关闭时间不得早于当前时间；如需结束请使用关闭窗口')
     return
   }
-  if (activateImmediately && !canActivateReviewWindow.value) {
+  if (activateImmediately && canActivateReviewWindow.value !== true) {
     void message.warning(activateBlockReason.value || '当前不能启用复核窗口')
     return
   }
@@ -387,14 +389,14 @@ async function persistPolicy(activateImmediately: boolean): Promise<void> {
 }
 
 async function handleActivate(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无复核窗口写权限')
     return
   }
-  if (activating.value || saving.value || savingAndActivating.value || closing.value) {
+  if (activating.value === true || saving.value === true || savingAndActivating.value === true || closing.value === true) {
     return
   }
-  if (!canActivateReviewWindow.value) {
+  if (canActivateReviewWindow.value !== true) {
     void message.warning(activateBlockReason.value || '当前不能激活复核窗口')
     return
   }
@@ -412,11 +414,11 @@ async function handleActivate(): Promise<void> {
 }
 
 async function handleClose(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无复核窗口写权限')
     return
   }
-  if (closing.value || activating.value || saving.value || savingAndActivating.value) {
+  if (closing.value === true || activating.value === true || saving.value === true || savingAndActivating.value === true) {
     return
   }
   closing.value = true

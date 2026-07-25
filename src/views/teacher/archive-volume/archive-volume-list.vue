@@ -34,7 +34,7 @@
     <div class="archive-volume-list__root">
       <ArchiveSetupGuideBanner
         :readiness="archiveSetupReadiness"
-        :loading="archiveSetupReadinessLoading"
+        :loading="archiveSetupReadinessLoading === true"
         :load-failed="archiveSetupReadinessLoadFailed"
         @retry="loadArchiveSetupReadiness"
       />
@@ -67,7 +67,7 @@
             v-if="s1AttentionLoadFailed"
             size="sm"
             variant="outline"
-            :loading="s1AttentionLoading"
+            :loading="s1AttentionLoading === true"
             @click="loadS1AutoCreateAttention"
           >
             重试
@@ -98,12 +98,12 @@
       >
         <template #toolbar>
           <UiBatchActionBar
-            v-if="listTab === 'college' && selectedVolumeIds.length > 0 && canRejectAnyOnPage"
+            v-if="listTab === 'college' && selectedVolumeIds.length > 0 && canRejectAnyOnPage === true"
             :selected-count="selectedVolumeIds.length"
             class="archive-volume-list__batch"
           >
             <UiButton
-              v-if="canRejectAnyOnPage"
+              v-if="canRejectAnyOnPage === true"
               size="sm"
               variant="outline"
               @click="openBatchReject"
@@ -149,7 +149,7 @@
             v-if="listTab === 'mine' && volumeScope === 'mine'"
             :tasks="openRemediationTasks"
             :total-count="openRemediationTaskTotal"
-            :loading="remediationLoading"
+            :loading="remediationLoading === true"
             @go="goRemediationVolume"
           />
         </template>
@@ -160,7 +160,7 @@
           pagination-mode="server"
           :columns="tableColumns"
           :data-source="listLoadFailed ? [] : volumes"
-          :loading="loading"
+          :loading="loading === true"
           :total="pagination.total"
           :row-selection="rowSelection"
           :row-class-name="volumeRowClassName"
@@ -247,7 +247,7 @@
               </div>
             </template>
             <template v-else-if="column.key === 'retentionYears'">
-              <span v-if="record.permanentRetention">永久</span>
+              <span v-if="record.permanentRetention === true">永久</span>
               <span v-else-if="record.retentionYears != null">{{ record.retentionYears }} 年</span>
               <span v-else>—</span>
             </template>
@@ -280,7 +280,7 @@
       :open="batchRejectOpen"
       title="批量退回"
       :width="520"
-      :confirm-loading="batchRejecting"
+      :confirm-loading="batchRejecting === true"
       ok-text="确认退回"
       :hide-footer="false"
       @update:open="(v: boolean) => (batchRejectOpen = v)"
@@ -311,6 +311,8 @@
 </template>
 
 <script setup lang="ts">
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { ColumnsType, TableProps } from 'ant-design-vue/es/table'
 import type { LocationQueryRaw } from 'vue-router'
 import type {
@@ -577,13 +579,13 @@ const visibleListTabs = computed(() => {
       count: Number(kpiTotalCount.value) > 0 ? Number(kpiTotalCount.value) : undefined,
     },
   ]
-  if (canViewCollegeBoard.value) {
+  if (canViewCollegeBoard.value === true) {
     tabs.push({
       key: 'college',
       label: isDepartmentArchivistOnly.value ? '部门档案员看板' : '院系看板',
     })
   }
-  if (canViewArchiveReviewer.value) {
+  if (canViewArchiveReviewer.value === true) {
     const archiveBadge = Number(kpiPendingTransferCount.value) + Number(kpiDueAppraisalCount.value)
     tabs.push({
       key: 'archive',
@@ -592,11 +594,11 @@ const visibleListTabs = computed(() => {
       badgeTone: 'orange',
     })
   }
-  if (canViewSupervision.value) {
+  if (canViewSupervision.value === true) {
     tabs.push({ key: 'supervision', label: '督导抽查' })
   }
   // MVR-339：仅认 BE open-stats canViewRemediationTab===true；禁止 hasDuty 回退
-  if (canViewRemediationTabFromStats.value) {
+  if (canViewRemediationTabFromStats.value === true) {
     tabs.push({
       key: 'remediation',
       label: '迎评整改',
@@ -620,7 +622,7 @@ const suspectedMixedScanButtonLabel = computed(() => {
 
 async function loadSuspectedMixedPendingTotal(): Promise<void> {
   await loadGrants()
-  if (!canViewArchiveDepartmentQueue.value) {
+  if (canViewArchiveDepartmentQueue.value !== true) {
     suspectedMixedPendingTotal.value = null
     return
   }
@@ -811,7 +813,7 @@ const listOverviewSignalMetrics = computed<SignalMetric[]>(() => {
       Number(kpiDueAppraisalCount.value),
     ),
   ]
-  if (canViewArchiveReviewer.value) {
+  if (canViewArchiveReviewer.value === true) {
     metrics.push(
       buildListOverviewMetric(
         'pending',
@@ -822,7 +824,7 @@ const listOverviewSignalMetrics = computed<SignalMetric[]>(() => {
       ),
     )
   }
-  if (canViewStatisticsKpi.value) {
+  if (canViewStatisticsKpi.value === true) {
     metrics.push(
       buildListOverviewMetric(
         'missing',
@@ -890,7 +892,7 @@ const departmentFilterDisabled = computed(
 )
 
 const rowSelection = computed<TableProps['rowSelection']>(() => {
-  if (listTab.value !== 'college' || !canRejectAnyOnPage.value) return undefined
+  if (listTab.value !== 'college' || canRejectAnyOnPage.value !== true) return undefined
   return {
     selectedRowKeys: selectedVolumeIds.value,
     onChange: (keys: (string | number)[]) => {
@@ -1040,12 +1042,12 @@ function buildVolumeActions(record: ArchiveVolumeResponse): UiTableRowActionItem
     {
       key: 'remediation',
       label: '去整改',
-      hidden: !showSubmitInMine.value || !hasOpenRemediationForVolume(record.volumeId),
+      hidden: showSubmitInMine.value !== true || hasOpenRemediationForVolume(record.volumeId) !== true,
     },
     {
       key: 'dept-review',
       label: '发起院系审核',
-      hidden: !showSubmitInMine.value || record.canRequestDepartmentReview !== true,
+      hidden: showSubmitInMine.value !== true || record.canRequestDepartmentReview !== true,
       disabled: requestingDepartmentReviewVolumeId.value === record.volumeId,
     },
     {
@@ -1058,13 +1060,14 @@ function buildVolumeActions(record: ArchiveVolumeResponse): UiTableRowActionItem
     {
       key: 'dept-withdraw',
       label: '撤回审核',
-      hidden: !showSubmitInMine.value || record.canWithdrawDepartmentReview !== true,
+      hidden: showSubmitInMine.value !== true || record.canWithdrawDepartmentReview !== true,
     },
     {
       key: 'submit',
       label: '提交归档',
-      hidden: !showSubmitInMine.value || (!canSubmit && !submitBlocked),
-      disabled: submitBlocked,
+      // MVR-955：canSubmit 仅认 === true；整改阻断时仍展示但 disabled
+      hidden: showSubmitInMine.value !== true || (canSubmit !== true && submitBlocked !== true),
+      disabled: submitBlocked === true,
     },
     {
       key: 'remind',
@@ -1215,7 +1218,7 @@ async function loadListOverviewKpis(): Promise<void> {
         '归档卷概览统计部分加载失败',
       )
     }
-    if (canViewStatisticsKpi.value) {
+    if (canViewStatisticsKpi.value === true) {
       try {
         const statsRequest: { departmentId?: string } = {}
         if (countBase.departmentId) {
@@ -1280,7 +1283,7 @@ function applySourceTypeFromQuery() {
   )?.value
   if (!parsed) return
   filterForm.sourceType = parsed
-  if (canViewArchiveReviewer.value) {
+  if (canViewArchiveReviewer.value === true) {
     listTab.value = 'archive'
   }
 }
@@ -1446,7 +1449,7 @@ function handleReset() {
 
 function openBatchReject() {
   // MVR-333：与行级 canRejectTransfer 同源二次拦截
-  if (!canRejectAnyOnPage.value) {
+  if (canRejectAnyOnPage.value !== true) {
     void message.warning('当前账号无移交退回权限')
     return
   }
@@ -1470,9 +1473,9 @@ function openBatchReject() {
 }
 
 async function submitBatchReject() {
-  if (batchRejecting.value) return
+  if (batchRejecting.value === true) return
   // MVR-333：与行级 canRejectTransfer 同源二次拦截
-  if (!canRejectAnyOnPage.value) {
+  if (canRejectAnyOnPage.value !== true) {
     void message.warning('当前账号无移交退回权限')
     return
   }
@@ -1626,6 +1629,11 @@ async function requestDepartmentReviewFromList(record: ArchiveVolumeResponse) {
     okText: '发起审核',
   })
   if (!confirmed) return
+  // MVR-935：确认后再次认行级 canRequestDepartmentReview
+  if (record.canRequestDepartmentReview !== true) {
+    void message.warning('当前账号无发起院系审核权限')
+    return
+  }
   requestingDepartmentReviewVolumeId.value = record.volumeId
   try {
     await requestArchiveVolumeDepartmentReview({ volumeId: record.volumeId })
@@ -1668,6 +1676,11 @@ async function withdrawDepartmentReviewFromList(record: ArchiveVolumeResponse) {
     okText: '确认撤回',
   })
   if (!confirmed) return
+  // MVR-934：确认后再次认行级 canWithdrawDepartmentReview
+  if (record.canWithdrawDepartmentReview !== true) {
+    void message.warning('当前账号无撤回院系审核权限')
+    return
+  }
   withdrawingVolumeId.value = record.volumeId
   try {
     await withdrawArchiveVolumeDepartmentReview({ volumeId: record.volumeId })
@@ -1740,13 +1753,13 @@ function goSuspectedMixedScan() {
 
 const listMoreActionItems = computed(() => {
   const items: Array<{ key: string, label: string }> = []
-  if (canViewStatisticsKpi.value || canViewDestructionLedger.value) {
+  if (canViewStatisticsKpi.value === true || canViewDestructionLedger.value === true) {
     items.push({ key: 'statistics', label: '统计与清册' })
   }
-  if (canViewGlobalAudit.value) {
+  if (canViewGlobalAudit.value === true) {
     items.push({ key: 'audit', label: '审计查询' })
   }
-  if (canViewArchiveDepartmentQueue.value) {
+  if (canViewArchiveDepartmentQueue.value === true) {
     items.push({ key: 'mixed-scan', label: suspectedMixedScanButtonLabel.value })
   }
   return items
@@ -1876,7 +1889,7 @@ function handleSignalMetricClick(key: string) {
     return
   }
   if (key === 'missing') {
-    if (!canViewStatisticsKpi.value) {
+    if (canViewStatisticsKpi.value !== true) {
       return
     }
     archiveListQuickFilter.value = null
@@ -1893,7 +1906,7 @@ function handleSignalMetricClick(key: string) {
   if (key !== 'overdue') {
     return
   }
-  if (!canViewCollegeBoard.value && !canViewArchiveReviewer.value) {
+  if (canViewCollegeBoard.value !== true && canViewArchiveReviewer.value !== true) {
     return
   }
   filterExtras.integrityFailedOnly = false

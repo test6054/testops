@@ -2,7 +2,7 @@
   <UiDialog
     :open="open"
     :title="dialogTitle"
-    :confirm-loading="submitting"
+    :confirm-loading="submitting === true"
     :width="720"
     ok-text="保存并生效"
     cancel-text="取消"
@@ -161,7 +161,8 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'QuestionAnswerCorrectionDialog' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
   open: boolean
   examId: string
   question: Pick<
@@ -172,8 +173,12 @@ const props = defineProps<{
    * MVR-372：与 BE canManageReviewerWrites / requireActiveExam 同源。
    * 仅认 true；禁止缺声明默认放行。
    */
-  canManageReviewerWrites?: boolean
-}>()
+  canManageReviewerWrites?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
+}>(),
+  {
+  canManageReviewerWrites: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -413,11 +418,11 @@ function validateForm(): boolean {
 }
 
 async function handleSubmit(): Promise<void> {
-  if (submitting.value) {
+  if (submitting.value === true) {
     return
   }
   // MVR-372：写 handler 二次拦截；父卡仅隐藏入口不能替代
-  if (!props.canManageReviewerWrites) {
+  if (props.canManageReviewerWrites !== true) {
     showUserError(null, '仅本场阅卷组织成员或主考可修正答案并生效')
     return
   }

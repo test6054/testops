@@ -225,7 +225,7 @@ export function useArchiveDutyAccess() {
     return all.filter((item) => scopeIds.includes(item.value))
   }
 
-  const canViewCollegeBoard = computed(() => canViewDepartmentTasks.value)
+  const canViewCollegeBoard = computed(() => canViewDepartmentTasks.value === true)
   const canViewDepartmentTasks = computed(
     () =>
       hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR)
@@ -246,7 +246,7 @@ export function useArchiveDutyAccess() {
     () =>
       hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN) || hasDuty(ArchiveDutyTypeCode.TRANSFER_REVIEWER),
   )
-  const canViewAccessLedger = computed(() => canApproveAccess.value)
+  const canViewAccessLedger = computed(() => canApproveAccess.value === true)
   const canViewGlobalAudit = computed(
     () =>
       hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN)

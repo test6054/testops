@@ -12,10 +12,10 @@
         查看历史
       </UiButton>
       <UiButton
-        v-if="canManageReviewerWrites"
+        v-if="canManageReviewerWrites === true"
         variant="primary"
         size="sm"
-        :loading="generating"
+        :loading="generating === true"
         @click="handleGenerate"
       >
         评估有效性
@@ -137,6 +137,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { GradingExperienceCaseResponse } from '@/apis/mark/grading-experience'
@@ -580,11 +581,11 @@ const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
 )
 
 async function handleGenerate(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
-  if (generating.value) return
+  if (generating.value === true) return
   const experienceCaseId = form.experienceCaseId
   const evalExamId = form.evalExamId
   if (!experienceCaseId || !evalExamId) {

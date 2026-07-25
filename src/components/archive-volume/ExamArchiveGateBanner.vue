@@ -15,7 +15,7 @@
       :description="bannerDescription"
       dense
     >
-      <template v-if="showCloseReadyAction" #actions>
+      <template v-if="showCloseReadyAction === true" #actions>
         <UiButton variant="outline" size="sm" @click="emit('go-close-exam')"> 前往关考 </UiButton>
       </template>
     </UiAlertStrip>
@@ -23,7 +23,7 @@
       v-if="showClassProgressTable && showClassTable"
       :columns="classColumns"
       :data-source="classRows"
-      :loading="loading"
+      :loading="loading === true"
       flat
       row-key="classId"
       size="small"
@@ -90,24 +90,24 @@ const { gateProgressHint, gateAnomaly, incompleteClasses } = useExamArchiveGateH
 
 const closeExamReady = computed(() => {
   if (props.scoresFullyPublished !== undefined) {
-    return props.scoresFullyPublished
+    return props.scoresFullyPublished === true
   }
   return gate.value?.allScoresPublished === true
 })
 
-const scoresNotFullyPublished = computed(() => !closeExamReady.value)
+const scoresNotFullyPublished = computed(() => closeExamReady.value !== true)
 
 const bannerTone = computed(() => {
   if (gateAnomaly.value) {
     return 'error'
   }
-  if (gate.value?.gateOpen) {
+  if (gate.value?.gateOpen === true) {
     return 'success'
   }
-  if (closeExamReady.value && !gate.value?.examClosed) {
+  if (closeExamReady.value === true && gate.value?.examClosed !== true) {
     return 'success'
   }
-  if ((gate.value?.unpublishedBoundPaperCount ?? 0) > 0 || scoresNotFullyPublished.value) {
+  if ((gate.value?.unpublishedBoundPaperCount ?? 0) > 0 || scoresNotFullyPublished.value === true) {
     return 'warning'
   }
   return 'info'
@@ -118,16 +118,16 @@ const bannerTitle = computed(() => {
   if (!current) {
     return '归档前置条件'
   }
-  if (current.gateOpen) {
+  if (current.gateOpen === true) {
     return '双门禁已满足'
   }
   if (gateAnomaly.value) {
     return '考试状态异常'
   }
-  if (closeExamReady.value && !current.examClosed) {
+  if (closeExamReady.value === true && current.examClosed !== true) {
     return '成绩已全部发布'
   }
-  if ((current.unpublishedBoundPaperCount ?? 0) > 0 || scoresNotFullyPublished.value) {
+  if ((current.unpublishedBoundPaperCount ?? 0) > 0 || scoresNotFullyPublished.value === true) {
     return '尚有成绩未发布'
   }
   return '归档前置条件'
@@ -138,7 +138,7 @@ const bannerDescription = computed(() => {
   if (!current) {
     return '—'
   }
-  if (closeExamReady.value && !current.examClosed) {
+  if (closeExamReady.value === true && current.examClosed !== true) {
     return buildCloseExamReadyContent(current)
   }
   if (incompleteClasses.value.length > 0) {
@@ -152,7 +152,7 @@ const bannerDescription = computed(() => {
 })
 
 const showCloseReadyAction = computed(
-  () => props.compact && closeExamReady.value && gate.value?.examClosed !== true,
+  () => props.compact === true && closeExamReady.value === true && gate.value?.examClosed !== true,
 )
 
 const showClassTable = computed(

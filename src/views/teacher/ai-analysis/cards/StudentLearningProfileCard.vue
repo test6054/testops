@@ -30,10 +30,10 @@
           <template #icon><ReloadOutlined /></template>查看最新
         </UiButton>
         <UiButton
-          v-if="canManageReviewerWrites"
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
-          :loading="generating"
+          :loading="generating === true"
           :disabled="!selectedStudentUserId"
           @click="handleGenerate"
         >
@@ -69,10 +69,10 @@
           刷新
         </UiButton>
         <UiButton
-          v-if="canManageReviewerWrites"
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
-          :loading="generating"
+          :loading="generating === true"
           :disabled="!selectedStudentUserId"
           @click="handleGenerate"
         >
@@ -201,6 +201,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { FinalScoreStatusCode } from '@/apis/mark/final-score-status'
 import type { MasteryLevelCode } from '@/apis/mark/student-mastery-level'
 import type { TeachingAnalysisRecordResponse } from '@/apis/mark/teaching-analysis'
@@ -316,7 +317,7 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }

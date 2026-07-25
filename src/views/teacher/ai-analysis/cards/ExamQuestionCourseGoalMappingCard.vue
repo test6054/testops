@@ -45,6 +45,7 @@
 </template>
 
 <script setup lang="ts">
+// MVR-943：can*/writeAllowed 控制流仅认 === true / !== true
 import type { MappingEditableRow } from './ExamQuestionCourseGoalMappingTable.vue'
 import type {
   ExamQuestionCourseGoalMappingWorkspaceVO,
@@ -171,7 +172,7 @@ async function loadData() {
 }
 
 async function saveRow(row: MappingEditableRow) {
-  if (!canManageOwnerCourseGoalWrites.value) {
+  if (canManageOwnerCourseGoalWrites.value !== true) {
     return
   }
   if (row.saving || row.deleting) return
@@ -200,7 +201,7 @@ async function saveRow(row: MappingEditableRow) {
 }
 
 async function deleteRow(row: MappingEditableRow) {
-  if (!canManageOwnerCourseGoalWrites.value) {
+  if (canManageOwnerCourseGoalWrites.value !== true) {
     return
   }
   if (row.saving || row.deleting) return
@@ -210,6 +211,11 @@ async function deleteRow(row: MappingEditableRow) {
     content: `确认清除第 ${row.questionNo} 题的课程目标映射？`,
   })
   if (!confirmed) return
+  // MVR-934：确认后再次认 canManageOwnerCourseGoalWrites
+  if (canManageOwnerCourseGoalWrites.value !== true) {
+    void message.warning('当前账号无课程目标映射写权限')
+    return
+  }
   row.deleting = true
   try {
     await deleteExamQuestionCourseGoalMapping({ id: row.mappingId })

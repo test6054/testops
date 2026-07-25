@@ -22,7 +22,7 @@ import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, mutex } = useKioskCtx()
 
-const hasOrphanBackendSession = computed(() => workflow.hasOrphanBackendScanSession.value)
+const hasOrphanBackendSession = computed(() => workflow.hasOrphanBackendScanSession.value === true)
 
 const counterUploaded = computed(() => {
   const job = workflow.currentJob.value
@@ -38,7 +38,7 @@ const cantRetryCommit = computed(() => Boolean(mutex.reasonOf('retryCommit')))
 const cantCancel = computed(() => Boolean(mutex.reasonOf('cancelJob')))
 const showRemoveInsteadOfCancel = computed(() => {
   const job = workflow.currentJob.value
-  return Boolean(job && !workflow.canCancelJob.value && workflow.canRemoveCurrentJob.value)
+  return Boolean(job && workflow.canCancelJob.value !== true && workflow.canRemoveCurrentJob.value === true)
 })
 const cantExit = computed(() =>
   showRemoveInsteadOfCancel.value ? Boolean(mutex.reasonOf('removeJob')) : cantCancel.value,
@@ -48,9 +48,9 @@ const exitLabel = computed(() => {
     return '结束未完成进程'
   }
   if (showRemoveInsteadOfCancel.value) {
-    return workflow.currentJob.value?.reported ? '废弃批次' : '删除任务'
+    return workflow.currentJob.value?.reported === true ? '废弃批次' : '删除任务'
   }
-  return workflow.isPreUploadScanFailure.value ? '取消并清理' : '取消'
+  return workflow.isPreUploadScanFailure.value === true ? '取消并清理' : '取消'
 })
 const exitTitle = computed(() => {
   if (hasOrphanBackendSession.value) {
@@ -65,7 +65,7 @@ const exitTitle = computed(() => {
   }
   return (
     mutex.reasonOf('cancelJob')
-    || (workflow.isPreUploadScanFailure.value ? '清理失败的扫描任务并返回准备扫描' : '取消当前任务')
+    || (workflow.isPreUploadScanFailure.value === true ? '清理失败的扫描任务并返回准备扫描' : '取消当前任务')
   )
 })
 
@@ -95,7 +95,7 @@ const exitVariant = computed(() => {
   if (hasOrphanBackendSession.value) {
     return 'danger'
   }
-  if (showRemoveInsteadOfCancel.value || workflow.isPreUploadScanFailure.value) {
+  if (showRemoveInsteadOfCancel.value === true || workflow.isPreUploadScanFailure.value === true) {
     return 'danger'
   }
   return 'ghost'

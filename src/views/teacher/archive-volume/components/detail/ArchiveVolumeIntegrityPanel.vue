@@ -20,19 +20,19 @@
         </UiTag>
         <div class="archive-quality-panel__section-actions">
           <UiButton
-            v-if="canRunIntegrity"
+            v-if="canRunIntegrity === true"
             size="sm"
             variant="primary"
-            :loading="checkingIntegrity"
+            :loading="checkingIntegrity === true"
             @click="emit('run-integrity-check')"
           >
             执行完整性自检
           </UiButton>
           <UiButton
-            v-if="canWaiveIntegrity"
+            v-if="canWaiveIntegrity === true"
             size="sm"
             variant="outline"
-            :loading="waivingIntegrity"
+            :loading="waivingIntegrity === true"
             @click="openWaiveIntegrityModal"
           >
             授权豁免
@@ -46,10 +46,10 @@
           对照必交材料清单检查缺件，通过后方可继续自检清单与四性检测。
         </p>
         <UiButton
-          v-if="canRunIntegrity"
+          v-if="canRunIntegrity === true"
           size="sm"
           variant="primary"
-          :loading="checkingIntegrity"
+          :loading="checkingIntegrity === true"
           @click="emit('run-integrity-check')"
         >
           执行完整性自检
@@ -73,14 +73,14 @@
           </template>
           <template v-else-if="column.key === 'missingActions'">
             <UiTextAction
-              v-if="canAllowMaterialDelay"
+              v-if="canAllowMaterialDelay === true"
               tone="primary"
               @click="openDelayAllowModal(missingTableRow(record))"
             >
               延迟补交
             </UiTextAction>
             <UiTextAction
-              v-if="canWaiveMaterialMissing"
+              v-if="canWaiveMaterialMissing === true"
               tone="primary"
               @click="openWaiveMissingModal(missingTableRow(record))"
             >
@@ -97,7 +97,7 @@
       :open="delayAllowOpen"
       title="登记延迟补交"
       :width="520"
-      :confirm-loading="delayAllowSubmitting"
+      :confirm-loading="delayAllowSubmitting === true"
       ok-text="保存"
       :hide-footer="false"
       @update:open="(v: boolean) => (delayAllowOpen = v)"
@@ -136,7 +136,7 @@
       :open="waiveMissingOpen"
       title="材料缺失豁免"
       :width="520"
-      :confirm-loading="waiveMissingSubmitting"
+      :confirm-loading="waiveMissingSubmitting === true"
       ok-text="授权豁免"
       :hide-footer="false"
       @update:open="(v: boolean) => (waiveMissingOpen = v)"
@@ -163,7 +163,7 @@
       :open="waiveIntegrityOpen"
       title="卷完整性豁免"
       :width="520"
-      :confirm-loading="waivingIntegrity"
+      :confirm-loading="waivingIntegrity === true"
       ok-text="授权豁免"
       :hide-footer="false"
       @update:open="(v: boolean) => (waiveIntegrityOpen = v)"
@@ -186,6 +186,8 @@
 </template>
 
 <script setup lang="ts">
+// MVR-949：props.can* 写控制流仅认 === true
+// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveIntegrityMissingItemVO,
@@ -219,16 +221,25 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeIntegrityPanel' })
 
-const props = defineProps<{
+const props = withDefaults(
+  defineProps<{
+
   volumeId: string
   detail: ArchiveVolumeDetailResponse
   displayedIntegrityResult: NonNullable<ArchiveVolumeDetailResponse['latestIntegrityCheck']> | null
   checkingIntegrity: boolean
-  canRunIntegrity: boolean
-  canAllowMaterialDelay: boolean
-  canWaiveMaterialMissing: boolean
-  canWaiveIntegrity: boolean
-}>()
+  canRunIntegrity?: boolean
+  canAllowMaterialDelay?: boolean
+  canWaiveMaterialMissing?: boolean
+  canWaiveIntegrity?: boolean
+}>(),
+  {
+  canRunIntegrity: false,
+  canAllowMaterialDelay: false,
+  canWaiveMaterialMissing: false,
+  canWaiveIntegrity: false,
+  },
+)
 
 const emit = defineEmits<{
   "refreshed": []
@@ -301,7 +312,7 @@ function integrityStatusTone(
 
 function openDelayAllowModal(item: ArchiveIntegrityMissingItemVO) {
   // MVR-348：与 canAllowMaterialDelay 同源二次拦截
-  if (!props.canAllowMaterialDelay) {
+  if (props.canAllowMaterialDelay !== true) {
     void message.warning('当前账号无延迟补交登记权限')
     return
   }
@@ -313,10 +324,10 @@ function openDelayAllowModal(item: ArchiveIntegrityMissingItemVO) {
 }
 
 async function submitDelayAllow() {
-  if (delayAllowSubmitting.value) {
+  if (delayAllowSubmitting.value === true) {
     return
   }
-  if (!props.canAllowMaterialDelay) {
+  if (props.canAllowMaterialDelay !== true) {
     void message.warning('当前账号无延迟补交登记权限')
     return
   }
@@ -355,7 +366,7 @@ async function submitDelayAllow() {
 
 function openWaiveMissingModal(item: ArchiveIntegrityMissingItemVO) {
   // MVR-348：与 canWaiveMaterialMissing 同源二次拦截
-  if (!props.canWaiveMaterialMissing) {
+  if (props.canWaiveMaterialMissing !== true) {
     void message.warning('当前账号无材料缺失豁免权限')
     return
   }
@@ -365,10 +376,10 @@ function openWaiveMissingModal(item: ArchiveIntegrityMissingItemVO) {
 }
 
 async function submitWaiveMissing() {
-  if (waiveMissingSubmitting.value) {
+  if (waiveMissingSubmitting.value === true) {
     return
   }
-  if (!props.canWaiveMaterialMissing) {
+  if (props.canWaiveMaterialMissing !== true) {
     void message.warning('当前账号无材料缺失豁免权限')
     return
   }
@@ -397,7 +408,7 @@ async function submitWaiveMissing() {
 
 function openWaiveIntegrityModal() {
   // MVR-348：与 canWaiveIntegrity 同源二次拦截
-  if (!props.canWaiveIntegrity) {
+  if (props.canWaiveIntegrity !== true) {
     void message.warning('当前账号无完整性豁免权限')
     return
   }
@@ -406,10 +417,10 @@ function openWaiveIntegrityModal() {
 }
 
 async function submitWaiveIntegrity() {
-  if (waivingIntegrity.value) {
+  if (waivingIntegrity.value === true) {
     return
   }
-  if (!props.canWaiveIntegrity) {
+  if (props.canWaiveIntegrity !== true) {
     void message.warning('当前账号无完整性豁免权限')
     return
   }

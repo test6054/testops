@@ -16,7 +16,7 @@
     <WorkbenchSurfaceCard flush>
       <UiSkeletonState v-if="grantsLoading" variant="card" compact />
       <WorkbenchContextGateStrip
-        v-else-if="!canViewArchiveDepartmentQueue"
+        v-else-if="canViewArchiveDepartmentQueue !== true"
         tag="无权限"
         body="当前账号缺少院系归档职责，无法查看混扫复核待办"
         cta-label="返回归档工作台"
@@ -81,6 +81,7 @@
 </template>
 
 <script lang="ts" setup>
+// MVR-950：残留 can* 控制流仅认 === true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveSuspectedMixedScanBatchItemVO } from '@/apis/mark/archive-volume'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -155,7 +156,7 @@ async function loadDepartments(): Promise<void> {
 }
 
 async function loadRows(): Promise<void> {
-  if (!canViewArchiveDepartmentQueue.value) {
+  if (canViewArchiveDepartmentQueue.value !== true) {
     rows.value = []
     pagination.total = 0
     return

@@ -29,8 +29,8 @@ const emit = defineEmits<{
       v-if="actionLabel"
       size="sm"
       variant="primary"
-      :loading="actionLoading"
-      :disabled="actionDisabled"
+      :loading="actionLoading === true"
+      :disabled="actionDisabled === true"
       @click="emit('action')"
     >
       {{ actionLabel }}

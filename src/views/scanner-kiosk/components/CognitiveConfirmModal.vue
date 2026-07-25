@@ -104,7 +104,7 @@ onUnmounted(() => {
 })
 
 function handleOk() {
-  if (!canConfirm.value) {
+  if (canConfirm.value !== true) {
     return
   }
   emit('confirm')
@@ -115,7 +115,7 @@ function handleOk() {
   <UiDialog
     :open="open"
     title="认知确认"
-    :confirm-loading="loading"
+    :confirm-loading="loading === true"
     ok-text="确认并开始扫描"
     cancel-text="取消"
     @update:open="emit('update:open', $event)"
