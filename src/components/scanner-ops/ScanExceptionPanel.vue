@@ -12,13 +12,15 @@ import {
   ScanDispatchTicketStatusCode,
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
-import { ScanWorkOrderStatusDescription } from '@/apis/mark/scanner-work-order'
+import { cancelPortfolioScanDispatch } from '@/apis/portfolio/scan-dispatch'
+import { pagePortfolioScanException } from '@/apis/portfolio/scan-ops'
+import ScanDispatchForceReleaseDialog from '@/components/scanner-ops/ScanDispatchForceReleaseDialog.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { resolveUiDataTableEmptyKind } from '@/components/ui-guide/ui/data-table'
-import UiButton from '@/components/ui-guide/ui/UiButton.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEllipsisText from '@/components/ui-guide/ui/UiEllipsisText.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
@@ -28,6 +30,7 @@ import {
   PageRegisterStateDescription,
 } from '@/types/enums/page-register-state-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
+import { ScanWorkOrderStatusDescription } from '@/types/enums/scan-work-order-status-enum'
 import {
   ScannerExceptionItemKindCode,
   ScannerExceptionItemKindDescription,
@@ -35,7 +38,6 @@ import {
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import ScanDispatchForceReleaseDialog from '@/views/teacher/archive-volume/components/ScanDispatchForceReleaseDialog.vue'
 
 defineOptions({ name: 'ScanExceptionPanel' })
 
@@ -184,18 +186,26 @@ async function loadPage() {
   loading.value = true
   loadPageError.value = false
   try {
-    const page = await pageScannerExceptionDashboard({
-      pageNum: pagination.current,
-      pageSize: pagination.pageSize,
-      itemKind: itemKindFilter.value,
-      taskKind: resolveApiTaskKind(),
-      examId: props.examId,
-    })
+    const page = props.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT
+      ? await pagePortfolioScanException({
+          pageNum: pagination.current,
+          pageSize: pagination.pageSize,
+          itemKind: itemKindFilter.value,
+        })
+      : await pageScannerExceptionDashboard({
+          pageNum: pagination.current,
+          pageSize: pagination.pageSize,
+          itemKind: itemKindFilter.value,
+          taskKind: resolveApiTaskKind(),
+          examId: props.examId,
+        })
     if (generation !== pageLoadGeneration) {
       return
     }
     pagination.total = Number(page.total ?? 0)
-    rows.value = (page.list ?? []).map(toExceptionDashboardRow)
+    rows.value = (page.list ?? []).map((item) =>
+      toExceptionDashboardRow(item as ScannerExceptionDashboardItemVO),
+    )
 
     okLoad()
   } catch (error) {
@@ -424,7 +434,11 @@ async function cancelTicket(row: ExceptionDashboardRow) {
       }
       cancellingTicketId.value = row.ticketId
       try {
-        await cancelScanDispatch({ ticketId: row.ticketId! })
+        if (props.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT) {
+          await cancelPortfolioScanDispatch({ ticketId: row.ticketId! })
+        } else {
+          await cancelScanDispatch({ ticketId: row.ticketId! })
+        }
         await reloadAll()
         emit('metrics-changed')
       } catch (error) {
@@ -813,7 +827,8 @@ watch(
     <ScanDispatchForceReleaseDialog
       v-model:open="forceReleaseOpen"
       :can-force-release="forceReleaseAllowed"
-      :ticket="forceReleaseTicket ? { ticketId: forceReleaseTicket.ticketId } : null"
+      :ticket-id="forceReleaseTicket?.ticketId"
+      :task-kind="taskKind"
       @released="handleForceReleased"
     />
   </div>
@@ -823,7 +838,7 @@ watch(
 .scan-exception-panel__filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   width: 100%;
 }
 </style>

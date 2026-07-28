@@ -196,8 +196,9 @@ async function runProtectedRouteGuard(to: RouteLocationNormalized): Promise<Navi
   }
 
   const userIsTenantAdmin = userStore.isTenantAdmin
+  const userIsEnterpriseTenantAdmin = userStore.isEnterpriseTenantAdmin
 
-  if (!hasRoutePermission(to.path, userRole, userIsTenantAdmin)) {
+  if (!hasRoutePermission(to.path, userRole, userIsTenantAdmin, userIsEnterpriseTenantAdmin)) {
     const defaultRoute = getDefaultRoute(userRole)
     if (defaultRoute !== to.path) {
       return defaultRoute

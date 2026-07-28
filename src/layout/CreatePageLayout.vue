@@ -15,7 +15,7 @@ defineOptions({ name: 'CreatePageLayout' })
   height: 100vh;
   min-height: 0;
   overflow: hidden;
-  background: var(--dp-bg-layout);
+  background: var(--dp-bg-muted);
 
   // router-view 根节点须吃满高度，否则 CreateFormPageShell 的内部滚动失效、底部被裁切
   > :deep(*) {

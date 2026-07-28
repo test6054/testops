@@ -19,7 +19,15 @@
         <span v-if="pagination.total > 0" class="appeal-section__count">{{ pagination.total }} 条</span>
       </div>
 
+      <UiAlertStrip
+        v-if="listLoadFailed"
+        tone="error"
+        title="复核申请列表加载失败"
+        dense
+      />
+
       <UiDataTable
+        v-if="!listLoadFailed || rows.length > 0"
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
         pagination-mode="server"
@@ -54,7 +62,7 @@
               split
               @action="(key) => void handleReviewRequestAction(key, rows[index])"
             />
-            <span v-else class="muted">—</span>
+            <span v-else class="dp-text-muted">—</span>
           </template>
         </template>
       </UiDataTable>
@@ -74,7 +82,7 @@
             :tone="
               conclusionDraft === GradeReviewRequestStatusCode.APPROVED ? 'success' : 'warning'
             "
-            style="margin-bottom: 12px"
+            style="margin-bottom: var(--dp-space-component)"
             :title="
               conclusionDraft === GradeReviewRequestStatusCode.APPROVED
                 ? '通过后允许进入成绩更正流程。'
@@ -182,14 +190,18 @@ defineOptions({ name: 'ReviewRequestsCard' })
 const props = defineProps<{ examId: string, reloadToken: number }>()
 const emit = defineEmits<{
   (e: 'handled'): void
-  (e: 'pending-change', count: number): void
+  (e: 'pending-change', count: number | null): void
 }>()
 
 const rows = ref<GradeReviewRequestItemResponse[]>([])
 const loading = ref(false)
-const pendingCount = ref(0)
+const listLoadFailed = ref(false)
+/** null = 待办数未就绪或加载失败，禁止当成 0 */
+const pendingCount = ref<number | null>(null)
 /** MVR-279：默认拒绝假可写；仅 BE summary.canManageReviewerWrites 为 true 时可领取/处理 */
 const canManageReviewerWrites = ref(false)
+/** examId + 筛选分页请求代际 */
+let requestLoadGeneration = 0
 const userStore = useUserStore()
 const currentUserId = computed(() => userStore.userInfo.userId || '')
 
@@ -289,14 +301,33 @@ function buildReviewRequestActions(record: GradeReviewRequestItemResponse): UiTa
   }
   // 行内仅 1 个 primary：领取 / 通过
   if (canClaimReviewRequest(record) === true) {
-    return [{ key: 'claim', label: '领取', tone: 'primary' }]
+    const claimingThis = claimingId.value === record.id
+    const claimBusy = claimingId.value != null
+    return [
+      {
+        key: 'claim',
+        label: claimingThis ? '领取中…' : '领取',
+        tone: 'primary',
+        disabled: claimBusy === true,
+      },
+    ]
   }
   if (canHandleReviewRequest(record) !== true) {
     return []
   }
   return [
-    { key: 'approve', label: '通过', tone: 'primary' },
-    { key: 'reject', label: '驳回', tone: 'danger' },
+    {
+      key: 'approve',
+      label: '通过',
+      tone: 'primary',
+      disabled: claimingId.value != null,
+    },
+    {
+      key: 'reject',
+      label: '驳回',
+      tone: 'danger',
+      disabled: claimingId.value != null,
+    },
   ]
 }
 
@@ -357,50 +388,75 @@ function openHandleModal(
  * 顶栏/Tab 待处理：领取前 + 处理中 + 已通过待更正（与工作台 approvedAwaitingCorrection 口径对齐）。
  * 仅 PENDING+IN_REVIEW 会漏掉「已通过但尚未写分」的高校常见积压。
  */
-async function loadPendingCount(): Promise<void> {
-  if (!props.examId) {
-    pendingCount.value = 0
+async function loadPendingCount(examId: string, loadGeneration: number): Promise<void> {
+  if (!examId) {
+    pendingCount.value = null
     canManageReviewerWrites.value = false
-    emit('pending-change', 0)
+    emit('pending-change', null)
     return
   }
   try {
-    const summary = await getReviewSummary(props.examId)
+    const summary = await getReviewSummary(examId)
+    if (loadGeneration !== requestLoadGeneration || props.examId !== examId) {
+      return
+    }
     canManageReviewerWrites.value = summary.canManageReviewerWrites === true
     pendingCount.value
       = summary.pendingRequestCount + summary.inReviewRequestCount + summary.approvedRequestCount
     emit('pending-change', pendingCount.value)
   } catch (error) {
-    pendingCount.value = 0
+    if (loadGeneration !== requestLoadGeneration || props.examId !== examId) {
+      return
+    }
     canManageReviewerWrites.value = false
-    emit('pending-change', 0)
     showUserError(error, '复核待处理数量加载失败')
   }
 }
 
 async function reload(): Promise<void> {
-  if (!props.examId) return
+  const examId = props.examId
+  if (!examId) {
+    rows.value = []
+    pagination.total = 0
+    listLoadFailed.value = false
+    return
+  }
+  const loadGeneration = ++requestLoadGeneration
   loading.value = true
+  rows.value = []
+  pagination.total = 0
+  listLoadFailed.value = false
   try {
     const keyword = filterForm.keyword.trim() || undefined
     const result = await listReviewRequests({
-      examId: props.examId,
+      examId,
       requestStatus: filterForm.status,
       keyword,
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
+    if (loadGeneration !== requestLoadGeneration || props.examId !== examId) {
+      return
+    }
+    listLoadFailed.value = false
     rows.value = result.list
     pagination.total = result.total
     pagination.current = result.pageNum ?? pagination.current
     pagination.pageSize = result.pageSize ?? pagination.pageSize
-    await loadPendingCount()
+    await loadPendingCount(examId, loadGeneration)
   } catch (e) {
+    if (loadGeneration !== requestLoadGeneration || props.examId !== examId) {
+      return
+    }
+    listLoadFailed.value = true
     rows.value = []
     pagination.total = 0
+    emit('pending-change', null)
     showUserError(e, '复核申请加载失败')
   } finally {
-    loading.value = false
+    if (loadGeneration === requestLoadGeneration) {
+      loading.value = false
+    }
   }
 }
 
@@ -472,7 +528,11 @@ function primaryQuestionNo(record: GradeReviewRequestItemResponse): string {
   if (record.questionRefs.length === 0) {
     return '总分'
   }
-  return `第${record.questionRefs[0].questionNo}题`
+  const firstNo = record.questionRefs[0].questionNo
+  if (record.questionRefs.length === 1) {
+    return `第${firstNo}题`
+  }
+  return `第${firstNo}题等 ${record.questionRefs.length} 题`
 }
 
 function handleResultLabel(record: GradeReviewRequestItemResponse): string {
@@ -542,13 +602,9 @@ watch(
   white-space: nowrap;
 }
 
-.muted {
-  color: var(--c-text-4);
-}
-
 .evidence-file-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
 }
 </style>

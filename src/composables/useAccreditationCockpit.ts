@@ -1,14 +1,17 @@
 import type { AccreditationCockpitVO } from '@/apis/quality/accreditation'
 import { computed, ref, watch } from 'vue'
 import { accreditationApi } from '@/apis/quality/accreditation'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError } from '@/utils/error-handler'
 
 const cockpit = ref<AccreditationCockpitVO>()
 const cockpitLoading = ref(false)
-let cachedKey = ''
+/** 按 scope key 缓存成功结果；禁止无 generation 的全局单槽覆盖 */
+const cockpitByKey = new Map<string, AccreditationCockpitVO>()
+let refreshGeneration = 0
 
-/** 认证驾驶舱单例缓存：programId + trainingPlanId 变更时失效 */
+/** 认证驾驶舱：programId + trainingPlanId 变更时失效，请求代际丢弃旧响应 */
 export function useAccreditationCockpit() {
   const qualityStore = useQualityStore()
 
@@ -16,34 +19,55 @@ export function useAccreditationCockpit() {
     () => `${qualityStore.currentProgramId}_${qualityStore.currentTrainingPlanId}`,
   )
 
-  watch(cacheKey, () => {
-    cockpit.value = undefined
-    cachedKey = ''
+  watch(cacheKey, (key) => {
+    cockpit.value = cockpitByKey.get(key)
   })
 
   async function refresh(force = false): Promise<AccreditationCockpitVO | undefined> {
     const planId = qualityStore.currentTrainingPlanId
+    const key = cacheKey.value
     if (!planId) {
       cockpit.value = undefined
-      cachedKey = ''
       return undefined
     }
-    const key = cacheKey.value
-    if (!force && cachedKey === key && cockpit.value) {
-      return cockpit.value
+    if (!force) {
+      const cached = cockpitByKey.get(key)
+      if (cached) {
+        cockpit.value = cached
+        return cached
+      }
     }
+    const scope = beginQualityScopeRequest()
+    const generation = ++refreshGeneration
     cockpitLoading.value = true
     try {
-      cockpit.value = await accreditationApi.cockpit({ trainingPlanId: planId })
-      cachedKey = key
-      return cockpit.value
+      const next = await accreditationApi.cockpit({ trainingPlanId: planId })
+      if (
+        generation !== refreshGeneration
+        || key !== cacheKey.value
+        || scope.isStale()
+      ) {
+        return undefined
+      }
+      cockpitByKey.set(key, next)
+      cockpit.value = next
+      return next
     } catch (error) {
+      if (
+        generation !== refreshGeneration
+        || key !== cacheKey.value
+        || scope.isStale()
+      ) {
+        return undefined
+      }
+      cockpitByKey.delete(key)
       cockpit.value = undefined
-      cachedKey = ''
       showUserError(error, '加载认证驾驶舱失败')
       return undefined
     } finally {
-      cockpitLoading.value = false
+      if (generation === refreshGeneration && !scope.isStale()) {
+        cockpitLoading.value = false
+      }
     }
   }
 

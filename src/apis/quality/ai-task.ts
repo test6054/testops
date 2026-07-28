@@ -38,6 +38,8 @@ export interface AiTaskVO {
   programName?: string
   /** 关联培养方案 ID；存在时后端必须同步返回 trainingPlanCode / trainingPlanName。 */
   trainingPlanId?: string
+  /** 工程认证任务显式绑定的认证周期 ID。 */
+  accreditationCycleId?: string
   /** 培养方案编码，由后端按 trainingPlanId 从培养方案主数据装配。 */
   trainingPlanCode?: string
   /** 培养方案名称，由后端按 trainingPlanId 从培养方案主数据装配。 */

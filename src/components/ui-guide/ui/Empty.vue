@@ -42,7 +42,7 @@ const props = withDefaults(defineProps<{
   /** 默认不展示大插画，减少占屏 */
   showIcon?: boolean
   /**
-   * 失败态恢复动作文案（如「重试」）。仅内容区操作，不替代右上角 Message 错误提示。
+   * 可选内容区动作文案。加载失败场景禁止使用「重试 / 重新加载」类文案（见 AGENTS.md §14.7）。
    * 与 action-label 属性同义（模板 kebab 写法）。
    */
   actionLabel?: string
@@ -91,24 +91,24 @@ const resolvedDescription = computed(() => {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: var(--dp-space-6, 24px) var(--dp-space-4, 16px);
+  padding: var(--dp-space-page) var(--dp-space-block);
   border-radius: var(--dp-radius-panel);
   background: linear-gradient(
     180deg,
-    var(--dp-surface-elevated) 0%,
-    color-mix(in srgb, var(--dp-surface-elevated) 50%, var(--dp-surface)) 100%
+    var(--dp-surface-chrome) 0%,
+    color-mix(in srgb, var(--dp-surface-chrome) 50%, var(--dp-surface)) 100%
   );
-  border: 1px dashed color-mix(in srgb, var(--dp-border) 80%, transparent);
+  border: 1px dashed var(--dp-panel-border, var(--dp-border-subtle));
 }
 
 .ui-empty--sm {
-  padding: var(--dp-space-3, 12px) var(--dp-space-2, 8px);
+  padding: var(--dp-space-component) var(--dp-space-component-tight);
   background: transparent;
   border: none;
 }
 
 .ui-empty--md {
-  padding: var(--dp-space-8, 32px) var(--dp-space-4, 16px);
+  padding: var(--dp-space-section) var(--dp-space-block);
 }
 
 .ui-empty__icon {
@@ -117,23 +117,26 @@ const resolvedDescription = computed(() => {
   justify-content: center;
   width: 40px;
   height: 40px;
-  margin-bottom: var(--dp-space-3, 12px);
-  border-radius: var(--dp-radius-full);
-  background: var(--dp-surface);
-  border: 1px solid var(--dp-border);
-  box-shadow: 0 2px 6px color-mix(in srgb, var(--dp-text-primary) 5%, transparent);
+  margin-bottom: var(--dp-space-component);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface-chrome);
+  border: 1px solid var(--dp-panel-border, var(--dp-border-subtle));
+  box-shadow: var(--dp-shadow-xs);
+  color: var(--dp-text-secondary);
 }
 
+/* 单色线性空态 + 品牌蓝点缀（学术严肃，避免多色卡通） */
 .ui-empty__dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--dp-text-muted);
+  background: var(--dp-color-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dp-color-primary) 12%, transparent);
 }
 
 .ui-empty__title {
-  margin-bottom: var(--dp-space-1, 4px);
-  font-size: 15px;
+  margin-bottom: var(--dp-space-component-xs);
+  font-size: var(--dp-type-panel-title-size);
   font-weight: 600;
   color: var(--dp-text-primary);
   letter-spacing: -0.01em;
@@ -147,12 +150,12 @@ const resolvedDescription = computed(() => {
 }
 
 .ui-empty__action {
-  margin-top: var(--dp-space-4, 16px);
+  margin-top: var(--dp-space-block);
 }
 
 .ui-empty__action-btn {
   min-height: 30px;
-  padding: 0 var(--dp-space-4, 16px);
+  padding: 0 var(--dp-space-block);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-full, 999px);
   background: var(--dp-surface);
@@ -162,17 +165,17 @@ const resolvedDescription = computed(() => {
   line-height: 28px;
   cursor: pointer;
   transition:
-    border-color 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease,
-    transform 0.15s ease;
+    border-color var(--dp-duration-fast) var(--dp-ease-default),
+    color var(--dp-duration-fast) var(--dp-ease-default),
+    box-shadow var(--dp-duration-fast) var(--dp-ease-default),
+    transform var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .ui-empty__action-btn:hover {
-  border-color: var(--dp-color-primary);
-  color: var(--dp-color-primary);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--dp-color-primary) 12%, transparent);
-  transform: translateY(-1px);
+  border-color: var(--dp-border);
+  color: var(--dp-text-primary);
+  box-shadow: var(--dp-shadow-sm);
+  transform: var(--dp-lift-sm);
 }
 
 .ui-empty__action-btn:active {

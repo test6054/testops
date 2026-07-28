@@ -35,12 +35,7 @@
       v-if="materialStatsLoadFailed"
       tone="warning"
       title="材料统计加载失败"
-      description="列表仍可使用，就绪数量暂不可用。"
-    >
-      <template #actions>
-        <UiButton size="sm" variant="outline" @click="loadMaterialStats">重新加载</UiButton>
-      </template>
-    </UiAlertStrip>
+    />
     <UiDataTable
       v-model:current="pageNum"
       v-model:page-size="pageSize"
@@ -146,12 +141,7 @@
         v-if="sharedRefsLoadFailed"
         tone="warning"
         title="合用材料引用加载失败"
-        description="可重试加载；已登记引用在加载失败时暂不可见。"
-      >
-        <template #actions>
-          <UiButton size="sm" variant="outline" @click="loadSharedRefs">重新加载</UiButton>
-        </template>
-      </UiAlertStrip>
+      />
       <UiDataTable
         :columns="sharedRefColumns"
         :data-source="sharedRefsLoadFailed ? [] : sharedRefs"
@@ -320,7 +310,7 @@
       :volume-id="volumeId"
       :payload="scanDispatchResult"
     />
-    <FilePreviewDialog :api="filePreview" />
+    <FilePreviewDialog v-if="filePreview.filePreviewOpen.value" :api="filePreview" />
   </WorkbenchSurfaceCard>
 </template>
 
@@ -338,10 +328,10 @@ import type {
   ArchiveVolumeMaterialStatsResponse,
   ArchiveVolumeSharedMaterialRefResponse,
 } from '@/apis/mark/archive-volume'
+import type { ScanDispatchResultPayload } from '@/components/scanner-ops/ScanDispatchResultDialog.vue'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import {
@@ -369,8 +359,8 @@ import {
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import FilePreviewDialog from '@/components/FilePreviewDialog.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import ScanDispatchResultDialog from '@/components/scanner-ops/ScanDispatchResultDialog.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -386,6 +376,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useFilePreview } from '@/composables/useFilePreview'
+import { ArchiveScanBatchModeCode } from '@/types/enums/archive-scan-batch-mode-enum'
 import { archiveMissingItemTargetsCatalogKey } from '@/utils/archive-catalog-material-key'
 import { buildArchiveMaterialStatusView } from '@/utils/archive-material-status-ui'
 import { normalizeMaterialTagsForRegister } from '@/utils/archive-material-tag'
@@ -397,7 +388,6 @@ import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/
 import ArchiveVolumeMaterialOcrDetailModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailModal.vue'
 import ArchiveVolumeMaterialTagModal from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialTagModal.vue'
 import ScanDispatchDialog from '@/views/teacher/archive-volume/components/ScanDispatchDialog.vue'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 defineOptions({ name: 'ArchiveVolumeMaterialTablePanel' })
 
@@ -406,16 +396,16 @@ const props = withDefaults(
   volumeId: string
   detail: ArchiveVolumeDetailResponse
   selectedCatalogKeys: string[]
-  canRegisterMaterial: boolean
+  canRegisterMaterial?: boolean
   /** MVR-185：标签/OCR 可不在收材窗口 */
   canMaintainMaterial?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
   /** MVR-183：解除合用引用可不在收材窗口 */
   canRemoveSharedMaterialRef?: boolean
 }>(),
   {
-  canRegisterMaterial: false,
-  canMaintainMaterial: false,
-  canRemoveSharedMaterialRef: false,
+    canRegisterMaterial: false,
+    canMaintainMaterial: false,
+    canRemoveSharedMaterialRef: false,
   },
 )
 
@@ -424,6 +414,8 @@ const emit = defineEmits<{
   'ocr-completed-stale': []
   'stats-ready': [stats: ArchiveVolumeMaterialStatsResponse | null]
 }>()
+
+const FilePreviewDialog = defineAsyncComponent(() => import('@/components/FilePreviewDialog.vue'))
 
 const route = useRoute()
 const batchRegisterOpen = ref(false)
@@ -444,7 +436,15 @@ const tagModalOpen = ref(false)
 const tagEditMaterial = ref<ArchiveVolumeMaterialResponse>()
 const scanDispatchOpen = ref(false)
 const scanDispatchResultOpen = ref(false)
-const scanDispatchQuery = ref<Record<string, string> | null>(null)
+interface ArchiveScanDispatchQuery {
+  volumeId: string
+  returnTo: string
+  batchMode: ArchiveScanBatchModeCode
+  materialType?: ArchiveMaterialTypeCode
+  catalogCode?: string
+}
+
+const scanDispatchQuery = ref<ArchiveScanDispatchQuery | null>(null)
 const scanDispatchResult = ref<ScanDispatchResultPayload | null>(null)
 
 const pageNum = ref(1)
@@ -455,6 +455,9 @@ const materialsLoading = ref(false)
 const materialsLoadFailed = ref(false)
 const materialStats = ref<ArchiveVolumeMaterialStatsResponse | null>(null)
 const materialStatsLoadFailed = ref(false)
+let materialsLoadSeq = 0
+let materialStatsLoadSeq = 0
+let sharedRefsLoadSeq = 0
 const retryingMaterialIds = reactive(new Set<string>())
 
 const scanDispatchMaterialType = computed(() =>
@@ -581,6 +584,11 @@ function onMaterialMoreAction(key: string): void {
 }
 
 async function loadMaterials(): Promise<void> {
+  const requestSeq = ++materialsLoadSeq
+  const requestVolumeId = props.volumeId
+  const requestCatalogKey = props.selectedCatalogKeys[0] || undefined
+  const requestPageNum = pageNum.value
+  const requestPageSize = pageSize.value
   if (!props.volumeId) {
     materials.value = []
     pageTotal.value = 0
@@ -590,23 +598,37 @@ async function loadMaterials(): Promise<void> {
   materialsLoading.value = true
   try {
     const result = await pageArchiveVolumeMaterials({
-      volumeId: props.volumeId,
-      catalogKey: props.selectedCatalogKeys[0] || undefined,
-      pageNum: pageNum.value,
-      pageSize: pageSize.value,
+      volumeId: requestVolumeId,
+      catalogKey: requestCatalogKey,
+      pageNum: requestPageNum,
+      pageSize: requestPageSize,
     })
+    if (
+      requestSeq !== materialsLoadSeq
+      || props.volumeId !== requestVolumeId
+      || (props.selectedCatalogKeys[0] || undefined) !== requestCatalogKey
+    ) {
+      return
+    }
     materials.value = result.list
     pageTotal.value = result.total
     materialsLoadFailed.value = false
   } catch (error) {
+    if (requestSeq !== materialsLoadSeq || props.volumeId !== requestVolumeId) {
+      return
+    }
     materialsLoadFailed.value = true
     showUserError(error, '加载归档材料失败')
   } finally {
-    materialsLoading.value = false
+    if (requestSeq === materialsLoadSeq) {
+      materialsLoading.value = false
+    }
   }
 }
 
 async function loadMaterialStats(): Promise<void> {
+  const requestSeq = ++materialStatsLoadSeq
+  const requestVolumeId = props.volumeId
   if (!props.volumeId) {
     materialStats.value = null
     materialStatsLoadFailed.value = false
@@ -614,10 +636,17 @@ async function loadMaterialStats(): Promise<void> {
     return
   }
   try {
-    materialStats.value = await getArchiveVolumeMaterialStats({ volumeId: props.volumeId })
+    const nextStats = await getArchiveVolumeMaterialStats({ volumeId: requestVolumeId })
+    if (requestSeq !== materialStatsLoadSeq || props.volumeId !== requestVolumeId) {
+      return
+    }
+    materialStats.value = nextStats
     materialStatsLoadFailed.value = false
     emit('stats-ready', materialStats.value)
   } catch (error) {
+    if (requestSeq !== materialStatsLoadSeq || props.volumeId !== requestVolumeId) {
+      return
+    }
     materialStatsLoadFailed.value = true
     materialStats.value = null
     emit('stats-ready', null)
@@ -626,6 +655,8 @@ async function loadMaterialStats(): Promise<void> {
 }
 
 async function loadSharedRefs(): Promise<void> {
+  const requestSeq = ++sharedRefsLoadSeq
+  const requestVolumeId = props.volumeId
   if (!props.volumeId) {
     sharedRefs.value = []
     sharedRefsLoadFailed.value = false
@@ -633,13 +664,22 @@ async function loadSharedRefs(): Promise<void> {
   }
   sharedRefsLoading.value = true
   try {
-    sharedRefs.value = await listArchiveSharedMaterialRefs({ volumeId: props.volumeId })
+    const nextRefs = await listArchiveSharedMaterialRefs({ volumeId: requestVolumeId })
+    if (requestSeq !== sharedRefsLoadSeq || props.volumeId !== requestVolumeId) {
+      return
+    }
+    sharedRefs.value = nextRefs
     sharedRefsLoadFailed.value = false
   } catch (error) {
+    if (requestSeq !== sharedRefsLoadSeq || props.volumeId !== requestVolumeId) {
+      return
+    }
     sharedRefsLoadFailed.value = true
     showUserError(error, '加载合用材料引用失败')
   } finally {
-    sharedRefsLoading.value = false
+    if (requestSeq === sharedRefsLoadSeq) {
+      sharedRefsLoading.value = false
+    }
   }
 }
 
@@ -965,7 +1005,13 @@ onMounted(() => {
 watch(
   () => props.volumeId,
   () => {
+    materialsLoadSeq += 1
+    materialStatsLoadSeq += 1
+    sharedRefsLoadSeq += 1
     pageNum.value = 1
+    materials.value = []
+    sharedRefs.value = []
+    materialStats.value = null
     void reloadMaterialsAndStats()
   },
 )
@@ -1025,18 +1071,19 @@ function openUploadModal() {
   uploadModalOpen.value = true
 }
 
-function resolveArchiveScanQuery(): Record<string, string> | null {
+function resolveArchiveScanQuery(): ArchiveScanDispatchQuery | null {
   const key = props.selectedCatalogKeys[0]
   if (!key) {
     return null
   }
-  const query: Record<string, string> = {
+  const query: ArchiveScanDispatchQuery = {
     volumeId: props.volumeId,
     returnTo: route.fullPath,
-    batchMode: 'PER_PAGE',
+    batchMode: ArchiveScanBatchModeCode.PER_PAGE,
   }
-  if (key in ArchiveMaterialTypeDescription) {
-    query.materialType = key
+  const selectedMaterialType = ALL_ARCHIVE_MATERIAL_TYPE_CODES.find((code) => code === key)
+  if (selectedMaterialType) {
+    query.materialType = selectedMaterialType
     return query
   }
   const missing = props.detail.latestIntegrityCheck?.missingItems?.find((item) =>
@@ -1169,37 +1216,37 @@ async function submitSharedRef() {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-volume-material-table__shared-refs {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
-  padding: var(--dp-space-3);
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
-  border-radius: var(--dp-radius-panel, 8px);
-  background: var(--dp-surface-subtle, var(--dp-bg-layout));
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface-subtle, var(--dp-bg-muted));
 }
 
 .archive-volume-material-table__shared-head {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-material-table__shared-title {
   margin: 0;
   font-size: var(--dp-font-size-sm);
   font-weight: 600;
-  color: var(--dp-color-text-primary);
+  color: var(--dp-text-primary);
 }
 
 .archive-volume-material-table__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   width: 100%;
 }
 
@@ -1211,12 +1258,12 @@ async function submitSharedRef() {
 
 .archive-volume-material-table__meta {
   margin-left: auto;
-  font-family: var(--dp-font-mono);
+  font-family: var(--dp-font-family-code);
   font-size: var(--dp-type-hint-size);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--dp-text-secondary);
-  padding: 2px 8px;
+  padding: 2px var(--dp-space-component-tight);
   border-radius: var(--dp-radius-xs);
   background: color-mix(in srgb, var(--dp-text-muted) 7%, transparent);
 }
@@ -1224,34 +1271,34 @@ async function submitSharedRef() {
 .archive-volume-material-table__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-material-table__ocr-failure {
   display: block;
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 
 .archive-volume-material-table__mapping-hint {
   margin: 0;
-  padding: var(--dp-space-2) var(--dp-space-3);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
-  border: 1px solid color-mix(in srgb, var(--dp-primary) 18%, transparent);
-  border-radius: var(--dp-radius-control-inner, 4px);
-  background: color-mix(in srgb, var(--dp-primary) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dp-color-primary) 18%, transparent);
+  border-radius: var(--dp-radius-control-inner);
+  background: color-mix(in srgb, var(--dp-color-primary) 4%, transparent);
 }
 
 .archive-volume-material-table__mapping-link {
-  margin-left: 8px;
+  margin-left: var(--dp-space-component-tight);
 }
 
 .archive-volume-material-table__status {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-1);
+  gap: var(--dp-space-component-xs);
 }
 
 .archive-volume-material-table__status-icon {
@@ -1262,7 +1309,7 @@ async function submitSharedRef() {
 }
 
 .archive-volume-material-table__status-icon--gray {
-  background: var(--dp-color-text-quaternary);
+  background: var(--dp-text-quaternary);
 }
 
 .archive-volume-material-table__status-icon--blue {
@@ -1270,15 +1317,15 @@ async function submitSharedRef() {
 }
 
 .archive-volume-material-table__status-icon--green {
-  background: var(--dp-color-success);
+  background: var(--dp-success);
 }
 
 .archive-volume-material-table__status-icon--red {
-  background: var(--dp-color-error);
+  background: var(--dp-error);
 }
 
 .archive-volume-material-table__status-icon--orange {
-  background: var(--dp-color-warning);
+  background: var(--dp-warning);
 }
 
 .archive-volume-material-table__status-icon--purple {
@@ -1286,13 +1333,13 @@ async function submitSharedRef() {
 }
 
 .archive-volume-material-table__tip {
-  margin: 0 var(--dp-space-4) var(--dp-space-3);
+  margin: 0 var(--dp-space-block) var(--dp-space-component);
 }
 
 .material-status {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-1);
+  gap: var(--dp-space-component-xs);
 }
 
 .material-status-icon {

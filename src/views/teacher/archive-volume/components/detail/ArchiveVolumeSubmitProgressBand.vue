@@ -61,7 +61,7 @@ const currentLabel = computed(() => {
     'checklistPhaseKey',
   )
 })
-const submitReady = computed(() => props.canSubmitVolume === true)
+const canSubmit = computed(() => props.canSubmitVolume === true)
 </script>
 
 <template>
@@ -71,7 +71,7 @@ const submitReady = computed(() => props.canSubmitVolume === true)
         <div class="archive-volume-submit-progress-band__main">
           <span class="archive-volume-submit-progress-band__label">当前阶段</span>
           <strong class="archive-volume-submit-progress-band__step">{{ currentLabel }}</strong>
-          <UiTag v-if="submitReady === true" tone="green" size="sm">可提交</UiTag>
+          <UiTag v-if="canSubmit === true" tone="green" size="sm">可提交</UiTag>
           <UiTag v-else-if="pendingCount > 0" tone="orange" size="sm">
             还有 {{ pendingCount }} 项
           </UiTag>
@@ -93,14 +93,14 @@ const submitReady = computed(() => props.canSubmitVolume === true)
 
 <style scoped>
 .archive-volume-submit-progress-band {
-  margin-bottom: var(--dp-space-4);
+  margin-bottom: var(--dp-space-block);
 }
 
 .archive-volume-submit-progress-band__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   width: 100%;
 }
 
@@ -108,7 +108,7 @@ const submitReady = computed(() => props.canSubmitVolume === true)
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-submit-progress-band__label {
@@ -117,15 +117,15 @@ const submitReady = computed(() => props.canSubmitVolume === true)
 }
 
 .archive-volume-submit-progress-band__step {
-  font-size: 15px;
+  font-size: var(--dp-type-panel-title-size);
   font-weight: 600;
   color: var(--dp-text-primary);
-  padding: 1px 8px;
+  padding: 1px var(--dp-space-component-tight);
   border-radius: var(--dp-radius-xs);
-  background: color-mix(in srgb, var(--dp-primary) 7%, transparent);
+  background: color-mix(in srgb, var(--dp-color-primary) 7%, transparent);
 }
 
 .archive-volume-submit-progress-band__tasks {
-  margin-top: var(--dp-space-3);
+  margin-top: var(--dp-space-component);
 }
 </style>

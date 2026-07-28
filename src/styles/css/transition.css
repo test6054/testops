@@ -1,127 +1,167 @@
-/* fade */
+/* Vue 过渡预设：时长一律走 --dp-duration-*，禁止裸秒/毫秒 */
+
+/* fade：页面/区块淡入淡出 */
 .fade-enter-active,
 .fade-leave-active {
-    transition: opacity 0.3s ease-in-out;
+  transition: opacity var(--dp-duration-page) ease-in-out;
 }
 
 .fade-enter-from,
 .fade-leave-to {
-    opacity: 0;
+  opacity: 0;
 }
 
-/* fade-slide */
+/* fade-slide：横向进退 */
 .fade-slide-leave-active,
 .fade-slide-enter-active {
-    transition: all 0.3s;
+  transition:
+    opacity var(--dp-duration-page) var(--dp-ease-default),
+    transform var(--dp-duration-page) var(--dp-ease-default);
 }
 
 .fade-slide-enter-from {
-    opacity: 0;
-    transform: translateX(-30px);
+  opacity: 0;
+  transform: translateX(-30px);
 }
 
 .fade-slide-leave-to {
-    opacity: 0;
-    transform: translateX(30px);
+  opacity: 0;
+  transform: translateX(30px);
 }
 
-/* fade-bottom */
+/* fade-bottom：纵向进退 */
 .fade-bottom-enter-active,
 .fade-bottom-leave-active {
-    transition: opacity 0.25s, transform 0.3s;
+  transition:
+    opacity var(--dp-duration-page) var(--dp-ease-default),
+    transform var(--dp-duration-slow) var(--dp-ease-default);
 }
 
 .fade-bottom-enter-from {
-    opacity: 0;
-    transform: translateY(-10%);
+  opacity: 0;
+  transform: translateY(-10%);
 }
 
 .fade-bottom-leave-to {
-    opacity: 0;
-    transform: translateY(10%);
+  opacity: 0;
+  transform: translateY(10%);
 }
 
-/* fade-scale */
+/* fade-scale：缩放淡入 */
 .fade-scale-leave-active,
 .fade-scale-enter-active {
-    transition: all 0.28s;
+  transition:
+    opacity var(--dp-duration-page) var(--dp-ease-default),
+    transform var(--dp-duration-page) var(--dp-ease-default);
 }
 
 .fade-scale-enter-from {
-    opacity: 0;
-    transform: scale(1.2);
+  opacity: 0;
+  transform: scale(1.2);
 }
 
 .fade-scale-leave-to {
-    opacity: 0;
-    transform: scale(0.8);
+  opacity: 0;
+  transform: scale(0.8);
 }
 
 /* zoom-fade */
 .zoom-fade-enter-active,
 .zoom-fade-leave-active {
-    transition: transform 0.2s, opacity 0.3s ease-out;
+  transition:
+    transform var(--dp-duration-normal) var(--dp-ease-default),
+    opacity var(--dp-duration-slow) ease-out;
 }
 
 .zoom-fade-enter-from {
-    opacity: 0;
-    transform: scale(0.92);
+  opacity: 0;
+  transform: scale(0.92);
 }
 
 .zoom-fade-leave-to {
-    opacity: 0;
-    transform: scale(1.06);
+  opacity: 0;
+  transform: scale(1.06);
 }
 
-/* zoom-out */
+/* zoom-out：快速收起 */
 .zoom-out-enter-active,
 .zoom-out-leave-active {
-    transition: opacity 0.1s ease-in-out, transform 0.15s ease-out;
+  transition:
+    opacity var(--dp-duration-fast) ease-in-out,
+    transform var(--dp-duration-fast) ease-out;
 }
 
 .zoom-out-enter-from,
 .zoom-out-leave-to {
-    opacity: 0;
-    transform: scale(0);
+  opacity: 0;
+  transform: scale(0);
 }
 
 /* Ant Design 自定义 Modal/Drawer 过渡动画 */
 @keyframes dialog-fade-in {
-    0% {
-        transform: translate3d(0, -20px, 0);
-        opacity: 0;
-    }
-    100% {
-        transform: translate3d(0, 0, 0);
-        opacity: 1;
-    }
+  0% {
+    transform: translate3d(0, -20px, 0);
+    opacity: 0;
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
 }
 
 @keyframes dialog-fade-out {
-    0% {
-        transform: translate3d(0, 0, 0);
-        opacity: 1;
-    }
-    100% {
-        transform: translate3d(0, -20px, 0);
-        opacity: 0;
-    }
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, -20px, 0);
+    opacity: 0;
+  }
 }
 
 @keyframes modal-fade-in {
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 @keyframes modal-fade-out {
-    0% {
-        opacity: 1;
-    }
-    100% {
-        opacity: 0;
-    }
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.dialog-fade-enter-active {
+  animation: dialog-fade-in var(--dp-duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dialog-fade-leave-active {
+  animation: dialog-fade-out var(--dp-duration-fast) cubic-bezier(0.4, 0, 1, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-enter-active,
+  .fade-leave-active,
+  .fade-slide-leave-active,
+  .fade-slide-enter-active,
+  .fade-bottom-enter-active,
+  .fade-bottom-leave-active,
+  .fade-scale-leave-active,
+  .fade-scale-enter-active,
+  .zoom-fade-enter-active,
+  .zoom-fade-leave-active,
+  .zoom-out-enter-active,
+  .zoom-out-leave-active,
+  .dialog-fade-enter-active,
+  .dialog-fade-leave-active {
+    transition: none !important;
+    animation: none !important;
+  }
 }

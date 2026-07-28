@@ -458,12 +458,12 @@ function objectiveDimensionLabel(item: CourseAchievementItemResponse): string {
 .ai-objective-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 .ai-objective-block {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
 }
 .diagnosis-text {
   margin: 0;
@@ -479,7 +479,7 @@ function objectiveDimensionLabel(item: CourseAchievementItemResponse): string {
   color: var(--dp-text-muted);
 }
 .scope-hint {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
   line-height: 1.5;

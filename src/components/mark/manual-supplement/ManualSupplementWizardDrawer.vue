@@ -45,13 +45,65 @@
             {{ activeContext.missingTemplatePageNos.join('、') }}
           </UiDescriptionsItem>
         </UiDescriptions>
-        <p v-if="scenarioBlockReason" class="manual-supplement-wizard__warn muted">
+        <p v-if="paperPageStatusLoadFailed" class="manual-supplement-wizard__warn dp-text-muted">
+          卷面页状态加载失败；缺页补扫/污损替换须先成功确认当前卷面页状态，不能继续。
+        </p>
+        <p v-else-if="scenarioBlockReason" class="manual-supplement-wizard__warn dp-text-muted">
           {{ scenarioBlockReason }}
         </p>
       </template>
     </div>
 
     <div v-else-if="currentStep === 1" class="manual-supplement-wizard__panel">
+      <div
+        v-if="scenario === 'replace'"
+        class="manual-supplement-wizard__replace-evidence"
+      >
+        <UiAlertStrip
+          tone="warning"
+          :closable="false"
+          dense
+          title="污损页替换确认"
+          description="提交后旧页将标记 SUPERSEDED，审计记录保留；新页进入阅卷。新图预览失败时禁止提交。"
+          class="manual-supplement-wizard__evidence-alert"
+        />
+        <div class="manual-supplement-wizard__evidence-grid">
+          <article class="manual-supplement-wizard__evidence-side">
+            <header>旧页（将被 SUPERSEDED）</header>
+            <UiSkeletonState v-if="oldPagePreviewLoading" variant="card" compact />
+            <ScanImageStage
+              v-else-if="oldPagePreviewUrl"
+              :src="oldPagePreviewUrl"
+              caption="当前生效页"
+              :min-height="200"
+              empty-text="旧页影像加载失败"
+            />
+            <UiEmpty
+              v-else-if="oldPagePreviewFailed"
+              size="sm"
+              description="旧页影像加载失败"
+            />
+            <UiEmpty v-else size="sm" description="请先选择目标页以加载旧页证据" />
+          </article>
+          <article class="manual-supplement-wizard__evidence-side">
+            <header>新页（提交后进入阅卷）</header>
+            <UiSkeletonState v-if="newPagePreviewLoading" variant="card" compact />
+            <ScanImageStage
+              v-else-if="newPagePreviewUrl"
+              :src="newPagePreviewUrl"
+              caption="待提交新图"
+              :min-height="200"
+              empty-text="新图预览失败"
+            />
+            <UiEmpty
+              v-else-if="newPagePreviewFailed"
+              size="sm"
+              description="新图预览失败，禁止提交"
+            />
+            <UiEmpty v-else size="sm" description="上传补扫文件后显示新图预览" />
+          </article>
+        </div>
+      </div>
       <ManualSupplementFormCore
         ref="formCoreRef"
         :mode="scenario === 'file-import' ? 'direct' : 'supplement'"
@@ -61,7 +113,6 @@
         :bound-paper-options="boundPaperOptions"
         :prepare-loading="prepareLoading"
         :prepare-block-description="prepareBlockDescription"
-        :class-scope-warning="classScopeWarning"
         :show-paper-select="scenario !== 'file-import'"
         :paper-select-disabled="!!activeContext?.paperInstanceId"
         :target-page-options="targetPageOptions"
@@ -102,7 +153,7 @@
       </UiButton>
       <template v-if="currentStep === 2">
         <UiButton size="sm" variant="outline" @click="emit('continue-next')">
-          继续补下一页
+          {{ continueNextLabel }}
         </UiButton>
         <UiButton size="sm" variant="primary" @click="handleViewImages"> 查看该卷影像 </UiButton>
       </template>
@@ -125,9 +176,9 @@ import type {
   ManualSupplementSupplementFormModel,
 } from '@/components/mark/manual-supplement/ManualSupplementFormCore.vue'
 import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getExamDetail } from '@/apis/mark/exam'
+import { fetchStoragePreviewBlobUrl } from '@/apis/edu/file-management'
 import { getScannerBatchDetail } from '@/apis/mark/exam-scan'
 import {
   getManualSupplementPaperPageStatus,
@@ -135,12 +186,14 @@ import {
 } from '@/apis/mark/manual-supplement'
 import { prepareTeacherScanSupplement, teacherSupplementScanSource } from '@/apis/mark/scan-source'
 import ManualSupplementFormCore from '@/components/mark/manual-supplement/ManualSupplementFormCore.vue'
+import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
 import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiStep from '@/components/ui-guide/ui/UiStep.vue'
 import UiSteps from '@/components/ui-guide/ui/UiSteps.vue'
 import { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
@@ -183,6 +236,13 @@ const emit = defineEmits<{
 }>()
 const resolvedContext = ref<ManualSupplementWizardContext | null>(null)
 const paperPageStatus = ref<ExamManualSupplementPaperPageStatusResponse | null>(null)
+const paperPageStatusLoadFailed = ref(false)
+const oldPagePreviewUrl = ref('')
+const oldPagePreviewLoading = ref(false)
+const oldPagePreviewFailed = ref(false)
+const newPagePreviewUrl = ref('')
+const newPagePreviewLoading = ref(false)
+const newPagePreviewFailed = ref(false)
 
 const router = useRouter()
 const currentStep = ref(0)
@@ -191,7 +251,6 @@ const prepareLoading = ref(false)
 const deviceLoading = ref(false)
 const prepareContext = ref<ExamTeacherScanSupplementPrepareResponse | null>(null)
 const submitResult = ref<ExamTeacherScanSupplementResponse | null>(null)
-const declaredClassIds = ref<string[]>([])
 const webDevices = ref<ExamManualSupplementDeviceItemResponse[]>([])
 const formCoreRef = ref<InstanceType<typeof ManualSupplementFormCore> | null>(null)
 
@@ -269,11 +328,26 @@ const scenarioBlockReason = computed(() => {
   if (!ctx || scenario.value === 'file-import') {
     return ''
   }
+  if (paperPageStatusLoadFailed.value) {
+    return '卷面页状态加载失败；须先成功确认当前卷面页状态后再继续'
+  }
+  if (paperPageStatus.value == null && ctx.paperInstanceId) {
+    return '卷面页状态尚未确认，不能继续'
+  }
   if (scenario.value === 'replace') {
     return ctx.replaceEligible === false ? (ctx.replaceBlockReason ?? '当前不可执行污损页替换') : ''
   }
   return ctx.supplementEligible === false ? (ctx.blockReason ?? '当前不可执行缺页补扫') : ''
 })
+
+const submitDisabled = computed(
+  () =>
+    prepareLoading.value
+    || prepareContext.value?.canSubmitManualSupplement !== true
+    || (scenario.value === 'file-import' && webDevices.value.length === 0)
+    || (scenario.value === 'replace'
+      && (newPagePreviewFailed.value || !newPagePreviewUrl.value || !supplementForm.sourceFileId)),
+)
 
 const boundPaperOptions = computed(() =>
   (prepareContext.value?.boundPapers ?? []).map((item) => ({
@@ -292,18 +366,6 @@ const prepareBlockDescription = computed(() => {
   return context.blockReason ?? context.supplementBlockReason ?? '当前设备或考试状态不允许提交补扫'
 })
 
-const classScopeWarning = computed(() =>
-  declaredClassIds.value.length === 0 ? '请先在考生名册维护考试班级范围' : '',
-)
-
-const submitDisabled = computed(
-  () =>
-    declaredClassIds.value.length === 0
-    || prepareLoading.value === true
-    || prepareContext.value?.canSubmitManualSupplement !== true
-    || (scenario.value === 'file-import' && webDevices.value.length === 0),
-)
-
 const successMessage = computed(() => {
   const result = submitResult.value
   if (!result) return '补录成功'
@@ -312,6 +374,11 @@ const successMessage = computed(() => {
   }
   return `补扫成功，登记 ${result.registeredPageCount} 页`
 })
+
+/** 文件补入无缺页队列；缺页/替换才进入「继续补下一页」。 */
+const continueNextLabel = computed(() =>
+  scenario.value === 'file-import' ? '返回待补名单' : '继续补下一页',
+)
 
 function resolveDeviceFromKey(
   deviceKey?: string,
@@ -326,8 +393,11 @@ function resetWizardState(): void {
   currentStep.value = 0
   resolvedContext.value = null
   paperPageStatus.value = null
+  paperPageStatusLoadFailed.value = false
   prepareContext.value = null
   submitResult.value = null
+  releaseOldPagePreview()
+  releaseNewPagePreview()
   supplementForm.paperInstanceId = undefined
   supplementForm.targetPageNo = undefined
   supplementForm.supplementReason = ''
@@ -340,19 +410,80 @@ function resetWizardState(): void {
   directForm.sourceFileName = undefined
 }
 
+function releaseOldPagePreview(): void {
+  if (oldPagePreviewUrl.value) {
+    URL.revokeObjectURL(oldPagePreviewUrl.value)
+    oldPagePreviewUrl.value = ''
+  }
+  oldPagePreviewFailed.value = false
+}
+
+function releaseNewPagePreview(): void {
+  if (newPagePreviewUrl.value) {
+    URL.revokeObjectURL(newPagePreviewUrl.value)
+    newPagePreviewUrl.value = ''
+  }
+  newPagePreviewFailed.value = false
+}
+
+async function loadOldPagePreview(): Promise<void> {
+  releaseOldPagePreview()
+  if (scenario.value !== 'replace') {
+    return
+  }
+  const examId = activeContext.value?.examId
+  const targetPageNo = supplementForm.targetPageNo ?? activeContext.value?.targetPageNo
+  const occupied = paperPageStatus.value?.occupiedPages ?? []
+  const page = occupied.find((item) => item.templatePageNo === targetPageNo)
+  if (!examId || !page?.pageId) {
+    return
+  }
+  oldPagePreviewLoading.value = true
+  try {
+    const previewPath = `/api/mark/exams/scanner-batches/pages/original-image?examId=${examId}&pageId=${page.pageId}`
+    oldPagePreviewUrl.value = await fetchStoragePreviewBlobUrl(previewPath)
+  } catch (error) {
+    oldPagePreviewFailed.value = true
+    showUserError(error, '旧页影像加载失败')
+  } finally {
+    oldPagePreviewLoading.value = false
+  }
+}
+
+async function loadNewPagePreview(): Promise<void> {
+  releaseNewPagePreview()
+  if (scenario.value !== 'replace' || !supplementForm.sourceFileId) {
+    return
+  }
+  newPagePreviewLoading.value = true
+  try {
+    const previewPath = `/api/storage/filesystem/download?nodeId=${supplementForm.sourceFileId}`
+    newPagePreviewUrl.value = await fetchStoragePreviewBlobUrl(previewPath)
+  } catch (error) {
+    newPagePreviewFailed.value = true
+    showUserError(error, '新图预览加载失败')
+  } finally {
+    newPagePreviewLoading.value = false
+  }
+}
+
 async function enrichContextFromPaperStatus(
   baseContext: ManualSupplementWizardContext,
 ): Promise<ManualSupplementWizardContext> {
   if (!baseContext.paperInstanceId) {
+    paperPageStatusLoadFailed.value = false
+    paperPageStatus.value = null
     resolvedContext.value = { ...baseContext }
     return resolvedContext.value
   }
+  paperPageStatusLoadFailed.value = false
   try {
     const status = await getManualSupplementPaperPageStatus({
       examId: baseContext.examId,
       paperInstanceId: baseContext.paperInstanceId,
     })
     paperPageStatus.value = status
+    paperPageStatusLoadFailed.value = false
     resolvedContext.value = {
       ...baseContext,
       scanBatchId: baseContext.scanBatchId ?? status.scanBatchId,
@@ -368,25 +499,11 @@ async function enrichContextFromPaperStatus(
     }
   } catch (error) {
     paperPageStatus.value = null
+    paperPageStatusLoadFailed.value = true
     resolvedContext.value = { ...baseContext }
     showUserError(error, '卷面页状态加载失败')
   }
   return resolvedContext.value
-}
-
-async function loadExamDetail(): Promise<void> {
-  const examId = activeContext.value?.examId
-  if (!examId) {
-    declaredClassIds.value = []
-    return
-  }
-  try {
-    const detail = await getExamDetail(examId)
-    declaredClassIds.value = (detail.classRefs ?? []).map((item) => item.classId)
-  } catch (error) {
-    declaredClassIds.value = []
-    showUserError(error, '考试详情加载失败')
-  }
 }
 
 async function loadWebDevices(): Promise<void> {
@@ -534,7 +651,7 @@ async function goNext(): Promise<void> {
 
   if (submitDisabled.value === true) {
     void message.warning(
-      prepareBlockDescription.value || classScopeWarning.value || '当前不可提交补录',
+      prepareBlockDescription.value || '当前不可提交补录',
     )
     return
   }
@@ -555,7 +672,6 @@ async function goNext(): Promise<void> {
         examId: ctx.examId,
         scannerDeviceId: device.scannerDeviceId,
         scannerStationId: device.scannerStationId,
-        declaredClassIds: declaredClassIds.value,
         scanMode: ScannerKioskScanModeCode.DIRECT,
         replaceTargetPage: false,
         scanConfig: DEFAULT_SCAN_CONFIG,
@@ -569,7 +685,6 @@ async function goNext(): Promise<void> {
         examId: ctx.examId,
         scannerDeviceId: device.scannerDeviceId,
         scannerStationId: device.scannerStationId,
-        declaredClassIds: declaredClassIds.value,
         scanMode: ScannerKioskScanModeCode.SUPPLEMENT,
         scanBatchId: ctx.scanBatchId,
         targetPageNo: supplementForm.targetPageNo,
@@ -610,17 +725,42 @@ watch(
     if (!open || !context) return
     resetWizardState()
     await enrichContextFromPaperStatus(context)
-    await loadExamDetail()
     await loadWebDevices()
     applyContextDefaults()
+    if (scenario.value === 'replace') {
+      await loadOldPagePreview()
+    }
   },
   { deep: true },
 )
+
+watch(
+  () => [scenario.value, supplementForm.targetPageNo, paperPageStatus.value] as const,
+  () => {
+    if (scenario.value === 'replace' && props.open) {
+      void loadOldPagePreview()
+    }
+  },
+)
+
+watch(
+  () => [scenario.value, supplementForm.sourceFileId] as const,
+  () => {
+    if (scenario.value === 'replace' && props.open) {
+      void loadNewPagePreview()
+    }
+  },
+)
+
+onBeforeUnmount(() => {
+  releaseOldPagePreview()
+  releaseNewPagePreview()
+})
 </script>
 
 <style lang="scss" scoped>
 .manual-supplement-wizard__steps {
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-block);
 }
 
 .manual-supplement-wizard__panel {
@@ -636,7 +776,27 @@ watch(
 }
 
 .manual-supplement-wizard__warn,
-.muted {
-  color: var(--dp-text-tertiary);
+.manual-supplement-wizard__evidence-alert {
+  margin-bottom: var(--dp-space-component);
+}
+
+.manual-supplement-wizard__evidence-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-block);
+}
+
+.manual-supplement-wizard__evidence-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-component-tight);
+  min-width: 0;
+
+  header {
+    font-size: var(--dp-font-size-sm);
+    font-weight: 600;
+    color: var(--dp-text-secondary);
+  }
 }
 </style>

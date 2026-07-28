@@ -7,6 +7,7 @@ import { createExportTask, EXPORT_STATUS_TONE, listExportTasks } from '@/apis/ma
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -20,8 +21,8 @@ import {
   ExportTypeCode,
   ExportTypeDescription,
 } from '@/types/enums/export-type-enum'
-import { showUserError } from '@/utils/error-handler'
-import { formatFileSize } from '@/utils/format'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { formatDateTime, formatFileSize } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveExamExportTasksCard' })
@@ -47,10 +48,16 @@ const loading = ref(false)
 const creating = ref(false)
 
 const loadFailed = ref(false)
-
+const lastSuccessAtMs = ref<number | null>(null)
 const tasks = ref<ExportTaskResponse[]>([])
-
 const selectedTypes = ref<ExportTypeCode[]>([])
+
+const lastSuccessLabel = computed(() => {
+  if (lastSuccessAtMs.value == null) {
+    return '尚未成功同步'
+  }
+  return formatDateTime(new Date(lastSuccessAtMs.value).toISOString())
+})
 
 const columns = [
   { title: '类型', key: 'exportType', width: 96 },
@@ -141,7 +148,7 @@ function goExportTasksPage(): void {
 async function loadTasks(): Promise<void> {
   if (!props.examId) {
     tasks.value = []
-
+    lastSuccessAtMs.value = null
     return
   }
 
@@ -160,10 +167,10 @@ async function loadTasks(): Promise<void> {
 
     tasks.value = page.list ?? []
 
+    lastSuccessAtMs.value = Date.now()
+
     selectedTypes.value = selectedTypes.value.filter((type) => !busyExportTypes.value.has(type))
   } catch (error) {
-    tasks.value = []
-
     loadFailed.value = true
 
     showUserError(error, '加载导出任务失败')
@@ -184,8 +191,12 @@ async function createSelectedTasks(): Promise<void> {
 
   creating.value = true
 
+  const plannedTypes = [...selectedTypes.value]
+  const succeededTypes: ExportTypeCode[] = []
+  const failedLabels: string[] = []
+
   try {
-    const blockedImageArchive = selectedTypes.value.some(
+    const blockedImageArchive = plannedTypes.some(
       (exportType) =>
         exportType === ExportTypeCode.IMAGE_ARCHIVE
         && props.canManageOwnerImageArchiveExport !== true,
@@ -195,21 +206,45 @@ async function createSelectedTasks(): Promise<void> {
       return
     }
 
-    for (const exportType of selectedTypes.value) {
-      await createExportTask({
-        examId: props.examId,
-        exportType,
-        exportScope: ExportScopeCode.EXAM,
-      })
+    for (const exportType of plannedTypes) {
+      try {
+        await createExportTask({
+          examId: props.examId,
+          exportType,
+          exportScope: ExportScopeCode.EXAM,
+        })
+        succeededTypes.push(exportType)
+      } catch (error) {
+        failedLabels.push(
+          `${exportTypeLabel(exportType)}：${getUserErrorMessage(error, '创建失败')}`,
+        )
+      }
     }
 
-    void message.success(`已创建 ${selectedTypes.value.length} 个导出任务`)
-    selectedTypes.value = []
-    await loadTasks()
-  } catch (error) {
-    showUserError(error, '创建导出任务失败')
+    // 仅移除已成功类型，失败项保留勾选供重试，避免重复提交成功项
+    if (succeededTypes.length > 0) {
+      const succeeded = new Set(succeededTypes)
+      selectedTypes.value = selectedTypes.value.filter((type) => !succeeded.has(type))
+    }
+
+    if (succeededTypes.length > 0 && failedLabels.length === 0) {
+      void message.success(`已创建 ${succeededTypes.length} 个导出任务`)
+    } else if (succeededTypes.length > 0 && failedLabels.length > 0) {
+      void message.warning(
+        `已创建 ${succeededTypes.length} 个导出任务；${failedLabels.length} 个失败：${failedLabels.join('；')}`,
+      )
+    } else if (failedLabels.length > 0) {
+      showUserError(new Error(failedLabels.join('；')), '创建导出任务失败')
+    }
   } finally {
     creating.value = false
+  }
+
+  // 列表刷新与创建结果分离：刷新失败不回写「创建失败」
+  try {
+    await loadTasks()
+  } catch {
+    // loadTasks 内部已展示错误
   }
 }
 
@@ -217,6 +252,7 @@ watch(
   () => props.examId,
 
   () => {
+    lastSuccessAtMs.value = null
     void loadTasks()
   },
 )
@@ -235,7 +271,10 @@ defineExpose({ refresh: loadTasks })
     </template>
 
     <template #toolbar>
-      <UiButton variant="ghost" size="sm" @click="goExportTasksPage"> 查看全部 </UiButton>
+      <div class="archive-exam-export-tasks__toolbar">
+        <span class="archive-exam-export-tasks__sync">最近成功同步：{{ lastSuccessLabel }}</span>
+        <UiButton variant="ghost" size="sm" @click="goExportTasksPage"> 查看全部 </UiButton>
+      </div>
     </template>
 
     <div v-if="canCreate === true" class="archive-exam-export-tasks__picker">
@@ -270,22 +309,28 @@ defineExpose({ refresh: loadTasks })
       </UiButton>
     </div>
 
-    <UiEmpty
-      size="sm"
-      v-if="loadFailed"
-      description="导出任务加载失败"
-      action-label="重试"
-      @action="loadTasks"
+    <UiAlertStrip
+      v-if="loadFailed && displayTasks.length > 0"
+      tone="warning"
+      class="archive-exam-export-tasks__stale"
+      title="导出任务列表可能已过期"
+      :description="`最近成功同步：${lastSuccessLabel}`"
     />
 
     <UiEmpty
+      v-if="loadFailed && displayTasks.length === 0"
       size="sm"
-      v-else-if="!loading && displayTasks.length === 0"
+      description="导出任务加载失败"
+    />
+
+    <UiEmpty
+      v-else-if="!loadFailed && !loading && displayTasks.length === 0"
+      size="sm"
       description="暂无导出任务"
     />
 
     <UiDataTable
-      v-else
+      v-if="loading || displayTasks.length > 0"
       pagination-mode="none"
       :columns="columns"
       :data-source="displayTasks"
@@ -319,16 +364,29 @@ defineExpose({ refresh: loadTasks })
 </template>
 
 <style scoped lang="scss">
+.archive-exam-export-tasks__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-component-tight);
+  width: 100%;
+}
+
+.archive-exam-export-tasks__sync {
+  font-size: var(--dp-font-size-xs);
+  color: var(--dp-text-secondary);
+}
+
 .archive-exam-export-tasks__picker {
   display: flex;
 
   flex-direction: column;
 
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 
-  padding: var(--dp-space-3);
+  padding: var(--dp-space-component);
 
-  border-bottom: 1px solid var(--dp-border-light);
+  border-bottom: 1px solid var(--dp-border-subtle);
 }
 
 .archive-exam-export-tasks__picker-label {
@@ -342,7 +400,7 @@ defineExpose({ refresh: loadTasks })
 
   flex-wrap: wrap;
 
-  gap: var(--dp-space-2) var(--dp-space-3);
+  gap: var(--dp-space-component-tight) var(--dp-space-component);
 }
 
 .archive-exam-export-tasks__option {
@@ -350,7 +408,7 @@ defineExpose({ refresh: loadTasks })
 
   align-items: center;
 
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
 
   font-size: var(--dp-font-size-sm);
 
@@ -360,13 +418,13 @@ defineExpose({ refresh: loadTasks })
 }
 
 .archive-exam-export-tasks__option--disabled {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 
   cursor: not-allowed;
 }
 
 .archive-exam-export-tasks__file {
-  font-family: var(--dp-font-mono);
+  font-family: var(--dp-font-family-code);
 
   font-size: var(--dp-font-size-xs);
 }

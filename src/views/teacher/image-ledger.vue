@@ -10,7 +10,7 @@
       </ContextBar>
     </template>
 
-    <template v-if="selectedExamId && ledger" #signal>
+    <template v-if="selectedExamId && (ledger || loadFailed)" #signal>
       <SignalBand
         compact
         variant="panel"
@@ -29,14 +29,23 @@
       <ExamWorkspaceJourneySubNav />
 
       <WorkbenchSurfaceCard class="ledger-page__surface">
+        <UiAlertStrip
+          v-if="loadFailed"
+          tone="error"
+          title="影像账本加载失败"
+          :closable="false"
+          dense
+          class="ledger-page__blocking-strip"
+        />
         <LedgerSummaryCard
           :ledger="ledger"
-          :loading="loadingDetail === true"
-          :balancing="balancing"
+          :loading="loadingDetail === true && !ledger" :balancing="balancing"
+          :load-failed="loadFailed"
           :can-manage-owner-ledger-writes="canManageOwnerLedgerWrites"
           @balance="handleBalance"
         />
         <DuplicateResolutionCard
+          :key="selectedExamId"
           ref="duplicateCardRef"
           :exam-id="selectedExamId"
           :pending-duplicate-count="ledger?.pendingDuplicateCount ?? 0"
@@ -63,7 +72,7 @@ import type {
 } from '@/apis/mark/image-ledger'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onDeactivated, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   executeImageLedgerBalance,
@@ -71,6 +80,7 @@ import {
   LedgerStatusCode,
 } from '@/apis/mark/image-ledger'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
@@ -89,7 +99,7 @@ import LedgerSummaryCard from './image-ledger/LedgerSummaryCard.vue'
 
 defineOptions({ name: 'TeacherImageLedger' })
 
-const { selectedExamId, selectedExam } = useMarkExamContext()
+const { selectedExamId } = useMarkExamContext()
 const router = useRouter()
 const { examStatusLabel, examStatusTone } = useExamJourneyContextBar('影像账本')
 const { refreshSnapshot } = useWorkspaceExamId()
@@ -98,13 +108,30 @@ const ledger = ref<ImageLedgerDetailResponse | null>(null)
 const duplicateCardRef = ref<InstanceType<typeof DuplicateResolutionCard> | null>(null)
 const loadingDetail = ref(false)
 const balancing = ref(false)
+const loadFailed = ref(false)
+const resolveOpen = ref(false)
+const resolveTarget = ref<ExamPaperDuplicateResolutionVO | null>(null)
+let examLoadGeneration = 0
+let refreshListenerActive = false
+/** 本页写后本地刷新时抑制 mitt 自回调，避免双载。 */
+let suppressSelfRefresh = false
 
-/** MVR-264/324：仅认 BE canManageOwnerLedgerWrites===true；禁止缺省回退 isExamOwner */
-const canManageOwnerLedgerWrites = computed(() => ledger.value?.canManageOwnerLedgerWrites === true) // MVR-941：能力位控制流仅认 === true
-
+/** MVR-264/324：仅认 BE canManageOwnerLedgerWrites===true；加载失败时禁止写入 */
+const canManageOwnerLedgerWrites = computed(
+  () => ledger.value?.canManageOwnerLedgerWrites === true && loadFailed.value !== true,
+)
 const ledgerSignalMetrics = computed((): SignalMetric[] => {
+  const failed = loadFailed.value
   const data = ledger.value
   if (!data) {
+    if (failed) {
+      return [{
+        key: 'ledger-unavailable',
+        label: '影像账本',
+        value: '—',
+        tone: 'gray',
+      }]
+    }
     return []
   }
   return [
@@ -114,8 +141,12 @@ const ledgerSignalMetrics = computed((): SignalMetric[] => {
       value: data.scannedPageCount,
       unit: data.expectedPageCount == null ? '页（页数待推导）' : ` / ${data.expectedPageCount}`,
       tone: data.expectedPageCount != null && data.scannedPageCount >= data.expectedPageCount ? 'green' : 'blue',
-      clickable: data.expectedPageCount != null && data.scannedPageCount < data.expectedPageCount,
-      helper: data.expectedPageCount != null && data.scannedPageCount < data.expectedPageCount ? '前往手动补录' : undefined,
+      clickable: !failed && data.expectedPageCount != null && data.scannedPageCount < data.expectedPageCount,
+      helper: failed
+        ? undefined
+        : data.expectedPageCount != null && data.scannedPageCount < data.expectedPageCount
+          ? '前往手动补录'
+          : undefined,
     },
     {
       key: 'bound',
@@ -142,7 +173,7 @@ const ledgerSignalMetrics = computed((): SignalMetric[] => {
 })
 
 function handleLedgerMetricClick(key: string): void {
-  if (key !== 'scanned' || !selectedExamId.value) return
+  if (loadFailed.value || key !== 'scanned' || !selectedExamId.value) return
   const data = ledger.value
   if (!data || data.expectedPageCount == null || data.scannedPageCount >= data.expectedPageCount) return
   void router.push({
@@ -151,21 +182,81 @@ function handleLedgerMetricClick(key: string): void {
   })
 }
 
-async function loadDetail(): Promise<void> {
-  if (!selectedExamId.value) return
+function clearExamScopedState(): void {
+  ledger.value = null
+  loadFailed.value = false
+  loadingDetail.value = false
+  balancing.value = false
+  resolveOpen.value = false
+  resolveTarget.value = null
+}
+
+async function loadDetail(expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) return
+  const hadLedgerForSameExam = ledger.value != null
   loadingDetail.value = true
+  loadFailed.value = false
   try {
-    ledger.value = await getImageLedgerDetail({ examId: selectedExamId.value })
+    const detail = await getImageLedgerDetail({ examId })
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    ledger.value = detail
+    loadFailed.value = false
   } catch (e) {
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    if (!hadLedgerForSameExam) {
+      ledger.value = null
+    }
+    loadFailed.value = true
     showUserError(e, '影像账本加载失败')
   } finally {
-    loadingDetail.value = false
+    if (expectedGeneration === examLoadGeneration && selectedExamId.value === examId) {
+      loadingDetail.value = false
+    }
   }
 }
 
-async function loadAll(): Promise<void> {
-  await loadDetail()
+/**
+ * 刷新待处置重复列表：世代/examId 必须在触发子卡请求前校验。
+ * 切考时 :key 会重建子卡，需 nextTick 等 ref 就绪；过期 generation 不得误刷新考试。
+ */
+async function loadDuplicates(expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) {
+    return
+  }
+  if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    return
+  }
+  if (!duplicateCardRef.value) {
+    await nextTick()
+  }
+  if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    return
+  }
   await duplicateCardRef.value?.reload()
+}
+
+async function loadAll(expectedGeneration = examLoadGeneration): Promise<void> {
+  await loadDetail(expectedGeneration)
+  if (expectedGeneration !== examLoadGeneration || selectedExamId.value == null) {
+    return
+  }
+  if (loadFailed.value && !ledger.value) {
+    return
+  }
+  await loadDuplicates(expectedGeneration)
+}
+
+function handleScanWorkbenchRefreshEvent(): void {
+  if (suppressSelfRefresh || !selectedExamId.value) {
+    return
+  }
+  void loadAll(examLoadGeneration)
 }
 
 async function handleBalance(): Promise<void> {
@@ -176,6 +267,8 @@ async function handleBalance(): Promise<void> {
   if (balancing.value === true) {
     return
   }
+  const examId = selectedExamId.value
+  const generation = examLoadGeneration
   const confirmed = await confirmAsync({
     title: '执行整体对账',
     content:
@@ -194,24 +287,34 @@ async function handleBalance(): Promise<void> {
   }
   balancing.value = true
   try {
-    const detail = await executeImageLedgerBalance({ examId: selectedExamId.value })
+    const detail = await executeImageLedgerBalance({ examId })
+    if (generation !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
     if (detail?.ledgerStatus === LedgerStatusCode.BALANCED) {
       void message.success('影像账本已平账')
     } else {
       void message.warning(detail?.diagnostic || '对账已执行，仍存在未关闭异常，请处理后再发布成绩')
     }
-    await loadAll()
+    await loadAll(generation)
     await refreshSnapshot()
-    mittBus.emit('scan-workbench:refresh')
+    suppressSelfRefresh = true
+    try {
+      mittBus.emit('scan-workbench:refresh')
+    } finally {
+      suppressSelfRefresh = false
+    }
   } catch (e) {
+    if (generation !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
     showUserError(e, '账本对账失败')
   } finally {
-    balancing.value = false
+    if (generation === examLoadGeneration) {
+      balancing.value = false
+    }
   }
 }
-
-const resolveOpen = ref(false)
-const resolveTarget = ref<ExamPaperDuplicateResolutionVO | null>(null)
 
 function openResolve(record: ExamPaperDuplicateResolutionVO): void {
   // MVR-391：打开处置弹窗仅认 canManageOwnerLedgerWrites===true
@@ -224,42 +327,61 @@ function openResolve(record: ExamPaperDuplicateResolutionVO): void {
 }
 
 async function onChildSubmitted(): Promise<void> {
-  await loadAll()
-  await refreshSnapshot()
-  mittBus.emit('scan-workbench:refresh')
+  const generation = examLoadGeneration
+  suppressSelfRefresh = true
+  try {
+    await loadAll(generation)
+    await refreshSnapshot()
+    mittBus.emit('scan-workbench:refresh')
+  } finally {
+    suppressSelfRefresh = false
+  }
 }
 
 watch(
   selectedExamId,
   (v) => {
+    const generation = ++examLoadGeneration
+    clearExamScopedState()
+    loadingDetail.value = Boolean(v)
     if (v) {
-      void loadAll()
-    } else {
-      ledger.value = null
+      void loadAll(generation)
     }
   },
   { immediate: true },
 )
 
-onMounted(() => {
-  mittBus.on('scan-workbench:refresh', loadAll)
+onActivated(() => {
+  if (refreshListenerActive) {
+    return
+  }
+  mittBus.on('scan-workbench:refresh', handleScanWorkbenchRefreshEvent)
+  refreshListenerActive = true
 })
 
-onBeforeUnmount(() => {
-  mittBus.off('scan-workbench:refresh', loadAll)
+onDeactivated(() => {
+  if (!refreshListenerActive) {
+    return
+  }
+  mittBus.off('scan-workbench:refresh', handleScanWorkbenchRefreshEvent)
+  refreshListenerActive = false
 })
 </script>
 
 <style lang="scss" scoped>
 .ledger-page {
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__surface {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-4);
+    gap: var(--dp-space-block);
+  }
+
+  &__blocking-strip {
+    margin-bottom: var(--dp-space-block);
   }
 }
 </style>

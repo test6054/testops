@@ -38,7 +38,8 @@ import {
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioIdentityTypeDisplay } from '@/utils/portfolio-identity-type'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 
 const router = useRouter()
 const route = useRoute()
@@ -50,13 +51,12 @@ const {
   assertArchiveWritable,
   evaluationHeld,
   evaluationHoldBlockMessage,
-  lifecycleStatusLabel,
 } = usePortfolioArchiveWriteGuard()
 
 /** 课程档案概览返回的生命周期结构态（与写禁 guard 双源对齐展示）。 */
 const overviewLifecycle = ref<Pick<
   PortfolioCourseArchiveOverviewVO,
-  'lifecycleStatus' | 'lifecycleStatusLabel' | 'archiveWriteForbidden' | 'evaluationHeld' | 'countsInCurrentFacultyStructure'
+  'lifecycleStatus' | 'archiveWriteForbidden' | 'evaluationHeld' | 'countsInCurrentFacultyStructure'
 >>({})
 
 const loading = ref(false)
@@ -64,12 +64,18 @@ const customLoading = ref(false)
 const creating = ref(false)
 const deletingCategoryId = ref('')
 const loadFailed = ref(false)
+const customCategoriesLoadFailed = ref(false)
 const courses = ref<PortfolioCourseArchiveCourseVO[]>([])
-const overviewSummary = ref({
-  taughtCourseCount: 0,
-  fullyCompleteCourseCount: 0,
-  frameworkSlotDone: 0,
-  frameworkSlotTotal: 0,
+const overviewSummary = ref<{
+  taughtCourseCount: number | null
+  fullyCompleteCourseCount: number | null
+  frameworkSlotDone: number | null
+  frameworkSlotTotal: number | null
+}>({
+  taughtCourseCount: null,
+  fullyCompleteCourseCount: null,
+  frameworkSlotDone: null,
+  frameworkSlotTotal: null,
 })
 const identityLayers = ref<PortfolioMultiIdentityLayerVO[]>([])
 const multiIdentityNotes = ref<string[]>([])
@@ -81,6 +87,11 @@ const academicYearFilter = ref('')
 const highlightCourseCode = ref('')
 const semesterFilter = ref('')
 const overviewRequestToken = ref(0)
+
+/** 可选计数字段缺失显示 — */
+function optionalMetric(value: number | null | undefined): string {
+  return value == null ? '—' : String(value)
+}
 
 const readonlyMode = computed(
   () => (canPickTeachers.value && !!targetTeacherId.value) || archiveWriteForbidden.value,
@@ -140,16 +151,17 @@ function resetOverviewContext() {
   courses.value = []
   customCategories.value = []
   overviewSummary.value = {
-    taughtCourseCount: 0,
-    fullyCompleteCourseCount: 0,
-    frameworkSlotDone: 0,
-    frameworkSlotTotal: 0,
+    taughtCourseCount: null,
+    fullyCompleteCourseCount: null,
+    frameworkSlotDone: null,
+    frameworkSlotTotal: null,
   }
   identityLayers.value = []
   overviewLifecycle.value = {}
   multiIdentityNotes.value = []
   teachingWorkload.value = null
   loadFailed.value = false
+  customCategoriesLoadFailed.value = false
 }
 
 async function loadOverview() {
@@ -174,17 +186,16 @@ async function loadOverview() {
     }
     courses.value = overview.courses ?? []
     overviewSummary.value = {
-      taughtCourseCount: overview.taughtCourseCount ?? 0,
-      fullyCompleteCourseCount: overview.fullyCompleteCourseCount ?? 0,
-      frameworkSlotDone: overview.frameworkSlotDone ?? 0,
-      frameworkSlotTotal: overview.frameworkSlotTotal ?? 0,
+      taughtCourseCount: overview.taughtCourseCount ?? null,
+      fullyCompleteCourseCount: overview.fullyCompleteCourseCount ?? null,
+      frameworkSlotDone: overview.frameworkSlotDone ?? null,
+      frameworkSlotTotal: overview.frameworkSlotTotal ?? null,
     }
     identityLayers.value = overview.identityLayers ?? []
     multiIdentityNotes.value = overview.multiIdentityNotes ?? []
     teachingWorkload.value = overview.teachingWorkloadByIdentity ?? null
     overviewLifecycle.value = {
       lifecycleStatus: overview.lifecycleStatus,
-      lifecycleStatusLabel: overview.lifecycleStatusLabel,
       archiveWriteForbidden: overview.archiveWriteForbidden,
       evaluationHeld: overview.evaluationHeld,
       countsInCurrentFacultyStructure: overview.countsInCurrentFacultyStructure,
@@ -195,10 +206,12 @@ async function loadOverview() {
       })
       if (currentToken === overviewRequestToken.value) {
         customCategories.value = customList ?? []
+        customCategoriesLoadFailed.value = false
       }
     } catch (error) {
       if (currentToken === overviewRequestToken.value) {
-        customCategories.value = []
+        // 保留上次自建分类；失败可见，不冒充业务空表
+        customCategoriesLoadFailed.value = true
         showUserError(error, '自建分类加载失败')
       }
     }
@@ -352,7 +365,7 @@ watch(
       tone="warning"
       title="档案已封存写禁"
       :description="archiveWriteBlockMessage"
-      class="mb-3"
+      class="dp-mb-component"
     />
     <UiAlertStrip
       v-else-if="evaluationHeld || overviewLifecycle.evaluationHeld"
@@ -362,37 +375,33 @@ watch(
         evaluationHoldBlockMessage
           || '当前教师处于参评 hold（如暂挂），档案可填报但不可参与进行中评价。'
       "
-      class="mb-3"
+      class="dp-mb-component"
     />
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
     <UiCard v-else-if="loadFailed" title="加载失败">
-      <UiEmpty size="sm" description="课程档案加载失败">
-        <UiButton size="sm" variant="primary" @click="loadOverview">重试</UiButton>
-      </UiEmpty>
+      <UiEmpty
+        size="sm"
+        description="课程档案加载失败"
+      />
     </UiCard>
 
     <template v-else>
-      <UiCard v-if="overviewSummary.taughtCourseCount > 0" title="本学年课程档案概览">
+      <UiCard v-if="overviewSummary.taughtCourseCount != null" title="本学年课程档案概览">
         <p class="course-archive__summary">
-          讲授 {{ overviewSummary.taughtCourseCount }} 门 · 五框架齐备
-          {{ overviewSummary.fullyCompleteCourseCount }} 门 · 槽位完成
-          {{ overviewSummary.frameworkSlotDone }}/{{ overviewSummary.frameworkSlotTotal }}
+          讲授 {{ optionalMetric(overviewSummary.taughtCourseCount) }} 门 · 五框架齐备
+          {{ optionalMetric(overviewSummary.fullyCompleteCourseCount) }} 门 · 槽位完成
+          {{ optionalMetric(overviewSummary.frameworkSlotDone) }}/{{ optionalMetric(overviewSummary.frameworkSlotTotal) }}
         </p>
         <div
-          v-if="overviewLifecycle.lifecycleStatus || lifecycleStatusLabel"
+          v-if="overviewLifecycle.lifecycleStatus"
           class="course-archive__lifecycle"
         >
           <UiTag
-            v-if="overviewLifecycle.lifecycleStatus || lifecycleStatusLabel"
             :tone="portfolioLifecycleTagTone(overviewLifecycle.lifecycleStatus)"
           >
-            {{
-              overviewLifecycle.lifecycleStatusLabel
-                || lifecycleStatusLabel
-                || overviewLifecycle.lifecycleStatus
-            }}
+            {{ portfolioLifecycleStatusDisplay(overviewLifecycle.lifecycleStatus) }}
           </UiTag>
           <UiTag
             v-if="overviewLifecycle.evaluationHeld || evaluationHeld"
@@ -417,18 +426,18 @@ watch(
           </UiTag>
         </div>
         <div v-if="teachingWorkload" class="course-archive__workload">
-          <span>校内学时 {{ teachingWorkload.campusWorkloadHours ?? 0 }}</span>
-          <span> · 外部学时 {{ teachingWorkload.externalWorkloadHours ?? 0 }}</span>
-          <span> · 覆盖课程 {{ teachingWorkload.coveredCourseCount ?? 0 }} 门（按课去重）</span>
+          <span>校内学时 {{ optionalMetric(teachingWorkload.campusWorkloadHours) }}</span>
+          <span> · 外部学时 {{ optionalMetric(teachingWorkload.externalWorkloadHours) }}</span>
+          <span> · 覆盖课程 {{ optionalMetric(teachingWorkload.coveredCourseCount) }} 门（按课去重）</span>
         </div>
         <div v-if="identityLayers.length" class="course-archive__identity-layers">
           <UiTag
             v-for="(layer, idx) in identityLayers"
             :key="layer.identityId || `${layer.identityType}-${idx}`"
             :tone="layer.externalIdentity ? 'orange' : 'blue'"
-            style="margin-right: 8px; margin-top: 8px"
+            style="margin-right: var(--dp-space-component-tight); margin-top: var(--dp-space-component-tight)"
           >
-            {{ layer.identityTypeLabel || layer.displayName }} · {{ layer.workloadHours ?? 0 }} 学时
+            {{ portfolioIdentityTypeDisplay(layer.identityType) }} · {{ optionalMetric(layer.workloadHours) }} 学时
           </UiTag>
         </div>
         <p
@@ -440,7 +449,7 @@ watch(
         </p>
       </UiCard>
 
-      <UiCard title="讲授课程 · 五框架" :loading="loading" style="margin-top: 16px">
+      <UiCard title="讲授课程 · 五框架" :loading="loading" style="margin-top: var(--dp-space-block)">
         <template #extra>
           <UiInput
             v-model="academicYearFilter"
@@ -455,10 +464,10 @@ watch(
             v-model="semesterFilter"
             allow-clear
             placeholder="学期"
-            style="width: 120px; margin-left: 8px"
+            style="width: 120px; margin-left: var(--dp-space-component-tight)"
             :options="SemesterOptions"
           />
-          <UiButton size="sm" style="margin-left: 8px" @click="loadOverview">筛选</UiButton>
+          <UiButton size="sm" style="margin-left: var(--dp-space-component-tight)" @click="loadOverview">筛选</UiButton>
         </template>
         <UiDataTable
           :columns="courseColumns"
@@ -509,12 +518,18 @@ watch(
         </UiDataTable>
       </UiCard>
 
-      <UiCard title="框架外自建分类" :loading="customLoading" style="margin-top: 16px">
+      <UiCard title="框架外自建分类" :loading="customLoading" style="margin-top: var(--dp-space-block)">
         <template #extra>
           <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCustomModal">
             新建分类
           </UiButton>
         </template>
+        <UiAlertStrip
+          v-if="customCategoriesLoadFailed"
+          tone="error"
+          title="自建分类加载失败"
+          class="dp-mb-component"
+        />
         <UiDataTable
           :columns="customColumns"
           :data-source="customCategories"
@@ -564,16 +579,16 @@ watch(
   color: var(--dp-text-secondary);
 }
 .course-archive__workload {
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .course-archive__identity-layers {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
 }
 .course-archive__note {
-  margin: 6px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary, var(--dp-text-secondary));
+  color: var(--dp-text-muted, var(--dp-text-secondary));
 }
 </style>

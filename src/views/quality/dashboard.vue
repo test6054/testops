@@ -9,13 +9,14 @@ import type {
   AchievementTargetTypeCode,
   AiTaskFailurePhaseCode,
   AiTaskTypeCode,
-
-  ImprovementTaskStatusCode} from '@/apis/quality/types'
+  ImprovementTaskStatusCode,
+} from '@/apis/quality/types'
+import type { ObeJourneyStepVO } from '@/apis/quality/workbench'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
+import type { SignalMetric, WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
 import { storeToRefs } from 'pinia'
-import { computed, nextTick, onActivated, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
 import { aiTaskApi } from '@/apis/quality/ai-task'
@@ -42,8 +43,8 @@ import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vu
 import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import QualityWorkbenchCharts from '@/components/quality/QualityWorkbenchCharts.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -52,9 +53,14 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useAccreditationCockpit } from '@/composables/useAccreditationCockpit'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
+import {
+  ObeJourneyStepStatusCode,
+  ObeJourneyStepStatusDescription,
+} from '@/types/enums/obe-journey-step-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { buildStatusChartGroup } from '@/utils/quality-workbench-charts'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -96,6 +102,10 @@ const loading = reactive({
 
 const summaryLoaded = ref(false)
 const summaryLoadFailed = ref(false)
+/** 是否曾成功拉取汇总；失败时可保留旧数据并标注同步失败 */
+const summaryHadSuccess = ref(false)
+const summaryLastSuccessAt = ref<string | null>(null)
+const distributionExpanded = ref(false)
 const activeSignal = ref<string | null>(null)
 const todoSectionRef = ref<HTMLElement | null>(null)
 const achievementListSectionRef = ref<HTMLElement | null>(null)
@@ -149,6 +159,9 @@ const aiCounts = reactive({
   failed: 0,
 })
 
+/** 后端 OBE 旅程步骤真源；禁止前端按计数再推断阶段 */
+const journeySteps = ref<ObeJourneyStepVO[]>([])
+
 const trainingPlanId = computed(() => qualityStore.currentTrainingPlanId)
 
 const planConfirmationStatus = computed(() => {
@@ -163,116 +176,117 @@ const planConfirmationLabel = computed(() => {
     : '未提交'
 })
 
-// 年度评价阶段推断：依据培养方案确认状态与各能力块计数
-const stages = computed<WorkbenchStage[]>(() => {
-  const planSelected = !!trainingPlanId.value
-  const planConfirmed = planConfirmationStatus.value === ConfirmationStatusCode.CONFIRMED
-  const dataReached
-    = achievementCounts.calculated > 0
-      || achievementCounts.submitted > 0
-      || achievementCounts.confirmed > 0
-      || achievementCounts.archived > 0
-  const calcDone = dataReached
-  const auditDone = achievementCounts.confirmed > 0 || achievementCounts.archived > 0
-  const improvementActive = improvementCounts.total > 0
-  const improvementClosed = improvementCounts.closed > 0
-  const archived = achievementCounts.archived > 0
+function mapObeStepStatus(status: ObeJourneyStepStatusCode): WorkbenchStageStatus {
+  switch (status) {
+    case ObeJourneyStepStatusCode.COMPLETED:
+      return 'completed'
+    case ObeJourneyStepStatusCode.ACTIVE:
+      return 'active'
+    case ObeJourneyStepStatusCode.LOCKED:
+      return 'blocked'
+    case ObeJourneyStepStatusCode.PENDING:
+      return 'pending'
+    default: {
+      const _exhaustive: never = status
+      throw new Error(`未知 OBE 旅程步骤状态：${String(_exhaustive)}`)
+    }
+  }
+}
 
-  return [
-    {
-      key: 'config',
-      title: '专业配置',
-      status: planSelected ? 'completed' : 'active',
-      statusText: planSelected ? '已选培养方案' : '请选择培养方案',
-    },
-    {
-      key: 'plan',
-      title: '培养方案',
-      status: planConfirmed ? 'completed' : planSelected ? 'active' : 'pending',
-      statusText: planConfirmationLabel.value,
-    },
-    {
-      key: 'data',
-      title: '数据接入',
-      status: dataReached ? 'completed' : planConfirmed ? 'active' : 'pending',
-      statusText: dataReached ? '已产生评价输入' : '待导入成绩 / 拔取数据',
-    },
-    {
-      key: 'calc',
-      title: '达成度计算',
-      status: calcDone ? 'completed' : planConfirmed ? 'active' : 'pending',
-      metrics: [{ label: '已计算', value: achievementCounts.calculated }],
-    },
-    {
-      key: 'audit',
-      title: '审核确认',
-      status: auditDone ? 'completed' : achievementCounts.submitted > 0 ? 'active' : 'pending',
-      metrics: [
-        { label: '已提交', value: achievementCounts.submitted },
-        { label: '已确认', value: achievementCounts.confirmed },
-      ],
-    },
-    {
-      key: 'improve',
-      title: '持续改进',
-      status: improvementClosed ? 'completed' : improvementActive ? 'active' : 'pending',
-      metrics: [
-        { label: '未闭环', value: improvementCounts.total - improvementCounts.closed },
-        { label: '已闭环', value: improvementCounts.closed },
-      ],
-    },
-    {
-      key: 'archive',
-      title: '材料归档',
-      status: archived ? 'completed' : 'pending',
-      metrics: [{ label: '已归档', value: achievementCounts.archived }],
-    },
-  ]
+const stages = computed<WorkbenchStage[]>(() => {
+  if ((!summaryLoaded.value && !summaryHadSuccess.value) || !journeySteps.value.length) {
+    return []
+  }
+  return journeySteps.value.map((step) => ({
+    key: step.stepKey,
+    title: step.title,
+    status: mapObeStepStatus(step.status),
+    statusText: strictEnumLabel(
+      ObeJourneyStepStatusDescription,
+      step.status,
+      'OBE 旅程步骤状态',
+    ),
+    metrics:
+      step.primaryCount != null ? [{ label: '指标', value: step.primaryCount }] : undefined,
+  }))
 })
+
+/** 汇总合同字段必须为后端正式 number；缺失视为合同错误，禁止 ?? 0 */
+function requireSummaryCount(value: number | undefined, field: string): number {
+  if (value == null || Number.isNaN(Number(value))) {
+    throw new Error(`工作台汇总合同缺字段：${field}`)
+  }
+  return value
+}
 
 const qualityTaskStore = useQualityTaskStore()
 const { totalAttentionCount } = storeToRefs(qualityTaskStore)
 
 const signals = computed<SignalMetric[]>(() => {
+  if (!summaryLoaded.value && !summaryHadSuccess.value) {
+    return []
+  }
+  const activeStep = journeySteps.value.find(
+    (step) => step.status === ObeJourneyStepStatusCode.ACTIVE,
+  )
+  const blockedCount = journeySteps.value.filter(
+    (step) => step.status === ObeJourneyStepStatusCode.LOCKED,
+  ).length
+  const pendingReview = achievementCounts.submitted
+  const openImprovement
+    = improvementCounts.open + improvementCounts.inProgress + improvementCounts.submitted
   const attention = totalAttentionCount.value
-  const notAchieved = achievementCounts.notAchieved
-  const inProgress = improvementCounts.inProgress
   const aiFailed = aiCounts.failed
   return [
     {
+      key: 'stage',
+      label: '当前阶段',
+      value: activeStep?.title ?? '未进入',
+      tone: activeStep ? 'blue' : 'gray',
+      helper: activeStep
+        ? strictEnumLabel(ObeJourneyStepStatusDescription, activeStep.status, '旅程步骤状态')
+        : undefined,
+      clickable: Boolean(activeStep),
+      active: activeSignal.value === 'stage',
+    },
+    {
+      key: 'blocked',
+      label: '阻断步骤',
+      value: blockedCount,
+      tone: blockedCount > 0 ? 'red' : 'gray',
+      clickable: blockedCount > 0,
+      active: activeSignal.value === 'blocked',
+    },
+    {
+      key: 'a-review',
+      label: '待审核',
+      value: pendingReview,
+      tone: pendingReview > 0 ? 'orange' : 'gray',
+      clickable: pendingReview > 0,
+      active: activeSignal.value === 'a-review',
+    },
+    {
+      key: 'i-open',
+      label: '未闭环',
+      value: openImprovement,
+      tone: openImprovement > 0 ? 'orange' : 'gray',
+      clickable: openImprovement > 0,
+      active: activeSignal.value === 'i-open',
+    },
+    {
       key: 'attention',
-      label: '待关注任务',
+      label: '待关注',
       value: attention,
       tone: attention > 0 ? 'orange' : 'gray',
+      helper: '含即将到期与逾期',
       clickable: attention > 0,
       active: activeSignal.value === 'attention',
     },
-    { key: 'a-total', label: '达成度总数', value: achievementCounts.total, tone: 'blue' },
-    { key: 'a-conf', label: '已确认', value: achievementCounts.confirmed, tone: 'green' },
-    {
-      key: 'a-fail',
-      label: '未达成',
-      value: notAchieved,
-      tone: 'red',
-      clickable: notAchieved > 0,
-      active: activeSignal.value === 'a-fail',
-    },
-    { key: 'i-total', label: '改进任务', value: improvementCounts.total, tone: 'blue' },
-    {
-      key: 'i-prog',
-      label: '整改中',
-      value: inProgress,
-      tone: 'orange',
-      clickable: inProgress > 0,
-      active: activeSignal.value === 'i-prog',
-    },
-    { key: 'i-closed', label: '已闭环', value: improvementCounts.closed, tone: 'green' },
-    { key: 'ai-total', label: 'AI 任务', value: aiCounts.total, tone: 'blue' },
     {
       key: 'ai-fail',
       label: 'AI 失败',
       value: aiFailed,
-      tone: 'red',
+      tone: aiFailed > 0 ? 'red' : 'gray',
       clickable: aiFailed > 0,
       active: activeSignal.value === 'ai-fail',
     },
@@ -350,36 +364,83 @@ function aiTypeLabel(value: AiTaskTypeCode): string {
   return strictEnumLabel(AiTaskTypeDescription, value, 'AI 任务类型')
 }
 
+function markSummarySuccessAt(): void {
+  summaryLastSuccessAt.value = new Date().toISOString().replace('T', ' ').slice(0, 19)
+}
+
 async function loadSummary() {
   if (!trainingPlanId.value) return
+  const scope = beginQualityScopeRequest()
   loading.summary = true
   summaryLoadFailed.value = false
+  if (!summaryHadSuccess.value) {
+    summaryLoaded.value = false
+  }
   try {
     const summary = await workbenchApi.obeJourneySummary({
       trainingPlanId: trainingPlanId.value,
     })
+    if (scope.isStale()) {
+      return
+    }
+    if (!Array.isArray(summary.steps) || summary.steps.length === 0) {
+      throw new Error('工作台汇总合同缺字段：steps')
+    }
+    achievementCounts.total = requireSummaryCount(summary.achievementTotal, 'achievementTotal')
+    achievementCounts.calculated = requireSummaryCount(
+      summary.achievementCalculated,
+      'achievementCalculated',
+    )
+    achievementCounts.submitted = requireSummaryCount(
+      summary.achievementSubmitted,
+      'achievementSubmitted',
+    )
+    achievementCounts.confirmed = requireSummaryCount(
+      summary.achievementConfirmed,
+      'achievementConfirmed',
+    )
+    achievementCounts.archived = requireSummaryCount(
+      summary.achievementArchived,
+      'achievementArchived',
+    )
+    achievementCounts.notAchieved = requireSummaryCount(
+      summary.achievementNotAchieved,
+      'achievementNotAchieved',
+    )
+    improvementCounts.total = requireSummaryCount(summary.improvementTotal, 'improvementTotal')
+    improvementCounts.open = requireSummaryCount(summary.improvementOpen, 'improvementOpen')
+    improvementCounts.inProgress = requireSummaryCount(
+      summary.improvementInProgress,
+      'improvementInProgress',
+    )
+    improvementCounts.submitted = requireSummaryCount(
+      summary.improvementSubmitted,
+      'improvementSubmitted',
+    )
+    improvementCounts.closed = requireSummaryCount(summary.improvementClosed, 'improvementClosed')
+    aiCounts.total = requireSummaryCount(summary.aiTaskTotal, 'aiTaskTotal')
+    aiCounts.pending = requireSummaryCount(summary.aiTaskPending, 'aiTaskPending')
+    aiCounts.processing = requireSummaryCount(summary.aiTaskProcessing, 'aiTaskProcessing')
+    aiCounts.completed = requireSummaryCount(summary.aiTaskCompleted, 'aiTaskCompleted')
+    aiCounts.failed = requireSummaryCount(summary.aiTaskFailed, 'aiTaskFailed')
+    journeySteps.value = summary.steps
     summaryLoaded.value = true
-    achievementCounts.total = summary.achievementTotal ?? 0
-    achievementCounts.calculated = summary.achievementCalculated ?? 0
-    achievementCounts.submitted = summary.achievementSubmitted ?? 0
-    achievementCounts.confirmed = summary.achievementConfirmed ?? 0
-    achievementCounts.archived = summary.achievementArchived ?? 0
-    achievementCounts.notAchieved = summary.achievementNotAchieved ?? 0
-    improvementCounts.total = summary.improvementTotal ?? 0
-    improvementCounts.open = summary.improvementOpen ?? 0
-    improvementCounts.inProgress = summary.improvementInProgress ?? 0
-    improvementCounts.submitted = summary.improvementSubmitted ?? 0
-    improvementCounts.closed = summary.improvementClosed ?? 0
-    aiCounts.total = summary.aiTaskTotal ?? 0
-    aiCounts.pending = summary.aiTaskPending ?? 0
-    aiCounts.processing = summary.aiTaskProcessing ?? 0
-    aiCounts.completed = summary.aiTaskCompleted ?? 0
-    aiCounts.failed = summary.aiTaskFailed ?? 0
+    summaryHadSuccess.value = true
+    markSummarySuccessAt()
   } catch (error) {
+    if (scope.isStale()) {
+      return
+    }
     summaryLoadFailed.value = true
+    if (!summaryHadSuccess.value) {
+      journeySteps.value = []
+      summaryLoaded.value = false
+    }
     showUserError(error, '工作台汇总加载失败')
   } finally {
-    loading.summary = false
+    if (!scope.isStale()) {
+      loading.summary = false
+    }
   }
 }
 
@@ -391,18 +452,32 @@ async function scrollToDashboardSection(section: HTMLElement | null) {
 function handleSignalMetricClick(key: string) {
   activeSignal.value = key
   switch (key) {
+    case 'stage':
+    case 'blocked': {
+      const targetStatus
+        = key === 'blocked' ? ObeJourneyStepStatusCode.LOCKED : ObeJourneyStepStatusCode.ACTIVE
+      const step = journeySteps.value.find((item) => item.status === targetStatus)
+      if (step) {
+        handleStageSelect({
+          key: step.stepKey,
+          title: step.title,
+          status: mapObeStepStatus(step.status),
+        })
+      }
+      return
+    }
+    case 'a-review':
+      void scrollToDashboardSection(achievementListSectionRef.value)
+      return
+    case 'i-open':
+      void scrollToDashboardSection(improvementListSectionRef.value)
+      return
     case 'attention':
       if (dashboardTodos.value.length > 0) {
         void scrollToDashboardSection(todoSectionRef.value)
         return
       }
       goImprovement()
-      return
-    case 'a-fail':
-      void scrollToDashboardSection(achievementListSectionRef.value)
-      return
-    case 'i-prog':
-      void scrollToDashboardSection(improvementListSectionRef.value)
       return
     case 'ai-fail':
       void scrollToDashboardSection(aiListSectionRef.value)
@@ -411,6 +486,7 @@ function handleSignalMetricClick(key: string) {
 
 async function loadAchievement() {
   if (!trainingPlanId.value) return
+  const scope = beginQualityScopeRequest()
   loading.achievement = true
   beginAchievementLoad()
   try {
@@ -419,18 +495,27 @@ async function loadAchievement() {
       pageSize: 5,
       trainingPlanId: trainingPlanId.value,
     })
+    if (scope.isStale()) {
+      return
+    }
     recentAchievements.value = page.list
     okAchievementLoad()
   } catch (error) {
+    if (scope.isStale()) {
+      return
+    }
     failAchievementLoad()
     showUserError(error, '达成度数据加载失败')
   } finally {
-    loading.achievement = false
+    if (!scope.isStale()) {
+      loading.achievement = false
+    }
   }
 }
 
 async function loadImprovement() {
   if (!trainingPlanId.value) return
+  const scope = beginQualityScopeRequest()
   loading.improvement = true
   beginImprovementLoad()
   try {
@@ -439,18 +524,27 @@ async function loadImprovement() {
       pageSize: 5,
       trainingPlanId: trainingPlanId.value,
     })
+    if (scope.isStale()) {
+      return
+    }
     recentImprovements.value = page.list
     okImprovementLoad()
   } catch (error) {
+    if (scope.isStale()) {
+      return
+    }
     failImprovementLoad()
     showUserError(error, '改进任务数据加载失败')
   } finally {
-    loading.improvement = false
+    if (!scope.isStale()) {
+      loading.improvement = false
+    }
   }
 }
 
 async function loadAiTasks() {
   if (!trainingPlanId.value) return
+  const scope = beginQualityScopeRequest()
   loading.ai = true
   beginAiLoad()
   try {
@@ -460,13 +554,21 @@ async function loadAiTasks() {
       pageSize: 5,
       trainingPlanId: plan,
     })
+    if (scope.isStale()) {
+      return
+    }
     recentAiTasks.value = page.list
     okAiLoad()
   } catch (error) {
+    if (scope.isStale()) {
+      return
+    }
     failAiLoad()
     showUserError(error, '智能任务数据加载失败')
   } finally {
-    loading.ai = false
+    if (!scope.isStale()) {
+      loading.ai = false
+    }
   }
 }
 
@@ -485,17 +587,7 @@ async function reload() {
   ])
 }
 
-useQualityScopedLoader(reload, { watchScope: true, immediate: false, reloadOnActivated: false })
-
-onMounted(async () => {
-  await reload()
-})
-
-onActivated(() => {
-  if (trainingPlanId.value) {
-    void reload()
-  }
-})
+useQualityScopedLoader(reload, { watchScope: true, immediate: true, reloadOnActivated: true })
 
 function goAchievement() {
   router.push({ name: 'QualityAchievement' })
@@ -516,7 +608,7 @@ interface DashboardTodoItem {
   tone: BadgeTone
 }
 
-const cockpitPhase = computed(() => cockpit.value?.activeCycle?.currentPhase)
+const applicationPhase = computed(() => cockpit.value?.applicationCycle?.currentPhase)
 
 const dashboardTodos = computed<DashboardTodoItem[]>(() => {
   if (!trainingPlanId.value) return []
@@ -564,7 +656,7 @@ const dashboardTodos = computed<DashboardTodoItem[]>(() => {
       tone: 'red',
     })
   }
-  if (cockpitPhase.value === 'ONSITE_VISIT') {
+  if (applicationPhase.value === 'ONSITE_VISIT') {
     items.push({
       key: 'onsite',
       label: '认证周期处于现场考查阶段，请闭合考查计划与清单',
@@ -576,27 +668,20 @@ const dashboardTodos = computed<DashboardTodoItem[]>(() => {
 })
 
 function handleStageSelect(stage: WorkbenchStage) {
-  switch (stage.key) {
-    case 'config':
-      void router.push({ name: 'QualityAccreditationCockpit' })
-      break
-    case 'plan':
-      void router.push({ name: 'QualityTrainingPlanWorkbench' })
-      break
-    case 'data':
-      void router.push({ path: '/quality/ingest-hub/score-batch' })
-      break
-    case 'calc':
-    case 'audit':
-      goAchievement()
-      break
-    case 'improve':
-      goImprovement()
-      break
-    case 'archive':
-      void router.push({ name: 'QualityArchive' })
-      break
+  const step = journeySteps.value.find((item) => item.stepKey === stage.key)
+  if (!step) {
+    return
   }
+  // LOCKED：培养方案未确认，统一回到培养方案工作台
+  if (step.status === ObeJourneyStepStatusCode.LOCKED) {
+    void router.push({ name: 'QualityTrainingPlanWorkbench' })
+    return
+  }
+  if (!step.routeName) {
+    showUserError(null, `旅程步骤缺少路由合同：${step.stepKey}`)
+    return
+  }
+  void router.push({ name: step.routeName })
 }
 
 function handleTodoAction(key: string) {
@@ -647,7 +732,7 @@ function handleTodoAction(key: string) {
       v-if="trainingPlanId && planConfirmationStatus === ConfirmationStatusCode.CONFIRMED"
       #rail
     >
-      <StageRail :stages="stages" @select="handleStageSelect" />
+      <StageRail :stages="stages" allow-pending-select @select="handleStageSelect" />
     </template>
 
     <template
@@ -655,20 +740,33 @@ function handleTodoAction(key: string) {
       #signal
     >
       <UiSkeletonState
-        v-if="loading.summary && !summaryLoaded && !summaryLoadFailed"
+        v-if="loading.summary && !summaryLoaded && !summaryHadSuccess && !summaryLoadFailed"
         variant="card"
         :card-count="4"
         compact
       />
-      <UiEmpty v-else-if="summaryLoadFailed" size="sm" title="加载失败" />
-      <SignalBand
-        v-else
-        :metrics="signals"
-        variant="panel"
-        compact
-        class="quality-dashboard__signals"
-        @metric-click="handleSignalMetricClick"
+      <UiAlertStrip
+        v-else-if="summaryLoadFailed && !summaryHadSuccess"
+        tone="error"
+        title="工作台汇总加载失败"
+        dense
       />
+      <template v-else>
+        <UiAlertStrip
+          v-if="summaryLoadFailed"
+          tone="error"
+          title="指标同步失败"
+          dense
+        />
+        <SignalBand
+          v-if="summaryLoaded || summaryHadSuccess"
+          :metrics="signals"
+          variant="panel"
+          compact
+          class="quality-dashboard__signals"
+          @metric-click="handleSignalMetricClick"
+        />
+      </template>
     </template>
 
     <QualityPlanGateStrip
@@ -683,8 +781,9 @@ function handleTodoAction(key: string) {
     />
 
     <template v-if="trainingPlanId && planConfirmationStatus === ConfirmationStatusCode.CONFIRMED">
+      <!-- 锚点包装无 margin；段间距由壳层 gap 负责，避免 margin 折叠穿透 -->
       <div v-if="dashboardTodos.length" ref="todoSectionRef">
-        <WorkbenchSurfaceCard class="quality-dashboard__todo-card">
+        <WorkbenchSurfaceCard>
           <template #head>
             <span class="quality-dashboard__panel-title">待办事项</span>
           </template>
@@ -699,7 +798,17 @@ function handleTodoAction(key: string) {
           </ul>
         </WorkbenchSurfaceCard>
       </div>
-      <QualityWorkbenchCharts :groups="qualityChartGroups" />
+      <div v-if="qualityChartGroups.length" class="quality-dashboard__charts-fold">
+        <UiButton
+          variant="ghost"
+          size="sm"
+          class="quality-dashboard__charts-toggle"
+          @click="distributionExpanded = !distributionExpanded"
+        >
+          {{ distributionExpanded ? '收起状态分布' : '展开状态分布' }}
+        </UiButton>
+        <QualityWorkbenchCharts v-if="distributionExpanded" :groups="qualityChartGroups" />
+      </div>
 
       <WorkbenchSurfaceCard class="quality-dashboard__lists-surface">
         <template #head>
@@ -860,26 +969,12 @@ function handleTodoAction(key: string) {
     margin-left: 0;
   }
 
-  &__empty {
-    margin-top: var(--dp-space-8);
-  }
-
-  &__todo-card {
-    margin-bottom: var(--dp-space-4);
-  }
-
-  &__panel-title {
-    font-size: var(--dp-font-size-md, 15px);
-    font-weight: 600;
-    color: var(--dp-text-primary);
-  }
-
   &__list-section {
     min-width: 0;
 
     & + & {
-      margin-top: var(--dp-space-4);
-      padding-top: var(--dp-space-4);
+      margin-top: var(--dp-space-block);
+      padding-top: var(--dp-space-block);
       border-top: 1px solid var(--dp-border-subtle);
     }
   }
@@ -888,13 +983,13 @@ function handleTodoAction(key: string) {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-3);
-    margin-bottom: var(--dp-space-2);
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__list-title {
     margin: 0;
-    font-size: var(--dp-font-size-sm, 14px);
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -904,29 +999,29 @@ function handleTodoAction(key: string) {
     margin: 0;
     padding: 0;
     display: grid;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__todo-item {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
     flex-wrap: wrap;
-    padding: var(--dp-space-3);
+    padding: var(--dp-space-component);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-control);
-    background: var(--dp-surface-elevated);
+    background: var(--dp-surface-chrome);
     transition:
-      border-color var(--dp-duration-normal) ease,
-      background var(--dp-duration-normal) ease,
-      box-shadow var(--dp-duration-normal) ease,
-      transform var(--dp-duration-fast) ease;
+      border-color var(--dp-duration-normal) var(--dp-ease-default),
+      background var(--dp-duration-normal) var(--dp-ease-default),
+      box-shadow var(--dp-duration-normal) var(--dp-ease-default),
+      transform var(--dp-duration-fast) var(--dp-ease-default);
 
     &:hover {
       border-color: var(--dp-color-primary-border);
       background: var(--dp-surface);
       box-shadow: var(--dp-shadow-sm);
-      transform: translateY(-1px);
+      transform: var(--dp-lift-sm);
     }
   }
 
@@ -944,9 +1039,10 @@ function handleTodoAction(key: string) {
     font-weight: 500;
   }
 
-  &__lists-surface {
-    margin-top: var(--dp-space-4);
-    margin-bottom: var(--dp-space-3);
+  &__charts-fold {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dp-space-component-tight);
   }
 
   &__lists {
@@ -956,7 +1052,7 @@ function handleTodoAction(key: string) {
 
     @media (min-width: bp.$shell-laptop-max) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: var(--dp-space-4);
+      gap: var(--dp-space-block);
 
       .quality-dashboard__list-section {
         margin-top: 0;
@@ -972,8 +1068,8 @@ function handleTodoAction(key: string) {
 
       .quality-dashboard__list-section--wide {
         grid-column: span 2;
-        margin-top: var(--dp-space-4);
-        padding-top: var(--dp-space-4);
+        margin-top: var(--dp-space-block);
+        padding-top: var(--dp-space-block);
         border-top: 1px solid var(--dp-border-subtle);
       }
     }
@@ -993,7 +1089,7 @@ function handleTodoAction(key: string) {
 
   &__threshold {
     color: var(--dp-text-muted);
-    margin-left: 4px;
+    margin-left: var(--dp-space-component-xs);
   }
 }
 </style>

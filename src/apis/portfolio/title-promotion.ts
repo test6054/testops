@@ -53,6 +53,12 @@ export interface PortfolioTitleCriteriaTemplateVO {
   enabled: boolean
   sortNo?: number
   updateTime?: string
+  /** 未关闭职称任务引用数 */
+  openTaskRefCount?: number
+  /** 是否允许停用 */
+  canDisable?: boolean
+  /** 停用阻断原因 */
+  disableBlockReason?: string
 }
 
 export interface PortfolioTitleCriteriaResultItemVO {
@@ -78,8 +84,12 @@ export interface PortfolioTitlePromotionTaskVO {
   taskName: string
   targetTitleLevel: string
   reviewYear: string
-  periodStart?: string
-  periodEnd?: string
+  /** 申报受理开始日（含）YYYY-MM-DD */
+  periodStart: string
+  /** 申报受理截止日（含）YYYY-MM-DD */
+  periodEnd: string
+  /** 当前是否在申报受理时间窗内（服务端时钟） */
+  withinApplyWindow: boolean
   taskCriteria: PortfolioTitleTaskCriteriaVO[]
   taskStatus: PortfolioTitlePromotionTaskStatusCode
   publishTime?: string
@@ -91,6 +101,12 @@ export interface PortfolioTitlePromotionApplicationVO {
   taskId: string
   taskName?: string
   targetTitleLevel?: string
+  /** 所属任务申报受理开始日 */
+  periodStart?: string
+  /** 所属任务申报受理截止日 */
+  periodEnd?: string
+  /** 当前是否在申报受理时间窗内 */
+  withinApplyWindow?: boolean
   teacherUserId: string
   /** edu-user 教师姓名 */
   teacherName?: string
@@ -125,7 +141,6 @@ export interface PortfolioTitlePromotionApplicationVO {
   publicityRemark?: string
   updateTime?: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -167,8 +182,10 @@ export interface PortfolioTitlePromotionTaskSaveRequest {
   taskName: string
   targetTitleLevel: string
   reviewYear: string
-  periodStart?: string
-  periodEnd?: string
+  /** 申报受理开始日 YYYY-MM-DD */
+  periodStart: string
+  /** 申报受理截止日 YYYY-MM-DD */
+  periodEnd: string
 }
 
 export interface PortfolioTitlePromotionApplicationSaveRequest {
@@ -239,6 +256,16 @@ export interface PortfolioTitlePromotionFlowViewVO {
   applicableCriteria: PortfolioTitlePromotionFlowCriteriaBriefVO[]
 }
 
+export interface PortfolioTitleEvidenceCandidateVO {
+  recordId: string
+  categoryCode?: string
+  categoryName?: string
+  academicYear?: string
+  officialTime?: string
+  displayLabel: string
+  matchReason: string
+}
+
 export const portfolioTitlePromotionApi = {
   pageTask: (data: {
     pageNum?: number
@@ -246,9 +273,23 @@ export const portfolioTitlePromotionApi = {
     taskStatus?: PortfolioTitlePromotionTaskStatusCode
     reviewYear?: string
     locateTaskId?: string
+    /** 仅当前开放窗口内的任务；深链 locateTaskId 时后端会放开 */
+    activeWindowOnly?: boolean
   }) =>
     http.post<PageResult<PortfolioTitlePromotionTaskVO>>(
       '/api/portfolio/title-promotion/task/page',
+      data,
+    ),
+
+  pageEvidenceCandidates: (data: {
+    pageNum?: number
+    pageSize?: number
+    teacherId: string
+    taskCriteriaId: string
+    keyword?: string
+  }) =>
+    http.post<PageResult<PortfolioTitleEvidenceCandidateVO>>(
+      '/api/portfolio/title-promotion/evidence-candidate/page',
       data,
     ),
 
@@ -385,11 +426,19 @@ export const portfolioTitlePromotionApi = {
       satisfyMode: PortfolioTitleCriteriaSatisfyModeCode
       pathCode: PortfolioTitleCriteriaPathCode
       blockOnFail: boolean
+      expectedUpdateTime?: string
     },
   ) => http.post<string>('/api/portfolio/title-promotion/criteria-template/save', data),
 
-  enableCriteriaTemplate: (data: { id: string, enabled: boolean }) =>
-    http.post<void>('/api/portfolio/title-promotion/criteria-template/enable', data),
+  enableCriteriaTemplate: (data: {
+    id: string
+    enabled: boolean
+    expectedUpdateTime: string
+  }) =>
+    http.post<PortfolioTitleCriteriaTemplateVO>(
+      '/api/portfolio/title-promotion/criteria-template/enable',
+      data,
+    ),
 
   getCriteriaTemplate: (data: { id: string }) =>
     http.post<PortfolioTitleCriteriaTemplateVO>(

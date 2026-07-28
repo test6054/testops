@@ -2,7 +2,7 @@
 .table-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   flex-wrap: wrap;
 }
 
@@ -31,9 +31,9 @@
   box-shadow: none;
 
   .section-title {
-    font-size: 15px;
+    font-size: var(--dp-type-panel-title-size);
     font-weight: 600;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
   }
 }
 

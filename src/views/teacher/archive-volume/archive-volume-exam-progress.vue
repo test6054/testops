@@ -53,12 +53,7 @@
           v-if="loadFailed"
           size="sm"
           title="加载归档复盘失败"
-          description="归档复盘数据暂时不可用，请重试加载"
-        >
-          <template #action>
-            <UiButton variant="outline" size="sm" @click="loadReview">重新加载</UiButton>
-          </template>
-        </UiEmpty>
+        />
 
         <template v-else-if="review">
           <WorkflowReadinessPanel
@@ -74,18 +69,32 @@
             :steps="lifecycleSteps"
           />
 
-          <div v-if="isPackaging" class="archive-exam-review__packaging">
+          <div v-if="isPackaging || packagingPollStale" class="archive-exam-review__packaging">
             <div class="archive-exam-review__packaging-head">
               <span>{{ packagingProgressLabel }}</span>
-              <span class="archive-exam-review__packaging-percent">{{ packagingProgressPercent }}%</span>
+              <span class="archive-exam-review__packaging-percent">
+                {{ packagingProgressPercent == null ? '—' : `${packagingProgressPercent}%` }}
+              </span>
             </div>
+            <p class="archive-exam-review__packaging-sync">
+              {{ packagingSyncStatusText }}
+            </p>
             <div class="archive-exam-review__packaging-track">
               <div
                 class="archive-exam-review__packaging-bar"
                 :style="{
-                  transform: `scaleX(${Math.max(0, Math.min(1, packagingProgressPercent / 100))})`,
+                  transform: `scaleX(${
+                    packagingProgressPercent == null
+                      ? 0
+                      : Math.max(0, Math.min(1, packagingProgressPercent / 100))
+                  })`,
                 }"
               />
+            </div>
+            <div v-if="packagingPollStale" class="archive-exam-review__packaging-actions">
+              <UiButton variant="outline" size="sm" :loading="loading" @click="manualRefreshReview">
+                刷新打包状态
+              </UiButton>
             </div>
           </div>
 
@@ -116,13 +125,8 @@
                 dense
                 inline
                 title="课程考核袋列表加载失败"
-                description="当前保留最后一次成功加载的数据，请重试列表查询。"
                 class="archive-exam-review__volume-error"
-              >
-                <template #actions>
-                  <UiButton variant="outline" size="sm" @click="loadVolumes">重试</UiButton>
-                </template>
-              </UiAlertStrip>
+              />
               <UiDataTable
                 v-model:current="volumePagination.pageNum"
                 v-model:page-size="volumePagination.pageSize"
@@ -194,7 +198,7 @@ import type {
 } from '@/apis/mark/archive-volume'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArchiveIntegrityStatusDescription,
@@ -226,6 +230,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import WorkflowReadinessPanel from '@/components/workbench/workflow-readiness/WorkflowReadinessPanel.vue'
 import { useArchiveAutoCreatePoll } from '@/composables/useArchiveAutoCreatePoll'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useScoreReleaseNavigation } from '@/composables/useScoreReleaseNavigation'
 import {
   ArchiveVolumeAutoCreateFailureCategoryCode,
@@ -242,18 +247,19 @@ import { ArchiveVolumeAutoCreatePendingStatusCode } from '@/types/enums/archive-
 import { integrityStatusDimTone, volumeStatusDimTone } from '@/utils/archive-dimension-pill'
 import { buildArchivePackageLifecycleSteps } from '@/utils/archive-package-lifecycle'
 import { showUserError } from '@/utils/error-handler'
-import { formatFileSize } from '@/utils/format'
+import { formatDateTime, formatFileSize } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { resolveArchiveGateWorkflowSteps } from '@/utils/workflow-readiness/archive-gate-readiness'
 
 defineOptions({ name: 'TeacherArchiveVolumeExamProgress' })
 
+/** 仅用于「创建归档包」请求体的固定操作参数，禁止当作已读取的归档策略展示 */
 const DEFAULT_RETENTION_YEARS = 10
 const PACKAGING_POLL_MS = 5000
 
 const route = useRoute()
 const router = useRouter()
-const { goScorePublish } = useScoreReleaseNavigation()
+const { goScoreWorkbench } = useScoreReleaseNavigation()
 
 const showGateScorePublishAction = computed(() => {
   const gate = examGate.value
@@ -290,7 +296,7 @@ function onArchiveGateMoreAction(key: string) {
     return
   }
   if (key === 'scorePublish') {
-    goScorePublish()
+    goScoreWorkbench()
     return
   }
   if (key === 'closeExam') {
@@ -310,13 +316,20 @@ const volumesLoadFailed = ref(false)
 const retrying = ref(false)
 const packagingActionLoading = ref(false)
 const pollTimedOut = ref(false)
+/** 打包轮询最近一次成功同步时间（毫秒） */
+const packagingLastSyncAtMs = ref<number | null>(null)
+/** 打包轮询连续失败达阈值后停止自动轮询 */
+const packagingPollStale = ref(false)
+const packagingPollFailures = ref(0)
+const PACKAGING_POLL_FAIL_LIMIT = 3
 const volumeCollapseActiveKeys = ref<string[]>(['volumes'])
 const exportTasksRef = ref<InstanceType<typeof ArchiveExamExportTasksCard> | null>(null)
-let packagingPollTimer: ReturnType<typeof setInterval> | null = null
+let packagingPollTimer: ReturnType<typeof setTimeout> | null = null
+let packagingPollGeneration = 0
 let reviewRequestSequence = 0
 let volumeRequestSequence = 0
 
-const { polling, pollUntilHealthy } = useArchiveAutoCreatePoll({ examId })
+const { polling, pollUntilHealthy, stopPoll } = useArchiveAutoCreatePoll({ examId })
 
 const examGate = computed(() => review.value?.gate ?? null)
 const archiveGateWorkflow = computed(() =>
@@ -339,12 +352,28 @@ const isPackaging = computed(
 
 const packagingProgressPercent = computed(() => {
   const percent = archivePackage.value?.packagingProgressPercent
-  return percent != null && percent >= 0 ? percent : 0
+  return percent != null && percent >= 0 ? percent : null
 })
 
-const packagingProgressLabel = computed(
-  () => archivePackage.value?.packagingProgressMessage?.trim() || '系统正在打包归档物料',
-)
+const packagingProgressLabel = computed(() => {
+  const message = archivePackage.value?.packagingProgressMessage?.trim()
+  if (message) {
+    return message
+  }
+  return packagingProgressPercent.value == null ? '进度尚未上报' : '正在打包'
+})
+
+const packagingSyncStatusText = computed(() => {
+  const lastSync = packagingLastSyncAtMs.value
+  const lastSyncLabel = lastSync == null ? '尚未成功同步' : formatDateTime(new Date(lastSync).toISOString())
+  if (packagingPollStale.value) {
+    return `自动轮询已暂停（连续失败）；最近成功同步：${lastSyncLabel}`
+  }
+  if (isPackaging.value) {
+    return `最近成功同步：${lastSyncLabel}`
+  }
+  return `最近成功同步：${lastSyncLabel}`
+})
 
 const lifecycleSteps = computed(() =>
   buildArchivePackageLifecycleSteps(archivePackage.value?.archiveStatus),
@@ -427,13 +456,12 @@ const reviewStatusTone = computed(() => {
 
 const reviewSignals = computed<SignalMetric[]>(() => {
   const pkg = archivePackage.value
+  // 保存期限仅展示后端明确返回值；缺失显示「—」，不得用前端 DEFAULT 冒充已读策略
   const retentionLabel = pkg?.permanentRetention === true
     ? '永久'
     : pkg?.retentionYears != null
       ? `${pkg.retentionYears} 年`
-      : gateOpen.value === true
-        ? `${DEFAULT_RETENTION_YEARS} 年`
-        : '—'
+      : '—'
   return [
     {
       key: 'archive-status',
@@ -654,9 +682,12 @@ async function loadReview() {
       const nextReview = await getArchiveVolumeExamReview(examId.value)
       if (requestSequence !== reviewRequestSequence) return
       review.value = nextReview
+      packagingLastSyncAtMs.value = Date.now()
+      packagingPollFailures.value = 0
+      packagingPollStale.value = false
     } catch (error) {
       if (requestSequence !== reviewRequestSequence) return
-      review.value = null
+      // 保留上次成功 review，避免打包态被清空成「未创建」
       showUserError(error, '考试归档评审加载失败')
     }
     try {
@@ -674,13 +705,11 @@ async function loadReview() {
       volumesLoadFailed.value = false
     } catch (error) {
       if (requestSequence !== reviewRequestSequence) return
-      healthyVolumes.value = []
-      volumePagination.total = 0
       volumesLoadFailed.value = true
       showUserError(error, '考试归档卷列表加载失败')
     }
     if (requestSequence !== reviewRequestSequence) return
-    loadFailed.value = !review.value
+    loadFailed.value = review.value == null
     await exportTasksRef.value?.refresh()
     if (requestSequence !== reviewRequestSequence) return
     syncPackagingPoll()
@@ -692,27 +721,77 @@ async function loadReview() {
 }
 
 function syncPackagingPoll() {
-  if (isPackaging.value === true) {
+  if (isPackaging.value === true && packagingPollStale.value !== true) {
     startPackagingPoll()
     return
+  }
+  if (!isPackaging.value) {
+    packagingPollStale.value = false
+    packagingPollFailures.value = 0
   }
   stopPackagingPoll()
 }
 
+/** 打包轮询：上次请求结束后再调度；连续失败达阈值后停轮询并标记 stale */
 function startPackagingPoll() {
-  if (packagingPollTimer != null) {
+  if (packagingPollTimer != null || packagingPollStale.value) {
     return
   }
-  packagingPollTimer = setInterval(() => {
-    void loadReview()
+  schedulePackagingPollTick()
+}
+
+function schedulePackagingPollTick() {
+  packagingPollTimer = setTimeout(() => {
+    packagingPollTimer = null
+    void (async () => {
+      await pollPackagingStatus()
+      if (isPackaging.value && !packagingPollStale.value) {
+        schedulePackagingPollTick()
+      }
+    })()
   }, PACKAGING_POLL_MS)
 }
 
+async function pollPackagingStatus(): Promise<void> {
+  const expectedExamId = examId.value
+  if (!expectedExamId) {
+    return
+  }
+  const generation = ++packagingPollGeneration
+  try {
+    const nextReview = await getArchiveVolumeExamReview(expectedExamId)
+    if (generation !== packagingPollGeneration || examId.value !== expectedExamId) {
+      return
+    }
+    review.value = nextReview
+    packagingLastSyncAtMs.value = Date.now()
+    packagingPollFailures.value = 0
+    packagingPollStale.value = false
+  } catch (error) {
+    if (generation !== packagingPollGeneration || examId.value !== expectedExamId) {
+      return
+    }
+    packagingPollFailures.value += 1
+    showUserError(error, '打包状态刷新失败')
+    if (packagingPollFailures.value >= PACKAGING_POLL_FAIL_LIMIT) {
+      packagingPollStale.value = true
+      stopPackagingPoll()
+    }
+  }
+}
+
+async function manualRefreshReview(): Promise<void> {
+  packagingPollStale.value = false
+  packagingPollFailures.value = 0
+  await loadReview()
+}
+
 function stopPackagingPoll() {
+  packagingPollGeneration += 1
   if (packagingPollTimer == null) {
     return
   }
-  clearInterval(packagingPollTimer)
+  clearTimeout(packagingPollTimer)
   packagingPollTimer = null
 }
 
@@ -721,6 +800,18 @@ async function createPackage() {
     return
   }
   if (!examId.value || canCreatePackage.value !== true || packagingActionLoading.value === true) {
+    return
+  }
+  const confirmed = await confirmAsync({
+    title: '创建归档包',
+    content:
+      `将按本操作固定策略创建并打包：保存期限 ${DEFAULT_RETENTION_YEARS} 年；`
+      + '材料包含原卷扫描、批注切片、答卷册。该默认值仅用于本次创建请求，不是已读取的归档策略配置。',
+    okText: '确认创建',
+    cancelText: '取消',
+    type: 'warning',
+  })
+  if (!confirmed) {
     return
   }
   packagingActionLoading.value = true
@@ -832,61 +923,105 @@ async function retryAutoCreate() {
 }
 
 onMounted(() => {
-  void loadReview().then(() => {
-    if (route.query.autoCreatePoll === '1') {
-      clearAutoCreatePollQuery()
-      void startAutoCreatePoll()
-    }
-  })
+  if (route.query.autoCreatePoll === '1' && examId.value) {
+    clearAutoCreatePollQuery()
+    void startAutoCreatePoll()
+  }
 })
+
+watch(
+  examId,
+  (value, previous) => {
+    if (value === previous) {
+      return
+    }
+    reviewRequestSequence += 1
+    volumeRequestSequence += 1
+    packagingPollGeneration += 1
+    stopPackagingPoll()
+    stopPoll()
+    review.value = null
+    healthyVolumes.value = []
+    volumePagination.pageNum = 1
+    volumePagination.total = 0
+    loadFailed.value = false
+    volumesLoadFailed.value = false
+    pollTimedOut.value = false
+    packagingLastSyncAtMs.value = null
+    packagingPollStale.value = false
+    packagingPollFailures.value = 0
+    if (value) {
+      void loadReview().then(() => {
+        if (route.query.autoCreatePoll === '1') {
+          clearAutoCreatePollQuery()
+          void startAutoCreatePoll()
+        }
+      })
+    } else {
+      loading.value = false
+    }
+  },
+  { immediate: true },
+)
 
 onUnmounted(() => {
   stopPackagingPoll()
+  stopPoll()
 })
 </script>
 
 <style scoped lang="scss">
 @use '@/styles/breakpoints' as bp;
 .archive-exam-review__gate-notice {
-  margin-top: var(--dp-space-3);
+  margin-top: var(--dp-space-component);
 }
 
 .archive-exam-review__volume-error {
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .archive-exam-review__lifecycle {
-  margin-top: var(--dp-space-4);
+  margin-top: var(--dp-space-block);
 }
 
 .archive-exam-review__packaging {
-  margin-top: var(--dp-space-3);
-  padding: var(--dp-space-3);
-  border: 1px solid var(--dp-border-light);
-  border-radius: var(--dp-radius-md);
-  background: var(--dp-surface-muted);
+  margin-top: var(--dp-space-component);
+  padding: var(--dp-space-component);
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-control);
+  background: var(--dp-surface-subtle);
 }
 
 .archive-exam-review__packaging-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
 .archive-exam-review__packaging-percent {
-  font-family: var(--dp-font-mono);
+  font-family: var(--dp-font-family-code);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
 
+.archive-exam-review__packaging-sync {
+  margin: var(--dp-space-component-xs) 0 var(--dp-space-component-tight);
+  font-size: var(--dp-font-size-xs);
+  color: var(--dp-text-secondary);
+}
+
+.archive-exam-review__packaging-actions {
+  margin-top: var(--dp-space-component-tight);
+}
+
 .archive-exam-review__packaging-track {
   height: 6px;
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
   border-radius: var(--dp-radius-full);
-  background: var(--dp-border-light);
+  background: var(--dp-border-subtle);
   overflow: hidden;
 }
 
@@ -896,14 +1031,14 @@ onUnmounted(() => {
   transform-origin: left center;
   border-radius: inherit;
   background: var(--dp-blue-600);
-  transition: transform 0.2s ease;
+  transition: transform var(--dp-duration-normal) var(--dp-ease-default);
 }
 
 .archive-exam-review__grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--dp-space-4);
-  margin-top: var(--dp-space-4);
+  gap: var(--dp-space-block);
+  margin-top: var(--dp-space-block);
 
   @media (min-width: bp.$ant-grid-lg) {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -911,13 +1046,13 @@ onUnmounted(() => {
 }
 
 .archive-exam-review__volume-collapse {
-  margin-top: var(--dp-space-4);
+  margin-top: var(--dp-space-block);
   background: var(--dp-surface);
-  border: 1px solid var(--dp-border-light);
-  border-radius: var(--dp-radius-md);
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-control);
 }
 
 .archive-exam-review__volume-status {
-  margin-top: var(--dp-space-3);
+  margin-top: var(--dp-space-component);
 }
 </style>

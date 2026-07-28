@@ -23,7 +23,7 @@
 .dp-space {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-gap, 8px);
+  gap: var(--dp-space-component);
   min-width: 0;
 }
 
@@ -39,4 +39,106 @@
 .dp-space--block {
   display: flex;
   width: 100%;
+}
+
+/* 紧间距：替代 style="--dp-space-component: 8px" 覆写语义 token */
+.dp-space--tight {
+  gap: var(--dp-space-component-tight);
+}
+
+/* 极紧纵向：替代 style="--dp-space-component: 2px"（对齐 xs=4px 栅格） */
+.dp-space--dense {
+  gap: var(--dp-space-component-xs);
+}
+
+/* 外边距节奏：替代裸 Tailwind margin utility（prefix(tw) 下不生成 CSS） */
+.dp-mb-xs {
+  margin-bottom: var(--dp-space-component-xs);
+}
+
+.dp-mb-tight {
+  margin-bottom: var(--dp-space-component-tight);
+}
+
+.dp-mb-component {
+  margin-bottom: var(--dp-space-component);
+}
+
+.dp-mb-block {
+  margin-bottom: var(--dp-space-block);
+}
+
+.dp-mt-xs {
+  margin-top: var(--dp-space-component-xs);
+}
+
+.dp-mt-tight {
+  margin-top: var(--dp-space-component-tight);
+}
+
+.dp-mt-component {
+  margin-top: var(--dp-space-component);
+}
+
+.dp-mt-block {
+  margin-top: var(--dp-space-block);
+}
+
+.dp-mt-section {
+  margin-top: var(--dp-space-section);
+}
+
+.dp-m-0 {
+  margin: 0;
+}
+
+.dp-text-secondary-sm {
+  margin: 0;
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+}
+
+/* 弱化文案真源：禁止业务页再 scoped 定义 .muted / .text-muted */
+.dp-text-muted {
+  color: var(--dp-text-muted);
+}
+
+.dp-text-muted-xs {
+  margin: 0;
+  font-size: var(--dp-font-size-xs);
+  color: var(--dp-text-muted);
+}
+
+/*
+ * 考试范围筛选格：exam-list / marking-overview 共用。
+ * 模板用 class="dp-exam-scope" + "dp-exam-scope__item"（--status），勿再抄 rem 宽度。
+ */
+.dp-exam-scope {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-component-tight);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dp-exam-scope__item {
+  flex: 0 1 8.25rem;
+  width: 8.25rem;
+  min-width: 7rem;
+  max-width: 10rem;
+}
+
+.dp-exam-scope__item--status {
+  flex-basis: 7rem;
+  width: 7rem;
+  min-width: 6.5rem;
+  max-width: 8.5rem;
+}
+
+.dp-exam-scope__item .ui-select {
+  width: 100%;
+  max-width: 100%;
+  vertical-align: middle;
 }

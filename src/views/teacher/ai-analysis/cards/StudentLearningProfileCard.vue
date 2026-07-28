@@ -84,8 +84,10 @@
     <AiAnalysisCardBody
       :loading="loading"
       :generating="generating"
-      :has-content="true"
+      :has-content="record != null || !loadFailed"
+      :load-failed="loadFailed"
       :empty-description="emptyDescription"
+      error-description="学生学情分析加载失败"
       progress-title="AI 学生学情分析生成中"
       progress-waiting-text="正在等待后端返回该学生的真实学情画像。"
     >
@@ -109,7 +111,7 @@
                   / {{ formatScore(scoreComposition.dailyScoreFull) }}
                 </span>
               </template>
-              <span v-else class="text-muted">未配置</span>
+              <span v-else class="dp-text-muted">未配置</span>
             </span>
           </div>
           <div class="ai-profile-score-item">
@@ -125,7 +127,7 @@
                   {{ finalScoreLabel(scoreComposition.finalScoreStatus) }}
                 </UiTag>
               </template>
-              <span v-else class="text-muted">未录入</span>
+              <span v-else class="dp-text-muted">未录入</span>
             </span>
           </div>
         </div>
@@ -255,6 +257,8 @@ const emit = defineEmits<{ (e: 'student-change', studentUserId: string): void }>
 
 const record = ref<TeachingAnalysisRecordResponse | null>(null)
 const loading = ref(false)
+const loadFailed = ref(false)
+let loadGeneration = 0
 const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
 
 /** MVR-285：默认拒绝假可写；依赖 AI 分析中心 overview 或页面 provide 的能力位 */
@@ -302,17 +306,37 @@ const { chartOption: diagnosisChartOption } = useChartOption(() =>
 
 async function reload(): Promise<void> {
   const studentUserId = selectedStudentUserId.value
-  if (!props.examId || !studentUserId) return
+  const examId = props.examId
+  if (!examId || !studentUserId) return
+  const generation = ++loadGeneration
   hasQueried.value = true
   loading.value = true
+  loadFailed.value = false
   try {
-    record.value = await getLatestStudentLearningProfile({ examId: props.examId, studentUserId })
+    const next = await getLatestStudentLearningProfile({ examId, studentUserId })
+    if (
+      generation !== loadGeneration
+      || props.examId !== examId
+      || selectedStudentUserId.value !== studentUserId
+    ) {
+      return
+    }
+    record.value = next
     emit('student-change', studentUserId)
   } catch (e) {
-    record.value = null
+    if (
+      generation !== loadGeneration
+      || props.examId !== examId
+      || selectedStudentUserId.value !== studentUserId
+    ) {
+      return
+    }
+    loadFailed.value = true
     showUserError(e, '学生学情分析加载失败')
   } finally {
-    loading.value = false
+    if (generation === loadGeneration) {
+      loading.value = false
+    }
   }
 }
 
@@ -326,17 +350,19 @@ async function handleGenerate(): Promise<void> {
     showFormValidationMessage('请先选择学生')
     return
   }
+  const examId = props.examId
   hasQueried.value = true
   await runGeneration(
-    () => generateStudentLearningProfile({ examId: props.examId, studentUserId }),
+    () => generateStudentLearningProfile({ examId, studentUserId }),
     {
       successMessage: '已生成最新学情分析',
       onSuccess: (generated) => {
+        if (props.examId !== examId || selectedStudentUserId.value !== studentUserId) {
+          return
+        }
         record.value = generated
+        loadFailed.value = false
         emit('student-change', studentUserId)
-      },
-      onFailure: () => {
-        record.value = null
       },
     },
   )
@@ -378,8 +404,10 @@ function questionTypeLabel(
 watch(
   () => [props.examId, props.reloadToken],
   () => {
+    loadGeneration += 1
     hasQueried.value = false
     record.value = null
+    loadFailed.value = false
     selectedStudentUserId.value = undefined
   },
 )
@@ -391,9 +419,11 @@ watch(
       selectedStudentUserId.value
       && !next.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
+      loadGeneration += 1
       selectedStudentUserId.value = undefined
       hasQueried.value = false
       record.value = null
+      loadFailed.value = false
     }
   },
 )
@@ -405,15 +435,20 @@ watch(
       selectedStudentUserId.value
       && !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
+      loadGeneration += 1
       selectedStudentUserId.value = undefined
       hasQueried.value = false
       record.value = null
+      loadFailed.value = false
     }
   },
 )
 
 watch(selectedStudentUserId, (studentUserId) => {
+  loadGeneration += 1
+  loadFailed.value = false
   if (studentUserId) {
+    record.value = null
     void reload()
   } else {
     record.value = null
@@ -425,7 +460,7 @@ watch(selectedStudentUserId, (studentUserId) => {
 .diagnosis-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .diagnosis-rate {
   margin-left: auto;
@@ -437,7 +472,7 @@ watch(selectedStudentUserId, (studentUserId) => {
   color: var(--dp-text-secondary);
 }
 .diagnosis-text {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
@@ -450,9 +485,6 @@ watch(selectedStudentUserId, (studentUserId) => {
   color: var(--dp-text-muted);
 }
 .score-full {
-  color: var(--dp-text-muted);
-}
-.text-muted {
   color: var(--dp-text-muted);
 }
 </style>

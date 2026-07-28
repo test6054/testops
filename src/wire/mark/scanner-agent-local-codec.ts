@@ -13,6 +13,7 @@ import type {
   ScanPageInfo,
 } from '@/apis/mark/scanner-agent-local'
 import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
+import type { ScannerDriverTypeCode } from '@/types/enums/scanner-driver-type-enum'
 import type { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import type { AgentWireJsonObject } from '@/wire/mark/scanner-agent-local-wire'
 import { AgentHealthStatusCode } from '@/types/enums/agent-health-status-enum'
@@ -21,6 +22,7 @@ import { LocalScanJobStatusCode } from '@/types/enums/local-scan-job-status-enum
 import { LocalScanPageSideCode } from '@/types/enums/local-scan-page-side-enum'
 import { LocalScanPageStatusCode } from '@/types/enums/local-scan-page-status-enum'
 import { ScannerAgentDiagnosticStatusCode } from '@/types/enums/scanner-agent-diagnostic-status-enum'
+import { ALL_SCANNER_DRIVER_TYPE_CODES } from '@/types/enums/scanner-driver-type-enum'
 import { ALL_SCANNER_DUPLEX_MODE_CODES } from '@/types/enums/scanner-duplex-mode-enum'
 import { ALL_SCANNER_KIOSK_SCAN_MODE_CODES } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import {
@@ -31,7 +33,6 @@ import {
   requireAgentWireNullableString,
   requireAgentWireObject,
   requireAgentWireString,
-  requireAgentWireStringArray,
   requireOptionalAgentWireInt32,
   requireOptionalAgentWireString,
 } from '@/wire/mark/scanner-agent-local-wire'
@@ -164,6 +165,18 @@ function requireScanMode(value: AgentWireJsonObject, field: string): ScannerKios
     rejectLocalAgentResponse()
   }
   return scanMode
+}
+
+function requireScannerDriverType(
+  result: AgentWireJsonObject,
+  field: string,
+): ScannerDriverTypeCode {
+  const raw = requireAgentWireString(result, field)
+  const driverType = ALL_SCANNER_DRIVER_TYPE_CODES.find((code) => code === raw)
+  if (!driverType) {
+    rejectLocalAgentResponse()
+  }
+  return driverType
 }
 
 function requireScannerDuplexMode(
@@ -374,7 +387,7 @@ function validateScannerDeviceInfo(value: LocalAgentJsonValue): ScannerDeviceInf
   const scanner: ScannerDeviceInfo = {
     localScannerId: requireAgentWireString(result, 'localScannerId'),
     displayName: requireAgentWireString(result, 'displayName'),
-    driverType: requireAgentWireString(result, 'driverType'),
+    driverType: requireScannerDriverType(result, 'driverType'),
     supportsAdf: requireAgentWireBoolean(result, 'supportsAdf'),
     supportsDuplex: requireAgentWireBoolean(result, 'supportsDuplex'),
     available: requireAgentWireBoolean(result, 'available'),
@@ -494,7 +507,6 @@ function validateScanJobResponsePayload(value: LocalAgentJsonValue): ScanJobResp
   const payload: ScanJobResponse = {
     scanJobId: requireAgentWireString(result, 'scanJobId'),
     examId: requireAgentWireString(result, 'examId'),
-    declaredClassIds: requireAgentWireStringArray(result, 'declaredClassIds'),
     scannerDeviceId: requireAgentWireString(result, 'scannerDeviceId'),
     scannerStationId: requireAgentWireString(result, 'scannerStationId'),
     batchExternalNo: requireAgentWireString(result, 'batchExternalNo'),

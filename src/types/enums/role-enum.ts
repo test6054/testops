@@ -33,7 +33,7 @@ export const ROLE_CONFIG: Record<RoleEnum, { name: string, description: string, 
   [RoleEnum.SYSTEM]: {
     name: '系统',
     description: '系统自动操作',
-    color: 'var(--dp-text-tertiary)'
+    color: 'var(--dp-text-muted)'
   },
 }
 

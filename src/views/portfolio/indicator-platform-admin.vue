@@ -54,6 +54,11 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import {
+  PORTFOLIO_INDICATOR_APPLICABILITY_OPTIONS,
+  PortfolioIndicatorApplicabilityCode,
+  PortfolioIndicatorApplicabilityDescription,
+} from '@/types/enums/portfolio-indicator-applicability-code'
 import { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
 import {
   PortfolioIndicatorDimensionL1Description,
@@ -80,6 +85,13 @@ function dimensionL1Label(value: PortfolioIndicatorDimensionL1Code): string {
 
 function scoreRuleTypeLabel(value: PfScoreRuleTypeCode): string {
   return strictEnumLabel(PfScoreRuleTypeDescription, value, '规则类型')
+}
+
+function formatApplicability(codes?: PortfolioIndicatorApplicabilityCode[]): string {
+  if (!codes?.length) return '不限'
+  return codes
+    .map((code) => strictEnumLabel(PortfolioIndicatorApplicabilityDescription, code, '指标适用对象'))
+    .join('、')
 }
 
 const operationKey = ref('')
@@ -145,7 +157,7 @@ const editForm = reactive({
   defaultDataSource: PfIndicatorDataSourceChannelCode.MANUAL_ENTRY,
   defaultRuleTemplateId: '',
   policyAlign: '',
-  applicableTeachers: '',
+  applicableTeachers: [] as PortfolioIndicatorApplicabilityCode[],
   auditRequired: false,
   redLineFlag: false,
   sortOrder: 0,
@@ -236,7 +248,7 @@ const packDefForm = reactive<PortfolioIndustryPackDefForm>({
 })
 const interactionLocked = computed(
   () =>
-    writing.value
+    seeding.value
     || detailOpen.value
     || templateDrawerOpen.value
     || packDrawerOpen.value
@@ -290,7 +302,7 @@ const observationCount = computed(() => {
   return count
 })
 
-async function loadSummary() {
+async function loadSummary(options?: { errorMessage?: string }) {
   const currentToken = ++requestToken.summary
   loadState.summary = true
   loadError.summary = false
@@ -300,15 +312,14 @@ async function loadSummary() {
     summary.value = result
   } catch (error) {
     if (requestToken.summary !== currentToken) return
-    summary.value = null
     loadError.summary = true
-    showUserError(error, '加载平台指标概览失败')
+    showUserError(error, options?.errorMessage ?? '加载平台指标概览失败')
   } finally {
     if (requestToken.summary === currentToken) loadState.summary = false
   }
 }
 
-async function loadPage() {
+async function loadPage(options?: { errorMessage?: string }) {
   const currentToken = ++requestToken.definitions
   const request = { ...query }
   loadState.definitions = true
@@ -320,16 +331,14 @@ async function loadPage() {
     definitionTotal.value = page.total
   } catch (error) {
     if (requestToken.definitions !== currentToken) return
-    rows.value = []
-    definitionTotal.value = 0
     loadError.definitions = true
-    showUserError(error, '加载平台指标失败')
+    showUserError(error, options?.errorMessage ?? '加载平台指标失败')
   } finally {
     if (requestToken.definitions === currentToken) loadState.definitions = false
   }
 }
 
-async function loadTree() {
+async function loadTree(options?: { errorMessage?: string }) {
   const currentToken = ++requestToken.tree
   loadState.tree = true
   loadError.tree = false
@@ -339,15 +348,14 @@ async function loadTree() {
     treeData.value = result
   } catch (error) {
     if (requestToken.tree !== currentToken) return
-    treeData.value = []
     loadError.tree = true
-    showUserError(error, '加载指标树失败')
+    showUserError(error, options?.errorMessage ?? '加载指标树失败')
   } finally {
     if (requestToken.tree === currentToken) loadState.tree = false
   }
 }
 
-async function loadTemplates() {
+async function loadTemplates(options?: { errorMessage?: string }) {
   const currentToken = ++requestToken.templates
   const request = { ...templateQuery }
   loadState.templates = true
@@ -359,10 +367,8 @@ async function loadTemplates() {
     templateTotal.value = page.total
   } catch (error) {
     if (requestToken.templates !== currentToken) return
-    templates.value = []
-    templateTotal.value = 0
     loadError.templates = true
-    showUserError(error, '加载规则模板失败')
+    showUserError(error, options?.errorMessage ?? '加载规则模板失败')
   } finally {
     if (requestToken.templates === currentToken) loadState.templates = false
   }
@@ -380,7 +386,7 @@ function handleTemplatePageChange(event: { current: number, pageSize: number }) 
   void loadTemplates()
 }
 
-async function loadIndustryPacks() {
+async function loadIndustryPacks(options?: { errorMessage?: string }) {
   const currentToken = ++requestToken.packs
   loadState.packs = true
   loadError.packs = false
@@ -390,15 +396,14 @@ async function loadIndustryPacks() {
     industryPacks.value = result
   } catch (error) {
     if (requestToken.packs !== currentToken) return
-    industryPacks.value = []
     loadError.packs = true
-    showUserError(error, '加载行业包失败')
+    showUserError(error, options?.errorMessage ?? '加载行业包失败')
   } finally {
     if (requestToken.packs === currentToken) loadState.packs = false
   }
 }
 
-async function loadSourceMappings() {
+async function loadSourceMappings(options?: { errorMessage?: string }) {
   const currentToken = ++requestToken.mappings
   loadState.mappings = true
   loadError.mappings = false
@@ -408,9 +413,8 @@ async function loadSourceMappings() {
     sourceMappings.value = result
   } catch (error) {
     if (requestToken.mappings !== currentToken) return
-    sourceMappings.value = []
     loadError.mappings = true
-    showUserError(error, '加载来源映射失败')
+    showUserError(error, options?.errorMessage ?? '加载来源映射失败')
   } finally {
     if (requestToken.mappings === currentToken) loadState.mappings = false
   }
@@ -418,20 +422,23 @@ async function loadSourceMappings() {
 
 async function handleIndicatorImportSuccess() {
   importModalOpen.value = false
-  await Promise.all([loadSummary(), reloadTab()])
+  await Promise.all([
+    loadSummary({ errorMessage: '表格导入已完成，概览刷新失败' }),
+    reloadTab({ errorMessage: '表格导入已完成，当前页签刷新失败' }),
+  ])
 }
 
-async function reloadTab() {
+async function reloadTab(options?: { errorMessage?: string }) {
   if (activeTab.value === 'tree') {
-    await loadTree()
+    await loadTree(options)
   } else if (activeTab.value === 'table') {
-    await loadPage()
+    await loadPage(options)
   } else if (activeTab.value === 'template') {
-    await loadTemplates()
+    await loadTemplates(options)
   } else if (activeTab.value === 'pack') {
-    await loadIndustryPacks()
+    await loadIndustryPacks(options)
   } else if (activeTab.value === 'mapping') {
-    await loadSourceMappings()
+    await loadSourceMappings(options)
   }
 }
 
@@ -473,7 +480,7 @@ function fillEditForm(record: PortfolioIndicatorDefinitionVO) {
   editForm.defaultDataSource = record.defaultDataSource
   editForm.defaultRuleTemplateId = record.defaultRuleTemplateId ?? ''
   editForm.policyAlign = record.policyAlign ?? ''
-  editForm.applicableTeachers = record.applicableTeachers
+  editForm.applicableTeachers = [...(record.applicableTeachers ?? [])]
   editForm.auditRequired = record.auditRequired
   editForm.redLineFlag = record.redLineFlag
   editForm.sortOrder = record.sortOrder
@@ -499,6 +506,13 @@ async function saveDefinition() {
     showFormValidationMessage('请完整填写指标编码、名称、一级维度正式码和二级维度')
     return
   }
+  if (
+    editForm.applicableTeachers.includes(PortfolioIndicatorApplicabilityCode.ALL_TEACHERS)
+    && editForm.applicableTeachers.length > 1
+  ) {
+    showFormValidationMessage('全体教师不能与其他适用对象同时选择')
+    return
+  }
   const operation = `save:definition:${editForm.id || indicatorCode}`
   if (!beginOperation(operation)) return
   const request = {
@@ -512,7 +526,7 @@ async function saveDefinition() {
     defaultDataSource: editForm.defaultDataSource,
     defaultRuleTemplateId: editForm.defaultRuleTemplateId || undefined,
     policyAlign: editForm.policyAlign.trim() || undefined,
-    applicableTeachers: editForm.applicableTeachers.trim(),
+    applicableTeachers: [...editForm.applicableTeachers],
     auditRequired: editForm.auditRequired,
     redLineFlag: editForm.redLineFlag,
     sortOrder: editForm.sortOrder,
@@ -522,16 +536,24 @@ async function saveDefinition() {
     await portfolioIndicatorPlatformApi.saveDefinition(request)
     void message.success('指标已保存')
     editMode.value = false
+  } catch (error) {
+    showUserError(error, '保存指标定义失败')
+    return
+  } finally {
+    endOperation(operation)
+  }
+  try {
     detail.value = await portfolioIndicatorPlatformApi.getDefinition({
       indicatorCode,
     })
     fillEditForm(detail.value)
-    await Promise.all([loadSummary(), reloadTab()])
   } catch (error) {
-    showUserError(error, '保存指标定义失败')
-  } finally {
-    endOperation(operation)
+    showUserError(error, '指标已保存，详情刷新失败')
   }
+  await Promise.all([
+    loadSummary({ errorMessage: '指标已保存，概览刷新失败' }),
+    reloadTab({ errorMessage: '指标已保存，列表刷新失败' }),
+  ])
 }
 
 function openNewIndicator() {
@@ -548,7 +570,7 @@ function openNewIndicator() {
   editForm.defaultDataSource = PfIndicatorDataSourceChannelCode.MANUAL_ENTRY
   editForm.defaultRuleTemplateId = ''
   editForm.policyAlign = ''
-  editForm.applicableTeachers = ''
+  editForm.applicableTeachers = []
   editForm.auditRequired = false
   editForm.redLineFlag = false
   editForm.sortOrder = 0
@@ -601,12 +623,13 @@ async function saveTemplateForm() {
     await portfolioIndicatorPlatformApi.saveTemplate(request)
     void message.success('规则模板已保存')
     templateDrawerOpen.value = false
-    await loadTemplates()
   } catch (error) {
     showUserError(error, '保存规则模板失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await loadTemplates({ errorMessage: '规则模板已保存，列表刷新失败' })
 }
 
 function openPackEdit(record?: PortfolioIndustryPackVO) {
@@ -669,13 +692,16 @@ async function savePackForm() {
     })
     void message.success('行业包已保存')
     packDrawerOpen.value = false
-    await loadIndustryPacks()
-    await loadSummary()
   } catch (error) {
     showUserError(error, '保存行业包失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await Promise.all([
+    loadIndustryPacks({ errorMessage: '行业包已保存，列表刷新失败' }),
+    loadSummary({ errorMessage: '行业包已保存，概览刷新失败' }),
+  ])
 }
 
 async function importSeed() {
@@ -695,16 +721,20 @@ async function importSeed() {
     void message.success(
       `种子导入完成：指标 ${result.totalIndicatorCount} 项，行业包 ${result.totalIndustryPackCount} 个`,
     )
-    await Promise.all([loadSummary(), reloadTab()])
   } catch (error) {
     showUserError(error, '导入平台种子失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await Promise.all([
+    loadSummary({ errorMessage: '种子已导入，概览刷新失败' }),
+    reloadTab({ errorMessage: '种子已导入，当前页签刷新失败' }),
+  ])
 }
 
 function onTabChange(key: string | number) {
-  if (writing.value) return
+  if (seeding.value) return
   activeTab.value = String(key)
   reloadTab()
 }
@@ -735,14 +765,14 @@ onMounted(async () => {
       v-if="summary"
       :tone="summary.t001T100Ready ? 'success' : 'warning'"
       :title="`平台指标 ${summary.platformIndicatorCount} 项已就绪，行业包 ${summary.industryPackCount} 个`"
-      style="margin-bottom: 12px"
+      style="margin-bottom: var(--dp-space-component)"
     />
     <UiAlertStrip
       v-else-if="loadError.summary"
       tone="error"
       title="平台指标概览加载失败"
       :closable="false"
-      style="margin-bottom: 12px"
+      style="margin-bottom: var(--dp-space-component)"
     />
     <UiCard>
       <UiSectionTabs
@@ -783,7 +813,7 @@ onMounted(async () => {
             v-model="query.indicatorCode"
             placeholder="指标编码"
             style="width: 120px"
-            :disabled="writing"
+            :disabled="seeding"
             @press-enter="loadPage"
           />
           <UiInput
@@ -791,14 +821,14 @@ onMounted(async () => {
             v-model="query.indicatorName"
             placeholder="指标名称"
             style="width: 160px"
-            :disabled="writing"
+            :disabled="seeding"
             @press-enter="loadPage"
           />
           <UiButton
             size="sm"
             :loading="loadState.definitions"
-            :disabled="writing"
-            @click="loadPage"
+            :disabled="seeding"
+            @click="() => { void loadPage() }"
           >
             查询
           </UiButton>
@@ -857,7 +887,7 @@ onMounted(async () => {
             v-model="templateQuery.templateCode"
             placeholder="模板编码"
             style="width: 120px"
-            :disabled="writing"
+            :disabled="seeding"
             @press-enter="loadTemplates"
           />
           <UiSelect
@@ -867,7 +897,7 @@ onMounted(async () => {
             placeholder="规则类型"
             style="width: 140px"
             :options="PF_SCORE_RULE_TYPE_OPTIONS"
-            :disabled="writing"
+            :disabled="seeding"
           />
           <UiSelect
             size="sm"
@@ -876,13 +906,13 @@ onMounted(async () => {
             placeholder="状态"
             style="width: 100px"
             :options="PF_INDICATOR_STATUS_OPTIONS"
-            :disabled="writing"
+            :disabled="seeding"
           />
           <UiButton
             size="sm"
             :loading="loadState.templates"
-            :disabled="writing"
-            @click="loadTemplates"
+            :disabled="seeding"
+            @click="() => { void loadTemplates() }"
           >
             查询
           </UiButton>
@@ -1020,9 +1050,9 @@ onMounted(async () => {
             <UiTag v-if="detail.redLineFlag" tone="red"> 红线 </UiTag>
             <UiTag v-if="detail.auditRequired" tone="orange"> 需审核 </UiTag>
           </div>
-          <p v-if="detail.applicableTeachers" class="meta">适用：{{ detail.applicableTeachers }}</p>
+          <p class="meta">适用：{{ formatApplicability(detail.applicableTeachers) }}</p>
           <p v-if="detail.policyAlign" class="meta">政策对齐：{{ detail.policyAlign }}</p>
-          <UiButton size="sm" style="margin-top: 12px" :disabled="writing" @click="startEdit">
+          <UiButton size="sm" style="margin-top: var(--dp-space-component)" :disabled="writing" @click="startEdit">
             编辑
           </UiButton>
         </template>
@@ -1069,10 +1099,12 @@ onMounted(async () => {
             />
           </UiFormItem>
           <UiFormItem label="适用对象">
-            <UiInput
+            <UiSelect
               size="sm"
+              mode="multiple"
               v-model="editForm.applicableTeachers"
-              placeholder="正式码，逗号分隔，如 FULL_TIME,DUAL_TEACHER / ALL_TEACHERS"
+              :options="PORTFOLIO_INDICATOR_APPLICABILITY_OPTIONS"
+              placeholder="未选择时不限适用对象"
               :disabled="writing"
             />
           </UiFormItem>
@@ -1301,21 +1333,21 @@ onMounted(async () => {
 <style scoped>
 .toolbar {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-block);
   flex-wrap: wrap;
   align-items: center;
 }
 .obs-meta {
-  margin-left: 8px;
+  margin-left: var(--dp-space-component-tight);
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-xs);
 }
 .detail-link {
-  margin-left: 8px;
+  margin-left: var(--dp-space-component-tight);
 }
 .tree-foot {
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
@@ -1325,13 +1357,13 @@ onMounted(async () => {
 }
 .detail-tags {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   flex-wrap: wrap;
-  margin: 12px 0;
+  margin: var(--dp-space-component) 0;
 }
 .drawer-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component-tight);
 }
 </style>

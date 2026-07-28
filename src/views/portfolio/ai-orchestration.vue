@@ -17,6 +17,7 @@ import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import PortfolioArchiveWriteGuardStrip from '@/components/portfolio/PortfolioArchiveWriteGuardStrip.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -29,6 +30,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioAiTaskPolling } from '@/composables/usePortfolioAiTaskPolling'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
@@ -38,6 +40,10 @@ import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWrit
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { AiTaskStatusDescription } from '@/types/enums/ai-task-status-enum'
 import { PortfolioAiTaskTypeDescription } from '@/types/enums/portfolio-ai-task-type-enum'
+import {
+  PortfolioPolicyCheckModeCode,
+  PortfolioPolicyCheckModeDescription,
+} from '@/types/enums/portfolio-policy-check-mode-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -54,18 +60,35 @@ type AnalysisPollOutcome
     | 'ABORTED'
     | 'CONTRACT_ERROR'
 
+type MaterialRegisterOutcome
+  = | { kind: 'ready', materialId: string, newlyRegistered: boolean }
+    | { kind: 'aborted' }
+    | { kind: 'failed', error: unknown }
+
 const route = useRoute()
 const { targetTeacherId, scopeReady } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
-  = usePortfolioArchiveWriteGuard()
+const {
+  archiveWriteForbidden,
+  archiveWriteCapabilityUnknown,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+  loading: archiveWriteGuardLoading,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard()
 const { canPickTeachers, canManageTeacherAi } = usePortfolioTeacherAccess()
 
 const activeTab = ref<'ask' | 'policy'>(
   readRouteStringParam(route.query.tab) === 'policy' ? 'policy' : 'ask',
 )
 const loading = ref(false)
-const polling = ref(false)
+const {
+  polling,
+  timedOutTaskId,
+  pollStatusDescription,
+  pollUntilSettled,
+  invalidateOwner,
+} = usePortfolioAiTaskPolling()
 const selectedTeacherProgramId = ref<string>()
 const registeredMaterialId = ref<string>()
 const registeredMaterialFileNodeId = ref<string>()
@@ -121,6 +144,26 @@ const policyConclusionTone = computed<BadgeTone>(() => {
   return strictEnumTone(PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE, code, '政策匹配结论')
 })
 
+const isInformalPolicyCheck = computed(() => {
+  const detail = analysisDetail.value
+  if (!detail || detail.analysisType !== PortfolioAiAnalysisTypeCode.POLICY_MATCH) {
+    return false
+  }
+  const mode = detail.policyCheckMode
+  if (!mode) {
+    return true
+  }
+  return mode === PortfolioPolicyCheckModeCode.INFORMAL_FREE_TEXT
+})
+
+const policyCheckModeLabel = computed(() => {
+  const mode = analysisDetail.value?.policyCheckMode
+  if (!mode) {
+    return PortfolioPolicyCheckModeDescription[PortfolioPolicyCheckModeCode.INFORMAL_FREE_TEXT]
+  }
+  return strictEnumLabel(PortfolioPolicyCheckModeDescription, mode, '政策核验模式')
+})
+
 /** 清空当前教师绑定的材料上下文，避免跨教师残留旧材料。 */
 function resetMaterialContext() {
   registeredMaterialId.value = undefined
@@ -139,8 +182,8 @@ function resetAnalysisContext() {
 /** 教师范围切换后重置本页上下文，确保材料、专业、结果都回到当前教师。 */
 function resetTeacherScopeContext() {
   orchestrationToken.value += 1
+  invalidateOwner()
   loading.value = false
-  polling.value = false
   selectedTeacherProgramId.value = undefined
   resetMaterialContext()
   resetAnalysisContext()
@@ -199,10 +242,6 @@ const supportedOrchestrationAnalysis = computed(() => {
   )
 })
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 async function loadTeacherProgram() {
   if (!targetTeacherId.value) {
     return
@@ -260,35 +299,46 @@ async function loadRegisteredMaterial(materialId: string) {
   }
 }
 
-async function ensureMaterialRegistered(taskToken: number): Promise<string | null> {
+async function ensureMaterialRegistered(taskToken: number): Promise<MaterialRegisterOutcome> {
   if (
     registeredMaterialId.value
     && registeredMaterialFileNodeId.value === materialFileNodeId.value
     && registeredMaterialType.value === materialType.value
   ) {
-    return registeredMaterialId.value
+    return {
+      kind: 'ready',
+      materialId: registeredMaterialId.value,
+      newlyRegistered: false,
+    }
   }
   if (!targetTeacherId.value || !materialFileNodeId.value) {
     showFormValidationMessage('请先选择教师并上传材料文件')
-    return null
+    return { kind: 'aborted' }
   }
   const materialTitle = materialFileName.value?.trim() || '智能编排材料'
   const teacherId = targetTeacherId.value
   const fileNodeId = materialFileNodeId.value
   const currentMaterialType = materialType.value
-  const materialId = await portfolioMaterialApi.save({
-    teacherId,
-    materialType: currentMaterialType,
-    materialTitle,
-    fileNodeId,
-  })
-  if (orchestrationToken.value !== taskToken || targetTeacherId.value !== teacherId) {
-    return null
+  try {
+    const materialId = await portfolioMaterialApi.save({
+      teacherId,
+      materialType: currentMaterialType,
+      materialTitle,
+      fileNodeId,
+    })
+    if (orchestrationToken.value !== taskToken || targetTeacherId.value !== teacherId) {
+      return { kind: 'aborted' }
+    }
+    registeredMaterialId.value = materialId
+    registeredMaterialFileNodeId.value = fileNodeId
+    registeredMaterialType.value = currentMaterialType
+    return { kind: 'ready', materialId, newlyRegistered: true }
+  } catch (error) {
+    if (orchestrationToken.value !== taskToken) {
+      return { kind: 'aborted' }
+    }
+    return { kind: 'failed', error }
   }
-  registeredMaterialId.value = materialId
-  registeredMaterialFileNodeId.value = fileNodeId
-  registeredMaterialType.value = currentMaterialType
-  return materialId
 }
 
 function applyOrchestrationAnalysisDetail(detail: PortfolioAiAnalysisDetailVO): boolean {
@@ -312,42 +362,67 @@ async function pollAnalysis(
   taskId: string,
   taskToken = orchestrationToken.value,
 ): Promise<AnalysisPollOutcome> {
-  polling.value = true
-  try {
-    for (let attempt = 0; attempt < 60; attempt++) {
-      if (orchestrationToken.value !== taskToken) {
-        return 'ABORTED'
-      }
-      const task = await portfolioAiJobApi.get(taskId)
-      if (orchestrationToken.value !== taskToken) {
-        return 'ABORTED'
-      }
-      if (task.status === AiTaskStatusCode.COMPLETED) {
-        const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
-        if (orchestrationToken.value !== taskToken) {
-          return 'ABORTED'
-        }
-        return applyOrchestrationAnalysisDetail(detail)
-          ? AiTaskStatusCode.COMPLETED
-          : 'CONTRACT_ERROR'
-      }
-      if (task.status === AiTaskStatusCode.FAILED || task.status === AiTaskStatusCode.CANCELLED) {
-        if (orchestrationToken.value !== taskToken) {
-          return 'ABORTED'
-        }
-        showUserError(null, '智能任务失败，请在任务列表查看原因后重新提交')
-        return task.status
-      }
-      await sleep(2000)
-    }
+  const pollResult = await pollUntilSettled(
+    taskId,
+    () => orchestrationToken.value === taskToken,
+  )
+  if (pollResult.outcome === 'ABORTED') {
+    return 'ABORTED'
+  }
+  if (pollResult.outcome === AiTaskStatusCode.COMPLETED) {
     if (orchestrationToken.value !== taskToken) {
       return 'ABORTED'
     }
-    showUserError(null, '智能任务超时，请在任务列表查看结果')
-    return 'TIMEOUT'
+    const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
+    if (orchestrationToken.value !== taskToken) {
+      return 'ABORTED'
+    }
+    return applyOrchestrationAnalysisDetail(detail)
+      ? AiTaskStatusCode.COMPLETED
+      : 'CONTRACT_ERROR'
+  }
+  if (
+    pollResult.outcome === AiTaskStatusCode.FAILED
+    || pollResult.outcome === AiTaskStatusCode.CANCELLED
+  ) {
+    if (orchestrationToken.value !== taskToken) {
+      return 'ABORTED'
+    }
+    showUserError(null, '智能任务失败，请在任务列表查看原因后重新提交')
+    return pollResult.outcome
+  }
+  if (orchestrationToken.value !== taskToken) {
+    return 'ABORTED'
+  }
+  void message.info('智能任务仍在后台执行，可从任务中心查看或继续同步')
+  return 'TIMEOUT'
+}
+
+/** 超时后继续同步同一任务，不重新提交。 */
+async function continueTimedOutAiSync() {
+  const taskId = timedOutTaskId.value
+  if (!taskId || loading.value || polling.value) {
+    return
+  }
+  loading.value = true
+  const taskToken = orchestrationToken.value
+  try {
+    const outcome = await pollAnalysis(taskId, taskToken)
+    if (orchestrationToken.value !== taskToken) {
+      return
+    }
+    if (outcome === AiTaskStatusCode.COMPLETED) {
+      void message.success('智能任务结果已同步')
+      void loadMaterialTasks()
+    }
+  } catch (error) {
+    if (orchestrationToken.value !== taskToken) {
+      return
+    }
+    showUserError(error, '继续同步智能任务失败')
   } finally {
     if (orchestrationToken.value === taskToken) {
-      polling.value = false
+      loading.value = false
     }
   }
 }
@@ -379,14 +454,27 @@ async function submitAsk() {
   loading.value = true
   const taskToken = orchestrationToken.value
   resetAnalysisContext()
-  try {
-    const materialId = await ensureMaterialRegistered(taskToken)
-    if (!materialId) {
-      return
+  const registerOutcome = await ensureMaterialRegistered(taskToken)
+  if (registerOutcome.kind === 'aborted') {
+    if (orchestrationToken.value === taskToken) {
+      loading.value = false
     }
+    return
+  }
+  if (registerOutcome.kind === 'failed') {
+    showUserError(registerOutcome.error, '材料登记失败')
+    if (orchestrationToken.value === taskToken) {
+      loading.value = false
+    }
+    return
+  }
+  if (registerOutcome.newlyRegistered) {
+    void message.success(`材料已登记 #${registerOutcome.materialId}，可复用于后续任务`)
+  }
+  try {
     const submitResult = await portfolioAiOrchestrationApi.ask({
       teacherId: targetTeacherId.value!,
-      materialId,
+      materialId: registerOutcome.materialId,
       fileNodeId: materialFileNodeId.value,
       materialType: materialType.value,
       userQuestion: askForm.userQuestion.trim(),
@@ -407,7 +495,10 @@ async function submitAsk() {
     if (orchestrationToken.value !== taskToken) {
       return
     }
-    showUserError(error, '提交智能问数失败')
+    showUserError(
+      error,
+      `材料已登记 #${registerOutcome.materialId}，智能问数任务提交失败；可复用该材料重新提交任务`,
+    )
   } finally {
     if (orchestrationToken.value === taskToken) {
       loading.value = false
@@ -442,17 +533,30 @@ async function submitPolicyCheck() {
   loading.value = true
   const taskToken = orchestrationToken.value
   resetAnalysisContext()
-  try {
-    let materialId: string | undefined
-    let fileNodeId: string | undefined
-    if (policyForm.attachMaterial && materialFileNodeId.value) {
-      const registeredMaterialId = await ensureMaterialRegistered(taskToken)
-      if (!registeredMaterialId) {
-        return
+  let materialId: string | undefined
+  let fileNodeId: string | undefined
+  if (policyForm.attachMaterial && materialFileNodeId.value) {
+    const registerOutcome = await ensureMaterialRegistered(taskToken)
+    if (registerOutcome.kind === 'aborted') {
+      if (orchestrationToken.value === taskToken) {
+        loading.value = false
       }
-      materialId = registeredMaterialId
-      fileNodeId = materialFileNodeId.value
+      return
     }
+    if (registerOutcome.kind === 'failed') {
+      showUserError(registerOutcome.error, '材料登记失败')
+      if (orchestrationToken.value === taskToken) {
+        loading.value = false
+      }
+      return
+    }
+    if (registerOutcome.newlyRegistered) {
+      void message.success(`材料已登记 #${registerOutcome.materialId}，可复用于后续任务`)
+    }
+    materialId = registerOutcome.materialId
+    fileNodeId = materialFileNodeId.value
+  }
+  try {
     const submitResult = await portfolioAiOrchestrationApi.policyCheck({
       teacherId: targetTeacherId.value!,
       policyClauseText: policyForm.policyClauseText.trim(),
@@ -477,7 +581,12 @@ async function submitPolicyCheck() {
     if (orchestrationToken.value !== taskToken) {
       return
     }
-    showUserError(error, '提交政策核验失败')
+    showUserError(
+      error,
+      materialId
+        ? `材料已登记 #${materialId}，政策核验任务提交失败；可复用该材料重新提交任务`
+        : '提交政策核验失败',
+    )
   } finally {
     if (orchestrationToken.value === taskToken) {
       loading.value = false
@@ -557,15 +666,42 @@ usePortfolioScopedLoader(
         subtitle="材料须先登记材料库，再提交智能问数或政策核验编排任务"
       />
     </template>
-    <UiAlertStrip
-      v-if="archiveWriteForbidden"
-      tone="warning"
-      title="档案已封存写禁"
-      :description="archiveWriteBlockMessage"
-      class="mb-3"
+    <PortfolioArchiveWriteGuardStrip
+      :blocked="archiveWriteForbidden"
+      :capability-unknown="archiveWriteCapabilityUnknown"
+      :message="archiveWriteBlockMessage"
+      :loading="archiveWriteGuardLoading"
+      @confirm="() => void reloadLifecycleState()"
     />
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
     <template v-else>
+      <UiAlertStrip
+        v-if="polling && pollStatusDescription"
+        dense
+        tone="info"
+        title="智能任务同步中"
+        :description="pollStatusDescription"
+        class="dp-mb-component"
+      />
+      <UiAlertStrip
+        v-else-if="timedOutTaskId"
+        dense
+        tone="warning"
+        title="任务仍在后台执行"
+        :description="pollStatusDescription"
+        class="dp-mb-component"
+      >
+        <template #actions>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :loading="loading || polling"
+            @click="continueTimedOutAiSync"
+          >
+            继续同步
+          </UiButton>
+        </template>
+      </UiAlertStrip>
       <UiCard title="材料上下文">
         <UiSelect
           size="sm"
@@ -586,6 +722,8 @@ usePortfolioScopedLoader(
         />
         <p v-if="registeredMaterialId" class="ai-orchestration__hint">
           已绑定材料库记录 #{{ registeredMaterialId }}
+          <template v-if="materialFileName">（{{ materialFileName }}）</template>
+          ；任务失败时可直接复用，不会重复登记同一文件
         </p>
       </UiCard>
 
@@ -681,14 +819,21 @@ usePortfolioScopedLoader(
         </UiButton>
       </UiCard>
 
-      <UiCard v-else title="政策专项核验">
+      <UiCard v-else title="政策专项核验（临时自由文本）">
+        <UiAlertStrip
+          dense
+          tone="warning"
+          title="临时分析，不构成正式认定"
+          description="当前仅支持粘贴条款全文做 AI 辅助核验；结果非正式人事/资格结论。正式核验须绑定已发布政策库条款。"
+          class="dp-mb-component"
+        />
         <UiTextarea
           size="sm"
           v-model="policyForm.policyClauseText"
           class="ai-orchestration__field"
           :rows="4"
           :disabled="loading || polling"
-          placeholder="粘贴待核验的政策条款全文"
+          placeholder="粘贴待核验的政策条款全文（非正式临时分析）"
         />
         <UiTextarea
           size="sm"
@@ -713,7 +858,7 @@ usePortfolioScopedLoader(
           :disabled="!canOperate || loading || polling"
           @click="() => void submitPolicyCheck()"
         >
-          提交核验
+          提交临时核验
         </UiButton>
       </UiCard>
 
@@ -759,8 +904,24 @@ usePortfolioScopedLoader(
               && isAnalysisType(PortfolioAiAnalysisTypeCode.POLICY_MATCH)
           "
         >
+          <UiAlertStrip
+            v-if="isInformalPolicyCheck"
+            dense
+            tone="warning"
+            title="AI 辅助核验结果（非正式）"
+            description="本结果基于自由文本临时分析，不能作为人事、职称或资格正式认定依据；须人工复核证据后再决策。"
+            class="dp-mb-component"
+          />
+          <p class="ai-orchestration__meta">
+            核验模式：{{ policyCheckModeLabel }}
+            <template v-if="analysisDetail.modelName"> · 模型：{{ analysisDetail.modelName }}</template>
+            <template v-if="analysisDetail.generatedTime || analysisDetail.createTime">
+              · asOf：{{ analysisDetail.generatedTime || analysisDetail.createTime }}
+            </template>
+            <template v-if="analysisDetail.aiTaskId"> · 任务：#{{ analysisDetail.aiTaskId }}</template>
+          </p>
           <p v-if="analysisDetail.conclusionCode" class="ai-orchestration__meta">
-            结论：
+            AI 辅助判断：
             <UiTag :tone="policyConclusionTone">{{ policyConclusionLabel }}</UiTag>
           </p>
           <pre class="ai-orchestration__summary">{{ analysisDetail.summary }}</pre>
@@ -769,7 +930,7 @@ usePortfolioScopedLoader(
             <pre class="ai-orchestration__summary">{{ analysisDetail.policyClauseDigest }}</pre>
           </section>
           <section v-if="analysisDetail.issueItems.length" class="ai-orchestration__section">
-            <h4 class="ai-orchestration__section-title">缺口项</h4>
+            <h4 class="ai-orchestration__section-title">需人工确认项</h4>
             <ul class="ai-orchestration__list">
               <li v-for="(item, index) in analysisDetail.issueItems" :key="`gap-${index}`">
                 {{ item.issueTitle }}：{{ item.issueDescription }}
@@ -810,32 +971,32 @@ usePortfolioScopedLoader(
   display: block;
   width: 100%;
   max-width: 640px;
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .ai-orchestration__tabs {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .ai-orchestration__hint {
-  margin: 8px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .ai-orchestration__task-toolbar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 .ai-orchestration__task-list {
   list-style: none;
   padding: 0;
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
 }
 .ai-orchestration__task-list li {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 6px 12px;
-  padding: 10px 0;
+  gap: var(--dp-space-component-tight) var(--dp-space-component);
+  padding: var(--dp-space-component) 0;
   border-bottom: 1px solid var(--dp-border-subtle);
 }
 .ai-orchestration__task-failure {
@@ -846,22 +1007,22 @@ usePortfolioScopedLoader(
 .ai-orchestration__checkbox {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
   font-size: var(--dp-font-size-md);
 }
 .ai-orchestration__title {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-weight: 600;
 }
 .ai-orchestration__meta {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .ai-orchestration__summary {
-  margin: 0 0 12px;
-  padding: 12px;
+  margin: 0 0 var(--dp-space-component);
+  padding: var(--dp-space-component);
   max-height: 420px;
   overflow: auto;
   white-space: pre-wrap;
@@ -872,10 +1033,10 @@ usePortfolioScopedLoader(
   line-height: 1.6;
 }
 .ai-orchestration__section {
-  margin-top: 12px;
+  margin-top: var(--dp-space-component);
 }
 .ai-orchestration__section-title {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
@@ -886,6 +1047,6 @@ usePortfolioScopedLoader(
   line-height: 1.6;
 }
 .ai-orchestration__list li + li {
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
 }
 </style>

@@ -57,6 +57,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { showUserError } from '@/utils/error-handler'
 
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -170,17 +171,27 @@ function buildProgramProfileListQuery(): ProgramEvaluationProfileQueryRequest {
 const signalSummary = ref<ProgramEvaluationProfileSignalSummaryVO | null>(null)
 
 async function loadList() {
+  const scope = beginQualityScopeRequest()
   loading.value = true
   try {
     const listQuery = buildProgramProfileListQuery()
     const page = await programEvaluationProfileApi.page(listQuery)
+    if (scope.isStale()) {
+      return
+    }
     list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
     try {
       signalSummary.value = await programEvaluationProfileApi.signalSummary(listQuery)
+      if (scope.isStale()) {
+        return
+      }
     } catch (error) {
+      if (scope.isStale()) {
+        return
+      }
       signalSummary.value = null
       showUserError(error, '专业评价口径状态统计加载失败')
     }
@@ -189,10 +200,15 @@ async function loadList() {
       await loadList()
     }
   } catch (error) {
+    if (scope.isStale()) {
+      return
+    }
     signalSummary.value = null
     showUserError(error, '专业评价口径加载失败')
   } finally {
-    loading.value = false
+    if (!scope.isStale()) {
+      loading.value = false
+    }
   }
 }
 
@@ -602,7 +618,7 @@ onActivated(() => {
         </UiRow>
         <UiDivider orientation="left">样本范围</UiDivider>
         <UiFormItem>
-          <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
+          <div class="dp-space dp-space--wrap dp-space--tight">
             <UiCheckbox v-model="editor.includeGraduateSamples">毕业生</UiCheckbox>
             <UiCheckbox v-model="editor.includeEmployerSamples">用人单位</UiCheckbox>
             <UiCheckbox v-model="editor.includeAlumniSamples">校友</UiCheckbox>
@@ -698,23 +714,23 @@ onActivated(() => {
   }
 
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__panel-header {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel-title {
     margin: 0;
-    font-size: 15px;
+    font-size: var(--dp-type-panel-title-size);
     font-weight: 600;
     color: var(--dp-text-primary);
   }

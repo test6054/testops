@@ -63,8 +63,8 @@ onBeforeUnmount(stopTimer)
 .ai-generation-progress {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
-  padding: var(--dp-space-3) var(--dp-space-4);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface-subtle);
@@ -73,7 +73,7 @@ onBeforeUnmount(stopTimer)
 .ai-generation-progress__header {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
 }
 

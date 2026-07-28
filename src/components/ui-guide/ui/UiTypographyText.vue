@@ -4,6 +4,7 @@
     :class="{
       'ui-typography-text--strong': props.strong,
       'ui-typography-text--secondary': props.type === 'secondary',
+      'ui-typography-text--muted': props.type === 'muted',
       'ui-typography-text--danger': props.type === 'danger',
       'ui-typography-text--success': props.type === 'success',
       'ui-typography-text--warning': props.type === 'warning',
@@ -16,7 +17,7 @@
     :keyboard="props.keyboard"
     :mark="props.mark"
     :strong="props.strong"
-    :type="props.type"
+    :type="antType"
     :underline="props.underline"
     :content="props.content"
     v-bind="$attrs"
@@ -26,6 +27,8 @@
 </template>
 
 <script lang="ts" setup>
+import { computed } from 'vue'
+
 defineOptions({
   name: 'UiTypographyText',
   inheritAttrs: false,
@@ -41,7 +44,8 @@ const props = withDefaults(
     keyboard?: boolean
     mark?: boolean
     strong?: boolean
-    type?: 'secondary' | 'success' | 'warning' | 'danger'
+    /** muted 为本组件扩展，不传给 Ant Typography */
+    type?: 'secondary' | 'muted' | 'success' | 'warning' | 'danger'
     underline?: boolean
     content?: string
   }>(),
@@ -59,6 +63,8 @@ const props = withDefaults(
     content: undefined,
   },
 )
+
+const antType = computed(() => (props.type === 'muted' ? undefined : props.type))
 </script>
 
 <style lang="scss" scoped>
@@ -74,6 +80,10 @@ const props = withDefaults(
 
 .ui-typography-text--secondary {
   color: var(--dp-text-secondary);
+}
+
+.ui-typography-text--muted {
+  color: var(--dp-text-muted);
 }
 
 .ui-typography-text--danger {

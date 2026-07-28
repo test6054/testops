@@ -17,6 +17,9 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   }
 
   function setTeacher(teacherId: string): void {
+    if (currentTeacherId.value === teacherId) {
+      return
+    }
     currentTeacherId.value = teacherId
     bumpScopeChangeEpoch()
   }

@@ -1,23 +1,29 @@
 import type { ExamDetailResponse } from '@/apis/mark/exam'
 import type { SignalMetric } from '@/types/workbench'
 import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
+import { ExamWorkbenchPrepStepKeyCode as PrepStepKey } from '@/types/enums/exam-workbench-prep-step-key-enum'
 
 /** 制卷设计器页展示的准备子步骤（题目 + 制卷设计） */
-type LayoutDesignerStepKey = 'paperTemplate' | 'layoutDesign'
+type LayoutDesignerStepKey
+  = | PrepStepKey.PAPER_TEMPLATE
+    | PrepStepKey.LAYOUT_DESIGN
 
-const LAYOUT_DESIGNER_STEP_KEYS: LayoutDesignerStepKey[] = ['paperTemplate', 'layoutDesign']
+const LAYOUT_DESIGNER_STEP_KEYS: LayoutDesignerStepKey[] = [
+  PrepStepKey.PAPER_TEMPLATE,
+  PrepStepKey.LAYOUT_DESIGN,
+]
 
 const LAYOUT_DESIGNER_STEP_ORDER = new Map<LayoutDesignerStepKey, number>(
   LAYOUT_DESIGNER_STEP_KEYS.map((key, index) => [key, index]),
 )
 
 /**
- * 从全量准备步骤中筛出制卷设计器相关的 paperTemplate + layoutDesign，并按固定顺序排列。
+ * 从全量准备步骤中筛出制卷设计器相关的 PAPER_TEMPLATE + LAYOUT_DESIGN，并按固定顺序排列。
  */
 export function filterLayoutDesignerPrepSteps(steps: PrepStepCard[]): PrepStepCard[] {
   return steps
     .filter((step): step is PrepStepCard & { key: LayoutDesignerStepKey } =>
-      step.key === 'paperTemplate' || step.key === 'layoutDesign',
+      step.key === PrepStepKey.PAPER_TEMPLATE || step.key === PrepStepKey.LAYOUT_DESIGN,
     )
     .sort(
       (a, b) =>
@@ -26,7 +32,7 @@ export function filterLayoutDesignerPrepSteps(steps: PrepStepCard[]): PrepStepCa
     )
 }
 
-/** 制卷形态 KPI：独立答卷页 / 整卷作答，与纸型、印张分离。 */
+/** 制卷形态 KPI：单独试卷 / 试卷+答题页，与纸型、印张分离。 */
 function buildMaterialLayoutModeMetric(detail: ExamDetailResponse): SignalMetric {
   const modeLabel = detail.materialLayoutModeMessage
   if (!detail.materialLayoutMode) {
@@ -35,14 +41,14 @@ function buildMaterialLayoutModeMetric(detail: ExamDetailResponse): SignalMetric
       label: '制卷形态',
       value: '未选择',
       tone: 'orange',
-      helper: '请先在考试准备页保存制卷形态',
+      helper: '可选：在考试准备页保存制卷形态以增强识别',
     }
   }
   let helper: string | undefined
   if (detail.materialLayoutMode === 'ANSWER_SHEET') {
-    helper = detail.layoutEntryKindMessage ?? '标准答题卡制卷'
+    helper = detail.layoutEntryKindMessage ?? '答题页制卷扩展'
   } else if (detail.materialLayoutMode === 'FULL_PAPER') {
-    helper = detail.layoutEntryKindMessage ?? '有源整卷 PDF 制卷'
+    helper = detail.layoutEntryKindMessage ?? '单独试卷 PDF 制卷'
   }
   return {
     key: 'layout-mode',
@@ -59,7 +65,7 @@ function buildPaperTypeMetric(detail: ExamDetailResponse): SignalMetric {
   let helper: string | undefined
   if (!label) {
     helper = detail.materialLayoutMode === 'FULL_PAPER'
-      ? '上传整卷 PDF 后自动识别 A3/A4'
+      ? '上传单独试卷 PDF 后自动识别 A3/A4'
       : '请选择 A3 横版双栏或 A4 单栏模板'
   }
   return {

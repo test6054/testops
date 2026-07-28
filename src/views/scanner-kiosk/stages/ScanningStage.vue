@@ -45,9 +45,6 @@ const hasJob = computed(() => Boolean(workflow.currentJob.value))
 const job = computed(() => workflow.currentJob.value)
 const pages = computed(() => workflow.displayPages.value)
 const canvasEmptyTitle = computed(() => {
-  if (workflow.isWaitingForPaperFeed.value) {
-    return '等待扫描仪放纸…'
-  }
   if (job.value?.status === LocalScanJobStatusCode.SCANNING) {
     return job.value.scannedPages > 0
       ? `正在扫描（${job.value.scannedPages} 页）…`
@@ -62,14 +59,13 @@ const canvasEmptyTitle = computed(() => {
   if (job.value?.status === LocalScanJobStatusCode.FAILED) {
     return '扫描失败'
   }
-  return '等待扫描仪送纸…'
+  return '暂无预览影像'
 })
 const canvasEmptyHint = computed(() => {
-  if (workflow.isWaitingForPaperFeed.value) {
-    return '请将试卷放入进纸器（ADF），放纸后系统会自动开始扫描，无需再次点击开始。'
-  }
   if (job.value?.status === LocalScanJobStatusCode.SCANNING) {
-    return '扫描仪正在采集影像，首张完成后将自动显示预览。'
+    return job.value.scannedPages > 0
+      ? '扫描仪正在采集影像，完成后将自动显示预览。'
+      : '扫描仪正在启动采集；若进纸器无纸或设备异常，将显示明确失败原因，请放纸后重新开始。'
   }
   if (
     job.value?.status === LocalScanJobStatusCode.UPLOADING
@@ -83,7 +79,7 @@ const canvasEmptyHint = computed(() => {
     }
     return job.value.message || '请检查扫描仪连接与进纸器状态后重试。'
   }
-  return '送纸后将自动显示首张影像，请勿关闭工作台。'
+  return '请确认已开始扫描；若进纸器无纸或设备异常，将显示明确失败原因。'
 })
 const emptyScanTitle = computed(() =>
   workflow.activeBackendScanSession.value === true ? '存在未结束扫描进程' : '暂无扫描批次',
@@ -982,7 +978,7 @@ onMounted(() => {
 .tool-info {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   padding: 0 var(--kiosk-space-2);
   color: var(--kiosk-ink-on-canvas);
   min-width: 56px;
@@ -1102,7 +1098,7 @@ onMounted(() => {
 .thumb-status {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   font-size: var(--kiosk-fz-caption);
   color: var(--kiosk-ink-secondary);
 }

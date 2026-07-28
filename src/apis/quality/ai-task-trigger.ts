@@ -18,6 +18,7 @@ export interface AiTaskSubmitRequest {
   businessId: string
   programId?: string
   trainingPlanId?: string
+  accreditationCycleId?: string
   qualityCourseId?: string
   achievementResultId?: string
   reportId?: string
@@ -40,7 +41,8 @@ export interface AiTaskResetProcessingRequest {
 
 export const aiTaskTriggerApi = {
   submit: (data: AiTaskSubmitRequest) => http.post<AiTaskSubmitVO>(`${BASE}/submit`, data),
-  runNow: (id: string) => http.post<void>(`${BASE}/run-now`, { id }),
+  /** 抢占本人 PENDING 任务并入执行池；返回 PROCESSING，不阻塞 LLM */
+  runNow: (id: string) => http.post<AiTaskSubmitVO>(`${BASE}/run-now`, { id }),
   resetProcessing: (data: AiTaskResetProcessingRequest) =>
     http.post<void>(`${BASE}/reset-processing`, data),
 }

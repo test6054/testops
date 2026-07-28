@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  PfIndicatorStatusCode,
   PortfolioIndustryPackVO,
 
   PortfolioTenantIndicatorConfigVO} from '@/apis/portfolio/indicator-types'
@@ -26,6 +25,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -38,6 +38,12 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { PfIndicatorStatusCode } from '@/types/enums/pf-indicator-status-enum'
+import {
+  PORTFOLIO_INDICATOR_APPLICABILITY_OPTIONS,
+  PortfolioIndicatorApplicabilityCode,
+  PortfolioIndicatorApplicabilityDescription,
+} from '@/types/enums/portfolio-indicator-applicability-code'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -48,6 +54,13 @@ function modelStatusLabel(value: PfModelStatusCode): string {
 
 function indicatorStatusLabel(value: PfIndicatorStatusCode): string {
   return strictEnumLabel(PfIndicatorStatusDescription, value, '指标状态')
+}
+
+function formatApplicability(codes?: PortfolioIndicatorApplicabilityCode[]): string {
+  if (!codes?.length) return '继承平台范围'
+  return codes
+    .map((code) => strictEnumLabel(PortfolioIndicatorApplicabilityDescription, code, '指标适用对象'))
+    .join('、')
 }
 
 const router = useRouter()
@@ -82,16 +95,20 @@ const interactionLocked = computed(() => writing.value || editDrawerOpen.value)
 const editForm = reactive<{
   indicatorCode: string
   indicatorName: string
+  platformStatus: PfIndicatorStatusCode
   enabled: boolean
   standardScore?: number
   capScore?: number
+  applicableTeacherTypes: PortfolioIndicatorApplicabilityCode[]
   applicableScenes: PfSceneCode[]
 }>({
   indicatorCode: '',
   indicatorName: '',
+  platformStatus: PfIndicatorStatusCode.ACTIVE,
   enabled: true,
   standardScore: undefined,
   capScore: undefined,
+  applicableTeacherTypes: [],
   applicableScenes: [],
 })
 
@@ -128,9 +145,11 @@ const filteredConfigs = computed(() => {
 const configColumns: ColumnsType = [
   { title: '编码', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 88 },
   { title: '名称', dataIndex: 'indicatorName', key: 'indicatorName' },
+  { title: '平台状态', key: 'platformStatus', width: 96 },
   { title: '启用', key: 'enabled', width: 72 },
   { title: '标准分', dataIndex: 'standardScore', key: 'standardScore', width: 80 },
   { title: '封顶分', dataIndex: 'capScore', key: 'capScore', width: 80 },
+  { title: '适用对象', key: 'applicableTeacherTypes', width: 220, ellipsis: true },
   { title: '操作', key: 'actions', width: 120 },
 ]
 
@@ -147,7 +166,7 @@ const industryPackColumns: ColumnsType = [
   { title: '状态', key: 'status', width: 88 },
 ]
 
-async function loadConfig() {
+async function loadConfig(options?: { errorMessage?: string }) {
   const currentToken = ++requestToken.config
   loadState.config = true
   loadError.config = false
@@ -157,15 +176,14 @@ async function loadConfig() {
     configRows.value = rows
   } catch (error) {
     if (requestToken.config !== currentToken) return
-    configRows.value = []
     loadError.config = true
-    showUserError(error, '加载租户指标配置失败')
+    showUserError(error, options?.errorMessage ?? '加载租户指标配置失败')
   } finally {
     if (requestToken.config === currentToken) loadState.config = false
   }
 }
 
-async function loadIndustryPacks() {
+async function loadIndustryPacks(options?: { errorMessage?: string }) {
   const currentToken = ++requestToken.packs
   loadState.packs = true
   loadError.packs = false
@@ -175,18 +193,19 @@ async function loadIndustryPacks() {
     industryPacks.value = rows
   } catch (error) {
     if (requestToken.packs !== currentToken) return
-    industryPacks.value = []
     loadError.packs = true
-    showUserError(error, '加载行业包失败')
+    showUserError(error, options?.errorMessage ?? '加载行业包失败')
   } finally {
     if (requestToken.packs === currentToken) loadState.packs = false
   }
 }
 
-async function loadModel() {
+async function loadModel(options?: { errorMessage?: string, clearOnStart?: boolean }) {
   const targetSceneCode = sceneCode.value
   const currentToken = ++requestToken.model
-  model.value = null
+  if (options?.clearOnStart !== false) {
+    model.value = null
+  }
   loadState.model = true
   loadError.model = false
   try {
@@ -196,9 +215,8 @@ async function loadModel() {
     modelDirty.value = false
   } catch (error) {
     if (requestToken.model !== currentToken) return
-    model.value = null
     loadError.model = true
-    showUserError(error, '加载场景模型失败')
+    showUserError(error, options?.errorMessage ?? '加载场景模型失败')
   } finally {
     if (requestToken.model === currentToken) loadState.model = false
   }
@@ -219,17 +237,24 @@ async function enableAll() {
   try {
     const result = await portfolioIndicatorTenantApi.enableAllConfig()
     void message.success(`已启用 ${result.enabledCount} 项指标`)
-    const reloads = [loadConfig()]
-    if (model.value) reloads.push(loadModel())
-    await Promise.all(reloads)
   } catch (error) {
     showUserError(error, '启用全部平台指标失败')
+    return
   } finally {
     endOperation(operation)
   }
+  const reloads = [loadConfig({ errorMessage: '指标已启用，配置列表刷新失败' })]
+  if (model.value) {
+    reloads.push(loadModel({ errorMessage: '指标已启用，场景模型刷新失败', clearOnStart: false }))
+  }
+  await Promise.all(reloads)
 }
 
 async function toggleEnabled(record: PortfolioTenantIndicatorConfigVO, enabled: boolean) {
+  if (enabled && record.platformStatus !== PfIndicatorStatusCode.ACTIVE) {
+    showFormValidationMessage('平台指标已停用，不能在租户侧重新启用')
+    return
+  }
   const indicatorCode = record.indicatorCode
   const operation = `config:toggle:${indicatorCode}`
   if (!beginOperation(operation)) return
@@ -238,19 +263,27 @@ async function toggleEnabled(record: PortfolioTenantIndicatorConfigVO, enabled: 
     void message.success(enabled ? '已启用' : '已停用')
   } catch (error) {
     showUserError(error, '切换指标启用状态失败')
+    return
   } finally {
-    await Promise.all([loadConfig(), model.value ? loadModel() : Promise.resolve()])
     endOperation(operation)
   }
+  await Promise.all([
+    loadConfig({ errorMessage: '指标启停已保存，配置列表刷新失败' }),
+    model.value
+      ? loadModel({ errorMessage: '指标启停已保存，场景模型刷新失败', clearOnStart: false })
+      : Promise.resolve(),
+  ])
 }
 
 function openEdit(record: PortfolioTenantIndicatorConfigVO) {
   if (interactionLocked.value) return
   editForm.indicatorCode = record.indicatorCode
   editForm.indicatorName = record.indicatorName
+  editForm.platformStatus = record.platformStatus
   editForm.enabled = record.enabled
   editForm.standardScore = record.standardScore
   editForm.capScore = record.capScore
+  editForm.applicableTeacherTypes = [...(record.applicableTeacherTypes ?? [])]
   editForm.applicableScenes = [...(record.applicableScenes ?? [])]
   editDrawerOpen.value = true
 }
@@ -258,12 +291,23 @@ function openEdit(record: PortfolioTenantIndicatorConfigVO) {
 async function saveEdit() {
   const indicatorCode = editForm.indicatorCode
   if (!indicatorCode) return
+  if (editForm.enabled && editForm.platformStatus !== PfIndicatorStatusCode.ACTIVE) {
+    showFormValidationMessage('平台指标已停用，当前配置只能保存为停用状态')
+    return
+  }
   if (
     editForm.standardScore != null
     && editForm.capScore != null
     && editForm.capScore < editForm.standardScore
   ) {
     showFormValidationMessage('封顶分不能低于标准分')
+    return
+  }
+  if (
+    editForm.applicableTeacherTypes.includes(PortfolioIndicatorApplicabilityCode.ALL_TEACHERS)
+    && editForm.applicableTeacherTypes.length > 1
+  ) {
+    showFormValidationMessage('全体教师不能与其他适用对象同时选择')
     return
   }
   const operation = `save:config:${indicatorCode}`
@@ -273,18 +317,25 @@ async function saveEdit() {
     enabled: editForm.enabled,
     standardScore: editForm.standardScore,
     capScore: editForm.capScore,
+    applicableTeacherTypes: [...editForm.applicableTeacherTypes],
     applicableScenes: [...editForm.applicableScenes],
   }
   try {
     await portfolioIndicatorTenantApi.saveConfig(request)
     void message.success('配置已保存')
     editDrawerOpen.value = false
-    await Promise.all([loadConfig(), model.value ? loadModel() : Promise.resolve()])
   } catch (error) {
     showUserError(error, '保存指标配置失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await Promise.all([
+    loadConfig({ errorMessage: '配置已保存，列表刷新失败' }),
+    model.value
+      ? loadModel({ errorMessage: '配置已保存，场景模型刷新失败', clearOnStart: false })
+      : Promise.resolve(),
+  ])
 }
 
 async function saveModel() {
@@ -305,11 +356,17 @@ async function saveModel() {
       indicators,
     })
     void message.success('场景模型已保存')
-    if (sceneCode.value === targetSceneCode) await loadModel()
   } catch (error) {
     showUserError(error, '保存场景模型失败')
+    return
   } finally {
     endOperation(operation)
+  }
+  if (sceneCode.value === targetSceneCode) {
+    await loadModel({
+      errorMessage: '场景模型已保存，详情刷新失败',
+      clearOnStart: false,
+    })
   }
 }
 
@@ -325,13 +382,29 @@ async function trialModel() {
   if (!beginOperation(operation)) return
   try {
     await portfolioIndicatorTenantApi.saveModel({ sceneCode: targetSceneCode, indicators })
+  } catch (error) {
+    showUserError(error, '保存场景模型失败，未执行试算')
+    endOperation(operation)
+    return
+  }
+  try {
     const result = await portfolioIndicatorTenantApi.trialModel({ sceneCode: targetSceneCode })
     if (sceneCode.value !== targetSceneCode) return
     model.value = result
     modelDirty.value = false
-    void message.success(result.trialPassed ? '当前权重已保存，试算通过' : '试算未通过，请检查权重')
+    if (result.trialPassed) {
+      void message.success('草稿已保存，试算通过')
+    } else {
+      void message.warning('草稿已保存，试算未通过')
+    }
   } catch (error) {
-    showUserError(error, '场景模型试算失败')
+    if (sceneCode.value === targetSceneCode) {
+      showUserError(error, '草稿已保存，试算失败')
+      await loadModel({
+        errorMessage: '草稿已保存，场景模型刷新失败',
+        clearOnStart: false,
+      })
+    }
   } finally {
     endOperation(operation)
   }
@@ -361,11 +434,17 @@ async function freezeModel() {
   try {
     await portfolioIndicatorTenantApi.freezeModel({ sceneCode: targetSceneCode })
     void message.success('场景模型已冻结')
-    if (sceneCode.value === targetSceneCode) await loadModel()
   } catch (error) {
     showUserError(error, '冻结场景模型失败')
+    return
   } finally {
     endOperation(operation)
+  }
+  if (sceneCode.value === targetSceneCode) {
+    await loadModel({
+      errorMessage: '场景模型已冻结，详情刷新失败',
+      clearOnStart: false,
+    })
   }
 }
 
@@ -546,7 +625,12 @@ onMounted(loadConfig)
           >
             批量启用 T001–T100
           </UiButton>
-          <UiButton size="sm" :loading="loadState.config" :disabled="writing" @click="loadConfig">
+          <UiButton
+            size="sm"
+            :loading="loadState.config"
+            :disabled="writing"
+            @click="() => { void loadConfig() }"
+          >
             刷新
           </UiButton>
         </div>
@@ -567,9 +651,20 @@ onMounted(loadConfig)
               <UiSwitch
                 size="sm"
                 :checked="record.enabled"
-                :disabled="writing"
+                :disabled="
+                  writing
+                    || (!record.enabled && record.platformStatus !== PfIndicatorStatusCode.ACTIVE)
+                "
                 @change="handleConfigEnabledChange(record, $event)"
               />
+            </template>
+            <template v-else-if="column.key === 'platformStatus'">
+              <UiTag :tone="record.platformStatus === PfIndicatorStatusCode.ACTIVE ? 'green' : 'gray'">
+                {{ indicatorStatusLabel(record.platformStatus) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'applicableTeacherTypes'">
+              {{ formatApplicability(record.applicableTeacherTypes) }}
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
@@ -618,7 +713,7 @@ onMounted(loadConfig)
           </UiButton>
         </div>
         <UiSpin :spinning="loadState.model">
-          <UiEmpty size="sm" v-if="loadError.model" description="场景模型加载失败，请重试" />
+          <UiEmpty size="sm" v-if="loadError.model" description="场景模型加载失败" />
           <template v-if="model">
             <p class="meta">
               {{ sceneLabel }} · 状态 {{ modelStatusLabel(model.modelStatus) }} · 权重合计
@@ -735,7 +830,14 @@ onMounted(loadConfig)
       </p>
       <UiForm layout="vertical">
         <UiFormItem label="启用">
-          <UiSwitch size="sm" v-model="editForm.enabled" :disabled="writing" />
+          <UiSwitch
+            size="sm"
+            v-model="editForm.enabled"
+            :disabled="
+              writing
+                || (!editForm.enabled && editForm.platformStatus !== PfIndicatorStatusCode.ACTIVE)
+            "
+          />
         </UiFormItem>
         <UiFormItem label="标准分">
           <UiInputNumber
@@ -750,6 +852,16 @@ onMounted(loadConfig)
             size="sm"
             v-model="editForm.capScore"
             style="width: 100%"
+            :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="适用对象">
+          <UiSelect
+            size="sm"
+            mode="multiple"
+            v-model="editForm.applicableTeacherTypes"
+            :options="PORTFOLIO_INDICATOR_APPLICABILITY_OPTIONS"
+            placeholder="未选择时继承平台范围"
             :disabled="writing"
           />
         </UiFormItem>
@@ -775,13 +887,13 @@ onMounted(loadConfig)
 .toolbar,
 .bind-form {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-block);
   flex-wrap: wrap;
   align-items: center;
 }
 .meta {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }

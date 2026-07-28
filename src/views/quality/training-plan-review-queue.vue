@@ -7,21 +7,23 @@ import type {
   TrainingPlanVO,
 } from '@/apis/quality/training-plan'
 import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { trainingPlanApi } from '@/apis/quality/training-plan'
 import { ConfirmationStatusCode, ConfirmationStatusDescription } from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
-import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import UiTimeline from '@/components/ui-guide/ui/UiTimeline.vue'
 import UiTimelineItem from '@/components/ui-guide/ui/UiTimelineItem.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useAuthStore } from '@/stores/modules/auth'
 import { TrainingPlanStatusActionDescription } from '@/types/enums/training-plan-status-action-enum'
@@ -47,6 +49,13 @@ const diagnosis = ref<TrainingPlanDiagnosisVO | null>(null)
 const audits = ref<TrainingPlanStatusAuditVO[]>([])
 const reviewComment = ref('')
 const submitting = ref(false)
+/** 列表查询代际：Tab/分页切换后丢弃旧响应 */
+let pageLoadGeneration = 0
+/** 院审抽屉代际：planId + openGeneration，旧详情不得落地 */
+let reviewOpenGeneration = 0
+const checklistLoadError = ref(false)
+const diagnosisLoadError = ref(false)
+const auditsLoadError = ref(false)
 
 const authStore = useAuthStore()
 const hasConfirmPermission = computed(() => authStore.hasPermission('quality:plan:confirm'))
@@ -116,24 +125,42 @@ function confirmationStatusLabel(status?: ConfirmationStatusCode): string {
 }
 
 async function loadPage(): Promise<void> {
+  const scope = beginQualityScopeRequest()
+  const generation = ++pageLoadGeneration
+  const tab = activeTab.value
+  const currentPageNum = pageNum.value
+  const currentPageSize = pageSize.value
   loading.value = true
   beginLoad()
   try {
     const page = await trainingPlanApi.page({
-      pageNum: pageNum.value,
-      pageSize: pageSize.value,
+      pageNum: currentPageNum,
+      pageSize: currentPageSize,
       confirmationStatus: reviewStatus.value,
     })
+    if (
+      scope.isStale()
+      || generation !== pageLoadGeneration
+      || activeTab.value !== tab
+      || pageNum.value !== currentPageNum
+      || pageSize.value !== currentPageSize
+    ) {
+      return
+    }
     records.value = page.list
     total.value = page.total
     okLoad()
   } catch (error) {
-    records.value = []
-    total.value = 0
+    if (scope.isStale() || generation !== pageLoadGeneration) {
+      return
+    }
+    // 失败可见：保留上次成功队列，禁止把失败伪装成空队列
     failLoad()
     showUserError(error, '院审队列加载失败')
   } finally {
-    loading.value = false
+    if (!scope.isStale() && generation === pageLoadGeneration) {
+      loading.value = false
+    }
   }
 }
 
@@ -151,59 +178,110 @@ function handlePageChange(page: { current: number, pageSize: number }): void {
 }
 
 async function openReview(plan: TrainingPlanVO): Promise<void> {
+  const openGeneration = ++reviewOpenGeneration
+  const planId = plan.id
   selectedPlan.value = plan
   reviewComment.value = ''
   checklist.value = null
   diagnosis.value = null
   audits.value = []
+  checklistLoadError.value = false
+  diagnosisLoadError.value = false
+  auditsLoadError.value = false
   drawerOpen.value = true
   detailLoading.value = true
   try {
-    selectedPlan.value = await trainingPlanApi.detail(plan.id)
+    const detail = await trainingPlanApi.detail(planId)
+    if (openGeneration !== reviewOpenGeneration) {
+      return
+    }
+    selectedPlan.value = detail
     try {
-      checklist.value = await trainingPlanApi.checklist(plan.id)
+      const nextChecklist = await trainingPlanApi.checklist(planId)
+      if (openGeneration !== reviewOpenGeneration) {
+        return
+      }
+      checklist.value = nextChecklist
+      checklistLoadError.value = false
     } catch (error) {
+      if (openGeneration !== reviewOpenGeneration) {
+        return
+      }
       checklist.value = null
+      checklistLoadError.value = true
       showUserError(error, '院审检查清单加载失败')
     }
     try {
-      diagnosis.value = await trainingPlanApi.diagnose(plan.id)
+      const nextDiagnosis = await trainingPlanApi.diagnose(planId)
+      if (openGeneration !== reviewOpenGeneration) {
+        return
+      }
+      diagnosis.value = nextDiagnosis
+      diagnosisLoadError.value = false
     } catch (error) {
+      if (openGeneration !== reviewOpenGeneration) {
+        return
+      }
       diagnosis.value = null
+      diagnosisLoadError.value = true
       showUserError(error, '院审诊断加载失败')
     }
     try {
-      audits.value = await trainingPlanApi.statusAudits(plan.id)
+      const nextAudits = await trainingPlanApi.statusAudits(planId)
+      if (openGeneration !== reviewOpenGeneration) {
+        return
+      }
+      audits.value = nextAudits
+      auditsLoadError.value = false
     } catch (error) {
+      if (openGeneration !== reviewOpenGeneration) {
+        return
+      }
       audits.value = []
+      auditsLoadError.value = true
       showUserError(error, '院审状态审计加载失败')
     }
   } catch (error) {
+    if (openGeneration !== reviewOpenGeneration) {
+      return
+    }
     selectedPlan.value = null
     checklist.value = null
     diagnosis.value = null
     audits.value = []
+    checklistLoadError.value = true
+    diagnosisLoadError.value = true
+    auditsLoadError.value = true
     showUserError(error, '院审详情加载失败')
   } finally {
-    detailLoading.value = false
+    if (openGeneration === reviewOpenGeneration) {
+      detailLoading.value = false
+    }
   }
 }
 
 async function confirmPlan(): Promise<void> {
   if (!selectedPlan.value || !canConfirm.value) return
+  const planId = selectedPlan.value.id
+  const statusVersion = selectedPlan.value.statusVersion
   submitting.value = true
   try {
     const result = await trainingPlanApi.confirm({
-      id: selectedPlan.value.id,
-      statusVersion: selectedPlan.value.statusVersion,
+      id: planId,
+      statusVersion,
     })
-    selectedPlan.value = {
-      ...selectedPlan.value,
-      confirmationStatus: result.confirmationStatus,
-      statusVersion: result.statusVersion,
+    if (selectedPlan.value?.id === planId) {
+      selectedPlan.value = {
+        ...selectedPlan.value,
+        confirmationStatus: result.confirmationStatus,
+        statusVersion: result.statusVersion,
+      }
     }
     drawerOpen.value = false
     await loadPage()
+    if (loadError.value) {
+      void message.warning('方案已确认，队列刷新失败；请使用「刷新队列」同步')
+    }
   } catch (error) {
     showUserError(error, '培养方案确认发布失败')
   } finally {
@@ -214,15 +292,21 @@ async function confirmPlan(): Promise<void> {
 async function returnPlan(): Promise<void> {
   if (!selectedPlan.value || !canConfirm.value) return
   if (reviewComment.value.trim().length < 10) return
+  const planId = selectedPlan.value.id
+  const statusVersion = selectedPlan.value.statusVersion
+  const comment = reviewComment.value.trim()
   submitting.value = true
   try {
     await trainingPlanApi.returnForRevision({
-      id: selectedPlan.value.id,
-      statusVersion: selectedPlan.value.statusVersion,
-      comment: reviewComment.value.trim(),
+      id: planId,
+      statusVersion,
+      comment,
     })
     drawerOpen.value = false
     await loadPage()
+    if (loadError.value) {
+      void message.warning('方案已退回，队列刷新失败；请使用「刷新队列」同步')
+    }
   } catch (error) {
     showUserError(error, '培养方案退回失败')
   } finally {
@@ -233,15 +317,21 @@ async function returnPlan(): Promise<void> {
 async function revokePlan(): Promise<void> {
   if (!selectedPlan.value || !canRevoke.value) return
   if (reviewComment.value.trim().length < 10) return
+  const planId = selectedPlan.value.id
+  const statusVersion = selectedPlan.value.statusVersion
+  const comment = reviewComment.value.trim()
   submitting.value = true
   try {
     await trainingPlanApi.revoke({
-      id: selectedPlan.value.id,
-      statusVersion: selectedPlan.value.statusVersion,
-      comment: reviewComment.value.trim(),
+      id: planId,
+      statusVersion,
+      comment,
     })
     drawerOpen.value = false
     await loadPage()
+    if (loadError.value) {
+      void message.warning('方案已撤回，队列刷新失败；请使用「刷新队列」同步')
+    }
   } catch (error) {
     showUserError(error, '培养方案撤回失败')
   } finally {
@@ -251,9 +341,10 @@ async function revokePlan(): Promise<void> {
 
 async function remindPlan(): Promise<void> {
   if (!selectedPlan.value || !canRemind.value) return
+  const planId = selectedPlan.value.id
   submitting.value = true
   try {
-    const count = await trainingPlanApi.remindReview(selectedPlan.value.id)
+    const count = await trainingPlanApi.remindReview(planId)
     void message.success(`已向 ${count} 名确认人发送院审催办`)
   } catch (error) {
     showUserError(error, '培养方案院审催办失败')
@@ -262,11 +353,10 @@ async function remindPlan(): Promise<void> {
   }
 }
 
-onMounted(() => {
-  void loadPage()
-})
-onActivated(() => {
-  void loadPage()
+useQualityScopedLoader(loadPage, {
+  watchScope: false,
+  immediate: true,
+  reloadOnActivated: true,
 })
 </script>
 
@@ -376,7 +466,13 @@ onActivated(() => {
         </div>
 
         <UiAlertStrip
-          v-if="checklist && !checklist.passed"
+          v-if="checklistLoadError"
+          tone="error"
+          title="发布 Checklist 加载失败"
+          description="切换方案或关闭抽屉后重新打开；禁止把失败显示为尚无清单"
+        />
+        <UiAlertStrip
+          v-else-if="checklist && !checklist.passed"
           tone="error"
           :inline="false"
           title="发布 Checklist 未通过"
@@ -385,7 +481,13 @@ onActivated(() => {
         <UiAlertStrip v-else-if="checklist?.passed" tone="success" title="发布 Checklist 已通过" />
 
         <UiAlertStrip
-          v-if="diagnosis"
+          v-if="diagnosisLoadError"
+          tone="error"
+          title="院审诊断加载失败"
+          description="切换方案或关闭抽屉后重新打开"
+        />
+        <UiAlertStrip
+          v-else-if="diagnosis"
           :tone="diagnosis.checklistPassed ? 'info' : 'warning'"
           :inline="false"
           title="确认风险摘要"
@@ -448,7 +550,13 @@ onActivated(() => {
 
         <section class="training-plan-review-queue__section">
           <h4>院审审计</h4>
-          <UiTimeline v-if="audits.length">
+          <UiAlertStrip
+            v-if="auditsLoadError"
+            tone="error"
+            title="院审状态审计加载失败"
+            description="切换方案或关闭抽屉后重新打开；禁止把失败显示为尚无审计"
+          />
+          <UiTimeline v-else-if="audits.length">
             <UiTimelineItem v-for="audit in audits" :key="audit.id">
               <div class="training-plan-review-queue__audit-title">
                 {{ auditActionLabel[audit.actionCode] }} · {{ audit.createTime }}
@@ -472,45 +580,45 @@ onActivated(() => {
 <style scoped lang="scss">
 .training-plan-review-queue {
   display: grid;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 
   &__tabs,
   &__actions,
   &__drawer-meta {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
   &__drawer-meta {
-    margin-bottom: var(--dp-space-4);
+    margin-bottom: var(--dp-space-block);
     color: var(--dp-text-secondary);
   }
 
   &__section {
     display: grid;
-    gap: var(--dp-space-3);
-    margin-top: var(--dp-space-3);
-    padding-top: var(--dp-space-4);
+    gap: var(--dp-space-component);
+    margin-top: var(--dp-space-component);
+    padding-top: var(--dp-space-block);
     border-top: 1px solid var(--dp-border);
 
     h4 {
       margin: 0;
-      font-size: 15px;
-      font-weight: var(--dp-font-weight-semibold);
+      font-size: var(--dp-type-panel-title-size);
+      font-weight: var(--dp-font-weight-title);
       color: var(--dp-text-primary);
     }
   }
 
   &__audit-title {
     color: var(--dp-text-primary);
-    font-weight: var(--dp-font-weight-medium);
+    font-weight: var(--dp-font-weight-emphasis);
   }
 
   &__audit-meta,
   &__audit-comment {
-    margin-top: 4px;
+    margin-top: var(--dp-space-component-xs);
     color: var(--dp-text-secondary);
     font-size: var(--dp-font-size-sm);
   }

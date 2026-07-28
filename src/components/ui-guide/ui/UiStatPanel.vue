@@ -96,16 +96,16 @@ const hasHeader = computed(() => {
 .ui-stat-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .ui-stat-panel--compact {
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
 }
 
 .ui-stat-panel__list {
   display: grid;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
 }
 
 .ui-stat-panel--grid.ui-stat-panel--2col .ui-stat-panel__list,
@@ -130,11 +130,11 @@ const hasHeader = computed(() => {
 
 .ui-stat-panel--strip .ui-stat-panel__list {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--dp-space-3, 10px);
+  gap: var(--dp-space-component);
 }
 
 .ui-stat-panel--compact .ui-stat-panel__list {
-  gap: var(--dp-space-3, 10px);
+  gap: var(--dp-space-component);
 }
 
 @media (max-width: #{bp.$ant-grid-xl - 1px}) {

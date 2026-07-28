@@ -28,6 +28,7 @@
         dense
       />
 
+      <!-- 与壳层 surface 同用 block gap，避免内层 component 与外层 16px 混用 -->
       <div class="marking-task-pool-page">
         <WorkbenchSurfaceCard class="marking-task-pool-page__claim">
           <template #head>
@@ -37,7 +38,14 @@
             </div>
           </template>
 
-          <UiSkeletonState v-if="claimContextLoading" variant="card" compact />
+          <UiSkeletonState v-if="claimContextLoading === true" variant="card" compact />
+
+          <UiAlertStrip
+            v-else-if="claimContextLoadFailed"
+            tone="error"
+            title="领取条件加载失败"
+            dense
+          />
 
           <UiEmpty
             size="sm"
@@ -48,46 +56,59 @@
               <UiButton size="sm" variant="primary" @click="goMarkingOrg"> 前往阅卷安排 </UiButton>
             </template>
           </UiEmpty>
-          <UiForm v-else layout="inline" :model="claimForm" @submit.prevent="submitClaim">
-            <UiFormItem label="题组" required>
-              <UiSelect
-                size="sm"
-                v-model="claimForm.groupId"
-                :options="claimGroupOptions"
-                :loading="claimContextLoading === true"
-                placeholder="选择题组"
-                style="width: 240px"
-                allow-search
-                option-filter-prop="label"
-                @change="onClaimGroupChange"
-              />
-            </UiFormItem>
-            <UiFormItem :label="sessionSelectLabel" required>
-              <UiSelect
-                size="sm"
-                v-model="claimForm.sessionId"
-                :options="claimSessionOptions"
-                :disabled="!claimForm.groupId"
-                placeholder="选择该题组下的活跃会话"
-                style="width: 280px"
-                allow-clear
-              />
-            </UiFormItem>
-            <UiFormItem>
-              <div class="dp-space" style="--dp-space-gap: 8px">
-                <UiButton
-                  variant="primary"
+          <template v-else>
+            <UiForm layout="inline" :model="claimForm" @submit.prevent="submitClaim">
+              <UiFormItem label="题组" required>
+                <UiSelect
                   size="sm"
-                  :disabled="canClaim !== true"
-                  :loading="claiming === true"
-                  @click="submitClaim"
-                >
-                  <template #icon><PlusOutlined /></template>
-                  批量领取一批
-                </UiButton>
-              </div>
-            </UiFormItem>
-          </UiForm>
+                  v-model="claimForm.groupId"
+                  :options="claimGroupOptions"
+                  :loading="claimContextLoading"
+                  placeholder="选择题组"
+                  style="width: 240px"
+                  allow-search
+                  option-filter-prop="label"
+                  @change="onClaimGroupChange"
+                />
+              </UiFormItem>
+              <UiFormItem :label="sessionSelectLabel" required>
+                <UiSelect
+                  size="sm"
+                  v-model="claimForm.sessionId"
+                  :options="claimSessionOptions"
+                  :disabled="!claimForm.groupId"
+                  placeholder="选择该题组下的活跃会话"
+                  style="width: 280px"
+                  allow-clear
+                />
+              </UiFormItem>
+              <UiFormItem>
+                <div class="dp-space dp-space--tight">
+                  <UiButton
+                    variant="primary"
+                    size="sm"
+                    :disabled="canClaim !== true"
+                    :loading="claiming"
+                    @click="submitClaim"
+                  >
+                    <template #icon><PlusOutlined /></template>
+                    批量领取一批
+                  </UiButton>
+                </div>
+              </UiFormItem>
+            </UiForm>
+            <p v-if="claimPreviewText" class="marking-task-pool-page__claim-preview dp-text-muted">
+              {{ claimPreviewText }}
+            </p>
+            <UiAlertStrip
+              v-if="claimResultMessage"
+              :tone="claimResultTone"
+              :title="claimResultTitle"
+              :description="claimResultMessage"
+              dense
+              class="marking-task-pool-page__claim-result"
+            />
+          </template>
         </WorkbenchSurfaceCard>
 
         <WorkbenchSurfaceCard flush class="marking-task-pool-page__tasks">
@@ -101,6 +122,7 @@
                 v-if="canManageReviewerTaskWrites === true"
                 variant="outline"
                 size="sm"
+                :disabled="!!tasksLoadError"
                 @click="toggleBatchMode"
               >
                 {{ batchMode ? '退出批量' : '批量模式' }}
@@ -118,7 +140,7 @@
             />
 
             <UiBatchActionBar
-              v-if="batchMode && selectedRowKeys.length > 0"
+              v-if="batchMode && !tasksLoadError && selectedRowKeys.length > 0"
               :selected-count="selectedRowKeys.length"
               selection-label="份已选"
               description="须同题组 · 同题目 · 待批阅状态"
@@ -144,7 +166,7 @@
             pagination-mode="server"
             :columns="columns"
             :data-source="tasks"
-            :loading="loading === true"
+            :loading="loading"
             :total="taskPageTotal"
             row-key="id"
             size="middle"
@@ -152,14 +174,14 @@
             empty-kind="first-run"
             :empty-description="taskTableEmptyDescription"
             :custom-row="customTableRow"
-            :enable-selection="batchMode"
+            :enable-selection="batchMode && !tasksLoadError"
             :selected-row-keys="selectedRowKeys"
             @selection-change="handleSelectionChange"
             @page-change="handleTaskPageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'question'">
-                <div class="dp-space dp-space--vertical" style="--dp-space-gap: 2px">
+                <div class="dp-space dp-space--vertical dp-space--dense">
                   <UiTypographyText
                     v-if="record.taskUnit === AllocationUnitCode.WHOLE_PAPER"
                     strong
@@ -180,11 +202,11 @@
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'paperDisplay'">
-                <div class="dp-space dp-space--vertical" style="--dp-space-gap: 2px">
+                <div class="dp-space dp-space--vertical dp-space--dense">
                   <UiTypographyText strong>
                     {{ record.paperDisplay.primaryText }}
                   </UiTypographyText>
-                  <span v-if="record.paperDisplay.secondaryText" class="muted">
+                  <span v-if="record.paperDisplay.secondaryText" class="dp-text-muted">
                     {{ record.paperDisplay.secondaryText }}
                   </span>
                 </div>
@@ -196,7 +218,7 @@
                 <span>{{ record.reviewerName }}</span>
               </template>
               <template v-else-if="column.key === 'session'">
-                <div class="dp-space dp-space--vertical" style="--dp-space-gap: 2px">
+                <div class="dp-space dp-space--vertical dp-space--dense">
                   <UiTag
                     :tone="
                       record.markingPhase === MarkingSessionPhaseCode.TRIAL ? 'orange' : 'green'
@@ -205,13 +227,46 @@
                   >
                     {{ record.sessionStatusMessage }}
                   </UiTag>
-                  <span class="muted">{{ formatDateTime(record.sessionStartTime) }}</span>
+                  <span class="dp-text-muted">{{ formatDateTime(record.sessionStartTime) }}</span>
                 </div>
               </template>
               <template v-else-if="column.key === 'taskStatus'">
                 <UiTag :tone="taskStatusTone(record.taskStatus)" size="sm">
                   {{ taskStatusLabel(record.taskStatus) }}
                 </UiTag>
+              </template>
+              <template v-else-if="column.key === 'dualMark'">
+                <div v-if="record.dualMarkRole" class="dp-space dp-space--vertical dp-space--dense">
+                  <UiTag tone="blue" size="sm">{{ dualMarkRoleLabel(record.dualMarkRole) }}</UiTag>
+                  <UiTag
+                    v-if="record.taskStatus === MarkingTaskStatusCode.FINALIZED && !record.dualMarkFormalGradeStatus"
+                    tone="orange"
+                    size="sm"
+                  >
+                    等待对端
+                  </UiTag>
+                  <UiTag
+                    v-else-if="record.dualMarkFormalGradeStatus === GradeStatusCode.NEED_REVIEW"
+                    tone="orange"
+                    size="sm"
+                  >
+                    已进仲裁
+                  </UiTag>
+                  <UiTag
+                    v-else-if="record.dualMarkFormalGradeStatus === GradeStatusCode.CONFIRMED"
+                    tone="green"
+                    size="sm"
+                  >
+                    已合成
+                  </UiTag>
+                  <span
+                    v-else-if="record.dualMarkPeerTaskStatus"
+                    class="dp-text-muted"
+                  >
+                    对端{{ taskStatusLabel(record.dualMarkPeerTaskStatus) }}
+                  </span>
+                </div>
+                <span v-else class="dp-text-muted">单评</span>
               </template>
               <template v-else-if="column.key === 'allocatedTime'">
                 {{ formatDateTime(record.allocatedTime) }}
@@ -223,7 +278,7 @@
                 <span v-if="record.score !== undefined && record.score !== null">{{
                   record.score
                 }}</span>
-                <span v-else class="muted">-</span>
+                <span v-else class="dp-text-muted">-</span>
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
@@ -232,7 +287,7 @@
                   split
                   @action="() => goDetail(record)"
                 />
-                <span v-else class="muted">已结束</span>
+                <span v-else class="dp-text-muted">已结束</span>
               </template>
             </template>
           </UiDataTable>
@@ -254,8 +309,6 @@
 </template>
 
 <script lang="ts" setup>
-// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
-// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   FormalSessionResponse,
@@ -265,6 +318,8 @@ import type {
   TeacherClaimContextResponse,
   TrialSessionResponse,
 } from '@/apis/mark/marking-organization'
+import { dualMarkRoleLabel } from '@/apis/mark/dual-mark-role'
+import { GradeStatusCode } from '@/types/enums/grade-status-enum'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -309,6 +364,7 @@ import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJour
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkingTaskStream } from '@/composables/useMarkingTaskStream'
 import {
@@ -348,11 +404,14 @@ const claimEmptyDescription = computed(() =>
     : '当前暂无可领取的阅卷任务。请先在「阅卷安排」步骤中创建批阅会话。',
 )
 
-const taskTableEmptyDescription = computed(() =>
-  isTrialTaskPool.value
+const taskTableEmptyDescription = computed(() => {
+  if (tasksLoadError.value) {
+    return '任务列表加载失败；已禁止把失败显示为「暂无任务」'
+  }
+  return isTrialTaskPool.value
     ? '暂无待处理试评任务，领取后将在此展示'
-    : '当前无待处理任务，所有试卷可能已完成评阅',
-)
+    : '当前无待处理任务，所有试卷可能已完成评阅'
+})
 
 const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
@@ -412,6 +471,10 @@ const batchLayoutQuestionId = ref('')
 const batchFullScore = ref(0)
 const batchGroupId = ref('')
 const tasksLoadError = ref('')
+const claimContextLoadFailed = ref(false)
+const claimResultTitle = ref('')
+const claimResultMessage = ref('')
+const claimResultTone = ref<'success' | 'info' | 'warning' | 'error'>('info')
 /** 考试内已暂停的正评会话 ID；告警 / 领取门禁仅绑定当前选中的领取会话 */
 const pausedSessionIds = ref<Set<string>>(new Set())
 const isGroupLeader = ref(false)
@@ -475,6 +538,10 @@ function handleSelectionChange(keys: (string | number)[]): void {
 }
 
 function toggleBatchMode(): void {
+  if (tasksLoadError.value) {
+    void message.warning('任务列表加载失败，禁止进入批量给分')
+    return
+  }
   if (canManageReviewerTaskWrites.value !== true) {
     void message.warning('当前账号无阅卷任务写权限，无法进入批量给分')
     return
@@ -584,10 +651,10 @@ const groupLeaderStream = useMarkingTaskStream({
 })
 
 function allRequiredTaskStreamsReady(): boolean {
-  if (teacherTaskStream.ready.value !== true) {
+  if (!teacherTaskStream.ready.value) {
     return false
   }
-  return !(isGroupLeader.value === true && groupLeaderStream.ready.value !== true)
+  return !(isGroupLeader.value && !groupLeaderStream.ready.value)
 }
 
 function getPollingIntervalMs(): number {
@@ -630,6 +697,7 @@ const columns = computed<ColumnType<MarkingTaskResponse>[]>(() => [
   { title: '阅卷教师', key: 'reviewerName', width: 120 },
   { title: isTrialTaskPool.value ? '试评会话' : '正评会话', key: 'session', width: 150 },
   { title: '状态', key: 'taskStatus', width: 100 },
+  { title: '双评', key: 'dualMark', width: 120 },
   { title: '给分', key: 'score', width: 80 },
   { title: '分配时间', key: 'allocatedTime', width: 170 },
   { title: '提交时间', key: 'submittedTime', width: 170 },
@@ -654,7 +722,7 @@ async function loadTasks(options?: { silent?: boolean, resetPage?: boolean }): P
     }
     return
   }
-  if (options?.silent && loading.value === true) {
+  if (options?.silent && loading.value) {
     return
   }
   if (options?.resetPage) {
@@ -682,11 +750,13 @@ async function loadTasks(options?: { silent?: boolean, resetPage?: boolean }): P
     }
     taskListPolling.syncPolling()
   } catch (error) {
-    markTaskStore.clearTasks()
+    // 失败保真：保留上次成功列表，禁止 clear 成「暂无任务」
     const errorMessage = getUserErrorMessage(error, '阅卷任务列表加载失败')
     if (!options?.silent) {
       tasksLoadError.value = errorMessage
       showUserError(error, '阅卷任务列表加载失败')
+      batchMode.value = false
+      clearBatchSelection()
     }
   }
 }
@@ -789,11 +859,51 @@ const canManageReviewerTaskWrites = computed(
 
 const canClaim = computed(
   () =>
-    claimContext.value?.canClaimTasks === true
+    !claimContextLoadFailed.value
+    && claimContext.value?.canClaimTasks === true
     && !selectedClaimSessionPaused.value
     && !!claimForm.sessionId.trim()
     && !!claimForm.groupId.trim(),
 )
+
+const selectedClaimGroup = computed(() => {
+  const groupId = claimForm.groupId.trim()
+  if (!groupId) {
+    return null
+  }
+  return claimContext.value?.groups.find((item) => item.groupId === groupId) ?? null
+})
+
+const selectedClaimSessionPendingCount = computed(() => {
+  const group = selectedClaimGroup.value
+  const sessionId = claimForm.sessionId.trim()
+  if (!group || !sessionId) {
+    return null
+  }
+  if (isTrialTaskPool.value) {
+    const session = (group.activeTrialSessions ?? []).find((item) => item.id === sessionId)
+    return session?.pendingTaskCount ?? null
+  }
+  const session = (group.activeSessions ?? []).find((item) => item.id === sessionId)
+  return session?.pendingTaskCount ?? null
+})
+
+const claimPreviewText = computed(() => {
+  const group = selectedClaimGroup.value
+  if (!group || !claimForm.sessionId.trim()) {
+    return ''
+  }
+  const sessionPending = selectedClaimSessionPendingCount.value
+  const remainQuota = Math.max(0, group.loadLimit - group.reviewerInProgressCount)
+  const expectedClaim = Math.min(group.claimBatchSize, remainQuota, sessionPending ?? group.claimBatchSize)
+  const recycleText
+    = group.recycleTimeoutMinutes != null
+      ? `超时 ${group.recycleTimeoutMinutes} 分钟未提交可能被回收再分配`
+      : '当前题组未配置超时回收窗口'
+  const pendingText
+    = sessionPending == null ? '会话待领池计数不可用' : `会话待领/在手池约 ${sessionPending} 条`
+  return `题组「${group.groupName}」· 预计本批最多领取 ${expectedClaim} 条（策略批次 ${group.claimBatchSize}，在手 ${group.reviewerInProgressCount}/${group.loadLimit}）· ${pendingText} · ${recycleText}`
+})
 
 const claimGroupOptions = computed(() =>
   (claimContext.value?.groups ?? []).map((g) => ({
@@ -889,24 +999,32 @@ const taskFilterFields = computed<FilterField[]>(() => [
 
 async function loadClaimContext(): Promise<void> {
   if (!selectedExamId.value) return
+  claimContextLoadFailed.value = false
   try {
     await markTaskStore.loadClaimContext({
       examId: selectedExamId.value,
       markingPhase: markingPhase.value,
     })
+    claimContextLoadFailed.value = false
   } catch (error) {
+    claimContextLoadFailed.value = true
     showUserError(error, '领取条件加载失败')
   }
 }
 
 function onClaimGroupChange(): void {
   claimForm.sessionId = ''
+  claimResultMessage.value = ''
 }
 
 const claiming = ref(false)
 
 async function submitClaim(): Promise<void> {
-  if (claiming.value === true) {
+  if (claiming.value) {
+    return
+  }
+  if (claimContextLoadFailed.value) {
+    void message.warning('领取条件加载失败，无法领取')
     return
   }
   if (claimContext.value?.canClaimTasks !== true) {
@@ -917,29 +1035,73 @@ async function submitClaim(): Promise<void> {
     void message.warning('当前正评会话已暂停，暂停期间无法领取新任务')
     return
   }
-  if (canClaim.value !== true) {
+  if (!canClaim.value) {
     void message.warning(isTrialTaskPool.value ? '请选择题组和试评会话' : '请选择题组和正评会话')
     return
   }
+  const group = selectedClaimGroup.value
+  if (!group) {
+    void message.warning('请选择题组')
+    return
+  }
+  const confirmed = await confirmAsync({
+    title: '确认批量领取任务',
+    content: `将把题组「${group.groupName}」所选会话的待领任务绑定到本人。${claimPreviewText.value}`,
+    type: 'info',
+    okText: '确认领取',
+    cancelText: '取消',
+  })
+  if (!confirmed) {
+    return
+  }
   claiming.value = true
+  claimResultMessage.value = ''
   try {
-    const claimed = await markTaskStore.claimTasks({
-      sessionId: claimForm.sessionId.trim(),
-      groupId: claimForm.groupId.trim(),
-      markingPhase: markingPhase.value,
-    })
+    const claimed = await markTaskStore.claimTasks(
+      {
+        sessionId: claimForm.sessionId.trim(),
+        groupId: claimForm.groupId.trim(),
+        markingPhase: markingPhase.value,
+      },
+      { examId: selectedExamId.value ?? undefined },
+    )
     if (claimed.length === 0) {
-      void message.info('当前会话 / 题组没有可领取的任务')
-    } else {
-      void message.success(`成功领取 ${claimed.length} 个任务`)
-      await Promise.all([loadTasks(), loadClaimContext()])
+      claimResultTone.value = 'info'
+      claimResultTitle.value = '无可领任务'
+      claimResultMessage.value = '当前会话 / 题组没有可领取的任务'
+      void message.info(claimResultMessage.value)
       try {
-        await refreshSnapshot()
+        await loadClaimContext()
       } catch (error) {
-        showUserError(error, '考试工作台状态刷新失败')
+        showUserError(error, '领取条件刷新失败')
       }
+      return
+    }
+    claimResultTone.value = 'success'
+    claimResultTitle.value = '领取成功'
+    claimResultMessage.value = `已领取 ${claimed.length} 个任务并绑定到本人`
+    void message.success(claimResultMessage.value)
+    try {
+      await Promise.all([loadTasks(), loadClaimContext()])
+    } catch (error) {
+      claimResultTone.value = 'warning'
+      claimResultTitle.value = '领取已成功'
+      claimResultMessage.value = `已领取 ${claimed.length} 个任务，但列表或领取条件刷新失败；切换范围或离开再进入本页后查看最新状态`
+      showUserError(error, '领取已成功，但刷新失败')
+      return
+    }
+    try {
+      await refreshSnapshot()
+    } catch (error) {
+      claimResultTone.value = 'warning'
+      claimResultTitle.value = '领取已成功'
+      claimResultMessage.value = `已领取 ${claimed.length} 个任务，但阶段快照刷新失败`
+      showUserError(error, '考试工作台状态刷新失败')
     }
   } catch (error) {
+    claimResultTone.value = 'error'
+    claimResultTitle.value = '领取失败'
+    claimResultMessage.value = getUserErrorMessage(error, '领取阅卷任务失败')
     showUserError(error, '领取阅卷任务失败')
   } finally {
     claiming.value = false
@@ -997,8 +1159,12 @@ watch(
     claimForm.markingPhase = markingPhase.value
     pausedSessionIds.value = new Set()
     tasksLoadError.value = ''
+    claimContextLoadFailed.value = false
+    claimResultMessage.value = ''
     clearBatchSelection()
     batchMode.value = false
+    // 切考试立即清空旧列表，避免短暂展示上一场任务
+    markTaskStore.clearTasks()
     void loadTasks()
     void loadClaimContext()
     void loadGroupLeaderFlag()
@@ -1030,14 +1196,14 @@ watch(markingPhase, () => {
 .marking-task-pool-page {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-block);
   min-width: 0;
 
   &__claim-title,
   &__task-title {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     margin: 0;
     font-size: var(--dp-font-size-lg);
     font-weight: var(--dp-font-weight-title);
@@ -1049,18 +1215,24 @@ watch(markingPhase, () => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
     flex-wrap: wrap;
     width: 100%;
   }
-}
 
-.muted {
-  color: var(--dp-text-quaternary);
+  &__claim-preview {
+    margin: var(--dp-space-component-tight) 0 0;
+    font-size: var(--dp-font-size-sm);
+    line-height: 1.5;
+  }
+
+  &__claim-result {
+    margin-top: var(--dp-space-component-tight);
+  }
 }
 
 :deep(.marking-task-pool-row--highlight > td) {
-  background-color: var(--dp-primary-50);
-  transition: background-color 2s ease;
+  background-color: var(--dp-color-primary-bg);
+  transition: background-color var(--dp-duration-linger) var(--dp-ease-default);
 }
 </style>

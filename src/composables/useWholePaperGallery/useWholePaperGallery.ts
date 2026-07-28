@@ -336,6 +336,14 @@ export function useWholePaperGallery(
         failFormValidation(`请填写第 ${question.questionNo} 题给分`)
         return null
       }
+      if (questionForm.score < 0 || questionForm.score > question.fullScore) {
+        failFormValidation(
+          questionForm.score < 0
+            ? `第 ${question.questionNo} 题给分不能为负，须在 0 到满分 ${question.fullScore} 之间`
+            : `第 ${question.questionNo} 题给分不能超过满分 ${question.fullScore}`,
+        )
+        return null
+      }
       questionScores.push({
         layoutQuestionId: question.layoutQuestionId,
         score: questionForm.score,

@@ -195,7 +195,7 @@ export function layoutDesignPhaseLockReason(
   }
   switch (phase) {
     case LayoutDesignPhaseCode.QUESTIONS:
-      return '请先上传资料或生成答题卡'
+      return '请先上传资料或生成答题纸'
     case LayoutDesignPhaseCode.LAYOUT:
       return '请先完成资料入口并同步页底图'
     case LayoutDesignPhaseCode.REVIEW:

@@ -36,9 +36,9 @@ const toHome = () => {
 
 <style lang="scss" scoped>
 .system-logo {
-  height: 60px;
-  padding: 0 var(--dp-space-4);
-  color: var(--dp-text);
+  height: var(--dp-shell-header-height);
+  padding: 0 var(--dp-space-block);
+  color: var(--dp-text-primary);
   font-size: var(--dp-type-h1-size);
   font-weight: var(--dp-type-h1-weight);
   letter-spacing: -0.03em;
@@ -49,7 +49,7 @@ const toHome = () => {
   cursor: pointer;
   user-select: none;
   box-sizing: border-box;
-  border-bottom: 1px solid var(--dp-border-subtle);
+  border-bottom: 1px solid var(--dp-border);
   background: var(--dp-surface);
 
   &.collapsed {
@@ -67,17 +67,17 @@ const toHome = () => {
     width: 32px;
     height: 32px;
     border-radius: var(--dp-radius-control);
-    transition: border-radius 0.2s;
+    transition: border-radius var(--dp-duration-normal);
     overflow: hidden;
     flex-shrink: 0;
   }
 
   .system-name {
-    padding-left: var(--dp-space-2);
+    padding-left: var(--dp-space-component-tight);
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    transition: color 0.2s ease;
+    transition: color var(--dp-duration-normal) var(--dp-ease-default);
     line-height: 1.35;
     display: inline-flex;
     align-items: center;

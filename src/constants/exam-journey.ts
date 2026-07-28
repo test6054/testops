@@ -1,7 +1,6 @@
 import type { RouteLocationRaw } from 'vue-router'
 import type { MarkStageKey } from '@/stores/modules/markStage'
 import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
-import { resolveScanStageEntryRoute } from '@/utils/resolve-scan-stage-entry'
 
 /** 教师可见六步旅程键（不含 overview） */
 export type ExamJourneyKey = MarkTeacherDashboardJourneyKeyCode
@@ -94,17 +93,11 @@ export function resolveJourneyStep(journeyKey: ExamJourneyKey): ExamJourneyStepD
   return step
 }
 
-/** 顶部旅程轨点击默认入口；scan 按 scanAttentionCount 分流 */
+/** 顶部旅程轨点击结构默认入口；扫描智能落点由 nextAction START_SCAN / 入口合同决议，不在此分流 */
 export function resolveJourneyDefaultRoute(
   journeyKey: ExamJourneyKey,
   examId: string,
-  options?: { scanAttentionCount?: number },
 ): RouteLocationRaw {
-  if (journeyKey === MarkTeacherDashboardJourneyKeyCode.SCAN) {
-    return resolveScanStageEntryRoute(examId, {
-      scanAttentionCount: options?.scanAttentionCount,
-    })
-  }
   return {
     name: resolveJourneyStep(journeyKey).defaultRouteName,
     params: { examId },

@@ -4,9 +4,6 @@ import type {
   ArchiveVolumeSubmitChecklistItemVO,
 } from '@/apis/mark/archive-volume'
 import {
-  ArchiveIntegrityStatusCode,
-  ArchiveScoreCompletionStatusCode,
-  ArchiveScoreSourceCode,
   ArchiveVolumeStatusCode,
 } from '@/apis/mark/archive-volume'
 
@@ -15,31 +12,18 @@ interface SubmitGateInput {
     ArchiveVolumeResponse,
     | 'volumeStatus'
     | 'responsibleUserId'
-    | 'integrityStatus'
     | 'submitReady'
     | 'submitBlockHint'
     | 'hasBlockingRemediationForSubmit'
     | 'scoreSubmitReady'
-    | 'scoreSource'
-    | 'scoreCompletionStatus'
-    | 'scoreProofFileId'
-    | 'examGateOpen'
-    | 'fourPropertyStale'
-    | 'securityMarkPending'
-    | 'requireSelfCheckConfirm'
-    | 'selfCheckConfirmed'
-    | 'signOffReady'
     | 'canSubmitVolume'
     | 'departmentReviewEnabled'
   >
   currentUserId: string
-  /** 详情页 capabilities.canSubmitVolume，优先于 responsibleUserId 旧门禁 */
+  /** 详情页 capabilities.canSubmitVolume，优先于 volume.canSubmitVolume */
   canSubmitVolumeCapability?: boolean
   /** 租户/院系是否启用院系审核；列表/详情 capabilities 或卷响应 */
   departmentReviewEnabled?: boolean
-  volumeRole?: ArchiveVolumeResponse['volumeRole']
-  fourPropertyStale?: boolean
-  fourPropertyPassed?: boolean
   hasBlockingRemediationForSubmit?: boolean
   blockingItems?: ArchiveVolumeSubmitChecklistItemVO[]
 }
@@ -78,65 +62,27 @@ function volumeStatusAllowsSubmit(
 }
 
 /**
- * 列表与详情共用的「提交归档」门禁，与后端 capabilities + 提交前置条件对齐。
+ * 列表与详情共用的「提交归档」门禁。
+ * 提交就绪唯一真源为后端 volume.submitReady / scoreSubmitReady，禁止前端本地拼装清单结论。
  */
 export function canSubmitArchiveVolume(input: SubmitGateInput): boolean {
-  const { volume, fourPropertyStale, fourPropertyPassed } = input
+  const { volume } = input
   const departmentReviewEnabled = resolveDepartmentReviewEnabled(input)
   const blockingRemediation
     = input.hasBlockingRemediationForSubmit ?? volume.hasBlockingRemediationForSubmit
   if (!volumeStatusAllowsSubmit(volume.volumeStatus, departmentReviewEnabled)) return false
   if (blockingRemediation === true) return false
   if (canActAsSubmitOwner(input) !== true) return false
-  if (volume.submitReady === true) return true
-  if (volume.submitReady === false) return false
-  if (fourPropertyStale === true) return false
-  if (volume.securityMarkPending === true) return false
-  if (fourPropertyPassed !== true) return false
-  if (
-    volume.integrityStatus !== ArchiveIntegrityStatusCode.PASSED
-    && volume.integrityStatus !== ArchiveIntegrityStatusCode.WAIVED
-  ) {
-    return false
-}
-  if (!isScoreSubmitReady(volume)) return false
-  if (volume.requireSelfCheckConfirm === true) {
-    if (volume.selfCheckConfirmed !== true || volume.signOffReady !== true) {
-      return false
-    }
-  }
-  return true
+  return volume.submitReady === true
 }
 
-/** 与后端 assertScoreProof / submitReady 成绩分支一致 */
+/**
+ * 成绩提交就绪唯一真源为后端 scoreSubmitReady；字段缺失不得本地降级放行。
+ */
 export function isScoreSubmitReady(
-  volume: Pick<
-    ArchiveVolumeResponse,
-    | 'scoreSource'
-    | 'scoreCompletionStatus'
-    | 'scoreProofFileId'
-    | 'examGateOpen'
-    | 'scoreSubmitReady'
-  >,
+  volume: Pick<ArchiveVolumeResponse, 'scoreSubmitReady'>,
 ): boolean {
-  if (volume.scoreSubmitReady === true) return true
-  if (volume.scoreSubmitReady === false) return false
-  if (volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL) {
-    return volume.examGateOpen === true
-  }
-  if (
-    volume.scoreSource === ArchiveScoreSourceCode.TEACHING_AFFAIRS
-    || volume.scoreSource === ArchiveScoreSourceCode.OFFLINE_CONFIRMED
-  ) {
-    if (
-      volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED
-      || volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED
-    ) {
-      return true
-    }
-    return !!volume.scoreProofFileId
-  }
-  return true
+  return volume.scoreSubmitReady === true
 }
 
 export function describeSubmitBlockReason(input: SubmitGateInput): string | null {
@@ -158,6 +104,7 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
     return '存在未关闭整改任务，须关闭后再提交'
   }
   if (canActAsSubmitOwner(input) !== true) return null
+  if (volume.submitReady === true) return null
 
   const checklistMessage = findFirstBlockingMessage(input.blockingItems)
   if (checklistMessage) {
@@ -166,46 +113,7 @@ export function describeSubmitBlockReason(input: SubmitGateInput): string | null
   if (volume.submitBlockHint) {
     return volume.submitBlockHint
   }
-
-  if (volume.submitReady === false) {
-    if (volume.requireSelfCheckConfirm === true && volume.selfCheckConfirmed !== true) {
-      return '请先完成提交前自查确认'
-    }
-    if (volume.requireSelfCheckConfirm === true && volume.signOffReady === false) {
-      return '签字核查项未全部确认'
-    }
-    return '提交前置未满足，请完成编目、自查与完整性/四性/成绩检查'
-  }
-
-  if (
-    volume.integrityStatus !== ArchiveIntegrityStatusCode.PASSED
-    && volume.integrityStatus !== ArchiveIntegrityStatusCode.WAIVED
-  ) {
-    return '完整性未通过，请先执行完整性检查或授权豁免'
-  }
-  if ((input.fourPropertyStale ?? volume.fourPropertyStale) === true) {
-    return '四性结论已失效，请重新检测'
-  }
-  if (volume.securityMarkPending === true) {
-    return '密级定密待确认，请先完成定密确认并重新执行四性检测'
-  }
-  const fourPassed = input.fourPropertyPassed === true ? true : input.fourPropertyPassed === false ? false : undefined
-  if (fourPassed === false) {
-    return '四性检测未通过，请先执行四性检测'
-  }
-  if (!isScoreSubmitReady(volume)) {
-    if (volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL) {
-      return '线上阅卷双门禁未满足，暂不可提交'
-    }
-    return '成绩证明未完成，请先确认成绩或上传证明文件'
-  }
-  if (volume.requireSelfCheckConfirm === true && volume.selfCheckConfirmed !== true) {
-    return '请先完成提交前自查确认'
-  }
-  if (volume.requireSelfCheckConfirm === true && volume.signOffReady === false) {
-    return '签字核查项未全部确认'
-  }
-  return null
+  return '提交前置未满足，请完成编目、自查与完整性/四性/成绩检查'
 }
 
 export function canSubmitArchiveVolumeRow(
@@ -217,8 +125,6 @@ export function canSubmitArchiveVolumeRow(
     currentUserId,
     canSubmitVolumeCapability: record.canSubmitVolume,
     departmentReviewEnabled: record.departmentReviewEnabled,
-    volumeRole: record.volumeRole,
-    fourPropertyStale: record.fourPropertyStale,
     hasBlockingRemediationForSubmit: record.hasBlockingRemediationForSubmit,
   })
 }
@@ -233,9 +139,6 @@ export function canSubmitArchiveVolumeDetail(
     canSubmitVolumeCapability: detail.capabilities?.canSubmitVolume,
     departmentReviewEnabled:
       detail.capabilities?.departmentReviewEnabled ?? detail.volume.departmentReviewEnabled,
-    volumeRole: detail.volumeRole,
-    fourPropertyStale: detail.fourPropertyStale,
-    fourPropertyPassed: detail.latestFourPropertyCheck?.overallPassed === true ? true : detail.latestFourPropertyCheck?.overallPassed === false ? false : undefined,
     hasBlockingRemediationForSubmit: detail.hasBlockingRemediationForSubmit,
   })
 }
@@ -251,9 +154,6 @@ export function describeSubmitBlockReasonForDetail(
     canSubmitVolumeCapability: detail.capabilities?.canSubmitVolume,
     departmentReviewEnabled:
       detail.capabilities?.departmentReviewEnabled ?? detail.volume.departmentReviewEnabled,
-    volumeRole: detail.volumeRole,
-    fourPropertyStale: detail.fourPropertyStale,
-    fourPropertyPassed: detail.latestFourPropertyCheck?.overallPassed === true ? true : detail.latestFourPropertyCheck?.overallPassed === false ? false : undefined,
     hasBlockingRemediationForSubmit: detail.hasBlockingRemediationForSubmit,
     blockingItems,
   })

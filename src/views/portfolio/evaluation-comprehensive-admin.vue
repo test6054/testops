@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  PortfolioEvaluationSceneCode} from '@/apis/portfolio/enums';
+import type {
   PortfolioEvaluationComprehensiveAnalysisVO,
   PortfolioEvaluationComprehensiveTaskItemVO,
   PortfolioEvaluationComprehensiveTeacherRowVO,
@@ -10,11 +12,13 @@ import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
   PortfolioEvaluationModeDescription,
   PortfolioEvaluationSceneDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import {
   portfolioEvaluationEntryApi,
   portfolioEvaluationTaskApi,
@@ -25,23 +29,34 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { loadAllPages } from '@/utils/load-all-pages'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
+const router = useRouter()
 const loading = ref(false)
 const exporting = ref(false)
+const exportApplyOpen = ref(false)
+const exportPurpose = ref('')
 const tasksLoading = ref(false)
 const analysisRequestToken = ref(0)
+const workgroupRequestToken = ref(0)
+const taskListRequestToken = ref(0)
+const workgroupsLoadFailed = ref(false)
+const tasksLoadFailed = ref(false)
 const tasks = ref<PortfolioEvaluationTaskVO[]>([])
 const workgroups = ref<EvaluationWorkgroupVO[]>([])
 const analysis = ref<PortfolioEvaluationComprehensiveAnalysisVO | null>(null)
@@ -103,7 +118,7 @@ const taskColumns: ColumnsType<PortfolioEvaluationComprehensiveTaskItemVO> = [
 
 const teacherColumns: ColumnsType<PortfolioEvaluationComprehensiveTeacherRowVO> = [
   { title: '被评教师', dataIndex: 'subjectTeacherUserId', key: 'subjectTeacherUserId', width: 160 },
-  { title: '涉及场景', dataIndex: 'involvedSceneLabels', key: 'involvedSceneLabels', width: 160 },
+  { title: '涉及场景', dataIndex: 'involvedSceneCodes', key: 'involvedSceneCodes', width: 160 },
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
@@ -133,6 +148,22 @@ function evaluationSceneLabel(
   return strictEnumLabel(PortfolioEvaluationSceneDescription, scene, '评价任务场景')
 }
 
+function involvedSceneCodesLabel(codes?: string): string {
+  if (!codes) {
+    return '—'
+  }
+  return codes
+    .split('/')
+    .map((code) =>
+      strictEnumLabel(
+        PortfolioEvaluationSceneDescription,
+        code.trim() as PortfolioEvaluationSceneCode,
+        '评价任务场景',
+      ),
+    )
+    .join('/')
+}
+
 function buildAnalysisParams() {
   return {
     planYear: filter.planYear.trim() || undefined,
@@ -156,8 +187,9 @@ function canRunAnalysis(): boolean {
 }
 
 async function loadWorkgroups() {
+  const currentToken = ++workgroupRequestToken.value
   try {
-    workgroups.value = await loadAllPages(
+    const rows = await loadAllPages(
       ({ pageNum, pageSize }) =>
         evaluationWorkgroupApi.page({
           pageNum,
@@ -165,12 +197,22 @@ async function loadWorkgroups() {
         }),
       QUALITY_SELECTOR_PAGE_SIZE,
     )
+    if (workgroupRequestToken.value !== currentToken) {
+      return
+    }
+    workgroups.value = rows
+    workgroupsLoadFailed.value = false
   } catch (error) {
+    if (workgroupRequestToken.value !== currentToken) {
+      return
+    }
+    workgroupsLoadFailed.value = true
     showUserError(error, '加载评价工作组失败')
   }
 }
 
 async function loadTasks() {
+  const currentToken = ++taskListRequestToken.value
   tasksLoading.value = true
   try {
     const taskRows = await loadAllPages(
@@ -181,13 +223,23 @@ async function loadTasks() {
         }),
       QUALITY_SELECTOR_PAGE_SIZE,
     )
+    if (taskListRequestToken.value !== currentToken) {
+      return
+    }
     tasks.value = taskRows.filter((item) =>
       PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES.includes(item.taskStatus),
     )
+    tasksLoadFailed.value = false
   } catch (error) {
+    if (taskListRequestToken.value !== currentToken) {
+      return
+    }
+    tasksLoadFailed.value = true
     showUserError(error, '加载评价任务失败')
   } finally {
-    tasksLoading.value = false
+    if (taskListRequestToken.value === currentToken) {
+      tasksLoading.value = false
+    }
   }
 }
 
@@ -220,19 +272,41 @@ async function runAnalysis() {
   }
 }
 
-async function exportAnalysis() {
-  if (!analysis.value || !analysisParamsSnapshot.value) {
+function openExportApply() {
+  if (!analysis.value || !analysisParamsSnapshot.value || exporting.value) {
     return
+  }
+  exportPurpose.value = ''
+  exportApplyOpen.value = true
+}
+
+async function submitExportApply() {
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return Promise.reject(new Error('导出用途为空'))
+  }
+  const snapshot = analysisParamsSnapshot.value
+  if (!analysis.value || !snapshot || exporting.value) {
+    return Promise.reject(new Error('导出申请进行中'))
   }
   exporting.value = true
   try {
-    const result = await portfolioEvaluationEntryApi.exportComprehensiveAnalysis(
-      analysisParamsSnapshot.value,
-    )
-    await downloadPortfolioExcelExport(result)
-    void message.success(`已导出 ${result.rowCount} 条填报`)
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.EVALUATION_COMPREHENSIVE_ANALYSIS,
+      businessRef: {
+        planYear: snapshot.planYear,
+        evaluationWorkgroupId: snapshot.workgroupId,
+        evaluationTaskIds: snapshot.evaluationTaskIds,
+      },
+      exportPurpose: purpose,
+    })
+    exportApplyOpen.value = false
+    void message.success('已提交多元评价综合分析导出审批')
+    await router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出综合分析失败')
+    showUserError(error, '提交多元评价综合分析导出审批失败')
+    return Promise.reject(error)
   } finally {
     exporting.value = false
   }
@@ -269,6 +343,18 @@ onMounted(async () => {
     <template #context>
       <ContextBar title="评价综合分析" subtitle="多任务数据采集 · 跨任务汇总 · 表格文件导出" />
     </template>
+    <UiAlertStrip
+      v-if="workgroupsLoadFailed"
+      tone="error"
+      title="评价工作组加载失败"
+      class="dp-mb-component"
+    />
+    <UiAlertStrip
+      v-if="tasksLoadFailed"
+      tone="error"
+      title="评价任务加载失败"
+      class="dp-mb-component"
+    />
     <UiCard>
       <div class="filter-row">
         <UiSelect
@@ -304,8 +390,8 @@ onMounted(async () => {
         >
           分析
         </UiButton>
-        <UiButton size="sm" :loading="exporting" :disabled="!analysis" @click="exportAnalysis">
-          导出表格文件
+        <UiButton size="sm" :loading="exporting" :disabled="!analysis" @click="openExportApply">
+          申请导出
         </UiButton>
       </div>
       <UiEmpty
@@ -320,7 +406,7 @@ onMounted(async () => {
         description="按评价组、年度或任务范围筛选后，点击工具栏「分析」生成跨任务汇总"
       />
       <template v-else-if="analysis">
-        <UiStatPanel :items="kpiItems" compact style="margin-top: 16px" />
+        <UiStatPanel :items="kpiItems" compact style="margin-top: var(--dp-space-block)" />
         <h3 class="section-title">任务汇总</h3>
         <UiDataTable
           pagination-mode="none"
@@ -361,9 +447,12 @@ onMounted(async () => {
                 )
               }}
             </template>
+            <template v-else-if="column.key === 'involvedSceneCodes'">
+              {{ involvedSceneCodesLabel(record.involvedSceneCodes) }}
+            </template>
             <template v-else-if="column.key === 'lifecycleStatus'">
               <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+                {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
               </UiTag>
               <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
               <span v-else-if="!record.lifecycleStatus">-</span>
@@ -390,6 +479,21 @@ onMounted(async () => {
         </UiDataTable>
       </template>
     </UiCard>
+    <UiDialog
+      v-model:open="exportApplyOpen"
+      title="申请导出多元评价综合分析"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="submitExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="exportPurpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -397,11 +501,11 @@ onMounted(async () => {
 .filter-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
 }
 .section-title {
-  margin: 16px 0 8px;
+  margin: var(--dp-space-block) 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
 }

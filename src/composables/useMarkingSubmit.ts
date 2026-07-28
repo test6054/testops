@@ -138,9 +138,19 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       showFormValidationMessage('请填写教师给分')
       return null
     }
+    const score = options.form.score
+    const fullScore = options.questionView.value.fullScore
+    if (score < 0 || score > fullScore) {
+      showFormValidationMessage(
+        score < 0
+          ? `给分不能为负，须在 0 到满分 ${fullScore} 之间`
+          : `给分不能超过满分 ${fullScore}`,
+      )
+      return null
+    }
     return {
       layoutQuestionId: options.questionView.value.layoutQuestionId,
-      score: options.form.score,
+      score,
       annotationText: options.form.annotationNote?.trim() || undefined,
       reviewSuggestion: options.form.reviewSuggestion?.trim() || undefined,
       correlationId: createCorrelationId('question', options.questionView.value.layoutQuestionId),
@@ -179,6 +189,8 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       }
       if (item.groupId !== currentTask.groupId) return false
       if (item.taskUnit === 'WHOLE_PAPER') return false
+      // 双评任务禁止同题批量套用，须逐卷提交后等待对端解算
+      if (item.dualMarkRole || currentTask.dualMarkRole) return false
       return item.questionNo === currentTask.questionNo
     })
   }
@@ -393,17 +405,20 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   }
 
   function continueAfterSubmit(): void {
+    const dualHint = options.task.value?.dualMarkRole
+      ? '（双评：正式分待双方齐备后解算）'
+      : ''
     if (options.nextTaskId.value) {
       if (!applyModalOpen.value) {
         void message.success(
-          `阅卷任务已提交，已切换到${options.isWholePaperTask.value ? '下一未阅份' : '下一未阅'}`,
+          `阅卷任务已提交${dualHint}，已切换到${options.isWholePaperTask.value ? '下一未阅份' : '下一未阅'}`,
         )
         options.goToTask(options.nextTaskId.value)
       }
       return
     }
     void message.success(
-      `阅卷任务已提交，当前批次无更多未阅，已停在最后${options.isWholePaperTask.value ? '一份' : '一题'}`,
+      `阅卷任务已提交${dualHint}，当前批次无更多未阅，已停在最后${options.isWholePaperTask.value ? '一份' : '一题'}`,
     )
     void options.loadTask()
   }

@@ -19,6 +19,7 @@ import type { PortfolioNationalReportStatusCode } from '@/types/enums/portfolio-
 import type { PortfolioNationalTeacherSyncDirectionEnum } from '@/types/enums/portfolio-national-teacher-sync-direction-enum'
 import type { PortfolioSyncTriggerTypeCode } from '@/types/enums/portfolio-sync-trigger-type-enum'
 import http from '@/config/axios'
+import { ExcelImportSceneKeyCode } from '@/types/enums/excel-import-scene-key-enum'
 
 export interface PortfolioNationalTeacherInboundRecord {
   teacherNumber: string
@@ -53,7 +54,7 @@ export interface PortfolioIntegrationConnectionConfigDto {
   requestEnvelope?: string
   recordElementLocalName?: string
   readTimeoutSeconds?: number
-  excelImportSceneKey?: string
+  excelImportSceneKey?: ExcelImportSceneKeyCode
   sourceFileNodeId?: string
   importContext?: PortfolioIntegrationExcelImportContextDto
   batchSize?: number
@@ -76,14 +77,14 @@ export interface PortfolioIntegrationDatasourceVO {
 
 export const PORTFOLIO_INTEGRATION_PASSWORD_MASK = '********'
 
-export const PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS = [
-  { value: 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT', label: '科研权威事实导入' },
-  { value: 'PORTFOLIO_DEVELOPMENT_RECORD', label: '发展记录导入' },
-  { value: 'PORTFOLIO_DEVELOPMENT_PLAN_HISTORY', label: '发展计划历史导入' },
-  { value: 'PORTFOLIO_DUAL_TEACHER', label: '双师认定导入' },
-  { value: 'PORTFOLIO_EXTERNAL_TEACHER', label: '外聘教师导入' },
-  { value: 'PORTFOLIO_INDICATOR_DEFINITION', label: '指标定义导入' },
-] as const
+export const PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS: Array<{ value: ExcelImportSceneKeyCode, label: string }> = [
+  { value: ExcelImportSceneKeyCode.PORTFOLIO_SCIENTIFIC_RESEARCH_FACT, label: '科研权威事实导入' },
+  { value: ExcelImportSceneKeyCode.PORTFOLIO_DEVELOPMENT_RECORD, label: '发展记录导入' },
+  { value: ExcelImportSceneKeyCode.PORTFOLIO_DEVELOPMENT_PLAN_HISTORY, label: '发展计划历史导入' },
+  { value: ExcelImportSceneKeyCode.PORTFOLIO_DUAL_TEACHER, label: '双师认定导入' },
+  { value: ExcelImportSceneKeyCode.PORTFOLIO_EXTERNAL_TEACHER, label: '外聘教师导入' },
+  { value: ExcelImportSceneKeyCode.PORTFOLIO_INDICATOR_DEFINITION, label: '指标定义导入' },
+]
 
 export interface PortfolioIntegrationFieldMappingVO {
   id: string
@@ -104,9 +105,9 @@ export interface PortfolioIntegrationSyncTaskVO {
   pathwayCode: PortfolioIntegrationPathwayCodeEnum
   taskStatus: PortfolioSyncTaskStatusEnum
   triggerType: PortfolioSyncTriggerTypeCode
-  successCount: number
-  failedCount: number
-  skippedCount: number
+  successCount?: number | null
+  failedCount?: number | null
+  skippedCount?: number | null
   errorSummary?: string
   startedTime?: string
   finishedTime?: string
@@ -131,14 +132,12 @@ export interface PortfolioIntegrationHealthDashboardVO {
 
 export interface PortfolioIntegrationChannelPathwayOption {
   pathwayCode: PortfolioIntegrationPathwayCodeEnum
-  pathwayLabel: string
   configurable?: boolean
   executable?: boolean
 }
 
 export interface PortfolioIntegrationChannelPathwayMatrixChannelRow {
   channelCode: PortfolioIntegrationChannelCodeEnum
-  channelLabel: string
   teacherCvChannel?: boolean
   pathways?: PortfolioIntegrationChannelPathwayOption[]
 }
@@ -244,14 +243,11 @@ export interface PortfolioNationalReportIssueVO {
   issueCodeList?: PortfolioNationalReportIssueCode[]
   issueDetails?: string[]
   status: PortfolioNationalReportIssueStatusCode
-  statusLabel?: string
   fixedTime?: string
   fixRemark?: string
   createTime?: string
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  /** 生命周期状态中文标签 */
-  lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -268,8 +264,8 @@ export interface PortfolioNationalReportIssueVO {
 export interface PortfolioNationalReportBatchVO {
   id: string
   syncTaskId: string
-  successCount: number
-  failedCount: number
+  successCount?: number | null
+  failedCount?: number | null
   packageJson?: string
   reportStatus?: PortfolioNationalReportStatusCode
   artifactFileNodeId?: string

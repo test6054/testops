@@ -21,6 +21,9 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import {
+  ArchiveBusinessTypeDescription,
+} from '@/types/enums/archive-business-type-enum'
 import { QualityArchiveDestructionLedgerExportDecisionDescription } from '@/types/enums/quality-archive-destruction-ledger-export-decision-enum'
 import {
   ALL_QUALITY_ARCHIVE_DESTRUCTION_STATUS_CODES,
@@ -89,7 +92,7 @@ const filterFields = computed<FilterField[]>(() => [
 
 const columns: ColumnsType<ArchiveDestructionLedgerRowVO> = [
   { title: '归档编号', dataIndex: 'archiveCode', width: 160 },
-  { title: '业务类型', dataIndex: 'businessType', width: 140 },
+  { title: '业务类型', key: 'businessType', width: 140 },
   { title: '销毁状态', key: 'destructionStatus', width: 120 },
   { title: '清册决议', key: 'ledgerExportDecision', width: 120 },
   { title: '申请原因', dataIndex: 'requestReason', ellipsis: true },
@@ -118,6 +121,10 @@ function ledgerDecisionLabel(value?: QualityArchiveDestructionLedgerExportDecisi
     value,
     '清册导出决议',
   )
+}
+
+function businessTypeLabel(value: ArchiveDestructionLedgerRowVO['businessType']): string {
+  return strictEnumLabel(ArchiveBusinessTypeDescription, value, '业务类型')
 }
 
 function buildQuery(): ArchiveDestructionLedgerPageRequest {
@@ -236,7 +243,10 @@ onMounted(() => {
         @page-change="loadLedger"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'destructionStatus'">
+          <template v-if="column.key === 'businessType'">
+            {{ businessTypeLabel(record.businessType) }}
+          </template>
+          <template v-else-if="column.key === 'destructionStatus'">
             <UiTag :tone="destructionStatusTone(record.destructionStatus)" size="sm">
               {{ destructionStatusLabel(record.destructionStatus) }}
             </UiTag>

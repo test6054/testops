@@ -67,27 +67,27 @@ const tipLine = computed(() => {
 <style scoped lang="scss">
 .exam-prep-scenario {
   &--compact &__collapse :deep(.ant-collapse-header) {
-    padding: 6px 12px 8px !important;
+    padding: var(--dp-space-component-tight) var(--dp-space-component) var(--dp-space-component-tight) !important;
   }
 
   &--compact &__collapse :deep(.ant-collapse-content-box) {
-    padding: 0 12px 8px !important;
+    padding: 0 var(--dp-space-component) var(--dp-space-component-tight) !important;
   }
 
   &__collapse :deep(.ant-collapse-header) {
     align-items: flex-start !important;
-    padding: 10px 12px 8px !important;
+    padding: var(--dp-space-component) var(--dp-space-component-tight) !important;
   }
 
   &__collapse :deep(.ant-collapse-content-box) {
-    padding: 0 12px 8px !important;
+    padding: 0 var(--dp-space-component) var(--dp-space-component-tight) !important;
   }
 
   &__header {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding-right: 8px;
+    padding-right: var(--dp-space-component-tight);
     min-width: 0;
   }
 
@@ -95,7 +95,7 @@ const tipLine = computed(() => {
     display: flex;
     align-items: baseline;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__title {
@@ -130,13 +130,13 @@ const tipLine = computed(() => {
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__steps li {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
     line-height: 1.45;
     color: var(--dp-text-primary);
@@ -149,7 +149,7 @@ const tipLine = computed(() => {
     border-radius: var(--dp-radius-xs);
     background: var(--dp-color-primary-bg);
     color: var(--dp-color-primary);
-    font-size: var(--dp-font-size-xxs);
+    font-size: var(--dp-font-size-xs);
     font-weight: 600;
     line-height: 18px;
     text-align: center;
@@ -161,9 +161,9 @@ const tipLine = computed(() => {
 
   &__tip {
     margin: 0;
-    padding: 8px 12px;
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     border-top: 1px solid var(--dp-border);
-    background: var(--dp-bg-layout);
+    background: var(--dp-bg-muted);
     font-size: var(--dp-font-size-xs);
     line-height: 1.45;
     color: var(--dp-text-secondary);

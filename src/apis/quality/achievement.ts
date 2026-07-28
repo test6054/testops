@@ -17,6 +17,7 @@ import type { QueryDto } from '@/types'
  * - ./achievement-audit       (achievementAuditApi / achievementManualReviewApi)
  * - ./achievement-detail      (achievementDetailApi)
  */
+import type { AchievementComputeKindCode } from '@/types/enums/achievement-compute-kind-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
@@ -32,7 +33,6 @@ export interface ComputeCourseGoalRequest {
   semester?: SemesterCode
   classId?: string
   evaluationMethod?: EvaluationMethodCode
-  professionProfileId?: string
 }
 
 /** 专业达成度汇总请求 - 严格对齐 ComputeProgramRequest */
@@ -42,7 +42,6 @@ export interface ComputeProgramRequest {
   gradeLevel?: string
   schoolYear?: string
   semester?: SemesterCode
-  professionProfileId?: string
 }
 
 /** 课程思政独立达成度聚合请求 - 严格对齐 ComputeCivicGoalRequest */
@@ -52,7 +51,6 @@ export interface ComputeCivicGoalRequest {
   gradeLevel?: string
   schoolYear?: string
   semester?: SemesterCode
-  professionProfileId?: string
 }
 
 /** 复杂工程问题专项达成度聚合请求 - 严格对齐 ComputeComplexEngineeringRequest */
@@ -62,7 +60,6 @@ export interface ComputeComplexEngineeringRequest {
   gradeLevel?: string
   schoolYear?: string
   semester?: SemesterCode
-  professionProfileId?: string
 }
 
 /** 毕业要求 / 观测点聚合请求 */
@@ -73,7 +70,6 @@ export interface ComputeRequirementRequest {
   gradeLevel?: string
   schoolYear?: string
   semester?: SemesterCode
-  professionProfileId?: string
 }
 
 /** 培养目标聚合请求 */
@@ -84,7 +80,6 @@ export interface ComputeTrainingObjectiveRequest {
   gradeLevel?: string
   schoolYear?: string
   semester?: SemesterCode
-  professionProfileId?: string
 }
 
 /** 课程目标达成度计算摘要 - 严格对齐后端 CourseGoalAchievementSummaryVO */
@@ -100,7 +95,8 @@ export interface CourseGoalAchievementSummaryVO {
   directWeight?: number
   indirectWeight?: number
   assessmentItemCount?: number
-  directSampleCount?: number
+  sampleTotal?: number
+  sampleValid?: number
   indirectValidSampleCount?: number
   indirectCoverage?: number
   evidenceGap?: string
@@ -176,10 +172,10 @@ export interface ComplexEngineeringGoalAchievementSummaryVO {
   complexEngineeringGoalCount?: number
 }
 
-/** 计算就绪查询 - 严格对齐 AchievementComputeReadinessRequest */
+/** 计算就绪查询 - 严格对齐 AchievementComputeReadinessRequest；programId / trainingPlanId 合同必填 */
 export interface AchievementComputeReadinessRequest extends QueryDto {
-  programId?: string
-  trainingPlanId?: string
+  programId: string
+  trainingPlanId: string
   qualityCourseId?: string
   courseGoalId?: string
   trainingObjectiveId?: string
@@ -189,11 +185,29 @@ export interface AchievementComputeReadinessRequest extends QueryDto {
 
 /** 计算就绪项 - 严格对齐 AchievementComputeReadinessItemVO */
 export interface AchievementComputeReadinessItemVO {
-  computeKind: string
+  computeKind: AchievementComputeKindCode
+  /** 链式步骤序号，后端必填 int */
   stageOrder: number
   stageTitle: string
+  /** 是否可执行计算，后端必填 boolean */
   ready: boolean
   blockingReasons: string[]
+  /** 目标对象 / 计算范围说明 */
+  targetScopeLabel: string
+  /** 数据期间说明 */
+  dataPeriodLabel: string
+  /** 算法口径说明 */
+  algorithmProfileLabel: string
+  /** 预计覆盖结果数 */
+  expectedCoverCount: number
+  /** 将被覆盖的未锁定结果数 */
+  replaceableResultCount: number
+  /** 已提交锁定结果数 */
+  lockedSubmittedCount: number
+  /** 已确认锁定结果数 */
+  lockedConfirmedCount: number
+  /** 已归档锁定结果数 */
+  lockedArchivedCount: number
 }
 
 export const achievementApi = {

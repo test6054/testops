@@ -8,6 +8,7 @@ import {
   PortraitWidgetTypeCode,
   PortraitWidgetTypeDescription,
 } from '@/types/enums/portrait-widget-type-enum'
+import { createClientSnowflakeId } from '@/utils/client-snowflake'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
@@ -22,13 +23,128 @@ export const PORTRAIT_WIDGET_TYPE_OPTIONS: Array<{ value: PortraitWidgetTypeCode
     label: strictEnumLabel(PortraitWidgetTypeDescription, value, '画像组件类型'),
   }))
 
+/** 画像布局画布列数（与后端 assertLayoutContract 一致）。 */
+export const PORTRAIT_LAYOUT_GRID_COLS = 12
+/** 画像布局画布行数（与后端 assertLayoutContract 一致）。 */
+export const PORTRAIT_LAYOUT_GRID_ROWS = 8
+
 export interface PortfolioPortraitLayoutWidget {
+  /** 编辑器稳定键，不进入 API layout 载荷。 */
+  editorKey: string
   widget: PortraitWidgetTypeCode
   x: number
   y: number
   w: number
   h: number
   dimensionCode?: PortfolioPortraitDimensionCode
+}
+
+/** 布局就绪问题级别：error 阻断保存，warning 仅提示。 */
+export type PortraitLayoutIssueLevel = 'error' | 'warning'
+
+export interface PortraitLayoutIssue {
+  level: PortraitLayoutIssueLevel
+  code:
+    | 'OVERLAP'
+    | 'OUT_OF_BOUNDS'
+    | 'MIN_SIZE'
+    | 'DUPLICATE_WIDGET_TYPE'
+    | 'MISSING_DIMENSION'
+  message: string
+  widgetIndexes: number[]
+}
+
+/** 为编辑态组件生成稳定键，避免用数组下标作 Vue key。 */
+export function createPortraitEditorKey(): string {
+  return `pw-${createClientSnowflakeId()}`
+}
+
+function rectsOverlap(
+  a: Pick<PortfolioPortraitLayoutWidget, 'x' | 'y' | 'w' | 'h'>,
+  b: Pick<PortfolioPortraitLayoutWidget, 'x' | 'y' | 'w' | 'h'>,
+): boolean {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+}
+
+function minSizeForWidget(widget: PortraitWidgetTypeCode): { w: number, h: number } {
+  if (widget === PortraitWidgetTypeCode.RADAR) {
+    return { w: 4, h: 3 }
+  }
+  if (widget === PortraitWidgetTypeCode.BAR || widget === PortraitWidgetTypeCode.TIMELINE) {
+    return { w: 3, h: 2 }
+  }
+  return { w: 2, h: 1 }
+}
+
+/**
+ * 评估布局可读性与保存前置条件：重叠、越界、最小尺寸、同类型重复、缺维度。
+ */
+export function assessPortraitLayout(widgets: PortfolioPortraitLayoutWidget[]): PortraitLayoutIssue[] {
+  const issues: PortraitLayoutIssue[] = []
+  const typeFirstIndex = new Map<PortraitWidgetTypeCode, number>()
+  widgets.forEach((row, index) => {
+    const min = minSizeForWidget(row.widget)
+    if (row.w < min.w || row.h < min.h) {
+      issues.push({
+        level: 'error',
+        code: 'MIN_SIZE',
+        message: `组件「${strictEnumLabel(PortraitWidgetTypeDescription, row.widget, '画像组件类型')}」最小 ${min.w}×${min.h}，当前 ${row.w}×${row.h}`,
+        widgetIndexes: [index],
+      })
+    }
+    if (
+      row.x < 0
+      || row.y < 0
+      || row.w < 1
+      || row.h < 1
+      || row.x + row.w > PORTRAIT_LAYOUT_GRID_COLS
+      || row.y + row.h > PORTRAIT_LAYOUT_GRID_ROWS
+    ) {
+      issues.push({
+        level: 'error',
+        code: 'OUT_OF_BOUNDS',
+        message: `组件 #${index + 1} 超出 ${PORTRAIT_LAYOUT_GRID_COLS}×${PORTRAIT_LAYOUT_GRID_ROWS} 栅格`,
+        widgetIndexes: [index],
+      })
+    }
+    if (!row.dimensionCode) {
+      issues.push({
+        level: 'warning',
+        code: 'MISSING_DIMENSION',
+        message: `组件 #${index + 1}（${strictEnumLabel(PortraitWidgetTypeDescription, row.widget, '画像组件类型')}）未绑定维度`,
+        widgetIndexes: [index],
+      })
+    }
+    const first = typeFirstIndex.get(row.widget)
+    if (first == null) {
+      typeFirstIndex.set(row.widget, index)
+    } else {
+      issues.push({
+        level: 'error',
+        code: 'DUPLICATE_WIDGET_TYPE',
+        message: `组件类型「${strictEnumLabel(PortraitWidgetTypeDescription, row.widget, '画像组件类型')}」重复，画像模板每种类型仅允许一个`,
+        widgetIndexes: [first, index],
+      })
+    }
+  })
+  for (let i = 0; i < widgets.length; i += 1) {
+    for (let j = i + 1; j < widgets.length; j += 1) {
+      if (rectsOverlap(widgets[i], widgets[j])) {
+        issues.push({
+          level: 'error',
+          code: 'OVERLAP',
+          message: `组件 #${i + 1} 与 #${j + 1} 栅格重叠`,
+          widgetIndexes: [i, j],
+        })
+      }
+    }
+  }
+  return issues
+}
+
+/** 是否存在阻断保存的布局错误。 */
+export function portraitLayoutHasBlockingIssues(widgets: PortfolioPortraitLayoutWidget[]): boolean {
+  return assessPortraitLayout(widgets).some((issue) => issue.level === 'error')
 }
 
 export interface PortfolioPortraitChartConfigEntry {
@@ -63,6 +179,7 @@ export function mergeLayoutWithChartConfig(
   chartConfig?: Array<{ widgetIndex: number, dimensionCode: PortfolioPortraitDimensionCode }>,
 ): PortfolioPortraitLayoutWidget[] {
   const widgets: PortfolioPortraitLayoutWidget[] = layout.map((item, index) => ({
+    editorKey: createPortraitEditorKey(),
     widget: requirePortraitWidget(item.widget, index),
     x: item.x,
     y: item.y,
@@ -107,6 +224,7 @@ export function toPortraitChartConfigPayload(
 export function defaultPortraitLayout(): PortfolioPortraitLayoutWidget[] {
   return [
     {
+      editorKey: createPortraitEditorKey(),
       widget: PortraitWidgetTypeCode.RADAR,
       x: 0,
       y: 0,
@@ -115,6 +233,7 @@ export function defaultPortraitLayout(): PortfolioPortraitLayoutWidget[] {
       dimensionCode: PortfolioPortraitDimensionCode.TEACHING,
     },
     {
+      editorKey: createPortraitEditorKey(),
       widget: PortraitWidgetTypeCode.TIMELINE,
       x: 6,
       y: 0,

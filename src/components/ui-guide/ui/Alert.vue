@@ -56,12 +56,12 @@ const iconComponent = computed(() => {
   --alert-border: var(--dp-blue-200);
   --alert-icon: var(--dp-blue-600);
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: flex-start;
   border: 1px solid var(--alert-border);
   background: var(--alert-bg);
   border-radius: var(--dp-radius-panel);
-  padding: 8px 10px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   color: var(--dp-text-primary);
 }
 
@@ -105,7 +105,7 @@ const iconComponent = computed(() => {
 }
 
 .ui-alert__title {
-  margin-bottom: 4px;
+  margin-bottom: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-md);
   font-weight: 700;
   color: var(--dp-text-primary);

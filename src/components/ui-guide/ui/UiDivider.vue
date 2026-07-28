@@ -40,7 +40,7 @@ const props = withDefaults(
 <style lang="scss" scoped>
 .ui-divider {
   border-color: var(--dp-border);
-  margin: 12px 0;
+  margin: var(--dp-space-component) 0;
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-sm);
 }

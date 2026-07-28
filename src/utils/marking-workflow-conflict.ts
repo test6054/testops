@@ -1,5 +1,10 @@
+import type {WorkflowBlockingItemCodeValue} from '@/components/workbench/workflow-readiness/types';
+import {
+  isKnownWorkflowBlockingCode
+  
+} from '@/components/workbench/workflow-readiness/types'
 import { ResultCode } from '@/types/enums/result-code'
-import { getUserErrorMessage, readBusinessResultCode } from '@/utils/error-handler'
+import { getUserErrorMessage, readBusinessResultCode, readBusinessResultData } from '@/utils/error-handler'
 
 /** 后端 CONFLICT 文案片段；与 edu-mark Service 抛错保持一致，供前端恢复引导匹配。 */
 export const MarkingConflictHint = {
@@ -7,7 +12,6 @@ export const MarkingConflictHint = {
   WITHDRAW_SCORE_CONFIRM_LOCK: '成绩确认处理中',
   FINAL_SCORE_CONFIRM_LOCK: '成绩确认处理中',
   FINAL_SCORE_WRITE_BLOCKED: '最终成绩已确认、发布或更正，不能再',
-  FORMAL_START_PENDING_REVIEW: '待复核题目',
   LAYOUT_DETECT_IN_FLIGHT: '正在识别题目',
 } as const
 
@@ -39,11 +43,6 @@ export function isScoreWriteBlockedByFinalScoreGate(error: unknown): boolean {
     && conflictMessageIncludes(error, MarkingConflictHint.FINAL_SCORE_WRITE_BLOCKED)
 }
 
-export function isFormalStartPendingReviewConflict(error: unknown): boolean {
-  return isBusinessConflict(error)
-    && conflictMessageIncludes(error, MarkingConflictHint.FORMAL_START_PENDING_REVIEW)
-}
-
 export function isLayoutDetectInFlightConflict(error: unknown): boolean {
   return isBusinessConflict(error)
     && conflictMessageIncludes(error, MarkingConflictHint.LAYOUT_DETECT_IN_FLIGHT)
@@ -51,4 +50,44 @@ export function isLayoutDetectInFlightConflict(error: unknown): boolean {
 
 export function messageIncludesConflictHint(message: string, fragment: string): boolean {
   return message.includes(fragment)
+}
+
+/** 正评创建/启动阻断载荷 - 对应后端 FormalSessionStartBlockingResponse；blockingCode 与 WorkflowBlockingItemCode 同源 */
+export interface FormalSessionStartBlockingPayload {
+  blockingCode: WorkflowBlockingItemCodeValue
+  workspaceRouteName: string
+  actionLabel: string
+}
+
+/**
+ * 从 CONFLICT ResultInfo.data 解析正评创建/启动阻断合同；未知 code 或缺路由/按钮文案返回 null。
+ * 路由与按钮文案采信后端载荷，禁止前端平行维护 FormalSessionStartBlocking 枚举或兜底文案。
+ */
+export function readFormalSessionStartBlocking(
+  error: unknown,
+): FormalSessionStartBlockingPayload | null {
+  if (!isBusinessConflict(error)) {
+    return null
+  }
+  const data = readBusinessResultData(error)
+  if (data == null || typeof data !== 'object') {
+    return null
+  }
+  const rawCode = Object.getOwnPropertyDescriptor(data, 'blockingCode')?.value
+  if (typeof rawCode !== 'string' || !isKnownWorkflowBlockingCode(rawCode)) {
+    return null
+  }
+  const routeRaw = Object.getOwnPropertyDescriptor(data, 'workspaceRouteName')?.value
+  const labelRaw = Object.getOwnPropertyDescriptor(data, 'actionLabel')?.value
+  if (typeof routeRaw !== 'string' || !routeRaw.trim()) {
+    return null
+  }
+  if (typeof labelRaw !== 'string' || !labelRaw.trim()) {
+    return null
+  }
+  return {
+    blockingCode: rawCode,
+    workspaceRouteName: routeRaw,
+    actionLabel: labelRaw,
+  }
 }

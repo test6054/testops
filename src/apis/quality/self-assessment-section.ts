@@ -1,10 +1,10 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { AccreditationEvidenceStatusCode } from '@/types/enums/accreditation-evidence-status-enum'
 import type {
   SelfAssessmentSectionEvidenceRefTypeCode,
 } from '@/types/enums/self-assessment-section-evidence-ref-type-enum'
-import type {
-  SelfAssessmentSectionKeyCode} from '@/types/enums/self-assessment-section-key-enum';
+import type { SelfAssessmentSectionKeyCode } from '@/types/enums/self-assessment-section-key-enum'
 import http from '@/config/axios'
 import { SelfAssessmentSectionContentStatusCode } from '@/types/enums/self-assessment-section-content-status-enum'
 
@@ -42,6 +42,9 @@ export interface SelfAssessmentSectionEvidenceRefVO {
   fieldPath?: string
   accreditationEvidenceId?: string
   accreditationEvidenceTitle?: string
+  accreditationEvidenceStatus?: AccreditationEvidenceStatusCode
+  accreditationEvidenceReferenceValid?: boolean
+  accreditationEvidenceInvalidReason?: string
 }
 
 export interface SelfAssessmentSectionVO {

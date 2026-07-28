@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { Dayjs } from 'dayjs'
 import type {
   AccreditationCockpitVO,
   AccreditationConclusionRegisterRequest,
-  AccreditationCyclePhaseCode,
   AccreditationCycleSaveRequest,
   AccreditationCycleVO,
   SelfAssessmentReviewDecisionRequest,
@@ -12,11 +12,13 @@ import type {
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   accreditationApi,
   AccreditationConclusionTypeCode,
   AccreditationConclusionTypeDescription,
+  AccreditationCyclePhaseCode,
   AccreditationCyclePhaseDescription,
   AccreditationCycleStatusDescription,
   SelfAssessmentReviewDecisionCode,
@@ -67,6 +69,7 @@ interface AccreditationCycleMenuItem {
 const columns: ColumnsType<AccreditationCycleVO> = [
   { title: '周期编码', dataIndex: 'cycleCode', key: 'cycleCode', width: 120, fixed: 'left' },
   { title: '周期名称', dataIndex: 'cycleName', key: 'cycleName' },
+  { title: '前序保持周期', dataIndex: 'predecessorMaintenanceCycleName', key: 'predecessorMaintenanceCycleName', width: 180 },
   { title: '阶段', dataIndex: 'currentPhase', key: 'currentPhase', width: 108 },
   { title: '状态', dataIndex: 'cycleStatus', key: 'cycleStatus', width: 88 },
   { title: '结论', dataIndex: 'conclusionType', key: 'conclusionType', width: 108 },
@@ -75,6 +78,7 @@ const columns: ColumnsType<AccreditationCycleVO> = [
 
 const loading = ref(false)
 const cycles = ref<AccreditationCycleVO[]>([])
+const submitting = ref(false)
 const standards = ref<AccreditationStandardVO[]>([])
 const drawerOpen = ref(false)
 const detailOpen = ref(false)
@@ -114,9 +118,38 @@ const conclusionForm = reactive<
   conclusionRemark: '',
 })
 
-const activeCycle = computed(() => props.cockpit?.activeCycle)
+const applicationCycle = computed(() => props.cockpit?.applicationCycle)
+const maintenanceCycle = computed(() => props.cockpit?.maintenanceCycle)
+const maintenanceCycleOptions = computed(() => cycles.value
+  .filter(cycle => cycle.currentPhase === AccreditationCyclePhaseCode.MAINTENANCE)
+  .map(cycle => ({ value: cycle.id, label: cycle.cycleName })))
 
-const canEditSelfAssessment = computed(() => canEditSelfAssessmentSection(activeCycle.value))
+const canEditSelfAssessment = computed(() => canEditSelfAssessmentSection(applicationCycle.value))
+
+/** 根据认证结论类型和有效期起自动填写后端采用的六年有效期与第三年截止日口径。 */
+function refreshConclusionDates() {
+  if (!conclusionForm.validFrom || conclusionForm.conclusionType === AccreditationConclusionTypeCode.NOT_PASS) {
+    if (conclusionForm.conclusionType === AccreditationConclusionTypeCode.NOT_PASS) {
+      conclusionForm.validUntil = ''
+      conclusionForm.conditionalDueDate = ''
+    }
+    return
+  }
+  conclusionForm.validUntil = dayjs(conclusionForm.validFrom)
+    .add(6, 'year')
+    .subtract(1, 'day')
+    .format('YYYY-MM-DD')
+  if (conclusionForm.conclusionType === AccreditationConclusionTypeCode.CONDITIONAL_6Y) {
+    conclusionForm.conditionalDueDate = `${dayjs(conclusionForm.validFrom).year() + 2}-12-31`
+  } else {
+    conclusionForm.conditionalDueDate = ''
+  }
+}
+
+function disableInvalidConclusionStart(current: Dayjs) {
+  const calculatedValidUntil = current.add(6, 'year').subtract(1, 'day')
+  return current.isAfter(dayjs(), 'day') || calculatedValidUntil.isBefore(dayjs(), 'day')
+}
 
 const conclusionReadinessItems = computed(() => props.cockpit?.conclusionReadinessItems || [])
 
@@ -124,17 +157,19 @@ const blockedConclusionItems = computed(() =>
   conclusionReadinessItems.value.filter((item) => !item.ready),
 )
 
-const deadlineHints = computed(() => {
+const applicationDeadlineHints = computed(() => {
   const c = props.cockpit
   if (!c) return []
   const hints: string[] = []
-  if (c.conditionalDueDaysRemaining != null) {
-    hints.push(`有条件改进剩余 ${c.conditionalDueDaysRemaining} 天`)
-  }
   if (c.onsiteReportDueDaysRemaining != null) {
     hints.push(`考查报告剩余 ${c.onsiteReportDueDaysRemaining} 天`)
   }
   return hints
+})
+
+const maintenanceDeadlineHints = computed(() => {
+  const remaining = props.cockpit?.conditionalDueDaysRemaining
+  return remaining == null ? [] : [`有条件改进剩余 ${remaining} 天`]
 })
 
 async function loadStandards(keyword?: string) {
@@ -174,11 +209,10 @@ function openCreate() {
   form.programId = props.programId
   form.trainingPlanId = props.trainingPlanId
   form.accreditationStandardId = standards.value[0]?.id
+  form.predecessorMaintenanceCycleId = maintenanceCycle.value?.id
   form.cycleCode = `ACC-${new Date().getFullYear()}`
   form.cycleName = `${new Date().getFullYear()} 工程教育认证`
   form.remark = ''
-  form.onsiteVisitStart = undefined
-  form.onsiteVisitEnd = undefined
   drawerOpen.value = true
 }
 
@@ -187,12 +221,10 @@ function openEdit(row: AccreditationCycleVO) {
   form.programId = row.programId
   form.trainingPlanId = row.trainingPlanId
   form.accreditationStandardId = row.accreditationStandardId
+  form.predecessorMaintenanceCycleId = row.predecessorMaintenanceCycleId
   form.cycleCode = row.cycleCode
   form.cycleName = row.cycleName
   form.remark = row.remark
-  form.onsiteVisitStart = row.onsiteVisitStart
-  form.onsiteVisitEnd = row.onsiteVisitEnd
-  form.onsiteReportDueDate = row.onsiteReportDueDate
   drawerOpen.value = true
 }
 
@@ -206,6 +238,9 @@ async function openDetail(row: AccreditationCycleVO) {
 }
 
 async function submitCycle() {
+  if (submitting.value) {
+    return
+  }
   if (!form.cycleCode.trim() || !form.cycleName.trim()) {
     void message.error('请填写周期编码与名称')
     return
@@ -214,18 +249,21 @@ async function submitCycle() {
     void message.error('请选择绑定的认证标准')
     return
   }
+  if (!form.id && maintenanceCycleOptions.value.length > 0 && !form.predecessorMaintenanceCycleId) {
+    void message.error('复认证必须明确选择前序状态保持周期')
+    return
+  }
   const request: AccreditationCycleSaveRequest = {
     id: form.id,
     programId: form.programId,
     trainingPlanId: form.trainingPlanId,
     accreditationStandardId: form.accreditationStandardId,
+    predecessorMaintenanceCycleId: form.predecessorMaintenanceCycleId,
     cycleCode: form.cycleCode.trim(),
     cycleName: form.cycleName.trim(),
     remark: form.remark?.trim() || undefined,
-    onsiteVisitStart: form.onsiteVisitStart,
-    onsiteVisitEnd: form.onsiteVisitEnd,
-    onsiteReportDueDate: form.onsiteReportDueDate,
   }
+  submitting.value = true
   try {
     if (form.id) {
       await accreditationApi.cycleUpdate(request)
@@ -238,14 +276,20 @@ async function submitCycle() {
     emit('refresh')
   } catch (e) {
     showUserError(e, '认证周期保存失败')
+  } finally {
+    submitting.value = false
   }
 }
 
 async function runAction(fn: () => Promise<void>, confirmTitle?: string) {
+  if (submitting.value) {
+    return
+  }
   if (confirmTitle) {
     const ok = await confirmAsync({ title: confirmTitle })
     if (!ok) return
   }
+  submitting.value = true
   try {
     await fn()
     void message.success('操作成功')
@@ -253,6 +297,8 @@ async function runAction(fn: () => Promise<void>, confirmTitle?: string) {
     emit('refresh')
   } catch (e) {
     showUserError(e, '认证周期操作失败')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -277,6 +323,21 @@ async function submitReview() {
     && !reviewForm.supplementDeadline
   ) {
     void message.error('需补正时必须填写补正截止日期')
+    return
+  }
+  if (
+    reviewForm.reviewDecision === SelfAssessmentReviewDecisionCode.SUPPLEMENT_REQUIRED
+    && !dayjs(reviewForm.supplementDeadline).isAfter(dayjs(), 'day')
+  ) {
+    void message.error('补正截止日期必须晚于当前日期')
+    return
+  }
+  if (
+    (reviewForm.reviewDecision === SelfAssessmentReviewDecisionCode.SUPPLEMENT_REQUIRED
+      || reviewForm.reviewDecision === SelfAssessmentReviewDecisionCode.REJECTED)
+    && !reviewForm.reviewRemark?.trim()
+  ) {
+    void message.error('补正或不通过决议必须填写正式审阅意见')
     return
   }
   await runAction(() =>
@@ -313,6 +374,17 @@ async function submitConclusion() {
   const requiresValidity = conclusionForm.conclusionType !== 'NOT_PASS'
   if (requiresValidity && !conclusionForm.validFrom) {
     void message.error('请填写有效期起')
+    return
+  }
+  if (requiresValidity && dayjs(conclusionForm.validFrom).isAfter(dayjs(), 'day')) {
+    void message.error('认证有效期起不得晚于结论登记日期')
+    return
+  }
+  if (
+    requiresValidity
+    && dayjs(conclusionForm.validFrom).add(6, 'year').subtract(1, 'day').isBefore(dayjs(), 'day')
+  ) {
+    void message.error('认证结论登记时有效期不得已经届满')
     return
   }
   if (conclusionForm.conclusionType === 'CONDITIONAL_6Y' && !conclusionForm.conditionalDueDate) {
@@ -440,15 +512,20 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => [conclusionForm.validFrom, conclusionForm.conclusionType],
+  refreshConclusionDates,
+)
+
 defineExpose({ openCreate, loadCycles })
 </script>
 
 <template>
   <div class="cycle-panel">
-    <div v-if="activeCycle" class="cycle-banner">
+    <div v-if="applicationCycle" class="cycle-banner">
       <div>
-        <strong>{{ activeCycle.cycleName }}</strong>
-        <UiTag class="ml-8">{{ phaseLabel(activeCycle.currentPhase) }}</UiTag>
+        <strong>在办申请 · {{ applicationCycle.cycleName }}</strong>
+        <UiTag class="ml-8">{{ phaseLabel(applicationCycle.currentPhase) }}</UiTag>
         <UiTag
           class="ml-8"
           :tone="props.cockpit?.conclusionRegistrationReady ? 'green' : 'orange'"
@@ -456,7 +533,7 @@ defineExpose({ openCreate, loadCycles })
         >
           {{ props.cockpit?.conclusionRegistrationReady ? '结论登记已就绪' : '结论登记未就绪' }}
         </UiTag>
-        <span v-for="hint in deadlineHints" :key="hint" class="meta">{{ hint }}</span>
+        <span v-for="hint in applicationDeadlineHints" :key="hint" class="meta">{{ hint }}</span>
       </div>
       <div class="banner-actions">
         <UiButton
@@ -467,13 +544,26 @@ defineExpose({ openCreate, loadCycles })
         >
           AI 生成自评报告
         </UiButton>
-        <UiButton size="sm" @click="openDetail(activeCycle)">周期详情</UiButton>
+        <UiButton size="sm" @click="openDetail(applicationCycle)">申请详情</UiButton>
+      </div>
+    </div>
+    <div v-if="maintenanceCycle" class="cycle-banner">
+      <div>
+        <strong>有效保持 · {{ maintenanceCycle.cycleName }}</strong>
+        <UiTag class="ml-8" tone="green">状态保持</UiTag>
+        <span v-if="maintenanceCycle.validFrom && maintenanceCycle.validUntil" class="meta">
+          有效期 {{ maintenanceCycle.validFrom }} 至 {{ maintenanceCycle.validUntil }}
+        </span>
+        <span v-for="hint in maintenanceDeadlineHints" :key="hint" class="meta">{{ hint }}</span>
+      </div>
+      <div class="banner-actions">
+        <UiButton size="sm" @click="openDetail(maintenanceCycle)">保持周期详情</UiButton>
       </div>
     </div>
     <div v-if="conclusionReadinessItems.length" class="readiness-panel">
       <div class="readiness-header">
         <strong>结论登记前置条件</strong>
-        <span class="muted">
+        <span class="dp-text-muted">
           {{
             blockedConclusionItems.length ? `阻断 ${blockedConclusionItems.length} 项` : '全部就绪'
           }}
@@ -512,6 +602,12 @@ defineExpose({ openCreate, loadCycles })
             strictEnumLabel(AccreditationCycleStatusDescription, record.cycleStatus, '认证周期状态')
           }}
         </template>
+        <template v-else-if="column.key === 'predecessorMaintenanceCycleName'">
+          <span v-if="record.predecessorMaintenanceCycleName">
+            {{ record.predecessorMaintenanceCycleName }}
+          </span>
+          <span v-else class="dp-text-muted">首次认证</span>
+        </template>
         <template v-else-if="column.key === 'conclusionType'">
           <span v-if="record.conclusionType">
             {{
@@ -522,7 +618,7 @@ defineExpose({ openCreate, loadCycles })
               )
             }}
           </span>
-          <span v-else class="muted">—</span>
+          <span v-else class="dp-text-muted">—</span>
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
@@ -542,6 +638,7 @@ defineExpose({ openCreate, loadCycles })
       width="480"
       :hide-footer="false"
       ok-text="保存"
+      :confirm-loading="submitting"
       @ok="submitCycle"
     >
       <UiForm layout="vertical">
@@ -568,27 +665,37 @@ defineExpose({ openCreate, loadCycles })
             disabled
           />
         </UiFormItem>
+        <UiFormItem
+          v-if="!form.id && maintenanceCycleOptions.length > 0"
+          label="前序状态保持周期"
+          extra="复认证自评、AI 与专家包将读取该周期已审核通过的年度持续改进材料"
+          required
+        >
+          <UiSelect
+            size="sm"
+            v-model="form.predecessorMaintenanceCycleId"
+            :options="maintenanceCycleOptions"
+            placeholder="请选择前一轮认证状态保持周期"
+          />
+        </UiFormItem>
+        <UiFormItem v-else-if="!form.id" label="认证类型">
+          <UiInput size="sm" value="首次认证（无前序状态保持周期）" disabled />
+        </UiFormItem>
+        <UiFormItem v-else label="前序状态保持周期">
+          <UiInput
+            size="sm"
+            :value="form.predecessorMaintenanceCycleId
+              ? maintenanceCycleOptions.find(item => item.value === form.predecessorMaintenanceCycleId)?.label
+                || form.predecessorMaintenanceCycleId
+              : '首次认证（无前序状态保持周期）'"
+            disabled
+          />
+        </UiFormItem>
         <UiFormItem label="周期编码" required>
           <UiInput size="sm" v-model="form.cycleCode" :disabled="!!form.id" />
         </UiFormItem>
         <UiFormItem label="周期名称" required>
           <UiInput size="sm" v-model="form.cycleName" />
-        </UiFormItem>
-        <UiFormItem label="现场考查开始">
-          <UiDatePicker
-            size="sm"
-            v-model="form.onsiteVisitStart"
-            value-format="YYYY-MM-DD"
-            class="w-full"
-          />
-        </UiFormItem>
-        <UiFormItem label="现场考查结束">
-          <UiDatePicker
-            size="sm"
-            v-model="form.onsiteVisitEnd"
-            value-format="YYYY-MM-DD"
-            class="w-full"
-          />
         </UiFormItem>
         <UiFormItem label="备注">
           <UiTextarea size="sm" v-model="form.remark" :rows="3" />
@@ -611,6 +718,8 @@ defineExpose({ openCreate, loadCycles })
         </dd>
         <dt>申请登记</dt>
         <dd>{{ detailRecord.applicationRecordedTime || '—' }}</dd>
+        <dt>前序保持周期</dt>
+        <dd>{{ detailRecord.predecessorMaintenanceCycleName || '首次认证（无前序周期）' }}</dd>
         <dt>自评提交</dt>
         <dd>{{ detailRecord.selfAssessmentSubmittedTime || '—' }}</dd>
         <dt>审阅决议</dt>
@@ -641,6 +750,7 @@ defineExpose({ openCreate, loadCycles })
       width="480"
       :hide-footer="false"
       ok-text="提交决议"
+      :confirm-loading="submitting"
       @ok="submitReview"
     >
       <UiForm layout="vertical">
@@ -667,7 +777,11 @@ defineExpose({ openCreate, loadCycles })
             class="w-full"
           />
         </UiFormItem>
-        <UiFormItem label="审阅意见">
+        <UiFormItem
+          label="审阅意见"
+          :required="reviewForm.reviewDecision !== SelfAssessmentReviewDecisionCode.ACCEPTED"
+          extra="需补正时应明确列出待补材料或修改点；不通过时应记录正式结论依据"
+        >
           <UiTextarea size="sm" v-model="reviewForm.reviewRemark" :rows="4" />
         </UiFormItem>
       </UiForm>
@@ -678,6 +792,7 @@ defineExpose({ openCreate, loadCycles })
       width="480"
       :hide-footer="false"
       ok-text="登记结论"
+      :confirm-loading="submitting"
       @ok="submitConclusion"
     >
       <UiForm layout="vertical">
@@ -692,15 +807,25 @@ defineExpose({ openCreate, loadCycles })
             ]"
           />
         </UiFormItem>
-        <UiFormItem v-if="conclusionForm.conclusionType !== 'NOT_PASS'" label="有效期起" required>
+        <UiFormItem
+          v-if="conclusionForm.conclusionType !== 'NOT_PASS'"
+          label="有效期起"
+          extra="有效期可追溯至正式结论生效日，但不得晚于当前登记日期"
+          required
+        >
           <UiDatePicker
             size="sm"
             v-model="conclusionForm.validFrom"
             value-format="YYYY-MM-DD"
+            :disabled-date="disableInvalidConclusionStart"
             class="w-full"
           />
         </UiFormItem>
-        <UiFormItem v-if="conclusionForm.conclusionType !== 'NOT_PASS'" label="有效期止">
+        <UiFormItem
+          v-if="conclusionForm.conclusionType !== 'NOT_PASS'"
+          label="有效期止"
+          extra="按有效期起自动计算六年减一天；结论类型为六年时不得改为其他期限"
+        >
           <UiDatePicker
             size="sm"
             v-model="conclusionForm.validUntil"
@@ -712,6 +837,7 @@ defineExpose({ openCreate, loadCycles })
           v-if="conclusionForm.conclusionType === 'CONDITIONAL_6Y'"
           label="改进材料截止"
           required
+          extra="截止日必须落在认证有效期第三个自然年度"
         >
           <UiDatePicker
             size="sm"
@@ -732,20 +858,20 @@ defineExpose({ openCreate, loadCycles })
 .cycle-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 .cycle-banner {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
   background: var(--dp-surface);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-xs);
 }
 .readiness-panel {
-  padding: 14px 16px;
+  padding: var(--dp-space-block);
   background: var(--dp-warning-bg);
   border: 1px solid var(--dp-warning-border);
   border-radius: var(--dp-radius-xs);
@@ -754,18 +880,18 @@ defineExpose({ openCreate, loadCycles })
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .readiness-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .readiness-item {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 10px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component);
   background: color-mix(in srgb, var(--dp-surface) 82%, transparent);
   border: 1px solid color-mix(in srgb, var(--dp-success) 16%, transparent);
   border-radius: var(--dp-radius-xs);
@@ -775,25 +901,22 @@ defineExpose({ openCreate, loadCycles })
   background: var(--dp-orange-50);
 }
 .readiness-item p {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
   line-height: 1.5;
 }
 .banner-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   flex-shrink: 0;
 }
 .ml-8 {
-  margin-left: 8px;
+  margin-left: var(--dp-space-component-tight);
 }
 .meta {
-  margin-left: 12px;
+  margin-left: var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-text-tertiary);
-}
-.muted {
   color: var(--dp-text-muted);
 }
 .w-full {
@@ -802,10 +925,10 @@ defineExpose({ openCreate, loadCycles })
 .detail-dl {
   display: grid;
   grid-template-columns: 100px 1fr;
-  gap: 8px 12px;
+  gap: var(--dp-space-component-tight) var(--dp-space-component);
   font-size: var(--dp-font-size-md);
 }
 .detail-dl dt {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 </style>

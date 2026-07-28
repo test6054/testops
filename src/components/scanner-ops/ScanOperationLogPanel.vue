@@ -8,6 +8,7 @@ import {
   SCAN_OPERATION_ACTION_OPTIONS,
   ScanOperationActionDescription,
 } from '@/apis/mark/scanner-dispatch'
+import { pagePortfolioScanOperationLogs } from '@/apis/portfolio/scan-ops'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -15,6 +16,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEllipsisText from '@/components/ui-guide/ui/UiEllipsisText.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -25,6 +27,7 @@ const props = defineProps<{
   ticketId?: string
   volumeId?: string
   returnDispatchLabel?: string
+  taskKind?: ScanTaskKindCode
 }>()
 
 const emit = defineEmits<{
@@ -46,18 +49,23 @@ const filters = reactive<OperationLogFilters>({
   volumeId: props.volumeId ?? '',
 })
 
-const filterFields = computed<FilterField[]>(() => [
-  { key: 'ticketId', label: '派单 ID', type: 'input', placeholder: '输入派单 ID' },
-  { key: 'volumeId', label: '归档卷 ID', type: 'input', placeholder: '输入归档卷 ID' },
-  {
+const filterFields = computed<FilterField[]>(() => {
+  const fields: FilterField[] = [
+    { key: 'ticketId', label: '派单 ID', type: 'input', placeholder: '输入派单 ID' },
+  ]
+  if (props.taskKind !== ScanTaskKindCode.PORTFOLIO_COLLECT) {
+    fields.push({ key: 'volumeId', label: '归档卷 ID', type: 'input', placeholder: '输入归档卷 ID' })
+  }
+  fields.push({
     key: 'action',
     label: '操作类型',
     type: 'select',
     placeholder: '全部',
     allowClear: true,
     options: SCAN_OPERATION_ACTION_OPTIONS,
-  },
-])
+  })
+  return fields
+})
 
 const columns: ColumnsType<ScanOperationLogItemVO> = [
   { title: '时间', dataIndex: 'createTime', key: 'createTime', width: 168, fixed: 'left' },
@@ -111,14 +119,21 @@ function cellText(value?: string | number | null): string {
 async function loadLogs() {
   loading.value = true
   try {
-    const result = await pageScanOperationLogs({
-      ticketId: filters.ticketId.trim() || undefined,
-      volumeId: filters.volumeId.trim() || undefined,
-      action: filters.action,
-      pageNum: pagination.current,
-      pageSize: pagination.pageSize,
-    })
-    logs.value = result.list
+    const result = props.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT
+      ? await pagePortfolioScanOperationLogs({
+          ticketId: filters.ticketId.trim() || undefined,
+          action: filters.action,
+          pageNum: pagination.current,
+          pageSize: pagination.pageSize,
+        })
+      : await pageScanOperationLogs({
+          ticketId: filters.ticketId.trim() || undefined,
+          volumeId: filters.volumeId.trim() || undefined,
+          action: filters.action,
+          pageNum: pagination.current,
+          pageSize: pagination.pageSize,
+        })
+    logs.value = result.list as ScanOperationLogItemVO[]
     pagination.total = result.total
   } catch (error) {
     logs.value = []

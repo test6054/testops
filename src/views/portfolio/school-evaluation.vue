@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationRereviewOrderVO } from '@/apis/portfolio/evaluation-publicity'
+import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
 import type {
   PortfolioEvaluationTaskVO,
   PortfolioEvaluationWorkgroupOptionVO,
@@ -10,6 +11,7 @@ import message from 'ant-design-vue/es/message'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  PORTFOLIO_EVALUATION_CLOSEABLE_STATUSES,
   PORTFOLIO_EVALUATION_MODE_OPTIONS,
   PORTFOLIO_EVALUATION_SCENE_OPTIONS,
   PORTFOLIO_EVALUATION_TASK_STATUS_TONE,
@@ -22,10 +24,12 @@ import {
   PortfolioEvaluationTaskStatusEnum,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   portfolioEvaluationTaskApi,
   portfolioEvaluationWorkgroupApi,
 } from '@/apis/portfolio/teacher-platform'
+import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
@@ -41,10 +45,105 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useUserStore } from '@/stores/modules/user'
-import { PortfolioEvaluationRereviewOrderStatusCode } from '@/types/enums/portfolio-evaluation-rereview-order-status-enum'
-import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { PfIndicatorStatusCode } from '@/types/enums/pf-indicator-status-enum'
+import {
+  isPortfolioEvaluationAdvanceBlockingCode,
+  PortfolioEvaluationAdvanceBlockingCode,
+  PortfolioEvaluationAdvanceBlockingDescription,
+} from '@/types/enums/portfolio-evaluation-advance-blocking-code-enum'
+import { ResultCode } from '@/types/enums/result-code'
+import {
+  getUserErrorMessage,
+  readBusinessResultCode,
+  readBusinessResultData,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
+import { loadAllPages } from '@/utils/load-all-pages'
+import { portfolioLifecycleStatusDisplay } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+
+function readScoreVarianceBlocking(error: unknown): {
+  groupCount?: number
+  threshold?: string
+  samples: string[]
+} | null {
+  if (readBusinessResultCode(error) !== ResultCode.CONFLICT) {
+    return null
+  }
+  const data = readBusinessResultData(error)
+  if (data == null || typeof data !== 'object') {
+    return null
+  }
+  const blockingCode = Object.getOwnPropertyDescriptor(data, 'blockingCode')?.value
+  if (!isPortfolioEvaluationAdvanceBlockingCode(blockingCode)
+    || blockingCode !== PortfolioEvaluationAdvanceBlockingCode.SCORE_VARIANCE_EXCEEDED) {
+    return null
+  }
+  const forceAllowed = Object.getOwnPropertyDescriptor(data, 'forceAllowed')?.value
+  if (forceAllowed === false) {
+    return null
+  }
+  const groupCountRaw = Object.getOwnPropertyDescriptor(data, 'highVarianceGroupCount')?.value
+  const thresholdRaw = Object.getOwnPropertyDescriptor(data, 'scoreVarianceThreshold')?.value
+  const samplesRaw = Object.getOwnPropertyDescriptor(data, 'highVarianceSamples')?.value
+  return {
+    groupCount: typeof groupCountRaw === 'number' ? groupCountRaw : undefined,
+    threshold: thresholdRaw == null ? undefined : String(thresholdRaw),
+    samples: Array.isArray(samplesRaw)
+      ? samplesRaw.filter((item): item is string => typeof item === 'string')
+      : [],
+  }
+}
+
+function readExpertReviewIncompleteBlocking(error: unknown): {
+  incompleteExpertCount?: number
+  missingPairCount?: number
+  samples: string[]
+} | null {
+  if (readBusinessResultCode(error) !== ResultCode.CONFLICT) {
+    return null
+  }
+  const data = readBusinessResultData(error)
+  if (data == null || typeof data !== 'object') {
+    return null
+  }
+  const blockingCode = Object.getOwnPropertyDescriptor(data, 'blockingCode')?.value
+  if (!isPortfolioEvaluationAdvanceBlockingCode(blockingCode)
+    || blockingCode !== PortfolioEvaluationAdvanceBlockingCode.EXPERT_REVIEW_INCOMPLETE) {
+    return null
+  }
+  const incompleteRaw = Object.getOwnPropertyDescriptor(data, 'incompleteExpertCount')?.value
+  const missingRaw = Object.getOwnPropertyDescriptor(data, 'missingExpertEvaluationPairCount')?.value
+  const samplesRaw = Object.getOwnPropertyDescriptor(data, 'incompleteExpertSamples')?.value
+  return {
+    incompleteExpertCount: typeof incompleteRaw === 'number' ? incompleteRaw : undefined,
+    missingPairCount: typeof missingRaw === 'number' ? missingRaw : undefined,
+    samples: Array.isArray(samplesRaw)
+      ? samplesRaw.filter((item): item is string => typeof item === 'string')
+      : [],
+  }
+}
+
+function expertReviewProgressText(task: PortfolioEvaluationTaskVO): string {
+  if (task.taskStatus !== PortfolioEvaluationTaskStatusEnum.EXPERT_REVIEW) {
+    return ''
+  }
+  const active = task.activeExpertAssignmentCount
+  if (active == null) {
+    return ''
+  }
+  if (active <= 0) {
+    return '无外部专家授权'
+  }
+  if (task.expertReviewComplete === true) {
+    return `专家评审已完成（${active} 人）`
+  }
+  const incomplete = task.incompleteExpertCount ?? 0
+  const missing = task.missingExpertEvaluationPairCount ?? 0
+  return `专家未完成 ${incomplete}/${active}（缺 ${missing} 组）`
+}
 
 const ADVANCE_ACTIONS: Partial<
   Record<PortfolioEvaluationTaskStatusEnum, PortfolioEvaluationTaskAdvanceActionCode>
@@ -67,16 +166,13 @@ function canArchiveTask(task: PortfolioEvaluationTaskVO): boolean {
   )
 }
 
+/** 已发布后的评价周期可关闭；草稿须作废，暂停须先恢复。 */
+function canCloseTask(task: PortfolioEvaluationTaskVO): boolean {
+  return PORTFOLIO_EVALUATION_CLOSEABLE_STATUSES.includes(task.taskStatus)
+}
+
 function canSuspendTask(task: PortfolioEvaluationTaskVO): boolean {
-  return [
-    PortfolioEvaluationTaskStatusEnum.PUBLISHED,
-    PortfolioEvaluationTaskStatusEnum.PRELIMINARY_REVIEW,
-    PortfolioEvaluationTaskStatusEnum.SCHOOL_REVIEW,
-    PortfolioEvaluationTaskStatusEnum.EXPERT_REVIEW,
-    PortfolioEvaluationTaskStatusEnum.RESULT_SUMMARY,
-    PortfolioEvaluationTaskStatusEnum.PUBLICITY,
-    PortfolioEvaluationTaskStatusEnum.OBJECTION_HANDLING,
-  ].includes(task.taskStatus)
+  return PORTFOLIO_EVALUATION_CLOSEABLE_STATUSES.includes(task.taskStatus)
 }
 
 function advanceActionLabel(action: PortfolioEvaluationTaskAdvanceActionCode): string {
@@ -131,7 +227,21 @@ const publishTarget = ref<PortfolioEvaluationTaskVO | null>(null)
 const createModalOpen = ref(false)
 const creating = ref(false)
 const workgroupsLoading = ref(false)
+const workgroupsLoadFailed = ref(false)
 const workgroups = ref<PortfolioEvaluationWorkgroupOptionVO[]>([])
+const indicatorConfigsLoading = ref(false)
+const indicatorConfigsLoadFailed = ref(false)
+const indicatorConfigs = ref<PortfolioTenantIndicatorConfigVO[]>([])
+const createContextRequestToken = ref(0)
+const createContextLoading = computed(
+  () => workgroupsLoading.value || indicatorConfigsLoading.value,
+)
+const enabledIndicatorOptions = computed(() =>
+  indicatorConfigs.value.map((indicator) => ({
+    value: indicator.indicatorCode,
+    label: indicator.indicatorName || indicator.indicatorCode,
+  })),
+)
 const writing = computed(
   () =>
     creating.value
@@ -287,23 +397,71 @@ async function openCreateModal() {
     return
   }
   createModalOpen.value = true
+  await loadCreateContext()
+}
+
+/** 加载评价任务创建所需的启用工作组与租户已启用回流指标，任一失败均禁止提交。 */
+async function loadCreateContext() {
+  const currentToken = ++createContextRequestToken.value
   workgroupsLoading.value = true
-  try {
-    const page = await portfolioEvaluationWorkgroupApi.page({
-      pageNum: 1,
-      pageSize: 200,
-      enabled: true,
-    })
-    workgroups.value = page.list.filter((item) => item.enabled)
-  } catch (error) {
-    showUserError(error, '加载评价工作组失败')
-  } finally {
-    workgroupsLoading.value = false
+  indicatorConfigsLoading.value = true
+  workgroupsLoadFailed.value = false
+  indicatorConfigsLoadFailed.value = false
+  workgroups.value = []
+  indicatorConfigs.value = []
+  const [workgroupResult, indicatorResult] = await Promise.allSettled([
+    loadAllPages(
+      ({ pageNum, pageSize }) =>
+        portfolioEvaluationWorkgroupApi.page({ pageNum, pageSize, enabled: true }),
+      QUALITY_SELECTOR_PAGE_SIZE,
+    ),
+    portfolioIndicatorTenantApi.listConfig(),
+  ])
+  if (createContextRequestToken.value !== currentToken) {
+    return
+  }
+  workgroupsLoading.value = false
+  indicatorConfigsLoading.value = false
+  if (workgroupResult.status === 'fulfilled') {
+    workgroups.value = workgroupResult.value.filter((item) => item.enabled)
+    if (
+      createForm.workgroupId
+      && !workgroups.value.some((item) => item.id === createForm.workgroupId)
+    ) {
+      createForm.workgroupId = ''
+    }
+  } else {
+    workgroupsLoadFailed.value = true
+    showUserError(workgroupResult.reason, '加载评价工作组失败')
+  }
+  if (indicatorResult.status === 'fulfilled') {
+    indicatorConfigs.value = indicatorResult.value.filter(
+      (item) => item.enabled && item.platformStatus === PfIndicatorStatusCode.ACTIVE,
+    )
+    if (
+      createForm.targetIndicatorCode
+      && !indicatorConfigs.value.some(
+        (item) => item.indicatorCode === createForm.targetIndicatorCode,
+      )
+    ) {
+      createForm.targetIndicatorCode = ''
+    }
+  } else {
+    indicatorConfigsLoadFailed.value = true
+    showUserError(indicatorResult.reason, '加载可回流指标失败')
   }
 }
 
 async function submitCreateTask() {
   if (writing.value) {
+    return
+  }
+  if (createContextLoading.value) {
+    showFormValidationMessage('评价任务创建选项仍在加载，请稍后提交')
+    return
+  }
+  if (workgroupsLoadFailed.value) {
+    showFormValidationMessage('评价工作组加载失败，请重新打开创建窗口后重试')
     return
   }
   if (
@@ -315,11 +473,33 @@ async function submitCreateTask() {
     showFormValidationMessage('请填写任务名称、工作组和评价时间窗')
     return
   }
+  if (!workgroups.value.some((item) => item.id === createForm.workgroupId)) {
+    showFormValidationMessage('所选评价工作组已停用或不存在，请重新选择')
+    return
+  }
   if (
     createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON
     && !createForm.targetIndicatorCode.trim()
   ) {
     showFormValidationMessage('按人评价须填写画像回流目标指标编码')
+    return
+  }
+  if (createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON) {
+    if (indicatorConfigsLoadFailed.value) {
+      showFormValidationMessage('可回流指标加载失败，请重新打开创建窗口后重试')
+      return
+    }
+    if (
+      !indicatorConfigs.value.some(
+        (item) => item.indicatorCode === createForm.targetIndicatorCode,
+      )
+    ) {
+      showFormValidationMessage('所选回流指标已停用或不存在，请重新选择')
+      return
+    }
+  }
+  if (createForm.startTime >= createForm.endTime) {
+    showFormValidationMessage('评价结束时间必须晚于开始时间')
     return
   }
   creating.value = true
@@ -380,6 +560,17 @@ async function advanceTask(
       return
     }
   }
+  if (action === PortfolioEvaluationTaskAdvanceActionCode.CLOSE) {
+    const confirmed = await confirmAsync({
+      title: '关闭评价任务',
+      content: `确认关闭「${row.taskName || row.id}」？关闭后将结束当前评价周期、同步关闭未结束公示，并通知参评教师与工作组；草稿请使用作废。`,
+      type: 'warning',
+      okText: '关闭',
+    })
+    if (!confirmed) {
+      return
+    }
+  }
   advancingId.value = row.id
   try {
     await portfolioEvaluationPublicityApi.advanceTask({
@@ -387,18 +578,60 @@ async function advanceTask(
       action,
       forceDespiteScoreVariance: forceDespiteScoreVariance || undefined,
     })
-    void message.success('任务状态已推进')
+    void message.success(
+      action === PortfolioEvaluationTaskAdvanceActionCode.CLOSE
+        ? '评价任务已关闭'
+        : action === PortfolioEvaluationTaskAdvanceActionCode.VOID
+          ? '评价任务已作废'
+          : '任务状态已推进',
+    )
     await loadPage()
   } catch (error) {
-    const errText = error instanceof Error ? error.message : String(error ?? '')
-    if (
-      action === PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY
+    const expertIncomplete = action === PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY
+      ? readExpertReviewIncompleteBlocking(error)
+      : null
+    if (expertIncomplete) {
+      const sampleText = expertIncomplete.samples.length
+        ? `\n样例：${expertIncomplete.samples.join('；')}`
+        : ''
+      const expertText = expertIncomplete.incompleteExpertCount != null
+        ? `${expertIncomplete.incompleteExpertCount} 名专家`
+        : '部分专家'
+      const missingText = expertIncomplete.missingPairCount != null
+        ? `，缺 ${expertIncomplete.missingPairCount} 组评价`
+        : ''
+      await confirmAsync({
+        title: PortfolioEvaluationAdvanceBlockingDescription[
+          PortfolioEvaluationAdvanceBlockingCode.EXPERT_REVIEW_INCOMPLETE
+        ],
+        content:
+          `${expertText}尚未完成授权范围评审${missingText}，不能进入结果汇总。${sampleText}\n\n`
+          + '请督促未完成专家填报后再推进；专家未完成不允许强制汇总。\n'
+          + getUserErrorMessage(error, ''),
+        type: 'warning',
+        okText: '知道了',
+        hideCancel: true,
+      })
+      return
+    }
+    const variance = action === PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY
       && !forceDespiteScoreVariance
-      && (errText.includes('评分 max-min') || errText.includes('forceDespiteScoreVariance'))
-    ) {
+      ? readScoreVarianceBlocking(error)
+      : null
+    if (variance) {
+      const sampleText = variance.samples.length
+        ? `\n样例：${variance.samples.join('；')}`
+        : ''
+      const countText = variance.groupCount != null ? `${variance.groupCount} 组` : '若干组'
+      const thresholdText = variance.threshold != null ? `阈值 ${variance.threshold} 分` : '既定阈值'
       const confirmed = await confirmAsync({
-        title: '评分离散过大，是否强制进入结果汇总？',
-        content: `${errText}\n\n请先确认已完成追加评审；强制汇总将写入审计日志，不替代评委会判断。`,
+        title: PortfolioEvaluationAdvanceBlockingDescription[
+          PortfolioEvaluationAdvanceBlockingCode.SCORE_VARIANCE_EXCEEDED
+        ],
+        content:
+          `${countText}被评对象评分分差超过${thresholdText}。${sampleText}\n\n`
+          + '请先确认已完成追加评审；强制汇总将写入审计日志，不替代评委会判断。\n'
+          + getUserErrorMessage(error, ''),
         type: 'warning',
         okText: '强制汇总',
       })
@@ -548,7 +781,7 @@ async function openCompleteRereview(row: PortfolioEvaluationTaskVO) {
     const orders = await portfolioEvaluationPublicityApi.listRereview({
       evaluationTaskId: row.id,
     })
-    completeRereviewOrders.value = (orders ?? []).filter((item) => item.orderStatus === PortfolioEvaluationRereviewOrderStatusCode.OPEN)
+    completeRereviewOrders.value = (orders ?? []).filter((item) => item.orderStatus === 'OPEN')
   } catch (error) {
     completeRereviewModalOpen.value = false
     completeRereviewTarget.value = null
@@ -568,9 +801,10 @@ async function submitCompleteRereview() {
     return
   }
   const task = completeRereviewTarget.value
-  const openOrders = completeRereviewOrders.value
+  const openOrders = [...completeRereviewOrders.value]
   completeRereviewSubmitting.value = true
   advancingId.value = task.id
+  let completedCount = 0
   try {
     if (openOrders.length === 0) {
       // 无开放工单：任务可能已全部完成工单但状态残留，走推进回写
@@ -584,6 +818,7 @@ async function submitCompleteRereview() {
           orderId: order.id,
           conclusionSummary: conclusion,
         })
+        completedCount += 1
       }
     }
     void message.success('更正复核已完成并回写归档')
@@ -593,7 +828,29 @@ async function submitCompleteRereview() {
     completeRereviewForm.conclusionSummary = ''
     await loadPage()
   } catch (error) {
-    showUserError(error, '完成更正复核失败')
+    try {
+      const orders = await portfolioEvaluationPublicityApi.listRereview({
+        evaluationTaskId: task.id,
+      })
+      if (completeRereviewTarget.value?.id === task.id) {
+        completeRereviewOrders.value = (orders ?? []).filter((item) => item.orderStatus === 'OPEN')
+      }
+    } catch (reloadError) {
+      showUserError(reloadError, '已写入部分工单，开放工单同步失败')
+    }
+    if (completedCount > 0) {
+      showUserError(
+        error,
+        `已完成 ${completedCount} 条工单，后续失败；请仅处理剩余开放工单，勿重复完成已结案项`,
+      )
+    } else {
+      showUserError(error, '完成更正复核失败')
+    }
+    try {
+      await loadPage()
+    } catch (pageError) {
+      showUserError(pageError, '任务列表同步失败')
+    }
   } finally {
     completeRereviewSubmitting.value = false
     advancingId.value = ''
@@ -630,7 +887,7 @@ async function cancelRereviewOrder(order: PortfolioEvaluationRereviewOrderVO): P
     const orders = await portfolioEvaluationPublicityApi.listRereview({
       evaluationTaskId: task.id,
     })
-    completeRereviewOrders.value = (orders ?? []).filter((item) => item.orderStatus === PortfolioEvaluationRereviewOrderStatusCode.OPEN)
+    completeRereviewOrders.value = (orders ?? []).filter((item) => item.orderStatus === 'OPEN')
     if (completeRereviewOrders.value.length === 0) {
       completeRereviewModalOpen.value = false
       completeRereviewTarget.value = null
@@ -677,11 +934,15 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
       })
     }
   } else if (advance) {
+    const expertNotReady = advance === PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY
+      && row.expertReviewComplete === false
     actions.push({
       key: 'advance',
-      label: advanceActionLabel(advance),
+      label: expertNotReady
+        ? `${advanceActionLabel(advance)}（专家未完成）`
+        : advanceActionLabel(advance),
       tone: 'primary',
-      disabled: writing.value,
+      disabled: writing.value || expertNotReady,
     })
   } else if (canArchiveTask(row)) {
     actions.push({
@@ -693,6 +954,10 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
   }
   if (row.taskStatus !== PortfolioEvaluationTaskStatusEnum.SUSPENDED && canSuspendTask(row)) {
     actions.push({ key: 'suspend', label: '暂停任务', tone: 'danger', disabled: writing.value })
+  }
+  // P2-34：已发布周期可关闭；与草稿作废分流，禁止 DRAFT 走 CLOSE。
+  if (canCloseTask(row)) {
+    actions.push({ key: 'close', label: '关闭任务', tone: 'danger', disabled: writing.value })
   }
   if (canArchiveTask(row) && !actions.some((item) => item.key === 'archive')) {
     actions.push({
@@ -741,6 +1006,9 @@ function handleTaskRowAction(key: string, row: PortfolioEvaluationTaskVO): void 
     case 'suspend':
       void advanceTask(row, PortfolioEvaluationTaskAdvanceActionCode.SUSPEND)
       break
+    case 'close':
+      void advanceTask(row, PortfolioEvaluationTaskAdvanceActionCode.CLOSE)
+      break
     case 'resume':
       void advanceTask(row, PortfolioEvaluationTaskAdvanceActionCode.RESUME)
       break
@@ -767,6 +1035,15 @@ function handleTaskRowAction(key: string, row: PortfolioEvaluationTaskVO): void 
       break
   }
 }
+
+watch(
+  () => createForm.evaluationMode,
+  (mode) => {
+    if (mode !== PortfolioEvaluationModeCode.BY_PERSON) {
+      createForm.targetIndicatorCode = ''
+    }
+  },
+)
 
 watch(
   () => route.query.evaluationTaskId,
@@ -852,6 +1129,12 @@ void loadPage()
             <UiTag :tone="taskStatusTone(record.taskStatus)">
               {{ taskStatusLabel(record.taskStatus) }}
             </UiTag>
+            <span
+              v-if="expertReviewProgressText(record)"
+              class="school-evaluation__suspended-from"
+            >
+              · {{ expertReviewProgressText(record) }}
+            </span>
             <span v-if="record.suspendedFromStatus" class="school-evaluation__suspended-from">
               恢复至 {{ taskStatusLabel(record.suspendedFromStatus) }}
             </span>
@@ -914,14 +1197,27 @@ void loadPage()
       title="新建评价任务"
       ok-text="创建"
       cancel-text="取消"
-      :confirm-loading="creating"
+      :confirm-loading="creating || createContextLoading"
       @ok="() => void submitCreateTask()"
     >
+      <UiAlertStrip
+        v-if="workgroupsLoadFailed"
+        tone="error"
+        title="评价工作组加载失败"
+        class="school-evaluation__field"
+      />
+      <UiAlertStrip
+        v-else-if="!workgroupsLoading && workgroups.length === 0"
+        tone="warning"
+        title="当前没有可用于创建任务的启用工作组"
+        class="school-evaluation__field"
+      />
       <UiInput
         size="sm"
         v-model="createForm.taskName"
         class="school-evaluation__field"
         placeholder="任务名称"
+        :disabled="creating || createContextLoading"
       />
       <UiSelect
         size="sm"
@@ -935,6 +1231,7 @@ void loadPage()
         "
         placeholder="选择启用的评价工作组"
         class="school-evaluation__field"
+        :disabled="creating || createContextLoading || workgroupsLoadFailed"
       />
       <UiSelect
         size="sm"
@@ -942,6 +1239,7 @@ void loadPage()
         :options="PORTFOLIO_EVALUATION_MODE_OPTIONS"
         placeholder="评价模式"
         class="school-evaluation__field"
+        :disabled="creating"
       />
       <UiSelect
         size="sm"
@@ -949,13 +1247,36 @@ void loadPage()
         :options="PORTFOLIO_EVALUATION_SCENE_OPTIONS"
         placeholder="业务场景（§8.48 多周期隔离）"
         class="school-evaluation__field"
+        :disabled="creating"
       />
-      <UiInput
+      <UiAlertStrip
+        v-if="
+          createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON
+            && indicatorConfigsLoadFailed
+        "
+        tone="error"
+        title="可回流指标加载失败"
+        class="school-evaluation__field"
+      />
+      <UiAlertStrip
+        v-else-if="
+          createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON
+            && !indicatorConfigsLoading
+            && indicatorConfigs.length === 0
+        "
+        tone="warning"
+        title="当前没有已启用的画像回流指标"
+        class="school-evaluation__field"
+      />
+      <UiSelect
         size="sm"
         v-if="createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON"
         v-model="createForm.targetIndicatorCode"
         class="school-evaluation__field"
-        placeholder="画像回流目标指标编码"
+        placeholder="选择画像回流指标"
+        :loading="indicatorConfigsLoading"
+        :options="enabledIndicatorOptions"
+        :disabled="creating || indicatorConfigsLoading || indicatorConfigsLoadFailed"
       />
       <UiDatePicker
         size="sm"
@@ -965,6 +1286,7 @@ void loadPage()
         placeholder="评价开始时间"
         class="school-evaluation__field"
         style="width: 100%"
+        :disabled="creating"
       />
       <UiDatePicker
         size="sm"
@@ -973,6 +1295,7 @@ void loadPage()
         value-format="YYYY-MM-DD HH:mm:ss"
         placeholder="评价结束时间"
         style="width: 100%"
+        :disabled="creating"
       />
     </UiDialog>
 
@@ -1009,8 +1332,8 @@ void loadPage()
             }}
           </template>
           <template v-else> · 整任务</template>
-          <template v-if="order.lifecycleStatusLabel || order.lifecycleStatus">
-            · {{ order.lifecycleStatusLabel || order.lifecycleStatus }}
+          <template v-if="order.lifecycleStatus">
+            · {{ portfolioLifecycleStatusDisplay(order.lifecycleStatus) }}
           </template>
           <template v-if="order.evaluationHeld"> · 参评 hold</template>
           <UiButton
@@ -1044,16 +1367,16 @@ void loadPage()
 .school-evaluation__field {
   display: block;
   width: 100%;
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .school-evaluation__cancel-order {
-  margin-left: var(--dp-space-2);
+  margin-left: var(--dp-space-component-tight);
 }
 
 .school-evaluation__suspended-from {
   display: block;
-  margin-top: var(--dp-space-1);
+  margin-top: var(--dp-space-component-xs);
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-xs);
 }

@@ -23,10 +23,14 @@ export interface ExamGradeConfirmRequest {
   annotationText?: string
   /** 主考接管他人 IN_PROGRESS 复核任务时的强制审计原因 */
   ownerOverrideReason?: string
+  /** 卷级成绩撤回后重新确认已确认题分时必填的改分原因 */
+  rescoreReason?: string
 }
 
 /** 试卷题目得分明细 - 对应 ExamQuestionScoreDto */
 export interface ExamQuestionScoreResponse {
+  /** 题目批改结果ID；无活跃题分时为空 */
+  gradeResultId?: string
   layoutQuestionId: string
   questionNo: string
   questionType: QuestionTypeCode
@@ -84,6 +88,8 @@ export interface ExamGradeBatchConfirmItem {
   commentText?: string
   /** 批注内容，可空 */
   annotationText?: string
+  /** 卷级成绩撤回后重新确认已确认题分时必填的改分原因 */
+  rescoreReason?: string
 }
 
 /** 题目成绩批量确认请求 - 对应 ExamGradeBatchConfirmRequest */
@@ -116,9 +122,10 @@ export interface ExamQuestionAiRescoreRequest {
   gradeResultId: string
 }
 
-/** AI 风险标记 - 对应 SubjectiveAiRiskFlag */
+import type { SubjectiveAiRiskCode } from '@/types/enums/subjective-ai-risk-code-enum'
+
 export interface SubjectiveAiRiskFlag {
-  code?: string
+  code?: SubjectiveAiRiskCode
   message?: string
 }
 

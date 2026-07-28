@@ -81,10 +81,15 @@ async function submitReveal(): Promise<void> {
       currentPassword: form.currentPassword,
       reason: form.reason.trim(),
     })
+    const ttlMinutes = Number(result.revealTtlMinutes)
+    if (!Number.isFinite(ttlMinutes) || ttlMinutes <= 0) {
+      showFormValidationMessage('解匿名有效期契约异常')
+      return
+    }
     emit('revealed', result)
     open.value = false
     resetForm()
-    void message.success(`已解匿名 5 分钟：${result.studentName}（${result.studentNo}）`)
+    void message.success(`已解匿名 ${ttlMinutes} 分钟：${result.studentName}（${result.studentNo}）`)
   } catch (error) {
     showUserError(error, '解匿名失败')
   } finally {
@@ -110,10 +115,10 @@ watch(open, (value) => {
   >
     <UiAlertStrip
       tone="warning"
-      title="解匿名仅开放 5 分钟临时查看"
-      description="按 R7 规则：仅考试主考老师本人可解匿名，且需登录密码二次验证。每次解匿名理由都会写入操作审计。"
+      title="解匿名仅开放短时临时查看"
+      description="按 R7 规则：仅考试主考老师本人可解匿名，且需登录密码二次验证；有效期由后端下发并到期自动收回。每次解匿名理由都会写入操作审计。"
       :inline="false"
-      style="margin-bottom: 12px"
+      style="margin-bottom: var(--dp-space-component)"
     />
     <UiForm ref="formRef" :model="form" :rules="rules" layout="vertical">
       <UiFormItem label="登录密码" name="currentPassword" required>

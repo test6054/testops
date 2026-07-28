@@ -15,9 +15,7 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveVolumeSelfCheck } from '@/composables/useArchiveVolumeSelfCheck'
-import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
-import { RoleEnum } from '@/types/enums'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -38,18 +36,17 @@ const emit = defineEmits<{
   "refreshed": []
   'open-sign-off': []
 }>()
-const authStore = useAuthStore()
 const userStore = useUserStore()
 
-/** MVR-247：自查空态「打开归档设置」与 settings 路由 requireTenantAdmin 同源 */
+/** 仅企业管理员可维护模板；空态仍允许教师打开配置页只读查看 */
 const canManageArchiveConfig = computed(
-  () => authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin,
+  () => userStore.isEnterpriseTenantAdmin === true,
 )
 
 const emptySelfCheckBody = computed(() =>
   canManageArchiveConfig.value === true
     ? '暂无自查项，请先在设置页配置模板'
-    : '暂无自查项，请联系租户管理员在归档配置中配置模板',
+    : '暂无自查项，请联系企业管理员在归档配置中配置模板；亦可打开设置查看当前配置',
 )
 
 const {
@@ -141,7 +138,7 @@ defineExpose({ loadSelfCheck })
       </div>
 
       <UiAlertStrip
-        v-if="loadFailed"
+        v-if="loadFailed === true"
         tone="warning"
         dense
         inline
@@ -154,7 +151,6 @@ defineExpose({ loadSelfCheck })
           </UiButton>
         </template>
       </UiAlertStrip>
-
       <UiSkeletonState v-else-if="loading" variant="card" compact />
 
       <WorkbenchContextGateStrip
@@ -163,7 +159,7 @@ defineExpose({ loadSelfCheck })
         :body="emptySelfCheckBody"
         cta-label="打开归档设置"
         list-route-name="TeacherArchiveVolumeSettings"
-        :hide-cta="canManageArchiveConfig !== true"
+        :hide-cta="false"
       />
 
       <ul v-else class="archive-volume-self-check-list__items" role="list">
@@ -203,35 +199,35 @@ defineExpose({ loadSelfCheck })
 .archive-quality-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
-  padding: var(--dp-space-3) var(--dp-space-4);
+  gap: var(--dp-space-block);
+  padding: var(--dp-space-component) var(--dp-space-block);
 }
 
 .archive-quality-panel__section {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .archive-quality-panel__section-head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-quality-panel__section-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   margin-left: auto;
 }
 
 .archive-quality-panel__section-title {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--dp-type-panel-title-size);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .archive-volume-self-check-list__progress {
@@ -251,11 +247,11 @@ defineExpose({ loadSelfCheck })
 .self-check-row {
   display: flex;
   align-items: flex-start;
-  gap: var(--dp-space-3);
-  padding: 10px 12px;
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component);
   border-top: 1px solid var(--dp-border-subtle);
   background: var(--dp-surface);
-  transition: background-color 0.2s ease-out;
+  transition: background-color var(--dp-duration-normal) ease-out;
 
   &:first-child {
     border-top: none;
@@ -282,7 +278,7 @@ defineExpose({ loadSelfCheck })
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -293,7 +289,7 @@ defineExpose({ loadSelfCheck })
 }
 
 .self-check-mark--pending {
-  background: var(--dp-surface-sunken);
+  background: var(--dp-bg-muted);
   color: var(--dp-text-muted);
   border: 1px solid var(--dp-border);
 }
@@ -309,7 +305,7 @@ defineExpose({ loadSelfCheck })
 .self-check-row__label {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   line-height: 1.45;
   color: var(--dp-text-primary);
@@ -324,7 +320,7 @@ defineExpose({ loadSelfCheck })
   height: 16px;
   margin-top: 1px;
   border-radius: 3px;
-  font-size: 10px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 700;
   line-height: 1;
   color: var(--dp-warning);
@@ -333,7 +329,7 @@ defineExpose({ loadSelfCheck })
 
 .self-check-row__time {
   font-size: var(--dp-font-size-xs);
-  font-family: var(--dp-font-mono), ui-monospace, monospace;
+  font-family: var(--dp-font-family-code), ui-monospace, monospace;
   color: var(--dp-text-muted);
 }
 

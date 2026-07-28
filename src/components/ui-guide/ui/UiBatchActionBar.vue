@@ -52,8 +52,8 @@ const visible = computed(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-4, 16px);
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 14px);
+  gap: var(--dp-space-block);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
@@ -72,7 +72,7 @@ const visible = computed(
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
@@ -92,7 +92,7 @@ const visible = computed(
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--dp-space-component);
   flex-shrink: 0;
 }
 

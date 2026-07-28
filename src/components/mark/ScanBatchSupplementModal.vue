@@ -33,7 +33,6 @@
       :bound-paper-options="boundPaperOptions"
       :prepare-loading="prepareLoading"
       :prepare-block-description="prepareBlockDescription"
-      :class-scope-warning="declaredClassIds.length === 0 ? '请先在考生名册维护考试班级范围' : ''"
     />
   </UiConfirmModal>
 </template>
@@ -44,7 +43,6 @@ import type { ExamTeacherScanSupplementPrepareResponse } from '@/apis/mark/scan-
 import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import { getExamDetail } from '@/apis/mark/exam'
 import { prepareTeacherScanSupplement, teacherSupplementScanSource } from '@/apis/mark/scan-source'
 import ManualSupplementFormCore from '@/components/mark/manual-supplement/ManualSupplementFormCore.vue'
 import UiConfirmModal from '@/components/ui-guide/ui/ConfirmModal.vue'
@@ -82,7 +80,6 @@ const formCoreRef = ref<InstanceType<typeof ManualSupplementFormCore> | null>(nu
 const submitting = ref(false)
 const prepareLoading = ref(false)
 const prepareContext = ref<ExamTeacherScanSupplementPrepareResponse | null>(null)
-const declaredClassIds = ref<string[]>([])
 
 const form = reactive({
   paperInstanceId: undefined as string | undefined,
@@ -133,8 +130,7 @@ const prepareBlockDescription = computed(() => {
 
 const submitDisabled = computed(
   () =>
-    declaredClassIds.value.length === 0
-    || prepareLoading.value === true
+    prepareLoading.value === true
     || prepareContext.value?.canSubmitManualSupplement !== true,
 )
 
@@ -145,20 +141,6 @@ function resetForm(): void {
   form.replaceTargetPage = false
   form.sourceFileId = undefined
   form.sourceFileName = undefined
-}
-
-async function loadExamDetail(): Promise<void> {
-  if (!props.examId) {
-    declaredClassIds.value = []
-    return
-  }
-  try {
-    const detail = await getExamDetail(props.examId)
-    declaredClassIds.value = (detail.classRefs ?? []).map((item) => item.classId)
-  } catch (error) {
-    declaredClassIds.value = []
-    showUserError(error, '考试详情加载失败')
-  }
 }
 
 async function loadPrepareContext(): Promise<void> {
@@ -212,7 +194,6 @@ async function handleSubmit(): Promise<void> {
       examId: props.examId,
       scannerDeviceId: batch.scannerDeviceId,
       scannerStationId: batch.scannerStationId,
-      declaredClassIds: declaredClassIds.value,
       scanMode: ScannerKioskScanModeCode.SUPPLEMENT,
       scanBatchId: batch.scanBatchId,
       targetPageNo: form.targetPageNo,
@@ -238,7 +219,6 @@ watch(
   ([open]) => {
     if (open) {
       resetForm()
-      void loadExamDetail()
       void loadPrepareContext()
     }
   },

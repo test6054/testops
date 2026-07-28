@@ -383,17 +383,17 @@ onUnmounted(() => {
 .forgot-brand-steps {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .brand-step {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.06);
-  transition: background 0.2s;
+  transition: background var(--dp-duration-normal);
 }
 
 .brand-step--active {
@@ -439,13 +439,13 @@ onUnmounted(() => {
 
 // ─── 右侧面板 ───
 .forgot-header {
-  margin-bottom: var(--dp-space-4, 16px);
+  margin-bottom: var(--dp-space-block);
 
   h2 {
     font-size: var(--dp-font-size-2xl);
     font-weight: 700;
     color: var(--dp-text-primary);
-    margin: 0 0 6px;
+    margin: 0 0 var(--dp-space-component-tight);
   }
 
   p {
@@ -459,8 +459,8 @@ onUnmounted(() => {
 .step-indicators {
   display: flex;
   justify-content: center;
-  gap: var(--dp-space-3, 12px);
-  margin-bottom: var(--dp-space-4, 16px);
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-block);
 }
 
 .step-dot {
@@ -481,13 +481,13 @@ onUnmounted(() => {
   font-weight: 600;
   background: var(--dp-gray-100);
   color: var(--dp-text-muted);
-  transition: all 0.2s;
+  transition: all var(--dp-duration-normal);
 }
 
 .step-dot__label {
-  font-size: var(--dp-font-size-xxs);
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
-  transition: color 0.2s;
+  transition: color var(--dp-duration-normal);
 }
 
 .step-dot--active .step-dot__num {
@@ -513,24 +513,24 @@ onUnmounted(() => {
 .step-form {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
-  margin-bottom: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
 }
 
 .step-buttons {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 4px;
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-component-xs);
 }
 
 .verification-info {
   text-align: center;
-  padding-bottom: 8px;
+  padding-bottom: var(--dp-space-component-tight);
   color: var(--dp-blue-600);
 
   p {
-    margin: 6px 0;
+    margin: var(--dp-space-component-tight) 0;
     font-size: var(--dp-font-size-md);
     color: var(--dp-text-secondary);
   }
@@ -567,7 +567,7 @@ onUnmounted(() => {
 .password-strength {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .strength-label {
@@ -590,8 +590,8 @@ onUnmounted(() => {
   border-radius: var(--dp-radius-full);
   transform-origin: left center;
   transition:
-    transform 0.3s,
-    background-color 0.3s;
+    transform var(--dp-duration-slow),
+    background-color var(--dp-duration-slow);
 
   &.strength-1 {
     background: var(--dp-error);
@@ -619,18 +619,18 @@ onUnmounted(() => {
 // ─── 成功状态 ───
 .success-block {
   text-align: center;
-  padding: var(--dp-space-3, 12px) 0;
+  padding: var(--dp-space-component) 0;
   color: var(--dp-green-600);
 
   h3 {
-    margin: 14px 0 6px;
+    margin: var(--dp-space-block) 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xl);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   p {
-    margin: 0 0 20px;
+    margin: 0 0 var(--dp-space-block);
     font-size: var(--dp-font-size-md);
     color: var(--dp-text-muted);
   }
@@ -639,9 +639,9 @@ onUnmounted(() => {
 // ─── 页脚 ───
 .forgot-footer {
   text-align: center;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid var(--dp-border-light);
+  margin-top: var(--dp-space-block);
+  padding-top: var(--dp-space-block);
+  border-top: 1px solid var(--dp-border-subtle);
   font-size: var(--dp-font-size-md);
   color: var(--dp-text-muted);
 

@@ -66,7 +66,7 @@ const TONE_COLOR_MAP: Record<BadgeTone, string> = {
   yellow: 'var(--dp-yellow-600)',
   red: 'var(--dp-error)',
   purple: 'var(--dp-purple-500)',
-  ink: 'var(--dp-color-text)',
+  ink: 'var(--dp-text-primary)',
 }
 
 /** 取 BadgeTone 对应的主题色变量字符串（边界场景用） */

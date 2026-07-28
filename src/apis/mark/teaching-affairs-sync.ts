@@ -3,6 +3,7 @@
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { ExamKindCode } from '@/types/enums/exam-kind-enum'
 import type { ExternalSystemTypeCode } from '@/types/enums/external-system-type-enum'
 import http from '@/config/axios'
 import {
@@ -58,15 +59,17 @@ export const CREATABLE_SYNC_TYPE_OPTIONS: Array<{
   value: TeachingAffairsSyncTypeCode
   label: string
 }> = [
-  {
-    value: TeachingAffairsSyncTypeCode.GRADE_EXPORT,
-    label: strictEnumLabel(
-      TeachingAffairsSyncTypeDescription,
-      TeachingAffairsSyncTypeCode.GRADE_EXPORT,
-      '教务同步类型',
-    ),
-  },
-]
+  TeachingAffairsSyncTypeCode.GRADE_EXPORT,
+  TeachingAffairsSyncTypeCode.GRADE_CORRECTION,
+  TeachingAffairsSyncTypeCode.GRADE_WITHDRAW,
+].map((value) => ({
+  value,
+  label: strictEnumLabel(
+    TeachingAffairsSyncTypeDescription,
+    value,
+    '教务同步类型',
+  ),
+}))
 
 export const SYNC_TASK_STATUS_TONE: Record<SyncTaskStatusCode, BadgeTone> = {
   [SyncTaskStatusCode.PENDING]: 'gray',
@@ -93,13 +96,9 @@ export const SYNC_TASK_FLOW_HINT = `${SYNC_TASK_MAIN_FLOW_STATUSES.map(
   (status) => strictEnumLabel(SyncTaskStatusDescription, status, '同步任务状态'),
 ).join(' → ')} / ${SYNC_TASK_BRANCH_STATUS_DESCRIPTIONS.join(' / ')}`
 
-/** MVR-205：GRADE_EXPORT 执行回写前置——仅已发布正式分可进入教务/LMS */
+/** MVR-205：成绩回写执行前置提示（按同步类型区分） */
 export const GRADE_EXPORT_PASSBACK_PRECONDITION_HINT
-  = '执行成绩回写前须完成本场成绩发布；系统仅导出已发布正式分，未发布的已确认分不会进入教务'
-
-/** 归档卷教务成绩完成同步门禁说明（线下/纯归档卷） */
-export const ARCHIVE_TEACHING_AFFAIRS_SCORE_COMPLETION_HINT
-  = '提交外部同步单号 → 教务成绩完成回写 → 与卷内成绩门禁一并满足后可提交归档'
+  = '导出/更正回写仅含已发布正式分；撤回回写仅含已撤回且曾成功对接教务的成绩。终分撤回/更正/重发会自动入队对应任务'
 
 export const PASSBACK_STATUS_TONE: Record<PassbackStatusCode, BadgeTone> = {
   [PassbackStatusCode.PENDING]: 'gray',
@@ -147,9 +146,10 @@ export const TEACHING_AFFAIRS_SYNC_TYPE_OPTIONS: Array<{
 export interface SyncTaskCreateRequest {
   examId: string
   externalSystemType: ExternalSystemTypeCode
-  /** 后端目前仅闭合 GRADE_EXPORT 路径 */
+  /** GRADE_EXPORT / GRADE_CORRECTION / GRADE_WITHDRAW */
   syncType: TeachingAffairsSyncTypeCode
-  externalCourseId?: string
+  /** 外部课程编号，成绩回写任务必填 */
+  externalCourseId: string
   externalLineItemId?: string
 }
 
@@ -190,6 +190,24 @@ export interface PassbackProgressResponse {
   withdrawnCount: number
 }
 
+/** 对账结果 VO - 对应 PassbackReconcileResponse */
+export interface PassbackReconcileResponse {
+  syncTaskId: string
+  taskStatus: SyncTaskStatusCode
+  matchedCount: number
+  mismatchedCount: number
+  missingExternalScoreCount: number
+  failedPassbackCount: number
+  expectedCoverageCount: number
+  passbackRecordCount: number
+  missingCoverageCount: number
+  orphanPassbackCount: number
+  coverageComplete: boolean
+  reconcileClosed: boolean
+  missingCoverageStudentUserIds?: string[]
+  summaryMessage: string
+}
+
 /** 回写记录 VO - 对应 ExamGradebookPassbackRecord */
 export interface PassbackRecordResponse {
   id?: string
@@ -200,6 +218,10 @@ export interface PassbackRecordResponse {
   studentNo?: string
   studentName?: string
   finalScoreId?: string
+  /** 考试性质快照：正考/补考/重修/重考/缓考 */
+  examKind: ExamKindCode
+  /** 原正考考试 ID；正考为空 */
+  sourceExamId?: string
   localScore?: number
   externalResultId?: string
   passbackStatus: PassbackStatusCode
@@ -281,11 +303,35 @@ export function listPassbackRecords(
 }
 
 /**
- * 执行对账（本地分 vs 外部分）
+ * 执行对账（分值匹配 + 应报覆盖完整性）
  * POST /api/exam/teaching-affairs/passback/reconcile
  */
-export function reconcilePassback(syncTaskId: string): Promise<void> {
-  return http.post<void>('/api/exam/teaching-affairs/passback/reconcile', { id: syncTaskId })
+export function reconcilePassback(syncTaskId: string): Promise<PassbackReconcileResponse> {
+  return http.post<PassbackReconcileResponse>('/api/exam/teaching-affairs/passback/reconcile', { id: syncTaskId })
+}
+
+/** 标记回写已投递请求 - 对应 PassbackMarkSentRequest */
+export interface PassbackMarkSentRequest {
+  syncTaskId: string
+  passbackRecordIds: string[]
+}
+
+/**
+ * 主考将 PENDING 回写标记为 SENT
+ * POST /api/exam/teaching-affairs/passback/mark-sent
+ */
+export function markPassbackSent(request: PassbackMarkSentRequest): Promise<number> {
+  return http.post<number>('/api/exam/teaching-affairs/passback/mark-sent', request)
+}
+
+/**
+ * 主考将卡住的 SENT 回写置为 FAILED
+ * POST /api/exam/teaching-affairs/passback/fail-sent-timeout
+ */
+export function failSentPassbackTimeout(passbackRecordId: string): Promise<void> {
+  return http.post<void>('/api/exam/teaching-affairs/passback/fail-sent-timeout', {
+    id: passbackRecordId,
+  })
 }
 
 export function getPassbackProgress(syncTaskId: string): Promise<PassbackProgressResponse> {
@@ -293,3 +339,7 @@ export function getPassbackProgress(syncTaskId: string): Promise<PassbackProgres
     id: syncTaskId,
   })
 }
+
+/** P1-17：已发送待回执提示（超过 24 小时自动置失败） */
+export const SENT_PASSBACK_TIMEOUT_HINT
+  = '已发送记录等待教务回执；超过 24 小时未回执将自动置失败并解锁重试。期末报送紧急时可手工「超时置失败」。'

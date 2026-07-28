@@ -10,9 +10,9 @@ import http from '@/config/axios'
 export interface PortfolioEthicsSanctionVO {
   id: string
   teacherId: string
-  /** edu-user 教师姓名 */
+  /** edu-user 教师姓名；有快照时优先快照 */
   teacherName?: string
-  /** edu-user 教师工号 */
+  /** edu-user 教师工号；有快照时优先快照 */
   teacherNumber?: string
   eventType: PortfolioEthicsEventTypeCode
   handlingBasis: string
@@ -29,8 +29,15 @@ export interface PortfolioEthicsSanctionVO {
   lastReviewOpinion?: string
   lastReviewedTime?: string
   updateTime: string
+  statusVersion: number
+  decisionDocNo?: string
+  decisionFileId?: string
+  decisionIssuingOrg?: string
+  decisionDate?: string
+  evidenceFingerprint?: string
+  teacherNameSnapshot?: string
+  teacherNumberSnapshot?: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -48,7 +55,6 @@ export interface PortfolioEthicsConstraintStatusVO {
   activeSanctionCount: number
   publicSummary?: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -73,7 +79,6 @@ export interface PortfolioEthicsReviewLogVO {
 }
 
 export interface PortfolioEthicsSanctionSaveRequest {
-  id?: string
   teacherId: string
   eventType: PortfolioEthicsEventTypeCode
   handlingBasis: string
@@ -84,6 +89,10 @@ export interface PortfolioEthicsSanctionSaveRequest {
   reviewDepartment: string
   publicSummary: string
   detailDescription?: string
+  decisionDocNo: string
+  decisionFileId: string
+  decisionIssuingOrg: string
+  decisionDate: string
 }
 
 export interface PortfolioEthicsReviewSubmitRequest {
@@ -91,6 +100,12 @@ export interface PortfolioEthicsReviewSubmitRequest {
   reviewConclusion: PortfolioEthicsReviewConclusionCode
   reviewOpinion?: string
   newSanctionEndDate?: string
+  statusVersion: number
+}
+
+export interface PortfolioEthicsEarlyReviewRequest {
+  sanctionId: string
+  statusVersion: number
 }
 
 export const portfolioEthicsSanctionApi = {
@@ -108,6 +123,9 @@ export const portfolioEthicsSanctionApi = {
 
   save: (data: PortfolioEthicsSanctionSaveRequest) =>
     http.post<string>('/api/portfolio/ethics-sanction/save', data),
+
+  requestEarlyReview: (data: PortfolioEthicsEarlyReviewRequest) =>
+    http.post<PortfolioEthicsSanctionVO>('/api/portfolio/ethics-sanction/review/early', data),
 
   submitReview: (data: PortfolioEthicsReviewSubmitRequest) =>
     http.post<PortfolioEthicsSanctionVO>('/api/portfolio/ethics-sanction/review/submit', data),

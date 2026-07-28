@@ -28,6 +28,7 @@
       style="width: 100%"
       v-bind="selectAttrs"
       @change="handleChange"
+      @[searchEventName]="handleSearch"
     >
       <template v-if="$slots.option" #option="slotProps">
         <slot name="option" v-bind="slotProps" />
@@ -84,6 +85,8 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   change: [value: UiOptionValue | UiOptionValue[] | undefined]
+  /** 远程搜索关键字（Ant Select search；allowSearch + filterOption=false 时由业务拉数） */
+  search: [value: string]
 }>()
 
 const attrs = useAttrs()
@@ -95,8 +98,12 @@ const selectAttrs = computed(() => {
   const next: Record<string, unknown> = { ...attrs }
   delete next.class
   delete next.style
+  delete next.onSearch
   return next
 })
+
+/** 未开 allowSearch 时不得绑定 search，否则 Ant Select 告警 onSearch 需配合 showSearch */
+const searchEventName = computed(() => (props.allowSearch ? 'search' : undefined))
 
 /** 将 Ant Design 选择值转换为平台统一的原始值，避免把 LabeledValue 泄漏到业务层。 */
 function handleChange(
@@ -111,6 +118,11 @@ function handleChange(
     return
   }
   emit('change', typeof value === 'object' && value !== null ? value.value : value)
+}
+
+/** 转发远程搜索关键字；合同为 string，禁止隐式 any */
+function handleSearch(value: string): void {
+  emit('search', value)
 }
 
 const antSize = computed<SizeType>(() => {
@@ -143,18 +155,18 @@ const antSize = computed<SizeType>(() => {
   background-color: var(--dp-surface) !important;
   box-shadow: none !important;
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background-color 0.2s ease !important;
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    box-shadow var(--dp-duration-normal) var(--dp-ease-default),
+    background-color var(--dp-duration-normal) var(--dp-ease-default) !important;
 }
 
 .ui-select:hover :deep(.ant-select-selector) {
-  border-color: var(--dp-blue-600) !important;
+  border-color: var(--dp-border-hover) !important;
 }
 
 .ui-select :deep(.ant-select-focused .ant-select-selector),
 .ui-select :deep(.ant-select-open .ant-select-selector) {
-  border-color: var(--dp-blue-600) !important;
+  border-color: var(--dp-color-primary) !important;
   box-shadow: 0 0 0 3px var(--dp-focus-ring) !important;
 }
 
@@ -167,7 +179,7 @@ const antSize = computed<SizeType>(() => {
 }
 
 .ui-select :deep(.ant-select-multiple .ant-select-selection-overflow) {
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   padding: 1px 0 !important;
   align-items: center !important;
 }
@@ -181,7 +193,7 @@ const antSize = computed<SizeType>(() => {
   align-items: center !important;
   min-height: 24px !important;
   margin: 1px 0 !important;
-  padding: 0 8px !important;
+  padding: 0 var(--dp-space-component-tight) !important;
   border: 1px solid var(--dp-blue-200) !important;
   border-radius: var(--dp-radius-control-inner) !important;
   background: var(--dp-blue-50) !important;
@@ -219,24 +231,24 @@ const antSize = computed<SizeType>(() => {
 }
 
 .ui-select--sm :deep(.ant-select-selector) {
-  height: var(--dp-control-height-sm, 32px) !important;
-  min-height: var(--dp-control-height-sm, 32px) !important;
+  height: var(--dp-control-height-sm) !important;
+  min-height: var(--dp-control-height-sm) !important;
   padding-block: 0 !important;
-  padding-inline: 11px 28px !important;
+  padding-inline: 11px var(--dp-space-page) !important;
 }
 
 .ui-select--md :deep(.ant-select-selector) {
-  height: var(--dp-control-height-md, 36px) !important;
-  min-height: var(--dp-control-height-md, 36px) !important;
+  height: var(--dp-control-height-md) !important;
+  min-height: var(--dp-control-height-md) !important;
   padding-block: 0 !important;
-  padding-inline: 11px 28px !important;
+  padding-inline: 11px var(--dp-space-page) !important;
 }
 
 .ui-select--lg :deep(.ant-select-selector) {
   height: 40px !important;
   min-height: 40px !important;
   padding-block: 0 !important;
-  padding-inline: 11px 28px !important;
+  padding-inline: 11px var(--dp-space-page) !important;
 }
 
 /* 绝对铺满 + flex 居中：避免 translateY 偏 1px，且空值不 shrink */
@@ -302,7 +314,7 @@ const antSize = computed<SizeType>(() => {
 <style lang="scss">
 .ui-select-dropdown {
   border-radius: var(--dp-radius-overlay) !important;
-  padding: 6px !important;
+  padding: var(--dp-space-component-tight) !important;
   box-shadow: var(--dp-shadow-md) !important;
 
   .ant-select-item {
@@ -320,7 +332,7 @@ const antSize = computed<SizeType>(() => {
   }
 
   .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
-    background-color: color-mix(in srgb, var(--dp-primary) 8%, var(--dp-surface)) !important;
+    background-color: color-mix(in srgb, var(--dp-color-primary) 8%, var(--dp-surface)) !important;
     color: var(--dp-text-primary) !important;
     font-weight: 600 !important;
   }

@@ -108,7 +108,9 @@ export function useArchiveDutyAccess() {
     ]),
   )
 
-  const isTenantAdmin = userStore.isTenantAdmin
+  const isEnterpriseTenantAdmin = computed(
+    () => userStore.isEnterpriseTenantAdmin === true,
+  )
 
   const isTenantWideCollegeCoordinator = computed(() =>
     grants.value.some(
@@ -341,7 +343,7 @@ export function useArchiveDutyAccess() {
     accessLedgerScopedDepartmentIds,
     globalAuditScopedDepartmentIds,
     searchAuditScopedDepartmentIds,
-    isTenantAdmin,
+    isEnterpriseTenantAdmin,
     isTenantWideCollegeCoordinator,
     hasDuty,
     hasDutyForDepartment,

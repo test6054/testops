@@ -109,7 +109,7 @@ const copyright = computed(() => appStore.getCopyright())
   z-index: 2;
   display: inline-flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--dp-space-block);
 }
 
 .auth-brand__logo {
@@ -132,7 +132,7 @@ const copyright = computed(() => appStore.getCopyright())
 }
 
 .auth-brand__product-sub {
-  font-size: var(--dp-font-size-xxs);
+  font-size: var(--dp-font-size-xs);
   font-weight: 700;
   letter-spacing: 0.14em;
   color: color-mix(in srgb, var(--dp-gray-600) 58%, transparent);
@@ -155,7 +155,7 @@ const copyright = computed(() => appStore.getCopyright())
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 12px 10px;
+  gap: var(--dp-space-component);
   margin: 0;
 }
 
@@ -163,7 +163,7 @@ const copyright = computed(() => appStore.getCopyright())
   display: inline-flex;
   align-items: center;
   min-height: var(--dp-control-height-md, 36px);
-  padding: 0 14px;
+  padding: 0 var(--dp-space-block);
   border-radius: var(--dp-radius-full);
   font-size: var(--dp-font-size-xs);
   line-height: 1;
@@ -182,14 +182,14 @@ const copyright = computed(() => appStore.getCopyright())
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 10px;
+  gap: var(--dp-space-component);
 }
 
 .brand-tag {
   display: inline-flex;
   align-items: center;
   min-height: 34px;
-  padding: 0 14px;
+  padding: 0 var(--dp-space-block);
   border-radius: var(--dp-radius-full);
   font-size: var(--dp-font-size-xs);
   font-weight: 700;
@@ -219,7 +219,7 @@ const copyright = computed(() => appStore.getCopyright())
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 32px 48px;
+  padding: var(--dp-space-section-loose) var(--dp-space-section) var(--dp-space-section-loose);
   position: relative;
   overflow-y: auto;
   background: var(--dp-surface);
@@ -255,7 +255,7 @@ const copyright = computed(() => appStore.getCopyright())
 
 @media (max-width: bp.$shell-laptop-max) {
   .auth-brand__capabilities {
-    gap: 12px 10px;
+    gap: var(--dp-space-component);
   }
 }
 
@@ -278,8 +278,8 @@ const copyright = computed(() => appStore.getCopyright())
   .auth-mobile-bar {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 14px 20px;
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-block);
     background: var(--dp-color-primary);
     color: var(--dp-text-inverse);
   }
@@ -298,7 +298,7 @@ const copyright = computed(() => appStore.getCopyright())
   .auth-main {
     flex: 1;
     min-width: auto;
-    padding: 32px 20px 40px;
+    padding: var(--dp-space-section) var(--dp-space-block) var(--dp-space-section-loose);
     justify-content: flex-start;
   }
 
@@ -316,19 +316,19 @@ const copyright = computed(() => appStore.getCopyright())
   }
 
   .auth-brand__capabilities {
-    gap: 10px 8px;
+    gap: var(--dp-space-component) var(--dp-space-component-tight);
   }
 
   .auth-brand__capability {
     min-height: 32px;
-    padding: 0 12px;
-    font-size: var(--dp-font-size-xxs);
+    padding: 0 var(--dp-space-component);
+    font-size: var(--dp-font-size-xs);
   }
 
   .auth-footer {
     position: relative;
     bottom: auto;
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-component);
   }
 }
 </style>

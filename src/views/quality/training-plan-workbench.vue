@@ -56,7 +56,7 @@ import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
@@ -88,6 +88,7 @@ import ProfessionAlgorithmProfileSelector from '@/components/quality/selectors/P
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -110,6 +111,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import {
@@ -190,24 +192,29 @@ const WORKBENCH_TABLE_PAGE_SIZE = 20
 
 const currentPlan = ref<TrainingPlanVO | null>(null)
 const planLoading = ref(false)
+const planDetailLoadError = ref(false)
 
 async function loadCurrentPlan() {
   const scope = beginQualityScopeRequest()
   const planId = qualityStore.currentTrainingPlanId
   if (!planId) {
     currentPlan.value = null
+    planDetailLoadError.value = false
     return
   }
   planLoading.value = true
+  planDetailLoadError.value = false
   try {
     const detail = await trainingPlanApi.detail(planId)
     if (scope.isStale()) {
       return
     }
     currentPlan.value = detail
+    planDetailLoadError.value = false
   } catch (error) {
     if (!scope.isStale()) {
       currentPlan.value = null
+      planDetailLoadError.value = true
       showUserError(error, '培养方案详情加载失败')
     }
   } finally {
@@ -223,15 +230,23 @@ const objectivePageNum = ref(1)
 const objectivePageSize = ref(WORKBENCH_TABLE_PAGE_SIZE)
 const objectiveTotal = ref(0)
 const selectedObjective = ref<TrainingObjectiveVO | null>(null)
+const {
+  loadError: objectivesLoadError,
+  beginLoad: beginObjectivesLoad,
+  failLoad: failObjectivesLoad,
+  okLoad: okObjectivesLoad,
+} = useUiTableLoadError()
 
 async function loadObjectives() {
   const scope = beginQualityScopeRequest()
   if (!qualityStore.currentTrainingPlanId) {
     objectives.value = []
     objectiveTotal.value = 0
+    objectivesLoadError.value = false
     return
   }
   objectivesLoading.value = true
+  beginObjectivesLoad()
   try {
     const page = await trainingObjectiveApi.page({
       pageNum: objectivePageNum.value,
@@ -249,10 +264,10 @@ async function loadObjectives() {
     } else if (objectives.value.length) {
       selectedObjective.value = objectives.value[0]
     }
+    okObjectivesLoad()
   } catch (error) {
     if (!scope.isStale()) {
-      objectives.value = []
-      objectiveTotal.value = 0
+      failObjectivesLoad()
       showUserError(error, '培养目标列表加载失败')
     }
   } finally {
@@ -274,15 +289,23 @@ const requirementPageNum = ref(1)
 const requirementPageSize = ref(WORKBENCH_TABLE_PAGE_SIZE)
 const requirementTotal = ref(0)
 const selectedRequirement = ref<GraduationRequirementVO | null>(null)
+const {
+  loadError: requirementsLoadError,
+  beginLoad: beginRequirementsLoad,
+  failLoad: failRequirementsLoad,
+  okLoad: okRequirementsLoad,
+} = useUiTableLoadError()
 
 async function loadRequirements() {
   const scope = beginQualityScopeRequest()
   if (!qualityStore.currentTrainingPlanId) {
     requirements.value = []
     requirementTotal.value = 0
+    requirementsLoadError.value = false
     return
   }
   requirementsLoading.value = true
+  beginRequirementsLoad()
   try {
     const page = await graduationRequirementApi.page({
       pageNum: requirementPageNum.value,
@@ -300,10 +323,10 @@ async function loadRequirements() {
     } else if (requirements.value.length) {
       selectedRequirement.value = requirements.value[0]
     }
+    okRequirementsLoad()
   } catch (error) {
     if (!scope.isStale()) {
-      requirements.value = []
-      requirementTotal.value = 0
+      failRequirementsLoad()
       showUserError(error, '毕业要求列表加载失败')
     }
   } finally {
@@ -403,13 +426,27 @@ const mappingLoading = ref(false)
 const objMappingPageNum = ref(1)
 const objMappingPageSize = ref(WORKBENCH_TABLE_PAGE_SIZE)
 const objMappingTotal = ref(0)
+const {
+  loadError: planMappingsLoadError,
+  beginLoad: beginPlanMappingsLoad,
+  failLoad: failPlanMappingsLoad,
+  okLoad: okPlanMappingsLoad,
+} = useUiTableLoadError()
+const {
+  loadError: objectiveMappingsLoadError,
+  beginLoad: beginObjectiveMappingsLoad,
+  failLoad: failObjectiveMappingsLoad,
+  okLoad: okObjectiveMappingsLoad,
+} = useUiTableLoadError()
 
 async function loadPlanLevelMappings() {
   const scope = beginQualityScopeRequest()
   if (!qualityStore.currentTrainingPlanId) {
     planLevelMappings.value = []
+    planMappingsLoadError.value = false
     return
   }
+  beginPlanMappingsLoad()
   try {
     const mappings = await loadBoundedPlanAggregate(
       (pageNum, pageSize) =>
@@ -424,9 +461,12 @@ async function loadPlanLevelMappings() {
       return
     }
     planLevelMappings.value = mappings
+    okPlanMappingsLoad()
   } catch (e) {
-    showUserError(e, '支撑映射聚合加载失败')
-    planLevelMappings.value = []
+    if (!scope.isStale()) {
+      showUserError(e, '支撑映射聚合加载失败')
+      failPlanMappingsLoad()
+    }
   }
 }
 
@@ -435,9 +475,11 @@ async function loadObjectiveRequirementMappings() {
   if (!selectedObjective.value) {
     objectiveRequirementMappings.value = []
     objMappingTotal.value = 0
+    objectiveMappingsLoadError.value = false
     return
   }
   mappingLoading.value = true
+  beginObjectiveMappingsLoad()
   try {
     const page = await trainingObjectiveRequirementApi.page({
       pageNum: objMappingPageNum.value,
@@ -449,10 +491,10 @@ async function loadObjectiveRequirementMappings() {
     }
     objectiveRequirementMappings.value = page.list
     objMappingTotal.value = page.total
+    okObjectiveMappingsLoad()
   } catch (error) {
     if (!scope.isStale()) {
-      objectiveRequirementMappings.value = []
-      objMappingTotal.value = 0
+      failObjectiveMappingsLoad()
       showUserError(error, '培养目标支撑映射加载失败')
     }
   } finally {
@@ -461,6 +503,13 @@ async function loadObjectiveRequirementMappings() {
     }
   }
 }
+
+const objectiveMatrixLoadError = computed(
+  () =>
+    objectivesLoadError.value
+    || requirementsLoadError.value
+    || planMappingsLoadError.value,
+)
 
 function handleObjMappingPageChange(page: { current: number, pageSize: number }) {
   objMappingPageNum.value = page.current
@@ -615,6 +664,7 @@ const isPlanStructureEditable = computed(
  */
 type PlanBuildStageKey
   = | 'select_plan'
+    | 'plan_load_failed'
     | 'build_objectives'
     | 'map_requirements'
     | 'build_indicators'
@@ -623,6 +673,9 @@ type PlanBuildStageKey
     | 'confirmed'
 
 const planBuildStage = computed((): PlanBuildStageKey => {
+  if (planDetailLoadError.value) {
+    return 'plan_load_failed'
+  }
   if (!qualityStore.currentTrainingPlanId || !currentPlan.value) {
     return 'select_plan'
   }
@@ -647,11 +700,13 @@ const planBuildStage = computed((): PlanBuildStageKey => {
 
 const planStageGuidance = computed(() => {
   switch (planBuildStage.value) {
+    case 'plan_load_failed':
+      return null
     case 'select_plan':
       return {
         tone: 'info' as const,
         title: '当前阶段：选择或新建培养方案',
-        description: '在页头范围选择已有方案，或点击「新建方案」后维护目标—毕业要求—观测点体系。',
+        description: '在页头范围选择已有方案，或点击「新建方案」后维护目标—毕业要求—观测点体系（上下文未就绪）。',
       }
     case 'build_objectives':
       return {
@@ -761,6 +816,7 @@ const showPlanPrimaryStageAction = computed(
   () =>
     planBuildStage.value !== 'awaiting_review'
     && planBuildStage.value !== 'confirmed'
+    && planBuildStage.value !== 'plan_load_failed'
     && !!planPrimaryStageActionLabel.value,
 )
 
@@ -771,17 +827,25 @@ function guardPlanStructureEditable(action: string): boolean {
 }
 
 const signalSummary = ref<TrainingPlanWorkbenchSignalSummaryVO | null>(null)
+const signalLastSuccessAt = ref<string | null>(null)
+const distributionExpanded = ref(false)
 const activeTab = ref<'objective' | 'requirement'>('objective')
+
+function markSignalSuccessAt(): void {
+  signalLastSuccessAt.value = new Date().toISOString().replace('T', ' ').slice(0, 19)
+}
 
 async function loadSignalSummary() {
   if (!qualityStore.currentTrainingPlanId) {
     signalSummary.value = null
+    signalLastSuccessAt.value = null
     return
   }
   try {
     signalSummary.value = await workbenchApi.trainingPlanWorkbenchSignalSummary({
       trainingPlanId: qualityStore.currentTrainingPlanId,
     })
+    markSignalSuccessAt()
   } catch (error) {
     signalSummary.value = null
     showUserError(error, '培养方案工作台指标加载失败')
@@ -794,12 +858,14 @@ const signals = computed<SignalMetric[]>(() => {
     return []
   }
   const planStatus = summary.planConfirmationStatus
-  const objectiveTotal = summary.objectiveTotal ?? 0
-  const requirementTotal = summary.requirementTotal ?? 0
-  const objectiveHealthyCount = summary.objectiveHealthyCount ?? 0
-  const requirementHealthyCount = summary.requirementHealthyCount ?? 0
-  const objectiveHealthOk = objectiveTotal === 0 || objectiveHealthyCount === objectiveTotal
-  const requirementHealthOk = requirementTotal === 0 || requirementHealthyCount === requirementTotal
+  const objectiveTotal = summary.objectiveTotal
+  const requirementTotal = summary.requirementTotal
+  const objectiveHealthyCount = summary.objectiveHealthyCount
+  const requirementHealthyCount = summary.requirementHealthyCount
+  const objectivesConfigured = objectiveTotal > 0
+  const requirementsConfigured = requirementTotal > 0
+  const objectiveHealthOk = objectivesConfigured && objectiveHealthyCount === objectiveTotal
+  const requirementHealthOk = requirementsConfigured && requirementHealthyCount === requirementTotal
   return [
     {
       key: 'plan',
@@ -818,39 +884,48 @@ const signals = computed<SignalMetric[]>(() => {
       key: 'objectives',
       label: '培养目标数',
       value: objectiveTotal,
-      tone: 'blue',
-      clickable: objectiveTotal > 0,
+      tone: objectivesConfigured ? 'blue' : 'orange',
+      clickable: true,
       active: activeTab.value === 'objective',
     },
     {
       key: 'objectivesHealth',
       label: '目标→要求权重健康',
-      value: `${objectiveHealthyCount}/${objectiveTotal}`,
-      tone: objectiveHealthOk ? 'green' : 'red',
-      clickable: !objectiveHealthOk,
-      active: activeTab.value === 'objective' && !objectiveHealthOk,
+      value: objectivesConfigured ? `${objectiveHealthyCount}/${objectiveTotal}` : '未配置',
+      tone: !objectivesConfigured ? 'orange' : objectiveHealthOk ? 'green' : 'red',
+      clickable: objectivesConfigured && !objectiveHealthOk,
+      active: activeTab.value === 'objective' && objectivesConfigured && !objectiveHealthOk,
     },
     {
       key: 'requirements',
       label: '毕业要求数',
       value: requirementTotal,
-      tone: 'blue',
-      clickable: requirementTotal > 0,
+      tone: requirementsConfigured ? 'blue' : 'orange',
+      clickable: true,
       active: activeTab.value === 'requirement',
     },
     {
       key: 'requirementsHealth',
       label: '要求→观测点权重健康',
-      value: `${requirementHealthyCount}/${requirementTotal}`,
-      tone: requirementHealthOk ? 'green' : 'red',
-      clickable: !requirementHealthOk,
-      active: activeTab.value === 'requirement' && !requirementHealthOk,
+      value: requirementsConfigured ? `${requirementHealthyCount}/${requirementTotal}` : '未配置',
+      tone: !requirementsConfigured ? 'orange' : requirementHealthOk ? 'green' : 'red',
+      clickable: requirementsConfigured && !requirementHealthOk,
+      active: activeTab.value === 'requirement' && requirementsConfigured && !requirementHealthOk,
     },
-    { key: 'indicators', label: '观测点总数', value: summary.indicatorTotal ?? 0, tone: 'blue' },
+  ]
+})
+
+const distributionSignals = computed<SignalMetric[]>(() => {
+  const summary = signalSummary.value
+  if (!summary) {
+    return []
+  }
+  return [
+    { key: 'indicators', label: '观测点总数', value: summary.indicatorTotal, tone: 'blue' },
     {
       key: 'standardMaps',
       label: '已映射标准条款',
-      value: summary.standardMappingTotal ?? 0,
+      value: summary.standardMappingTotal,
       tone: 'gray',
     },
   ]
@@ -1625,29 +1700,13 @@ async function handleScopeChange(): Promise<void> {
 useQualityScopedLoader(handleScopeChange, {
   watchScope: true,
   immediate: false,
-  reloadOnActivated: false,
+  reloadOnActivated: true,
 })
 
 onMounted(async () => {
   await loadStandardOptions()
   if (qualityStore.currentTrainingPlanId) {
     await handleScopeChange()
-  }
-})
-
-onActivated(async () => {
-  if (qualityStore.currentTrainingPlanId) {
-    await loadCurrentPlan()
-    await Promise.all([
-      loadObjectives(),
-      loadRequirements(),
-      loadPlanLevelMappings(),
-      loadPlanLevelIndicators(),
-      loadObjectiveRequirementMappings(),
-      loadSelectedRequirementIndicators(),
-      loadStandardMappings(),
-      loadSignalSummary(),
-    ])
   }
 })
 
@@ -1747,6 +1806,13 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
       </template>
     </UiAlertStrip>
 
+    <UiEmpty
+      v-else-if="planDetailLoadError"
+      size="sm"
+      title="培养方案详情加载失败"
+      class="tpw__scope-hint"
+    />
+
     <UiAlertStrip
       v-else-if="planStageGuidance"
       :tone="planStageGuidance.tone"
@@ -1776,7 +1842,12 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 
     <div
       class="tpw__body"
-      :class="[{ 'tpw__body--scoped-out': !qualityStore.currentTrainingPlanId }]"
+      :class="[
+        {
+          'tpw__body--scoped-out':
+            !qualityStore.currentTrainingPlanId || planDetailLoadError,
+        },
+      ]"
     >
       <SignalBand
         :metrics="signals"
@@ -1785,6 +1856,26 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
         class="tpw__signals"
         @metric-click="handleSignalMetricClick"
       />
+      <p v-if="signalLastSuccessAt" class="tpw__sync-hint">
+        指标最近同步：{{ signalLastSuccessAt }}
+      </p>
+      <div v-if="distributionSignals.length" class="tpw__charts-fold">
+        <UiButton
+          variant="ghost"
+          size="sm"
+          class="tpw__charts-toggle"
+          @click="distributionExpanded = !distributionExpanded"
+        >
+          {{ distributionExpanded ? '收起配置统计' : '展开配置统计' }}
+        </UiButton>
+        <SignalBand
+          v-if="distributionExpanded"
+          :metrics="distributionSignals"
+          variant="panel"
+          compact
+          class="tpw__signals-secondary"
+        />
+      </div>
 
       <div class="tpw__tabs">
         <UiButton
@@ -1821,6 +1912,9 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                 :columns="objectiveColumns"
                 :data-source="objectives"
                 :loading="objectivesLoading"
+                :load-error="objectivesLoadError"
+                empty-title="暂无培养目标"
+                empty-description="请新建培养目标后再配置映射权重"
                 row-key="id"
                 size="middle"
                 v-model:current="objectivePageNum"
@@ -1867,9 +1961,9 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
             <UiCard v-if="!selectedObjective" class="tpw__card">
               <UiAlertStrip tone="info" size="sm" dense inline :show-icon="false">
                 <template #default>
-                  <span style="display: inline-flex; align-items: center; gap: 8px">
+                  <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
                     <UiTag tone="blue" size="sm">未选择</UiTag>
-                    <span>请在左侧选择条目后再编辑</span>
+                    <span>请在左侧选择条目后再编辑（上下文未就绪）</span>
                   </span>
                 </template>
               </UiAlertStrip>
@@ -1879,7 +1973,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                 <span>「{{ selectedObjective.objectiveName }}」支撑毕业要求映射</span>
               </template>
               <template #extra>
-                <div class="dp-space" style="--dp-space-gap: 8px">
+                <div class="dp-space dp-space--tight">
                   <UiTag :tone="objectiveWeightHealthy ? 'green' : 'red'">
                     权重和：{{ objectiveWeightSum.toFixed(3) }}
                     {{ objectiveWeightHealthy ? '合规' : '需=1' }}
@@ -1894,6 +1988,9 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                 :columns="objMappingColumns"
                 :data-source="mappingsOfSelectedObjective"
                 :loading="mappingLoading"
+                :load-error="objectiveMappingsLoadError"
+                empty-title="暂无支撑映射"
+                empty-description="请新增目标到毕业要求的映射权重"
                 row-key="id"
                 size="middle"
                 v-model:current="objMappingPageNum"
@@ -1944,6 +2041,8 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
             :cols="objectiveMatrixCols"
             :cells="objectiveMatrixCells"
             :loading="objectivesLoading || mappingLoading"
+            :load-error="objectiveMatrixLoadError"
+            empty-error-title="目标映射矩阵加载失败"
             empty-text="尚无培养目标或毕业要求"
             @cell-click="handleObjectiveRequirementCellClick"
           />
@@ -1968,6 +2067,9 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                 :columns="requirementColumns"
                 :data-source="requirements"
                 :loading="requirementsLoading"
+                :load-error="requirementsLoadError"
+                empty-title="暂无毕业要求"
+                empty-description="请新建毕业要求后再拆分观测点"
                 row-key="id"
                 size="middle"
                 v-model:current="requirementPageNum"
@@ -2016,20 +2118,20 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
             <UiCard v-if="!selectedRequirement" class="tpw__card">
               <UiAlertStrip tone="info" size="sm" dense inline :show-icon="false">
                 <template #default>
-                  <span style="display: inline-flex; align-items: center; gap: 8px">
+                  <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
                     <UiTag tone="blue" size="sm">未选择</UiTag>
-                    <span>请在左侧选择条目后再编辑</span>
+                    <span>请在左侧选择条目后再编辑（上下文未就绪）</span>
                   </span>
                 </template>
               </UiAlertStrip>
             </UiCard>
             <template v-else>
-              <UiCard class="tpw__card" style="margin-bottom: 12px">
+              <UiCard class="tpw__card" style="margin-bottom: var(--dp-space-component)">
                 <template #title>
                   <span>「{{ selectedRequirement.requirementName }}」观测点</span>
                 </template>
                 <template #extra>
-                  <div class="dp-space" style="--dp-space-gap: 8px">
+                  <div class="dp-space dp-space--tight">
                     <UiTag
                       :tone="
                         isWeightSumHealthy(indicatorWeightSumByReq(selectedRequirement.id))
@@ -2065,7 +2167,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                       {{ record.thresholdValue == null ? '-' : record.thresholdValue.toFixed(2) }}
                     </template>
                     <template v-else-if="column.key === 'civicDimensions'">
-                      <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
+                      <div class="dp-space dp-space--wrap dp-space--tight">
                         <UiTag v-for="d in record.civicDimensions ?? []" :key="d" tone="purple">
                           {{ strictEnumLabel(CivicDimensionDescription, d, '课程思政维度') }}
                         </UiTag>
@@ -2504,13 +2606,13 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
   }
 
   &__scope-hint {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__body {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--dp-space-component);
     min-width: 0;
 
     &--scoped-out {
@@ -2521,20 +2623,39 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
   }
 
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component-xs);
+  }
+
+  &__signals-secondary {
+    margin-top: var(--dp-space-component-tight);
+    margin-bottom: 0;
+  }
+
+  &__sync-hint {
+    margin: 0 0 var(--dp-space-component-tight);
+    color: var(--dp-text-secondary, #666);
+    font-size: var(--dp-font-size-sm, 12px);
+  }
+
+  &__charts-fold {
+    margin-bottom: var(--dp-space-component-tight);
+  }
+
+  &__charts-toggle {
+    padding-inline: 0;
   }
 
   &__tabs {
     display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-    padding: 8px 0;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component);
+    padding: var(--dp-space-component-tight) 0;
   }
 
   &__tab-content {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--dp-space-component);
   }
 
   &__card {
@@ -2543,7 +2664,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
   }
 
   &__matrix-block {
-    margin-top: 4px;
+    margin-top: var(--dp-space-component-xs);
   }
 
   &__muted {
@@ -2551,7 +2672,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
   }
 
   &__file-name {
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
@@ -2566,10 +2687,10 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 }
 
 .text-gray-500 {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .mr-1 {
-  margin-right: 4px;
+  margin-right: var(--dp-space-component-xs);
 }
 </style>

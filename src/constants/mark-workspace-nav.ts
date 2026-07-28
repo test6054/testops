@@ -19,7 +19,7 @@ export const MARK_STAGE_TITLE: Record<MarkStageKey, string> = {
   ARCHIVE: '归档复盘',
 }
 
-/** 阶段默认子路由：StageRail / 智能入口跳转目标（SCAN 阶段请用 resolveScanStageEntryRoute 动态分流） */
+/** 阶段默认子路由：StageRail 结构落点；智能入口走快照 workspaceRouteName / nextAction */
 export const MARK_STAGE_DEFAULT_ROUTE: Record<MarkStageKey, string> = {
   EXAM_PREP: 'TeacherExamWorkspacePrep',
   PAPER_TEMPLATE: 'TeacherExamWorkspaceLayoutDesigner',

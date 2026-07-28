@@ -3,10 +3,10 @@ import type {
   ExamLayoutBlockDto,
   ExamLayoutDesignLoadResponse,
   ExamLayoutDocument,
-  ExamLayoutGenerateQuestionRequest,
   ExamLayoutQuestionDto,
 } from '@/apis/mark/exam-layout-design'
 import type { MarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
+import type { ExamLayoutPaperSpecCode } from '@/types/enums/exam-layout-paper-spec-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -16,6 +16,7 @@ import {
   cancelExamLayoutDetect,
   fetchExamLayoutDetectStatus,
   generateExamLayoutSheet,
+  importInstitutionAnswerBooklet,
   loadExamLayoutDesign,
   previewExamLayoutDesign,
   resolveExamLayoutDetectPollDeadlineMs,
@@ -43,6 +44,7 @@ import {
   resolveAccessibleLayoutDesignPhase,
   resolveDefaultLayoutDesignPhase,
 } from '@/utils/layout-design-workspace'
+import { fingerprintLayoutDocument } from '@/utils/layout-document-fingerprint'
 import { isLayoutDetectInFlightConflict } from '@/utils/marking-workflow-conflict'
 
 export interface UseLayoutDesignWorkbenchOptions {
@@ -69,6 +71,19 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
   const writeLockReason = ref<string>()
   const document = ref<ExamLayoutDocument | null>(null)
   const layoutPersisted = ref(false)
+  /** 最近一次已与后端对齐的文档指纹；与当前 document 比较得到 dirty。 */
+  const persistedDocumentFingerprint = ref('')
+  const layoutDirty = computed(
+    () => fingerprintLayoutDocument(document.value) !== persistedDocumentFingerprint.value,
+  )
+  type LayoutDetectOutcome = 'idle' | 'running' | 'failed' | 'cancelled' | 'timeout'
+  const detectOutcome = ref<LayoutDetectOutcome>('idle')
+  const detectErrorMessage = ref('')
+  type LayoutMutationOutcome = 'idle' | 'save-failed' | 'preview-failed'
+  const mutationOutcome = ref<LayoutMutationOutcome>('idle')
+  const mutationErrorMessage = ref('')
+  let loadGeneration = 0
+  let revertingExamSwitch = false
   const focusedBlockId = ref<string | null>(null)
   const focusedQuestionId = ref<string | null>(null)
   const currentPageNo = ref(1)
@@ -190,6 +205,22 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     phase.value = nextPhase
   }
 
+  function markDocumentAligned(next: ExamLayoutDocument | null, persisted: boolean): void {
+    document.value = next
+    layoutPersisted.value = persisted
+    persistedDocumentFingerprint.value = fingerprintLayoutDocument(next)
+  }
+
+  function clearDetectOutcome(): void {
+    detectOutcome.value = 'idle'
+    detectErrorMessage.value = ''
+  }
+
+  function clearMutationOutcome(): void {
+    mutationOutcome.value = 'idle'
+    mutationErrorMessage.value = ''
+  }
+
   function patchDocument(next: ExamLayoutDocument): void {
     if (layoutCanvasReadonly.value === true) {
       if (detecting.value === true) {
@@ -275,23 +306,28 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
         if (session !== detectSessionSeq) {
           return
         }
-        document.value = status.document
-        layoutPersisted.value = true
-        focusedQuestionId.value = document.value.questions?.[0]?.id ?? null
+        markDocumentAligned(status.document, true)
+        detectOutcome.value = 'idle'
+        detectErrorMessage.value = ''
+        focusedQuestionId.value = status.document.questions?.[0]?.id ?? null
         focusedBlockId.value = null
-        currentPageNo.value = document.value.pages[0].pageNo
+        currentPageNo.value = status.document.pages[0].pageNo
         void message.success('题目识别与划区已完成并自动保存草稿，请核对 ROI 后配置身份填涂区')
         await navigatePhase(LayoutDesignPhaseCode.QUESTIONS)
         await options.workbenchContext?.refreshChrome?.()
         return
       }
       if (taskStatus === ExamLayoutDetectTaskStatusCode.FAILED) {
-        showFormValidationMessage(status.errorMessage || '自动预划区失败')
+        detectOutcome.value = 'failed'
+        detectErrorMessage.value = status.errorMessage?.trim() || '自动预划区失败'
+        showFormValidationMessage(detectErrorMessage.value)
         return
       }
       if (taskStatus === ExamLayoutDetectTaskStatusCode.CANCELLED) {
         if (session === detectSessionSeq) {
-          void message.info('识别任务已结束，未保存本次识别结果，可重新上传源文件并识别')
+          detectOutcome.value = 'cancelled'
+          detectErrorMessage.value = '识别任务已取消，未保存本次识别结果'
+          void message.info(detectErrorMessage.value)
           await reload()
         }
         return
@@ -300,7 +336,9 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
         window.setTimeout(resolve, 1200)
       })
     }
-    showFormValidationMessage('识别超时，请点击重新识别')
+    detectOutcome.value = 'timeout'
+    detectErrorMessage.value = '识别超时，请回到源文件阶段重新识别'
+    showFormValidationMessage(detectErrorMessage.value)
   }
 
   async function resumeActiveDetectPolling(
@@ -321,6 +359,11 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       await pollDetectStatus(detectTaskId, session)
     } catch (error) {
       if (session === detectSessionSeq) {
+        detectOutcome.value = 'failed'
+        detectErrorMessage.value
+          = error instanceof Error && error.message.trim()
+            ? error.message.trim()
+            : '自动预划区失败'
         showUserError(error, '自动预划区失败')
         await reload()
       }
@@ -364,13 +407,14 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
 
   async function reload(): Promise<void> {
     const examId = options.examId()
+    const generation = ++loadGeneration
+    detectSessionSeq += 1
+    clearDetectOutcome()
     if (!examId) {
-      document.value = null
-      layoutPersisted.value = false
+      markDocumentAligned(null, false)
       focusedBlockId.value = null
       focusedQuestionId.value = null
       currentPageNo.value = 1
-      // MVR-274：无考试上下文时保持只读
       layoutWritable.value = false
       writeLockReason.value = undefined
       return
@@ -378,17 +422,21 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     loading.value = true
     try {
       const res = await loadExamLayoutDesign({ examId })
+      if (generation !== loadGeneration || options.examId() !== examId) {
+        return
+      }
       // MVR-384：layoutWritable 承接 BE writable（合同 boolean）
       layoutWritable.value = res.writable === true
       writeLockReason.value = res.writeLockReason
       detectPollingPolicy.value = res.detectPollingPolicy
       if (res.document) {
-        document.value = res.document
-        layoutPersisted.value = true
+        markDocumentAligned(res.document, true)
       } else {
         const bootstrap = await bootstrapExamLayoutDesign({ examId })
-        document.value = bootstrap.document
-        layoutPersisted.value = bootstrap.persisted
+        if (generation !== loadGeneration || options.examId() !== examId) {
+          return
+        }
+        markDocumentAligned(bootstrap.document, bootstrap.persisted)
       }
       if (document.value?.pages?.length) {
         currentPageNo.value = document.value.pages[0].pageNo
@@ -411,11 +459,14 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       ensurePhaseQuery()
       if (shouldResumeDetect && inFlightTaskId) {
         activeDetectTaskId.value = inFlightTaskId
+        detectOutcome.value = 'running'
         await resumeActiveDetectPolling(res, inFlightTaskId)
       }
     } catch (error) {
-      document.value = null
-      layoutPersisted.value = false
+      if (generation !== loadGeneration || options.examId() !== examId) {
+        return
+      }
+      markDocumentAligned(null, false)
       focusedBlockId.value = null
       focusedQuestionId.value = null
       currentPageNo.value = 1
@@ -439,16 +490,22 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       return false
     }
     saving.value = true
+    clearMutationOutcome()
     try {
       document.value = await saveExamLayoutDesign({
         examId,
         document: { ...document.value, examId },
       })
-      layoutPersisted.value = true
+      markDocumentAligned(document.value, true)
       void message.success('制卷设计已保存')
       await options.workbenchContext?.refreshChrome?.()
       return true
     } catch (error) {
+      mutationOutcome.value = 'save-failed'
+      mutationErrorMessage.value
+        = error instanceof Error && error.message.trim()
+          ? error.message.trim()
+          : '保存制卷设计失败'
       showUserError(error, '保存制卷设计失败')
       return false
     } finally {
@@ -477,6 +534,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       }
     }
     previewing.value = true
+    clearMutationOutcome()
     try {
       const res = await previewExamLayoutDesign(
         writablePreview && document.value
@@ -493,16 +551,18 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       previewPdfFileId.value = res.previewPdfFileId
       previewOpen.value = true
     } catch (error) {
+      mutationOutcome.value = 'preview-failed'
+      mutationErrorMessage.value
+        = error instanceof Error && error.message.trim()
+          ? error.message.trim()
+          : '生成预览失败'
       showUserError(error, '生成预览失败')
     } finally {
       previewing.value = false
     }
   }
 
-  async function handleGenerateSheet(
-    paperSpec: string,
-    questions: ExamLayoutGenerateQuestionRequest[],
-  ): Promise<void> {
+  async function handleGenerateSheet(paperSpec: ExamLayoutPaperSpecCode): Promise<void> {
     const examId = options.examId()
     if (!examId || layoutWritable.value !== true || detecting.value === true) {
       return
@@ -512,16 +572,42 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     }
     generating.value = true
     try {
-      document.value = await generateExamLayoutSheet({ examId, paperSpec, questions })
-      layoutPersisted.value = true
+      document.value = await generateExamLayoutSheet({ examId, paperSpec })
+      markDocumentAligned(document.value, true)
       if (document.value.pages?.length) {
         currentPageNo.value = document.value.pages[0].pageNo
       }
-      void message.success('标准答题卡已生成')
+      void message.success('试题卷+答题纸统一页序已生成')
       await navigatePhase(LayoutDesignPhaseCode.LAYOUT)
       await options.workbenchContext?.refreshChrome?.()
     } catch (error) {
-      showUserError(error, '生成答题卡失败')
+      showUserError(error, '生成答题纸失败')
+    } finally {
+      generating.value = false
+    }
+  }
+
+  async function handleInstitutionAnswerBookletImport(sourceFileId: string): Promise<void> {
+    const examId = options.examId()
+    if (!examId || layoutWritable.value !== true || detecting.value === true || generating.value === true) {
+      return
+    }
+    generating.value = true
+    try {
+      document.value = await importInstitutionAnswerBooklet({
+        examId,
+        answerBookletSourceFileId: sourceFileId,
+      })
+      markDocumentAligned(document.value, true)
+      const firstAnswerPage = document.value.pages.find((page) => page.pageKind === 'ANSWER_SHEET')
+      if (firstAnswerPage) {
+        currentPageNo.value = firstAnswerPage.pageNo
+      }
+      void message.success('学校统一答题纸已导入，请校对身份区与逐题作答区')
+      await navigatePhase(LayoutDesignPhaseCode.LAYOUT)
+      await options.workbenchContext?.refreshChrome?.()
+    } catch (error) {
+      showUserError(error, '导入学校统一答题纸失败')
     } finally {
       generating.value = false
     }
@@ -538,6 +624,8 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     }
     const session = ++detectSessionSeq
     detecting.value = true
+    detectOutcome.value = 'running'
+    detectErrorMessage.value = ''
     detectProgressText.value = '识别任务排队中'
     let conflictResumed = false
     try {
@@ -549,7 +637,9 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
         detectPollingPolicy.value = started.detectPollingPolicy
       }
       if (!started.detectTaskId) {
-        showUserError(new Error('识别任务未返回任务号'), '自动预划区失败')
+        detectOutcome.value = 'failed'
+        detectErrorMessage.value = '识别任务未返回任务号'
+        showUserError(new Error(detectErrorMessage.value), '自动预划区失败')
         return
       }
       activeDetectTaskId.value = started.detectTaskId
@@ -565,6 +655,10 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
           return
         }
       }
+      detectOutcome.value = 'failed'
+      detectErrorMessage.value = error instanceof Error && error.message.trim()
+        ? error.message.trim()
+        : '自动预划区失败'
       showUserError(error, '自动预划区失败')
     } finally {
       if (session === detectSessionSeq && !conflictResumed) {
@@ -594,7 +688,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       return
     }
     // MVR-956：确认后再次认 layoutWritable 与进行中任务，防只读漂移后仍发取消
-    if (layoutWritable.value !== true || !activeDetectTaskId.value || cancellingDetect.value === true) {
+    if (!layoutWritable.value || !activeDetectTaskId.value || cancellingDetect.value) {
       void message.warning(writeLockReason.value || '当前制卷只读或识别任务已结束，无法取消识别')
       return
     }
@@ -609,12 +703,16 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       detecting.value = false
       detectProgressText.value = ''
       activeDetectTaskId.value = null
-      void message.info('识别任务已取消')
+      detectOutcome.value = 'cancelled'
+      detectErrorMessage.value = '识别任务已取消，未保存本次识别结果'
+      void message.info(detectErrorMessage.value)
     } catch (error) {
       showUserError(error, '取消识别失败')
       detecting.value = false
       detectProgressText.value = ''
       activeDetectTaskId.value = null
+      detectOutcome.value = 'failed'
+      detectErrorMessage.value = '取消识别失败'
       await reload()
     } finally {
       cancellingDetect.value = false
@@ -623,7 +721,37 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
 
   watch(
     () => options.examId(),
-    () => {
+    async (nextExamId, previousExamId) => {
+      if (
+        previousExamId
+        && nextExamId
+        && previousExamId !== nextExamId
+        && layoutDirty.value
+      ) {
+        const discard = await confirmAsync({
+          title: '制卷设计尚未保存',
+          content: '切换考试将丢失未保存改动。可先保存设计，或确认丢弃后切换。',
+          type: 'warning',
+          okText: '丢弃并切换',
+          cancelText: '留在当前考试',
+        })
+        if (!discard) {
+          revertingExamSwitch = true
+          try {
+            await router.replace({
+              name: route.name ?? undefined,
+              params: { ...route.params, examId: previousExamId },
+              query: route.query,
+            })
+          } finally {
+            revertingExamSwitch = false
+          }
+          return
+        }
+      }
+      if (revertingExamSwitch) {
+        return
+      }
       void reload()
     },
     { immediate: true },
@@ -631,6 +759,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
 
   onBeforeUnmount(() => {
     detectSessionSeq += 1
+    loadGeneration += 1
   })
 
   return {
@@ -639,6 +768,12 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     generating,
     detecting,
     detectProgressText,
+    detectOutcome,
+    detectErrorMessage,
+    clearDetectOutcome,
+    mutationOutcome,
+    mutationErrorMessage,
+    clearMutationOutcome,
     activeDetectTaskId,
     cancellingDetect,
     previewing,
@@ -646,6 +781,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     writeLockReason,
     document,
     layoutPersisted,
+    layoutDirty,
     focusedBlockId,
     focusedQuestionId,
     currentPageNo,
@@ -670,6 +806,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     handleSave,
     handlePreview,
     handleGenerateSheet,
+    handleInstitutionAnswerBookletImport,
     handleAutoDetect,
     handleCancelDetect,
     isPhaseAccessible: (value: LayoutDesignPhaseCode) =>

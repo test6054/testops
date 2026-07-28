@@ -162,14 +162,14 @@ defineExpose({ reload: loadOptions })
 }
 
 .text-gray-500 {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .mr-1 {
-  margin-right: 4px;
+  margin-right: var(--dp-space-component-xs);
 }
 
 .ml-1 {
-  margin-left: 4px;
+  margin-left: var(--dp-space-component-xs);
 }
 </style>

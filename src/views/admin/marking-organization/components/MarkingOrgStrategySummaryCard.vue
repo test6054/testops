@@ -3,13 +3,26 @@
     <template #head>
       <div class="org-strategy__head">
         <h3 class="org-strategy__title">分配策略</h3>
-        <UiButton v-if="canManage === true" variant="outline" size="sm" @click="emit('edit-policy')">
+        <UiButton
+          v-if="canManage === true && policiesLoadFailed !== true"
+          variant="outline"
+          size="sm"
+          @click="emit('edit-policy')"
+        >
           编辑策略
         </UiButton>
       </div>
     </template>
 
-    <dl class="org-strategy__list">
+    <UiAlertStrip
+      v-if="policiesLoadFailed"
+      tone="error"
+      dense
+      title="分配策略加载失败"
+      class="org-strategy__alert"
+    />
+
+    <dl v-else class="org-strategy__list">
       <div class="org-strategy__row">
         <dt>分配模式</dt>
         <dd>{{ allocationModeLabel }}</dd>
@@ -25,6 +38,22 @@
       <div class="org-strategy__row">
         <dt>在手上限</dt>
         <dd>{{ allocationPolicy?.loadLimit ?? '—' }} 份</dd>
+      </div>
+      <div class="org-strategy__row">
+        <dt>试评样本量</dt>
+        <dd>{{ allocationPolicy?.trialSampleSize ?? '—' }} 份</dd>
+      </div>
+      <div class="org-strategy__row">
+        <dt>双评</dt>
+        <dd>
+          <UiTag :tone="dualMarkEnabled ? 'blue' : 'gray'" size="sm">
+            {{ dualMarkEnabled ? '已启用' : '未启用' }}
+          </UiTag>
+        </dd>
+      </div>
+      <div v-if="dualMarkEnabled" class="org-strategy__row">
+        <dt>双评分差阈值</dt>
+        <dd>{{ dualMarkThresholdLabel }}</dd>
       </div>
       <div class="org-strategy__row">
         <dt>自动回收</dt>
@@ -60,6 +89,7 @@ import {
 } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -71,12 +101,12 @@ const props = withDefaults(
   allocationPolicy?: AllocationPolicyResponse
   recyclePolicy?: RecyclePolicyResponse
   canManage?: boolean
+  policiesLoadFailed?: boolean
 }>(),
   {
-  canManage: false,
+    canManage: false,
   },
 )
-
 const emit = defineEmits<{
   'edit-policy': []
 }>()
@@ -101,6 +131,19 @@ const allocationUnitLabel = computed(() =>
     : '—',
 )
 
+const dualMarkEnabled = computed(() => props.allocationPolicy?.dualMarkEnabled === true)
+
+const dualMarkThresholdLabel = computed(() => {
+  if (!dualMarkEnabled.value) {
+    return '—'
+  }
+  const threshold = props.allocationPolicy?.dualMarkScoreDiffThreshold
+  if (threshold == null) {
+    return '须完全一致'
+  }
+  return `${threshold} 分`
+})
+
 const anonymityLabel = computed(() =>
   props.allocationPolicy
     ? strictEnumLabel(AnonymityModeDescription, props.allocationPolicy.anonymityMode, '匿名模式')
@@ -118,7 +161,7 @@ const autoRecycleEnabled = computed(() =>
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
     width: 100%;
   }
 
@@ -128,30 +171,32 @@ const autoRecycleEnabled = computed(() =>
     font-weight: 600;
   }
 
+  &__alert {
+    margin: var(--dp-space-component-tight) var(--dp-space-component);
+  }
+
   &__list {
     margin: 0;
-    padding: 8px 12px;
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
   }
 
   &__row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 6px 0;
-    border-bottom: 1px solid var(--dp-border-light);
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-component-tight) 0;
+    border-bottom: 1px solid var(--dp-border-subtle);
 
     dt {
       margin: 0;
       font-size: var(--dp-font-size-xs);
-      color: var(--dp-text-muted);
+      color: var(--dp-text-secondary);
     }
 
     dd {
       margin: 0;
-      font-size: var(--dp-font-size-xs);
-      font-weight: 600;
-      text-align: right;
+      font-size: var(--dp-font-size-sm);
       color: var(--dp-text-primary);
     }
 

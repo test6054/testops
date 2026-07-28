@@ -7,15 +7,21 @@ import type { FinalScoreRiskOverviewResponse } from './exam-score'
 import type { QuestionTypeCode } from './question-type'
 import type { MarkTeacherDashboardPendingTodoItemVO } from './teacher-dashboard'
 import type { ExamPrepScenarioGuideResponse } from '@/apis/mark/exam'
+import type { WorkflowBlockingItem } from '@/components/workbench/workflow-readiness/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { ExamScanMonitorSignalActionKeyCode } from '@/types/enums/exam-scan-monitor-signal-action-key-enum'
 import type { ExamScanMonitorSignalCode } from '@/types/enums/exam-scan-monitor-signal-code-enum'
 import type { ExamScanMonitorSignalToneCode } from '@/types/enums/exam-scan-monitor-signal-tone-enum'
 import type { WorkbenchNextActionKeyCode } from '@/types/enums/exam-workbench-next-action-key-enum'
+import type { ExamWorkbenchPrepStepKeyCode } from '@/types/enums/exam-workbench-prep-step-key-enum'
 import type { ExamWorkbenchStageKeyCode } from '@/types/enums/exam-workbench-stage-key-enum'
 import type { WorkbenchStageStatusCode } from '@/types/enums/exam-workbench-stage-status-enum'
 import type { LedgerStatusCode } from '@/types/enums/ledger-status-enum'
 import type { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
+import type { ScannerAgentDiagnosticStatusCode } from '@/types/enums/scanner-agent-diagnostic-status-enum'
+import type { ScannerDeviceStatusCode } from '@/types/enums/scanner-device-status-enum'
+import type { ScannerEndpointOnlineStatusCode } from '@/types/enums/scanner-endpoint-online-status-enum'
+import type { ScannerInterfaceModeCode } from '@/types/enums/scanner-interface-mode-enum'
 import http from '@/config/axios'
 import { isExamScanMonitorSignalActionKeyCode } from '@/types/enums/exam-scan-monitor-signal-action-key-enum'
 import { isExamScanMonitorSignalCode } from '@/types/enums/exam-scan-monitor-signal-code-enum'
@@ -97,10 +103,12 @@ export interface ExamWorkbenchStageItemResponse {
 
 /** 考试工作台准备步骤 - 对应 ExamWorkbenchPrepStepResponse */
 export interface ExamWorkbenchPrepStepResponse {
-  key: string
+  key: ExamWorkbenchPrepStepKeyCode
   title: string
   status: WorkbenchStageStatusCode
   statusText: string
+  /** 动作级工作台路由名；准备页跳转唯一真源 */
+  workspaceRouteName: string
   advisoryReason?: string
 }
 
@@ -111,10 +119,17 @@ export interface ExamWorkbenchNextActionResponse {
   enabled: boolean
   disabledReason?: string
   targetStageKey: ExamWorkbenchStageKeyCode
-  /** 可行动时的任务说明条目，首条供任务条主文案 */
-  actionPrompts?: string[]
+  /**
+   * 动作级工作台路由名；未启用时仍可进入对应工作页（如定标已就绪后复核策略）。
+   * 定标已启用且存在 blockingItems 时，任务条/推荐 CTA 优先采信首项 targetRouteName。
+   */
+  workspaceRouteName: string
+  /** 可行动时的工作流阻断项，与会话创建就绪度同源；首项供任务条主文案与跳转 */
+  blockingItems?: WorkflowBlockingItem[]
   /** 待办项数量，供任务条角标 */
   pendingItemCount?: number
+  /** 是否深链待我签审发布复核队列；仅 APPROVE_PUBLISH_REVIEW 可行动时为 true */
+  openPendingMyPublishReview?: boolean
 }
 
 /** 阅卷任务状态汇总 - 对应 ExamWorkbenchMarkingTaskSummaryResponse */
@@ -196,7 +211,6 @@ export interface ExamWorkbenchStageSnapshotResponse {
   stages: ExamWorkbenchStageItemResponse[]
   prepSteps: ExamWorkbenchPrepStepResponse[]
   prepAdvisoryReasons: string[]
-  prepBlockingReasons: string[]
   prepScenarioGuide?: ExamPrepScenarioGuideResponse
   /** 租户是否启用经验辅助评阅 */
   tenantExperienceAssistEnabled: boolean
@@ -208,6 +222,14 @@ export interface ExamWorkbenchStageSnapshotResponse {
   /** 涉密 / 统考涉密场次 */
   confidential?: boolean
   nextActions: ExamWorkbenchNextActionResponse[]
+  /** 概览主入口路由；与列表 / 仪表盘入口合同同源 */
+  workspaceRouteName: string
+  /** 概览主入口文案 */
+  enterActionLabel: string
+  /** 概览次入口路由；关考复盘可空 */
+  secondaryWorkspaceRouteName?: string | null
+  /** 概览次入口文案；与 secondaryWorkspaceRouteName 同有同无 */
+  secondaryEnterActionLabel?: string | null
   dashboardPanel: ExamWorkbenchDashboardPanelResponse
   /** 是否须人工确认最终成绩 */
   manualFinalScoreConfirmRequired: boolean
@@ -314,9 +336,7 @@ export interface ExamWorkbenchPrintPackagePanelResponse {
   candidateCount: number
   packageCount: number
   generatedPackageCount: number
-  totalItemCount: number
   printPackageReady: boolean
-  coverageRate: number | null
   /** MVR-266：主考印刷包写能力位 */
   canManageOwnerPrintPackageWrites?: boolean
 }
@@ -492,9 +512,9 @@ export interface ExamScanMonitorDeviceResponse {
   scannerStationId?: string
   scannerIp?: string
   deviceName?: string
-  status?: string
-  interfaceMode?: string
-  endpointOnlineStatus?: string
+  status?: ScannerDeviceStatusCode
+  interfaceMode?: ScannerInterfaceModeCode
+  endpointOnlineStatus?: ScannerEndpointOnlineStatusCode
   endpointMachineCode?: string
   endpointName?: string
   agentVersion?: string
@@ -502,7 +522,7 @@ export interface ExamScanMonitorDeviceResponse {
   scannerConnected?: boolean
   pendingJobCount?: number
   pendingUploadPageCount?: number
-  diagnosticStatus?: string
+  diagnosticStatus?: ScannerAgentDiagnosticStatusCode
   diagnosticMessage?: string
   lastHeartbeatTime?: string
   location?: string
@@ -580,7 +600,7 @@ export interface ExamWorkbenchSecurityNoticeResponse {
 
 /** 考试工作台总览发布风险摘要 - 对应 ExamWorkbenchLifecyclePublishRiskSummaryResponse */
 export interface ExamWorkbenchLifecyclePublishRiskSummaryResponse {
-  readyToPublish: boolean
+  readyToSubmitPublishReview: boolean
   riskItemCount: number
   summaryLabel?: string
 }

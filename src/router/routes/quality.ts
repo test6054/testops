@@ -103,6 +103,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityRationalityAudit',
     component: () => import('@/views/quality/rationality-audit.vue'),
     meta: {
+      layoutWide: true,
       title: '考核合理性审核',
       roles: ALL_ROLES,
       icon: 'audit',
@@ -133,6 +134,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityTrainingPlanReviewQueue',
     component: () => import('@/views/quality/training-plan-review-queue.vue'),
     meta: {
+      layoutWide: true,
       title: '培养方案院审',
       roles: ALL_ROLES,
       icon: 'audit',
@@ -148,6 +150,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityCourseMatrix',
     component: () => import('@/views/quality/quality-course-matrix.vue'),
     meta: {
+      layoutWide: true,
       title: '课程支撑矩阵工作台',
       roles: ALL_ROLES,
       icon: 'book',
@@ -179,6 +182,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
         name: 'QualityIngestScoreBatch',
         component: () => import('@/views/quality/score-batch.vue'),
         meta: {
+          layoutWide: true,
           title: '成绩 Excel 导入',
           roles: ALL_ROLES,
           hideInMenu: true,
@@ -193,6 +197,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
         name: 'QualityIngestScoreRecord',
         component: () => import('@/views/quality/score-record.vue'),
         meta: {
+          layoutWide: true,
           title: '成绩明细核对',
           roles: ALL_ROLES,
           hideInMenu: true,
@@ -207,6 +212,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
         name: 'QualityIngestProcessEvaluation',
         component: () => import('@/views/quality/process-evaluation.vue'),
         meta: {
+          layoutWide: true,
           title: '过程性评价',
           roles: ALL_ROLES,
           hideInMenu: true,
@@ -221,6 +227,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
         name: 'QualityIngestIndirectEvaluation',
         component: () => import('@/views/quality/indirect-evaluation.vue'),
         meta: {
+          layoutWide: true,
           title: '间接评价',
           roles: ALL_ROLES,
           hideInMenu: true,
@@ -235,6 +242,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
         name: 'QualityIngestExternalPull',
         component: () => import('@/views/quality/external-pull.vue'),
         meta: {
+          layoutWide: true,
           title: '外部数据拔取',
           roles: ALL_ROLES,
           hideInMenu: true,
@@ -251,6 +259,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityAchievement',
     component: () => import('@/views/quality/achievement.vue'),
     meta: {
+      layoutWide: true,
       title: '达成度结果与审核',
       roles: ALL_ROLES,
       icon: 'trophy',
@@ -282,6 +291,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityImprovementWorkbench',
     component: () => import('@/views/quality/improvement-workbench.vue'),
     meta: {
+      layoutWide: true,
       title: '持续改进与审核闭环',
       roles: ALL_ROLES,
       icon: 'reload',
@@ -309,6 +319,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityReport',
     component: () => import('@/views/quality/report.vue'),
     meta: {
+      layoutWide: true,
       title: '质量评价报告',
       roles: ALL_ROLES,
       icon: 'file-text',
@@ -324,6 +335,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityArchive',
     component: () => import('@/views/quality/archive.vue'),
     meta: {
+      layoutWide: true,
       title: '材料归档与专家包',
       roles: ALL_ROLES,
       icon: 'inbox',
@@ -339,6 +351,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityArchiveDestructionLedger',
     component: () => import('@/views/quality/archive-destruction-ledger.vue'),
     meta: {
+      layoutWide: true,
       title: '销毁清册',
       roles: ALL_ROLES,
       icon: 'exception',
@@ -354,6 +367,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityAiTask',
     component: () => import('@/views/quality/ai-task.vue'),
     meta: {
+      layoutWide: true,
       title: 'AI 任务中心',
       roles: ALL_ROLES,
       icon: 'robot',
@@ -370,6 +384,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityAccreditationStandard',
     component: () => import('@/views/quality/accreditation-standard.vue'),
     meta: {
+      layoutWide: true,
       title: '认证标准',
       roles: SUPER_ADMIN_ROLES,
       icon: 'safety-certificate',
@@ -384,6 +399,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityProfessionAlgorithmTemplate',
     component: () => import('@/views/quality/profession-algorithm-template.vue'),
     meta: {
+      layoutWide: true,
       title: '专业算法模板',
       roles: SUPER_ADMIN_ROLES,
       icon: 'block',
@@ -399,6 +415,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityScaleConversionRule',
     component: () => import('@/views/quality/scale-conversion-rule.vue'),
     meta: {
+      layoutWide: true,
       title: '量表换算规则',
       roles: SUPER_ADMIN_ROLES,
       icon: 'function',
@@ -414,6 +431,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityAiModelProfile',
     component: () => import('@/views/quality/ai-model-profile.vue'),
     meta: {
+      layoutWide: true,
       title: 'AI 模型配置',
       roles: ALL_ROLES,
       requireTenantAdmin: true,
@@ -429,6 +447,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityAiMaskMapping',
     component: () => import('@/views/quality/ai-mask-mapping.vue'),
     meta: {
+      layoutWide: true,
       title: 'AI 脱敏映射审计',
       roles: ALL_ROLES,
       icon: 'safety',
@@ -459,6 +478,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityProgramEvaluationProfile',
     component: () => import('@/views/quality/program-evaluation-profile.vue'),
     meta: {
+      layoutWide: true,
       title: '专业评价口径',
       roles: ALL_ROLES,
       icon: 'profile',
@@ -473,6 +493,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityProfessionAlgorithmProfile',
     component: () => import('@/views/quality/profession-algorithm-profile.vue'),
     meta: {
+      layoutWide: true,
       title: '专业算法实例',
       roles: ALL_ROLES,
       icon: 'experiment',
@@ -487,6 +508,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     name: 'QualityEvaluationWorkgroup',
     component: () => import('@/views/quality/evaluation-workgroup.vue'),
     meta: {
+      layoutWide: true,
       title: '校院两级评价工作组',
       roles: ALL_ROLES,
       icon: 'team',

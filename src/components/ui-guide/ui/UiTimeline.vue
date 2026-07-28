@@ -32,11 +32,11 @@ const props = withDefaults(
 }
 
 .ui-timeline :deep(.ant-timeline-item) {
-  padding-bottom: 16px;
+  padding-bottom: var(--dp-space-block);
 }
 
 .ui-timeline--compact :deep(.ant-timeline-item) {
-  padding-bottom: 12px;
+  padding-bottom: var(--dp-space-component);
 }
 
 .ui-timeline :deep(.ant-timeline-item-tail) {
@@ -44,8 +44,8 @@ const props = withDefaults(
 }
 
 .ui-timeline :deep(.ant-timeline-item-head) {
-  border-color: var(--dp-primary);
-  background: var(--dp-bg-elevated, var(--dp-surface));
+  border-color: var(--dp-color-primary);
+  background: var(--dp-surface-elevated);
 }
 
 .ui-timeline :deep(.ant-timeline-item-content) {

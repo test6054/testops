@@ -43,7 +43,7 @@ export interface MarkingTaskStreamEventVO {
 export interface MarkingTaskStreamQueryRequest {
   examId: string
   sessionId?: string
-  /** 与 subscribe scope 一致；groupLeader 查 exam Topic 进度事件 */
+  /** 与 subscribe scope 一致；GROUP_LEADER 查 exam Topic 进度事件 */
   scope?: MarkingTaskStreamSubscribeScopeCode
   afterEventId?: string
   limit?: number

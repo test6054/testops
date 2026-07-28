@@ -17,11 +17,13 @@ import {
   OnsiteChecklistItemStatusCode,
   OnsiteChecklistItemStatusDescription,
 } from '@/apis/quality/accreditation'
+import TeacherSelector from '@/components/platform/TeacherSelector.vue'
 import { ArchiveSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
@@ -33,14 +35,21 @@ import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { promptInputAsync } from '@/composables/usePromptInputDialog'
+import { ArchiveBusinessTypeCode } from '@/types/enums/archive-business-type-enum'
+import { ExpertPackageTypeCode } from '@/types/enums/expert-package-type-enum'
+import {
+  OnsiteVisitPlanStatusCode,
+  OnsiteVisitPlanStatusDescription,
+} from '@/types/enums/onsite-visit-plan-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
   programId: string
   trainingPlanId: string
-  activeCycle?: AccreditationCycleVO
-  activeCycleId?: string
+  applicationCycle?: AccreditationCycleVO
+  applicationCycleId?: string
 }>()
 
 const emit = defineEmits<{ refresh: [] }>()
@@ -48,6 +57,7 @@ const emit = defineEmits<{ refresh: [] }>()
 const planColumns: ColumnsType = [
   { title: '编码', dataIndex: 'visitCode', key: 'visitCode', width: 110, fixed: 'left' },
   { title: '标题', dataIndex: 'visitTitle', key: 'visitTitle' },
+  { title: '状态', dataIndex: 'planStatus', key: 'planStatus', width: 90 },
   { title: '考查期', key: 'visitRange', width: 200 },
   { title: '报告截止', dataIndex: 'reportDueDate', key: 'reportDueDate', width: 110 },
   { title: '清单', key: 'checklist', width: 120 },
@@ -58,6 +68,7 @@ const checklistColumns: ColumnsType = [
   { title: '编码', dataIndex: 'itemCode', key: 'itemCode', width: 80, fixed: 'left' },
   { title: '类别', dataIndex: 'itemCategory', key: 'itemCategory', width: 140 },
   { title: '检查项', dataIndex: 'itemTitle', key: 'itemTitle' },
+  { title: '责任人', dataIndex: 'responsibleUserName', key: 'responsibleUserName', width: 110 },
   { title: '状态', dataIndex: 'itemStatus', key: 'itemStatus', width: 90 },
   { title: '操作', key: 'actions', width: 100 },
 ]
@@ -73,6 +84,7 @@ const CATEGORY_TABS: { key: '' | OnsiteChecklistCategoryCode, label: string }[] 
 ]
 
 const loading = ref(false)
+const submitting = ref(false)
 const plans = ref<OnsiteVisitPlanVO[]>([])
 const planTotal = ref(0)
 const planPageNum = ref(1)
@@ -91,17 +103,45 @@ const checklistCategoryFilter = ref<'' | OnsiteChecklistCategoryCode>('')
 
 const canMutateOnsitePlan = computed(
   () =>
-    props.activeCycle?.cycleStatus === AccreditationCycleStatusCode.ACTIVE
-    && props.activeCycle?.currentPhase === 'ONSITE_VISIT',
+    props.applicationCycle?.cycleStatus === AccreditationCycleStatusCode.ACTIVE
+    && props.applicationCycle?.currentPhase === 'ONSITE_VISIT',
 )
 
-const canCreatePlan = computed(() => canMutateOnsitePlan.value && !!props.activeCycleId)
+const canCreatePlan = computed(
+  () => canMutateOnsitePlan.value && !!props.applicationCycleId && !props.applicationCycle?.onsiteVisitStart,
+)
+
+function isPlanned(record: OnsiteVisitPlanVO) {
+  return record.planStatus === OnsiteVisitPlanStatusCode.PLANNED
+}
+
+function isInProgress(record: OnsiteVisitPlanVO) {
+  return record.planStatus === OnsiteVisitPlanStatusCode.IN_PROGRESS
+}
+
+function canUpdateChecklist(record?: OnsiteVisitPlanVO) {
+  return canMutateOnsitePlan.value && !!record && (isPlanned(record) || isInProgress(record))
+}
 
 const checklistProgress = computed(() => {
   const total = selectedPlan.value?.totalChecklistCount ?? 0
-  const done = selectedPlan.value?.completedChecklistCount ?? 0
+  const done = selectedPlan.value?.closedChecklistCount
+    ?? selectedPlan.value?.completedChecklistCount
+    ?? 0
   if (total === 0) return 0
   return Math.round((done / total) * 100)
+})
+
+const checklistStatusOptions = computed(() => {
+  const options: { value: OnsiteChecklistItemStatusCode, label: string }[] = [
+    { value: OnsiteChecklistItemStatusCode.PENDING, label: '待准备' },
+    { value: OnsiteChecklistItemStatusCode.IN_PROGRESS, label: '准备中' },
+    { value: OnsiteChecklistItemStatusCode.COMPLETED, label: '已完成' },
+  ]
+  if (editingItem.value?.itemCode !== 'DOC-01') {
+    options.push({ value: OnsiteChecklistItemStatusCode.NOT_APPLICABLE, label: '不适用' })
+  }
+  return options
 })
 
 const form = reactive<OnsiteVisitPlanSaveRequest>({
@@ -112,10 +152,12 @@ const form = reactive<OnsiteVisitPlanSaveRequest>({
   visitTitle: '',
   visitStart: '',
   visitEnd: '',
+  reportDueDate: '',
 })
 
 const checklistForm = reactive<OnsiteChecklistItemUpdateRequest>({
   id: '',
+  responsibleUserId: undefined,
   itemStatus: OnsiteChecklistItemStatusCode.PENDING,
   evidenceArchiveId: undefined,
   remark: '',
@@ -128,7 +170,7 @@ async function loadPlans() {
     const page = await accreditationApi.onsitePlanPage({
       trainingPlanId: props.trainingPlanId,
       programId: props.programId,
-      accreditationCycleId: props.activeCycleId,
+      accreditationCycleId: props.applicationCycleId,
       pageNum: planPageNum.value,
       pageSize: planPageSize.value,
     })
@@ -198,13 +240,14 @@ function resetPlanForm(accreditationCycleId: string) {
   form.visitTitle = '现场考查计划'
   form.visitStart = ''
   form.visitEnd = ''
+  form.reportDueDate = ''
   form.leadExpertName = ''
   form.expertGroupRemark = ''
   form.remark = ''
 }
 
 function openCreate() {
-  const accreditationCycleId = props.activeCycleId
+  const accreditationCycleId = props.applicationCycleId
   if (!accreditationCycleId) {
     void message.error('请先创建认证周期')
     return
@@ -213,14 +256,18 @@ function openCreate() {
     void message.error('仅现场考查阶段可新建考查计划')
     return
   }
+  if (!canCreatePlan.value) {
+    void message.error('当前认证周期已有未取消的现场考查计划；如需重排请先取消原计划')
+    return
+  }
   drawerTitle.value = '新建现场考查计划'
   resetPlanForm(accreditationCycleId)
   drawerOpen.value = true
 }
 
 function openEdit(record: OnsiteVisitPlanVO) {
-  if (!canMutateOnsitePlan.value) {
-    void message.error('仅现场考查阶段可编辑考查计划')
+  if (!canMutateOnsitePlan.value || !isPlanned(record)) {
+    void message.error(!canMutateOnsitePlan.value ? '仅现场考查阶段可编辑考查计划' : '仅已制定计划允许编辑')
     return
   }
   drawerTitle.value = '编辑现场考查计划'
@@ -232,6 +279,7 @@ function openEdit(record: OnsiteVisitPlanVO) {
   form.visitTitle = record.visitTitle
   form.visitStart = record.visitStart
   form.visitEnd = record.visitEnd
+  form.reportDueDate = record.reportDueDate
   form.leadExpertName = record.leadExpertName || ''
   form.expertGroupRemark = record.expertGroupRemark || ''
   form.remark = record.remark || ''
@@ -239,12 +287,29 @@ function openEdit(record: OnsiteVisitPlanVO) {
 }
 
 async function submitPlan() {
+  if (submitting.value) {
+    return
+  }
   if (!canMutateOnsitePlan.value) {
     void message.error('仅现场考查阶段可维护考查计划')
     return
   }
-  if (!form.visitCode.trim() || !form.visitTitle.trim() || !form.visitStart || !form.visitEnd) {
+  if (
+    !form.visitCode.trim()
+    || !form.visitTitle.trim()
+    || !form.visitStart
+    || !form.visitEnd
+    || !form.reportDueDate
+  ) {
     void message.error('请完整填写考查计划信息')
+    return
+  }
+  if (form.visitEnd < form.visitStart) {
+    void message.error('考查结束日期不能早于开始日期')
+    return
+  }
+  if (form.reportDueDate < form.visitEnd) {
+    void message.error('考查报告截止日期不能早于考查结束日期')
     return
   }
   const request: OnsiteVisitPlanSaveRequest = {
@@ -256,11 +321,13 @@ async function submitPlan() {
     visitTitle: form.visitTitle.trim(),
     visitStart: form.visitStart,
     visitEnd: form.visitEnd,
+    reportDueDate: form.reportDueDate,
     leadExpertName: form.leadExpertName?.trim() || undefined,
     expertGroupRemark: form.expertGroupRemark?.trim() || undefined,
     auditSupervisionId: form.auditSupervisionId,
     remark: form.remark?.trim() || undefined,
   }
+  submitting.value = true
   try {
     if (form.id) {
       await accreditationApi.updateOnsitePlan(request)
@@ -276,16 +343,27 @@ async function submitPlan() {
     emit('refresh')
   } catch (e) {
     showUserError(e, '现场考查计划保存失败')
+  } finally {
+    submitting.value = false
   }
 }
 
 async function removePlan(id: string) {
+  if (submitting.value) {
+    return
+  }
   if (!canMutateOnsitePlan.value) {
     void message.error('仅现场考查阶段可删除考查计划')
     return
   }
+  const record = plans.value.find((item) => item.id === id)
+  if (!record || !isPlanned(record)) {
+    void message.error('仅已制定现场考查计划允许删除')
+    return
+  }
   const ok = await confirmAsync({ title: '确认删除该现场考查计划？' })
   if (!ok) return
+  submitting.value = true
   try {
     await accreditationApi.deleteOnsitePlan(id)
     if (selectedPlan.value?.id === id) selectedPlan.value = undefined
@@ -293,6 +371,8 @@ async function removePlan(id: string) {
     emit('refresh')
   } catch (e) {
     showUserError(e, '现场考查计划删除失败')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -300,11 +380,53 @@ function handleOnsitePlanRowAction(key: string, record: OnsiteVisitPlanVO) {
   if (key === 'checklist') void selectPlan(record.id)
   else if (key === 'edit') openEdit(record)
   else if (key === 'delete') void removePlan(record.id)
+  else if (key === 'start') void transitionPlan(record, OnsiteVisitPlanStatusCode.IN_PROGRESS)
+  else if (key === 'complete') void transitionPlan(record, OnsiteVisitPlanStatusCode.COMPLETED)
+  else if (key === 'cancel') void transitionPlan(record, OnsiteVisitPlanStatusCode.CANCELLED)
+}
+
+async function transitionPlan(record: OnsiteVisitPlanVO, target: OnsiteVisitPlanStatusCode) {
+  if (submitting.value || !canMutateOnsitePlan.value) return
+  const action = target === OnsiteVisitPlanStatusCode.IN_PROGRESS
+    ? '开始执行'
+    : target === OnsiteVisitPlanStatusCode.COMPLETED ? '完成' : '取消'
+  let remark: string | undefined
+  if (target === OnsiteVisitPlanStatusCode.CANCELLED) {
+    const cancellationReason = await promptInputAsync({
+      title: '取消现场考查计划',
+      placeholder: '取消原因不能为空',
+      required: true,
+      emptyErrorMessage: '取消原因不能为空',
+      okType: 'danger',
+      okText: '确认取消',
+    })
+    remark = cancellationReason?.trim() || undefined
+    if (!remark) {
+      void message.error('取消现场考查计划必须填写原因')
+      return
+    }
+  } else {
+    const ok = await confirmAsync({ title: `确认${action}该现场考查计划？` })
+    if (!ok) return
+  }
+  submitting.value = true
+  try {
+    await accreditationApi.transitionOnsitePlanStatus({ id: record.id, planStatus: target, remark })
+    void message.success(`现场考查计划已${action}`)
+    await loadPlans()
+    if (selectedPlan.value?.id === record.id) await selectPlan(record.id)
+    emit('refresh')
+  } catch (e) {
+    showUserError(e, `现场考查计划${action}失败`)
+  } finally {
+    submitting.value = false
+  }
 }
 
 function openChecklistItem(item: OnsiteChecklistItemVO) {
   editingItem.value = item
   checklistForm.id = item.id
+  checklistForm.responsibleUserId = item.responsibleUserId
   checklistForm.itemStatus = item.itemStatus
   checklistForm.evidenceArchiveId = item.evidenceArchiveId
   checklistForm.remark = item.remark || ''
@@ -312,8 +434,18 @@ function openChecklistItem(item: OnsiteChecklistItemVO) {
 }
 
 async function submitChecklistItem() {
-  if (!canMutateOnsitePlan.value) {
+  if (submitting.value) {
+    return
+  }
+  if (!canUpdateChecklist(selectedPlan.value)) {
     void message.error('仅现场考查阶段可更新检查项')
+    return
+  }
+  if (
+    checklistForm.itemStatus !== OnsiteChecklistItemStatusCode.PENDING
+    && !checklistForm.responsibleUserId
+  ) {
+    void message.error('检查项进入执行、完成或不适用状态前必须明确责任人')
     return
   }
   if (
@@ -330,9 +462,11 @@ async function submitChecklistItem() {
     void message.error('不适用检查项必须填写说明')
     return
   }
+  submitting.value = true
   try {
     const request: OnsiteChecklistItemUpdateRequest = {
       id: checklistForm.id,
+      responsibleUserId: checklistForm.responsibleUserId || undefined,
       itemStatus: checklistForm.itemStatus,
       evidenceArchiveId: checklistForm.evidenceArchiveId || undefined,
       remark: checklistForm.remark?.trim() || undefined,
@@ -345,6 +479,8 @@ async function submitChecklistItem() {
     emit('refresh')
   } catch (e) {
     showUserError(e, '现场考查检查项更新失败')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -353,7 +489,7 @@ watch(checklistCategoryFilter, () => {
   void loadChecklistItems()
 })
 
-watch([() => props.trainingPlanId, () => props.activeCycleId], loadPlans, { immediate: true })
+watch([() => props.trainingPlanId, () => props.applicationCycleId], loadPlans, { immediate: true })
 
 defineExpose({ openCreate, loadPlans })
 </script>
@@ -362,9 +498,11 @@ defineExpose({ openCreate, loadPlans })
   <div class="onsite-panel">
     <p v-if="!canCreatePlan" class="hint">
       {{
-        activeCycleId
-          ? '当前认证阶段不可维护现场考查计划；进入现场考查阶段后可新建考查计划。'
-          : '请先创建认证周期；进入现场考查阶段后可新建考查计划。'
+        !applicationCycleId
+          ? '请先创建认证周期；进入现场考查阶段后可新建考查计划。'
+          : applicationCycle?.onsiteVisitStart
+            ? '当前周期已有现场考查计划；如需重排请先取消原计划，取消记录将保留。'
+            : '当前认证阶段不可维护现场考查计划；进入现场考查阶段后可新建考查计划。'
       }}
     </p>
     <div class="toolbar">
@@ -387,12 +525,21 @@ defineExpose({ openCreate, loadPlans })
         <template v-if="column.key === 'visitRange'">
           {{ record.visitStart }} ~ {{ record.visitEnd }}
         </template>
+        <template v-else-if="column.key === 'planStatus'">
+          <UiTag
+            :tone="record.planStatus === 'COMPLETED' ? 'green' : record.planStatus === 'CANCELLED' ? 'gray' : record.planStatus === 'IN_PROGRESS' ? 'blue' : 'orange'"
+            size="sm"
+          >
+            {{ strictEnumLabel(OnsiteVisitPlanStatusDescription, record.planStatus, '现场考查计划状态') }}
+          </UiTag>
+        </template>
         <template v-else-if="column.key === 'checklist'">
           <UiProgressBar
             :percent="
               record.totalChecklistCount
                 ? Math.round(
-                  ((record.completedChecklistCount ?? 0) / record.totalChecklistCount) * 100,
+                  ((record.closedChecklistCount ?? record.completedChecklistCount ?? 0)
+                    / record.totalChecklistCount) * 100,
                 )
                 : 0
             "
@@ -400,15 +547,21 @@ defineExpose({ openCreate, loadPlans })
             :show-label="false"
           />
           <span class="checklist-count">
-            {{ record.completedChecklistCount ?? 0 }}/{{ record.totalChecklistCount ?? 0 }}
+            {{ record.closedChecklistCount ?? record.completedChecklistCount ?? 0 }}/{{ record.totalChecklistCount ?? 0 }}
+            <span v-if="record.notApplicableChecklistCount">
+              （不适用 {{ record.notApplicableChecklistCount }}）
+            </span>
           </span>
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
             :items="[
               { key: 'checklist', label: '清单' },
-              { key: 'edit', label: '编辑', disabled: !canMutateOnsitePlan },
-              { key: 'delete', label: '删除', tone: 'danger', disabled: !canMutateOnsitePlan },
+              { key: 'start', label: '开始执行', hidden: !(canMutateOnsitePlan && record.planStatus === 'PLANNED') },
+              { key: 'complete', label: '完成计划', hidden: !(canMutateOnsitePlan && record.planStatus === 'IN_PROGRESS') },
+              { key: 'cancel', label: '取消计划', tone: 'danger', hidden: !(canMutateOnsitePlan && (record.planStatus === 'PLANNED' || record.planStatus === 'IN_PROGRESS')) },
+              { key: 'edit', label: '编辑', hidden: record.planStatus !== 'PLANNED', disabled: !canMutateOnsitePlan },
+              { key: 'delete', label: '删除', tone: 'danger', hidden: record.planStatus !== 'PLANNED', disabled: !canMutateOnsitePlan },
             ]"
             split
             @action="(key) => handleOnsitePlanRowAction(key, record)"
@@ -466,9 +619,12 @@ defineExpose({ openCreate, loadPlans })
               )
             }}
           </template>
+          <template v-else-if="column.key === 'responsibleUserName'">
+            {{ record.responsibleUserName || '未分配' }}
+          </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
-              :items="[{ key: 'update', label: '更新', disabled: !canMutateOnsitePlan }]"
+              :items="[{ key: 'update', label: '更新', disabled: !canUpdateChecklist(selectedPlan) }]"
               split
               @action="() => openChecklistItem(record)"
             />
@@ -482,6 +638,7 @@ defineExpose({ openCreate, loadPlans })
       width="480"
       :hide-footer="false"
       ok-text="保存"
+      :confirm-loading="submitting"
       @ok="submitPlan"
     >
       <UiForm layout="vertical">
@@ -507,13 +664,21 @@ defineExpose({ openCreate, loadPlans })
             class="w-full"
           />
         </UiFormItem>
+        <UiFormItem label="考查报告截止" required>
+          <UiDatePicker
+            size="sm"
+            v-model="form.reportDueDate"
+            value-format="YYYY-MM-DD"
+            class="w-full"
+          />
+        </UiFormItem>
         <UiFormItem label="组长姓名">
           <UiInput size="sm" v-model="form.leadExpertName" />
         </UiFormItem>
         <UiFormItem label="专家组说明">
           <UiTextarea size="sm" v-model="form.expertGroupRemark" :rows="3" />
         </UiFormItem>
-        <p class="hint">报告截止日将自动设为考查结束日 + 15 天。</p>
+        <p class="hint">报告截止日期按协会通知或专家组正式要求登记，不得早于考查结束日期。</p>
       </UiForm>
     </UiDrawer>
     <UiDrawer
@@ -522,29 +687,39 @@ defineExpose({ openCreate, loadPlans })
       width="480"
       :hide-footer="false"
       ok-text="保存"
+      :confirm-loading="submitting"
       @ok="submitChecklistItem"
     >
       <template v-if="editingItem">
         <p class="item-title">{{ editingItem.itemTitle }}</p>
         <p class="item-desc">{{ editingItem.itemDescription }}</p>
         <UiForm layout="vertical">
+          <UiFormItem
+            label="责任人"
+            :required="checklistForm.itemStatus !== OnsiteChecklistItemStatusCode.PENDING"
+          >
+            <TeacherSelector v-model:value="checklistForm.responsibleUserId" />
+          </UiFormItem>
           <UiFormItem label="状态" required>
             <UiSelect
               v-model="checklistForm.itemStatus"
               size="sm"
-              :options="[
-                { value: OnsiteChecklistItemStatusCode.PENDING, label: '待准备' },
-                { value: OnsiteChecklistItemStatusCode.IN_PROGRESS, label: '准备中' },
-                { value: OnsiteChecklistItemStatusCode.COMPLETED, label: '已完成' },
-                { value: OnsiteChecklistItemStatusCode.NOT_APPLICABLE, label: '不适用' },
-              ]"
+              :options="checklistStatusOptions"
             />
           </UiFormItem>
           <UiFormItem
             label="证据归档"
             :required="checklistForm.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED"
           >
-            <ArchiveSelector v-model:value="checklistForm.evidenceArchiveId" />
+            <ArchiveSelector
+              v-model:value="checklistForm.evidenceArchiveId"
+              :business-type="editingItem.itemCode === 'DOC-01' ? ArchiveBusinessTypeCode.EXPERT_PACKAGE : undefined"
+              :business-id="editingItem.itemCode === 'DOC-01' ? trainingPlanId : undefined"
+              :expert-package-type="editingItem.itemCode === 'DOC-01' ? ExpertPackageTypeCode.PROGRAM_ACCREDITATION : undefined"
+              :accreditation-cycle-id="editingItem.itemCode === 'DOC-01' ? applicationCycleId : undefined"
+              :only-confirmed="true"
+              :only-usable="true"
+            />
           </UiFormItem>
           <UiFormItem
             label="备注"
@@ -562,27 +737,27 @@ defineExpose({ openCreate, loadPlans })
 .onsite-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 .toolbar {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .hint {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
   margin: 0;
 }
 .checklist-block {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .checklist-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 .checklist-head h4 {
   margin: 0;
@@ -591,27 +766,27 @@ defineExpose({ openCreate, loadPlans })
 }
 .checklist-meta {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 .checklist-progress {
   max-width: 360px;
 }
 .cat-filter {
-  margin-bottom: 4px;
+  margin-bottom: var(--dp-space-component-xs);
 }
 .checklist-count {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
-  margin-left: 8px;
+  color: var(--dp-text-muted);
+  margin-left: var(--dp-space-component-tight);
 }
 .item-title {
   font-weight: 600;
-  margin: 0 0 4px;
+  margin: 0 0 var(--dp-space-component-xs);
 }
 .item-desc {
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-text-tertiary);
-  margin: 0 0 12px;
+  color: var(--dp-text-muted);
+  margin: 0 0 var(--dp-space-component);
 }
 .w-full {
   width: 100%;

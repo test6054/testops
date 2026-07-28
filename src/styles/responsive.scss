@@ -28,7 +28,7 @@ $shell-wide-min: breakpoints.$shell-wide-min;
   }
 
   .ant-modal {
-    max-width: calc(100vw - var(--dp-space-8)) !important;
+    max-width: calc(100vw - var(--dp-space-section)) !important;
   }
 
   .ant-drawer {
@@ -45,8 +45,8 @@ $shell-wide-min: breakpoints.$shell-wide-min;
 
   .ant-row {
     &[class*='gutter-'] {
-      margin-left: calc(-1 * var(--dp-space-2));
-      margin-right: calc(-1 * var(--dp-space-2));
+      margin-left: calc(-1 * var(--dp-space-component-tight));
+      margin-right: calc(-1 * var(--dp-space-component-tight));
     }
   }
 }
@@ -64,16 +64,16 @@ $shell-wide-min: breakpoints.$shell-wide-min;
 .container-responsive {
   width: 100%;
   margin: 0 auto;
-  padding: 0 var(--dp-space-4);
+  padding: 0 var(--dp-space-block);
 
   @media (min-width: $shell-tablet-min) {
     max-width: 750px;
-    padding: 0 var(--dp-space-5);
+    padding: 0 var(--dp-space-block);
   }
 
   @media (min-width: $shell-laptop-min) {
     max-width: 970px;
-    padding: 0 var(--dp-space-6);
+    padding: 0 var(--dp-space-page);
   }
 
   @media (min-width: $shell-desktop-min) {
@@ -86,18 +86,18 @@ $shell-wide-min: breakpoints.$shell-wide-min;
 }
 
 .padding-responsive {
-  padding: var(--dp-space-3);
+  padding: var(--dp-space-component);
 
   @media (min-width: $shell-tablet-min) {
-    padding: var(--dp-space-4);
+    padding: var(--dp-space-block);
   }
 
   @media (min-width: $shell-laptop-min) {
-    padding: var(--dp-space-5);
+    padding: var(--dp-space-block);
   }
 
   @media (min-width: $shell-desktop-min) {
-    padding: var(--dp-space-6);
+    padding: var(--dp-space-page);
   }
 }
 
@@ -116,7 +116,7 @@ $shell-wide-min: breakpoints.$shell-wide-min;
 @media (max-width: $shell-mobile-max) {
   .ant-btn {
     min-height: 40px;
-    padding: var(--dp-space-2) var(--dp-space-4);
+    padding: var(--dp-space-component-tight) var(--dp-space-block);
   }
 
   .ant-input {
@@ -134,10 +134,10 @@ $shell-wide-min: breakpoints.$shell-wide-min;
 
 @supports (padding: env(safe-area-inset-bottom)) {
   .safe-area-bottom {
-    padding-bottom: calc(env(safe-area-inset-bottom) + var(--dp-space-4));
+    padding-bottom: calc(env(safe-area-inset-bottom) + var(--dp-space-block));
   }
 
   .safe-area-top {
-    padding-top: calc(env(safe-area-inset-top) + var(--dp-space-4));
+    padding-top: calc(env(safe-area-inset-top) + var(--dp-space-block));
   }
 }

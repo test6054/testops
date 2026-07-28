@@ -84,16 +84,16 @@ const resolvedStatus = computed<UiFieldStatus>(() => (props.error ? 'error' : pr
 .ui-textarea :deep(.ant-input) {
   border-radius: var(--dp-radius-control) !important;
   border: 1px solid var(--dp-border) !important;
-  background: var(--dp-bg-control) !important;
+  background: var(--dp-surface) !important;
   box-shadow: none !important;
   color: var(--dp-text-primary) !important;
   font-family: var(--dp-font-family) !important;
   line-height: 1.6 !important;
   resize: vertical !important;
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background-color 0.2s ease !important;
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    box-shadow var(--dp-duration-normal) var(--dp-ease-default),
+    background-color var(--dp-duration-normal) ease !important;
 }
 
 .ui-textarea :deep(.ant-input:hover) {
@@ -117,20 +117,20 @@ const resolvedStatus = computed<UiFieldStatus>(() => (props.error ? 'error' : pr
 
 .ui-textarea--sm :deep(.ant-input) {
   min-height: 64px !important;
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px) !important;
+  padding: var(--dp-space-component-tight) var(--dp-space-component) !important;
   font-size: var(--dp-font-size-sm) !important;
 }
 
 .ui-textarea--md :deep(.ant-input) {
   min-height: 80px !important;
-  padding: 8px var(--dp-space-3, 12px) !important;
+  padding: var(--dp-space-component-tight) var(--dp-space-component) !important;
   font-size: var(--dp-font-size-md) !important;
 }
 
 .ui-textarea--lg :deep(.ant-input) {
   min-height: 96px !important;
-  padding: var(--dp-space-3, 12px) !important;
-  font-size: 15px !important;
+  padding: var(--dp-space-component) !important;
+  font-size: var(--dp-type-panel-title-size) !important;
 }
 
 .ui-textarea--error :deep(.ant-input) {

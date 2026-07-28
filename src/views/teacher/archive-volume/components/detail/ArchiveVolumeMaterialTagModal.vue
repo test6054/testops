@@ -96,7 +96,7 @@ async function handleSave() {
 
 <style scoped>
 .archive-material-tag-modal__hint {
-  margin: 0 0 var(--dp-space-3);
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }

@@ -3,7 +3,10 @@
  * 阅卷考后讲评页：质量评价同步状态芯片与跳转。
  */
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { MarkExamSyncStatusVO } from '@/apis/quality/mark-exam-sync'
+import type {
+  MarkExamCourseSyncStatusVO,
+  MarkExamSyncStatusVO,
+} from '@/apis/quality/mark-exam-sync'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -14,6 +17,7 @@ import {
 } from '@/apis/quality/mark-exam-sync'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -67,18 +71,38 @@ async function loadStatus() {
   }
 }
 
-function goQuality() {
-  const query: Record<string, string> = {}
-  if (syncStatus.value?.trainingPlanId) {
-    query.trainingPlanId = syncStatus.value.trainingPlanId
+const courseStatuses = computed(() => syncStatus.value?.courseStatuses ?? [])
+
+const courseMenuItems = computed(() =>
+  courseStatuses.value.map(course => ({
+    key: course.qualityCourseId,
+    label: course.qualityCourseCode
+      ? `${course.qualityCourseName || '质量课程'}（${course.qualityCourseCode}）`
+      : course.qualityCourseName || `质量课程 ${course.qualityCourseId}`,
+  })),
+)
+
+function goQuality(course: MarkExamCourseSyncStatusVO) {
+  const query: Record<string, string> = {
+    qualityCourseId: course.qualityCourseId,
   }
-  if (syncStatus.value?.qualityCourseId) {
-    query.qualityCourseId = syncStatus.value.qualityCourseId
+  if (course.trainingPlanId) {
+    query.trainingPlanId = course.trainingPlanId
   }
   void router.push({
     name: 'QualityAchievement',
     query,
   })
+}
+
+function goSingleQuality() {
+  const course = courseStatuses.value[0]
+  if (course) goQuality(course)
+}
+
+function goSelectedQuality(qualityCourseId: string) {
+  const course = courseStatuses.value.find(item => item.qualityCourseId === qualityCourseId)
+  if (course) goQuality(course)
 }
 
 watch(
@@ -97,14 +121,23 @@ watch(
       {{ syncStatus.message }}
     </span>
     <UiButton
+      v-if="courseStatuses.length === 1"
       variant="ghost"
       size="sm"
       :loading="loading"
       :disabled="syncStatus?.status === 'NOT_CONFIGURED'"
-      @click="goQuality"
+      @click="goSingleQuality"
     >
       打开质量达成度
     </UiButton>
+    <UiDropdownAction
+      v-else-if="courseStatuses.length > 1"
+      trigger-style="button"
+      button-text="选择教学班"
+      :items="courseMenuItems"
+      :disabled="syncStatus?.status === 'NOT_CONFIGURED'"
+      @select="goSelectedQuality"
+    />
   </div>
 </template>
 
@@ -112,7 +145,7 @@ watch(
 .mark-quality-sync-chip {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   flex-wrap: wrap;
 }
 

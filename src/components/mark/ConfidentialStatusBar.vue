@@ -32,9 +32,9 @@ withDefaults(
 .confidential-status-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   min-height: 32px;
-  padding: 6px 12px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border: 1px solid var(--dp-purple-200);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-purple-50);
@@ -50,7 +50,7 @@ withDefaults(
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   margin: 0;
   min-width: 0;
   font-size: var(--dp-font-size-sm);

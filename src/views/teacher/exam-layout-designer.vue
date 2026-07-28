@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ExamLayoutQuestionDto } from '@/apis/mark/exam-layout-design'
 import { computed, inject, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import LayoutPreviewDrawer from '@/components/mark/layout-designer/LayoutPreviewDrawer.vue'
 import LayoutReviewDrawer from '@/components/mark/layout-designer/LayoutReviewDrawer.vue'
 import LayoutDesignLayoutPhase from '@/components/mark/layout-designer/workbench/LayoutDesignLayoutPhase.vue'
@@ -12,7 +12,6 @@ import LayoutDesignWorkflowRail from '@/components/mark/layout-designer/workbenc
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -20,6 +19,7 @@ import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useLayoutDesignWorkbench } from '@/composables/useLayoutDesignWorkbench'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
@@ -54,6 +54,12 @@ const {
   generating: wbGenerating,
   detecting: wbDetecting,
   detectProgressText: wbDetectProgressText,
+  detectOutcome: wbDetectOutcome,
+  detectErrorMessage: wbDetectErrorMessage,
+  clearDetectOutcome: wbClearDetectOutcome,
+  mutationOutcome: wbMutationOutcome,
+  mutationErrorMessage: wbMutationErrorMessage,
+  clearMutationOutcome: wbClearMutationOutcome,
   activeDetectTaskId: wbActiveDetectTaskId,
   cancellingDetect: wbCancellingDetect,
   previewing: wbPreviewing,
@@ -61,6 +67,7 @@ const {
   writeLockReason: wbWriteLockReason,
   document: wbDocument,
   layoutPersisted: wbLayoutPersisted,
+  layoutDirty: wbLayoutDirty,
   focusedBlockId: wbFocusedBlockId,
   focusedQuestionId: wbFocusedQuestionId,
   currentPageNo: wbCurrentPageNo,
@@ -85,6 +92,7 @@ const {
   handleSave: wbHandleSave,
   handlePreview: wbHandlePreview,
   handleGenerateSheet: wbHandleGenerateSheet,
+  handleInstitutionAnswerBookletImport: wbHandleInstitutionAnswerBookletImport,
   handleAutoDetect: wbHandleAutoDetect,
   handleCancelDetect: wbHandleCancelDetect,
 } = wb
@@ -105,11 +113,11 @@ const signalMetrics = computed(() => {
 })
 
 const layoutDesignerContextSubtitle = computed(() => {
-  const journeySubtitle = contextBarSubtitle.value
-  if (journeySubtitle.includes('/api/')) {
-    return '制卷设计 · 分阶段工作台'
+  const examNo = examDetail.value?.examNo?.trim()
+  if (examNo) {
+    return `#${examNo}`
   }
-  return journeySubtitle
+  return contextBarSubtitle.value
 })
 
 const layoutPaperLabel = computed(() => {
@@ -137,7 +145,7 @@ const pageLoading = computed(
 
 const hasPages = computed(() => documentHasPages(wbDocument.value))
 
-type DesignerStatusAlertKind = 'detect' | 'identity'
+type DesignerStatusAlertKind = 'detect' | 'detect-failed' | 'mutation-failed' | 'identity'
 
 const designerStatusAlert = computed(() => {
   if (wbDetecting.value === true) {
@@ -146,6 +154,32 @@ const designerStatusAlert = computed(() => {
       tone: 'info' as const,
       title: wbDetectProgressText.value || '正在识别题目并生成划区',
       tooltip: '识别在后台异步执行；离开本页后返回将自动续查进度。',
+    }
+  }
+  if (
+    wbDetectOutcome.value === 'failed'
+    || wbDetectOutcome.value === 'timeout'
+    || wbDetectOutcome.value === 'cancelled'
+  ) {
+    const title
+      = wbDetectOutcome.value === 'timeout'
+        ? '识别超时'
+        : wbDetectOutcome.value === 'cancelled'
+          ? '识别已取消'
+          : '识别失败'
+    return {
+      kind: 'detect-failed' as DesignerStatusAlertKind,
+      tone: (wbDetectOutcome.value === 'cancelled' ? 'warning' : 'error') as 'warning' | 'error',
+      title,
+      tooltip: wbDetectErrorMessage.value || '可返回源文件阶段重新识别，当前草稿仍保留。',
+    }
+  }
+  if (wbMutationOutcome.value === 'save-failed' || wbMutationOutcome.value === 'preview-failed') {
+    return {
+      kind: 'mutation-failed' as DesignerStatusAlertKind,
+      tone: 'error' as const,
+      title: wbMutationOutcome.value === 'save-failed' ? '保存失败' : '预览失败',
+      tooltip: wbMutationErrorMessage.value || '当前草稿仍保留，可修正后再次保存或预览。',
     }
   }
   if (
@@ -163,6 +197,20 @@ const designerStatusAlert = computed(() => {
   return null
 })
 
+onBeforeRouteLeave(async () => {
+  if (!wbLayoutDirty.value) {
+    return true
+  }
+  const discard = await confirmAsync({
+    title: '制卷设计尚未保存',
+    content: '离开本页将丢失未保存改动。可先保存设计，或确认丢弃后离开。',
+    type: 'warning',
+    okText: '丢弃并离开',
+    cancelText: '留在本页',
+  })
+  return discard
+})
+
 const writeLockTooltip = computed(() =>
   wbWriteLockReason.value
     ? `${wbWriteLockReason.value}；仍可查看与预览，印后或扫后不可再改。`
@@ -175,7 +223,7 @@ const contextPrimaryAction = computed(() => {
   }
   if (wbPhase.value === LayoutDesignPhaseCode.SOURCE && !hasPages.value) {
     return {
-      label: '上传并开始识别',
+      label: materialLayoutMode.value === 'ANSWER_SHEET' ? '识别当前 A 卷' : '上传并开始识别',
       disabled: wbDetecting.value === true || !materialLayoutMode.value || wbLayoutCanvasReadonly.value === true,
       handler: scrollToSourcePanel,
     }
@@ -192,6 +240,12 @@ const contextPrimaryAction = computed(() => {
 
 function scrollToSourcePanel(): void {
   sourcePanelRef.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+}
+
+function goSourceAndClearDetectOutcome(): void {
+  wbClearDetectOutcome()
+  wbGoPhase(LayoutDesignPhaseCode.SOURCE)
+  scrollToSourcePanel()
 }
 
 function handleSignalMetricClick(key: string): void {
@@ -243,12 +297,8 @@ async function handleReviewSaved(): Promise<void> {
   await workbenchContext?.refreshChrome?.()
 }
 
-const layoutDesignerMoreActionItems = [{ key: 'review', label: '复核微调' }]
-
-function onLayoutDesignerMoreAction(key: string) {
-  if (key === 'review') {
-    wbReviewOpen.value = true
-  }
+function openReviewDrawer(): void {
+  wbReviewOpen.value = true
 }
 </script>
 
@@ -276,8 +326,11 @@ function onLayoutDesignerMoreAction(key: string) {
           <UiTag v-if="scanPaperStyleLabel" tone="gray" size="sm">
             印张 {{ scanPaperStyleLabel }}
           </UiTag>
-          <UiTag v-if="wbDocument && !wbLayoutPersisted" tone="orange" size="sm">
+          <UiTag v-if="wbLayoutDirty" tone="orange" size="sm">
             未保存草稿
+          </UiTag>
+          <UiTag v-else-if="wbDocument && wbLayoutPersisted" tone="green" size="sm">
+            已保存
           </UiTag>
           <UiTag
             v-if="wbLayoutRoiStats.totalQuestionCount > 0"
@@ -323,12 +376,9 @@ function onLayoutDesignerMoreAction(key: string) {
           >
             预览 PDF
           </UiButton>
-          <UiDropdownAction
-            trigger-style="button"
-            button-text="更多"
-            :items="layoutDesignerMoreActionItems"
-            @select="onLayoutDesignerMoreAction"
-          />
+          <UiButton size="sm" variant="ghost" @click="openReviewDrawer">
+            复核微调
+          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -361,6 +411,47 @@ function onLayoutDesignerMoreAction(key: string) {
               @click="wbHandleCancelDetect()"
             >
               取消识别
+            </UiButton>
+          </template>
+          <template v-else-if="designerStatusAlert.kind === 'detect-failed'" #actions>
+            <UiButton
+              size="sm"
+              variant="primary"
+              @click="goSourceAndClearDetectOutcome"
+            >
+              回到源文件
+            </UiButton>
+            <UiButton
+              size="sm"
+              variant="outline"
+              @click="wbClearDetectOutcome()"
+            >
+              关闭提示
+            </UiButton>
+          </template>
+          <template v-else-if="designerStatusAlert.kind === 'mutation-failed'" #actions>
+            <UiButton
+              v-if="wbMutationOutcome === 'save-failed'"
+              size="sm"
+              variant="primary"
+              :loading="wbSaving"
+              :disabled="wbSaveButtonDisabled"
+              @click="wbHandleSave()"
+            >
+              再次保存
+            </UiButton>
+            <UiButton
+              v-else
+              size="sm"
+              variant="primary"
+              :loading="wbPreviewing"
+              :disabled="wbPreviewDisabled"
+              @click="wbHandlePreview()"
+            >
+              再次预览
+            </UiButton>
+            <UiButton size="sm" variant="outline" @click="wbClearMutationOutcome()">
+              关闭提示
             </UiButton>
           </template>
           <template v-else-if="designerStatusAlert.kind === 'identity'" #actions>
@@ -402,11 +493,13 @@ function onLayoutDesignerMoreAction(key: string) {
             :document="wbDocument"
             :exam-id="examId"
             :material-layout-mode="materialLayoutMode"
+            :answer-booklet-source-mode="examDetail?.answerBookletSourceMode"
             :generating="wbGenerating"
             :detecting="wbDetecting"
             :readonly="wbLayoutCanvasReadonly"
             :has-pages="hasPages"
             @generate-sheet="wbHandleGenerateSheet"
+            @import-institution-answer-booklet="wbHandleInstitutionAnswerBookletImport"
             @auto-detect="wbHandleAutoDetect"
             @patch="wbPatchDocument"
             @focus-upload="scrollToSourcePanel"
@@ -466,7 +559,7 @@ function onLayoutDesignerMoreAction(key: string) {
 
 <style scoped lang="scss">
 .layout-designer-status-strip {
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .layout-designer__surface :deep(.workbench-surface-card__toolbar) {

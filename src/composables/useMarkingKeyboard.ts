@@ -22,6 +22,7 @@ export interface UseMarkingKeyboardOptions {
   scrollToWholePage: (index: number) => void
   applyQuickScore: (score: number) => void
   onWithdraw?: () => void
+  canWithdraw?: Ref<boolean>
   applyModalOpen?: Ref<boolean>
   onApplyModalKey?: (event: KeyboardEvent) => void
 }
@@ -39,6 +40,7 @@ export function useMarkingKeyboard(options: UseMarkingKeyboardOptions) {
       return
     }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+      if (options.canWithdraw?.value !== true) return
       event.preventDefault()
       options.onWithdraw?.()
       return

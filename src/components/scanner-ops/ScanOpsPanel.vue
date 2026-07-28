@@ -329,15 +329,15 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 
 .scan-ops-panel__conclusion {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .scan-ops-panel__signal {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 </style>

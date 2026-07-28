@@ -102,6 +102,6 @@ function handleOk(): void {
 
 <style scoped lang="scss">
 .scan-batch-discard-dialog__form {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
 }
 </style>

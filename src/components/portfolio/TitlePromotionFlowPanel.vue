@@ -81,8 +81,8 @@ import type { PortfolioTitlePromotionFlowViewVO } from '@/apis/portfolio/title-p
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 import { computed } from 'vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
-import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
 import { PortfolioTitleCriteriaGateKindDescription } from '@/types/enums/portfolio-title-criteria-gate-kind-enum'
 import {
@@ -131,16 +131,16 @@ const stageRailItems = computed<WorkbenchStage[]>(() => {
 .title-promotion-flow-panel__path-fork {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: stretch;
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .title-promotion-flow-panel__path-lane {
   flex: 1 1 180px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 12px;
+  gap: var(--dp-space-component-xs);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control);
   background: var(--dp-surface);
@@ -149,7 +149,7 @@ const stageRailItems = computed<WorkbenchStage[]>(() => {
 }
 .title-promotion-flow-panel__path-lane--active {
   border-color: var(--dp-color-primary);
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
   box-shadow: inset 0 0 0 1px var(--dp-color-primary);
 }
 .title-promotion-flow-panel__path-lane--exception.title-promotion-flow-panel__path-lane--active {
@@ -163,7 +163,7 @@ const stageRailItems = computed<WorkbenchStage[]>(() => {
   font-weight: 600;
 }
 .title-promotion-flow-panel__guidance {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-sm);
   line-height: 1.5;
@@ -171,21 +171,21 @@ const stageRailItems = computed<WorkbenchStage[]>(() => {
 .title-promotion-flow-panel__metrics {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 .title-promotion-flow-panel__stage-notes {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component);
 }
 .title-promotion-flow-panel__stage-note {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: baseline;
-  padding: 8px;
+  padding: var(--dp-space-component-tight);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control);
   font-size: var(--dp-font-size-sm);
@@ -195,10 +195,10 @@ const stageRailItems = computed<WorkbenchStage[]>(() => {
   background: var(--dp-warning-bg);
 }
 .title-promotion-flow-panel__criteria {
-  margin-top: 12px;
+  margin-top: var(--dp-space-component);
 }
 .title-promotion-flow-panel__criteria-title {
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
   font-weight: 600;
   font-size: var(--dp-font-size-sm);
 }
@@ -210,9 +210,9 @@ const stageRailItems = computed<WorkbenchStage[]>(() => {
 .title-promotion-flow-panel__criteria li {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
-  padding: 6px 0;
+  padding: var(--dp-space-component-tight) 0;
   border-bottom: 1px solid var(--dp-border);
   font-size: var(--dp-font-size-sm);
 }

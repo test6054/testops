@@ -385,7 +385,7 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import {
@@ -465,6 +465,8 @@ const taskVolumeDepartmentId = ref<string>()
 const editAssigneeUserId = ref<string>()
 const campaignSummary = ref<ArchiveEvaluationCampaignResponse | null>(null)
 const campaignTaskStats = ref<ArchiveRemediationByCampaignStatsVO | null>(null)
+const deadlineClockMs = ref(Date.now())
+let deadlineClockTimer: ReturnType<typeof setInterval> | undefined
 
 const taskId = computed(() => String(route.params.taskId ?? ''))
 const isSupervisionRead = computed(() => route.query.scope === 'supervision')
@@ -638,7 +640,7 @@ function remediationPriorityTone(code: ArchiveRemediationPriorityCode) {
 /** 整改截止日着色：已关闭不计；已逾期=红，7 天内到期=橙，其余不着色。 */
 function remediationDueTone(task: ArchiveRemediationTaskResponse): BadgeTone | undefined {
   if (!task.dueTime || task.taskStatus === ArchiveRemediationStatusCode.CLOSED) return undefined
-  const remaining = new Date(task.dueTime).getTime() - Date.now()
+  const remaining = new Date(task.dueTime).getTime() - deadlineClockMs.value
   if (remaining < 0) return 'red'
   if (remaining <= 7 * 24 * 60 * 60 * 1000) return 'orange'
   return undefined
@@ -845,19 +847,28 @@ function goVolumeDetail(
 }
 
 onMounted(() => {
+  deadlineClockTimer = window.setInterval(() => {
+    deadlineClockMs.value = Date.now()
+  }, 60_000)
   void loadGrants().then(() => loadTask())
+})
+
+onBeforeUnmount(() => {
+  if (deadlineClockTimer !== undefined) {
+    window.clearInterval(deadlineClockTimer)
+  }
 })
 </script>
 
 <style scoped>
 .archive-remediation-detail__section {
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .archive-remediation-detail__diag-head {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-remediation-detail__desc {
@@ -870,14 +881,14 @@ onMounted(() => {
 .archive-remediation-detail__links {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-4);
-  margin-top: var(--dp-space-3);
+  gap: var(--dp-space-block);
+  margin-top: var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
 
 .archive-remediation-detail__pipe {
-  padding: var(--dp-space-2) 0 var(--dp-space-3);
+  padding: var(--dp-space-component-tight) 0 var(--dp-space-component);
 }
 
 .archive-remediation-detail__flow-hint {
@@ -890,14 +901,14 @@ onMounted(() => {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   width: 100%;
 }
 
 .archive-remediation-detail__completion {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-remediation-detail__completion-label {
@@ -907,18 +918,18 @@ onMounted(() => {
 }
 
 .archive-remediation-detail__mono {
-  font-family: var(--dp-font-mono);
+  font-family: var(--dp-font-family-code);
   font-size: var(--dp-font-size-xs);
 }
 
 .archive-remediation-detail__campaign-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .archive-remediation-detail__campaign-deadline {
-  margin: var(--dp-space-3) 0 0;
+  margin: var(--dp-space-component) 0 0;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
@@ -927,8 +938,8 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
-  padding: var(--dp-space-2) 0;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) 0;
 }
 
 .archive-remediation-detail__assignee {
@@ -938,14 +949,14 @@ onMounted(() => {
 .archive-remediation-detail__timeline {
   list-style: none;
   margin: 0;
-  padding: var(--dp-space-2) 0;
+  padding: var(--dp-space-component-tight) 0;
 }
 
 .archive-remediation-detail__timeline-item {
   display: flex;
-  gap: var(--dp-space-3);
-  padding: var(--dp-space-2) 0;
-  border-bottom: 1px solid var(--dp-border-light);
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component-tight) 0;
+  border-bottom: 1px solid var(--dp-border-subtle);
 }
 
 .archive-remediation-detail__timeline-item:last-child {
@@ -967,22 +978,22 @@ onMounted(() => {
 .archive-remediation-detail__timeline-title {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   font-weight: 500;
 }
 
 .archive-remediation-detail__timeline-desc {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
   line-height: 1.5;
 }
 
 .archive-remediation-detail__verify {
-  padding: var(--dp-space-3);
-  border-radius: var(--dp-radius-sm);
-  background: var(--dp-surface-sunken);
+  padding: var(--dp-space-component);
+  border-radius: var(--dp-radius-xs);
+  background: var(--dp-bg-muted);
 }
 
 .archive-remediation-detail__verify--closed {
@@ -998,7 +1009,7 @@ onMounted(() => {
 }
 
 .archive-remediation-detail__verify-meta {
-  margin: var(--dp-space-2) 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
@@ -1006,7 +1017,7 @@ onMounted(() => {
 .archive-remediation-detail__evidence-head {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   width: 100%;
 }
 
@@ -1017,7 +1028,7 @@ onMounted(() => {
 }
 
 .archive-remediation-detail__evidence-upload {
-  margin-left: var(--dp-space-2);
+  margin-left: var(--dp-space-component-tight);
 }
 
 /* nested-surface-densify: 页内多 Surface 去重阴影 */
@@ -1028,13 +1039,13 @@ onMounted(() => {
   box-shadow: none;
 }
 :deep(.workbench-surface-card .workbench-surface-card .workbench-surface-card__head) {
-  padding: 8px 12px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
 }
 :deep(
   .workbench-surface-card
     .workbench-surface-card
     .workbench-surface-card__body:not(.workbench-surface-card__body--flush)
 ) {
-  padding: 12px;
+  padding: var(--dp-space-component);
 }
 </style>

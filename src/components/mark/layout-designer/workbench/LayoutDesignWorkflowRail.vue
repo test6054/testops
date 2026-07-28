@@ -64,6 +64,12 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
             class="layout-design-workflow-rail__step"
             :class="[`layout-design-workflow-rail__step--${step.status}`]"
             :disabled="!step.accessible"
+            :aria-current="step.phase === phase ? 'step' : undefined"
+            :aria-label="
+              step.lockReason
+                ? `${step.label}：${step.lockReason}`
+                : `${step.label}，${step.summary}`
+            "
             @click="handleSelect(step.phase, step.accessible)"
           >
             <span class="layout-design-workflow-rail__step-icon">
@@ -82,7 +88,7 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
 <style scoped lang="scss">
 .layout-design-workflow-rail {
   width: 100%;
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
 
   &--embedded {
     margin-bottom: 0;
@@ -91,16 +97,16 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
   &--embedded &__bar {
     border: none;
     border-radius: 0;
-    padding: 6px 12px;
-    background: var(--dp-surface-elevated);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
+    background: var(--dp-surface-chrome);
   }
 
   &__bar {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 6px;
-    padding: 4px 8px;
+    gap: var(--dp-space-component-tight);
+    padding: var(--dp-space-component-xs) var(--dp-space-component-tight);
     border: 1px solid var(--dp-border-subtle);
     border-radius: 6px;
     background: var(--dp-surface);
@@ -123,25 +129,31 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
     display: flex;
     flex: 1 1 auto;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: var(--dp-space-component-xs);
     min-width: 0;
   }
 
   &__step {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
+    gap: var(--dp-space-component-tight);
+    min-height: 32px;
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-xs);
     background: var(--dp-surface);
     font-size: var(--dp-font-size-xs);
-    line-height: 20px;
+    line-height: 1.4;
     color: var(--dp-text-primary);
     cursor: pointer;
     transition:
-      border-color 0.2s ease,
-      background-color 0.2s ease;
+      border-color var(--dp-duration-normal) var(--dp-ease-default),
+      background-color var(--dp-duration-normal) var(--dp-ease-default);
+
+    &:focus-visible {
+      outline: 2px solid var(--dp-color-primary);
+      outline-offset: 2px;
+    }
 
     &:hover:not(:disabled) {
       border-color: var(--dp-color-primary);
@@ -169,13 +181,26 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 14px;
-    height: 14px;
-    font-size: 10px;
+    width: 16px;
+    height: 16px;
+    font-size: 11px;
   }
 
   &__step-label {
     white-space: nowrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .layout-design-workflow-rail__step {
+    min-height: 44px;
+    padding: var(--dp-space-component);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .layout-design-workflow-rail__step {
+    transition: none;
   }
 }
 </style>

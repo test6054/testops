@@ -77,14 +77,14 @@ function connectorClass(index: number): string {
   align-items: flex-start;
   gap: 0;
   overflow-x: auto;
-  padding: 8px 0 4px;
+  padding: var(--dp-space-component-tight) 0 var(--dp-space-component-xs);
 }
 
 .archive-lifecycle-pipe__node {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   min-width: 80px;
   flex-shrink: 0;
 }
@@ -96,12 +96,12 @@ function connectorClass(index: number): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--dp-font-size-xxs);
+  font-size: var(--dp-font-size-xs);
   font-weight: 700;
   transition:
-    background-color 0.2s ease,
-    color 0.2s ease,
-    box-shadow 0.2s ease;
+    background-color var(--dp-duration-normal) var(--dp-ease-default),
+    color var(--dp-duration-normal) var(--dp-ease-default),
+    box-shadow var(--dp-duration-normal) var(--dp-ease-default);
 
   &--done {
     background: var(--dp-success);
@@ -109,14 +109,14 @@ function connectorClass(index: number): string {
   }
 
   &--active {
-    background: var(--dp-primary);
+    background: var(--dp-color-primary);
     color: var(--dp-text-inverse);
     box-shadow: 0 0 0 3px var(--dp-focus-ring);
   }
 
   &--pending {
-    background: var(--dp-surface-sunken);
-    color: var(--dp-text-tertiary);
+    background: var(--dp-bg-muted);
+    color: var(--dp-text-muted);
     border: 1.5px solid var(--dp-border);
   }
 
@@ -127,11 +127,11 @@ function connectorClass(index: number): string {
 }
 
 .archive-lifecycle-pipe__label {
-  font-size: 10px;
+  font-size: var(--dp-font-size-xs);
   text-align: center;
   white-space: nowrap;
   font-weight: 500;
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .archive-lifecycle-pipe__node--done .archive-lifecycle-pipe__label {
@@ -140,7 +140,7 @@ function connectorClass(index: number): string {
 }
 
 .archive-lifecycle-pipe__node--active .archive-lifecycle-pipe__label {
-  color: var(--dp-primary);
+  color: var(--dp-color-primary);
   font-weight: 600;
 }
 

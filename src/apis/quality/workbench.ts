@@ -20,23 +20,41 @@ export interface ObeJourneySummaryVO {
   programId?: string
   trainingPlanId?: string
   confirmationStatus?: ConfirmationStatusCode
-  achievementTotal?: number
-  achievementCalculated?: number
-  achievementSubmitted?: number
-  achievementConfirmed?: number
-  achievementArchived?: number
-  achievementNotAchieved?: number
-  improvementTotal?: number
-  improvementOpen?: number
-  improvementInProgress?: number
-  improvementSubmitted?: number
-  improvementClosed?: number
-  scoreBatchCount?: number
-  aiTaskTotal?: number
-  aiTaskPending?: number
-  aiTaskProcessing?: number
-  aiTaskCompleted?: number
-  aiTaskFailed?: number
+  /** 达成度总数，后端必填 int */
+  achievementTotal: number
+  /** 已计算达成度数，后端必填 int */
+  achievementCalculated: number
+  /** 已提交审核数，后端必填 int */
+  achievementSubmitted: number
+  /** 已确认数，后端必填 int */
+  achievementConfirmed: number
+  /** 已归档数，后端必填 int */
+  achievementArchived: number
+  /** 未达成数，后端必填 int */
+  achievementNotAchieved: number
+  /** 改进任务总数，后端必填 int */
+  improvementTotal: number
+  /** 待处理改进任务数，后端必填 int */
+  improvementOpen: number
+  /** 整改中改进任务数，后端必填 int */
+  improvementInProgress: number
+  /** 已提交待复评改进任务数，后端必填 int */
+  improvementSubmitted: number
+  /** 已闭环改进任务数，后端必填 int */
+  improvementClosed: number
+  /** 成绩批次数，后端必填 int */
+  scoreBatchCount: number
+  /** AI 任务总数，后端必填 int */
+  aiTaskTotal: number
+  /** 排队中 AI 任务数，后端必填 int */
+  aiTaskPending: number
+  /** 运行中 AI 任务数，后端必填 int */
+  aiTaskProcessing: number
+  /** 已成功 AI 任务数，后端必填 int */
+  aiTaskCompleted: number
+  /** 已失败 AI 任务数，后端必填 int */
+  aiTaskFailed: number
+  /** OBE 七步旅程真源，后端必填 */
   steps: ObeJourneyStepVO[]
 }
 

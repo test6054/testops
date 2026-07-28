@@ -36,7 +36,7 @@
           variant="outline"
           @click="openDestructionRequest"
         >
-          申请销毁
+          {{ destructionRequestButtonLabel }}
         </UiButton>
         <UiButton
           v-if="canApproveDestructionAction === true"
@@ -61,6 +61,14 @@
           @click="handleExecuteDestruction"
         >
           执行销毁
+        </UiButton>
+        <UiButton
+          v-if="canRetryDestruction === true"
+          variant="primary"
+          size="sm"
+          @click="handleRetryDestruction"
+        >
+          重试销毁执行
         </UiButton>
         <UiButton
           v-if="canSuperviseDestruction === true"
@@ -111,7 +119,6 @@
       <UiSkeletonState v-if="flowLoading" variant="card" compact />
       <div v-else-if="flowLoadFailed" class="archive-volume-appraisal-panel__load-error">
         <span>鉴定流程刷新失败，当前仍显示上次成功结果</span>
-        <UiButton size="sm" variant="outline" @click="loadAppraisalFlowRecords">重试</UiButton>
       </div>
       <UiEmpty
         size="sm"
@@ -193,10 +200,17 @@
         :steps="destructionLifecycleSteps"
         class="archive-volume-appraisal-panel__pipe"
       />
+      <UiAlertStrip
+        v-if="detail.volume.destructionStatus === ArchiveDestructionStatusCode.FAILED"
+        tone="error"
+        title="销毁执行失败"
+        description="可「重试销毁执行」复用原审批台账继续物理删除，或「重新申请销毁」另开审批链；失败历史保留可追溯。"
+        dense
+        class="archive-volume-appraisal-panel__guide"
+      />
       <UiSkeletonState v-if="destructionFlowLoading" variant="card" compact />
       <div v-else-if="destructionFlowLoadFailed" class="archive-volume-appraisal-panel__load-error">
         <span>销毁流程刷新失败，当前仍显示上次成功结果</span>
-        <UiButton size="sm" variant="outline" @click="loadDestructionFlowRecords">重试</UiButton>
       </div>
       <UiEmpty
         v-if="
@@ -298,7 +312,7 @@
 
     <UiDrawer
       :open="destructionModalOpen"
-      title="申请销毁"
+      :title="destructionRequestButtonLabel"
       :width="520"
       :confirm-loading="destructionSubmitting === true"
       ok-text="提交"
@@ -437,6 +451,7 @@ import {
   rejectArchiveVolumeAppraisal,
   requestArchiveVolumeAppraisal,
   requestArchiveVolumeDestruction,
+  retryArchiveVolumeDestruction,
 } from '@/apis/mark/archive-volume'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
@@ -570,7 +585,15 @@ const canRequestDestruction = computed(
     && props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.OPINION_RECORDED
     && props.detail.appraisalDecision === ArchiveAppraisalDecisionCode.DESTROY
     && (props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.NONE
-      || props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.REJECTED),
+      || props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.REJECTED
+      || props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.FAILED),
+)
+
+const destructionRequestButtonLabel = computed(() =>
+  props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.FAILED
+  || props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.REJECTED
+    ? '重新申请销毁'
+    : '申请销毁',
 )
 
 const canApproveDestructionAction = computed(() => {
@@ -587,6 +610,18 @@ const canExecuteDestruction = computed(
     props.canApproveDestruction === true
     && props.detail.volume.volumeStatus === ArchiveVolumeStatusCode.STORED
     && props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.APPROVED
+    && Boolean(props.detail.destructionRequestUserId)
+    && Boolean(props.detail.destructionApproverUserId)
+    && props.detail.destructionRequestUserId !== props.currentUserId
+    && props.detail.destructionApproverUserId !== props.currentUserId,
+)
+
+/** FAILED 重试：与 BE retryDestruction 同源，申请人/审批人不可见重试 */
+const canRetryDestruction = computed(
+  () =>
+    props.canApproveDestruction === true
+    && props.detail.volume.volumeStatus === ArchiveVolumeStatusCode.STORED
+    && props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.FAILED
     && Boolean(props.detail.destructionRequestUserId)
     && Boolean(props.detail.destructionApproverUserId)
     && props.detail.destructionRequestUserId !== props.currentUserId
@@ -898,6 +933,36 @@ async function handleExecuteDestruction() {
   }
 }
 
+async function handleRetryDestruction() {
+  if (destructionSubmitting.value === true) return
+  if (canRetryDestruction.value !== true) {
+    void message.warning('当前账号无重试销毁权限')
+    return
+  }
+  const confirmed = await confirmAsync({
+    title: '确认重试销毁执行？',
+    content: '将复用原审批通过的销毁台账继续物理删除，失败历史保留可追溯。',
+    type: 'error',
+    okText: '重试销毁',
+  })
+  if (!confirmed) return
+  if (canRetryDestruction.value !== true) {
+    void message.warning('当前账号无重试销毁权限')
+    return
+  }
+  destructionSubmitting.value = true
+  try {
+    await retryArchiveVolumeDestruction(props.volumeId)
+    void message.success('销毁重试已发起')
+    emit('refreshed')
+    startDestructionPollIfNeeded()
+  } catch (error) {
+    showUserError(error, '销毁重试失败')
+  } finally {
+    destructionSubmitting.value = false
+  }
+}
+
 let destructionPollTimer: ReturnType<typeof setInterval> | null = null
 
 const shouldPollDestruction = computed(
@@ -1115,23 +1180,23 @@ onUnmounted(() => {
 .archive-volume-appraisal-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-volume-appraisal-panel__head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-appraisal-panel__load-error {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   min-height: 48px;
-  color: var(--dp-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 
 .archive-volume-appraisal-panel__title {
@@ -1141,21 +1206,21 @@ onUnmounted(() => {
 }
 
 .archive-volume-appraisal-panel__guide {
-  margin-bottom: var(--dp-space-2);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .archive-volume-appraisal-panel__section-head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .archive-volume-appraisal-panel__section-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   margin-left: auto;
 }
 
@@ -1172,16 +1237,16 @@ onUnmounted(() => {
 }
 
 .archive-volume-appraisal-panel__destruction-steps {
-  margin: var(--dp-space-2) 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-appraisal-panel__destruction-step {
   display: flex;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   font-size: var(--dp-font-size-xs);
 }
 
@@ -1198,17 +1263,17 @@ onUnmounted(() => {
 .archive-volume-appraisal-panel__list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-appraisal-panel__section {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .archive-volume-appraisal-panel__section--destruction {
-  padding-top: var(--dp-space-3);
+  padding-top: var(--dp-space-component);
   border-top: 1px solid var(--dp-border-subtle);
 }
 
@@ -1220,13 +1285,13 @@ onUnmounted(() => {
 }
 
 .archive-volume-appraisal-panel__pipe {
-  margin-bottom: var(--dp-space-4);
+  margin-bottom: var(--dp-space-block);
 }
 
 .archive-volume-appraisal-panel__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   width: 100%;
 }
 </style>

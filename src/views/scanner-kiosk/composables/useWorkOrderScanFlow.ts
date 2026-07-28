@@ -65,8 +65,10 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   const loading = ref(false)
   const errorMessage = ref('')
   const successMessage = ref('')
-  let pollTimer: ReturnType<typeof setInterval> | null = null
-  let workOrderPollTimer: ReturnType<typeof setInterval> | null = null
+  let pollTimer: ReturnType<typeof setTimeout> | null = null
+  let workOrderPollTimer: ReturnType<typeof setTimeout> | null = null
+  let jobPollGeneration = 0
+  let workOrderPollGeneration = 0
 
   function isScanSessionBlocked() {
     return options.isScanSessionBlocked?.() === true
@@ -178,15 +180,17 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   })
 
   function stopPolling() {
+    jobPollGeneration += 1
     if (pollTimer) {
-      clearInterval(pollTimer)
+      clearTimeout(pollTimer)
       pollTimer = null
     }
   }
 
   function stopWorkOrderPolling() {
+    workOrderPollGeneration += 1
     if (workOrderPollTimer) {
-      clearInterval(workOrderPollTimer)
+      clearTimeout(workOrderPollTimer)
       workOrderPollTimer = null
     }
   }
@@ -255,27 +259,68 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
       return
     }
     stopWorkOrderPolling()
-    void pollWorkOrderLifecycleOnce()
-    workOrderPollTimer = setInterval(() => {
-      void pollWorkOrderLifecycleOnce()
-    }, 2000)
+    const generation = workOrderPollGeneration
+    const scheduleNext = (delayMs: number) => {
+      if (generation !== workOrderPollGeneration) {
+        return
+      }
+      workOrderPollTimer = setTimeout(() => {
+        void (async () => {
+          if (generation !== workOrderPollGeneration) {
+            return
+          }
+          await pollWorkOrderLifecycleOnce()
+          if (generation !== workOrderPollGeneration) {
+            return
+          }
+          if (
+            lifecycle.value?.status === ScanWorkOrderStatusCode.COMMITTED
+            || lifecycle.value?.status === ScanWorkOrderStatusCode.FAILED
+          ) {
+            return
+          }
+          scheduleNext(2000)
+        })()
+      }, delayMs)
+    }
+    scheduleNext(0)
   }
 
   function startPolling(scanJobId: string) {
     stopPolling()
-    pollTimer = setInterval(() => {
-      void pollJob(scanJobId)
-    }, 1500)
+    const generation = jobPollGeneration
+    const scheduleNext = () => {
+      if (generation !== jobPollGeneration) {
+        return
+      }
+      pollTimer = setTimeout(() => {
+        void (async () => {
+          if (generation !== jobPollGeneration) {
+            return
+          }
+          const shouldContinue = await pollJob(scanJobId, generation)
+          if (generation !== jobPollGeneration || !shouldContinue) {
+            return
+          }
+          scheduleNext()
+        })()
+      }, 1500)
+    }
+    scheduleNext()
   }
 
-  async function pollJob(scanJobId: string) {
+  async function pollJob(scanJobId: string, generation: number): Promise<boolean> {
     if (isScanSessionBlocked()) {
       stopPolling()
-      return
+      return false
     }
     try {
-      currentJob.value = await getScanJob(scanJobId)
-      if (currentJob.value.reported || currentJob.value.status === LocalScanJobStatusCode.REPORTED) {
+      const job = await getScanJob(scanJobId)
+      if (generation !== jobPollGeneration) {
+        return false
+      }
+      currentJob.value = job
+      if (job.reported || job.status === LocalScanJobStatusCode.REPORTED) {
         stopPolling()
         if (isDocumentWorkOrderTask.value) {
           mergePageCountFromCurrentJob()
@@ -289,12 +334,19 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
         } else {
           successMessage.value = '扫描批次已提交'
         }
+        return false
       }
-      if (currentJob.value.status === LocalScanJobStatusCode.FAILED) {
+      if (job.status === LocalScanJobStatusCode.FAILED) {
         stopPolling()
+        return false
       }
+      return true
     } catch (error) {
+      if (generation !== jobPollGeneration) {
+        return false
+      }
       errorMessage.value = getUserErrorMessage(error, '刷新扫描任务失败')
+      return true
     }
   }
 
@@ -520,7 +572,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     })
     if (!confirmed) return
     // MVR-956：确认后再次认 canDiscard，防确认等待期间工单态漂移
-    if (canDiscard.value !== true || loading.value === true || !lifecycle.value?.batchExternalNo) {
+    if (canDiscard.value !== true || loading.value || !lifecycle.value?.batchExternalNo) {
       errorMessage.value = '当前工单状态不可废弃'
       return
     }

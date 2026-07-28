@@ -116,17 +116,17 @@ watch(
 
 <style scoped lang="scss">
 .layout-question-crop-strip {
-  padding: 8px 10px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
 
   &__header {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 8px;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__title {
@@ -149,7 +149,7 @@ watch(
 
   &__list {
     display: flex;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     overflow-x: auto;
     padding-bottom: 2px;
   }
@@ -158,12 +158,12 @@ watch(
     flex: 0 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--dp-space-component-xs);
     width: 148px;
-    padding: 6px;
+    padding: var(--dp-space-component-tight);
     border: 1px solid var(--dp-border-subtle);
     border-radius: 6px;
-    background: var(--dp-bg-container);
+    background: var(--dp-surface);
     cursor: pointer;
     text-align: left;
 

@@ -1,13 +1,13 @@
 import type { AiAnalysisStatusCode } from './ai-analysis-status'
 import type { ExamStatusCode } from './exam'
 import type { BindingStatusCode } from './exam-binding'
-import type { FinalScoreStatusCode } from './final-score-status'
 import type { GradeStatusCode } from './grade-status'
 import type { ObjectiveResultCode } from './objective-result'
 import type { QuestionTypeCode } from './question-type'
 import type { MasteryLevelCode } from './student-mastery-level'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { StudentFacingFinalScoreStatusCode } from '@/types/enums/student-facing-final-score-status-enum'
 import http from '@/config/axios'
 
 import { ReviewWindowPolicyStatusCode } from './grade-review'
@@ -22,7 +22,7 @@ export const STUDENT_REVIEW_WINDOW_STATUS_TONE: Record<ReviewWindowPolicyStatusC
 
 export interface StudentExamPageRequest extends QueryDto {
   keyword?: string
-  finalScoreStatus?: FinalScoreStatusCode
+  finalScoreStatus?: StudentFacingFinalScoreStatusCode
   reviewWindowAppealableOnly?: boolean
   orderByPublishedTimeDesc?: boolean
 }
@@ -53,7 +53,7 @@ export interface StudentExamItemVO {
   paperInstanceId?: string
   bindingStatus?: BindingStatusCode
   finalScoreId?: string
-  finalScoreStatus: FinalScoreStatusCode
+  finalScoreStatus: StudentFacingFinalScoreStatusCode
   finalScore?: number
   examScore?: number
   dailyScore?: number
@@ -105,7 +105,7 @@ export interface StudentScoreDetailResponse {
   paperInstanceId?: string
   bindingStatus?: BindingStatusCode
   finalScoreId?: string
-  finalScoreStatus: FinalScoreStatusCode
+  finalScoreStatus: StudentFacingFinalScoreStatusCode
   totalScore?: number
   examScore?: number
   dailyScore?: number

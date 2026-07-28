@@ -3,16 +3,8 @@
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
-import type { PrintPackageItemStatusCode } from '@/types/enums/print-package-item-status-enum'
 import http from '@/config/axios'
-
 import { PrintPackageStatusCode } from '@/types/enums/print-package-status-enum'
-
-export {
-  ALL_PRINT_PACKAGE_ITEM_STATUS_CODES,
-  PrintPackageItemStatusCode,
-  PrintPackageItemStatusDescription,
-} from '@/types/enums/print-package-item-status-enum'
 
 /** 制卷设计未完成业务码 - 与后端 ResultCodeEnum.EXAM_MARK_LAYOUT_NOT_READY 对齐 */
 export const LAYOUT_NOT_READY_CODE = 20015
@@ -23,15 +15,17 @@ type MarkBusinessError = Error & {
 }
 
 export const PRINT_PACKAGE_STATUS_TONE: Record<PrintPackageStatusCode, BadgeTone> = {
-  [PrintPackageStatusCode.GENERATED]: 'green',
+  [PrintPackageStatusCode.GENERATED]: 'blue',
+  [PrintPackageStatusCode.RELEASED_TO_PRINTER]: 'orange',
+  [PrintPackageStatusCode.PRINTED]: 'blue',
+  [PrintPackageStatusCode.SEALED]: 'purple',
+  [PrintPackageStatusCode.ISSUED_TO_EXAM_SITE]: 'orange',
+  [PrintPackageStatusCode.RECONCILED]: 'green',
+  [PrintPackageStatusCode.VOIDED]: 'gray',
 }
 
-/** 印刷包主流程 hint：名册与制卷设计就绪后生成，再预览或下载 PDF */
-export const PRINT_PACKAGE_FLOW_HINT = '名册与制卷设计就绪 → 生成印刷包 → 预览 / 下载送印'
-
-/** 独立答卷页不适用系统印刷包 */
-export const PRINT_PACKAGE_ANSWER_SHEET_HINT
-  = '本场为教考分离（独立答卷页），试题卷线下印制，系统不生成印刷包。'
+/** 印刷包主流程 hint：按制卷形态生成完整空白物理包，考生领卷后自填身份 */
+export const PRINT_PACKAGE_FLOW_HINT = '命题签审通过 → 生成完整空白物理包 → 按统一页序印制与封装 → 考生自填身份'
 
 /** 外带已印整卷不适用系统印刷包 */
 export const PRINT_PACKAGE_EXTERNAL_PRINT_HINT
@@ -43,30 +37,37 @@ export {
   PrintPackageStatusDescription,
 } from '@/types/enums/print-package-status-enum'
 
-export interface PrintPackageItemVO {
-  printPackageItemId: string
-  studentUserId: string
-  studentNo: string
-  studentName: string
-  examRoom: string
-  seatNo: string
-  qrCode: string
-  barCode: string
-  securityCode: string
-  printFileId: string
-  status: PrintPackageItemStatusCode
-}
-
 export interface ExamPrintPackageResponse {
   printPackageId: string
   examId: string
   layoutId: string
+  paperSetId: string
+  paperCode: string
   packageNo: string
   packageName: string
   packageFileId: string
-  itemCount: number
+  questionPaperFileId: string
+  answerBookletFileId?: string
+  plannedCopies: number
+  spoilageAllowanceCopies: number
+  actualPrintedCopies?: number
+  destroyedSpoilageCopies?: number
+  issuedCopies?: number
+  returnedUnusedCopies?: number
+  /** 计划印数中未交接考点、仍在校内受控留存的份数。 */
+  retainedUnissuedCopies?: number
+  /** 考点实际使用份数，由发放份数扣除考点未使用回收份数得到。 */
+  usedCopies?: number
+  printerName?: string
+  handoverOperator?: string
   status: PrintPackageStatusCode
   generatedTime: string
+  releasedTime?: string
+  printedTime?: string
+  sealedTime?: string
+  issuedTime?: string
+  reconciledTime?: string
+  voidedTime?: string
   sealRemark: string | null
 }
 
@@ -74,16 +75,27 @@ export interface PrintPackageGenerateRequest {
   examId: string
   packageNo: string
   packageName: string
+  paperCode: string
+  plannedCopies: number
+  spoilageAllowanceCopies: number
   sealRemark?: string
+}
+
+export interface PrintPackageTransitionRequest {
+  examId: string
+  printPackageId: string
+  targetStatus: PrintPackageStatusCode
+  actualPrintedCopies?: number
+  destroyedSpoilageCopies?: number
+  issuedCopies?: number
+  returnedUnusedCopies?: number
+  printerName?: string
+  handoverOperator?: string
+  remark?: string
 }
 
 export interface PrintPackagePageRequest extends QueryDto {
   examId: string
-}
-
-export interface PrintPackageItemPageRequest extends QueryDto {
-  examId: string
-  printPackageId: string
 }
 
 export function isLayoutNotReadyError(error: MarkBusinessError): boolean {
@@ -101,8 +113,6 @@ export function pagePrintPackages(
   return http.post<PageResult<ExamPrintPackageResponse>>('/api/mark/exams/print-package/page', request)
 }
 
-export function pagePrintPackageItems(
-  request: PrintPackageItemPageRequest,
-): Promise<PageResult<PrintPackageItemVO>> {
-  return http.post<PageResult<PrintPackageItemVO>>('/api/mark/exams/print-package/items/page', request)
+export function transitionPrintPackage(request: PrintPackageTransitionRequest): Promise<boolean> {
+  return http.post<boolean>('/api/mark/exams/print-package/transition', request)
 }

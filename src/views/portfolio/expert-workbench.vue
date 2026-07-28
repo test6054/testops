@@ -5,12 +5,12 @@ import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
-import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
@@ -156,8 +156,6 @@ async function loadAssignments() {
     okLoad()
   } catch (error) {
     if (requestToken.value !== currentToken) return
-    rows.value = []
-    total.value = 0
     failLoad()
     showUserError(error, '加载专家授权失败')
   } finally {
@@ -206,7 +204,10 @@ function goFill(row: PortfolioExpertAssignmentVO) {
   }
   void router.push({
     path: '/portfolio/expert/evaluation-fill',
-    query: { evaluationTaskId: row.evaluationTaskId },
+    query: {
+      evaluationTaskId: row.evaluationTaskId,
+      assignmentId: row.id,
+    },
   })
 }
 
@@ -310,14 +311,14 @@ watch(
 
 <style scoped>
 .expert-workbench__fill {
-  margin-left: 8px;
+  margin-left: var(--dp-space-component-tight);
 }
 
 .expert-workbench__deeplink {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 :deep(.expert-workbench__row--focus > td) {
-  background: color-mix(in srgb, var(--dp-primary, #1677ff) 10%, transparent);
+  background: color-mix(in srgb, var(--dp-color-primary) 10%, transparent);
 }
 </style>

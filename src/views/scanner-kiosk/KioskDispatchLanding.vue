@@ -82,6 +82,19 @@ watch(
   },
 )
 
+watch(
+  () => session.ticketId.value,
+  (nextId, previousId) => {
+    if (!nextId || nextId === previousId) {
+      return
+    }
+    if (!session.bootstrap.activation.isActivatedForMarkApis()) {
+      return
+    }
+    void session.loadTicket()
+  },
+)
+
 function goQueue() {
   void router.push('/scanner-kiosk/queue')
 }
@@ -185,9 +198,9 @@ function goHub() {
           挂起
         </UiButton>
         <UiButton
-          v-if="ticketStatus === ScanDispatchTicketStatusCode.PROCESSING"
+          v-if="ticketStatus === ScanDispatchTicketStatusCode.PROCESSING && !canContinueScan"
           variant="primary"
-          :disabled="session.actionLoading.value === true || leaseBlocked === true || session.canClaimTicket.value !== true"
+          :disabled="session.actionLoading.value === true || leaseBlocked === true || session.canConfirmFeed.value !== true"
           @click="session.cognitive.requestConfirm(session.ticket.value!)"
         >
           认知确认
@@ -248,9 +261,9 @@ function goHub() {
           挂起
         </UiButton>
         <UiButton
-          v-if="ticketStatus === ScanDispatchTicketStatusCode.PROCESSING"
+          v-if="ticketStatus === ScanDispatchTicketStatusCode.PROCESSING && !canContinueScan"
           variant="primary"
-          :disabled="session.actionLoading.value === true || leaseBlocked === true || session.canClaimTicket.value !== true"
+          :disabled="session.actionLoading.value === true || leaseBlocked === true || session.canConfirmFeed.value !== true"
           @click="session.cognitive.requestConfirm(session.ticket.value!)"
         >
           认知确认
@@ -271,29 +284,29 @@ function goHub() {
 .dispatch-landing {
   max-width: 960px;
   margin: 0 auto;
-  padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px);
+  padding: var(--dp-space-block) var(--dp-space-component);
 }
 .dispatch-landing__head {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  margin-bottom: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
 }
 .dispatch-landing__head h1 {
-  margin: 0 12px 0 0;
+  margin: 0 var(--dp-space-component) 0 0;
   display: inline;
   font-size: 22px;
 }
 .dispatch-landing__head-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .dispatch-landing__error {
   color: var(--kiosk-danger);
 }
 .dispatch-landing__hint {
-  margin: 12px 0 0;
+  margin: var(--dp-space-component) 0 0;
   color: var(--kiosk-ink-tertiary);
 }
 .dispatch-landing__hint--danger {
@@ -302,16 +315,16 @@ function goHub() {
 .dispatch-landing__panel {
   border: 1px solid var(--kiosk-divider);
   border-radius: var(--dp-radius-panel);
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
 }
 .dispatch-landing__panel h2 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-xl);
 }
 .dispatch-landing__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-block);
 }
 </style>

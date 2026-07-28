@@ -120,7 +120,6 @@ export function resolveSessionCreateWorkflowSteps(
   const steps = blockingItemsToWorkflowSteps(mergedItems, {
     routeParams,
     routeQuery,
-    actionLabelPrefix: '去',
   })
   const firstPending = steps.find((step) => step.status === 'pending')
   const disabledTooltip = firstPending?.description
@@ -139,6 +138,13 @@ export function resolveSessionCreateWorkflowSteps(
       value: input.readiness.scanBatchCount,
     },
   ]
+  if (phase === 'formal' && input.readiness.openReviewTaskCount != null) {
+    metrics.push({
+      key: 'open-review-task-count',
+      label: '待复核题目',
+      value: input.readiness.openReviewTaskCount,
+    })
+  }
 
   const primaryAction = resolvePrimaryAction(steps)
   const secondaryAction = resolveSecondaryAction(steps)

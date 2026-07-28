@@ -30,6 +30,25 @@
           {{ taskStatusLabel(task.taskStatus) }}
         </UiTag>
       </UiDescriptionsItem>
+      <UiDescriptionsItem v-if="task.dualMarkRole" label="双评角色">
+        <UiTag tone="blue" size="sm">{{ dualMarkRoleLabel(task.dualMarkRole) }}</UiTag>
+      </UiDescriptionsItem>
+      <UiDescriptionsItem v-if="task.dualMarkRole" label="对端状态">
+        <UiTag
+          v-if="task.dualMarkPeerTaskStatus"
+          :tone="taskStatusTone(task.dualMarkPeerTaskStatus)"
+          size="sm"
+        >
+          {{ taskStatusLabel(task.dualMarkPeerTaskStatus) }}
+        </UiTag>
+        <span v-else class="dp-text-muted">未回填</span>
+      </UiDescriptionsItem>
+      <UiDescriptionsItem v-if="task.dualMarkRole" label="正式题分解算">
+        <UiTag v-if="task.dualMarkFormalGradeStatus" :tone="formalGradeTone(task.dualMarkFormalGradeStatus)" size="sm">
+          {{ formalGradeLabel(task.dualMarkFormalGradeStatus) }}
+        </UiTag>
+        <span v-else class="dp-text-muted">等待对端齐备后解算</span>
+      </UiDescriptionsItem>
       <UiDescriptionsItem label="分配时间">
         {{ formatDateTime(task.allocatedTime) }}
       </UiDescriptionsItem>
@@ -77,6 +96,7 @@ import type {
   MarkingTaskResponse,
   MarkingTaskStatusCode,
 } from '@/apis/mark/marking-organization'
+import { dualMarkRoleLabel } from '@/apis/mark/dual-mark-role'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
@@ -85,8 +105,12 @@ import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
 import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
 import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
+import {
+  GradeStatusCode,
+  GradeStatusDescription,
+} from '@/types/enums/grade-status-enum'
 import { OperationTypeDescription } from '@/types/enums/operation-type-enum'
-import { strictEnumLabel } from '@/utils/strict-enum'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkingTaskInfoCard' })
 
@@ -104,6 +128,20 @@ defineProps<{
 function operationLabel(operationType: OperationLogResponse['operationType']): string {
   return strictEnumLabel(OperationTypeDescription, operationType, '批阅操作类型')
 }
+
+const FORMAL_GRADE_TONE: Record<GradeStatusCode, BadgeTone> = {
+  [GradeStatusCode.PENDING]: 'gray',
+  [GradeStatusCode.NEED_REVIEW]: 'orange',
+  [GradeStatusCode.CONFIRMED]: 'green',
+}
+
+function formalGradeLabel(status: GradeStatusCode): string {
+  return strictEnumLabel(GradeStatusDescription, status, '正式题分状态')
+}
+
+function formalGradeTone(status: GradeStatusCode): BadgeTone {
+  return strictEnumTone(FORMAL_GRADE_TONE, status, '正式题分状态')
+}
 </script>
 
 <style lang="scss" scoped>
@@ -114,14 +152,14 @@ function operationLabel(operationType: OperationLogResponse['operationType']): s
 
   &__records {
     display: grid;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__record {
     display: grid;
     grid-template-columns: auto auto 1fr;
-    gap: 4px 8px;
-    padding: 8px;
+    gap: var(--dp-space-component-xs) var(--dp-space-component-tight);
+    padding: var(--dp-space-component-tight);
     border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-panel);
     color: var(--dp-text-secondary);

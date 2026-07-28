@@ -3,7 +3,9 @@
     <template #context>
       <ContextBar title="考试历史">
         <template #status>
-          <UiTag tone="blue" size="sm">{{ examStats?.totalExamCount ?? 0 }} 场</UiTag>
+          <UiTag tone="blue" size="sm">
+            {{ examStats == null ? '—' : `${examStats.totalExamCount} 场` }}
+          </UiTag>
           <UiTag v-if="(examStats?.publishedCount ?? 0) > 0" tone="green" size="sm">
             已发布 {{ examStats?.publishedCount }}
           </UiTag>
@@ -48,7 +50,7 @@
             <button
               type="button"
               class="link-cell"
-              :disabled="item.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED"
+              :disabled="item.finalScoreStatus !== StudentFacingFinalScoreStatusCode.PUBLISHED"
               @click="goDetail(item.examId)"
             >
               {{ item.examName }}
@@ -63,13 +65,13 @@
           <template v-else-if="column.key === 'finalScore'">
             <span
               v-if="
-                item.finalScoreStatus === FinalScoreStatusCode.PUBLISHED && item.finalScore != null
+                item.finalScoreStatus === StudentFacingFinalScoreStatusCode.PUBLISHED && item.finalScore != null
               "
               class="score-cell"
             >
               {{ Number(item.finalScore).toFixed(2) }}
             </span>
-            <span v-else class="muted">{{ unpublishedScoreText(item.finalScoreStatus) }}</span>
+            <span v-else class="dp-text-muted">{{ unpublishedScoreText(item.finalScoreStatus) }}</span>
           </template>
           <template v-else-if="column.key === 'examStartTime'">
             {{ formatDateTime(item.examStartTime) }}
@@ -104,12 +106,6 @@ import message from 'ant-design-vue/es/message'
 import { onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  FINAL_SCORE_STATUS_CODES,
-  FINAL_SCORE_STATUS_TONE,
-  FinalScoreStatusCode,
-  FinalScoreStatusDescription,
-} from '@/apis/mark/final-score-status'
-import {
   canSubmitReview,
   getMyExamStats,
   pageMyExams,
@@ -124,15 +120,25 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
+import {
+  ALL_STUDENT_FACING_FINAL_SCORE_STATUS_CODES,
+  StudentFacingFinalScoreStatusCode,
+  StudentFacingFinalScoreStatusDescription,
+} from '@/types/enums/student-facing-final-score-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import {
+  studentFacingFinalScoreStatusLabel,
+  studentFacingFinalScoreStatusTone,
+  studentFacingUnpublishedScoreText,
+} from '@/utils/student-final-score-status'
 
 defineOptions({ name: 'StudentExamHistory' })
 
 interface StudentExamHistoryFilters extends Record<string, unknown> {
   keyword: string
-  statusFilter?: FinalScoreStatusCode
+  statusFilter?: StudentFacingFinalScoreStatusCode
 }
 
 const router = useRouter()
@@ -167,9 +173,9 @@ const {
   },
 )
 
-const statusOptions = FINAL_SCORE_STATUS_CODES.map((value) => ({
+const statusOptions = ALL_STUDENT_FACING_FINAL_SCORE_STATUS_CODES.map((value) => ({
   value,
-  label: strictEnumLabel(FinalScoreStatusDescription, value, '最终成绩状态'),
+  label: StudentFacingFinalScoreStatusDescription[value],
 }))
 
 const historyFilterFields: FilterField[] = [
@@ -228,12 +234,12 @@ async function reloadPage(): Promise<void> {
   await Promise.all([reloadExams(), loadExamStats()])
 }
 
-function finalScoreStatusTone(status: FinalScoreStatusCode): BadgeTone {
-  return strictEnumTone(FINAL_SCORE_STATUS_TONE, status, '最终成绩状态')
+function finalScoreStatusTone(status: StudentFacingFinalScoreStatusCode): BadgeTone {
+  return studentFacingFinalScoreStatusTone(status)
 }
 
-function finalScoreStatusLabel(status: FinalScoreStatusCode): string {
-  return strictEnumLabel(FinalScoreStatusDescription, status, '最终成绩状态')
+function finalScoreStatusLabel(status: StudentFacingFinalScoreStatusCode): string {
+  return studentFacingFinalScoreStatusLabel(status)
 }
 
 function reviewWindowStatusTone(item: StudentExamItemVO): BadgeTone {
@@ -248,17 +254,8 @@ function reviewWindowStatusLabel(item: StudentExamItemVO): string {
   )
 }
 
-function unpublishedScoreText(status: FinalScoreStatusCode): string {
-  if (status === FinalScoreStatusCode.PUBLISHED) {
-    return '--'
-  }
-  if (status === FinalScoreStatusCode.CORRECTED) {
-    return '更正待重发'
-  }
-  if (status === FinalScoreStatusCode.WITHDRAWN) {
-    return '成绩已撤回'
-  }
-  return '尚未公布'
+function unpublishedScoreText(status: StudentFacingFinalScoreStatusCode): string {
+  return studentFacingUnpublishedScoreText(status)
 }
 
 function buildExamHistoryActions(record: StudentExamItemVO): UiTableRowActionItem[] {
@@ -266,7 +263,7 @@ function buildExamHistoryActions(record: StudentExamItemVO): UiTableRowActionIte
     {
       key: 'detail',
       label: '查看详情',
-      disabled: record.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED,
+      disabled: record.finalScoreStatus !== StudentFacingFinalScoreStatusCode.PUBLISHED,
     },
     {
       key: 'appeal',
@@ -311,14 +308,14 @@ onActivated(reloadPage)
 .exam-history-page__list-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .link-cell {
   padding: 0;
   border: none;
   background: none;
-  color: var(--dp-primary);
+  color: var(--dp-color-primary);
   cursor: pointer;
   text-align: left;
 }
@@ -336,9 +333,5 @@ onActivated(reloadPage)
 
 .score-cell {
   font-variant-numeric: tabular-nums;
-}
-
-.muted {
-  color: var(--dp-text-secondary);
 }
 </style>

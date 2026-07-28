@@ -63,9 +63,7 @@
       size="sm"
       v-else-if="loadFailed"
       description="教务同步数据加载失败"
-      action-label="重试"
       class="sync-page__empty"
-      @action="loadAll"
     />
 
     <template v-else>
@@ -176,7 +174,12 @@
           size="middle"
         >
           <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'passbackStatus'">
+            <template v-if="column.key === 'examKind'">
+              <UiTag :tone="examKindTone(passbackRecords[index].examKind)" size="sm">
+                {{ examKindLabel(passbackRecords[index].examKind) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'passbackStatus'">
               <UiTag :tone="passbackStatusTone(passbackRecords[index].passbackStatus)" size="sm">
                 {{ passbackStatusLabel(passbackRecords[index].passbackStatus) }}
               </UiTag>
@@ -197,6 +200,12 @@
                 }}</span>
               </UiTooltip>
               <span v-else class="hint-text">-</span>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="buildPassbackActions(passbackRecords[index])"
+                @action="(key) => handlePassbackAction(key, passbackRecords[index])"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -239,16 +248,16 @@
           size="sm"
           :options="CREATABLE_SYNC_TYPE_OPTIONS"
         />
-        <div class="hint-text" style="margin-top: 4px">
-          当前仅开放成绩回写；名单导入、成绩更正与撤销将在后端能力开放后启用。
+        <div class="hint-text" style="margin-top: var(--dp-space-component-xs)">
+          成绩导出、更正与撤回均需绑定教务侧开课号；名单导入暂未开放。
           {{ GRADE_EXPORT_PASSBACK_PRECONDITION_HINT }}
         </div>
       </UiFormItem>
-      <UiFormItem label="外部课程编号">
+      <UiFormItem label="外部课程编号" required>
         <UiInput
           size="sm"
           v-model="createForm.externalCourseId"
-          placeholder="如教务系统中的课程编号"
+          placeholder="教务系统中的开课号/课程代码（必填）"
         />
       </UiFormItem>
       <UiFormItem label="外部成绩项编号">
@@ -313,7 +322,14 @@
             {{ detailProgress.withdrawnCount }}
           </UiTag>
         </div>
-        <div v-if="detailProgress.totalCount === 0" class="hint-text" style="margin-top: 8px">
+        <div
+          v-if="detailProgress.sentCount > 0"
+          class="hint-text"
+          style="margin-top: var(--dp-space-component-tight)"
+        >
+          {{ SENT_PASSBACK_TIMEOUT_HINT }}
+        </div>
+        <div v-if="detailProgress.totalCount === 0" class="hint-text" style="margin-top: var(--dp-space-component-tight)">
           该任务尚未生成回写记录，可能仍在等待执行。
         </div>
       </template>
@@ -353,7 +369,7 @@
         <span class="error-text">{{ detailTask.lastErrorMessage }}</span>
       </UiDescriptionsItem>
       <UiDescriptionsItem label="操作" :span="1">
-        <div class="dp-space" style="--dp-space-gap: 8px">
+        <div class="dp-space dp-space--tight">
           <UiButton
             v-if="detailTask.id && canManageOwnerTeachingAffairsWrites === true"
             size="sm"
@@ -374,6 +390,7 @@
 // MVR-948：教务同步写闸仅认 === true
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { ExamKindCode} from '@/apis/mark/exam';
 import type {
   ExamTeachingAffairsSyncTask,
   PassbackProgressResponse,
@@ -390,6 +407,7 @@ import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { EXAM_KIND_TONE, ExamKindDescription } from '@/apis/mark/exam'
 import {
   cancelSyncTask,
   CREATABLE_SYNC_TYPE_OPTIONS,
@@ -398,9 +416,11 @@ import {
   EXTERNAL_SYSTEM_TYPE_OPTIONS,
   ExternalSystemTypeCode,
   ExternalSystemTypeDescription,
+  failSentPassbackTimeout,
   getPassbackProgress,
   GRADE_EXPORT_PASSBACK_PRECONDITION_HINT,
   listPassbackRecords,
+  markPassbackSent,
   pageSyncTasks,
   PASSBACK_STATUS_OPTIONS,
   PASSBACK_STATUS_TONE,
@@ -410,6 +430,7 @@ import {
   reconcilePassback,
   ReconcileStatusDescription,
   retrySyncTask,
+  SENT_PASSBACK_TIMEOUT_HINT,
   SYNC_TASK_FLOW_HINT,
   SYNC_TASK_STATUS_OPTIONS,
   SYNC_TASK_STATUS_TONE,
@@ -442,6 +463,7 @@ import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJour
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { showUserError } from '@/utils/error-handler'
@@ -716,10 +738,19 @@ function handleRetry(record: ExamTeachingAffairsSyncTask): void {
   void withTaskAction(record, () => retrySyncTask(record.id!), '已重试')
 }
 
-function handleCancel(record: ExamTeachingAffairsSyncTask): void {
+async function handleCancel(record: ExamTeachingAffairsSyncTask): Promise<void> {
   // MVR-420/952：与 canCancel / 行内 hidden 同源二次闸
   if (canCancel(record.taskStatus) !== true) {
     void message.warning('当前任务状态不可取消')
+    return
+  }
+  const confirmed = await confirmAsync({
+    title: '取消教务同步任务？',
+    content: '取消后待回写/已发送记录将置为失败，教务侧在途成绩不再等待回执；确认后可新建任务重报。',
+    type: 'error',
+    okText: '确认取消',
+  })
+  if (!confirmed) {
     return
   }
   void withTaskAction(record, () => cancelSyncTask(record.id!), '已取消')
@@ -742,7 +773,12 @@ const createForm = reactive<{
 })
 
 const createValid = computed(() =>
-  Boolean(selectedExamId.value && createForm.externalSystemType && createForm.syncType),
+  Boolean(
+    selectedExamId.value
+    && createForm.externalSystemType
+    && createForm.syncType
+    && createForm.externalCourseId.trim(),
+  ),
 )
 
 function openCreateModal(): void {
@@ -768,7 +804,7 @@ async function handleCreate(): Promise<void> {
       examId: selectedExamId.value,
       externalSystemType: createForm.externalSystemType,
       syncType: createForm.syncType,
-      externalCourseId: createForm.externalCourseId.trim() || undefined,
+      externalCourseId: createForm.externalCourseId.trim(),
       externalLineItemId: createForm.externalLineItemId.trim() || undefined,
     })
     void message.success('已创建同步任务')
@@ -853,8 +889,12 @@ async function handleReconcile(record: ExamTeachingAffairsSyncTask): Promise<voi
   if (!record.id) return
   reconciling.value = true
   try {
-    await reconcilePassback(record.id)
-    void message.success('已执行对账')
+    const result = await reconcilePassback(record.id)
+    if (result.reconcileClosed === true) {
+      void message.success(result.summaryMessage || '对账完成，报送已闭环')
+    } else {
+      void message.warning(result.summaryMessage || '对账完成，但覆盖或分值未闭环')
+    }
     await loadAll()
   } catch (error) {
     showUserError(error, '教务回写对账失败')
@@ -919,12 +959,14 @@ const passbackColumns: ColumnType<PassbackRecordResponse>[] = [
   { title: '同步任务', key: 'syncTaskId', dataIndex: 'syncTaskId', width: 100 },
   { title: '学生', key: 'studentName', dataIndex: 'studentName', width: 140 },
   { title: '学号', key: 'studentNo', dataIndex: 'studentNo', width: 120 },
+  { title: '考试性质', key: 'examKind', width: 100 },
   { title: '本地分', key: 'localScore', dataIndex: 'localScore', width: 80 },
   { title: '外部分', key: 'externalScore', dataIndex: 'externalScore', width: 80 },
   { title: '回写状态', key: 'passbackStatus', width: 110 },
   { title: '对账状态', key: 'reconcileStatus', width: 100 },
   { title: '回写时间', key: 'passbackTime', dataIndex: 'passbackTime', width: 160 },
   { title: '处理说明', key: 'errorMessage', width: 220 },
+  { title: '操作', key: 'actions', width: 180 },
 ]
 
 async function loadPassbackRecords(options?: { quiet?: boolean }): Promise<void> {
@@ -979,6 +1021,109 @@ function handlePassbackPageChange(pageInfo: { current: number, pageSize: number 
   void loadPassbackRecords()
 }
 
+const passbackActionLoadingId = ref<string | undefined>()
+
+function buildPassbackActions(record: PassbackRecordResponse): UiTableRowActionItem[] {
+  const loading = passbackActionLoadingId.value === record.id
+  const canWrite = canManageOwnerTeachingAffairsWrites.value === true
+  return [
+    {
+      key: 'mark-sent',
+      label: '标记已投递',
+      tone: 'primary',
+      hidden:
+        canWrite !== true
+        || record.passbackStatus !== PassbackStatusCode.PENDING
+        || !record.id
+        || !record.syncTaskId,
+      disabled: loading,
+    },
+    {
+      key: 'fail-sent',
+      label: '超时置失败',
+      tone: 'danger',
+      hidden: canWrite !== true || record.passbackStatus !== PassbackStatusCode.SENT || !record.id,
+      disabled: loading,
+    },
+  ]
+}
+
+function handlePassbackAction(key: string, record: PassbackRecordResponse): void {
+  if (key === 'mark-sent') {
+    void handleMarkPassbackSent(record)
+    return
+  }
+  if (key === 'fail-sent') {
+    void handleFailSentPassback(record)
+  }
+}
+
+async function handleMarkPassbackSent(record: PassbackRecordResponse): Promise<void> {
+  if (canManageOwnerTeachingAffairsWrites.value !== true) {
+    return
+  }
+  if (!record.id || !record.syncTaskId) {
+    return
+  }
+  if (record.passbackStatus !== PassbackStatusCode.PENDING) {
+    void message.warning('仅待回写记录可标记已投递')
+    return
+  }
+  if (passbackActionLoadingId.value) {
+    return
+  }
+  passbackActionLoadingId.value = record.id
+  try {
+    await markPassbackSent({
+      syncTaskId: record.syncTaskId,
+      passbackRecordIds: [record.id],
+    })
+    void message.success('已标记投递，等待教务回执')
+    await loadAll()
+  } catch (error) {
+    showUserError(error, '标记已投递失败')
+  } finally {
+    passbackActionLoadingId.value = undefined
+  }
+}
+
+async function handleFailSentPassback(record: PassbackRecordResponse): Promise<void> {
+  if (canManageOwnerTeachingAffairsWrites.value !== true) {
+    return
+  }
+  if (!record.id) {
+    return
+  }
+  if (record.passbackStatus !== PassbackStatusCode.SENT) {
+    void message.warning('仅已发送记录可超时置失败')
+    return
+  }
+  if (passbackActionLoadingId.value) {
+    return
+  }
+  const studentHint = [record.studentNo, record.studentName].filter(Boolean).join(' ')
+  const confirmed = await confirmAsync({
+    title: '将已发送回写置为失败？',
+    content: (studentHint ? `学生 ${studentHint}：` : '')
+      + '确认教务未回执后置失败，同步任务可立即重试该生；请勿在教务仍处理中时操作。',
+    type: 'error',
+    okText: '确认置失败',
+  })
+  if (!confirmed) {
+    return
+  }
+  passbackActionLoadingId.value = record.id
+  try {
+    await failSentPassbackTimeout(record.id)
+    void message.success('已置失败，可对同步任务执行重试')
+    await loadAll()
+  } catch (error) {
+    showUserError(error, '超时置失败失败')
+  } finally {
+    passbackActionLoadingId.value = undefined
+  }
+}
+
 // ─── 共用 ─────────────────────────────────
 
 function externalSystemTypeLabel(code: ExternalSystemTypeCode): string {
@@ -1003,6 +1148,14 @@ function passbackStatusLabel(status: PassbackStatusCode): string {
 
 function passbackStatusTone(status: PassbackStatusCode): BadgeTone {
   return strictEnumTone(PASSBACK_STATUS_TONE, status, '回写状态')
+}
+
+function examKindLabel(kind: ExamKindCode): string {
+  return strictEnumLabel(ExamKindDescription, kind, '考试性质')
+}
+
+function examKindTone(kind: ExamKindCode): BadgeTone {
+  return strictEnumTone(EXAM_KIND_TONE, kind, '考试性质')
 }
 
 function reconcileStatusLabel(status: ReconcileStatusCode): string {
@@ -1076,28 +1229,28 @@ onBeforeUnmount(() => {
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__card-head {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 12px;
+    gap: var(--dp-space-component);
     width: 100%;
   }
 
   &__flow-hint {
     margin-right: auto;
     font-size: var(--dp-font-size-xs);
-    color: var(--c-text-4);
+    color: var(--dp-text-muted);
     white-space: nowrap;
   }
 
   &__card-title {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__section + &__section {
@@ -1106,7 +1259,7 @@ onBeforeUnmount(() => {
 }
 
 .empty-block {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-component);
 }
 
 .error-text {
@@ -1115,26 +1268,26 @@ onBeforeUnmount(() => {
 }
 
 .hint-text {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
   font-size: var(--dp-font-size-xs);
 }
 
 .progress-card {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .progress-card__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--dp-space-component);
   width: 100%;
 }
 
 .progress-card__title {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-lg);
   font-weight: var(--dp-font-weight-title);
 }
@@ -1142,7 +1295,7 @@ onBeforeUnmount(() => {
 .progress-counts {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component);
 }
 </style>

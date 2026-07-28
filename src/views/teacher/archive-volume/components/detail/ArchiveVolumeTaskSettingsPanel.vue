@@ -28,6 +28,7 @@ import {
   ArchiveVolumeSourceTypeDescription,
   updateArchiveVolumeTaskSettings,
 } from '@/apis/mark/archive-volume'
+/** 成绩事实源仅只读展示；建袋/任务设置主链已退役可改写，齐备走材料登记 */
 import { pageExams } from '@/apis/mark/exam'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import TeacherSelector from '@/components/platform/TeacherSelector.vue'
@@ -41,11 +42,9 @@ import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
-import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { ArchiveScoreSourceCode } from '@/types/enums/archive-score-source-enum'
 import { ArchiveVolumeMemberRoleCode } from '@/types/enums/archive-volume-member-role-enum'
 import { ArchiveVolumeSourceTypeCode } from '@/types/enums/archive-volume-source-type-enum'
 import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
@@ -92,7 +91,6 @@ interface TaskSettingsForm {
   semester: SemesterCode
   relatedExamId: string | null
   templateSetCode: string | null
-  scoreSource: ArchiveScoreSourceCode
   examForm: ArchiveExamFormCode | undefined
   securityLevel: ArchiveSecurityLevelCode
   retentionYears: number | undefined
@@ -130,7 +128,6 @@ const form = reactive<TaskSettingsForm>({
   semester: SemesterCode.SPRING,
   relatedExamId: null,
   templateSetCode: null,
-  scoreSource: ArchiveScoreSourceCode.OFFLINE_CONFIRMED,
   examForm: undefined,
   securityLevel: ArchiveSecurityLevelCode.INTERNAL,
   retentionYears: 10,
@@ -182,25 +179,8 @@ const sourceTypeLabel = computed(() =>
   strictEnumLabel(ArchiveVolumeSourceTypeDescription, volume.value.sourceType, 'sourceType'),
 )
 
-const scoreSourceCodes = computed((): ArchiveScoreSourceCode[] => {
-  if (identityLocked.value === true) {
-    return volume.value.scoreSource ? [volume.value.scoreSource] : []
-  }
-  if (volume.value.sourceType === ArchiveVolumeSourceTypeCode.HISTORY_IMPORT) {
-    return [
-      ArchiveScoreSourceCode.NOT_REQUIRED,
-      ArchiveScoreSourceCode.TEACHING_AFFAIRS,
-      ArchiveScoreSourceCode.OFFLINE_CONFIRMED,
-    ]
-  }
-  return [ArchiveScoreSourceCode.OFFLINE_CONFIRMED, ArchiveScoreSourceCode.TEACHING_AFFAIRS]
-})
-
-const scoreSourceRadioOptions = computed(() =>
-  scoreSourceCodes.value.map((value) => ({
-    value,
-    label: strictEnumLabel(ArchiveScoreSourceDescription, value, '成绩来源'),
-  })),
+const scoreSourceLabel = computed(() =>
+  strictEnumLabel(ArchiveScoreSourceDescription, volume.value.scoreSource, '成绩事实源'),
 )
 
 const organizerFallbackId = computed(() => {
@@ -226,7 +206,6 @@ const formRules: Record<string, Rule[]> = {
   academicYearStartYear: [{ required: true, message: '请选择学年起始年' }],
   semester: [{ required: true, message: '请选择学期' }],
   templateSetCode: [{ required: true, message: '请选择目录模板套' }],
-  scoreSource: [{ required: true, message: '请选择成绩事实源' }],
   securityLevel: [{ required: true, message: '请选择密级' }],
   responsibleUserId: [{ required: true, message: '请选择归档责任人' }],
   archiveDueTime: [{ required: true, message: '请选择归档截止时刻' }],
@@ -251,7 +230,6 @@ function syncFormFromDetail(): void {
   form.semester = v.semester
   form.relatedExamId = v.relatedExamId ?? null
   form.templateSetCode = v.templateSetCode ?? null
-  form.scoreSource = v.scoreSource
   form.examForm = v.examForm
   form.securityLevel = v.securityLevel
   form.permanentRetention = v.permanentRetention === true
@@ -383,11 +361,6 @@ function handleResponsibleChange(
   form.responsibleUserId = typeof value === 'string' ? value : null
 }
 
-function onScoreSourceSelect(value: UiOptionValue | boolean | undefined): void {
-  if (value == null || typeof value === 'boolean') return
-  form.scoreSource = String(value) as ArchiveScoreSourceCode
-}
-
 function buildRequest(): ArchiveVolumeTaskSettingsUpdateRequest | null {
   if (!form.courseId || !form.departmentId || !form.teachingClassId) {
     showFormValidationMessage('请完整填写课程、院系与授课班级')
@@ -435,7 +408,6 @@ function buildRequest(): ArchiveVolumeTaskSettingsUpdateRequest | null {
     semester: form.semester,
     relatedExamId: form.relatedExamId,
     templateSetCode: form.templateSetCode,
-    scoreSource: form.scoreSource,
     examForm: form.examForm ?? null,
     securityLevel: form.securityLevel,
     retentionYears: form.permanentRetention === true ? undefined : form.retentionYears,
@@ -696,15 +668,11 @@ onMounted(() => {
           />
         </UiFormItem>
 
-        <UiFormItem label="成绩事实源" name="scoreSource" required>
-          <UiRadioGroup
-            size="sm"
-            block
-            :model-value="form.scoreSource"
-            :options="scoreSourceRadioOptions"
-            :disabled="canEdit !== true || identityLocked === true"
-            @update:model-value="onScoreSourceSelect"
-          />
+        <UiFormItem label="成绩事实源" :label-col="labelCol" :wrapper-col="wrapperCol">
+          <UiInput size="sm" :model-value="scoreSourceLabel" disabled />
+          <p class="section-desc section-desc--inline">
+            成绩事实源由建卷来源锚定，不可在本页改写；成绩齐备请在材料清单登记成绩类材料。
+          </p>
         </UiFormItem>
 
         <UiRow :gutter="24" class="create-form__split-row">
@@ -887,6 +855,10 @@ onMounted(() => {
   color: var(--dp-text-secondary);
 }
 
+.section-desc--inline {
+  margin: var(--dp-space-2) 0 0;
+}
+
 .create-form {
   width: 100%;
 }
@@ -928,7 +900,7 @@ onMounted(() => {
   padding: 0;
   list-style: none;
   border: 1px solid var(--dp-border-subtle);
-  border-radius: var(--dp-radius-control, 6px);
+  border-radius: var(--dp-radius-control);
   background: var(--dp-surface);
   overflow: hidden;
 }

@@ -165,6 +165,9 @@ export interface ExamPaperGovernanceResponse {
     calculatedQuestionTotalScore: number
   }>
   questionsByPaperSetId: Record<string, Array<{
+    sectionLabel: string
+    sectionTitle: string
+    sectionSortNo: number
     questionNo: string
     questionType: ExamPaperQuestionTypeCode
     fullScore: number
@@ -195,6 +198,9 @@ export interface ExamPaperGovernanceResponse {
 }
 
 export interface ExamPaperGovernanceQuestionItem {
+  sectionLabel: string
+  sectionTitle: string
+  sectionSortNo: number
   questionNo: string
   questionType: ExamPaperQuestionTypeCode
   fullScore: number

@@ -23,9 +23,8 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -62,6 +61,9 @@ const sceneCode = ref<PfSceneCode>(PfSceneCode.PERFORMANCE)
 const historyLoading = ref(false)
 const impactLoading = ref(false)
 const loading = ref(false)
+const historyLoadError = ref(false)
+const impactLoadError = ref(false)
+const retroactiveLoadError = ref(false)
 const historyRequestToken = ref(0)
 const impactRequestToken = ref(0)
 const retroactiveRequestToken = ref(0)
@@ -74,15 +76,8 @@ const impactTotal = ref(0)
 const retroactive = ref<PortfolioRulePublishSnapshotVO | null>(null)
 const impactDetail = ref<PortfolioPublishImpactReportVO | null>(null)
 const selectedSnapshotId = ref('')
-const exportConfirmOpen = ref(false)
-const exportPurpose = ref('')
-const exportLoading = ref(false)
-const pendingExport = ref<
-  | null
-  | { type: 'diff', snapshotIdA: string, snapshotIdB: string }
-  | { type: 'impact', id: string }
->(null)
 const diffSnapshotIdB = ref('')
+const exportPurpose = ref('')
 const impactQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 
 const columns: ColumnsType = [
@@ -114,6 +109,7 @@ async function loadHistory() {
   const currentToken = ++historyRequestToken.value
   historyLoading.value = true
   loading.value = true
+  historyLoadError.value = false
   try {
     const page = await portfolioIndicatorTenantApi.pageRuleHistory({
       sceneCode: sceneCode.value,
@@ -129,6 +125,7 @@ async function loadHistory() {
     if (currentToken !== historyRequestToken.value) {
       return
     }
+    historyLoadError.value = true
     showUserError(error, '加载发布历史失败')
   } finally {
     if (currentToken === historyRequestToken.value) {
@@ -154,6 +151,7 @@ async function loadImpactReports() {
   const currentToken = ++impactRequestToken.value
   impactLoading.value = true
   loading.value = true
+  impactLoadError.value = false
   try {
     const page = await portfolioIndicatorTenantApi.pageImpactReport(impactQuery)
     if (currentToken !== impactRequestToken.value) {
@@ -165,6 +163,7 @@ async function loadImpactReports() {
     if (currentToken !== impactRequestToken.value) {
       return
     }
+    impactLoadError.value = true
     showUserError(error, '加载影响报告失败')
   } finally {
     if (currentToken === impactRequestToken.value) {
@@ -179,6 +178,7 @@ async function loadRetroactive() {
     return
   }
   const currentToken = ++retroactiveRequestToken.value
+  retroactiveLoadError.value = false
   try {
     const detail = await portfolioIndicatorTenantApi.retroactiveGet({
       sceneCode: sceneCode.value,
@@ -192,6 +192,7 @@ async function loadRetroactive() {
     if (currentToken !== retroactiveRequestToken.value) {
       return
     }
+    retroactiveLoadError.value = true
     showUserError(error, '加载追溯快照失败')
   }
 }
@@ -212,69 +213,45 @@ async function loadImpactDetail(id: string) {
   }
 }
 
-function openExportDiffConfirm(snapshotIdA: string) {
+async function exportDiff(snapshotIdA: string) {
   if (!diffSnapshotIdB.value) {
     showFormValidationMessage('请填写第二个对比快照编号')
     return
   }
-  exportPurpose.value = ''
-  pendingExport.value = {
-    type: 'diff',
-    snapshotIdA,
-    snapshotIdB: diffSnapshotIdB.value,
-  }
-  exportConfirmOpen.value = true
-}
-
-function openExportImpactConfirm(id: string) {
-  exportPurpose.value = ''
-  pendingExport.value = { type: 'impact', id }
-  exportConfirmOpen.value = true
-}
-
-async function confirmExport() {
   const purpose = exportPurpose.value.trim()
   if (!purpose) {
     showFormValidationMessage('请填写导出用途')
     return
   }
-  const pending = pendingExport.value
-  if (!pending || exportLoading.value) {
-    return
-  }
-  exportLoading.value = true
   try {
-    if (pending.type === 'diff') {
-      const result = await portfolioIndicatorTenantApi.exportSnapshotDiff({
-        snapshotIdA: pending.snapshotIdA,
-        snapshotIdB: pending.snapshotIdB,
-        exportPurpose: purpose,
-      })
-      await downloadPortfolioIndicatorExcelExport(result)
-      void message.success(`已导出 ${result.rowCount} 条差异`)
-    } else {
-      const result = await portfolioIndicatorTenantApi.exportImpactReport({
-        id: pending.id,
-        exportPurpose: purpose,
-      })
-      await downloadPortfolioIndicatorExcelExport(result)
-      void message.success('影响报告已导出')
-    }
-    exportConfirmOpen.value = false
-    pendingExport.value = null
+    const result = await portfolioIndicatorTenantApi.exportSnapshotDiff({
+      snapshotIdA,
+      snapshotIdB: diffSnapshotIdB.value,
+      exportPurpose: purpose,
+    })
+    await downloadPortfolioIndicatorExcelExport(result)
+    void message.success(`已导出 ${result.rowCount} 条差异`)
   } catch (error) {
-    showUserError(error, pending.type === 'diff' ? '导出快照差异失败' : '导出影响报告失败')
-  } finally {
-    exportLoading.value = false
+    showUserError(error, '导出快照差异失败')
   }
-}
-
-async function exportDiff(snapshotIdA: string) {
-  openExportDiffConfirm(snapshotIdA)
 }
 
 async function exportImpact(id: string) {
-  openExportImpactConfirm(id)
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return
+  }
+  try {
+    const result = await portfolioIndicatorTenantApi.exportImpactReport({
+      id,
+      exportPurpose: purpose,
+    })
+    await downloadPortfolioIndicatorExcelExport(result)
+    void message.success('影响报告已导出')
+  } catch (error) {
+    showUserError(error, '导出影响报告失败')
+  }
 }
 
 function goOps(snapshotId: string) {
@@ -367,15 +344,32 @@ onMounted(loadHistory)
             placeholder="对比快照乙编号"
             style="width: 200px"
           />
+          <UiInput
+            size="sm"
+            v-model="exportPurpose"
+            placeholder="导出用途（必填）"
+            style="width: 220px"
+          />
         </div>
-        <UiEmpty size="sm" v-if="!loading && rows.length === 0" description="暂无发布历史" />
+        <UiAlertStrip
+          v-if="historyLoadError"
+          tone="error"
+          title="发布历史加载失败"
+          description="勿将失败当作无历史。"
+        />
+        <UiEmpty
+          size="sm"
+          v-if="!historyLoading && !historyLoadError && rows.length === 0"
+          description="暂无发布历史"
+        />
         <UiDataTable
           v-model:current="historyQuery.pageNum"
           v-model:page-size="historyQuery.pageSize"
           pagination-mode="server"
           :columns="columns"
           :data-source="rows"
-          :loading="loading"
+          :loading="historyLoading"
+          :load-error="historyLoadError && rows.length === 0"
           :total="historyTotal"
           row-key="id"
           @page-change="handleHistoryPageChange"
@@ -400,15 +394,40 @@ onMounted(loadHistory)
         <pre v-if="retroactive?.snapshotSummary" class="json-block">{{
           JSON.stringify(retroactive.snapshotSummary, null, 2)
         }}</pre>
+        <UiAlertStrip
+          v-if="retroactiveLoadError"
+          tone="error"
+          title="追溯快照加载失败"
+          description="请确认快照编号与当前场景一致后再次查询。"
+        />
       </template>
       <template v-else>
+        <div class="toolbar">
+          <UiInput
+            size="sm"
+            v-model="exportPurpose"
+            placeholder="导出用途（必填）"
+            style="width: 220px"
+          />
+        </div>
+        <UiAlertStrip
+          v-if="impactLoadError"
+          tone="error"
+          title="影响报告加载失败"
+        />
+        <UiEmpty
+          size="sm"
+          v-if="!impactLoading && !impactLoadError && impactRows.length === 0"
+          description="暂无影响报告"
+        />
         <UiDataTable
           v-model:current="impactQuery.pageNum"
           v-model:page-size="impactQuery.pageSize"
           pagination-mode="server"
           :columns="impactColumns"
           :data-source="impactRows"
-          :loading="loading"
+          :loading="impactLoading"
+          :load-error="impactLoadError && impactRows.length === 0"
           :total="impactTotal"
           row-key="id"
           @page-change="handleImpactPageChange"
@@ -440,35 +459,18 @@ onMounted(loadHistory)
       </template>
     </UiCard>
   </StageWorkbenchShell>
-  <UiDialog
-    v-model:open="exportConfirmOpen"
-    :title="pendingExport?.type === 'impact' ? '导出影响报告' : '导出快照差异'"
-    ok-text="确认导出"
-    cancel-text="取消"
-    :confirm-loading="exportLoading"
-    @ok="confirmExport"
-  >
-    <label class="export-purpose__label">导出用途（必填）</label>
-    <UiTextarea
-      v-model="exportPurpose"
-      size="sm"
-      :rows="3"
-      placeholder="请填写本次导出用途（写入审计）"
-      :disabled="exportLoading"
-    />
-  </UiDialog>
 </template>
 
 <style scoped>
 .toolbar {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-block);
   flex-wrap: wrap;
 }
 .json-block {
-  margin-top: 16px;
-  padding: 12px;
+  margin-top: var(--dp-space-block);
+  padding: var(--dp-space-component);
   background: var(--dp-surface-subtle);
   border-radius: var(--dp-radius-xs);
   font-size: var(--dp-font-size-xs);

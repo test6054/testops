@@ -7,6 +7,7 @@ import type { PageResult, QueryDto } from '@/types'
  */
 import type { FinalScoreRiskReasonCode } from '@/types/enums/final-score-risk-reason-enum'
 import type { PaperInstanceDisplayModeCode } from '@/types/enums/paper-instance-display-mode-enum'
+import type { ResultCode } from '@/types/enums/result-code'
 import http from '@/config/axios'
 
 export {
@@ -45,8 +46,15 @@ export interface ExamScoreSummaryQueryRequest extends QueryDto {
   keyword?: string
   /** 参考班级 ID */
   classId?: string
+  /** 试卷绑定状态过滤；空表示不过滤 */
+  bindingStatus?: BindingStatusCode
   /** 仅查询已绑定但未发布最终成绩的试卷 */
   unpublishedBoundOnly?: boolean
+  /**
+   * 仅查询当前用户可作为指定复核人签审通过的待发布复核卷。
+   * 与后端 canApprovePublishReview 同源；服务端注入当前用户，前端只传开关。
+   */
+  pendingMyPublishReviewOnly?: boolean
 }
 
 /** 考试成绩汇总项 - 对应 ExamScoreSummaryItemResponse */
@@ -83,7 +91,78 @@ export interface ExamScoreSummaryItemResponse {
   latestTotalScoreCorrectionApplied?: boolean
   confirmedTime?: string
   confirmedUserId?: string
+  /** 当前用户是否可提交发布复核 */
+  canSubmitPublishReview?: boolean
+  /** 当前用户是否可复核通过并发布 */
+  canApprovePublishReview?: boolean
+  /** 当前用户是否可退回发布复核 */
+  canRejectPublishReview?: boolean
+  /** 当前用户是否可撤销本人提交的发布复核 */
+  canCancelPublishReview?: boolean
+  /** 当前 PENDING 发布复核轮次 ID */
+  publishReviewId?: string
+  /** 发布复核提交人用户 ID */
+  publishReviewSubmitUserId?: string
+  /** 发布复核提交人姓名 */
+  publishReviewSubmitUserName?: string
+  /** 指定发布复核人用户 ID 列表 */
+  publishReviewerUserIds?: string[]
+  /** 指定发布复核人姓名列表 */
+  publishReviewerNames?: string[]
+  /** 最近一次退回原因 */
+  publishReviewRejectReason?: string
   paperDisplay: PaperInstanceDisplayVO
+}
+
+
+/** 最终成绩就绪分组 - 对应 FinalScoreReadinessGroup */
+export type FinalScoreReadinessGroupCode
+  = | 'ABSENCE'
+    | 'IMAGING'
+    | 'GRADING'
+    | 'SOFT_RISK'
+    | 'PUBLISH'
+
+/** 最终成绩就绪严重级别 - 对应 FinalScoreReadinessSeverity */
+export type FinalScoreReadinessSeverityCode = 'HARD_BLOCK' | 'ACTION_REQUIRED' | 'INFO'
+
+/** 最终成绩就绪动作 - 对应 FinalScoreReadinessAction */
+export type FinalScoreReadinessActionCode
+  = | 'NONE'
+    | 'GO_ABSENCE'
+    | 'REPAIR_SCORE_ZERO'
+    | 'GO_QUESTION_REVIEW'
+    | 'GO_SCAN_BATCHES'
+    | 'OPEN_RISK_REVIEW'
+    | 'BATCH_CONFIRM'
+    | 'FILTER_CORRECTED'
+    | 'FILTER_PENDING_PUBLISH_REVIEW'
+    | 'FILTER_PENDING_MY_PUBLISH_REVIEW'
+    | 'GO_DELAYED_TASKS'
+
+/** 最终成绩就绪项 - 对应 FinalScoreReadinessItemResponse */
+export interface FinalScoreReadinessItemResponse {
+  code: FinalScoreRiskReasonCode
+  groupCode: FinalScoreReadinessGroupCode
+  severity: FinalScoreReadinessSeverityCode
+  title: string
+  description: string
+  count: number
+  actionCode: FinalScoreReadinessActionCode
+  blocksConfirm: boolean
+  blocksPublish: boolean
+  /** 样例考生展示文案（姓名(学号)），后端真实回填，最多 5 条 */
+  sampleLabels?: string[]
+}
+
+/** 最终成绩批量失败分组 - 对应 FinalScoreFailureGroupResponse */
+export interface FinalScoreFailureGroupResponse {
+  code: keyof typeof ResultCode
+  message: string
+  count: number
+  samplePaperInstanceIds: string[]
+  /** 样例考生展示文案（姓名(学号)），由后端反查名册 */
+  sampleLabels?: string[]
 }
 
 /** 最终成绩全场风险概览请求 - 对应 FinalScoreRiskOverviewRequest */
@@ -117,9 +196,31 @@ export interface FinalScoreRiskOverviewResponse {
   missingAbsenceScoreZeroFinalCount: number
   blockingIncidentCount: number
   pendingDuplicateImageCount: number
-  readyToPublish: boolean
+  /** 待确认缺考记录数；与 ensureNoPendingAbsenceRecords 同源 */
+  pendingAbsenceCount: number
+  /** 已确认但仍使用待外部确认占位策略的缺考记录数 */
+  unresolvedAbsenceScorePolicyCount: number
+  /** BOUND 且可提交发布复核人数；与批量提交 SQL 同源 */
+  publishableCount: number
+  /** 待发布复核（PENDING_PUBLISH_REVIEW）卷数 */
+  pendingPublishReviewCount: number
+  /** 当前用户可签审通过的待发布复核卷数（待我复核） */
+  pendingMyPublishReviewCount?: number
+  /** 租户是否要求人工确认最终成绩 */
+  manualFinalScoreConfirmRequired?: boolean
+  /** 延迟自动确认分钟数 */
+  delayedFinalScoreConfirmMinutes?: number
+  /** 延迟自动确认进行中任务数 */
+  pendingDelayedFinalScoreConfirmCount?: number
+  /** 延迟自动确认失败任务数 */
+  blockedDelayedFinalScoreConfirmCount?: number
+  readyToSubmitPublishReview: boolean
   riskReasons: FinalScoreRiskReasonResponse[]
   reviewedReasonCodes: FinalScoreRiskReasonCode[]
+  /** 分组就绪项真源；成绩确认页就绪度面板只消费此字段 */
+  readinessItems: FinalScoreReadinessItemResponse[]
+  /** 当前最高优先级就绪项编码 */
+  primaryReadinessCode?: FinalScoreRiskReasonCode | null
   /** MVR-278：成绩确认/发布等阅卷写能力位 */
   canManageReviewerWrites?: boolean
   /** 是否可补齐缺考计零终分（评阅写、不叠 ACTIVE；关考后仍可） */
@@ -132,16 +233,34 @@ export interface FinalScoreRiskReviewSaveRequest {
   reviewedReasonCodes: FinalScoreRiskReasonCode[]
 }
 
+/** 安全批量确认最终成绩条目 - 对应 FinalScoreSafeBatchConfirmItemRequest */
+export interface FinalScoreSafeBatchConfirmItemRequest {
+  paperInstanceId: string
+  /** 日常成绩；本场考试配置 dailyScoreFull 时必填 */
+  dailyScore?: number
+}
+
 /** 安全批量确认最终成绩请求 - 对应 FinalScoreSafeBatchConfirmRequest */
 export interface FinalScoreSafeBatchConfirmRequest {
   examId: string
+  /** 配置日常满分时必填；未配置日常分时不得传 */
+  items?: FinalScoreSafeBatchConfirmItemRequest[]
 }
 
-/** 安全批量确认失败明细 - 对应 FinalScoreSafeBatchConfirmFailureResponse */
-export interface FinalScoreSafeBatchConfirmFailureResponse {
+/** 可安全批量确认考生 - 对应 FinalScoreSafeConfirmableCandidateResponse */
+export interface FinalScoreSafeConfirmableCandidateResponse {
   paperInstanceId: string
-  code: string
-  message: string
+  candidateRosterId: string
+  studentUserId: string
+  studentNo?: string
+  studentName?: string
+  classId?: string
+  confirmedExamScore?: number
+}
+
+/** 可安全批量确认考生列表请求 */
+export interface FinalScoreSafeConfirmableCandidatesRequest {
+  examId: string
 }
 
 /** 安全批量确认最终成绩响应 - 对应 FinalScoreSafeBatchConfirmResponse */
@@ -151,33 +270,76 @@ export interface FinalScoreSafeBatchConfirmResponse {
   skippedCount: number
   failureCount: number
   confirmedPaperInstanceIds: string[]
-  failures: FinalScoreSafeBatchConfirmFailureResponse[]
+  failureGroups: FinalScoreFailureGroupResponse[]
   skipReasons: FinalScoreRiskReasonResponse[]
 }
 
-/** 全场批量发布最终成绩请求 - 对应 FinalScoreBatchPublishRequest */
-export interface FinalScoreBatchPublishRequest {
+/** 提交最终成绩发布复核请求 - 对应 ExamFinalScoreSubmitPublishReviewRequest */
+export interface ExamFinalScoreSubmitPublishReviewRequest {
   examId: string
+  paperInstanceId: string
+  reviewerUserIds: string[]
 }
 
-/** 全场批量发布最终成绩失败明细 - 对应 FinalScoreBatchPublishFailureResponse */
+/** 确认最终成绩并原子提交发布复核请求。 */
+export interface ExamFinalScoreConfirmAndSubmitPublishReviewRequest {
+  examId: string
+  paperInstanceId: string
+  /** 日常成绩；本场考试配置 dailyScoreFull 时必填 */
+  dailyScore?: number
+  reviewerUserIds: string[]
+}
+
+/** 批量提交最终成绩发布复核请求 - 对应 ExamFinalScoreBatchSubmitPublishReviewRequest */
+export interface ExamFinalScoreBatchSubmitPublishReviewRequest {
+  examId: string
+  paperInstanceIds: string[]
+  reviewerUserIds: string[]
+}
+
+/** 复核通过并发布最终成绩请求 - 对应 ExamFinalScoreApprovePublishReviewRequest */
+export interface ExamFinalScoreApprovePublishReviewRequest {
+  examId: string
+  paperInstanceId: string
+}
+
+/** 批量复核通过并发布最终成绩请求 - 对应 ExamFinalScoreBatchApprovePublishReviewRequest */
+export interface ExamFinalScoreBatchApprovePublishReviewRequest {
+  examId: string
+  paperInstanceIds: string[]
+}
+
+/** 退回最终成绩发布复核请求 - 对应 ExamFinalScoreRejectPublishReviewRequest */
+export interface ExamFinalScoreRejectPublishReviewRequest {
+  examId: string
+  paperInstanceId: string
+  reason: string
+}
+
+/** 撤销最终成绩发布复核请求 - 对应 ExamFinalScoreCancelPublishReviewRequest */
+export interface ExamFinalScoreCancelPublishReviewRequest {
+  examId: string
+  paperInstanceId: string
+}
+
+/** 批量发布复核逐卷失败明细。 */
 export interface FinalScoreBatchPublishFailureResponse {
   paperInstanceId: string
-  code: string
+  code: keyof typeof ResultCode
   message: string
+  /** 姓名(学号)；答卷事实已失效时为空 */
+  studentLabel?: string
 }
 
-/** 全场批量发布最终成绩响应 - 对应 FinalScoreBatchPublishResponse */
-export interface FinalScoreBatchPublishResponse {
-  totalCandidateCount: number
-  publishableCount: number
+/** 批量最终成绩发布复核响应 - 对应 FinalScoreBatchPublishReviewResponse */
+export interface FinalScoreBatchPublishReviewResponse {
+  requestedCount: number
   successCount: number
-  alreadyPublishedCount: number
-  remainingCount: number
   failureCount: number
-  publishedPaperInstanceIds: string[]
+  successPaperInstanceIds: string[]
+  /** 全量逐卷失败明细 */
   failures: FinalScoreBatchPublishFailureResponse[]
-  beforeOverview: FinalScoreRiskOverviewResponse
+  failureGroups: FinalScoreFailureGroupResponse[]
   afterOverview: FinalScoreRiskOverviewResponse
 }
 
@@ -189,18 +351,19 @@ export interface ExamFinalScoreConfirmRequest {
   dailyScore?: number
 }
 
-/** 试卷最终成绩发布请求 - 对应 ExamFinalScorePublishRequest */
-export interface ExamFinalScorePublishRequest {
-  examId: string
-  paperInstanceId: string
-}
-
 /** 试卷最终成绩撤回请求 - 对应 ExamFinalScoreWithdrawRequest */
 export interface ExamFinalScoreWithdrawRequest {
   examId: string
   paperInstanceId: string
   /** 撤回原因（必填，落入审计日志） */
   reason: string
+}
+
+/** 试卷最终成绩撤回结果 - 对应 ExamFinalScoreWithdrawResponse */
+export interface ExamFinalScoreWithdrawResponse {
+  finalScoreId: string
+  /** 同卷被作废的开放复核申请数 */
+  invalidatedReviewRequestCount: number
 }
 
 /** 考试分数分布查询请求 */
@@ -267,14 +430,72 @@ export function batchConfirmSafeFinalScores(
   )
 }
 
-/** 全场批量发布最终成绩，按考试全场口径筛选可发布成绩。 */
-export function batchPublishFinalScores(
-  request: FinalScoreBatchPublishRequest,
-): Promise<FinalScoreBatchPublishResponse> {
-  return http.post<FinalScoreBatchPublishResponse>(
-    '/api/mark/exams/final-scores/batch-publish',
+/** 查询可安全批量确认考生，供日常分批量录入。 */
+export function listSafeConfirmableCandidates(
+  request: FinalScoreSafeConfirmableCandidatesRequest,
+): Promise<FinalScoreSafeConfirmableCandidateResponse[]> {
+  return http.post<FinalScoreSafeConfirmableCandidateResponse[]>(
+    '/api/mark/exams/final-scores/safe-confirmable-candidates',
     request,
   )
+}
+
+/** 提交单卷最终成绩发布复核。 */
+export function submitPublishReview(
+  request: ExamFinalScoreSubmitPublishReviewRequest,
+): Promise<FinalScoreId> {
+  return http.post<FinalScoreId>('/api/mark/exams/final-scores/submit-publish-review', request)
+}
+
+/** 在后端同一锁与事务内确认最终成绩并提交发布复核。 */
+export function confirmAndSubmitPublishReview(
+  request: ExamFinalScoreConfirmAndSubmitPublishReviewRequest,
+): Promise<FinalScoreId> {
+  return http.post<FinalScoreId>(
+    '/api/mark/exams/final-scores/confirm-and-submit-publish-review',
+    request,
+  )
+}
+
+/** 批量提交最终成绩发布复核。 */
+export function batchSubmitPublishReview(
+  request: ExamFinalScoreBatchSubmitPublishReviewRequest,
+): Promise<FinalScoreBatchPublishReviewResponse> {
+  return http.post<FinalScoreBatchPublishReviewResponse>(
+    '/api/mark/exams/final-scores/batch-submit-publish-review',
+    request,
+  )
+}
+
+/** 复核通过并发布单卷最终成绩。 */
+export function approvePublishReview(
+  request: ExamFinalScoreApprovePublishReviewRequest,
+): Promise<FinalScoreId> {
+  return http.post<FinalScoreId>('/api/mark/exams/final-scores/approve-publish-review', request)
+}
+
+/** 批量复核通过并发布最终成绩。 */
+export function batchApprovePublishReview(
+  request: ExamFinalScoreBatchApprovePublishReviewRequest,
+): Promise<FinalScoreBatchPublishReviewResponse> {
+  return http.post<FinalScoreBatchPublishReviewResponse>(
+    '/api/mark/exams/final-scores/batch-approve-publish-review',
+    request,
+  )
+}
+
+/** 退回最终成绩发布复核。 */
+export function rejectPublishReview(
+  request: ExamFinalScoreRejectPublishReviewRequest,
+): Promise<FinalScoreId> {
+  return http.post<FinalScoreId>('/api/mark/exams/final-scores/reject-publish-review', request)
+}
+
+/** 撤销本人提交的最终成绩发布复核。 */
+export function cancelPublishReview(
+  request: ExamFinalScoreCancelPublishReviewRequest,
+): Promise<FinalScoreId> {
+  return http.post<FinalScoreId>('/api/mark/exams/final-scores/cancel-publish-review', request)
 }
 
 /** 最终成绩 ID；后端 ResultInfo<Long>，客户端按 string 语义传递 */
@@ -285,14 +506,11 @@ export function confirmFinalScore(request: ExamFinalScoreConfirmRequest): Promis
   return http.post<FinalScoreId>('/api/mark/exams/final-scores/confirm', request)
 }
 
-/** 发布试卷最终成绩，并向学生发送通知。 */
-export function publishFinalScore(request: ExamFinalScorePublishRequest): Promise<FinalScoreId> {
-  return http.post<FinalScoreId>('/api/mark/exams/final-scores/publish', request)
-}
-
-/** 撤回试卷最终成绩，撤回后学生侧成绩不再可见。 */
-export function withdrawFinalScore(request: ExamFinalScoreWithdrawRequest): Promise<FinalScoreId> {
-  return http.post<FinalScoreId>('/api/mark/exams/final-scores/withdraw', request)
+/** 撤回试卷最终成绩；作废同卷开放复核申请并通知学生。 */
+export function withdrawFinalScore(
+  request: ExamFinalScoreWithdrawRequest,
+): Promise<ExamFinalScoreWithdrawResponse> {
+  return http.post<ExamFinalScoreWithdrawResponse>('/api/mark/exams/final-scores/withdraw', request)
 }
 
 /** 查询考试分数分布（五级分段直方图）。 */

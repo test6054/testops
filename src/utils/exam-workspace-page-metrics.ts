@@ -36,15 +36,6 @@ export function buildExamWorkspacePageMetrics(
           clickable: true,
         })
       }
-      if (snapshot.prepBlockingReasons.length > 0) {
-        metrics.push({
-          key: 'prep-block',
-          label: '硬阻断',
-          value: snapshot.prepBlockingReasons.length,
-          tone: 'orange',
-          clickable: true,
-        })
-      }
       return metrics
     }
     case 'SCAN':

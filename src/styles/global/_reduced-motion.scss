@@ -19,4 +19,29 @@
   #nprogress .peg {
     transition: none !important;
   }
+
+  .exam-status-card__progress-fill,
+  .exam-sub-sidebar__progress-fill,
+  .exam-overview-dash__quality-fill,
+  .journey-mini__bar {
+    transition: none !important;
+  }
+
+  .dp-btn,
+  .dp-btn:hover,
+  .dp-btn:not(:disabled):active {
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .dp-btn__spinner {
+    animation: none !important;
+  }
+
+  .workbench-surface-card,
+  .context-bar,
+  .stage-workbench-shell__context,
+  .stage-workbench-shell__rail {
+    transition: none !important;
+  }
 }

@@ -108,10 +108,10 @@
       </UiFormItem>
     </template>
 
-    <p v-if="prepareBlockDescription" class="manual-supplement-form-core__warn muted">
+    <p v-if="prepareBlockDescription" class="manual-supplement-form-core__warn dp-text-muted">
       {{ prepareBlockDescription }}
     </p>
-    <p v-if="classScopeWarning" class="manual-supplement-form-core__warn muted">
+    <p v-if="classScopeWarning" class="manual-supplement-form-core__warn dp-text-muted">
       {{ classScopeWarning }}
     </p>
   </UiForm>
@@ -231,11 +231,6 @@ defineExpose({ validate })
 
 <style lang="scss" scoped>
 .manual-supplement-form-core__warn {
-  margin-top: 8px;
-}
-
-.muted {
-  color: var(--dp-text-tertiary);
-  font-size: var(--dp-font-size-sm);
+  margin-top: var(--dp-space-component-tight);
 }
 </style>

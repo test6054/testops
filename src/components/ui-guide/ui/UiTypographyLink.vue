@@ -13,7 +13,7 @@ defineOptions({
 
 <style lang="scss" scoped>
 .ui-typography-link {
-  color: var(--dp-primary);
+  color: var(--dp-color-primary);
   font-size: var(--dp-font-size-sm);
 }
 

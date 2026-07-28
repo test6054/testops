@@ -48,7 +48,7 @@ export const ArchiveVolumeDetailTabDescription: Record<ArchiveVolumeDetailTabKey
   [ArchiveVolumeDetailTabKey.TASK_SETTINGS]: '任务设置',
   [ArchiveVolumeDetailTabKey.COLLABORATORS]: '协作管理',
   [ArchiveVolumeDetailTabKey.START_COLLECTING]: '开始收材',
-  [ArchiveVolumeDetailTabKey.SCORES]: '成绩证明',
+  [ArchiveVolumeDetailTabKey.SCORES]: '成绩材料',
   [ArchiveVolumeDetailTabKey.INTEGRITY]: '完整性自检',
   [ArchiveVolumeDetailTabKey.SELF_CHECK]: '自检清单',
   [ArchiveVolumeDetailTabKey.FOUR_PROPERTY]: '四性与定密',

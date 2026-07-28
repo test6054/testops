@@ -44,6 +44,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
   const router = useRouter()
 
   const loading = ref(false)
+  const statusLoadFailed = ref(false)
   const saving = ref(false)
   const submitting = ref(false)
   const reassigning = ref(false)
@@ -107,12 +108,18 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
 
   const readOnly = fieldReadOnly
   const writePending = computed(
-    () => saving.value || submitting.value || reassigning.value || loading.value,
+    () =>
+      saving.value
+      || submitting.value
+      || reassigning.value
+      || loading.value
+      || statusLoadFailed.value,
   )
 
   function resetIntakeContext() {
     intakeRequestToken.value += 1
     status.value = null
+    statusLoadFailed.value = false
     categoryId.value = ''
     materialId.value = ''
     archiveRecordId.value = ''
@@ -170,10 +177,12 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
         return
       }
       applyStatus(next)
+      statusLoadFailed.value = false
     } catch (error) {
       if (intakeRequestToken.value !== requestToken) {
         return
       }
+      statusLoadFailed.value = true
       showUserError(error, '加载采集状态失败')
     } finally {
       if (intakeRequestToken.value === requestToken) {
@@ -483,6 +492,7 @@ export function usePortfolioIntake(targetTeacherId: Ref<string | undefined>) {
     submitting,
     reassigning,
     writePending,
+    statusLoadFailed,
     status,
     categoryId,
     materialId,

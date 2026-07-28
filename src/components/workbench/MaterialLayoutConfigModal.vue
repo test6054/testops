@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import type { AnswerBookletSourceModeCode } from '@/types/enums/answer-booklet-source-mode-enum'
+import type { ExamScanMaterialScopeCode } from '@/types/enums/exam-scan-material-scope-enum'
 // MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import { computed } from 'vue'
 import {
@@ -11,12 +13,22 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import {
+  AnswerBookletSourceModeOptions,
+} from '@/types/enums/answer-booklet-source-mode-enum'
+import {
+  ExamScanMaterialScopeOptions,
+} from '@/types/enums/exam-scan-material-scope-enum'
 
 defineOptions({ name: 'MaterialLayoutConfigModal' })
 
 const open = defineModel<boolean>('open', { required: true })
 const draftLayoutMode = defineModel<ExamMaterialLayoutModeCode | undefined>('draftLayoutMode')
 const draftPrintSource = defineModel<ExamPrintSourceModeCode | undefined>('draftPrintSource')
+const draftScanMaterialScope = defineModel<ExamScanMaterialScopeCode | undefined>('draftScanMaterialScope')
+const draftAnswerBookletSourceMode = defineModel<AnswerBookletSourceModeCode | undefined>(
+  'draftAnswerBookletSourceMode',
+)
 
 const props = withDefaults(
   defineProps<{
@@ -43,16 +55,19 @@ const emit = defineEmits<{
 const formReadonly = computed(() => props.layoutModeLocked === true || props.canManageOwnerWrites !== true)
 
 const printSourceHint = computed(() => {
+  if (draftLayoutMode.value === ExamMaterialLayoutModeCode.ANSWER_SHEET) {
+    return '试题卷与答题纸分册印制；考后严格按本场配置的回收材料建立扫描模板。'
+  }
   if (draftLayoutMode.value !== ExamMaterialLayoutModeCode.FULL_PAPER) {
     return ''
   }
   if (draftPrintSource.value === ExamPrintSourceModeCode.SYSTEM_PRINT) {
-    return '按考生名册生成个性化印刷包，送指定保密印刷厂加印个人信息与防伪码。'
+    return '生成空白单独试卷母版，送指定保密印刷厂按考场座位印制；考生领卷后自行填写学号姓名与答案。'
   }
   if (draftPrintSource.value === ExamPrintSourceModeCode.EXTERNAL_PRINT) {
     return '试卷已线下印制完成，系统只上传同款 PDF 母版用于扫描对齐，不生成印刷包。'
   }
-  return '整卷作答须选择系统制卷或外带已印试卷。'
+  return '单独试卷须选择系统制卷或外带已印试卷。'
 })
 
 function handleSave(): void {
@@ -78,9 +93,9 @@ function handleSave(): void {
         :disabled="formReadonly === true"
         @click="draftLayoutMode = ExamMaterialLayoutModeCode.ANSWER_SHEET"
       >
-        <span class="material-layout-modal__mode-option-title">独立答卷页（教考分离）</span>
+        <span class="material-layout-modal__mode-option-title">试卷+答题页</span>
         <span class="material-layout-modal__mode-option-desc">
-          试题卷教研室命题、教务处审核后外印；系统只配置答题卡，考后仅扫描答题卡入库。
+          试题卷与答题纸分册；支持系统生成或学校统一答题纸，按考场回收制度配置扫描范围。
         </span>
       </button>
       <button
@@ -93,12 +108,40 @@ function handleSave(): void {
         :disabled="formReadonly === true"
         @click="draftLayoutMode = ExamMaterialLayoutModeCode.FULL_PAPER"
       >
-        <span class="material-layout-modal__mode-option-title">整卷作答</span>
+        <span class="material-layout-modal__mode-option-title">单独试卷</span>
         <span class="material-layout-modal__mode-option-desc">
-          试题与作答在同一卷面；上传整卷 PDF 母版，配置身份区与客观填涂区后扫描或送印。
+          题干与作答同面；上传整卷 PDF 母版，配置身份区与作答区后扫描或空白送印。
         </span>
       </button>
     </div>
+    <p
+      v-if="draftLayoutMode === ExamMaterialLayoutModeCode.ANSWER_SHEET"
+      class="material-layout-modal__hint"
+    >
+      {{ printSourceHint }}
+    </p>
+    <UiForm layout="vertical" class="material-layout-modal__contract-form">
+      <UiFormItem label="考后扫描材料" required>
+        <UiSelect
+          v-model="draftScanMaterialScope"
+          :disabled="formReadonly === true"
+          placeholder="选择考后实际回收材料"
+          :options="ExamScanMaterialScopeOptions"
+        />
+      </UiFormItem>
+      <UiFormItem
+        v-if="draftLayoutMode === ExamMaterialLayoutModeCode.ANSWER_SHEET"
+        label="答题纸来源"
+        required
+      >
+        <UiSelect
+          v-model="draftAnswerBookletSourceMode"
+          :disabled="formReadonly === true"
+          placeholder="选择答题纸母版来源"
+          :options="AnswerBookletSourceModeOptions"
+        />
+      </UiFormItem>
+    </UiForm>
     <UiForm
       v-if="draftLayoutMode === ExamMaterialLayoutModeCode.FULL_PAPER"
       layout="inline"
@@ -115,7 +158,12 @@ function handleSave(): void {
         />
       </UiFormItem>
     </UiForm>
-    <p v-if="printSourceHint" class="material-layout-modal__hint">{{ printSourceHint }}</p>
+    <p
+      v-if="draftLayoutMode === ExamMaterialLayoutModeCode.FULL_PAPER && printSourceHint"
+      class="material-layout-modal__hint"
+    >
+      {{ printSourceHint }}
+    </p>
     <p v-if="layoutModeLocked === true" class="material-layout-modal__hint">
       已开印或已扫描，制卷形态不可修改
     </p>
@@ -123,7 +171,7 @@ function handleSave(): void {
       仅考试主考可修改制卷形态
     </p>
     <p v-else-if="!materialLayoutSaved" class="material-layout-modal__hint">
-      保存形态后解锁名册、制卷设计与印刷包配置
+      保存形态后可配置制卷设计与空白印刷；未保存也可先扫描登记
     </p>
     <p v-if="advisoryReason" class="material-layout-modal__advisory">{{ advisoryReason }}</p>
     <template #footer>
@@ -132,7 +180,9 @@ function handleSave(): void {
         size="sm"
         v-if="canManageOwnerWrites === true && layoutModeLocked !== true"
         :variant="layoutDirty ? 'primary' : 'outline'"
-        :disabled="!draftLayoutMode || !layoutDirty"
+        :disabled="!draftLayoutMode || !draftScanMaterialScope || !layoutDirty
+          || (draftLayoutMode === ExamMaterialLayoutModeCode.ANSWER_SHEET
+            && !draftAnswerBookletSourceMode)"
         :loading="layoutSaving"
         @click="handleSave"
       >
@@ -145,7 +195,7 @@ function handleSave(): void {
 <style scoped lang="scss">
 .material-layout-modal {
   &__desc {
-    margin: 0 0 12px;
+    margin: 0 0 var(--dp-space-component);
     font-size: var(--dp-font-size-sm);
     line-height: 1.6;
     color: var(--dp-text-muted);
@@ -154,24 +204,31 @@ function handleSave(): void {
   &__mode-options {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
+  }
+
+  &__contract-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__mode-option {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--dp-space-component-tight);
     min-height: 88px;
-    padding: 12px 16px;
+    padding: var(--dp-space-component) var(--dp-space-block);
     text-align: left;
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
     cursor: pointer;
     transition:
-      border-color 0.2s ease,
-      background-color 0.2s ease;
+      border-color var(--dp-duration-normal) var(--dp-ease-default),
+      background-color var(--dp-duration-normal) var(--dp-ease-default);
 
     &:hover:not(:disabled) {
       border-color: var(--dp-color-primary);
@@ -202,7 +259,7 @@ function handleSave(): void {
   }
 
   &__print-form {
-    margin-bottom: 8px;
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__hint {
@@ -212,13 +269,19 @@ function handleSave(): void {
   }
 
   &__advisory {
-    margin: 8px 0 0;
-    padding: 8px 10px;
+    margin: var(--dp-space-component-tight) 0 0;
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     font-size: var(--dp-font-size-xs);
     line-height: 1.5;
     color: var(--dp-warning);
     background: var(--dp-warning-bg);
     border-radius: 6px;
+  }
+}
+
+@media (max-width: 640px) {
+  .material-layout-modal__contract-form {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

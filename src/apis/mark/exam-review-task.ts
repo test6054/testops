@@ -9,6 +9,7 @@ import type { QuestionTypeCode } from './question-type'
 import type { MarkAiReferenceExperienceAuditResponse } from '@/apis/mark/grading-experience-assist'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { ExamMaterialLayoutModeCode } from '@/types/enums/exam-material-layout-mode-enum'
 import type { ReviewTaskTypeCode } from '@/types/enums/review-task-type-enum'
 import http from '@/config/axios'
 import { GradeSourceCode } from '@/types/enums/grade-source-enum'
@@ -155,8 +156,8 @@ export interface ReviewTaskDetailResponse {
   status: ReviewTaskStatusCode
   /** 当前认领教师用户 ID；PENDING 未领取时为空 */
   assignedTeacherUserId?: string
-  /** 制卷形态: ANSWER_SHEET / FULL_PAPER */
-  materialLayoutMode?: string
+  /** 制卷形态 */
+  materialLayoutMode?: ExamMaterialLayoutModeCode
   /** 复核任务类型编码 */
   reviewType: ReviewTaskTypeCode
   /** 批改来源编码 */

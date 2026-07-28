@@ -31,20 +31,9 @@
         v-if="tenantListLoadFailed"
         state="error"
         title="学校列表加载失败"
-        description="请检查网络后重试"
+        description="请检查网络后切换登录方式，或刷新页面后再试"
         compact
-      >
-        <template #actions>
-          <UiButton
-            variant="secondary"
-            size="sm"
-            :loading="tenantListLoading"
-            @click="retryTenantList"
-          >
-            重试
-          </UiButton>
-        </template>
-      </UiStateBlock>
+      />
 
       <UiStateBlock
         v-else-if="configLoading"
@@ -54,10 +43,9 @@
       />
 
       <div v-else-if="configLoadFailed && selectedTenantId" class="cas-load-failed">
-        <p>{{ errorMessage || '查询学校统一认证配置失败' }}</p>
-        <UiButton variant="secondary" size="sm" :loading="configLoading" @click="retrySsoConfig">
-          重试
-        </UiButton>
+        <p>
+          {{ errorMessage || '查询学校统一认证配置失败' }}；可重新选择学校或刷新页面后再试
+        </p>
       </div>
 
       <template v-else-if="resolvedTenantId">
@@ -219,11 +207,6 @@ async function ensureTenantCache(force = false): Promise<TenantPublicInfo[]> {
   }
 }
 
-async function retryTenantList() {
-  errorMessage.value = ''
-  await ensureTenantCache(true)
-}
-
 function findTenant(tenantId: string): TenantPublicInfo | undefined {
   return tenantCache.value.find((item) => item.tenantId === tenantId)
 }
@@ -264,13 +247,6 @@ async function loadSsoForTenant(tenantId: string) {
   } finally {
     configLoading.value = false
   }
-}
-
-async function retrySsoConfig() {
-  if (!selectedTenantId.value) {
-    return
-  }
-  await loadSsoForTenant(String(selectedTenantId.value))
 }
 
 const handleTenantSearch = (keyword: string) => {
@@ -472,7 +448,7 @@ defineExpose({
 .cas-login-container {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   min-height: 120px;
   justify-content: flex-start;
 }
@@ -481,14 +457,14 @@ defineExpose({
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .cas-school-fixed {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px 14px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control);
   background: var(--dp-fill-quaternary);
@@ -500,7 +476,7 @@ defineExpose({
 }
 
 .cas-school-fixed__name {
-  font-size: 15px;
+  font-size: var(--dp-type-panel-title-size);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
@@ -510,7 +486,7 @@ defineExpose({
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: var(--dp-space-component);
 
   .cas-icon {
     color: var(--dp-blue-600);
@@ -533,13 +509,13 @@ defineExpose({
 
 .cas-tips {
   width: 100%;
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   background: var(--dp-gray-50);
   border-radius: var(--dp-radius-control);
   text-align: left;
 
   p {
-    margin: 4px 0;
+    margin: var(--dp-space-component-xs) 0;
     font-size: var(--dp-font-size-sm);
     color: var(--dp-text-muted);
     line-height: 1.6;
@@ -549,7 +525,7 @@ defineExpose({
 .cas-hint,
 .cas-disabled,
 .cas-load-failed {
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
   border-radius: var(--dp-radius-control);
   background: var(--dp-gray-50);
   color: var(--dp-text-secondary);
@@ -562,7 +538,7 @@ defineExpose({
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: var(--dp-space-component);
 
   p {
     margin: 0;
@@ -570,7 +546,7 @@ defineExpose({
 }
 
 .cas-disabled__hint {
-  margin: 8px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
@@ -578,9 +554,9 @@ defineExpose({
 .cas-error {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   width: 100%;
-  padding: 10px 14px;
+  padding: var(--dp-space-component) var(--dp-space-block);
   background: var(--dp-red-50);
   border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: var(--dp-radius-control);
@@ -602,7 +578,7 @@ defineExpose({
   color: inherit;
   cursor: pointer;
   font-size: var(--dp-font-size-lg);
-  padding: 0 4px;
+  padding: 0 var(--dp-space-component-xs);
   opacity: 0.6;
 
   &:hover {

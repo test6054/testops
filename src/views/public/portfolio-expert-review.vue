@@ -4,16 +4,15 @@ import type { PortfolioPublicExpertReviewBundleVO } from '@/apis/portfolio/publi
 import { computed, onMounted, ref } from 'vue'
 import { portfolioPublicExpertApi } from '@/apis/portfolio/public-expert'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiButton from '@/components/ui-guide/ui/UiButton.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
-import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
-import {
-  PortfolioEvaluationIdentityMaterialScopeCode,
-} from '@/types/enums/portfolio-evaluation-identity-material-scope-enum'
 import { showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import {
+  portfolioLifecycleStatusDisplay,
+  portfolioLifecycleTagTone,
+} from '@/utils/portfolio-lifecycle-tag'
 
 const loading = ref(false)
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
@@ -23,7 +22,7 @@ const requestToken = ref(0)
 
 /** 被评教师中处于评价参评 hold 的人数。 */
 const heldSubjectCount = computed(() =>
-  (bundle.value?.subjectTeachers ?? []).filter((item) => item.evaluationHeld === true).length,
+  (bundle.value?.subjectTeachers ?? []).filter((item) => Boolean(item.evaluationHeld)).length,
 )
 
 const publicLinkParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
@@ -124,9 +123,9 @@ onMounted(() => {
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
               <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+                {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
               </UiTag>
-              <UiTag v-if="record.evaluationHeld === true" tone="orange" class="ml-1">参评 hold</UiTag>
+              <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
               <span v-else-if="!record.lifecycleStatus">—</span>
             </template>
           </template>
@@ -142,30 +141,30 @@ onMounted(() => {
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
               <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+                {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
               </UiTag>
-              <UiTag v-if="record.evaluationHeld === true" tone="orange" class="ml-1">参评 hold</UiTag>
+              <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
               <span v-else-if="!record.lifecycleStatus">—</span>
             </template>
             <template v-else-if="column.key === 'hasPrimaryFile'">
-              {{ record.hasPrimaryFile === true ? '有' : '无' }}
+              {{ record.hasPrimaryFile ? '有' : '无' }}
             </template>
             <template v-else-if="column.key === 'identityScope'">
-              <UiTag :tone="record.identityScope === PortfolioEvaluationIdentityMaterialScopeCode.EXTERNAL ? 'orange' : record.identityScope === PortfolioEvaluationIdentityMaterialScopeCode.SHARED ? 'green' : 'blue'">
+              <UiTag :tone="record.identityScope === 'EXTERNAL' ? 'orange' : record.identityScope === 'SHARED' ? 'green' : 'blue'">
                 {{
-                  record.identityScope === PortfolioEvaluationIdentityMaterialScopeCode.CAMPUS
+                  record.identityScope === 'CAMPUS'
                     ? '校内'
-                    : record.identityScope === PortfolioEvaluationIdentityMaterialScopeCode.EXTERNAL
+                    : record.identityScope === 'EXTERNAL'
                       ? '仅外部'
-                      : record.identityScope === PortfolioEvaluationIdentityMaterialScopeCode.SHARED
+                      : record.identityScope === 'SHARED'
                         ? '共享'
-                        : '—'
+                        : (record.identityScope || '—')
                 }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'usableForCampusHardCriteria'">
-              <UiTag :tone="record.usableForCampusHardCriteria === true ? 'green' : 'orange'">
-                {{ record.usableForCampusHardCriteria === true ? '可用' : '不可用' }}
+              <UiTag :tone="record.usableForCampusHardCriteria ? 'green' : 'orange'">
+                {{ record.usableForCampusHardCriteria ? '可用' : '不可用' }}
               </UiTag>
             </template>
           </template>
@@ -178,12 +177,12 @@ onMounted(() => {
         size="sm"
         v-else
         :title="errorMessage ? '无法打开审阅包' : '暂无内容'"
-        :description="errorMessage || '当前授权没有可审阅材料。'"
-      >
-        <template v-if="tenantId && accessToken" #action>
-          <UiButton size="sm" variant="primary" :loading="loading" @click="loadBundle">重试</UiButton>
-        </template>
-      </UiEmpty>
+        :description="
+          errorMessage
+            ? errorMessage
+            : '当前授权没有可审阅材料。'
+        "
+      />
     </UiCard>
   </div>
 </template>
@@ -192,13 +191,13 @@ onMounted(() => {
 .public-expert-review {
   max-width: 1100px;
   margin: 0 auto;
-  padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px) var(--dp-space-8, 32px);
+  padding: var(--dp-space-block) var(--dp-space-component) var(--dp-space-section);
 }
 .public-expert-review__header {
-  margin-bottom: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-component);
 }
 .public-expert-review__header h1 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: 22px;
   font-weight: 600;
 }
@@ -210,16 +209,16 @@ onMounted(() => {
 .public-expert-review__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
   align-items: center;
-  margin-bottom: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-component);
   font-size: var(--dp-font-size-md);
 }
 .public-expert-review__teachers {
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-block);
 }
 .public-expert-review__section-title {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
 }

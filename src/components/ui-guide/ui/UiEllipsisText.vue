@@ -204,7 +204,7 @@ onBeforeUnmount(() => {
   min-height: auto;
   height: auto;
   border-radius: var(--dp-radius-overlay);
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   color: var(--dp-text-inverse) !important;
   background-color: color-mix(in srgb, var(--dp-text-primary) 92%, transparent) !important;
   border: none !important;

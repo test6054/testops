@@ -1,13 +1,13 @@
 <svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!--
     教学质量中心 Logo：按业务闭环重设计
-    三域等权环：阅卷(#1677ff) / 档案(青) / 质评(靛)
+    三域等权环：阅卷(#2B67FF 超星对齐现代教务蓝) / 档案(青) / 质评(靛)
     中心留白 = 教学质量汇合，无建筑/对勾/书本
   -->
   <defs>
     <linearGradient id="tqMark" x1="24" y1="18" x2="96" y2="96" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#69b1ff"/>
-      <stop offset="1" stop-color="#1677ff"/>
+      <stop stop-color="#7d9fc4"/>
+      <stop offset="1" stop-color="#2B67FF"/>
     </linearGradient>
     <linearGradient id="tqPortfolio" x1="104" y1="28" x2="40" y2="108" gradientUnits="userSpaceOnUse">
       <stop stop-color="#5cdbd3"/>

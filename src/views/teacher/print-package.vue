@@ -70,8 +70,7 @@
               :disabled="generateBlocked === true"
               @click="openGenerateModal"
             >
-              <template #icon><ThunderboltOutlined /></template>
-              一键生成印刷包
+              生成印刷包
             </UiButton>
           </UiTooltip>
         </template>
@@ -101,9 +100,24 @@
     <template v-else>
       <ExamWorkspaceJourneySubNav />
 
+      <UiSkeletonState
+        v-if="examDetailLoading && !examDetail"
+        variant="card"
+        compact
+        class="print-package-page__empty"
+      />
+
+      <UiAlertStrip
+        v-else-if="examDetailError"
+        tone="error"
+        title="考试详情加载失败"
+        :closable="false"
+        class="print-package-page__blocking-strip"
+      />
+
       <UiEmpty
         size="sm"
-        v-if="printPackageApplicable !== true"
+        v-else-if="printPackageApplicable !== true"
         :description="printPackageSkipHint"
         class="print-package-page__empty"
       >
@@ -119,6 +133,14 @@
           <ExamPrepScenarioPanel :guide="examDetail.prepScenarioGuide" />
         </WorkbenchSurfaceCard>
 
+        <UiAlertStrip
+          v-if="listLoadFailed || panelLoadFailed || governanceLoadFailed"
+          tone="error"
+          title="制卷与印刷合同加载失败"
+          :closable="false"
+          class="print-package-page__blocking-strip"
+        />
+
         <WorkbenchSurfaceCard flush>
           <template #toolbar>
             <span class="print-package-page__flow-hint">{{ printPackageFlowHint }}</span>
@@ -130,6 +152,7 @@
             :columns="packageColumns"
             :data-source="packageList"
             :loading="loading === true"
+            :load-error="listLoadFailed === true"
             :total="pagination.total"
             row-key="printPackageId"
             size="middle"
@@ -145,6 +168,17 @@
                   {{ statusLabel(record.status) }}
                 </UiTag>
               </template>
+              <template v-else-if="column.key === 'copyCount'">
+                <div class="print-package-page__copy-ledger">
+                  <span>计划 {{ record.plannedCopies }} · 实印 {{ record.actualPrintedCopies ?? '—' }}</span>
+                  <span v-if="record.issuedCopies !== undefined">
+                    发放 {{ record.issuedCopies }} · 校内留存 {{ record.retainedUnissuedCopies }}
+                  </span>
+                  <span v-if="record.returnedUnusedCopies !== undefined">
+                    实际使用 {{ record.usedCopies }} · 考点回收 {{ record.returnedUnusedCopies }}
+                  </span>
+                </div>
+              </template>
               <template v-else-if="column.key === 'sealRemark'">
                 {{ record.sealRemark || '未填写封装备注' }}
               </template>
@@ -159,18 +193,32 @@
           </UiDataTable>
         </WorkbenchSurfaceCard>
 
-        <!-- 一键生成印刷包 -->
+        <!-- 生成印刷包 -->
         <UiDrawer
           v-model:open="generateModalVisible"
-          title="一键生成印刷包"
+          title="生成印刷包"
           :width="560"
           :hide-footer="false"
-          ok-text="开始生成"
+          ok-text="生成并写入印刷包"
           cancel-text="取消"
           :confirm-loading="generating === true"
           @ok="handleGenerate"
         >
-          <UiForm layout="vertical" style="margin-top: 8px">
+          <UiAlertStrip
+            tone="info"
+            title="本次生成影响"
+            :closable="false"
+            class="print-package-page__generate-impact"
+          >
+            <ul class="print-package-page__generate-impact-list">
+              <li>将基于当前制卷设计生成{{ printMasterKindLabel }}空白物理包，供考场按座位印制</li>
+              <li>考生领卷后自行填写学号姓名；不读取、不依赖考生名册</li>
+              <li>制卷形态：{{ generateImpactLayoutLabel }}；印刷来源：{{ generateImpactPrintSourceLabel }}</li>
+              <li>将新增印刷包（编号 {{ generateForm.packageNo.trim() || '待填写' }}），不会覆盖已有包</li>
+              <li v-if="generateImpactConfidential">涉密考试：生成文件将附加保密水印，预览与下载受控</li>
+            </ul>
+          </UiAlertStrip>
+          <UiForm layout="vertical" style="margin-top: var(--dp-space-component-tight)">
             <UiFormItem label="印刷包编号" required>
               <UiInput
                 size="sm"
@@ -187,6 +235,22 @@
                 :maxlength="100"
               />
             </UiFormItem>
+            <UiFormItem label="试卷用途" required>
+              <a-select
+                v-model:value="generateForm.paperCode"
+                :options="paperGovernance?.paperSets.map((item) => ({
+                  value: item.paperCode,
+                  label: `${item.paperCode}卷 · ${item.paperName}`,
+                })) ?? []"
+                placeholder="选择 A、B 或备用卷"
+              />
+            </UiFormItem>
+            <UiFormItem label="计划印数" required>
+              <a-input-number v-model:value="generateForm.plannedCopies" :min="1" :precision="0" />
+            </UiFormItem>
+            <UiFormItem label="加印损耗" required>
+              <a-input-number v-model:value="generateForm.spoilageAllowanceCopies" :min="0" :precision="0" />
+            </UiFormItem>
             <UiFormItem label="封装备注">
               <UiTextarea
                 size="sm"
@@ -199,60 +263,114 @@
           </UiForm>
         </UiDrawer>
 
-        <!-- 印刷包明细 -->
         <UiDrawer
-          v-model:open="detailModalVisible"
-          :title="`印刷包明细 - ${detailPackage?.packageName ?? ''}`"
-          :width="960"
-          hide-footer
+          v-model:open="transitionModalVisible"
+          :title="transitionTarget ? statusLabel(transitionTarget) : '推进印务状态'"
+          :width="520"
+          :confirm-loading="transitioning"
+          @ok="handleTransition"
         >
-          <UiSkeletonState
-            v-if="detailLoading && detailItems.length === 0"
-            variant="table"
-            compact
-          />
-          <UiDataTable
-            v-else
-            v-model:current="detailPagination.pageNum"
-            v-model:page-size="detailPagination.pageSize"
-            pagination-mode="server"
-            :columns="detailColumns"
-            :data-source="detailItems"
-            :loading="detailLoading === true"
-            :total="detailPagination.total"
-            :sticky-header="false"
-            flat
-            row-key="printPackageItemId"
-            size="small"
-            bordered
-            :scroll="{ y: 400 }"
-            @page-change="handleDetailPageChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'status'">
-                <UiTag :tone="record.status === 'PRINTED' ? 'green' : 'gray'" size="sm">
-                  {{ record.status === 'PRINTED' ? '已印刷' : '待印刷' }}
-                </UiTag>
-              </template>
-            </template>
-          </UiDataTable>
+          <UiForm layout="vertical">
+            <UiFormItem v-if="transitionTarget === PrintPackageStatusCode.RELEASED_TO_PRINTER" label="承印单位" required>
+              <UiInput v-model="transitionForm.printerName" :maxlength="200" />
+            </UiFormItem>
+            <UiFormItem
+              v-if="transitionTarget === PrintPackageStatusCode.RELEASED_TO_PRINTER
+                || transitionTarget === PrintPackageStatusCode.ISSUED_TO_EXAM_SITE
+                || transitionTarget === PrintPackageStatusCode.RECONCILED"
+              :label="transitionTarget === PrintPackageStatusCode.RECONCILED ? '核销清点经手人' : '交接经手人'"
+              required
+            >
+              <UiInput v-model="transitionForm.handoverOperator" :maxlength="200" />
+            </UiFormItem>
+            <UiFormItem v-if="transitionTarget === PrintPackageStatusCode.PRINTED" label="实际印毕份数" required>
+              <a-input-number v-model:value="transitionForm.actualPrintedCopies" :min="1" :precision="0" />
+            </UiFormItem>
+            <UiFormItem
+              v-if="transitionTarget === PrintPackageStatusCode.SEALED
+                || (transitionTarget === PrintPackageStatusCode.VOIDED
+                  && transitionPackage?.actualPrintedCopies !== undefined)"
+              label="监督销毁份数"
+              required
+            >
+              <a-input-number v-model:value="transitionForm.destroyedSpoilageCopies" :min="0" :precision="0" />
+            </UiFormItem>
+            <UiFormItem v-if="transitionTarget === PrintPackageStatusCode.ISSUED_TO_EXAM_SITE" label="发放考点份数" required>
+              <a-input-number v-model:value="transitionForm.issuedCopies" :min="1" :precision="0" />
+            </UiFormItem>
+            <UiAlertStrip
+              v-if="transitionTarget === PrintPackageStatusCode.RECONCILED && transitionPackage"
+              tone="info"
+              title="考后印务清点"
+              :description="`计划 ${transitionPackage.plannedCopies} 份；考点已发放 ${transitionPackage.issuedCopies} 份；校内未发留存 ${transitionPackage.retainedUnissuedCopies} 份。`"
+              :closable="false"
+              dense
+            />
+            <UiFormItem v-if="transitionTarget === PrintPackageStatusCode.RECONCILED" label="考点未使用回收份数" required>
+              <a-input-number
+                v-model:value="transitionForm.returnedUnusedCopies"
+                :min="0"
+                :max="transitionPackage?.issuedCopies"
+                :precision="0"
+              />
+            </UiFormItem>
+            <UiFormItem
+              :label="transitionTarget === PrintPackageStatusCode.VOIDED ? '作废原因' : '环节备注'"
+              :required="transitionTarget === PrintPackageStatusCode.VOIDED"
+            >
+              <UiTextarea v-model="transitionForm.remark" :maxlength="500" :rows="3" />
+            </UiFormItem>
+          </UiForm>
         </UiDrawer>
 
-        <!-- PDF 预览 -->
         <UiDrawer
-          v-model:open="previewModalOpen"
-          title="印刷包便携文档预览"
-          :width="900"
+          v-model:open="packageLedgerOpen"
+          :title="packageLedger?.packageName ? `${packageLedger.packageName} · 印务台账` : '印务台账'"
+          :width="760"
           hide-footer
         >
-          <UiSkeletonState v-if="previewLoading" variant="card" compact />
-          <iframe
-            v-else-if="previewPdfUrl"
-            :src="previewPdfUrl"
-            class="print-package__preview-frame"
-          />
-          <UiEmpty size="sm" v-else description="暂无印制包预览" />
+          <template v-if="packageLedger">
+            <UiDescriptions bordered :column="2" size="sm">
+              <UiDescriptionsItem label="印刷包编号">{{ packageLedger.packageNo }}</UiDescriptionsItem>
+              <UiDescriptionsItem label="试卷用途">{{ packageLedger.paperCode }} 卷</UiDescriptionsItem>
+              <UiDescriptionsItem label="当前状态">
+                <UiTag :tone="statusTone(packageLedger.status)" size="sm">
+                  {{ statusLabel(packageLedger.status) }}
+                </UiTag>
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="承印单位">{{ packageLedger.printerName || '尚未送印' }}</UiDescriptionsItem>
+              <UiDescriptionsItem label="计划 / 损耗">
+                {{ packageLedger.plannedCopies }} / {{ packageLedger.spoilageAllowanceCopies }} 份
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="实印 / 销毁">
+                {{ packageLedger.actualPrintedCopies ?? '—' }} / {{ packageLedger.destroyedSpoilageCopies ?? '—' }} 份
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="考点发放 / 校内留存">
+                {{ packageLedger.issuedCopies ?? '—' }} / {{ packageLedger.retainedUnissuedCopies ?? '—' }} 份
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="实际使用 / 考点回收">
+                {{ packageLedger.usedCopies ?? '—' }} / {{ packageLedger.returnedUnusedCopies ?? '—' }} 份
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="最近交接经手人">{{ packageLedger.handoverOperator || '尚无交接' }}</UiDescriptionsItem>
+              <UiDescriptionsItem label="封装备注">{{ packageLedger.sealRemark || '未填写' }}</UiDescriptionsItem>
+            </UiDescriptions>
+            <section class="print-package-page__ledger-events">
+              <h3>状态流转记录</h3>
+              <ol>
+                <li v-for="event in packageLedgerEvents" :key="event.status">
+                  <UiTag :tone="event.tone" size="sm">{{ event.label }}</UiTag>
+                  <span>{{ event.time }}</span>
+                </li>
+              </ol>
+            </section>
+          </template>
         </UiDrawer>
+
+        <LayoutPreviewDrawer
+          v-model:open="previewModalOpen"
+          title="印刷包预览"
+          :preview-pdf-file-id="previewPackageFileId"
+        />
 
         <ExamPaperGovernanceDrawer
           v-if="selectedExamId"
@@ -286,17 +404,18 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamWorkbenchPrintPackagePanelResponse } from '@/apis/mark/exam-progress'
 import type { ExamPaperGovernanceResponse } from '@/apis/mark/paper-governance'
-import type { ExamPrintPackageResponse, PrintPackageItemVO } from '@/apis/mark/print-package'
+import type { ExamPrintPackageResponse } from '@/apis/mark/print-package'
 import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   ExamMaterialLayoutModeCode,
+  ExamMaterialLayoutModeDescription,
   ExamPrintSourceModeCode,
+  ExamPrintSourceModeDescription,
   getExamDetail,
 } from '@/apis/mark/exam'
 import { getPrintPackagePanel } from '@/apis/mark/exam-progress'
@@ -313,15 +432,16 @@ import {
 import {
   generatePrintPackage,
   isLayoutNotReadyError,
-  pagePrintPackageItems,
   pagePrintPackages,
-  PRINT_PACKAGE_ANSWER_SHEET_HINT,
   PRINT_PACKAGE_EXTERNAL_PRINT_HINT,
   PRINT_PACKAGE_FLOW_HINT,
   PRINT_PACKAGE_STATUS_TONE,
+  PrintPackageStatusCode,
   PrintPackageStatusDescription,
+  transitionPrintPackage,
 } from '@/apis/mark/print-package'
 import ExamPaperGovernanceDrawer from '@/components/mark/ExamPaperGovernanceDrawer.vue'
+import LayoutPreviewDrawer from '@/components/mark/layout-designer/LayoutPreviewDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -329,6 +449,8 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
@@ -343,6 +465,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import WorkflowReadinessPanel from '@/components/workbench/workflow-readiness/WorkflowReadinessPanel.vue'
+import { isExamConfidentialFlag } from '@/composables/useConfidentialWatermark'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
@@ -361,10 +484,10 @@ const workbenchContext = useMarkWorkbenchContext()
 const { examStatusLabel, examStatusTone } = useExamJourneyContextBar('印刷包')
 const { refreshSnapshot } = useWorkspaceExamId()
 
-const prepBlockingReasons = computed(
-  () => workbenchContext.snapshot.value?.prepBlockingReasons ?? [],
-)
 const examDetail = ref<Awaited<ReturnType<typeof getExamDetail>> | null>(null)
+const examDetailLoading = ref(false)
+const examDetailError = ref(false)
+let examLoadGeneration = 0
 
 const prepStepCards = computed(() => {
   const backendSteps = workbenchContext.snapshot.value?.prepSteps
@@ -385,7 +508,6 @@ const printPackageGenerateGate = computed(() => {
   }
   return resolvePrintPackageGenerateGate({
     examId: selectedExamId.value,
-    prepBlockingReasons: prepBlockingReasons.value,
     backendPrepSteps: workbenchContext.snapshot.value?.prepSteps,
     prepStepCards: prepStepCards.value.length > 0 ? prepStepCards.value : undefined,
   })
@@ -394,9 +516,19 @@ const printPackageGenerateGate = computed(() => {
 const governanceApprovedForPrint = computed(
   () => paperGovernance.value?.governance?.status === ExamPaperGovernanceStatusCode.APPROVED_FOR_PRINT,
 )
-const generateBlocked = computed(() => printPackageGenerateGate.value.generateBlocked === true || governanceApprovedForPrint.value !== true)
+const generateBlocked = computed(
+  () =>
+    printPackageGenerateGate.value.generateBlocked === true
+    || governanceApprovedForPrint.value !== true
+    || governanceLoadFailed.value === true
+    || panelLoadFailed.value === true
+    || listLoadFailed.value === true,
+)
 const printPackagePrepWorkflowSteps = computed(() => printPackageGenerateGate.value.panelSteps)
 const generateDisabledReason = computed(() => {
+  if (panelLoadFailed.value === true || listLoadFailed.value === true || governanceLoadFailed.value === true) {
+    return '制卷与印刷合同加载失败，请重新进入本场考试后再操作'
+  }
   if (governanceApprovedForPrint.value !== true) {
     return '须完成本场指定审核教师及学院政策要求的外审后，方可生成印刷包'
   }
@@ -416,10 +548,8 @@ const printPackageSkipHint = computed(() => {
   if (!detail?.materialLayoutMode) {
     return '请先在工作台保存制卷形态。'
   }
-  if (detail.materialLayoutMode === ExamMaterialLayoutModeCode.ANSWER_SHEET) {
-    return PRINT_PACKAGE_ANSWER_SHEET_HINT
-  }
-  if (detail.printSourceMode === ExamPrintSourceModeCode.EXTERNAL_PRINT) {
+  if (detail.materialLayoutMode === ExamMaterialLayoutModeCode.FULL_PAPER
+    && detail.printSourceMode === ExamPrintSourceModeCode.EXTERNAL_PRINT) {
     return PRINT_PACKAGE_EXTERNAL_PRINT_HINT
   }
   return ''
@@ -427,6 +557,26 @@ const printPackageSkipHint = computed(() => {
 
 const printPackageFlowHint = computed(
   () => examDetail.value?.prepScenarioGuide?.printGuidance ?? PRINT_PACKAGE_FLOW_HINT,
+)
+const generateImpactLayoutLabel = computed(() => {
+  const mode = examDetail.value?.materialLayoutMode
+  return mode
+    ? strictEnumLabel(ExamMaterialLayoutModeDescription, mode, '制卷形态')
+    : '—'
+})
+const printMasterKindLabel = computed(() =>
+  examDetail.value?.materialLayoutMode === ExamMaterialLayoutModeCode.ANSWER_SHEET
+    ? '试题卷+答题纸'
+    : '单独试卷',
+)
+const generateImpactPrintSourceLabel = computed(() => {
+  const mode = examDetail.value?.printSourceMode
+  return mode
+    ? strictEnumLabel(ExamPrintSourceModeDescription, mode, '印刷来源')
+    : '—'
+})
+const generateImpactConfidential = computed(
+  () => isExamConfidentialFlag(examDetail.value?.confidential),
 )
 
 function goPrepWorkbench(): void {
@@ -442,6 +592,9 @@ function goPrepWorkbench(): void {
 // ─── 印刷包分页列表 ─────────────────────────────────────────────────
 
 const loading = ref(false)
+const listLoadFailed = ref(false)
+const panelLoadFailed = ref(false)
+const governanceLoadFailed = ref(false)
 const packageList = ref<ExamPrintPackageResponse[]>([])
 const printPackagePanel = ref<ExamWorkbenchPrintPackagePanelResponse | null>(null)
 const paperGovernance = ref<ExamPaperGovernanceResponse | null>(null)
@@ -465,6 +618,13 @@ const canManageOwnerPrintPackageWrites = computed(
 )
 
 const paperGovernanceAlert = computed(() => {
+  if (governanceLoadFailed.value === true) {
+    return {
+      tone: 'error' as const,
+      title: '命题治理资料加载失败',
+      description: '当前无法确认试卷组、签审状态与受控源文件，已禁止生成印刷包。',
+    }
+  }
   const governance = paperGovernance.value?.governance
   if (!governance) {
     return {
@@ -526,15 +686,27 @@ const submitApprovalHint = computed(() =>
 )
 const canApproveCurrentReviewer = computed(() => paperGovernance.value?.currentUserCanApprove === true)
 
-async function loadPaperGovernance(): Promise<void> {
-  if (!selectedExamId.value) {
+async function loadPaperGovernance(expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) {
     paperGovernance.value = null
+    governanceLoadFailed.value = false
     return
   }
+  governanceLoadFailed.value = false
   try {
-    paperGovernance.value = await getExamPaperGovernance(selectedExamId.value)
+    const governance = await getExamPaperGovernance(examId)
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    paperGovernance.value = governance
+    governanceLoadFailed.value = false
   } catch (error) {
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
     paperGovernance.value = null
+    governanceLoadFailed.value = true
     showUserError(error, '命题治理资料加载失败')
   }
 }
@@ -558,15 +730,28 @@ async function handleCheckGovernance(): Promise<void> {
     void message.warning('仅本场主考可执行命题规则核验')
     return
   }
-  if (!selectedExamId.value || checkingGovernance.value) return
+  const examId = selectedExamId.value
+  if (!examId || checkingGovernance.value === true) {
+    return
+  }
+  const generation = examLoadGeneration
   checkingGovernance.value = true
   try {
-    paperGovernance.value = await checkExamPaperGovernance(selectedExamId.value)
+    const governance = await checkExamPaperGovernance(examId)
+    if (generation !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    paperGovernance.value = governance
     void message.success('命题规则核验已完成')
   } catch (error) {
+    if (generation !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
     showUserError(error, '命题规则核验失败')
   } finally {
-    checkingGovernance.value = false
+    if (generation === examLoadGeneration && selectedExamId.value === examId) {
+      checkingGovernance.value = false
+    }
   }
 }
 
@@ -675,7 +860,12 @@ const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 const packageSignalMetrics = computed((): SignalMetric[] => {
   const panel = printPackagePanel.value
   if (!panel) {
-    return [{ key: 'packages', label: '印刷包', value: '—', tone: 'gray' }]
+    return [{
+      key: 'packages',
+      label: '印刷包',
+      value: '—',
+      tone: 'gray',
+    }]
   }
   const metrics: SignalMetric[] = [
     {
@@ -693,28 +883,13 @@ const packageSignalMetrics = computed((): SignalMetric[] => {
       tone: panel.generatedPackageCount > 0 ? 'green' : 'gray',
     },
     {
-      key: 'items',
-      label: '印刷人数',
-      value: panel.totalItemCount,
-      unit: '人',
-      tone: 'green',
-    },
-    {
       key: 'candidates',
-      label: '名册人数',
+      label: '参考印数',
       value: panel.candidateCount,
       unit: '人',
       tone: 'gray',
     },
   ]
-  if (panel.coverageRate != null) {
-    metrics.push({
-      key: 'coverage',
-      label: '覆盖比例',
-      value: `${panel.coverageRate}%`,
-      tone: panel.coverageRate >= 100 ? 'green' : 'orange',
-    })
-  }
   metrics.push({
     key: 'ready',
     label: '印刷就绪',
@@ -726,53 +901,76 @@ const packageSignalMetrics = computed((): SignalMetric[] => {
 
 const packageColumns: ColumnType<ExamPrintPackageResponse>[] = [
   { title: '名称', key: 'packageName', width: 200, ellipsis: true, fixed: 'left' },
+  { title: '卷别', dataIndex: 'paperCode', key: 'paperCode', width: 80 },
   { title: '编号', dataIndex: 'packageNo', key: 'packageNo', width: 140 },
   { title: '状态', key: 'status', width: 100 },
-  { title: '人数', dataIndex: 'itemCount', key: 'itemCount', width: 80, align: 'right' },
+  { title: '印务数量', key: 'copyCount', width: 220 },
   { title: '生成时间', dataIndex: 'generatedTime', key: 'generatedTime', width: 170 },
   { title: '封装备注', key: 'sealRemark', ellipsis: true },
-  { title: '操作', key: 'actions', width: 220 },
+  { title: '操作', key: 'actions', width: 260 },
 ]
 
-async function loadPrintPackagePanel(): Promise<void> {
-  if (!selectedExamId.value) {
+async function loadPrintPackagePanel(expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) {
     printPackagePanel.value = null
     return
   }
+  panelLoadFailed.value = false
   try {
-    printPackagePanel.value = await getPrintPackagePanel(selectedExamId.value)
+    const panel = await getPrintPackagePanel(examId)
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    printPackagePanel.value = panel
+    panelLoadFailed.value = false
   } catch (error) {
-    printPackagePanel.value = null
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    panelLoadFailed.value = true
     showUserError(error, '印刷包看板加载失败')
   }
 }
 
-async function loadPackageList() {
-  if (!selectedExamId.value) return
+async function loadPackageList(expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) {
+    return
+  }
   loading.value = true
+  listLoadFailed.value = false
   try {
     const res = await pagePrintPackages({
-      examId: selectedExamId.value,
+      examId,
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize,
     })
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
     packageList.value = res.list
     pagination.pageNum = res.pageNum
     pagination.pageSize = res.pageSize
     pagination.total = res.total
+    listLoadFailed.value = false
   } catch (e) {
-    packageList.value = []
-    pagination.total = 0
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    listLoadFailed.value = true
     showUserError(e, '印刷包列表加载失败')
   } finally {
-    loading.value = false
+    if (expectedGeneration === examLoadGeneration && selectedExamId.value === examId) {
+      loading.value = false
+    }
   }
 }
 
 function handlePackagePageChange(pageEvent: { current: number, pageSize: number }): void {
   pagination.pageNum = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
-  loadPackageList()
+  void loadPackageList(examLoadGeneration)
 }
 
 // ─── 状态展示 ───────────────────────────────────────────────────────
@@ -785,7 +983,128 @@ function statusLabel(status: ExamPrintPackageResponse['status']): string {
   return strictEnumLabel(PrintPackageStatusDescription, status, '印刷包状态')
 }
 
-// ─── 一键生成印刷包 ──────────────────────────────────────────────────
+const transitionModalVisible = ref(false)
+const transitioning = ref(false)
+const transitionPackage = ref<ExamPrintPackageResponse | null>(null)
+const transitionTarget = ref<PrintPackageStatusCode | null>(null)
+const transitionForm = reactive({
+  actualPrintedCopies: undefined as number | undefined,
+  destroyedSpoilageCopies: undefined as number | undefined,
+  issuedCopies: undefined as number | undefined,
+  returnedUnusedCopies: undefined as number | undefined,
+  printerName: '',
+  handoverOperator: '',
+  remark: '',
+})
+
+function nextPrintStatus(status: PrintPackageStatusCode): PrintPackageStatusCode | null {
+  return {
+    [PrintPackageStatusCode.GENERATED]: PrintPackageStatusCode.RELEASED_TO_PRINTER,
+    [PrintPackageStatusCode.RELEASED_TO_PRINTER]: PrintPackageStatusCode.PRINTED,
+    [PrintPackageStatusCode.PRINTED]: PrintPackageStatusCode.SEALED,
+    [PrintPackageStatusCode.SEALED]: PrintPackageStatusCode.ISSUED_TO_EXAM_SITE,
+    [PrintPackageStatusCode.ISSUED_TO_EXAM_SITE]: PrintPackageStatusCode.RECONCILED,
+    [PrintPackageStatusCode.RECONCILED]: null,
+    [PrintPackageStatusCode.VOIDED]: null,
+  }[status]
+}
+
+function openTransition(pkg: ExamPrintPackageResponse, target: PrintPackageStatusCode): void {
+  if (canManageOwnerPrintPackageWrites.value !== true) {
+    void message.warning('仅本场主考可推进印务状态')
+    return
+  }
+  transitionPackage.value = pkg
+  transitionTarget.value = target
+  Object.assign(transitionForm, {
+    actualPrintedCopies: undefined,
+    destroyedSpoilageCopies: undefined,
+    issuedCopies: undefined,
+    returnedUnusedCopies: undefined,
+    printerName: pkg.printerName ?? '',
+    handoverOperator: '',
+    remark: '',
+  })
+  transitionModalVisible.value = true
+}
+
+async function handleTransition(): Promise<void> {
+  const pkg = transitionPackage.value
+  const target = transitionTarget.value
+  if (!pkg || !target || !selectedExamId.value || transitioning.value) return
+  if (canManageOwnerPrintPackageWrites.value !== true) {
+    void message.warning('仅本场主考可推进印务状态')
+    return
+  }
+  if (target === PrintPackageStatusCode.RELEASED_TO_PRINTER
+    && (!transitionForm.printerName.trim() || !transitionForm.handoverOperator.trim())) {
+    showFormValidationMessage('送印必须填写承印单位和交接经手人')
+    return
+  }
+  if (target === PrintPackageStatusCode.PRINTED
+    && (transitionForm.actualPrintedCopies === undefined
+      || transitionForm.actualPrintedCopies < pkg.plannedCopies
+      || transitionForm.actualPrintedCopies > pkg.plannedCopies + pkg.spoilageAllowanceCopies)) {
+    showFormValidationMessage(`实际印毕份数须在 ${pkg.plannedCopies} 至 ${pkg.plannedCopies + pkg.spoilageAllowanceCopies} 之间`)
+    return
+  }
+  if (target === PrintPackageStatusCode.SEALED
+    && transitionForm.destroyedSpoilageCopies !== (pkg.actualPrintedCopies ?? 0) - pkg.plannedCopies) {
+    showFormValidationMessage(`密封前须监督销毁 ${(pkg.actualPrintedCopies ?? 0) - pkg.plannedCopies} 份加印损耗材料`)
+    return
+  }
+  if (target === PrintPackageStatusCode.ISSUED_TO_EXAM_SITE
+    && (transitionForm.issuedCopies === undefined
+      || transitionForm.issuedCopies <= 0
+      || transitionForm.issuedCopies > pkg.plannedCopies
+      || !transitionForm.handoverOperator.trim())) {
+    showFormValidationMessage('交接考点须填写经手人，发放份数不得超过计划印数')
+    return
+  }
+  if (target === PrintPackageStatusCode.RECONCILED
+    && (transitionForm.returnedUnusedCopies === undefined
+      || transitionForm.returnedUnusedCopies < 0
+      || pkg.issuedCopies === undefined
+      || transitionForm.returnedUnusedCopies > pkg.issuedCopies
+      || !transitionForm.handoverOperator.trim())) {
+    showFormValidationMessage('请填写核销清点经手人，考点未使用回收份数不得超过发放份数')
+    return
+  }
+  if (target === PrintPackageStatusCode.VOIDED
+    && (!transitionForm.remark.trim()
+      || (pkg.actualPrintedCopies !== undefined
+        && transitionForm.destroyedSpoilageCopies !== pkg.actualPrintedCopies))) {
+    showFormValidationMessage(pkg.actualPrintedCopies === undefined
+      ? '请填写作废原因'
+      : `作废前须填写原因并监督销毁全部 ${pkg.actualPrintedCopies} 份实印材料`)
+    return
+  }
+  transitioning.value = true
+  try {
+    await transitionPrintPackage({
+      examId: selectedExamId.value,
+      printPackageId: pkg.printPackageId,
+      targetStatus: target,
+      ...transitionForm,
+      printerName: transitionForm.printerName.trim() || undefined,
+      handoverOperator: transitionForm.handoverOperator.trim() || undefined,
+      remark: transitionForm.remark.trim() || undefined,
+    })
+    void message.success(`印刷包已${statusLabel(target)}`)
+    transitionModalVisible.value = false
+    await Promise.all([
+      loadPackageList(examLoadGeneration),
+      loadPrintPackagePanel(examLoadGeneration),
+    ])
+    await refreshSnapshot()
+  } catch (error) {
+    showUserError(error, '推进印务状态失败')
+  } finally {
+    transitioning.value = false
+  }
+}
+
+// ─── 生成印刷包 ──────────────────────────────────────────────────
 
 const generateModalVisible = ref(false)
 const generating = ref(false)
@@ -794,6 +1113,9 @@ const generateForm = reactive({
   packageNo: '',
   packageName: '',
   sealRemark: '',
+  paperCode: '',
+  plannedCopies: 1,
+  spoilageAllowanceCopies: 0,
 })
 
 function openGenerateModal() {
@@ -807,6 +1129,9 @@ function openGenerateModal() {
   generateForm.packageNo = ''
   generateForm.packageName = ''
   generateForm.sealRemark = ''
+  generateForm.paperCode = paperGovernance.value?.paperSets[0]?.paperCode ?? ''
+  generateForm.plannedCopies = Math.max(printPackagePanel.value?.candidateCount ?? 1, 1)
+  generateForm.spoilageAllowanceCopies = 0
   generateModalVisible.value = true
 }
 
@@ -824,6 +1149,10 @@ async function handleGenerate() {
     showFormValidationMessage('请填写印刷包名称')
     return
   }
+  if (!generateForm.paperCode || generateForm.plannedCopies <= 0) {
+    showFormValidationMessage('请选择试卷用途并填写计划印数')
+    return
+  }
 
   generating.value = true
   try {
@@ -831,19 +1160,25 @@ async function handleGenerate() {
       examId: selectedExamId.value,
       packageNo: generateForm.packageNo.trim(),
       packageName: generateForm.packageName.trim(),
+      paperCode: generateForm.paperCode,
+      plannedCopies: generateForm.plannedCopies,
+      spoilageAllowanceCopies: generateForm.spoilageAllowanceCopies,
       sealRemark: generateForm.sealRemark?.trim() || undefined,
     })
     void message.success('印刷包生成成功')
     generateModalVisible.value = false
     pagination.pageNum = 1
-    await Promise.all([loadPackageList(), loadPrintPackagePanel()])
+    await Promise.all([
+      loadPackageList(examLoadGeneration),
+      loadPrintPackagePanel(examLoadGeneration),
+    ])
     await refreshSnapshot()
   } catch (error) {
     if (error instanceof Error && isLayoutNotReadyError(error)) {
-      showUserError(error, '请先完成制卷设计并生成可打印便携文档，再生成印刷包')
+      showUserError(error, '请先完成制卷设计并生成可打印 PDF，再生成印刷包')
       return
     }
-    showUserError(error, '印刷包生成失败，请确认考生名册已配置且制卷设计可打印便携文档已就绪')
+    showUserError(error, '印刷包生成失败，请确认制卷设计可打印 PDF 已就绪')
   } finally {
     generating.value = false
   }
@@ -851,148 +1186,176 @@ async function handleGenerate() {
 
 // ─── 下载印刷包 PDF ──────────────────────────────────────────────────
 
-async function downloadPackagePdf(pkg: ExamPrintPackageResponse) {
+async function downloadPrintMaterial(fileId: string, materialName: string) {
   try {
-    await downloadFile({ nodeId: pkg.packageFileId })
+    await downloadFile({ nodeId: fileId })
   } catch (error) {
-    showUserError(error, '印刷包文件下载失败')
+    showUserError(error, `${materialName}下载失败`)
   }
 }
 
 // ─── PDF 预览 ──────────────────────────────────────────────────────
 
 const previewModalOpen = ref(false)
-const previewLoading = ref(false)
-const previewPdfUrl = ref('')
+const previewPackageFileId = ref('')
+const packageLedgerOpen = ref(false)
+const packageLedger = ref<ExamPrintPackageResponse | null>(null)
 
-async function previewPackagePdf(pkg: ExamPrintPackageResponse) {
+const packageLedgerEvents = computed(() => {
+  const pkg = packageLedger.value
+  if (!pkg) return []
+  return [
+    { status: PrintPackageStatusCode.GENERATED, label: '生成', time: pkg.generatedTime },
+    { status: PrintPackageStatusCode.RELEASED_TO_PRINTER, label: '送印', time: pkg.releasedTime },
+    { status: PrintPackageStatusCode.PRINTED, label: '印毕', time: pkg.printedTime },
+    { status: PrintPackageStatusCode.SEALED, label: '密封', time: pkg.sealedTime },
+    { status: PrintPackageStatusCode.ISSUED_TO_EXAM_SITE, label: '交接考点', time: pkg.issuedTime },
+    { status: PrintPackageStatusCode.RECONCILED, label: '考后核销', time: pkg.reconciledTime },
+    { status: PrintPackageStatusCode.VOIDED, label: '作废', time: pkg.voidedTime },
+  ].filter((event): event is { status: PrintPackageStatusCode, label: string, time: string } => Boolean(event.time)).map(
+    (event) => ({ ...event, tone: statusTone(event.status) }),
+  )
+})
+
+function previewPackagePdf(pkg: ExamPrintPackageResponse): void {
+  previewPackageFileId.value = pkg.packageFileId
   previewModalOpen.value = true
-  previewLoading.value = true
-  previewPdfUrl.value = ''
-  try {
-    const buffer = await getFileArrayBuffer({ nodeId: pkg.packageFileId })
-    previewPdfUrl.value = URL.createObjectURL(new Blob([buffer], { type: 'application/pdf' }))
-  } catch (error) {
-    showUserError(error, '印刷包预览加载失败')
-  } finally {
-    previewLoading.value = false
-  }
 }
 
-// ─── 印刷包明细 ──────────────────────────────────────────────────────
-
-const detailModalVisible = ref(false)
-const detailLoading = ref(false)
-const detailPackage = ref<ExamPrintPackageResponse | null>(null)
-const detailItems = ref<PrintPackageItemVO[]>([])
-const detailPagination = reactive({ pageNum: 1, pageSize: 20, total: 0 })
+function openPackageLedger(pkg: ExamPrintPackageResponse): void {
+  packageLedger.value = pkg
+  packageLedgerOpen.value = true
+}
 
 function buildPackageActions(pkg: ExamPrintPackageResponse): UiTableRowActionItem[] {
+  const nextStatus = nextPrintStatus(pkg.status)
   return [
-    { key: 'detail', label: '查看明细' },
-    { key: 'preview', label: '预览', tone: 'primary', hidden: !pkg.packageFileId },
-    { key: 'download', label: '下载便携文档', hidden: !pkg.packageFileId },
+    { key: 'ledger', label: '查看印务台账' },
+    { key: 'preview', label: '预览母版', tone: 'primary', hidden: !pkg.packageFileId },
+    { key: 'download-package', label: '下载核对包', hidden: !pkg.packageFileId },
+    { key: 'download-question', label: '下载试题卷', hidden: !pkg.questionPaperFileId },
+    { key: 'download-answer', label: '下载答题纸', hidden: !pkg.answerBookletFileId },
+    {
+      key: 'advance',
+      label: nextStatus ? statusLabel(nextStatus) : '推进',
+      tone: 'primary',
+      hidden: !nextStatus || canManageOwnerPrintPackageWrites.value !== true,
+    },
+    { key: 'void', label: '作废', tone: 'danger', hidden: pkg.status === PrintPackageStatusCode.ISSUED_TO_EXAM_SITE
+      || pkg.status === PrintPackageStatusCode.RECONCILED || pkg.status === PrintPackageStatusCode.VOIDED
+      || canManageOwnerPrintPackageWrites.value !== true },
   ]
 }
 
 function handlePackageAction(key: string, pkg: ExamPrintPackageResponse): void {
   switch (key) {
-    case 'detail':
-      void viewDetail(pkg)
+    case 'ledger':
+      openPackageLedger(pkg)
       break
     case 'preview':
       void previewPackagePdf(pkg)
       break
-    case 'download':
-      void downloadPackagePdf(pkg)
+    case 'download-package':
+      void downloadPrintMaterial(pkg.packageFileId, '印刷核对包')
+      break
+    case 'download-question':
+      void downloadPrintMaterial(pkg.questionPaperFileId, '独立试题卷')
+      break
+    case 'download-answer':
+      if (pkg.answerBookletFileId) {
+        void downloadPrintMaterial(pkg.answerBookletFileId, '独立答题纸')
+      }
+      break
+    case 'advance': {
+      const target = nextPrintStatus(pkg.status)
+      if (target) openTransition(pkg, target)
+      break
+    }
+    case 'void':
+      openTransition(pkg, PrintPackageStatusCode.VOIDED)
       break
   }
 }
 
-async function viewDetail(pkg: ExamPrintPackageResponse) {
-  detailPackage.value = pkg
-  detailItems.value = []
-  detailPagination.pageNum = 1
-  detailModalVisible.value = true
-  await loadDetailItems()
-}
-
-async function loadDetailItems(): Promise<void> {
-  const pkg = detailPackage.value
-  if (!pkg) return
-  detailLoading.value = true
-  try {
-    const page = await pagePrintPackageItems({
-      examId: pkg.examId,
-      printPackageId: pkg.printPackageId,
-      pageNum: detailPagination.pageNum,
-      pageSize: detailPagination.pageSize,
-    })
-    detailItems.value = page.list
-    detailPagination.total = page.total
-    if (page.pageNum != null) {
-      detailPagination.pageNum = page.pageNum
-    }
-    if (page.pageSize != null) {
-      detailPagination.pageSize = page.pageSize
-    }
-  } catch (error) {
-    detailItems.value = []
-    detailPagination.total = 0
-    showUserError(error, '印刷包明细加载失败')
-  } finally {
-    detailLoading.value = false
-  }
-}
-
-function handleDetailPageChange(pageEvent: { current: number, pageSize: number }): void {
-  detailPagination.pageNum = pageEvent.current
-  detailPagination.pageSize = pageEvent.pageSize
-  void loadDetailItems()
-}
-
-const detailColumns: ColumnType[] = [
-  { title: '学号', dataIndex: 'studentNo', key: 'studentNo', width: 120, fixed: 'left' },
-  { title: '姓名', dataIndex: 'studentName', key: 'studentName', width: 100 },
-  { title: '考场', dataIndex: 'examRoom', key: 'examRoom', width: 120 },
-  { title: '座位号', dataIndex: 'seatNo', key: 'seatNo', width: 80 },
-  { title: '二维码', dataIndex: 'qrCode', key: 'qrCode', ellipsis: true },
-  { title: '条形码', dataIndex: 'barCode', key: 'barCode', ellipsis: true },
-  { title: '防伪码', dataIndex: 'securityCode', key: 'securityCode', width: 120 },
-  { title: '状态', key: 'status', width: 90 },
-]
-
 // ─── 初始化 ──────────────────────────────────────────────────────────
 
-async function loadExamDetailForPrep(examId: string): Promise<void> {
+function clearExamScopedState(): void {
+  examDetail.value = null
+  packageList.value = []
+  printPackagePanel.value = null
+  paperGovernance.value = null
+  pagination.pageNum = 1
+  pagination.total = 0
+  examDetailError.value = false
+  listLoadFailed.value = false
+  panelLoadFailed.value = false
+  governanceLoadFailed.value = false
+  generateModalVisible.value = false
+  previewModalOpen.value = false
+  previewPackageFileId.value = ''
+  packageLedgerOpen.value = false
+  packageLedger.value = null
+  checkingGovernance.value = false
+  submittingApproval.value = false
+  approvingGovernance.value = false
+  generating.value = false
+}
+
+async function loadExamDetailForPrep(
+  examId: string,
+  expectedGeneration = examLoadGeneration,
+): Promise<boolean> {
+  examDetailLoading.value = true
+  examDetailError.value = false
   try {
-    examDetail.value = await getExamDetail(examId)
+    const detail = await getExamDetail(examId)
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return false
+    }
+    examDetail.value = detail
+    return true
   } catch (error) {
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return false
+    }
     examDetail.value = null
+    examDetailError.value = true
     showUserError(error, '考试详情加载失败')
+    return false
+  } finally {
+    if (expectedGeneration === examLoadGeneration && selectedExamId.value === examId) {
+      examDetailLoading.value = false
+    }
   }
+}
+
+async function reloadPrintPackagePage(expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) {
+    return
+  }
+  const detailLoaded = await loadExamDetailForPrep(examId, expectedGeneration)
+  if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    return
+  }
+  if (!detailLoaded || !printPackageApplicable.value) {
+    return
+  }
+  await Promise.all([
+    loadPackageList(expectedGeneration),
+    loadPrintPackagePanel(expectedGeneration),
+    loadPaperGovernance(expectedGeneration),
+  ])
 }
 
 watch(
-  [selectedExamId, printPackageApplicable],
-  ([val, applicable]) => {
-    pagination.pageNum = 1
-    if (!val) {
-      examDetail.value = null
-      packageList.value = []
-      printPackagePanel.value = null
-      paperGovernance.value = null
-      pagination.total = 0
-      return
-    }
-    void loadExamDetailForPrep(val)
-    if (applicable) {
-      void Promise.all([loadPackageList(), loadPrintPackagePanel(), loadPaperGovernance()])
-    } else {
-      packageList.value = []
-      printPackagePanel.value = null
-      paperGovernance.value = null
-      pagination.total = 0
+  selectedExamId,
+  (val) => {
+    const generation = ++examLoadGeneration
+    clearExamScopedState()
+    examDetailLoading.value = Boolean(val)
+    if (val) {
+      void reloadPrintPackagePage(generation)
     }
   },
   { immediate: true },
@@ -1001,37 +1364,63 @@ watch(
 
 <style lang="scss" scoped>
 .print-package-page {
-  &__empty {
-    margin-top: var(--dp-space-3, 12px);
-  }
-
-  :deep(.ui-alert-strip) {
-    margin-bottom: var(--dp-space-4);
-  }
-
-  &__blocking-strip {
-    margin-bottom: var(--dp-space-4);
-  }
-
   &__flow-hint {
     font-size: var(--dp-font-size-xs);
-    color: var(--dp-text-tertiary);
+    color: var(--dp-text-muted);
     line-height: 1.5;
   }
 
-  &__scenario {
-    margin-bottom: var(--dp-space-4);
+  /* Modal 内表单段间距（非壳层 surface 子节点） */
+  &__generate-impact {
+    margin-bottom: var(--dp-space-component);
   }
 
-  &__list-card {
-    margin-top: 8px;
+  &__generate-impact-list {
+    margin: 0;
+    padding-left: 1.25em;
+    font-size: var(--dp-font-size-sm);
+    color: var(--dp-text-secondary);
+    line-height: 1.6;
   }
 
-  &__preview-frame {
-    min-height: 140px;
-    border: 1px solid var(--dp-border-subtle);
-    border-radius: var(--dp-radius-md);
-    overflow: hidden;
+  &__copy-ledger {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dp-space-1);
+    color: var(--dp-text-secondary);
+    font-size: var(--dp-font-size-xs);
+    line-height: 1.5;
+  }
+
+  &__ledger-events {
+    margin-top: var(--dp-space-block);
+
+    h3 {
+      margin: 0 0 var(--dp-space-component-tight);
+      font-size: var(--dp-font-size-sm);
+      font-weight: 600;
+      color: var(--dp-text-primary);
+    }
+
+    ol {
+      display: grid;
+      gap: var(--dp-space-component-tight);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    li {
+      display: grid;
+      grid-template-columns: 96px minmax(0, 1fr);
+      align-items: center;
+      gap: var(--dp-space-component);
+      min-height: 32px;
+      padding-bottom: var(--dp-space-component-tight);
+      border-bottom: 1px solid var(--dp-border-subtle);
+      color: var(--dp-text-secondary);
+      font-size: var(--dp-font-size-sm);
+    }
   }
 }
 </style>

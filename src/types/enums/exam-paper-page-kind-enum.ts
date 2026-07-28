@@ -13,7 +13,7 @@ export const ALL_EXAM_PAPER_PAGE_KIND_CODES: readonly ExamPaperPageKindCode[] = 
 
 export const ExamPaperPageKindDescription: Record<ExamPaperPageKindCode, string> = {
   [ExamPaperPageKindCode.EXAM_PAPER]: '试卷页',
-  [ExamPaperPageKindCode.ANSWER_SHEET]: '答题卡页',
+  [ExamPaperPageKindCode.ANSWER_SHEET]: '答题页',
   [ExamPaperPageKindCode.HYBRID]: '混合页',
 }
 

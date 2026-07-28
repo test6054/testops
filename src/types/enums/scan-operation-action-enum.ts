@@ -15,6 +15,7 @@ export enum ScanOperationActionCode {
   DISPATCH_FORCE_RELEASE = 'DISPATCH_FORCE_RELEASE',
   DISPATCH_DONE = 'DISPATCH_DONE',
   PHYSICAL_LOCATION_UPDATE = 'PHYSICAL_LOCATION_UPDATE',
+  OPS_DASHBOARD_QUERY = 'OPS_DASHBOARD_QUERY',
 }
 
 export const ALL_SCAN_OPERATION_ACTION_CODES: readonly ScanOperationActionCode[] = [
@@ -33,6 +34,7 @@ export const ALL_SCAN_OPERATION_ACTION_CODES: readonly ScanOperationActionCode[]
   ScanOperationActionCode.DISPATCH_FORCE_RELEASE,
   ScanOperationActionCode.DISPATCH_DONE,
   ScanOperationActionCode.PHYSICAL_LOCATION_UPDATE,
+  ScanOperationActionCode.OPS_DASHBOARD_QUERY,
 ]
 export const ScanOperationActionDescription: Record<ScanOperationActionCode, string> = {
   [ScanOperationActionCode.OPEN]: '开单',
@@ -50,6 +52,5 @@ export const ScanOperationActionDescription: Record<ScanOperationActionCode, str
   [ScanOperationActionCode.DISPATCH_FORCE_RELEASE]: '强制释放',
   [ScanOperationActionCode.DISPATCH_DONE]: '完成派单',
   [ScanOperationActionCode.PHYSICAL_LOCATION_UPDATE]: '柜位更新',
+  [ScanOperationActionCode.OPS_DASHBOARD_QUERY]: '查询运营看板',
 }
-
-

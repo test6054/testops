@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioEvaluationSceneCode } from '@/apis/portfolio/enums'
+import type {
+  PortfolioEvaluationModeCode,
+  PortfolioEvaluationSceneCode,
+} from '@/apis/portfolio/enums'
+import type { PortfolioExpertAssignmentReviewBundleVO } from '@/apis/portfolio/expert-assignment'
 import type {
   PortfolioEvaluationEntrySummaryItemVO,
   PortfolioEvaluationEntrySummaryVO,
@@ -12,7 +16,7 @@ import type {
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
   PORTFOLIO_EVALUATION_ENTRY_WRITABLE_STATUSES,
@@ -21,6 +25,8 @@ import {
   PortfolioEvaluationSceneDescription,
   PortfolioEvaluationTaskStatusEnum,
 } from '@/apis/portfolio/enums'
+import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import {
   portfolioEvaluationEntryApi,
   portfolioEvaluationTaskApi,
@@ -42,20 +48,33 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { useQueryTable } from '@/composables/useQueryTable'
-import { PortfolioEvaluationModeCode } from '@/types/enums/portfolio-evaluation-mode-enum'
 import {
+  PortfolioExpertAssignmentStatusCode,
+  PortfolioExpertAssignmentStatusDescription,
+} from '@/types/enums/portfolio-expert-assignment-status-enum'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
+import {
+  PortfolioMultiSourceEvaluatorTypeDescription,
   PortfolioMultiSourceEvaluatorTypeEnum,
   PortfolioMultiSourceEvaluatorTypeOptions,
 } from '@/types/enums/portfolio-multi-source-evaluator-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { loadAllPages } from '@/utils/load-all-pages'
 import { buildEmptyPageResult } from '@/utils/page-result'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { portfolioIdentityTypeDisplay } from '@/utils/portfolio-identity-type'
+import { portfolioLifecycleStatusDisplay } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const route = useRoute()
+const router = useRouter()
 const isExternalExpertFill = computed(() => route.name === 'PortfolioExpertEvaluationFill')
+const assignmentId = computed(() =>
+  typeof route.query.assignmentId === 'string' ? route.query.assignmentId.trim() : '',
+)
+const assignmentContext = ref<PortfolioExpertAssignmentReviewBundleVO | null>(null)
+const assignmentContextLoadError = ref(false)
+const assignmentContextRequestToken = ref(0)
 const activeTab = ref('fill')
 const fillTabItems = computed(() => {
   const items: Array<{ key: string, label: string }> = [{ key: 'fill', label: '在线填报' }]
@@ -67,7 +86,7 @@ const fillTabItems = computed(() => {
 const loading = ref(false)
 const saving = ref(false)
 const exporting = ref(false)
-const exportConfirmOpen = ref(false)
+const exportApplyOpen = ref(false)
 const exportPurpose = ref('')
 /** 任务列表 / 填报上下文 / 汇总 独立请求 token，防任务切换串写 */
 const tasksRequestToken = ref(0)
@@ -124,10 +143,18 @@ const fillSubjectTeacherId = computed(() => {
   const raw = fillForm.subjectTeacherUserId
   return raw != null && String(raw).trim() !== '' ? String(raw).trim() : undefined
 })
-const { lifecycleState, archiveWriteForbidden, archiveWriteBlockMessage, reloadLifecycleState }
-  = usePortfolioArchiveWriteGuard({ teacherId: fillSubjectTeacherId })
+const {
+  lifecycleState,
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  loadFailed: archiveWriteCapabilityUnknown,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard({ teacherId: fillSubjectTeacherId })
 /** 更正复核允许 hold 教师改结论；进行中评价仍 hard 拦参评 hold（PF-P0-264/265）。 */
 const evaluationParticipationForbidden = computed(() => {
+  if (archiveWriteCapabilityUnknown.value) {
+    return true
+  }
   const task = tasks.value.find((item) => item.id === selectedTaskId.value)
   if (task?.taskStatus === PortfolioEvaluationTaskStatusEnum.CORRECTION_REVIEW) {
     return false
@@ -140,11 +167,16 @@ const evaluationParticipationBlockMessage = computed(() => {
   if (!evaluationParticipationForbidden.value) {
     return ''
   }
+  if (archiveWriteCapabilityUnknown.value) {
+    return '教师生命周期状态未知，禁止作为被评对象写入评价。请重新确认教师状态后再操作。'
+  }
   if (archiveWriteForbidden.value) {
     return archiveWriteBlockMessage.value
   }
   const status
-    = lifecycleState.value?.lifecycleStatusLabel || lifecycleState.value?.lifecycleStatus || '非在职'
+    = lifecycleState.value?.lifecycleStatus
+      ? portfolioLifecycleStatusDisplay(lifecycleState.value.lifecycleStatus)
+      : '非在职'
   return `教师生命周期为「${status}」，禁止作为被评对象写入评价。`
 })
 const correctionHeldSubjectHint = computed(() => {
@@ -156,7 +188,9 @@ const correctionHeldSubjectHint = computed(() => {
     return ''
   }
   const status
-    = lifecycleState.value.lifecycleStatusLabel || lifecycleState.value.lifecycleStatus || '参评hold'
+    = lifecycleState.value?.lifecycleStatus
+      ? portfolioLifecycleStatusDisplay(lifecycleState.value.lifecycleStatus)
+      : '参评hold'
   return `当前为归档更正复核：被评教师生命周期「${status}」仍可按开放复核工单改结论（不套用进行中参评 hold）。`
 })
 function assertEvaluationParticipable(actionLabel?: string): boolean {
@@ -175,25 +209,36 @@ const isCorrectionReviewTask = computed(
 )
 /** 进行中评价：下拉排除参评 hold；更正复核：全量展示并标注 lifecycle。 */
 const participableSubjectTeacherOptions = computed(() => {
-  if (isCorrectionReviewTask.value) {
-    return subjectTeacherOptions.value
+  let pool = isCorrectionReviewTask.value
+    ? subjectTeacherOptions.value
+    : subjectTeacherOptions.value.filter((teacher) => !teacher.evaluationHeld)
+  if (isExternalExpertFill.value && assignmentContext.value) {
+    const allowedIds = new Set(
+      (assignmentContext.value.subjectTeachers ?? [])
+        .map((item) => item.teacherUserId)
+        .filter((id): id is string => Boolean(id)),
+    )
+    if (allowedIds.size > 0) {
+      pool = pool.filter((teacher) => allowedIds.has(teacher.teacherUserId))
+    }
   }
-  return subjectTeacherOptions.value.filter((teacher) => !teacher.evaluationHeld)
+  return pool
 })
 function subjectTeacherOptionLabel(teacher: PortfolioEvaluationSubjectTeacherOptionVO): string {
   const base = formatPortfolioTeacherDisplay(teacher.fullName, teacher.teacherNumber)
   const layers = teacher.ownerIdentityLayers ?? []
   const layerText = layers
-    .map((layer) => layer.identityTypeLabel || layer.displayName || layer.identityType)
-    .filter(Boolean)
+    .map((layer) => portfolioIdentityTypeDisplay(layer.identityType))
     .join('/')
   if (teacher.evaluationHeld) {
-    const status = teacher.lifecycleStatusLabel || teacher.lifecycleStatus || '参评hold'
+    const status = teacher.lifecycleStatus
+      ? portfolioLifecycleStatusDisplay(teacher.lifecycleStatus)
+      : '参评hold'
     return layerText ? `${base}（${layerText} · ${status}）` : `${base}（${status}）`
   }
   return layerText ? `${base}（${layerText}）` : base
 }
-const isByIndicator = computed(() => selectedTask.value?.evaluationMode === PortfolioEvaluationModeCode.BY_INDICATOR)
+const isByIndicator = computed(() => selectedTask.value?.evaluationMode === 'BY_INDICATOR')
 const entryWritableStatuses = computed(() =>
   isExternalExpertFill.value
     ? PORTFOLIO_EVALUATION_EXTERNAL_EXPERT_ENTRY_WRITABLE_STATUSES
@@ -201,6 +246,32 @@ const entryWritableStatuses = computed(() =>
 )
 
 const fillWindowBlockedReason = computed(() => {
+  if (isExternalExpertFill.value && assignmentId.value) {
+    if (assignmentContextLoadError.value) {
+      return '授权上下文加载失败，暂不可填报；请返回专家工作台后重新进入'
+    }
+    if (!assignmentContext.value) {
+      return '授权上下文未就绪，暂不可填报'
+    }
+    if (assignmentContext.value.assignmentStatus !== PortfolioExpertAssignmentStatusCode.ACTIVE) {
+      const statusLabel = strictEnumLabel(
+        PortfolioExpertAssignmentStatusDescription,
+        assignmentContext.value.assignmentStatus,
+        '专家授权状态',
+      )
+      return `当前授权不可填报（${statusLabel}）`
+    }
+    if (assignmentContext.value.readOnly) {
+      return '当前授权为只读审阅，不可填报'
+    }
+    if (
+      selectedTaskId.value
+      && assignmentContext.value.evaluationTaskId
+      && selectedTaskId.value !== assignmentContext.value.evaluationTaskId
+    ) {
+      return '填报任务与授权任务不一致，已冻结写入'
+    }
+  }
   const task = selectedTask.value
   if (!task) {
     return ''
@@ -233,6 +304,23 @@ const fillWindowBlockedReason = computed(() => {
 })
 const canSaveEntry = computed(() => !fillWindowBlockedReason.value)
 
+const assignmentContextDescription = computed(() => {
+  const ctx = assignmentContext.value
+  if (!ctx) {
+    return ''
+  }
+  const statusLabel = strictEnumLabel(
+    PortfolioExpertAssignmentStatusDescription,
+    ctx.assignmentStatus,
+    '专家授权状态',
+  )
+  const teacherCount = ctx.subjectTeachers?.length ?? 0
+  const categoryCount = ctx.materialScope?.categoryCodes?.length ?? 0
+  const maskLabel = ctx.maskRequired ? '强制脱敏' : '不强制脱敏'
+  const taskLabel = ctx.evaluationTaskName || `评价任务#${ctx.evaluationTaskId}`
+  return `${taskLabel} · 授权 ${ctx.assignmentId} · 被评 ${teacherCount} 人 · 分类 ${categoryCount} · ${maskLabel} · ${statusLabel} · 截止 ${ctx.expireTime || '—'}`
+})
+
 const taskSummaryItems = computed<UiStatPanelItem[]>(() => {
   if (!summary.value) {
     return []
@@ -260,8 +348,8 @@ const entryColumns: ColumnsType<PortfolioEvaluationEntryVO> = [
   { title: '得分', dataIndex: 'score', key: 'score', width: 72 },
   {
     title: '来源',
-    dataIndex: 'evaluatorSourceTypeLabel',
-    key: 'evaluatorSourceTypeLabel',
+    dataIndex: 'evaluatorSourceType',
+    key: 'evaluatorSourceType',
     width: 110,
   },
   { title: '评语', dataIndex: 'commentText', key: 'commentText' },
@@ -275,7 +363,7 @@ const summaryColumns = computed<ColumnsType<PortfolioEvaluationEntrySummaryItemV
     { title: '加权分', dataIndex: 'weightedScore', key: 'weightedScore', width: 88 },
     { title: '学生样本', dataIndex: 'studentSampleSize', key: 'studentSampleSize', width: 88 },
   ]
-  if (summary.value?.evaluationMode === PortfolioEvaluationModeCode.BY_INDICATOR) {
+  if (summary.value?.evaluationMode === 'BY_INDICATOR') {
     return [
       { title: '指标编码', dataIndex: 'indicatorCode', key: 'indicatorCode' },
       ...metricColumns,
@@ -361,6 +449,43 @@ async function loadTasks() {
     if (currentToken === tasksRequestToken.value) {
       loading.value = false
     }
+  }
+}
+
+/** 外部专家填报：按 assignmentId 固定授权上下文，失效即冻结写入 */
+async function loadAssignmentContext() {
+  if (!isExternalExpertFill.value || !assignmentId.value) {
+    assignmentContext.value = null
+    assignmentContextLoadError.value = false
+    return
+  }
+  const currentToken = ++assignmentContextRequestToken.value
+  const boundAssignmentId = assignmentId.value
+  assignmentContextLoadError.value = false
+  try {
+    const bundle = await portfolioExpertAssignmentApi.reviewBundle({
+      assignmentId: boundAssignmentId,
+    })
+    if (
+      currentToken !== assignmentContextRequestToken.value
+      || assignmentId.value !== boundAssignmentId
+    ) {
+      return
+    }
+    assignmentContext.value = bundle
+    if (bundle.evaluationTaskId) {
+      selectedTaskId.value = bundle.evaluationTaskId
+    }
+  } catch (error) {
+    if (
+      currentToken !== assignmentContextRequestToken.value
+      || assignmentId.value !== boundAssignmentId
+    ) {
+      return
+    }
+    assignmentContextLoadError.value = true
+    assignmentContext.value = null
+    showUserError(error, '加载专家授权上下文失败')
   }
 }
 
@@ -459,6 +584,8 @@ async function saveEntry(): Promise<void> {
     showFormValidationMessage('以指标为主模式须选择指标')
     return
   }
+  // 首行冻结：先锁 UI，再固化写上下文；预检与写入全程只用快照
+  saving.value = true
   const context = {
     evaluationTaskId: selectedTaskId.value,
     subjectTeacherUserId,
@@ -467,16 +594,19 @@ async function saveEntry(): Promise<void> {
     commentText: fillForm.commentText.trim() || undefined,
     evaluatorSourceType: fillForm.evaluatorSourceType,
   }
-  saving.value = true
   try {
     await reloadLifecycleState()
     const currentIndicatorCode = isByIndicator.value ? fillForm.indicatorCode.trim() : undefined
+    const currentComment = fillForm.commentText.trim() || undefined
     if (
       selectedTaskId.value !== context.evaluationTaskId
       || fillForm.subjectTeacherUserId.trim() !== context.subjectTeacherUserId
       || currentIndicatorCode !== context.indicatorCode
+      || fillForm.score !== context.score
+      || currentComment !== context.commentText
+      || fillForm.evaluatorSourceType !== context.evaluatorSourceType
     ) {
-      showFormValidationMessage('填报目标已变化，请重新确认后保存')
+      showFormValidationMessage('填报目标或评分内容已变化，请重新确认后保存')
       return
     }
     if (!assertEvaluationParticipable('评价填报')) {
@@ -486,7 +616,11 @@ async function saveEntry(): Promise<void> {
     void message.success('评价已保存')
     fillForm.score = undefined
     fillForm.commentText = ''
-    await Promise.all([loadEntries(), loadSummary()])
+    try {
+      await Promise.all([loadEntries(), loadSummary()])
+    } catch (error) {
+      showUserError(error, '评价已保存，列表同步失败')
+    }
   } catch (error) {
     showUserError(error, '保存评价填报失败')
   } finally {
@@ -494,38 +628,46 @@ async function saveEntry(): Promise<void> {
   }
 }
 
-function openExportConfirm() {
+function openSummaryExportApply() {
   if (exporting.value || saving.value) {
-    return
-  }
-  exportPurpose.value = ''
-  exportConfirmOpen.value = true
-}
-
-async function exportSummaryCsv() {
-  if (exporting.value || saving.value) {
-    return
-  }
-  const purpose = exportPurpose.value.trim()
-  if (!purpose) {
-    showFormValidationMessage('请填写导出用途')
     return
   }
   if (!selectedTaskId.value) {
     showFormValidationMessage('请选择可填报任务')
     return
   }
+  exportPurpose.value = ''
+  exportApplyOpen.value = true
+}
+
+async function submitSummaryExportApply() {
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return Promise.reject(new Error('导出用途为空'))
+  }
+  if (!selectedTaskId.value) {
+    showFormValidationMessage('请选择可填报任务')
+    return Promise.reject(new Error('任务为空'))
+  }
+  if (exporting.value || saving.value) {
+    return Promise.reject(new Error('导出申请进行中'))
+  }
   exporting.value = true
   try {
-    const result = await portfolioEvaluationEntryApi.exportSummary({
-      id: selectedTaskId.value,
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.EVALUATION_SUMMARY,
+      businessRef: {
+        evaluationTaskId: selectedTaskId.value,
+      },
       exportPurpose: purpose,
     })
-    await downloadPortfolioExcelExport(result)
-    exportConfirmOpen.value = false
-    void message.success('汇总已导出')
+    exportApplyOpen.value = false
+    void message.success('已提交评价填报汇总导出审批')
+    await router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出评价汇总失败')
+    showUserError(error, '提交评价填报汇总导出审批失败')
+    return Promise.reject(error)
   } finally {
     exporting.value = false
   }
@@ -562,7 +704,20 @@ watch(activeTab, (tab) => {
 })
 
 onMounted(async () => {
+  await loadAssignmentContext()
   await loadTasks()
+  if (selectedTaskId.value) {
+    await loadFillContext()
+    await loadSummary()
+    await loadEntries()
+  }
+})
+
+watch(assignmentId, async (next, prev) => {
+  if (next === prev) {
+    return
+  }
+  await loadAssignmentContext()
   if (selectedTaskId.value) {
     await loadFillContext()
     await loadSummary()
@@ -574,15 +729,48 @@ onMounted(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="多元评价填报" />
+      <ContextBar
+        show-title
+        layout="workbench"
+        :title="isExternalExpertFill ? '外部专家评价填报' : '多元评价填报'"
+      />
     </template>
+
+    <UiAlertStrip
+      v-if="isExternalExpertFill && assignmentId && assignmentContextLoadError"
+      tone="error"
+      title="授权上下文加载失败"
+      description="无法确认本次授权覆盖对象；已冻结填报。请返回专家工作台重新进入。"
+    />
+    <UiAlertStrip
+      v-else-if="isExternalExpertFill && assignmentId && assignmentContext"
+      :tone="
+        assignmentContext.assignmentStatus === PortfolioExpertAssignmentStatusCode.ACTIVE
+          ? 'info'
+          : 'warning'
+      "
+      title="本次授权上下文"
+      :description="assignmentContextDescription"
+    />
+    <UiAlertStrip
+      v-else-if="isExternalExpertFill && !assignmentId"
+      tone="warning"
+      title="缺少授权上下文"
+      description="未携带 assignmentId，无法固定本次授权范围；请从专家工作台进入填报。"
+    />
 
     <UiAlertStrip
       v-if="evaluationParticipationForbidden"
       tone="warning"
-      title="被评教师不可参评"
+      :title="archiveWriteCapabilityUnknown ? '教师状态未知 · 写操作已阻断' : '被评教师不可参评'"
       :description="evaluationParticipationBlockMessage"
-    />
+    >
+      <template v-if="archiveWriteCapabilityUnknown" #actions>
+        <UiButton size="sm" variant="outline" @click="() => void reloadLifecycleState()">
+          重新确认教师状态
+        </UiButton>
+      </template>
+    </UiAlertStrip>
     <UiAlertStrip
       v-else-if="correctionHeldSubjectHint"
       tone="info"
@@ -597,7 +785,7 @@ onMounted(async () => {
           placeholder="选择已发布任务"
           style="width: 280px"
           size="sm"
-          :disabled="saving"
+          :disabled="saving || (isExternalExpertFill && !!assignmentId)"
           :loading="loading"
           :options="
             selectableTasks.map((task) => ({
@@ -617,7 +805,7 @@ onMounted(async () => {
         :columns="3"
         variant="grid"
         compact
-        style="margin-bottom: 16px"
+        style="margin-bottom: var(--dp-space-block)"
       />
       <UiSectionTabs v-model="activeTab" :items="fillTabItems" compact divided />
       <template v-if="activeTab === 'fill'">
@@ -700,12 +888,23 @@ onMounted(async () => {
           :load-error="entryLoadError"
           :total="entryPageTotal"
           row-key="id"
-          style="margin-top: 16px"
+          style="margin-top: var(--dp-space-block)"
           @page-change="handleEntryPageChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'subjectTeacherUserId'">
               {{ subjectTeacherLabel(record.subjectTeacherUserId) }}
+            </template>
+            <template v-else-if="column.key === 'evaluatorSourceType'">
+              {{
+                record.evaluatorSourceType
+                  ? strictEnumLabel(
+                    PortfolioMultiSourceEvaluatorTypeDescription,
+                    record.evaluatorSourceType,
+                    '评价来源类型',
+                  )
+                  : '—'
+              }}
             </template>
           </template>
         </UiDataTable>
@@ -716,8 +915,8 @@ onMounted(async () => {
           <span>平均分 {{ summary.averageScore }}</span>
           <span>模式 {{ evaluationModeLabel(summary.evaluationMode) }}</span>
           <span>场景 {{ evaluationSceneLabel(summary.sceneCode) }}</span>
-          <UiButton size="sm" variant="primary" :loading="exporting" @click="openExportConfirm">
-            导出表格文件
+          <UiButton size="sm" variant="primary" :loading="exporting" @click="openSummaryExportApply">
+            申请导出汇总
           </UiButton>
         </div>
         <UiDataTable
@@ -738,24 +937,22 @@ onMounted(async () => {
         </UiDataTable>
       </template>
     </UiCard>
+    <UiDialog
+      v-model:open="exportApplyOpen"
+      title="申请导出评价填报汇总"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="submitSummaryExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="exportPurpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
-  <UiDialog
-    v-model:open="exportConfirmOpen"
-    title="导出评价汇总"
-    ok-text="确认导出"
-    cancel-text="取消"
-    :confirm-loading="exporting"
-    @ok="exportSummaryCsv"
-  >
-    <label class="export-purpose__label">导出用途（必填）</label>
-    <UiTextarea
-      v-model="exportPurpose"
-      size="sm"
-      :rows="3"
-      placeholder="请填写本次导出用途（写入审计）"
-      :disabled="exporting"
-    />
-  </UiDialog>
 </template>
 
 <style scoped>
@@ -763,24 +960,19 @@ onMounted(async () => {
 .form-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-block);
 }
 .summary-meta {
   display: flex;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
   font-size: var(--dp-font-size-md);
 }
 .fill-window-hint {
   color: var(--dp-text-muted);
   font-size: var(--dp-font-size-md);
-}
-.export-purpose__label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
 }
 </style>

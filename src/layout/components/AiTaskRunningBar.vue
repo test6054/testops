@@ -74,8 +74,8 @@ onBeforeUnmount(() => {
 .ai-task-running-bar {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
-  padding: 6px var(--dp-space-3, 12px);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   background: var(--dp-blue-50, var(--dp-color-primary-bg));
   border-bottom: 1px solid var(--dp-blue-200, var(--dp-color-primary-border));
   color: var(--dp-blue-600, var(--dp-color-primary));

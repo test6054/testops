@@ -1,5 +1,6 @@
 import type {
   AchievementAuditStatusCode,
+  AchievementStaleSourceTypeCode,
   AchievementStatusCode,
   AchievementTargetTypeCode,
   AggregationFunctionCode,
@@ -49,7 +50,7 @@ export interface AchievementResultVO {
   staleFlag?: boolean
   staleReason?: string
   staleTime?: string
-  staleSourceType?: string
+  staleSourceType?: AchievementStaleSourceTypeCode
   staleSourceId?: string
   calculatedTime?: string
   createTime?: string

@@ -10,6 +10,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   accreditationApi,
+  AccreditationCyclePhaseCode,
   ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES,
   ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS,
   ANNUAL_REPORT_MATERIAL_STATUS_TONE,
@@ -20,6 +21,7 @@ import {
 } from '@/apis/quality/accreditation'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { CourseSelector } from '@/components/quality/selectors'
+import { loadSelectorFirstPage } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -36,6 +38,7 @@ import {
   canMutateAnnualReportMaterial,
 } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -43,8 +46,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 const props = defineProps<{
   programId: string
   trainingPlanId: string
-  activeCycle?: AccreditationCycleVO
-  activeCycleId?: string
+  maintenanceCycle?: AccreditationCycleVO
+  maintenanceCycleId?: string
 }>()
 
 const emit = defineEmits<{ refresh: [] }>()
@@ -70,6 +73,8 @@ const columns: ColumnsType<AnnualReportMaterialVO> = [
 ]
 
 const loading = ref(false)
+const cycleLoading = ref(false)
+const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const saving = ref(false)
 const reviewSaving = ref(false)
 const materials = ref<AnnualReportMaterialVO[]>([])
@@ -78,6 +83,16 @@ const materialDrawerOpen = ref(false)
 const reviewDrawerOpen = ref(false)
 const materialDrawerTitle = ref('年度报备材料')
 const reviewDrawerTitle = ref('审核年度报备材料')
+const materialCycles = ref<AccreditationCycleVO[]>([])
+const selectedCycleId = ref('')
+
+const selectedCycle = computed(() => materialCycles.value.find(cycle => cycle.id === selectedCycleId.value))
+const cycleOptions = computed(() => materialCycles.value.map(cycle => ({
+  value: cycle.id,
+  label: cycle.id === props.maintenanceCycleId
+    ? `有效保持 · ${cycle.cycleName}`
+    : `历史保持 · ${cycle.cycleName}`,
+})))
 
 const query = reactive<{
   pageNum: number
@@ -115,9 +130,30 @@ const reviewForm = reactive<{
   reviewComment: '',
 })
 
-const annualMaterialPhaseHint = computed(() => annualReportMaterialPhaseHint(props.activeCycle))
+const annualMaterialPhaseHint = computed(() => annualReportMaterialPhaseHint(props.maintenanceCycle))
 
-const canMutateMaterial = computed(() => canMutateAnnualReportMaterial(props.activeCycle))
+const canMutateMaterial = computed(() =>
+  selectedCycleId.value === props.maintenanceCycleId
+  && canMutateAnnualReportMaterial(props.maintenanceCycle),
+)
+
+const hasMaterialFilters = computed(() => !!(
+  query.reportYear.trim()
+  || query.materialCategory
+  || query.reportStatus
+  || query.keyword.trim()
+))
+
+const emptyDescription = computed(() => {
+  if (cycleLoading.value) return '正在加载认证状态保持周期'
+  if (materialCycles.value.length === 0) {
+    return '尚无认证状态保持周期；年度报备仅适用于通过或有条件通过后的状态保持阶段'
+  }
+  if (!selectedCycle.value) return '请选择认证状态保持周期查看年度报备材料'
+  if (hasMaterialFilters.value) return '所选认证周期内没有符合筛选条件的年度报备材料'
+  if (!canMutateMaterial.value) return '所选历史认证周期暂无年度报备材料'
+  return '暂无年度报备材料，请上传持续改进、达成度和支撑条件等原始材料'
+})
 
 function canEdit(record: AnnualReportMaterialVO) {
   return (
@@ -135,8 +171,17 @@ function canSubmit(record: AnnualReportMaterialVO) {
   )
 }
 
-function canReview(record: AnnualReportMaterialVO) {
+function canApprove(record: AnnualReportMaterialVO) {
   return canMutateMaterial.value && record.reportStatus === AnnualReportMaterialStatusCode.SUBMITTED
+}
+
+function canReject(record: AnnualReportMaterialVO) {
+  return !!selectedCycle.value && record.reportStatus === AnnualReportMaterialStatusCode.SUBMITTED
+}
+
+function canDelete(record: AnnualReportMaterialVO) {
+  return record.reportStatus === AnnualReportMaterialStatusCode.DRAFT
+    || record.reportStatus === AnnualReportMaterialStatusCode.REJECTED
 }
 
 function isCourseEvaluationMaterial(category?: AnnualReportMaterialCategoryCode) {
@@ -154,15 +199,17 @@ function formatQualityCourse(record: AnnualReportMaterialVO) {
 }
 
 async function loadMaterials() {
-  if (!props.trainingPlanId) {
+  if (!props.trainingPlanId || !selectedCycleId.value) {
     materials.value = []
     total.value = 0
+    okLoad()
     return
   }
   loading.value = true
+  beginLoad()
   try {
     const page = await accreditationApi.annualReportMaterialPage({
-      accreditationCycleId: props.activeCycleId || undefined,
+      accreditationCycleId: selectedCycleId.value,
       trainingPlanId: props.trainingPlanId,
       reportYear: query.reportYear || undefined,
       materialCategory: query.materialCategory || undefined,
@@ -175,14 +222,46 @@ async function loadMaterials() {
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
+    okLoad()
     if (materials.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadMaterials()
     }
   } catch (e) {
+    materials.value = []
+    total.value = 0
+    failLoad()
     showUserError(e, '年度报备材料加载失败')
   } finally {
     loading.value = false
+  }
+}
+
+async function loadMaterialCycles() {
+  if (!props.trainingPlanId) {
+    materialCycles.value = []
+    selectedCycleId.value = ''
+    return
+  }
+  cycleLoading.value = true
+  try {
+    const cycles = await loadSelectorFirstPage((pageNum, pageSize) => accreditationApi.cyclePage({
+      trainingPlanId: props.trainingPlanId,
+      pageNum,
+      pageSize,
+    }))
+    materialCycles.value = cycles.filter(cycle => cycle.currentPhase === AccreditationCyclePhaseCode.MAINTENANCE)
+    if (!materialCycles.value.some(cycle => cycle.id === selectedCycleId.value)) {
+      selectedCycleId.value = materialCycles.value.some(cycle => cycle.id === props.maintenanceCycleId)
+        ? props.maintenanceCycleId || ''
+        : ''
+    }
+  } catch (e) {
+    materialCycles.value = []
+    selectedCycleId.value = ''
+    showUserError(e, '认证状态保持周期加载失败')
+  } finally {
+    cycleLoading.value = false
   }
 }
 
@@ -199,9 +278,9 @@ function resetForm(accreditationCycleId: string) {
 }
 
 function openCreate() {
-  const accreditationCycleId = props.activeCycleId
+  const accreditationCycleId = props.maintenanceCycleId
   if (!accreditationCycleId) {
-    void message.error('请先创建认证周期')
+    void message.error('当前无有效认证状态保持周期')
     return
   }
   if (!canMutateMaterial.value) {
@@ -240,8 +319,8 @@ watch(materialFileName, (name) => {
 })
 
 async function submitMaterial() {
-  if (!props.activeCycleId && !form.id) {
-    void message.error('请先创建认证周期')
+  if (!props.maintenanceCycleId && !form.id) {
+    void message.error('当前无有效认证状态保持周期')
     return
   }
   if (!canMutateMaterial.value) {
@@ -316,8 +395,12 @@ async function submitForReview(record: AnnualReportMaterialVO) {
 }
 
 function openReview(record: AnnualReportMaterialVO, status: AnnualReportMaterialStatusCode) {
-  if (!canReview(record)) {
-    void message.error('仅已提交材料可审核')
+  if (status === AnnualReportMaterialStatusCode.APPROVED && !canApprove(record)) {
+    void message.error('仅当前有效保持周期内的已提交材料可审核通过')
+    return
+  }
+  if (status === AnnualReportMaterialStatusCode.REJECTED && !canReject(record)) {
+    void message.error('仅已提交材料可退回')
     return
   }
   reviewDrawerTitle.value
@@ -331,8 +414,12 @@ function openReview(record: AnnualReportMaterialVO, status: AnnualReportMaterial
 }
 
 async function submitReview() {
-  if (!canMutateMaterial.value) {
+  if (reviewForm.reviewStatus === AnnualReportMaterialStatusCode.APPROVED && !canMutateMaterial.value) {
     void message.error(annualMaterialPhaseHint.value || '当前不可审核年度报备材料')
+    return
+  }
+  if (reviewForm.reviewStatus === AnnualReportMaterialStatusCode.REJECTED && !selectedCycle.value) {
+    void message.error('请先选择材料所属认证周期')
     return
   }
   if (!reviewForm.id) {
@@ -369,7 +456,7 @@ async function submitReview() {
 }
 
 async function removeMaterial(record: AnnualReportMaterialVO) {
-  if (!canEdit(record)) {
+  if (!canDelete(record)) {
     void message.error('仅草稿或退回材料可删除')
     return
   }
@@ -422,7 +509,20 @@ function handlePageChange(pageEvent: { current: number, pageSize: number }) {
   loadMaterials()
 }
 
-watch(() => [props.trainingPlanId, props.activeCycleId], loadMaterials, { immediate: true })
+watch(
+  () => [props.trainingPlanId, props.maintenanceCycleId],
+  async () => {
+    const previousCycleId = selectedCycleId.value
+    await loadMaterialCycles()
+    if (previousCycleId === selectedCycleId.value) await loadMaterials()
+  },
+  { immediate: true },
+)
+
+watch(selectedCycleId, () => {
+  query.pageNum = 1
+  void loadMaterials()
+})
 
 watch(
   () => form.materialCategory,
@@ -439,11 +539,20 @@ defineExpose({ loadMaterials, openCreate })
 <template>
   <div class="annual-report-material-panel">
     <div class="material-toolbar">
+      <UiSelect
+        v-model="selectedCycleId"
+        class="cycle-select"
+        :loading="cycleLoading"
+        :options="cycleOptions"
+        placeholder="选择认证状态保持周期"
+        size="sm"
+      />
       <UiInput
         size="sm"
         v-model="query.keyword"
         class="toolbar-input"
         clearable
+        :disabled="!selectedCycleId"
         placeholder="搜索材料名称或说明"
         @press-enter="searchMaterials"
       />
@@ -452,6 +561,7 @@ defineExpose({ loadMaterials, openCreate })
         v-model="query.reportYear"
         class="year-input"
         clearable
+        :disabled="!selectedCycleId"
         placeholder="年度"
         @press-enter="searchMaterials"
       />
@@ -459,6 +569,7 @@ defineExpose({ loadMaterials, openCreate })
         v-model="query.materialCategory"
         class="category-select"
         allow-clear
+        :disabled="!selectedCycleId"
         placeholder="材料类别"
         size="sm"
         :options="ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS"
@@ -467,12 +578,13 @@ defineExpose({ loadMaterials, openCreate })
         v-model="query.reportStatus"
         class="status-select"
         allow-clear
+        :disabled="!selectedCycleId"
         placeholder="状态"
         size="sm"
         :options="MATERIAL_STATUS_OPTIONS"
       />
-      <UiButton size="sm" variant="outline" @click="searchMaterials">查询</UiButton>
-      <UiButton size="sm" variant="ghost" @click="resetFilters">重置</UiButton>
+      <UiButton size="sm" variant="outline" :disabled="!selectedCycleId" @click="searchMaterials">查询</UiButton>
+      <UiButton size="sm" variant="ghost" :disabled="!selectedCycleId" @click="resetFilters">重置</UiButton>
       <UiButton size="sm" variant="primary" :disabled="!canMutateMaterial" @click="openCreate">
         新增材料
       </UiButton>
@@ -484,13 +596,14 @@ defineExpose({ loadMaterials, openCreate })
       :columns="columns"
       :data-source="materials"
       :loading="loading"
+      :load-error="loadError"
       :total="total"
       row-key="id"
       @page-change="handlePageChange"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'qualityCourseId'">
-          <span :class="{ muted: !record.qualityCourseId }">{{ formatQualityCourse(record) }}</span>
+          <span :class="{ 'dp-text-muted-xs': !record.qualityCourseId }">{{ formatQualityCourse(record) }}</span>
         </template>
         <template v-else-if="column.key === 'materialCategory'">
           {{
@@ -532,9 +645,9 @@ defineExpose({ loadMaterials, openCreate })
               { key: 'download', label: '下载', disabled: !record.storageFileId },
               { key: 'edit', label: '编辑', hidden: !canEdit(record) },
               { key: 'submit', label: '提交', hidden: !canSubmit(record) },
-              { key: 'approve', label: '通过', hidden: !canReview(record) },
-              { key: 'reject', label: '退回', tone: 'danger', hidden: !canReview(record) },
-              { key: 'delete', label: '删除', tone: 'danger', hidden: !canEdit(record) },
+              { key: 'approve', label: '通过', hidden: !canApprove(record) },
+              { key: 'reject', label: '退回', tone: 'danger', hidden: !canReject(record) },
+              { key: 'delete', label: '删除', tone: 'danger', hidden: !canDelete(record) },
             ]"
             split
             @action="(key) => handleMaterialRowAction(key, record)"
@@ -542,10 +655,7 @@ defineExpose({ loadMaterials, openCreate })
         </template>
       </template>
       <template #empty>
-        <UiEmpty
-          size="sm"
-          description="暂无年度报备材料，请上传持续改进、达成度和支撑条件等原始材料"
-        />
+        <UiEmpty size="sm" :description="emptyDescription" />
       </template>
     </UiDataTable>
 
@@ -580,7 +690,7 @@ defineExpose({ loadMaterials, openCreate })
           :required="isCourseEvaluationMaterial(form.materialCategory)"
           :extra="
             isCourseEvaluationMaterial(form.materialCategory)
-              ? '用于证明认证周期内课程目标达成评价材料覆盖全部启用课程'
+              ? '按报备年度正式评价计划证明课程目标达成材料覆盖；历史停开课程仍保留在原年度范围内'
               : '仅课程评价与达成度材料需要关联课程'
           "
         >
@@ -588,11 +698,12 @@ defineExpose({ loadMaterials, openCreate })
             v-model:value="form.qualityCourseId"
             :training-plan-id="trainingPlanId"
             :program-id="programId"
+            :only-enabled="false"
             :allow-clear="!isCourseEvaluationMaterial(form.materialCategory)"
             :disabled="!isCourseEvaluationMaterial(form.materialCategory) || !!form.id"
             :placeholder="
               isCourseEvaluationMaterial(form.materialCategory)
-                ? '请选择本周期内启用的质量评价课程'
+                ? '请选择对应年度正式评价计划中的课程'
                 : '当前材料类别无需关联课程'
             "
           />
@@ -630,7 +741,7 @@ defineExpose({ loadMaterials, openCreate })
             v-model="reviewForm.reviewStatus"
             size="sm"
             :options="[
-              { value: 'APPROVED', label: '通过' },
+              ...(canMutateMaterial ? [{ value: 'APPROVED', label: '通过' }] : []),
               { value: 'REJECTED', label: '退回' },
             ]"
           />
@@ -655,18 +766,22 @@ defineExpose({ loadMaterials, openCreate })
 .annual-report-material-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 .material-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
 }
 
 .toolbar-input {
   width: 240px;
+}
+
+.cycle-select {
+  width: 260px;
 }
 
 .year-input,
@@ -678,13 +793,9 @@ defineExpose({ loadMaterials, openCreate })
   width: 190px;
 }
 
-.muted,
 .file-hint {
-  color: var(--dp-text-tertiary);
+  margin: var(--dp-space-component-tight) 0 0;
   font-size: var(--dp-font-size-xs);
-}
-
-.file-hint {
-  margin: 8px 0 0;
+  color: var(--dp-text-muted);
 }
 </style>

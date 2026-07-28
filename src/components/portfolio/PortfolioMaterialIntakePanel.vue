@@ -2,11 +2,25 @@
   <div class="portfolio-intake-panel">
     <SignalBand v-if="signalMetrics.length" :metrics="signalMetrics" variant="inline" compact />
     <UiAlertStrip
-      v-if="archiveWriteForbidden"
-      tone="warning"
-      title="档案已封存写禁"
-      :description="archiveWriteBlockMessage"
+      v-if="intakeContextSummary"
+      tone="info"
+      title="当前采集对象"
+      :description="intakeContextSummary"
       class="portfolio-intake-panel__write-ban"
+    />
+    <UiAlertStrip
+      v-if="statusLoadFailed"
+      tone="error"
+      title="采集状态加载失败"
+      class="portfolio-intake-panel__write-ban"
+    />
+    <PortfolioArchiveWriteGuardStrip
+      :blocked="archiveWriteForbidden"
+      :capability-unknown="archiveWriteCapabilityUnknown"
+      :message="archiveWriteBlockMessage"
+      :loading="archiveWriteGuardLoading"
+      class="portfolio-intake-panel__write-ban"
+      @confirm="() => void reloadLifecycleState()"
     />
 
     <section class="portfolio-intake-panel__section">
@@ -149,22 +163,10 @@
             {{ field.fieldLabel }}
             <UiTag v-if="field.required" tone="orange" size="sm">必填</UiTag>
           </div>
-          <UiSelect
-            size="sm"
-            v-if="field.fieldType === 'SEMESTER'"
+          <PortfolioArchiveFieldControl
             v-model="fieldValues[field.fieldCode]"
+            :field="field"
             :disabled="readOnly"
-            :options="SemesterOptions"
-            allow-clear
-            placeholder="请选择学期"
-            class="portfolio-intake-panel__field-control"
-          />
-          <UiInput
-            size="sm"
-            v-else
-            v-model="fieldValues[field.fieldCode]"
-            :disabled="readOnly"
-            :placeholder="field.fieldLabel"
             class="portfolio-intake-panel__field-control"
           />
         </div>
@@ -178,7 +180,7 @@
         :show-icon="false"
       >
         <template #default>
-          <span style="display: inline-flex; align-items: center; gap: 8px">
+          <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
             <UiTag tone="blue" size="sm">待登记</UiTag>
             <span>请先登记材料并选择分类后再填写字段</span>
           </span>
@@ -189,6 +191,9 @@
     <section class="portfolio-intake-panel__section">
       <h3 class="portfolio-intake-panel__section-title">归档动作</h3>
       <p v-if="archiveActionHint" class="portfolio-intake-panel__meta">{{ archiveActionHint }}</p>
+      <ul v-if="submitBlockers.length" class="portfolio-intake-panel__checklist">
+        <li v-for="item in submitBlockers" :key="item">{{ item }}</li>
+      </ul>
       <div v-if="!readOnly" class="portfolio-intake-panel__actions">
         <UiButton
           size="sm"
@@ -203,7 +208,7 @@
           variant="primary"
           size="sm"
           :loading="submitting"
-          :disabled="writePending || archiveWriteForbidden"
+          :disabled="writePending || archiveWriteForbidden || submitBlocked"
           @click="handleSubmit"
         >
           提交审核
@@ -219,19 +224,18 @@
 </template>
 
 <script lang="ts" setup>
+import type { ScanDispatchResultPayload } from '@/components/scanner-ops/ScanDispatchResultDialog.vue'
 import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
-import { PortfolioCollectModeCode, ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioArchiveRecordStatusCode,
   PortfolioMaterialIntakeStageCode,
   PortfolioMaterialIntakeStageDescription,
 } from '@/apis/portfolio/enums'
+import { createPortfolioScanDispatch } from '@/apis/portfolio/scan-dispatch'
 import {
   PORTFOLIO_MATERIAL_INTAKE_STAGE_TONE,
   PORTFOLIO_TEMPLATE_CODE_CERTIFICATE,
@@ -239,12 +243,14 @@ import {
 } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioAiCandidateConfirmPanel from '@/components/portfolio/PortfolioAiCandidateConfirmPanel.vue'
+import PortfolioArchiveFieldControl from '@/components/portfolio/PortfolioArchiveFieldControl.vue'
+import PortfolioArchiveWriteGuardStrip from '@/components/portfolio/PortfolioArchiveWriteGuardStrip.vue'
 import PortfolioCategoryTreePicker from '@/components/portfolio/PortfolioCategoryTreePicker.vue'
+import ScanDispatchResultDialog from '@/components/scanner-ops/ScanDispatchResultDialog.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
@@ -254,12 +260,14 @@ import {
 } from '@/composables/usePortfolioIntake'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
-import { SemesterOptions } from '@/types/enums/semester-enum'
-import { showUserError } from '@/utils/error-handler'
+import { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
+import { validatePortfolioArchiveFields } from '@/utils/portfolio-archive-field-validation'
+import { buildScanDispatchKioskUrl } from '@/utils/scan-dispatch-kiosk-url'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 defineOptions({ name: 'PortfolioMaterialIntakePanel' })
 
@@ -270,8 +278,14 @@ const emit = defineEmits<{
 const route = useRoute()
 const { targetTeacherId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
-  = usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
+const {
+  archiveWriteForbidden,
+  archiveWriteCapabilityUnknown,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+  loading: archiveWriteGuardLoading,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
 
 const fileNodeId = ref<string>()
 const fileName = ref<string>()
@@ -289,6 +303,7 @@ const {
   submitting,
   reassigning,
   writePending,
+  statusLoadFailed,
   status,
   categoryId,
   materialId,
@@ -494,6 +509,87 @@ const archiveActionHint = computed(() => {
   return '当前不可操作'
 })
 
+/** 提交前阻断清单：未通过时禁用「提交审核」，避免仅靠点击后 toast。 */
+const submitBlockers = computed(() => {
+  const blockers: string[] = []
+  if (statusLoadFailed.value) {
+    blockers.push('采集状态未就绪')
+    return blockers
+  }
+  if (!status.value) {
+    blockers.push('尚未登记材料并加载采集状态')
+    return blockers
+  }
+  const row = status.value
+  if (!row.categoryId) {
+    blockers.push('未选择档案分类')
+  }
+  if (
+    row.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING
+    || row.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+  ) {
+    blockers.push('文字识别/智能抽取仍在处理中')
+  }
+  if (row.stage === PortfolioMaterialIntakeStageCode.AI_FAILED) {
+    blockers.push('智能抽取失败，请手工补全字段或重新抽取')
+  }
+  if (row.stage === PortfolioMaterialIntakeStageCode.CANDIDATES_REJECTED) {
+    blockers.push('智能候选已全部驳回，请恢复后重新采集')
+  }
+  if (
+    row.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM
+    || (row.pendingCandidateCount ?? 0) > 0
+  ) {
+    blockers.push(`仍有 ${row.pendingCandidateCount ?? '若干'} 项智能候选待确认`)
+  }
+  if ((row.missingFieldCount ?? 0) > 0) {
+    blockers.push(`仍有 ${row.missingFieldCount} 项必填字段未完成`)
+  }
+  if (row.stage === PortfolioMaterialIntakeStageCode.FIELDS_INCOMPLETE) {
+    blockers.push('字段未齐全，阶段仍为待补全')
+  }
+  if (
+    row.stage === PortfolioMaterialIntakeStageCode.SUBMITTED
+    || row.stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
+    || row.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL
+  ) {
+    blockers.push('当前记录已提交或已正式入库，无需再次提交')
+  }
+  for (const item of row.diagnostics ?? []) {
+    if (item.message) {
+      blockers.push(item.fieldCode ? `${item.fieldCode}：${item.message}` : item.message)
+    }
+  }
+  return blockers
+})
+
+const submitBlocked = computed(() => submitBlockers.value.length > 0)
+
+const intakeContextSummary = computed(() => {
+  const row = status.value
+  const parts: string[] = []
+  const title = materialTitle.value.trim() || row?.materialTitle
+  if (title) {
+    parts.push(`材料「${title}」`)
+  }
+  if (row?.categoryName) {
+    parts.push(`分类 ${row.categoryName}`)
+  }
+  const mid = materialId.value || row?.materialId
+  if (mid) {
+    parts.push(`材料编号 ${mid}`)
+  }
+  const rid = archiveRecordId.value || row?.archiveRecordId
+  if (rid) {
+    parts.push(`档案记录 ${rid}`)
+  }
+  const aid = taskId.value || row?.aiTaskId
+  if (aid) {
+    parts.push(`智能任务 ${aid}`)
+  }
+  return parts.length ? parts.join(' · ') : ''
+})
+
 /** 切换教师或采集上下文时先清空本地材料源与扫描派单状态，避免上一位教师材料残留到当前页。 */
 function resetLocalIntakeSourceContext() {
   intakeScopeToken.value += 1
@@ -613,8 +709,7 @@ async function openScan() {
     if (archiveRecordId.value) {
       query.recordId = archiveRecordId.value
     }
-    const created = await createScanDispatch({
-      taskKind: ScanTaskKindCode.PORTFOLIO_COLLECT,
+    const created = await createPortfolioScanDispatch({
       collectMode: PortfolioCollectModeCode.AI_SUBMIT,
       teacherId: targetTeacherId.value,
       taskType: PortfolioAiTaskTypeCode.PORTFOLIO_CERTIFICATE_OCR,
@@ -703,6 +798,11 @@ async function handleSubmit() {
   if (!assertArchiveWritable('提交材料采集结果')) {
     return
   }
+  const schemaError = validatePortfolioArchiveFields(editableFields.value, fieldValues)
+  if (schemaError) {
+    showFormValidationMessage(schemaError)
+    return
+  }
   if (!(await confirmProxyWrite('提交材料采集结果'))) {
     return
   }
@@ -744,15 +844,15 @@ watch(
 
 <style scoped lang="scss">
 .portfolio-intake-panel__section {
-  margin: 0 0 var(--dp-space-3);
-  padding: var(--dp-space-3);
+  margin: 0 0 var(--dp-space-component);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
 }
 
 .portfolio-intake-panel__section-title {
-  margin: 0 0 var(--dp-space-2, 8px);
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   font-weight: 600;
   color: var(--dp-text-primary);
@@ -761,11 +861,11 @@ watch(
 .portfolio-intake-panel__upload-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .portfolio-intake-panel__label {
-  margin-bottom: var(--dp-space-1);
+  margin-bottom: var(--dp-space-component-xs);
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-sm);
 }
@@ -773,26 +873,33 @@ watch(
 .portfolio-intake-panel__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
-  margin-top: var(--dp-space-3);
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component);
 }
 
 .portfolio-intake-panel__meta {
-  margin: var(--dp-space-2) 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   color: var(--dp-text-secondary);
+  font-size: var(--dp-font-size-sm);
+}
+
+.portfolio-intake-panel__checklist {
+  margin: var(--dp-space-component-tight) 0 0;
+  padding-left: var(--dp-space-block);
+  color: var(--dp-text-primary);
   font-size: var(--dp-font-size-sm);
 }
 
 .portfolio-intake-panel__category-row {
   display: grid;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-3);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 
 .portfolio-intake-panel__fields {
   display: grid;
-  gap: var(--dp-space-3);
-  margin-top: var(--dp-space-3);
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-component);
 }
 
 @media (max-width: 960px) {

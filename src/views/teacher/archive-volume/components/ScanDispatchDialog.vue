@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import type { ScanDispatchTicketStatusCode } from '@/apis/mark/scanner-dispatch'
+import type { ArchiveScanBatchModeCode } from '@/types/enums/archive-scan-batch-mode-enum'
 import message from 'ant-design-vue/es/message'
 import { reactive, ref, watch } from 'vue'
 import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
@@ -18,7 +19,7 @@ const props = withDefaults(
   volumeId: string
   catalogCode?: string
   materialType?: ArchiveMaterialTypeCode
-  archiveBatchMode?: string
+  archiveBatchMode?: ArchiveScanBatchModeCode
   archiveTitle?: string
   physicalStorageLocation?: string
   initialMaterialTags?: string[]
@@ -147,7 +148,7 @@ async function handleSubmit() {
 
 <style scoped>
 .scan-dispatch-dialog__hint {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   color: var(--dp-text-secondary);
 }
 .scan-dispatch-dialog__note {

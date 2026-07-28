@@ -46,15 +46,27 @@
 
     <UiSkeletonState v-if="loading" :rows="6" compact />
 
-    <UiEmpty size="sm" v-else-if="!detail" description="暂无本场成绩详情" class="score-detail__empty" />
+    <UiEmpty
+      size="sm"
+      v-else-if="detailLoadFailed"
+      title="成绩详情加载失败"
+      class="score-detail__empty"
+    />
+
+    <UiEmpty
+      size="sm"
+      v-else-if="!detail"
+      description="暂无本场成绩详情"
+      class="score-detail__empty"
+    />
 
     <template v-else-if="detail">
       <ConfidentialStatusBar v-if="isExamConfidential === true" class="score-detail__confidential-strip" />
 
       <UiAlertStrip
-        v-if="detail.finalScoreStatus === FinalScoreStatusCode.CORRECTED"
+        v-if="detail.finalScoreStatus === StudentFacingFinalScoreStatusCode.CORRECTED"
         tone="warning"
-        title="成绩更正待重新发布"
+        title="成绩更正待重发"
         description="教师已完成成绩更正，最新分数将在重新发布后可见；此前已发布成绩暂不展示。"
         dense
         inline
@@ -62,10 +74,10 @@
       />
 
       <UiAlertStrip
-        v-else-if="detail.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN"
+        v-else-if="detail.finalScoreStatus === StudentFacingFinalScoreStatusCode.WITHDRAWN"
         tone="warning"
         title="成绩已撤回"
-        description="教师已撤回本场成绩发布，分数暂不可见；重新发布后可查看。"
+        description="教师已撤回本场成绩，分数暂不可见；重新发布后可查看。"
         dense
         inline
         class="score-detail__correction-alert"
@@ -82,7 +94,7 @@
       />
 
       <div
-        v-if="detail.finalScoreStatus === FinalScoreStatusCode.PUBLISHED"
+        v-if="detail.finalScoreStatus === StudentFacingFinalScoreStatusCode.PUBLISHED"
         class="score-detail__layout"
       >
         <WorkbenchSurfaceCard class="score-detail__sheet-card">
@@ -90,7 +102,7 @@
             <div class="score-detail__card-head">
               <div class="score-detail__card-title">
                 <BarChartOutlined />
-                <span>答题卡</span>
+                <span>答卷</span>
               </div>
               <UiSelect
                 v-if="clusterLabelOptions.length > 0"
@@ -141,7 +153,7 @@
             :show-icon="false"
           >
             <template #default>
-              <span style="display:inline-flex;align-items:center;gap:8px">
+              <span style="display:inline-flex;align-items:center;gap:var(--dp-space-component-tight)">
                 <UiTag tone="blue" size="sm">未选择题目</UiTag>
                 <span>请在左侧选择题目后查看作答与得分明细</span>
               </span>
@@ -264,7 +276,7 @@
       </div>
 
       <WorkbenchSurfaceCard
-        v-if="detail.finalScoreStatus === FinalScoreStatusCode.PUBLISHED"
+        v-if="detail.finalScoreStatus === StudentFacingFinalScoreStatusCode.PUBLISHED"
         flush
         class="score-detail__wrong-book-card"
       >
@@ -330,7 +342,7 @@
       </WorkbenchSurfaceCard>
 
       <WorkbenchSurfaceCard
-        v-if="detail.finalScoreStatus === FinalScoreStatusCode.PUBLISHED"
+        v-if="detail.finalScoreStatus === StudentFacingFinalScoreStatusCode.PUBLISHED"
         class="score-detail__profile-card"
       >
         <template #head>
@@ -472,11 +484,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/ai-analysis-status'
 import { BINDING_STATUS_TONE, BindingStatusDescription } from '@/apis/mark/exam-binding'
-import {
-  FINAL_SCORE_STATUS_TONE,
-  FinalScoreStatusCode,
-  FinalScoreStatusDescription,
-} from '@/apis/mark/final-score-status'
 import { GRADE_STATUS_TONE, GradeStatusDescription } from '@/apis/mark/grade-status'
 import { OBJECTIVE_RESULT_TONE, ObjectiveResultDescription } from '@/apis/mark/objective-result'
 import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
@@ -510,18 +517,27 @@ import {
   isExamConfidentialFlag,
 } from '@/composables/useConfidentialWatermark'
 import { useChartOption } from '@/hooks/modules/useChartOption'
+import {
+  StudentFacingFinalScoreStatusCode,
+} from '@/types/enums/student-facing-final-score-status-enum'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatScore } from '@/utils/format'
 import { buildHeatmapChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { buildHeatmapChartOption } from '@/utils/mark-echarts-options'
 import { scoreSheetToHeatmapCells } from '@/utils/mark-statistics-chart'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import {
+  studentFacingFinalScoreStatusLabel,
+  studentFacingFinalScoreStatusTone,
+} from '@/utils/student-final-score-status'
 
 defineOptions({ name: 'StudentScoreDetail' })
 
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
+const detailLoadFailed = ref(false)
+let detailLoadGeneration = 0
 const detail = ref<StudentScoreDetailResponse | null>(null)
 const isExamConfidential = computed(() => isExamConfidentialFlag(detail.value?.confidential))
 const sliceWatermarkLines = computed(() => {
@@ -617,7 +633,7 @@ const { chartOption: scoreHeatmapOption } = useChartOption(() =>
   buildHeatmapChartOption(scoreHeatmapCells.value, {
     rowLabel: '得分率',
     valueSuffix: '%',
-    emptyText: '暂无答题卡数据',
+    emptyText: '暂无答卷数据',
     highlightKey: selectedQuestionId.value ?? undefined,
   }),
 )
@@ -669,11 +685,11 @@ function isPartial(q: StudentQuestionScoreVO) {
 }
 
 function finalScoreStatusTone(item: StudentScoreDetailResponse): BadgeTone {
-  return strictEnumTone(FINAL_SCORE_STATUS_TONE, item.finalScoreStatus, '最终成绩状态')
+  return studentFacingFinalScoreStatusTone(item.finalScoreStatus)
 }
 
 function finalScoreStatusLabel(item: StudentScoreDetailResponse): string {
-  return strictEnumLabel(FinalScoreStatusDescription, item.finalScoreStatus, '最终成绩状态')
+  return studentFacingFinalScoreStatusLabel(item.finalScoreStatus)
 }
 
 function bindingStatusTone(status: BindingStatusCode): BadgeTone {
@@ -701,7 +717,7 @@ function formatPublishedTotalScore(item: StudentScoreDetailResponse): string {
 }
 
 function formatPublishedScoreSummary(item: StudentScoreDetailResponse): string {
-  if (item.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED) {
+  if (item.finalScoreStatus !== StudentFacingFinalScoreStatusCode.PUBLISHED) {
     return '--'
   }
   if (item.dailyScoreFull != null) {
@@ -715,7 +731,7 @@ function formatPublishedScoreSummary(item: StudentScoreDetailResponse): string {
  */
 const totalScoreCorrectionNotice = computed(() => {
   const item = detail.value
-  if (!item || item.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED) {
+  if (!item || item.finalScoreStatus !== StudentFacingFinalScoreStatusCode.PUBLISHED) {
     return null
   }
   if (item.questionScoreSumMatchesExamScore !== false && !item.latestTotalScoreCorrectionApplied) {
@@ -734,7 +750,7 @@ function formatPublishedFullScore(item: StudentScoreDetailResponse): string {
 }
 
 async function loadWrongBook(): Promise<void> {
-  if (!examId.value || detail.value?.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED) {
+  if (!examId.value || detail.value?.finalScoreStatus !== StudentFacingFinalScoreStatusCode.PUBLISHED) {
     wrongBookRows.value = []
     wrongBookTotal.value = 0
     return
@@ -770,19 +786,31 @@ async function loadDetail() {
     void message.warning('考试信息缺失，无法加载成绩详情')
     return
   }
+  const targetExamId = examId.value
+  const generation = ++detailLoadGeneration
   loading.value = true
+  detailLoadFailed.value = false
   try {
-    const loadedDetail = await getMyScoreDetail(examId.value)
+    const loadedDetail = await getMyScoreDetail(targetExamId)
+    if (generation !== detailLoadGeneration || examId.value !== targetExamId) {
+      return
+    }
     detail.value = loadedDetail
-    if (loadedDetail.finalScoreStatus === FinalScoreStatusCode.PUBLISHED) {
+    if (loadedDetail.finalScoreStatus === StudentFacingFinalScoreStatusCode.PUBLISHED) {
       wrongBookPagination.current = 1
       await loadWrongBook()
     }
   } catch (error) {
-    showUserError(error, '成绩详情加载失败')
+    if (generation !== detailLoadGeneration || examId.value !== targetExamId) {
+      return
+    }
+    detailLoadFailed.value = true
     detail.value = null
+    showUserError(error, '成绩详情加载失败')
   } finally {
-    loading.value = false
+    if (generation === detailLoadGeneration) {
+      loading.value = false
+    }
   }
 }
 
@@ -830,7 +858,7 @@ const errorClusters = computed<StudentAiErrorClusterResponse[]>(
 )
 
 async function loadLearningReport(): Promise<void> {
-  if (!detail.value || detail.value.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED) {
+  if (!detail.value || detail.value.finalScoreStatus !== StudentFacingFinalScoreStatusCode.PUBLISHED) {
     learningReport.value = null
     return
   }
@@ -877,10 +905,10 @@ function masteryTone(level: StudentAiDiagnosisItemResponse['masteryLevel']): Bad
 }
 
 /**
- * 答题卡选题后加载题目作答明细；成绩未发布时后端会 CONFLICT，入口已在 selectQuestion 拦截。
+ * 答卷选题后加载题目作答明细；成绩未发布时后端会 CONFLICT，入口已在 selectQuestion 拦截。
  */
 async function selectQuestion(question: StudentQuestionScoreVO): Promise<void> {
-  if (!detail.value || detail.value.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED) {
+  if (!detail.value || detail.value.finalScoreStatus !== StudentFacingFinalScoreStatusCode.PUBLISHED) {
     void message.warning('成绩尚未发布，暂不能查看答题明细')
     return
   }
@@ -933,7 +961,12 @@ function getScoreTagTone(answer: StudentQuestionAnswerDetailResponse): BadgeTone
   return 'orange'
 }
 
-watch(examId, () => loadDetail(), { immediate: true })
+watch(examId, () => {
+  detailLoadGeneration += 1
+  detail.value = null
+  detailLoadFailed.value = false
+  void loadDetail()
+}, { immediate: true })
 watch(detail, () => {
   selectedQuestionId.value = null
   currentDetail.value = null
@@ -966,9 +999,9 @@ onBeforeUnmount(() => {
   &__layout {
     display: grid;
     grid-template-columns: 300px minmax(0, 1fr);
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
     align-items: start;
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
 
     @media (max-width: #{bp.$ant-grid-lg - 1px}) {
       grid-template-columns: 1fr;
@@ -983,16 +1016,16 @@ onBeforeUnmount(() => {
   &__stats {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__empty {
-    padding: 20px 0;
+    padding: var(--dp-space-block) 0;
   }
 
   &__confidential-strip {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   &__hint {
@@ -1008,57 +1041,57 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--dp-space-component);
   width: 100%;
 }
 
 .score-detail__card-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-lg);
   font-weight: var(--dp-font-weight-title);
 }
 
 .score-detail__wrong-book-card,
 .score-detail__profile-card {
-  margin-top: 16px;
+  margin-top: var(--dp-space-block);
 }
 
 .answer-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 
   &__summary {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
-    padding-bottom: 12px;
+    padding-bottom: var(--dp-space-component);
     border-bottom: 1px dashed var(--dp-border-subtle);
   }
 
   &__section {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__section-title {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--dp-space-component-tight);
     font-weight: 600;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
   }
 
   &__slice {
     position: relative;
     border: 1px solid var(--dp-border-subtle);
     border-radius: 6px;
-    padding: 8px;
-    background: var(--dp-surface-soft);
+    padding: var(--dp-space-component-tight);
+    background: var(--dp-surface-subtle);
     text-align: center;
     min-height: 120px;
   }
@@ -1071,23 +1104,23 @@ onBeforeUnmount(() => {
 
   &__text {
     margin: 0;
-    padding: 12px;
-    background: var(--dp-surface-soft);
+    padding: var(--dp-space-component);
+    background: var(--dp-surface-subtle);
     border-radius: 6px;
     border: 1px solid var(--dp-border-subtle);
     white-space: pre-wrap;
     word-break: break-word;
     line-height: 1.7;
     font-size: var(--dp-font-size-sm);
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
   }
 
   &__ai {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 12px;
-    background: var(--dp-surface-soft);
+    gap: var(--dp-space-component-tight);
+    padding: var(--dp-space-component);
+    background: var(--dp-surface-subtle);
     border-radius: 6px;
     border: 1px solid var(--dp-border-subtle);
   }
@@ -1096,10 +1129,10 @@ onBeforeUnmount(() => {
     margin: 0;
     line-height: 1.7;
     font-size: var(--dp-font-size-sm);
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
     display: flex;
     align-items: baseline;
-    gap: 6px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
@@ -1116,32 +1149,32 @@ onBeforeUnmount(() => {
 .profile-block {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--dp-space-block);
 }
 
 .profile-summary {
   margin: 0;
   line-height: 1.7;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
 }
 
 .profile-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .diagnosis-item {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   width: 100%;
 }
 
 .diagnosis-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .diagnosis-type {
@@ -1161,10 +1194,10 @@ onBeforeUnmount(() => {
 
 .suggestion-list {
   margin: 0;
-  padding-left: 20px;
+  padding-left: var(--dp-space-block);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   line-height: 1.7;
 }
 </style>

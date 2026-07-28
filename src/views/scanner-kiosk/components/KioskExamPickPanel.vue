@@ -142,7 +142,7 @@ function goNextPage() {
       <button
         type="button"
         class="exam-pick__refresh"
-        :disabled="workflow.bindExamCandidateLoading.value === true"
+        :disabled="workflow.bindExamCandidateLoading.value"
         @click="workflow.refreshBindExamCandidatesByUser"
       >
         <ReloadOutlined :spin="workflow.bindExamCandidateLoading.value === true" />
@@ -182,7 +182,7 @@ function goNextPage() {
         v-if="workflow.bindExamCandidateLoadIssue.value"
         type="button"
         class="exam-pick__retry"
-        :disabled="workflow.bindExamCandidateLoading.value === true"
+        :disabled="!!workflow.bindExamCandidateLoading.value"
         @click="workflow.refreshBindExamCandidatesByUser"
       >
         重新加载
@@ -200,7 +200,7 @@ function goNextPage() {
           'exam-tile--selected': selectedExamId === exam.examId,
         }"
         :aria-selected="selectedExamId === exam.examId"
-        :disabled="interactionLocked === true || workflow.bindExamCandidateLoading.value === true"
+        :disabled="interactionLocked || workflow.bindExamCandidateLoading.value"
         @click="activateExam(exam.examId)"
       >
         <span class="exam-tile__icon" aria-hidden="true">
@@ -315,6 +315,12 @@ function goNextPage() {
   outline: none;
 }
 
+.exam-pick__search-input:focus-visible {
+  outline: 2px solid var(--kiosk-primary);
+  outline-offset: 2px;
+  border-radius: var(--kiosk-radius-sm);
+}
+
 .exam-pick__refresh {
   display: inline-flex;
   align-items: center;
@@ -331,6 +337,12 @@ function goNextPage() {
   font-weight: var(--kiosk-fw-medium);
   color: var(--kiosk-ink-secondary);
   cursor: pointer;
+  outline: none;
+}
+
+.exam-pick__refresh:focus-visible {
+  border-color: var(--kiosk-primary);
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 
 .exam-pick__state {
@@ -516,7 +528,7 @@ function goNextPage() {
   padding: 2px var(--kiosk-space-2);
   border-radius: var(--kiosk-radius-sm);
   background: var(--kiosk-neutral-soft);
-  font-size: var(--dp-font-size-xxs);
+  font-size: var(--dp-font-size-xs);
   color: var(--kiosk-ink-secondary);
   font-variant-numeric: tabular-nums;
 }

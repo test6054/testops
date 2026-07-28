@@ -102,6 +102,6 @@ const activeAlert = computed(() => {
 
 <style scoped>
 .archive-exam-auto-create-status {
-  margin-top: var(--dp-space-3);
+  margin-top: var(--dp-space-component);
 }
 </style>

@@ -2,7 +2,7 @@
   <WorkbenchSurfaceCard flush embedded class="archive-volume-scores-panel">
     <template #head>
       <div class="archive-volume-scores-panel__head">
-        <h3 class="archive-volume-scores-panel__title">成绩完成度确认</h3>
+        <h3 class="archive-volume-scores-panel__title">成绩材料与门禁</h3>
         <div class="archive-volume-scores-panel__actions">
           <UiTag :tone="completionTone" size="sm">
             {{ scoreCompletionLabel(detail.volume.scoreCompletionStatus) }}
@@ -13,36 +13,45 @@
         </div>
       </div>
     </template>
-    <template v-if="canConfirmScoreCompletion === true" #toolbar>
-      <UiButton
-        size="sm"
-        variant="primary"
-        :loading="scoreConfirmSubmitting === true"
-        @click="handleConfirmScoreCompletion"
-      >
-        确认成绩完成
+    <template #toolbar>
+      <UiButton size="sm" variant="primary" @click="emit('open-materials')">
+        去材料登记
       </UiButton>
     </template>
 
+    <p class="archive-volume-scores-panel__hint">
+      高校归档提交前须齐备成绩主证据：模板将成绩单或分项成绩标为必交时，成绩维须至少提交其一（仅认已提交，豁免不计）；
+      目录逐项齐备仍由完整性门禁承担。线上阅卷卷另须考试双门禁开放；教务成绩卷须完成同步。
+    </p>
+
     <UiSkeletonState v-if="gateLoading" variant="card" compact />
     <div v-else class="archive-volume-scores-panel__gates">
-      <ArchiveExamScoreGatePanel v-if="showExamGate" :gate="examGate" :loading="gateLoading === true" />
-      <div v-if="showTeachingAffairsGate" class="score-gate">
+      <ArchiveExamScoreGatePanel v-if="showExamGate" :gate="examGate" :loading="gateLoading" />
+      <div v-if="showTeachingAffairsSyncFact" class="score-gate">
+        <span class="score-gate__check score-gate__check--pass">✓</span>
+        <div>
+          <div class="score-gate__title">教务成绩回写事实（只读）</div>
+          <div class="score-gate__hint">
+            {{ teachingAffairsSyncFactHint }}
+          </div>
+        </div>
+      </div>
+      <div class="score-gate">
         <span
           class="score-gate__check"
-          :class="teachingAffairsGatePassed ? 'score-gate__check--pass' : 'score-gate__check--fail'"
+          :class="scoreMaterialGatePassed ? 'score-gate__check--pass' : 'score-gate__check--fail'"
         >
-          {{ teachingAffairsGatePassed ? '✓' : '✗' }}
+          {{ scoreMaterialGatePassed ? '✓' : '✗' }}
         </span>
         <div>
-          <div class="score-gate__title">平时成绩 — {{ teachingAffairsGateLabel }}</div>
-          <div class="score-gate__hint">{{ ARCHIVE_TEACHING_AFFAIRS_SCORE_COMPLETION_HINT }}</div>
+          <div class="score-gate__title">成绩主证据 — {{ scoreMaterialGateLabel }}</div>
+          <div class="score-gate__hint">{{ scoreMaterialGateHint }}</div>
         </div>
       </div>
     </div>
 
     <div class="archive-volume-scores-panel__materials">
-      <h3 class="archive-volume-scores-panel__subheading">成绩证明材料</h3>
+      <h3 class="archive-volume-scores-panel__subheading">成绩类材料</h3>
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"
@@ -54,7 +63,7 @@
         flat
         row-key="materialId"
         size="middle"
-        empty-description="暂无成绩证明材料"
+        empty-description="暂无成绩类材料"
         :load-error="materialsLoadFailed"
         @page-change="handlePageChange"
       >
@@ -83,17 +92,13 @@
 </template>
 
 <script setup lang="ts">
-// MVR-949：props.can* 写控制流仅认 === true
-// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  ArchiveMaterialSubmissionStatusCode,
   ArchiveVolumeDetailResponse,
   ArchiveVolumeExamGateResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import {
   ArchiveMaterialTypeCode,
@@ -101,11 +106,9 @@ import {
   ArchiveScoreCompletionStatusCode,
   ArchiveScoreCompletionStatusDescription,
   ArchiveScoreSourceCode,
-  confirmArchiveVolumeScoreCompletion,
   getArchiveVolumeExamGate,
   pageArchiveVolumeMaterials,
 } from '@/apis/mark/archive-volume'
-import { ARCHIVE_TEACHING_AFFAIRS_SCORE_COMPLETION_HINT } from '@/apis/mark/teaching-affairs-sync'
 import ArchiveExamScoreGatePanel from '@/components/archive-volume/ArchiveExamScoreGatePanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -113,6 +116,8 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { ArchiveMaterialSubmissionStatusCode } from '@/types/enums/archive-material-submission-status-enum'
+import { isPrimaryArchiveScoreEvidenceMaterial } from '@/types/enums/archive-material-type-enum'
 import { buildArchiveMaterialStatusView } from '@/utils/archive-material-status-ui'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -120,20 +125,14 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeScoresPanel' })
 
-const props = withDefaults(
-  defineProps<{
-
+const props = defineProps<{
   volumeId: string
   detail: ArchiveVolumeDetailResponse
-  canConfirmScoreCompletion?: boolean
-}>(),
-  {
-  canConfirmScoreCompletion: false,
-  },
-)
+}>()
 
 const emit = defineEmits<{
-  refreshed: []
+  'refreshed': []
+  'open-materials': []
 }>()
 
 const SCORE_MATERIAL_TYPES: ArchiveMaterialTypeCode[] = [
@@ -143,7 +142,6 @@ const SCORE_MATERIAL_TYPES: ArchiveMaterialTypeCode[] = [
   ArchiveMaterialTypeCode.GRADING_INSTRUCTION,
 ]
 
-const scoreConfirmSubmitting = ref(false)
 const gateLoading = ref(false)
 const examGate = ref<ArchiveVolumeExamGateResponse | null>(null)
 const scoreMaterials = ref<ArchiveVolumeMaterialResponse[]>([])
@@ -159,21 +157,71 @@ const showExamGate = computed(
     && !!props.detail.volume.examId,
 )
 
-const showTeachingAffairsGate = computed(
+/** 历史教务回写卷：只展示系统回写事实，不得再伪装为教师可操作门禁。 */
+const showTeachingAffairsSyncFact = computed(
   () => props.detail.volume.scoreSource === ArchiveScoreSourceCode.TEACHING_AFFAIRS,
 )
 
-const teachingAffairsGatePassed = computed(
-  () =>
-    props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED
-    || props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED,
+const teachingAffairsSyncFactHint = computed(() => {
+  const statusLabel = scoreCompletionLabel(props.detail.volume.scoreCompletionStatus)
+  const externalNo = props.detail.volume.externalBusinessNo?.trim()
+  const completed
+    = props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED
+      || props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED
+  if (completed) {
+    if (externalNo) {
+      return `教务成绩已同步完成（${statusLabel}，外部单号 ${externalNo}）。成绩主证据仍须按模板登记并满足完整性。`
+    }
+    return `教务成绩已同步完成（${statusLabel}）。成绩主证据仍须按模板登记并满足完整性。`
+  }
+  if (externalNo) {
+    return `教务成绩尚未同步完成（当前 ${statusLabel}，外部单号 ${externalNo}）；须等系统回写完成后方可提交，同时登记模板成绩主证据。`
+  }
+  return `教务成绩尚未同步完成（当前 ${statusLabel}）；须等系统回写完成后方可提交，同时登记模板成绩主证据。教师端不手工录入教务同步单号。`
+})
+
+const submittedPrimaryScoreMaterialCount = computed(() =>
+  scoreMaterials.value.filter(
+    (item) =>
+      isPrimaryArchiveScoreEvidenceMaterial(item.materialType)
+      && item.submissionStatus === ArchiveMaterialSubmissionStatusCode.SUBMITTED,
+  ).length,
 )
 
-const teachingAffairsGateLabel = computed(() => {
-  if (props.detail.volume.externalBusinessNo) {
-    return `已同步 ${props.detail.volume.externalBusinessNo}`
+const scoreMaterialGatePassed = computed(() => {
+  if (props.detail.volume.scoreSubmitReady === true) {
+    return true
   }
-  return teachingAffairsGatePassed.value ? '已确认' : '待同步'
+  return submittedPrimaryScoreMaterialCount.value > 0
+})
+
+const scoreMaterialGateLabel = computed(() => {
+  if (submittedPrimaryScoreMaterialCount.value > 0) {
+    return `已提交 ${submittedPrimaryScoreMaterialCount.value} 份主证据`
+  }
+  if (materialsLoading.value) {
+    return '加载中'
+  }
+  if (materialsLoadFailed.value) {
+    return '材料加载失败'
+  }
+  if (props.detail.volume.scoreSubmitReady === false) {
+    return '未齐备'
+  }
+  if (props.detail.volume.scoreSubmitReady === true) {
+    return '成绩维度已齐备'
+  }
+  return '等待提交清单判定'
+})
+
+const scoreMaterialGateHint = computed(() => {
+  if (submittedPrimaryScoreMaterialCount.value > 0) {
+    return '成绩单或分项成绩已提交；若提交仍被阻断，请核对考试双门禁或教务同步状态。'
+  }
+  if (props.detail.volume.scoreSubmitReady === true) {
+    return '当前模板与成绩来源门禁已满足；材料表仅展示当前分页，最终以提交清单实时判定为准。'
+  }
+  return '请在材料清单登记并提交成绩单或分项成绩。延期/豁免不能替代成绩主证据。'
 })
 
 const completionTone = computed((): BadgeTone => {
@@ -240,7 +288,7 @@ async function loadScoreMaterials(): Promise<void> {
     materialsLoadFailed.value = false
   } catch (error) {
     materialsLoadFailed.value = true
-    showUserError(error, '加载成绩证明材料失败')
+    showUserError(error, '加载成绩类材料失败')
   } finally {
     materialsLoading.value = false
   }
@@ -269,29 +317,6 @@ async function loadExamGate() {
   }
 }
 
-async function handleConfirmScoreCompletion() {
-  if (!props.volumeId || scoreConfirmSubmitting.value === true) {
-    return
-  }
-  // MVR-299：与工具栏 canConfirmScoreCompletion 同源二次拦截
-  if (props.canConfirmScoreCompletion !== true) {
-    void message.warning('当前账号无成绩完成确认权限')
-    return
-  }
-  scoreConfirmSubmitting.value = true
-  try {
-    await confirmArchiveVolumeScoreCompletion({
-      volumeId: props.volumeId,
-    })
-    void message.success('成绩完成状态已确认')
-    emit('refreshed')
-  } catch (error) {
-    showUserError(error, '确认成绩完成失败')
-  } finally {
-    scoreConfirmSubmitting.value = false
-  }
-}
-
 onMounted(() => {
   void loadExamGate()
   void loadScoreMaterials()
@@ -313,86 +338,101 @@ watch(
 )
 </script>
 
-<style scoped>
-.archive-volume-scores-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dp-space-4);
-}
-
+<style scoped lang="scss">
 .archive-volume-scores-panel__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--dp-space-2);
-}
-
-.archive-volume-scores-panel__actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-3);
+  min-width: 0;
 }
 
 .archive-volume-scores-panel__title {
   margin: 0;
-  font-size: var(--dp-font-size-lg);
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
+  color: var(--dp-text-primary);
+}
+
+.archive-volume-scores-panel__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+  min-width: 0;
 }
 
 .archive-volume-scores-panel__meta {
-  font-size: var(--dp-font-size-xs);
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+}
+
+.archive-volume-scores-panel__hint {
+  margin: 0 0 var(--dp-space-3);
+  font-size: var(--dp-font-size-sm);
+  line-height: 1.5;
   color: var(--dp-text-secondary);
 }
 
 .archive-volume-scores-panel__gates {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-3);
+  margin-bottom: var(--dp-space-4);
+}
+
+.score-gate {
+  display: flex;
+  gap: var(--dp-space-3);
+  align-items: flex-start;
+  padding: var(--dp-space-3);
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface-subtle);
+}
+
+.score-gate__check {
+  flex: 0 0 auto;
+  font-weight: 700;
+}
+
+.score-gate__check--pass {
+  color: var(--dp-success);
+}
+
+.score-gate__check--fail {
+  color: var(--dp-error);
+}
+
+.score-gate__title {
+  font-size: var(--dp-font-size-sm);
+  font-weight: 600;
+  color: var(--dp-text-primary);
+}
+
+.score-gate__hint {
+  margin-top: 4px;
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
 }
 
 .archive-volume-scores-panel__subheading {
   margin: 0 0 var(--dp-space-2);
-  font-size: var(--dp-font-size-md);
+  font-size: var(--dp-font-size-sm);
   font-weight: 600;
-}
-
-.archive-volume-scores-panel__sync-form {
-  padding: var(--dp-space-3);
-  border: 1px solid var(--dp-border);
-  border-radius: var(--dp-radius-panel);
-}
-
-.archive-volume-scores-panel__sync-fields {
-  max-width: 480px;
-}
-
-.archive-volume-scores-panel__materials {
-  border-top: 1px solid var(--dp-border);
-  padding-top: var(--dp-space-3);
+  color: var(--dp-text-primary);
 }
 
 .material-status {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-1);
+  gap: 6px;
 }
 
 .material-status-icon {
   font-size: var(--dp-font-size-xs);
-  line-height: 1;
 }
 
-.material-status-icon--ok {
-  color: var(--dp-success);
-}
-
-.material-status-icon--missing {
-  color: var(--dp-error);
-}
-
-.material-status-icon--pending {
-  color: var(--dp-text-muted);
+.material-status-label {
+  font-size: var(--dp-font-size-sm);
 }
 </style>

@@ -172,16 +172,16 @@ const toggleVisibility = () => {
 .ui-password-input {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   width: 100%;
   border-radius: var(--dp-radius-control);
   border: 1px solid var(--dp-border);
-  background-color: var(--dp-bg-control);
+  background-color: var(--dp-surface);
   color: var(--dp-text-primary);
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background-color 0.2s ease;
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    box-shadow var(--dp-duration-normal) var(--dp-ease-default),
+    background-color var(--dp-duration-normal) var(--dp-ease-default);
   font-family: var(--dp-font-family);
   box-sizing: border-box;
 }
@@ -189,7 +189,7 @@ const toggleVisibility = () => {
 .ui-password-input__control {
   width: 100%;
   height: 100%;
-  padding: 0 12px;
+  padding: 0 var(--dp-space-component);
   border: none;
   background: transparent;
   font-size: var(--dp-font-size-md);
@@ -253,11 +253,11 @@ const toggleVisibility = () => {
 }
 
 .ui-password-input__affix--prefix {
-  padding-left: 12px;
+  padding-left: var(--dp-space-component);
 }
 
 .ui-password-input__affix--suffix {
-  padding-right: 12px;
+  padding-right: var(--dp-space-component);
 }
 
 .ui-password-input__toggle,
@@ -274,8 +274,8 @@ const toggleVisibility = () => {
   color: var(--dp-text-muted);
   cursor: pointer;
   transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
+    background-color var(--dp-duration-normal) var(--dp-ease-default),
+    color var(--dp-duration-normal) var(--dp-ease-default);
   flex-shrink: 0;
 }
 
@@ -294,7 +294,7 @@ const toggleVisibility = () => {
 }
 
 .ui-password-input__toggle {
-  margin-right: 4px;
+  margin-right: var(--dp-space-component-xs);
 }
 
 .ui-password-input__toggle svg {
@@ -308,6 +308,6 @@ const toggleVisibility = () => {
 
 .ui-password-input__clear {
   width: 22px;
-  margin-right: 8px;
+  margin-right: var(--dp-space-component-tight);
 }
 </style>

@@ -4,7 +4,8 @@ import type { AchievementAuditVO } from '@/apis/quality/achievement-audit'
 import type { AchievementDetailVO } from '@/apis/quality/achievement-detail'
 import type { AchievementManualReviewVO } from '@/apis/quality/achievement-manual-review'
 import type { AchievementResultVO } from '@/apis/quality/achievement-result'
-import type { AchievementDetailTypeCode, AchievementStatusCode } from '@/apis/quality/types'
+import type { AchievementDetailTypeCode, AchievementStaleSourceTypeCode,
+  AchievementStatusCode} from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type {
   AchievementAuditEventCode} from '@/types/enums/achievement-audit-event-enum';
@@ -27,6 +28,7 @@ import {
   AchievementAuditStatusCode,
   AchievementAuditStatusDescription,
   AchievementDetailTypeDescription,
+  AchievementStaleSourceTypeDescription,
   AchievementStatusDescription,
   AchievementTargetTypeCode,
   AchievementTargetTypeDescription,
@@ -56,11 +58,13 @@ import UiTimelineItem from '@/components/ui-guide/ui/UiTimelineItem.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import {
   AchievementAuditEventDescription,
 } from '@/types/enums/achievement-audit-event-enum'
+import { AchievementComputeKindCode } from '@/types/enums/achievement-compute-kind-enum'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
@@ -99,13 +103,56 @@ interface RelatedIndirectFormLink {
 
 const relatedIndirectForms = ref<RelatedIndirectFormLink[]>([])
 const relatedIndirectFormsLoading = ref(false)
+const relatedIndirectFormsLoadFailed = ref(false)
 const details = ref<AchievementDetailVO[]>([])
 const audits = ref<AchievementAuditVO[]>([])
 const reviews = ref<AchievementManualReviewVO[]>([])
 const loading = ref(false)
+const resultLoadFailed = ref(false)
 const detailsLoading = ref(false)
+const detailsLoadFailed = ref(false)
 const auditsLoading = ref(false)
+const auditsLoadFailed = ref(false)
 const reviewsLoading = ref(false)
+const reviewsLoadFailed = ref(false)
+
+/** 详情页请求代际：resultId + generation，旧响应不得落地 */
+interface ResultLoadToken {
+  resultId: string
+  generation: number
+}
+
+const resultLoadGeneration = ref(0)
+const detailLifecyclePrimed = ref(false)
+const detailsRequestSeq = ref(0)
+const auditsRequestSeq = ref(0)
+const reviewsRequestSeq = ref(0)
+
+function beginResultLoad(id: string): ResultLoadToken {
+  resultLoadGeneration.value += 1
+  return { resultId: id, generation: resultLoadGeneration.value }
+}
+
+function isResultLoadCurrent(token: ResultLoadToken): boolean {
+  return token.resultId === resultId.value && token.generation === resultLoadGeneration.value
+}
+
+function resetSectionsForResultIdentityChange(): void {
+  result.value = null
+  courseGoalWeights.value = null
+  relatedIndirectForms.value = []
+  relatedIndirectFormsLoadFailed.value = false
+  details.value = []
+  audits.value = []
+  reviews.value = []
+  detailTotal.value = 0
+  auditTotal.value = 0
+  reviewTotal.value = 0
+  resultLoadFailed.value = false
+  detailsLoadFailed.value = false
+  auditsLoadFailed.value = false
+  reviewsLoadFailed.value = false
+}
 const detailPageNum = ref(1)
 const detailPageSize = ref(10)
 const detailTotal = ref(0)
@@ -126,6 +173,12 @@ function targetTypeLabel(value: AchievementTargetTypeCode): string {
 
 function achievementStatusLabel(value: AchievementStatusCode): string {
   return strictEnumLabel(AchievementStatusDescription, value, '达成状态')
+}
+
+function staleSourceTypeLabel(value: AchievementStaleSourceTypeCode | undefined): string {
+  return value
+    ? strictEnumLabel(AchievementStaleSourceTypeDescription, value, '达成度过期来源类型')
+    : '-'
 }
 
 function achievementStatusColor(value: AchievementStatusCode): BadgeTone {
@@ -283,14 +336,14 @@ function onAchievementMoreAction(key: string): void {
   runAchievementToolbarAction(action)
 }
 
-const targetTypeToComputeKind: Partial<Record<AchievementTargetTypeCode, string>> = {
-  [AchievementTargetTypeCode.COURSE_GOAL]: 'COURSE_GOAL',
-  [AchievementTargetTypeCode.REQUIREMENT_INDICATOR]: 'REQUIREMENT',
-  [AchievementTargetTypeCode.GRADUATION_REQUIREMENT]: 'REQUIREMENT',
-  [AchievementTargetTypeCode.TRAINING_OBJECTIVE]: 'TRAINING_OBJECTIVE',
-  [AchievementTargetTypeCode.PROGRAM_SUMMARY]: 'PROGRAM',
-  [AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE]: 'CIVIC_GOAL_AGGREGATE',
-  [AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE]: 'COMPLEX_ENGINEERING',
+const targetTypeToComputeKind: Partial<Record<AchievementTargetTypeCode, AchievementComputeKindCode>> = {
+  [AchievementTargetTypeCode.COURSE_GOAL]: AchievementComputeKindCode.COURSE_GOAL,
+  [AchievementTargetTypeCode.REQUIREMENT_INDICATOR]: AchievementComputeKindCode.REQUIREMENT,
+  [AchievementTargetTypeCode.GRADUATION_REQUIREMENT]: AchievementComputeKindCode.REQUIREMENT,
+  [AchievementTargetTypeCode.TRAINING_OBJECTIVE]: AchievementComputeKindCode.TRAINING_OBJECTIVE,
+  [AchievementTargetTypeCode.PROGRAM_SUMMARY]: AchievementComputeKindCode.PROGRAM,
+  [AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE]: AchievementComputeKindCode.CIVIC_GOAL_AGGREGATE,
+  [AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE]: AchievementComputeKindCode.COMPLEX_ENGINEERING,
 }
 
 function canRecomputeResult(value: AchievementResultVO | null): boolean {
@@ -333,7 +386,7 @@ async function handleRecompute() {
       schoolYear: record.schoolYear || undefined,
       semester: record.semester || undefined,
     }
-    if (computeKind === 'COURSE_GOAL') {
+    if (computeKind === AchievementComputeKindCode.COURSE_GOAL) {
       if (!record.qualityCourseId) {
         void message.warning('课程目标重算缺少关联课程')
         return
@@ -344,7 +397,7 @@ async function handleRecompute() {
         schoolYear: base.schoolYear,
         semester: base.semester,
       })
-    } else if (computeKind === 'REQUIREMENT') {
+    } else if (computeKind === AchievementComputeKindCode.REQUIREMENT) {
       let requirementId: string | undefined
       if (record.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT) {
         requirementId = record.targetId
@@ -355,16 +408,16 @@ async function handleRecompute() {
         ...base,
         requirementId,
       })
-    } else if (computeKind === 'TRAINING_OBJECTIVE') {
+    } else if (computeKind === AchievementComputeKindCode.TRAINING_OBJECTIVE) {
       await achievementApi.computeTrainingObjective({
         ...base,
         trainingObjectiveId: record.targetId,
       })
-    } else if (computeKind === 'PROGRAM') {
+    } else if (computeKind === AchievementComputeKindCode.PROGRAM) {
       await achievementApi.computeProgram(base)
-    } else if (computeKind === 'CIVIC_GOAL_AGGREGATE') {
+    } else if (computeKind === AchievementComputeKindCode.CIVIC_GOAL_AGGREGATE) {
       await achievementApi.computeCivicGoalAggregate(base)
-    } else if (computeKind === 'COMPLEX_ENGINEERING') {
+    } else if (computeKind === AchievementComputeKindCode.COMPLEX_ENGINEERING) {
       await achievementApi.computeComplexEngineeringAggregate(base)
     }
     void message.success('重新计算完成')
@@ -375,7 +428,7 @@ async function handleRecompute() {
 }
 
 function formatAchievementDecimal(value?: number | null): string {
-  return value == null ? '-' : value.toFixed(3)
+  return value == null ? '-' : value.toFixed(6)
 }
 
 function formatDirectIndirectWeights(
@@ -397,9 +450,8 @@ const showDirectIndirectSynthesisPanel = computed(
   () => result.value?.targetType === AchievementTargetTypeCode.COURSE_GOAL,
 )
 
-async function loadRelatedIndirectForms(record: AchievementResultVO) {
+async function loadRelatedIndirectForms(record: AchievementResultVO, token: ResultLoadToken) {
   relatedIndirectFormsLoading.value = true
-  relatedIndirectForms.value = []
   try {
     const page = await indirectItemApi.page({
       targetType: AchievementTargetTypeCode.COURSE_GOAL,
@@ -407,11 +459,19 @@ async function loadRelatedIndirectForms(record: AchievementResultVO) {
       pageNum: 1,
       pageSize: 200,
     })
+    if (!isResultLoadCurrent(token)) {
+      return
+    }
     const formIds = [...new Set(page.list.map((item) => item.formId))]
     if (!formIds.length) {
+      relatedIndirectForms.value = []
+      relatedIndirectFormsLoadFailed.value = false
       return
     }
     const settled = await Promise.allSettled(formIds.map((id) => indirectFormApi.detail(id)))
+    if (!isResultLoadCurrent(token)) {
+      return
+    }
     const forms = []
     for (const item of settled) {
       if (item.status === 'fulfilled') {
@@ -428,11 +488,17 @@ async function loadRelatedIndirectForms(record: AchievementResultVO) {
         formCode: form.formCode,
         formName: form.formName,
       }))
+    relatedIndirectFormsLoadFailed.value = false
   } catch (error) {
-    relatedIndirectForms.value = []
+    if (!isResultLoadCurrent(token)) {
+      return
+    }
+    relatedIndirectFormsLoadFailed.value = true
     showUserError(error, '关联间接评价表单加载失败')
   } finally {
-    relatedIndirectFormsLoading.value = false
+    if (isResultLoadCurrent(token)) {
+      relatedIndirectFormsLoading.value = false
+    }
   }
 }
 
@@ -454,134 +520,179 @@ function openIndirectWeightedHelp(formId?: string) {
   })
 }
 
-async function loadResult() {
-  if (!resultId.value) return
+async function loadResult(token: ResultLoadToken) {
   loading.value = true
   try {
-    result.value = await achievementResultApi.detail(resultId.value)
+    const next = await achievementResultApi.detail(token.resultId)
+    if (!isResultLoadCurrent(token)) {
+      return
+    }
+    result.value = next
+    resultLoadFailed.value = false
     courseGoalWeights.value = null
     relatedIndirectForms.value = []
+    relatedIndirectFormsLoadFailed.value = false
     if (
-      result.value?.targetType === AchievementTargetTypeCode.COURSE_GOAL
-      && result.value.targetId
+      next?.targetType === AchievementTargetTypeCode.COURSE_GOAL
+      && next.targetId
     ) {
       try {
-        const goal = await courseGoalApi.detail(result.value.targetId)
+        const goal = await courseGoalApi.detail(next.targetId)
+        if (!isResultLoadCurrent(token)) {
+          return
+        }
         courseGoalWeights.value = {
           directWeight: goal.directWeight,
           indirectWeight: goal.indirectWeight,
         }
       } catch (error) {
+        if (!isResultLoadCurrent(token)) {
+          return
+        }
         courseGoalWeights.value = null
         showUserError(error, '课程目标权重加载失败')
       }
-      await loadRelatedIndirectForms(result.value)
+      await loadRelatedIndirectForms(next, token)
     }
   } catch (error) {
-    result.value = null
-    courseGoalWeights.value = null
-    relatedIndirectForms.value = []
+    if (!isResultLoadCurrent(token)) {
+      return
+    }
+    resultLoadFailed.value = true
     showUserError(error, '达成结果详情加载失败')
   } finally {
-    loading.value = false
+    if (isResultLoadCurrent(token)) {
+      loading.value = false
+    }
   }
 }
 
-async function loadDetails() {
-  if (!resultId.value) {
-    details.value = []
-    detailTotal.value = 0
-    return
-  }
+async function loadDetails(token: ResultLoadToken) {
+  const seq = ++detailsRequestSeq.value
   detailsLoading.value = true
   try {
     const page = await achievementDetailApi.page({
-      achievementResultId: resultId.value,
+      achievementResultId: token.resultId,
       pageNum: detailPageNum.value,
       pageSize: detailPageSize.value,
     })
+    if (!isResultLoadCurrent(token) || seq !== detailsRequestSeq.value) {
+      return
+    }
     details.value = page.list
     detailTotal.value = page.total
+    detailsLoadFailed.value = false
   } catch (error) {
-    details.value = []
-    detailTotal.value = 0
+    if (!isResultLoadCurrent(token) || seq !== detailsRequestSeq.value) {
+      return
+    }
+    detailsLoadFailed.value = true
     showUserError(error, '达成明细加载失败')
   } finally {
-    detailsLoading.value = false
+    if (isResultLoadCurrent(token) && seq === detailsRequestSeq.value) {
+      detailsLoading.value = false
+    }
   }
 }
 
-async function loadAudits() {
-  if (!resultId.value) {
-    audits.value = []
-    auditTotal.value = 0
-    return
-  }
+async function loadAudits(token: ResultLoadToken) {
+  const seq = ++auditsRequestSeq.value
   auditsLoading.value = true
   try {
     const page = await achievementAuditApi.page({
-      achievementResultId: resultId.value,
+      achievementResultId: token.resultId,
       pageNum: auditPageNum.value,
       pageSize: auditPageSize.value,
     })
+    if (!isResultLoadCurrent(token) || seq !== auditsRequestSeq.value) {
+      return
+    }
     audits.value = page.list
     auditTotal.value = page.total
+    auditsLoadFailed.value = false
   } catch (error) {
-    audits.value = []
-    auditTotal.value = 0
+    if (!isResultLoadCurrent(token) || seq !== auditsRequestSeq.value) {
+      return
+    }
+    auditsLoadFailed.value = true
     showUserError(error, '达成审核记录加载失败')
   } finally {
-    auditsLoading.value = false
+    if (isResultLoadCurrent(token) && seq === auditsRequestSeq.value) {
+      auditsLoading.value = false
+    }
   }
 }
 
-async function loadReviews() {
-  if (!resultId.value) {
-    reviews.value = []
-    reviewTotal.value = 0
-    return
-  }
+async function loadReviews(token: ResultLoadToken) {
+  const seq = ++reviewsRequestSeq.value
   reviewsLoading.value = true
   try {
     const page = await achievementManualReviewApi.page({
-      achievementResultId: resultId.value,
+      achievementResultId: token.resultId,
       pageNum: reviewPageNum.value,
       pageSize: reviewPageSize.value,
     })
+    if (!isResultLoadCurrent(token) || seq !== reviewsRequestSeq.value) {
+      return
+    }
     reviews.value = page.list
     reviewTotal.value = page.total
+    reviewsLoadFailed.value = false
   } catch (error) {
-    reviews.value = []
-    reviewTotal.value = 0
+    if (!isResultLoadCurrent(token) || seq !== reviewsRequestSeq.value) {
+      return
+    }
+    reviewsLoadFailed.value = true
     showUserError(error, '达成人工复核加载失败')
   } finally {
-    reviewsLoading.value = false
+    if (isResultLoadCurrent(token) && seq === reviewsRequestSeq.value) {
+      reviewsLoading.value = false
+    }
   }
 }
 
 async function loadAll() {
-  if (!resultId.value) return
-  // 主结果与附属列表隔离：任一失败不拖垮其他区块
-  await loadResult()
-  await Promise.all([loadDetails(), loadAudits(), loadReviews()])
+  const id = resultId.value
+  if (!id) {
+    return
+  }
+  const token = beginResultLoad(id)
+  // 主结果与附属列表隔离：任一失败不拖垮其他区块；共享同一 generation
+  await loadResult(token)
+  if (!isResultLoadCurrent(token)) {
+    return
+  }
+  await Promise.all([loadDetails(token), loadAudits(token), loadReviews(token)])
 }
 
 function handleDetailPageChange(page: { current: number, pageSize: number }) {
   detailPageNum.value = page.current
   detailPageSize.value = page.pageSize
-  void loadDetails()
+  const id = resultId.value
+  if (!id) {
+    return
+  }
+  void loadDetails({ resultId: id, generation: resultLoadGeneration.value })
 }
 
 function handleAuditPageChange(page: number, pageSize: number) {
   auditPageNum.value = page
   auditPageSize.value = pageSize
-  void loadAudits()
+  const id = resultId.value
+  if (!id) {
+    return
+  }
+  void loadAudits({ resultId: id, generation: resultLoadGeneration.value })
 }
 
 function handleReviewPageChange(page: number, pageSize: number) {
   reviewPageNum.value = page
   reviewPageSize.value = pageSize
-  void loadReviews()
+  const id = resultId.value
+  if (!id) {
+    return
+  }
+  void loadReviews({ resultId: id, generation: resultLoadGeneration.value })
 }
 
 async function handleTransit(to: AchievementAuditStatusCode) {
@@ -695,20 +806,20 @@ const signals = computed<SignalMetric[]>(() => {
     {
       key: 'detail-rows',
       label: '明细行数',
-      value: detailTotal.value,
-      tone: 'blue',
+      value: detailsLoadFailed.value ? '加载失败' : detailTotal.value,
+      tone: detailsLoadFailed.value ? 'red' : 'blue',
     },
     {
       key: 'audits',
       label: '审核流水',
-      value: auditTotal.value,
-      tone: auditTotal.value > 0 ? 'blue' : 'gray',
+      value: auditsLoadFailed.value ? '加载失败' : auditTotal.value,
+      tone: auditsLoadFailed.value ? 'red' : auditTotal.value > 0 ? 'blue' : 'gray',
     },
     {
       key: 'reviews',
       label: '复核记录',
-      value: reviewTotal.value,
-      tone: reviewTotal.value > 0 ? 'green' : 'gray',
+      value: reviewsLoadFailed.value ? '加载失败' : reviewTotal.value,
+      tone: reviewsLoadFailed.value ? 'red' : reviewTotal.value > 0 ? 'green' : 'gray',
     },
   )
   return metrics
@@ -732,16 +843,26 @@ async function submitReviewAndClose() {
 
 watch(
   resultId,
-  () => {
-    detailPageNum.value = 1
-    auditPageNum.value = 1
-    reviewPageNum.value = 1
+  (id, prevId) => {
+    if (id !== prevId) {
+      detailPageNum.value = 1
+      auditPageNum.value = 1
+      reviewPageNum.value = 1
+      resetSectionsForResultIdentityChange()
+    }
+    if (!id) {
+      return
+    }
     void loadAll()
   },
   { immediate: true },
 )
 
 onActivated(() => {
+  if (!detailLifecyclePrimed.value) {
+    detailLifecyclePrimed.value = true
+    return
+  }
   if (resultId.value) {
     void loadAll()
   }
@@ -790,8 +911,15 @@ onActivated(() => {
       </ContextBar>
     </template>
 
+    <UiEmpty
+      v-if="resultLoadFailed && !result && !loading"
+      size="sm"
+      title="达成度结果加载失败"
+      class="achievement-detail__empty"
+    />
+
     <WorkbenchContextGateStrip
-      v-if="!result && !loading"
+      v-else-if="!result && !loading"
       tag="缺少上下文"
       body="未找到达成度结果，请从达成度列表进入"
       cta-label="返回达成度列表"
@@ -800,6 +928,12 @@ onActivated(() => {
     />
 
     <template v-else-if="result">
+      <UiEmpty
+        v-if="resultLoadFailed"
+        size="sm"
+        title="达成度结果刷新失败"
+        class="achievement-detail__stale-banner"
+      />
       <SignalBand :metrics="signals" variant="panel" compact class="achievement-detail__signals" />
 
       <UiCard v-if="showDirectIndirectSynthesisPanel" class="achievement-detail__synthesis-card">
@@ -836,7 +970,12 @@ onActivated(() => {
         <div class="achievement-detail__synthesis-links">
           <p class="achievement-detail__synthesis-links-title">关联间接问卷</p>
           <UiEmpty
-            v-if="!relatedIndirectFormsLoading && !relatedIndirectForms.length"
+            v-if="relatedIndirectFormsLoadFailed"
+            size="sm"
+            title="关联间接问卷加载失败"
+          />
+          <UiEmpty
+            v-else-if="!relatedIndirectFormsLoading && !relatedIndirectForms.length"
             size="sm"
             description="暂无含本课程目标的间接评价问卷"
           />
@@ -908,7 +1047,7 @@ onActivated(() => {
             {{ result.staleReason || '-' }}
           </UiDescriptionsItem>
           <UiDescriptionsItem label="来源类型">
-            {{ result.staleSourceType || '-' }}
+            {{ staleSourceTypeLabel(result.staleSourceType) }}
           </UiDescriptionsItem>
           <UiDescriptionsItem label="来源 ID">
             {{ result.staleSourceId || '-' }}
@@ -927,13 +1066,18 @@ onActivated(() => {
         <UiCard class="achievement-detail__detail-card">
           <template #title>计算明细</template>
           <UiEmpty
-            v-if="!details.length && !detailsLoading"
+            v-if="detailsLoadFailed"
+            size="sm"
+            title="计算明细加载失败"
+          />
+          <UiEmpty
+            v-else-if="!details.length && !detailsLoading"
             size="sm"
             description="暂无计算明细，请先完成成绩录入与达成度计算"
           />
           <UiDataTable
-            pagination-mode="server"
             v-else
+            pagination-mode="server"
             v-model:current="detailPageNum"
             v-model:page-size="detailPageSize"
             :columns="detailColumns"
@@ -984,7 +1128,12 @@ onActivated(() => {
         <UiCard class="achievement-detail__audit-card">
           <template #title>审核责任链流水</template>
           <UiEmpty
-            v-if="!audits.length && !auditsLoading"
+            v-if="auditsLoadFailed"
+            description="审核责任链加载失败"
+            size="sm"
+          />
+          <UiEmpty
+            v-else-if="!audits.length && !auditsLoading"
             description="暂无审核责任链流水"
             size="sm"
           />
@@ -1034,7 +1183,12 @@ onActivated(() => {
       <UiCard class="achievement-detail__review-card">
         <template #title>人工复核记录</template>
         <UiEmpty
-          v-if="!reviews.length && !reviewsLoading"
+          v-if="reviewsLoadFailed"
+          description="人工复核记录加载失败"
+          size="sm"
+        />
+        <UiEmpty
+          v-else-if="!reviews.length && !reviewsLoading"
           description="暂无人工复核记录"
           size="sm"
         />
@@ -1104,23 +1258,27 @@ onActivated(() => {
 @use '@/styles/breakpoints' as bp;
 .achievement-detail {
   &__empty {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-component);
+  }
+
+  &__stale-banner {
+    margin-bottom: var(--dp-space-component);
   }
 
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__synthesis-card {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   &__synthesis-links {
-    margin-top: 16px;
+    margin-top: var(--dp-space-block);
   }
 
   &__synthesis-links-title {
-    margin: 0 0 8px;
+    margin: 0 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-md);
     font-weight: var(--dp-font-weight-title);
     color: var(--dp-text-primary);
@@ -1136,8 +1294,8 @@ onActivated(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 8px 0;
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-component-tight) 0;
     border-top: 1px solid var(--dp-border-subtle);
     font-size: var(--dp-font-size-md);
     color: var(--dp-text-secondary);
@@ -1152,22 +1310,22 @@ onActivated(() => {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
-    margin-bottom: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel-header {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
   &__panel-title {
     margin: 0;
-    font-size: 15px;
+    font-size: var(--dp-type-panel-title-size);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -1180,45 +1338,45 @@ onActivated(() => {
   &__layout {
     display: grid;
     grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-    gap: var(--dp-space-3, 12px);
-    margin-bottom: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__ref-code {
     color: var(--dp-text-muted);
     font-size: var(--dp-font-size-xs);
-    margin-right: 4px;
+    margin-right: var(--dp-space-component-xs);
   }
 
   &__evidence-gap {
-    margin: 4px 0 0;
+    margin: var(--dp-space-component-xs) 0 0;
     font-size: var(--dp-font-size-xs);
     color: var(--dp-warning);
     line-height: 1.4;
   }
 
   &__timeline {
-    margin-top: 4px;
+    margin-top: var(--dp-space-component-xs);
   }
 
   &__audit-line {
-    margin: 0 0 4px;
+    margin: 0 0 var(--dp-space-component-xs);
     color: var(--dp-text-primary);
   }
 
   &__audit-meta {
-    margin: 0 0 4px;
+    margin: 0 0 var(--dp-space-component-xs);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
   &__audit-opinion {
-    margin: 4px 0 0;
+    margin: var(--dp-space-component-xs) 0 0;
     color: var(--dp-text-secondary);
   }
 
   &__audit-return {
-    margin: 4px 0 0;
+    margin: var(--dp-space-component-xs) 0 0;
     color: var(--dp-error);
   }
 
@@ -1228,7 +1386,7 @@ onActivated(() => {
   }
 
   &__pager {
-    margin-top: 12px;
+    margin-top: var(--dp-space-component);
     text-align: right;
   }
 }

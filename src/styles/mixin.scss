@@ -106,7 +106,7 @@
     width: 6px;
     height: 6px;
     opacity: 0;
-    transition: opacity 0.3s;
+    transition: opacity var(--dp-duration-slow);
   }
 
   &:hover::-webkit-scrollbar {

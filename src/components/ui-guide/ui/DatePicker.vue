@@ -147,16 +147,16 @@ const handleOpenChange = (open: boolean) => {
   padding: 0 11px !important;
   border-radius: var(--dp-radius-control);
   border: 1px solid var(--dp-border);
-  background-color: var(--dp-bg-control);
+  background-color: var(--dp-surface);
   font-size: var(--dp-font-size-md);
   line-height: 22px;
   color: var(--dp-text-primary);
   font-family: var(--dp-font-family);
   box-shadow: none;
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background-color 0.2s ease;
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    box-shadow var(--dp-duration-normal) var(--dp-ease-default),
+    background-color var(--dp-duration-normal) var(--dp-ease-default);
 }
 
 .ui-date-picker--sm :deep(.ant-picker) {
@@ -209,7 +209,7 @@ const handleOpenChange = (open: boolean) => {
 .ui-date-picker :deep(.ant-picker-clear) {
   display: inline-flex !important;
   align-items: center !important;
-  margin-inline-start: 4px;
+  margin-inline-start: var(--dp-space-component-xs);
   color: var(--dp-text-muted);
 }
 
@@ -244,7 +244,7 @@ const handleOpenChange = (open: boolean) => {
   box-shadow: var(--dp-shadow-dropdown) !important;
   font-family: var(--dp-font-family) !important;
   overflow: hidden !important;
-  padding: 6px !important;
+  padding: var(--dp-space-component-tight) !important;
 }
 
 .ui-date-picker-dropdown .ant-picker-panel-container {
@@ -258,7 +258,7 @@ const handleOpenChange = (open: boolean) => {
 }
 
 .ui-date-picker-dropdown .ant-picker-header-view {
-  font-size: 15px !important;
+  font-size: var(--dp-type-panel-title-size) !important;
   font-weight: 600 !important;
   color: var(--dp-text-primary) !important;
 }
@@ -301,7 +301,7 @@ const handleOpenChange = (open: boolean) => {
 
 .ui-date-picker-dropdown .ant-picker-footer {
   border-top: 1px solid var(--dp-border) !important;
-  padding: 8px 12px !important;
+  padding: var(--dp-space-component-tight) var(--dp-space-component) !important;
 }
 
 .ui-date-picker-dropdown .ant-picker-ranges .ant-picker-ok .ant-btn-primary {
@@ -311,7 +311,7 @@ const handleOpenChange = (open: boolean) => {
   background-color: var(--dp-blue-600) !important;
   border: none !important;
   border-radius: var(--dp-radius-control-inner) !important;
-  padding: 4px 8px !important;
+  padding: var(--dp-space-component-xs) var(--dp-space-component-tight) !important;
   box-shadow: none !important;
   height: auto !important;
 }

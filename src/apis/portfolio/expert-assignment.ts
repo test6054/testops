@@ -5,6 +5,7 @@ import type { PortfolioArchiveRecordSourceTypeCode } from '@/types/enums/portfol
 import type { PortfolioEvaluationIdentityMaterialScopeCode } from '@/types/enums/portfolio-evaluation-identity-material-scope-enum'
 import type { PortfolioExpertAssignmentStatusCode } from '@/types/enums/portfolio-expert-assignment-status-enum'
 import type { PortfolioIdentityMaterialCategoryClassCode } from '@/types/enums/portfolio-identity-material-category-class-enum'
+import type { PortfolioPolicyMatchConclusionCode } from '@/types/enums/portfolio-policy-match-conclusion-enum'
 import http from '@/config/axios'
 
 /** 对齐后端 PortfolioExpertMaterialScope */
@@ -37,7 +38,6 @@ export interface PortfolioExpertAssignmentSubjectTeacherVO {
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
-  lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -73,7 +73,7 @@ export interface PortfolioExpertReviewMaterialItemVO {
   /** 是否关联正式 AI 初审结果 */
   hasAiPreReview?: boolean
   /** AI 初审结论编码 */
-  aiPreReviewConclusionCode?: string
+  aiPreReviewConclusionCode?: PortfolioPolicyMatchConclusionCode
   /** AI 初审结果标题；maskRequired 时不返回 */
   aiPreReviewResultTitle?: string
   /** AI 初审摘要；maskRequired 时不返回 */
@@ -85,7 +85,6 @@ export interface PortfolioExpertReviewMaterialItemVO {
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
-  lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -111,6 +110,37 @@ export interface PortfolioExpertAssignmentReviewBundleVO {
   materials: PortfolioExpertReviewMaterialItemVO[]
 }
 
+export interface PortfolioExpertAssignmentCategoryOptionVO {
+  categoryCode: string
+  categoryName: string
+}
+
+/** 对齐后端 PortfolioExpertAssignmentCreateOptionsVO */
+export interface PortfolioExpertAssignmentCreateOptionsVO {
+  evaluationTaskId: string
+  evaluationTaskName?: string
+  expertOptions: Array<{
+    userId: string
+    userCode?: string
+    userName?: string
+    role?: string
+  }>
+  subjectTeacherOptions: Array<{
+    teacherUserId: string
+    fullName: string
+    lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
+    archiveWriteForbidden?: boolean
+    evaluationHeld?: boolean
+    countsInCurrentFacultyStructure?: boolean
+  }>
+  categoryOptions: PortfolioExpertAssignmentCategoryOptionVO[]
+  externalExpertCount: number
+  subjectTeacherCount: number
+  participableSubjectTeacherCount: number
+  heldSubjectTeacherCount: number
+  activeCategoryCount: number
+}
+
 export const portfolioExpertAssignmentApi = {
   create: (data: {
     evaluationTaskId: string
@@ -119,6 +149,11 @@ export const portfolioExpertAssignmentApi = {
     materialScope: PortfolioExpertMaterialScope
     expireDays: number
   }) => http.post<PortfolioExpertAssignmentVO>('/api/portfolio/expert-assignment/create', data),
+  createOptions: (data: { id: string }) =>
+    http.post<PortfolioExpertAssignmentCreateOptionsVO>(
+      '/api/portfolio/expert-assignment/create-options',
+      data,
+    ),
   page: (data: {
     pageNum: number
     pageSize: number

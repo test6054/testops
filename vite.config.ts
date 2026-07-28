@@ -100,16 +100,10 @@ export default defineConfig(async ({ command, mode }): Promise<UserConfig> => {
         : []),
     ],
     optimizeDeps: {
+      // echarts / vue-echarts / pdfjs-dist 不进入预构建白名单，避免开发态与首屏被图表/PDF 引擎拖住
+      // 重引擎不进 optimizeDeps：konva/aieditor/vue-office 仅业务路径动态 import，避免开发预构建拖慢冷启动
       include: [
         'vue-draggable-plus',
-        'ant-design-vue',
-        '@ant-design/icons-vue',
-        'echarts',
-        'vue-echarts',
-        'konva',
-        'vue-konva',
-        'pdfjs-dist',
-        'aieditor',
         'lodash-es',
         '@vueuse/core',
         'axios',
@@ -117,9 +111,6 @@ export default defineConfig(async ({ command, mode }): Promise<UserConfig> => {
         'dayjs',
         'crypto-js',
         'dompurify',
-        '@vue-office/docx',
-        '@vue-office/excel',
-        '@vue-office/pptx',
       ],
     },
     build: {
@@ -131,16 +122,10 @@ export default defineConfig(async ({ command, mode }): Promise<UserConfig> => {
           chunkFileNames: 'static/js/[name]-[hash].js',
           entryFileNames: 'static/js/[name]-[hash].js',
           assetFileNames: 'static/[ext]/[name]-[hash].[ext]',
-          // 按实际引用的 node_modules 路径拆包，避免 object 形式强制打入 ant-design-vue 主入口
+          // 重引擎单独命名便于缓存；antd/icons 不强制整包合并，按路由真实引用拆分以压首屏
           manualChunks(id) {
             if (!id.includes('node_modules')) {
               return undefined
-            }
-            if (id.includes('ant-design-vue')) {
-              return 'ant-design-vue'
-            }
-            if (id.includes('@ant-design/icons-vue')) {
-              return 'ant-design-icons'
             }
             if (id.includes('echarts') || id.includes('vue-echarts')) {
               return 'echarts'
@@ -153,6 +138,16 @@ export default defineConfig(async ({ command, mode }): Promise<UserConfig> => {
             }
             if (id.includes('pdfjs-dist')) {
               return 'pdf'
+            }
+            if (
+              id.includes('@vue-office/')
+              || id.includes('/vue-office/')
+            ) {
+              // office 预览仅 FilePreview 动态导入，保持独立大包不污染业务 chunk
+              if (id.includes('excel')) return 'vue-office-excel'
+              if (id.includes('pptx')) return 'vue-office-pptx'
+              if (id.includes('docx')) return 'vue-office-docx'
+              return 'vue-office'
             }
             if (
               id.includes('/vue/')

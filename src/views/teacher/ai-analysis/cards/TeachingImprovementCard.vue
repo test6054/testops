@@ -44,8 +44,10 @@
     <AiAnalysisCardBody
       :loading="loading"
       :generating="generating"
-      :has-content="true"
+      :has-content="record != null || !loadFailed"
+      :load-failed="loadFailed"
       empty-description="暂无改进建议，可点击重新生成"
+      error-description="教学改进方案加载失败"
       progress-title="AI 教学改进方案生成中"
       :progress-waiting-text="
         props.classId
@@ -137,6 +139,8 @@ const props = withDefaults(
 
 const record = ref<TeachingAnalysisRecordResponse | null>(null)
 const loading = ref(false)
+const loadFailed = ref(false)
+let loadGeneration = 0
 const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
 
 /** MVR-285：默认拒绝假可写；依赖 AI 分析中心 overview 或页面 provide 的能力位 */
@@ -174,18 +178,35 @@ function severityTone(value: TeachingImprovementSeverityCode) {
 }
 
 async function reload(): Promise<void> {
-  if (!props.examId) return
+  const examId = props.examId
+  if (!examId) return
+  const classId = props.classId || undefined
+  const generation = ++loadGeneration
   loading.value = true
+  loadFailed.value = false
   try {
-    record.value = await getLatestTeachingImprovement({
-      examId: props.examId,
-      classId: props.classId || undefined,
+    const next = await getLatestTeachingImprovement({
+      examId,
+      classId,
     })
+    if (
+      generation !== loadGeneration
+      || props.examId !== examId
+      || (props.classId || undefined) !== classId
+    ) {
+      return
+    }
+    record.value = next
   } catch (e) {
-    record.value = null
+    if (generation !== loadGeneration || props.examId !== examId) {
+      return
+    }
+    loadFailed.value = true
     showUserError(e, '教学改进方案加载失败')
   } finally {
-    loading.value = false
+    if (generation === loadGeneration) {
+      loading.value = false
+    }
   }
 }
 
@@ -194,19 +215,22 @@ async function handleGenerate(): Promise<void> {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
+  const examId = props.examId
+  const classId = props.classId || undefined
   await runGeneration(
     () =>
       generateTeachingImprovement({
-        examId: props.examId,
-        classId: props.classId || undefined,
+        examId,
+        classId,
       }),
     {
       successMessage: '已生成最新改进方案',
       onSuccess: (generated) => {
+        if (props.examId !== examId || (props.classId || undefined) !== classId) {
+          return
+        }
         record.value = generated
-      },
-      onFailure: () => {
-        record.value = null
+        loadFailed.value = false
       },
     },
   )
@@ -260,8 +284,11 @@ function exportRecordText(): void {
 }
 
 watch(
-  () => [props.examId, props.reloadToken, props.classId],
+  () => [props.examId, props.reloadToken, props.classId] as const,
   () => {
+    loadGeneration += 1
+    record.value = null
+    loadFailed.value = false
     if (props.examId) void reload()
   },
   { immediate: true },

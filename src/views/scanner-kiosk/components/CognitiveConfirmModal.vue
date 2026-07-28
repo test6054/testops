@@ -203,20 +203,20 @@ function handleOk() {
 
 <style scoped>
 .cognitive-confirm__lead {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-md);
   color: var(--kiosk-ink-secondary);
 }
 .cognitive-confirm__blocker {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-md);
   color: var(--kiosk-danger);
 }
 .cognitive-confirm__preview {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .cognitive-confirm__preview-label {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   color: var(--kiosk-ink-tertiary);
 }
@@ -234,14 +234,14 @@ function handleOk() {
   color: var(--kiosk-ink-tertiary);
 }
 .cognitive-confirm__facts {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   display: grid;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .cognitive-confirm__facts div {
   display: grid;
   grid-template-columns: 72px 1fr;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
 }
 .cognitive-confirm__facts dt {

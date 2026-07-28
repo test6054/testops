@@ -66,6 +66,6 @@ const props = withDefaults(
 
 .ui-typography-paragraph :deep(.ant-typography-expand),
 .ui-typography-paragraph :deep(.ant-typography-collapse) {
-  color: var(--dp-primary);
+  color: var(--dp-color-primary);
 }
 </style>

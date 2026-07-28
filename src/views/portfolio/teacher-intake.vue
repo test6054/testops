@@ -1,31 +1,22 @@
 <script setup lang="ts">
 import type { PortfolioTeacherJourneyKey } from '@/constants/portfolio-teacher-journey'
-import type { WorkbenchStage } from '@/types/workbench'
-import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PortfolioMaterialIntakePanel from '@/components/portfolio/PortfolioMaterialIntakePanel.vue'
 import PortfolioTeacherJourneyRail from '@/components/portfolio/PortfolioTeacherJourneyRail.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
-import {
-  PORTFOLIO_TEACHER_JOURNEY_STEPS,
-  resolvePortfolioJourneyDefaultRoute,
-} from '@/constants/portfolio-teacher-journey'
+import { usePortfolioTeacherJourneyRail } from '@/composables/usePortfolioTeacherJourneyRail'
+import { resolvePortfolioJourneyDefaultRoute } from '@/constants/portfolio-teacher-journey'
 
 const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
-
-const journeyStages = computed((): WorkbenchStage[] =>
-  PORTFOLIO_TEACHER_JOURNEY_STEPS.map((step) => ({
-    key: step.key,
-    title: step.title,
-    status: step.key === 'collect' ? 'active' : 'pending',
-  })),
-)
+const activeJourneyKey: PortfolioTeacherJourneyKey = 'collect'
+const { journeyStages, loadFailed, lastSuccessAt } = usePortfolioTeacherJourneyRail(activeJourneyKey)
 
 function navigateJourney(journeyKey: PortfolioTeacherJourneyKey) {
   void router.push({
@@ -81,11 +72,17 @@ function openArchiveCategory() {
     </template>
     <template #rail>
       <PortfolioTeacherJourneyRail
+        v-if="journeyStages.length > 0"
         :stages="journeyStages"
-        active-key="collect"
+        :active-key="activeJourneyKey"
         @select="navigateJourney"
       />
     </template>
+    <UiAlertStrip
+      v-if="loadFailed"
+      tone="error"
+      title="旅程快照加载失败"
+    />
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
     <PortfolioMaterialIntakePanel v-else @submitted="handleSubmitted" />
   </StageWorkbenchShell>

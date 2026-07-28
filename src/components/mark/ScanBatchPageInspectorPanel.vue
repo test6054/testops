@@ -1,5 +1,5 @@
 <template>
-  <UiSpin :spinning="loading">
+  <UiSpin :spinning="loading" aria-live="polite" :aria-busy="loading || undefined">
     <UiAlertStrip
       v-if="!loading && !inspector"
       tone="info"
@@ -9,7 +9,7 @@
       :show-icon="false"
     >
       <template #default>
-        <span style="display: inline-flex; align-items: center; gap: 8px">
+        <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
           <UiTag tone="blue" size="sm">未选页</UiTag>
           <span>请在左侧页轨选择一条扫描页后查看登记与绑定详情</span>
         </span>
@@ -163,7 +163,7 @@
               :maxlength="64"
             />
           </UiFormItem>
-          <UiFormItem label="确认考生" required>
+          <UiFormItem v-if="!creatingCandidate" label="确认考生" required>
             <UiSelect
               size="sm"
               v-model="confirmedCandidateRosterId"
@@ -176,6 +176,39 @@
               @search="searchCandidates"
             />
           </UiFormItem>
+          <template v-else>
+            <UiFormItem label="学生姓名" required>
+              <UiInput
+                size="sm"
+                v-model="confirmedStudentName"
+                placeholder="核对并确认学生姓名"
+                :maxlength="64"
+              />
+            </UiFormItem>
+            <UiFormItem label="所属院系" required>
+              <UiSelect
+                size="sm"
+                v-model="confirmedDepartmentId"
+                :options="departmentOptions"
+                :loading="departmentsLoading"
+                placeholder="选择学生所属院系"
+                allow-search
+                option-filter-prop="label"
+              />
+            </UiFormItem>
+            <UiFormItem label="正式班级" required>
+              <UiSelect
+                size="sm"
+                v-model="confirmedClassId"
+                :options="classOptions"
+                :loading="classesLoading"
+                :disabled="!confirmedDepartmentId"
+                placeholder="选择租户已有正式班级"
+                allow-search
+                option-filter-prop="label"
+              />
+            </UiFormItem>
+          </template>
           <UiFormItem label="答卷状态" required>
             <UiSelect
               size="sm"
@@ -192,6 +225,7 @@
             />
           </UiFormItem>
           <UiButton
+            v-if="!creatingCandidate"
             variant="primary"
             size="sm"
             block
@@ -200,6 +234,27 @@
             @click="submitBind"
           >
             确认绑定
+          </UiButton>
+          <UiButton
+            v-else
+            variant="primary"
+            size="sm"
+            block
+            :loading="binding"
+            :disabled="canSubmitCreateBind !== true"
+            @click="submitCreateAndBind"
+          >
+            创建考生并绑定
+          </UiButton>
+          <UiButton
+            variant="ghost"
+            size="sm"
+            block
+            :disabled="binding"
+            @click="toggleCandidateCreation"
+          >
+            <UserAddOutlined v-if="!creatingCandidate" />
+            {{ creatingCandidate ? '返回选择已有考生' : '名单中没有？创建并绑定' }}
           </UiButton>
         </UiForm>
       </section>
@@ -259,10 +314,13 @@ import type {
 } from '@/apis/mark/exam-scan'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import PaperClipOutlined from '@ant-design/icons-vue/PaperClipOutlined'
+import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
 
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import { bindPaper } from '@/apis/mark/exam-binding'
+import { getClassesByDepartment } from '@/apis/edu/class'
+import { getExamDetail } from '@/apis/mark/exam'
+import { bindPaper, createCandidateAndBindPaper } from '@/apis/mark/exam-binding'
 import {
   QUALITY_DECISION_TONE,
   QualityDecisionDescription,
@@ -272,6 +330,7 @@ import {
   ScanBatchWorkbenchRosterMatchStatusTone,
 } from '@/apis/mark/exam-scan'
 import { TASK_STATUS_TONE, TaskStatusDescription } from '@/apis/mark/task-status'
+import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -327,6 +386,14 @@ const confirmedCandidateRosterId = ref<string | undefined>(undefined)
 const attemptStatus = ref<AttemptStatusCode>(AttemptStatusCode.NORMAL)
 const attemptNo = ref('')
 const binding = ref(false)
+const creatingCandidate = ref(false)
+const confirmedStudentName = ref('')
+const confirmedDepartmentId = ref<string | undefined>()
+const confirmedClassId = ref<string | undefined>()
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const classOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentsLoading = ref(false)
+const classesLoading = ref(false)
 const targetPaperInstanceId = ref<string | undefined>(undefined)
 const reassigning = ref(false)
 
@@ -548,6 +615,16 @@ const canSubmitBind = computed(() =>
   Boolean(showBindForm.value && confirmedCandidateRosterId.value && !binding.value),
 )
 
+const canSubmitCreateBind = computed(() =>
+  Boolean(
+    showBindForm.value
+    && recognizedStudentNo.value.trim()
+    && confirmedStudentName.value.trim()
+    && confirmedClassId.value
+    && !binding.value,
+  ),
+)
+
 function registerStatusLabel(status: ScanBatchWorkbenchRegisterStatusCode): string {
   return strictEnumLabel(ScanBatchWorkbenchRegisterStatusDescription, status, '扫描页登记状态')
 }
@@ -564,7 +641,11 @@ function syncBindFormFromPage(): void {
     return
   }
   recognizedStudentNo.value = page.ocrStudentNo?.trim() || ''
+  confirmedStudentName.value = page.ocrStudentName?.trim() || ''
   confirmedCandidateRosterId.value = undefined
+  creatingCandidate.value = false
+  confirmedDepartmentId.value = undefined
+  confirmedClassId.value = undefined
   attemptStatus.value = AttemptStatusCode.NORMAL
   attemptNo.value = ''
   targetPaperInstanceId.value = reassignTargetOptions.value[0]?.value
@@ -572,6 +653,49 @@ function syncBindFormFromPage(): void {
     void searchCandidates(buildOcrSearchKeyword(page))
   } else {
     resetCandidateSearch()
+  }
+}
+
+async function loadCandidateCreationScope(): Promise<void> {
+  if (!props.examId) return
+  departmentsLoading.value = true
+  try {
+    const [departments, exam] = await Promise.all([
+      departmentCatalogApi.list(),
+      getExamDetail(props.examId),
+    ])
+    departmentOptions.value = departments.map(item => ({ value: item.id, label: item.deptName }))
+    confirmedDepartmentId.value = exam.referenceDepartmentId
+      ?? (departments.length === 1 ? departments[0]?.id : undefined)
+  } catch (error) {
+    departmentOptions.value = []
+    showUserError(error, '院系与班级范围加载失败')
+  } finally {
+    departmentsLoading.value = false
+  }
+}
+
+async function loadFormalClasses(): Promise<void> {
+  confirmedClassId.value = undefined
+  classOptions.value = []
+  if (!confirmedDepartmentId.value) return
+  classesLoading.value = true
+  try {
+    const classes = await getClassesByDepartment({ departmentId: confirmedDepartmentId.value })
+    classOptions.value = classes
+      .filter(item => item.id && item.className)
+      .map(item => ({ value: item.id!, label: item.className! }))
+  } catch (error) {
+    showUserError(error, '正式班级加载失败')
+  } finally {
+    classesLoading.value = false
+  }
+}
+
+function toggleCandidateCreation(): void {
+  creatingCandidate.value = !creatingCandidate.value
+  if (creatingCandidate.value && departmentOptions.value.length === 0) {
+    void loadCandidateCreationScope()
   }
 }
 
@@ -615,6 +739,35 @@ async function submitBind(): Promise<void> {
     emit('bound')
   } catch (error) {
     showUserError(error, '试卷身份绑定失败')
+  } finally {
+    binding.value = false
+  }
+}
+
+async function submitCreateAndBind(): Promise<void> {
+  if (props.canManageOwnerWrites !== true || canSubmitCreateBind.value !== true) {
+    showFormValidationMessage('请完整确认学号、姓名和正式班级')
+    return
+  }
+  const page = props.inspector?.page
+  if (!page?.paperInstanceId || !page.pageId || !props.examId || !props.scanBatchId) return
+  binding.value = true
+  try {
+    const result = await createCandidateAndBindPaper({
+      examId: props.examId,
+      scanBatchId: props.scanBatchId,
+      paperInstanceId: page.paperInstanceId,
+      pageId: page.pageId,
+      studentNo: recognizedStudentNo.value.trim(),
+      studentName: confirmedStudentName.value.trim(),
+      classId: confirmedClassId.value!,
+      attemptStatus: attemptStatus.value,
+      attemptNo: attemptNo.value.trim() || undefined,
+    })
+    void message.success(result.createdStudentUser ? '考生账号已创建并完成答卷绑定' : '考生已加入名册并完成答卷绑定')
+    emit('bound')
+  } catch (error) {
+    showUserError(error, '创建考生并绑定失败')
   } finally {
     binding.value = false
   }
@@ -674,23 +827,27 @@ watch(
   },
   { immediate: true },
 )
+
+watch(confirmedDepartmentId, () => {
+  if (creatingCandidate.value) void loadFormalClasses()
+})
 </script>
 
 <style lang="scss" scoped>
 .scan-batch-page-inspector__summary {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .scan-batch-page-inspector__position {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   min-width: 0;
-  margin-bottom: 6px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .scan-batch-page-inspector__order {
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
@@ -707,11 +864,11 @@ watch(
 .scan-batch-page-inspector__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
 }
 
 .scan-batch-page-inspector__subline {
-  margin: 6px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-xs);
   line-height: 1.4;
@@ -719,22 +876,22 @@ watch(
 
 .scan-batch-page-inspector__tip {
   flex-shrink: 0;
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
   font-size: var(--dp-font-size-sm);
   cursor: help;
 }
 
 .scan-batch-page-inspector__section {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: var(--dp-space-component);
+  padding-top: var(--dp-space-component);
   border-top: 1px solid var(--dp-border-subtle);
 }
 
 .scan-batch-page-inspector__section-title {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin: 0 0 8px;
+  gap: var(--dp-space-component-xs);
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   font-weight: 600;
 }
@@ -742,15 +899,15 @@ watch(
 .scan-batch-page-inspector__blocked {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 12px;
-  padding-top: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component);
+  padding-top: var(--dp-space-component);
   border-top: 1px solid var(--dp-border-subtle);
 }
 
 .scan-batch-page-inspector__bind-form {
   :deep(.ant-form-item) {
-    margin-bottom: 10px;
+    margin-bottom: var(--dp-space-component);
   }
 }
 </style>

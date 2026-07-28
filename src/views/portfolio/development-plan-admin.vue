@@ -22,7 +22,7 @@ import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { ReloadOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import message from 'ant-design-vue/es/message'
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS,
@@ -36,6 +36,7 @@ import {
   PortfolioDevelopmentPlanTypeCode,
   PortfolioDevelopmentPlanTypeDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import { portfolioNationalAchievementApi } from '@/apis/portfolio/national-achievement'
 import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
@@ -46,8 +47,10 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
@@ -64,6 +67,7 @@ import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchive
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { useQueryTable } from '@/composables/useQueryTable'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { PortfolioImportQualityGradeDescription } from '@/types/enums/portfolio-import-quality-grade-enum'
 import {
   ALL_PORTFOLIO_PLANNING_SYNC_CONFLICT_STRATEGY_CODES,
@@ -75,9 +79,9 @@ import {
   PortfolioPlanningSyncOrgScopeCode,
   PortfolioPlanningSyncOrgScopeDescription,
 } from '@/types/enums/portfolio-planning-sync-org-scope-enum'
+import { createClientSnowflakeId } from '@/utils/client-snowflake'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -407,6 +411,7 @@ const historyBatchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() =>
 const { loadTree, portfolioOrgOptions } = usePortfolioOrgTree()
 const { canPickTeachers } = usePortfolioTeacherAccess()
 const route = useRoute()
+const router = useRouter()
 
 const showAdminStats = computed(() => canPickTeachers.value)
 
@@ -427,12 +432,19 @@ const planTabItems = computed(() => {
 
 const activeTab = ref('plans')
 const exporting = ref(false)
+const exportApplyOpen = ref(false)
+const exportPurpose = ref('')
 const submitting = ref(false)
 const pageRequestToken = ref(0)
 const yearStats = ref<PortfolioDevelopmentPlanYearStatVO[]>([])
 const orgStats = ref<PortfolioDevelopmentPlanOrgStatVO[]>([])
 const completion = ref<PortfolioDevelopmentPlanCompletionVO | null>(null)
 const attainment = ref<PortfolioDevelopmentPlanAchievementAttainmentItemVO[]>([])
+const yearStatsLoadError = ref(false)
+const orgStatsLoadError = ref(false)
+const completionLoadError = ref(false)
+const attainmentLoadError = ref(false)
+const analysisLoading = ref(false)
 const highlightedPlanId = ref('')
 const pendingLocatePlanId = ref('')
 const selectedPlanId = ref('')
@@ -443,6 +455,7 @@ const achievementCatalogs = ref<PortfolioNationalAchievementCatalogVO[]>([])
 const achievementOperationItemId = ref('')
 const gapOpen = ref(false)
 const gapLoading = ref(false)
+const gapRequestToken = ref(0)
 const gap = ref<PortfolioAchievementGapAnalysisVO | null>(null)
 const planItemsRequestToken = ref(0)
 
@@ -503,11 +516,15 @@ function planTypeLabel(type: PortfolioDevelopmentPlanTypeCode): string {
   return strictEnumLabel(PortfolioDevelopmentPlanTypeDescription, type, '发展规划类型')
 }
 
-const approvedCount = computed(
-  () =>
+const approvedCount = computed(() => {
+  if (yearStatsLoadError.value && yearStats.value.length === 0) {
+    return null
+  }
+  return (
     yearStats.value.find((item) => item.planStatus === PortfolioDevelopmentPlanStatusCode.APPROVED)
-      ?.planCount ?? 0,
-)
+      ?.planCount ?? 0
+  )
+})
 
 const columns: ColumnsType = [
   { title: '标题', dataIndex: 'planTitle', key: 'planTitle' },
@@ -620,60 +637,88 @@ async function loadPage() {
     }
   }
   if (showAdminStats.value) {
+    analysisLoading.value = true
     try {
-      yearStats.value = await portfolioDevelopmentPlanApi.statsByYear({ planYear: requestPlanYear })
-    } catch (error) {
+      try {
+        yearStats.value = await portfolioDevelopmentPlanApi.statsByYear({ planYear: requestPlanYear })
+        if (currentToken !== pageRequestToken.value) {
+          return
+        }
+        yearStatsLoadError.value = false
+      } catch (error) {
+        if (currentToken !== pageRequestToken.value) {
+          return
+        }
+        yearStatsLoadError.value = true
+        showUserError(error, '规划年度统计加载失败')
+      }
       if (currentToken !== pageRequestToken.value) {
         return
       }
-      yearStats.value = []
-      showUserError(error, '规划年度统计加载失败')
-    }
-    if (currentToken !== pageRequestToken.value) {
-      return
-    }
-    try {
-      orgStats.value = await portfolioDevelopmentPlanApi.statsByOrg({ planYear: requestPlanYear })
-    } catch (error) {
+      try {
+        orgStats.value = await portfolioDevelopmentPlanApi.statsByOrg({ planYear: requestPlanYear })
+        if (currentToken !== pageRequestToken.value) {
+          return
+        }
+        orgStatsLoadError.value = false
+      } catch (error) {
+        if (currentToken !== pageRequestToken.value) {
+          return
+        }
+        orgStatsLoadError.value = true
+        showUserError(error, '规划组织统计加载失败')
+      }
       if (currentToken !== pageRequestToken.value) {
         return
       }
-      orgStats.value = []
-      showUserError(error, '规划组织统计加载失败')
-    }
-    if (currentToken !== pageRequestToken.value) {
-      return
-    }
-    try {
-      completion.value = await portfolioDevelopmentPlanApi.completionAnalysis({
-        planYear: requestPlanYear,
-      })
-    } catch (error) {
+      try {
+        completion.value = await portfolioDevelopmentPlanApi.completionAnalysis({
+          planYear: requestPlanYear,
+        })
+        if (currentToken !== pageRequestToken.value) {
+          return
+        }
+        completionLoadError.value = false
+      } catch (error) {
+        if (currentToken !== pageRequestToken.value) {
+          return
+        }
+        completionLoadError.value = true
+        showUserError(error, '规划完成度分析加载失败')
+      }
       if (currentToken !== pageRequestToken.value) {
         return
       }
-      completion.value = null
-      showUserError(error, '规划完成度分析加载失败')
-    }
-    if (currentToken !== pageRequestToken.value) {
-      return
-    }
-    try {
-      attainment.value = await portfolioDevelopmentPlanApi.achievementAttainment({
-        planYear: requestPlanYear,
-      })
-    } catch (error) {
-      if (currentToken !== pageRequestToken.value) {
-        return
+      try {
+        attainment.value = await portfolioDevelopmentPlanApi.achievementAttainment({
+          planYear: requestPlanYear,
+        })
+        if (currentToken !== pageRequestToken.value) {
+          return
+        }
+        attainmentLoadError.value = false
+      } catch (error) {
+        if (currentToken !== pageRequestToken.value) {
+          return
+        }
+        attainmentLoadError.value = true
+        showUserError(error, '规划成果达成分析加载失败')
       }
-      attainment.value = []
-      showUserError(error, '规划成果达成分析加载失败')
+    } finally {
+      if (currentToken === pageRequestToken.value) {
+        analysisLoading.value = false
+      }
     }
   } else {
     yearStats.value = []
     orgStats.value = []
     completion.value = null
     attainment.value = []
+    yearStatsLoadError.value = false
+    orgStatsLoadError.value = false
+    completionLoadError.value = false
+    attainmentLoadError.value = false
+    analysisLoading.value = false
   }
 }
 
@@ -748,10 +793,11 @@ async function createPlan() {
     void message.success('已创建教师年度规划')
     form.planTitle = ''
     form.planSummary = ''
-    await loadPage()
   } catch (error) {
     showUserError(error, '创建教师年度规划失败')
+    return
   }
+  await loadPage()
 }
 
 function buildDevelopmentPlanRowActions(
@@ -794,12 +840,13 @@ async function submitPlan(id: string) {
     }
     await portfolioDevelopmentPlanApi.submit({ id })
     void message.success('已提交')
-    await loadPage()
   } catch (error) {
     showUserError(error, '提交规划失败')
+    return
   } finally {
     submitting.value = false
   }
+  await loadPage()
 }
 
 function orgStatRowKey(record: unknown): string {
@@ -807,20 +854,44 @@ function orgStatRowKey(record: unknown): string {
   return `${row.portfolioOrgId ?? 'none'}-${row.planStatus}`
 }
 
-async function exportPlans() {
-  if (exporting.value) {
+function openExportApply() {
+  if (!form.planYear) {
+    showFormValidationMessage('请填写规划年度')
     return
+  }
+  exportPurpose.value = ''
+  exportApplyOpen.value = true
+}
+
+async function submitExportApply() {
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return Promise.reject(new Error('导出用途为空'))
+  }
+  if (!form.planYear) {
+    showFormValidationMessage('请填写规划年度')
+    return Promise.reject(new Error('规划年度为空'))
+  }
+  if (exporting.value) {
+    return Promise.reject(new Error('导出申请进行中'))
   }
   exporting.value = true
   try {
-    const result = await portfolioDevelopmentPlanApi.exportExcel({
-      planYear: form.planYear,
-      planType: PortfolioDevelopmentPlanTypeCode.TEACHER,
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.DEVELOPMENT_PLAN,
+      businessRef: {
+        planYear: form.planYear,
+        developmentPlanType: PortfolioDevelopmentPlanTypeCode.TEACHER,
+      },
+      exportPurpose: purpose,
     })
-    await downloadPortfolioExcelExport(result)
-    void message.success('规划已导出')
+    exportApplyOpen.value = false
+    void message.success('已提交发展规划导出审批')
+    await router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出规划失败')
+    showUserError(error, '提交发展规划导出审批失败')
+    return Promise.reject(error)
   } finally {
     exporting.value = false
   }
@@ -834,7 +905,7 @@ function openPlanItems(planId: string) {
 
 function createEmptyPlanItem(): DevelopmentPlanItemEditorRow {
   return {
-    rowKey: `new-${Date.now()}-${planItems.value.length}`,
+    rowKey: `new-${createClientSnowflakeId()}`,
     id: undefined,
     catalogId: undefined,
     itemTitle: '',
@@ -865,12 +936,12 @@ function toEditableItem(item: PortfolioDevelopmentPlanItemVO): DevelopmentPlanIt
   }
 }
 
-async function loadPlanItems() {
-  if (!selectedPlanId.value) {
+async function loadPlanItems(targetPlanId?: string) {
+  const planId = targetPlanId ?? selectedPlanId.value
+  if (!planId) {
     planItems.value = []
     return
   }
-  const planId = selectedPlanId.value
   const currentToken = ++planItemsRequestToken.value
   itemLoading.value = true
   try {
@@ -909,7 +980,8 @@ async function savePlanItems() {
   if (itemSaving.value) {
     return
   }
-  if (!selectedPlanId.value) {
+  const planId = selectedPlanId.value
+  if (!planId) {
     showFormValidationMessage('请选择规划')
     return
   }
@@ -937,14 +1009,18 @@ async function savePlanItems() {
   }
   itemSaving.value = true
   try {
-    await portfolioDevelopmentPlanApi.batchSaveItems({ planId: selectedPlanId.value, items })
+    await portfolioDevelopmentPlanApi.batchSaveItems({ planId, items })
     void message.success('规划明细已保存')
-    await loadPlanItems()
   } catch (error) {
     showUserError(error, '保存规划明细失败')
+    return
   } finally {
     itemSaving.value = false
   }
+  if (selectedPlanId.value !== planId) {
+    return
+  }
+  await loadPlanItems(planId)
 }
 
 async function linkAchievement(item: DevelopmentPlanItemEditorRow) {
@@ -959,17 +1035,27 @@ async function linkAchievement(item: DevelopmentPlanItemEditorRow) {
     showFormValidationMessage('请选择成果目标')
     return
   }
+  const planId = selectedPlanId.value
   const itemId = item.id
+  const catalogId = item.catalogId
+  if (!planId) {
+    showFormValidationMessage('请选择规划')
+    return
+  }
   achievementOperationItemId.value = itemId
   try {
-    await portfolioNationalAchievementApi.link({ planItemId: itemId, catalogId: item.catalogId })
+    await portfolioNationalAchievementApi.link({ planItemId: itemId, catalogId })
     void message.success('成果目标已关联')
-    await loadPlanItems()
   } catch (error) {
     showUserError(error, '关联成果目标失败')
+    return
   } finally {
     achievementOperationItemId.value = ''
   }
+  if (selectedPlanId.value !== planId) {
+    return
+  }
+  await loadPlanItems(planId)
 }
 
 async function openAchievementGap(item: DevelopmentPlanItemEditorRow) {
@@ -977,17 +1063,35 @@ async function openAchievementGap(item: DevelopmentPlanItemEditorRow) {
     showFormValidationMessage('当前规划明细尚未关联成果目标')
     return
   }
+  const planId = selectedPlanId.value
+  const itemId = item.id
+  if (!planId) {
+    showFormValidationMessage('请选择规划')
+    return
+  }
+  const currentToken = gapRequestToken.value + 1
+  gapRequestToken.value = currentToken
   gapOpen.value = true
-  gap.value = null
   gapLoading.value = true
   try {
-    gap.value = await portfolioNationalAchievementApi.gapAnalysis({ planItemId: item.id })
-    await loadPlanItems()
+    const nextGap = await portfolioNationalAchievementApi.gapAnalysis({ planItemId: itemId })
+    if (gapRequestToken.value !== currentToken || selectedPlanId.value !== planId) {
+      return
+    }
+    gap.value = nextGap
+    await loadPlanItems(planId)
   } catch (error) {
-    gapOpen.value = false
+    if (gapRequestToken.value !== currentToken || selectedPlanId.value !== planId) {
+      return
+    }
+    if (!gap.value) {
+      gapOpen.value = false
+    }
     showUserError(error, '加载成果差距失败')
   } finally {
-    gapLoading.value = false
+    if (gapRequestToken.value === currentToken) {
+      gapLoading.value = false
+    }
   }
 }
 
@@ -1040,9 +1144,9 @@ watch(
             variant="ghost"
             :loading="exporting"
             :disabled="exporting"
-            @click="exportPlans"
+            @click="openExportApply"
           >
-            导出表格文件
+            申请导出
           </UiButton>
         </template>
         <UiAlertStrip
@@ -1050,7 +1154,7 @@ watch(
           tone="warning"
           title="档案已封存写禁"
           :description="archiveWriteBlockMessage"
-          class="mb-3"
+          class="dp-mb-component"
         />
       </ContextBar>
     </template>
@@ -1066,7 +1170,11 @@ watch(
           placeholder="年度"
         />
         <UiButton size="sm" variant="outline" @click="loadPage"> 刷新 </UiButton>
-        <span v-if="showAdminStats" class="stats">{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span>
+        <span v-if="showAdminStats" class="stats">
+          {{ form.planYear }} 年已通过
+          {{ approvedCount == null ? '—' : approvedCount }} 项
+          <template v-if="yearStatsLoadError">（统计陈旧）</template>
+        </span>
       </div>
       <UiSectionTabs v-model="activeTab" :items="planTabItems" compact divided />
       <template v-if="activeTab === 'plans'">
@@ -1101,7 +1209,7 @@ watch(
           :load-error="loadError"
           row-key="id"
           :row-class-name="planRowClassName"
-          style="margin-top: 16px"
+          style="margin-top: var(--dp-space-block)"
           @page-change="handlePageChange"
         >
           <template #bodyCell="{ column, record }">
@@ -1115,7 +1223,7 @@ watch(
             </template>
             <template v-else-if="column.key === 'lifecycleStatus'">
               <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+                {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
               </UiTag>
 
               <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -1156,9 +1264,9 @@ watch(
             placeholder="选择规划"
             style="width: 320px"
             :options="planOptions"
-            @change="loadPlanItems"
+            @change="() => void loadPlanItems()"
           />
-          <UiButton size="sm" variant="outline" :disabled="!selectedPlanId" @click="loadPlanItems">
+          <UiButton size="sm" variant="outline" :disabled="!selectedPlanId" @click="() => void loadPlanItems()">
             刷新明细
           </UiButton>
           <UiButton v-if="planItemEditable" size="sm" variant="outline" @click="addPlanItemRow">
@@ -1176,7 +1284,7 @@ watch(
         </div>
         <UiAlertStrip v-if="!selectedPlanId" tone="info" size="sm" dense inline :show-icon="false">
           <template #default>
-            <span style="display: inline-flex; align-items: center; gap: 8px">
+            <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
               <UiTag tone="blue" size="sm">未选择规划</UiTag>
               <span>请选择发展规划后再编辑明细项</span>
             </span>
@@ -1192,7 +1300,7 @@ watch(
           :show-pagination="false"
           :sticky-header="false"
           flat
-          style="margin-top: 16px"
+          style="margin-top: var(--dp-space-block)"
         >
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'itemTitle'">
@@ -1302,6 +1410,22 @@ watch(
         </UiDataTable>
       </template>
       <template v-else-if="showAdminStats && activeTab === 'completion'">
+        <UiAlertStrip
+          v-if="completionLoadError"
+          tone="warning"
+          dense
+          :inline="false"
+          title="完成度分析加载失败"
+          style="margin-bottom: var(--dp-space-component)"
+        />
+        <UiAlertStrip
+          v-if="attainmentLoadError"
+          tone="warning"
+          dense
+          :inline="false"
+          title="成果达成分析加载失败"
+          style="margin-bottom: var(--dp-space-component)"
+        />
         <div v-if="completion" class="completion-grid">
           <span>规划总数 {{ completion.totalPlanCount }}</span>
           <span>已通过 {{ completion.approvedPlanCount }}</span>
@@ -1314,6 +1438,10 @@ watch(
           <span>明细完成率 {{ completion.planItemCompletionRatePercent }}%</span>
           <span>平均完成度 {{ completion.averageItemCompletionPercent }}%</span>
         </div>
+        <UiEmpty
+          v-else-if="!analysisLoading && !completionLoadError"
+          description="当前年度暂无完成度分析数据"
+        />
         <UiDataTable
           pagination-mode="none"
           :columns="[
@@ -1321,20 +1449,30 @@ watch(
             { title: '条目数', dataIndex: 'recordCount', key: 'recordCount', width: 88 },
           ]"
           :data-source="attainment"
-          :loading="loading"
+          :loading="analysisLoading"
+          :load-error="attainmentLoadError"
           row-key="categoryCode"
           :show-pagination="false"
           :sticky-header="false"
           flat
-          style="margin-top: 16px"
+          style="margin-top: var(--dp-space-block)"
         />
       </template>
       <template v-else-if="showAdminStats && activeTab === 'org-stats'">
+        <UiAlertStrip
+          v-if="orgStatsLoadError"
+          tone="warning"
+          dense
+          :inline="false"
+          title="科室统计加载失败"
+          style="margin-bottom: var(--dp-space-component)"
+        />
         <UiDataTable
           pagination-mode="none"
           :columns="orgColumns"
           :data-source="orgStats"
-          :loading="loading"
+          :loading="analysisLoading"
+          :load-error="orgStatsLoadError"
           :row-key="orgStatRowKey"
           :show-pagination="false"
           :sticky-header="false"
@@ -1514,7 +1652,7 @@ watch(
                 size="sm"
                 :loading="historyBatchLoading"
                 :disabled="historyWriteBusy"
-                @click="loadHistoryImportBatches"
+                @click="() => void loadHistoryImportBatches()"
               >
                 <ReloadOutlined />
                 刷新
@@ -1531,7 +1669,7 @@ watch(
             :loading="historyBatchLoading"
             :load-error="historyBatchLoadError"
             row-key="id"
-            style="margin-top: 16px"
+            style="margin-top: var(--dp-space-block)"
             @page-change="handleHistoryBatchPageChange"
           >
             <template #bodyCell="{ column, record }">
@@ -1628,6 +1766,21 @@ watch(
         </template>
       </UiSpin>
     </UiDrawer>
+    <UiDialog
+      v-model:open="exportApplyOpen"
+      title="申请导出教师发展规划台账"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="submitExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="exportPurpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -1635,13 +1788,13 @@ watch(
 .toolbar,
 .form-row {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
   flex-wrap: wrap;
 }
 .input {
   width: 96px;
-  padding: 6px 8px;
+  padding: var(--dp-space-component-tight);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-xs);
 }
@@ -1663,23 +1816,23 @@ watch(
 .completion-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   font-size: var(--dp-font-size-md);
 }
 .history-settings,
 .history-batches {
-  padding-block: 8px 24px;
+  padding-block: var(--dp-space-component-tight) var(--dp-space-page);
 }
 .history-batches {
   border-top: 1px solid var(--dp-border-subtle);
-  padding-top: 24px;
+  padding-top: var(--dp-space-page);
 }
 .history-section-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
-  margin-bottom: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
 }
 .history-section-heading h3,
 .history-settings h4 {
@@ -1689,31 +1842,31 @@ watch(
   font-weight: 600;
 }
 .history-settings h4 {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
   font-size: var(--dp-font-size-md);
 }
 .history-section-heading p {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-sm);
 }
 .history-settings-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0 16px;
+  gap: 0 var(--dp-space-block);
 }
 .history-field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 16px;
+  gap: var(--dp-space-component) var(--dp-space-block);
 }
 .history-section-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   flex-wrap: wrap;
-  margin-top: 16px;
+  margin-top: var(--dp-space-block);
 }
 @media (max-width: 960px) {
   .history-settings-grid,

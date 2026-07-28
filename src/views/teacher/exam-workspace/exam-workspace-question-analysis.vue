@@ -133,7 +133,7 @@ function goFullStatistics(): void {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: var(--dp-space-4);
+    gap: var(--dp-space-block);
     width: 100%;
     flex-wrap: wrap;
   }
@@ -141,7 +141,7 @@ function goFullStatistics(): void {
   &__header-copy {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--dp-space-component-xs);
     min-width: 0;
     flex: 1 1 240px;
   }
@@ -159,7 +159,7 @@ function goFullStatistics(): void {
   }
 
   &__tab-panel {
-    padding-top: var(--dp-space-2);
+    padding-top: var(--dp-space-component-tight);
   }
 }
 </style>

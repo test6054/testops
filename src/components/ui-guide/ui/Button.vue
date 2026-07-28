@@ -123,18 +123,18 @@ const onClick = (evt: MouseEvent) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
   border-radius: var(--dp-radius-control);
   border: 1px solid transparent;
   cursor: pointer;
   transition:
-    background-color 0.2s ease,
-    color 0.2s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+    background-color var(--dp-duration-normal) var(--dp-ease-default),
+    color var(--dp-duration-normal) var(--dp-ease-default),
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    box-shadow var(--dp-duration-normal) var(--dp-ease-default),
+    transform var(--dp-duration-normal) var(--dp-ease-spring);
   font-family: var(--dp-font-family);
   white-space: nowrap;
   user-select: none;
@@ -146,18 +146,18 @@ const onClick = (evt: MouseEvent) => {
 }
 
 .dp-btn--md {
-  padding: 0 14px;
+  padding: 0 var(--dp-space-block);
   min-height: var(--dp-button-height-md);
 }
 
 .dp-btn--sm {
-  padding: 0 12px;
+  padding: 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   min-height: var(--dp-button-height-sm);
 }
 
 .dp-btn--lg {
-  padding: 0 16px;
+  padding: 0 var(--dp-space-block);
   font-size: var(--dp-font-size-md);
   min-height: var(--dp-button-height-lg);
 }
@@ -187,11 +187,14 @@ const onClick = (evt: MouseEvent) => {
   background-color: var(--dp-color-primary);
   color: var(--dp-text-inverse);
   border-color: var(--dp-color-primary);
+  box-shadow: var(--dp-shadow-primary);
 }
 
 .dp-btn--primary:hover {
   background-color: var(--dp-color-primary-hover);
   border-color: var(--dp-color-primary-hover);
+  box-shadow: var(--dp-shadow-primary-hover);
+  transform: var(--dp-lift-sm);
 }
 
 .dp-btn--outline {
@@ -203,6 +206,8 @@ const onClick = (evt: MouseEvent) => {
 .dp-btn--outline:hover {
   background-color: var(--dp-gray-50);
   border-color: var(--dp-border-strong);
+  box-shadow: var(--dp-shadow-interactive);
+  transform: var(--dp-lift-sm);
 }
 
 .dp-btn--ghost {
@@ -345,6 +350,19 @@ const onClick = (evt: MouseEvent) => {
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dp-btn,
+  .dp-btn:hover,
+  .dp-btn:not(:disabled):active {
+    transition: none;
+    transform: none;
+  }
+
+  .dp-btn__spinner {
+    animation: none;
   }
 }
 </style>

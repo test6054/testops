@@ -87,7 +87,7 @@ function dimensionLabel(dimension: ArchiveVolumeSubmitChecklistDimensionCode): s
   padding: 0;
   list-style: none;
   display: grid;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-submit-task-list__empty {

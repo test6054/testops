@@ -3,7 +3,7 @@
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
-import type { ScorePolicyCode } from '@/types/enums/score-policy-enum'
+import type { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
 import http from '@/config/axios'
 import {
   AbsenceReasonCode,
@@ -11,7 +11,7 @@ import {
   ALL_ABSENCE_REASON_CODES,
 } from '@/types/enums/absence-reason-enum'
 import { AbsenceStatusCode } from '@/types/enums/absence-status-enum'
-import { ALL_SCORE_POLICY_CODES, ScorePolicyDescription } from '@/types/enums/score-policy-enum'
+import { ScorePolicyCode, ScorePolicyDescription } from '@/types/enums/score-policy-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
@@ -40,7 +40,7 @@ export const ABSENCE_STATUS_TONE: Record<AbsenceStatusCode, BadgeTone> = {
   [AbsenceStatusCode.MAKEUP_COMPLETED]: 'green',
 }
 
-export const ABSENCE_STATUS_FLOW_HINT = '待确认 → 已确认 → 已安排补考 → 已完成补考；已确认可撤销（计零已发布须先撤回成绩）'
+export const ABSENCE_STATUS_FLOW_HINT = '待确认 → 已确认 → 已安排补考 → 已完成补考；已确认/已安排补考可撤销（计零已发布将自动撤回成绩；补考已出分须先撤回补考成绩）'
 
 export const ABSENCE_REASON_TONE: Record<AbsenceReasonCode, BadgeTone> = {
   [AbsenceReasonCode.ABSENT]: 'red',
@@ -56,8 +56,9 @@ export const ABSENCE_REASON_OPTIONS: Array<{ value: AbsenceReasonCode, label: st
     label: strictEnumLabel(AbsenceReasonDescription, value, '缺考原因'),
   }))
 
-export const SCORE_POLICY_OPTIONS: Array<{ value: ScorePolicyCode, label: string }>
-  = ALL_SCORE_POLICY_CODES.map((value) => ({
+/** 缺考确认只允许选择可形成最终处置的策略；PENDING_EXTERNAL 仅供系统待确认记录持久化。 */
+export const ABSENCE_CONFIRM_SCORE_POLICY_OPTIONS: Array<{ value: ScorePolicyCode, label: string }>
+  = [ScorePolicyCode.SCORE_ZERO, ScorePolicyCode.EXCLUDE_STAT, ScorePolicyCode.PENDING_MAKEUP].map((value) => ({
     value,
     label: strictEnumLabel(ScorePolicyDescription, value, '成绩策略'),
   }))
@@ -105,6 +106,12 @@ export interface AbsenceRecordResponse {
   studentNo: string
   studentName: string
   attemptId?: string
+  /** 具体补考考试唯一锚点；已安排/已完成补考必有值，已撤销记录可保留历史关联 */
+  makeupExamId?: string
+  /** 补考考试编号；makeupExamId 有值时由后端完整下发 */
+  makeupExamNo?: string
+  /** 补考考试名称；makeupExamId 有值时由后端完整下发 */
+  makeupExamName?: string
   absenceStatus: AbsenceStatusCode
   absenceReason: AbsenceReasonCode
   scorePolicy: ScorePolicyCode
@@ -113,8 +120,8 @@ export interface AbsenceRecordResponse {
   revokedUserId?: string
   revokedTime?: string
   revokeReason?: string
-  /** 计零缺考关联终分状态；已发布时须先撤回成绩再撤销缺考 */
-  linkedFinalScoreStatus?: string
+  /** 计零缺考关联终分状态；已发布时撤销将自动撤回零分并通知学生 */
+  linkedFinalScoreStatus?: FinalScoreStatusCode
   /** 与 BE revokeAbsence 写门禁同源；已确认且可撤销时为 true */
   canRevokeAbsence?: boolean
   /** 不可撤销时的阻断说明 */
@@ -165,6 +172,7 @@ export interface AbsenceExamStatsRequest {
 
 export interface AbsenceExamStatsResponse {
   pendingAbsenceCount: number
+  unresolvedAbsenceScorePolicyCount: number
   confirmedAbsenceCount: number
   /** 是否可管理本场阅卷写操作；与 hasExamReviewerWritePermission 同源 */
   canManageReviewerWrites?: boolean

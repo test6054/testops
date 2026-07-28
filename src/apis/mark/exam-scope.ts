@@ -100,7 +100,10 @@ export interface ExamCandidateQueryRequest extends QueryDto {
   keyword?: string
 }
 
-/** 按当前库内活动名册与请求班级范围做整表对齐保存。 */
+/**
+ * 全量对齐班级范围与考生名册。
+ * 整班纳入按 edu-user 班级学生全集重建；按人勾选以库内活动名册为真源（不由前端分页拉全）。
+ */
 export function saveCurrentExamScope(request: ExamClassScopeSaveRequest): Promise<boolean> {
   return http.post<boolean>('/api/mark/exams/scope/save-current', request)
 }

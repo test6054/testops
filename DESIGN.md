@@ -14,11 +14,11 @@
 
 `gi_*` legacy 工具类已淘汰；布局工具保留 `w-full` / `flex-1` 等无前缀原子类。
 
-- 主色：`--ant-color-primary: #1677ff`（品牌锁定；禁止紫/靛 chrome 与 `#2563eb` 第二主色）
+- 主色：`--ant-color-primary: #2B67FF`（超星对齐现代教务蓝；现场唯一品牌主色；禁止沉蓝/紫靛 chrome/第二主色）
 - 成功：`--ant-color-success: #52c41a`
 - 警告：`--ant-color-warning: #faad14`
 - 错误：`--ant-color-error: #ff4d4f`
-- 页面背景：`--dp-bg-layout`（略冷灰画布，与白 panel 形成层级）
+- 页面背景：`--dp-bg-layout`（中性灰画布 `#F2F3F5`，与白 panel 形成层级）
 - 容器背景：`--ant-color-bg-container: #ffffff`
 - 正文：`--ant-color-text: rgba(0, 0, 0, 0.88)`
 - 次级文字：`--ant-color-text-secondary: rgba(0, 0, 0, 0.65)`
@@ -44,7 +44,8 @@
 - 教师端菜单按考试管理、扫描与识别、批阅流程、成绩与发布组织。
 - 扫描、异常、批阅和成绩页优先使用队列、表格、分栏详情、影像预览、步骤状态和抽屉。
 - 首页和统计页可以使用概览指标，但必须连接到具体考试、任务队列、异常项或待处理动作；KPI 默认可钻取。
-- SignalBand 默认呈现「图标区 + 主值 + helper 副文案」（`iconTone` 仅为 UI 装饰映射，不发明业务数）。
+- SignalBand 默认呈现「图标区 + 主值 + helper 副文案」。`iconTone` 仅蓝/绿/灰/紫分区装饰，禁止红/橙；业务告警只用 `tone`（数值色）或 `UiAlertStrip`。
+- ContextBar `layout="workbench"`：标题左 / `#toolbar`+`#actions` 右；空间不足换行，禁止横向滚动藏筛选。`#toolbar` 仅学期级范围（≤3 个 Select）；院系/课程/关键词进表区 `UiFilterBar`。
 - 学生端保持轻量。
 - 列表加载失败必须 `:load-error`；表格失败态禁止内置或空态「重试」。
 - 主路径按钮须显式 `variant="primary"`；`UiButton` 缺省为 `outline`。
@@ -67,14 +68,15 @@
 ## Motion And Feedback
 
 - 动效服务于队列刷新、抽屉展开、扫描识别进度、保存发布反馈和错误定位。
-- 微交互 200–300ms；禁止弹跳/闪烁；尊重 `prefers-reduced-motion`。
+- 微交互走 `--dp-duration-fast/normal/slow`；路由/视图用 `--dp-duration-page`（400ms）；进度/强调用 `--dp-duration-emphasis`（500ms）；行高亮落定用 `--dp-duration-linger`（2000ms）；禁止弹跳/闪烁；尊重 `prefers-reduced-motion`。
 
 ## Live Visual Facts（2026-07-19）
 
-- Canvas：`--dp-bg-layout` ≈ `#f0f2f5`；panel 用 `--dp-shadow-xs/sm`。
-- SignalBand panel：图标区 + 主值 + helper；`iconTone` 为 UI 装饰。
+- Canvas：`--dp-bg-layout` = `#F2F3F5`；panel 用 `--dp-shadow-xs/sm`。
+- SignalBand panel：图标区装饰（蓝/绿/灰/紫）+ 主值语义色 + helper；告警不得用 icon 红/橙底。
 - Brand 样板：`views/login/index.vue`；Product：`exam-list.vue`；Cockpit：`marking-overview.vue`（快捷动作绑 Live metrics，无假活动流）。
 - Scope 壳（Quality/Portfolio）无粗左侧色条，统一细边框 + 轻阴影。
-- ContextBar workbench：标题左 / `#toolbar`+`#actions` 右；筛选与操作在顶栏内垂直居中。
+- ContextBar workbench：标题左 / `#toolbar`+`#actions` 右；空间不足换行；筛选与操作可折行，禁止 overflow-x 藏控件。
+- WorkbenchSurfaceCard：表格操作面固定轻阴影，禁止 hover 抬升。
 - 考试编辑：`ExamEditDrawer`（含院系 `referenceDepartmentId`）；考试概览 ContextBar「编辑考试」。
 - Trust：`grading-workspace` 队列/主区/给分面板使用 SaaS 材质（细边、轻阴影、分隔高亮）。

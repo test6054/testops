@@ -43,7 +43,7 @@ const countMismatch = computed(() => {
 .eval-scope-summary {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 
   &__line {
     margin: 0;
@@ -52,7 +52,7 @@ const countMismatch = computed(() => {
   }
 
   &__sub {
-    color: var(--dp-color-text-secondary);
+    color: var(--dp-text-secondary);
   }
 }
 </style>

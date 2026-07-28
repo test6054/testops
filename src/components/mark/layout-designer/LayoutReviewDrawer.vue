@@ -126,7 +126,7 @@ async function persistAdjust(): Promise<void> {
 <style scoped lang="scss">
 .layout-review-drawer {
   &__hint {
-    margin: 0 0 12px;
+    margin: 0 0 var(--dp-space-component);
     font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
@@ -134,8 +134,8 @@ async function persistAdjust(): Promise<void> {
   &__toolbar {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 }

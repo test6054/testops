@@ -1,11 +1,13 @@
 <template>
   <figure class="mark-chart-host" :class="hostSizeClass" :style="hostStyle">
-    <div v-if="empty || error" class="mark-chart-host__state" role="status">
+    <div v-if="!engineReady || empty || error || engineError" class="mark-chart-host__state" role="status">
       <UiEmpty
+        v-if="empty || error || engineError"
         size="sm"
-        :title="error ? '图表加载失败' : undefined"
+        :title="error || engineError ? '图表加载失败' : undefined"
         :description="stateDescription"
       />
+      <div v-else class="mark-chart-host__boot" aria-live="polite">图表引擎加载中</div>
     </div>
     <VChart
       v-else
@@ -35,10 +37,11 @@
 
 <script lang="ts" setup>
 import type { EChartsCoreOption } from 'echarts/core'
-import { computed, ref } from 'vue'
-import VChart from 'vue-echarts'
+import { computed, onMounted, provide, ref } from 'vue'
+import VChart, { UPDATE_OPTIONS_KEY } from 'vue-echarts'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import { MARK_ECHARTS_THEME } from '@/config/mark-echarts-theme'
+import { MARK_ECHARTS_THEME } from '@/config/mark-echarts-theme-name'
+import { ensureVueECharts } from '@/plugins/vue-echarts'
 
 defineOptions({ name: 'MarkChart' })
 
@@ -86,6 +89,21 @@ type MarkChartVariant = 'default' | 'gauge' | 'distribution' | 'compact'
 type MarkChartGaugeSize = 'sm' | 'md' | 'lg'
 
 const vChartRef = ref<InstanceType<typeof VChart> | null>(null)
+const engineReady = ref(false)
+const engineError = ref(false)
+
+// 图表级 update 策略：notMerge 避免 option 局部残留
+provide(UPDATE_OPTIONS_KEY, { notMerge: true })
+
+onMounted(() => {
+  ensureVueECharts()
+    .then(() => {
+      engineReady.value = true
+    })
+    .catch(() => {
+      engineError.value = true
+    })
+})
 
 function handleChartClick(params: unknown): void {
   emit('chart-click', params)
@@ -99,7 +117,7 @@ const loadingOptions = {
   text: '加载中',
   color: 'var(--dp-color-primary)',
   textColor: 'var(--dp-text-secondary)',
-  maskColor: 'color-mix(in srgb, var(--dp-bg-container) 72%, transparent)',
+  maskColor: 'color-mix(in srgb, var(--dp-surface) 72%, transparent)',
   fontSize: 12,
   showSpinner: true,
   spinnerRadius: 8,
@@ -123,7 +141,7 @@ const resolvedCaption = computed(() => {
   if (caption) {
     return caption
   }
-  if (props.error) {
+  if (props.error || engineError.value) {
     return props.errorDescription.trim() || '图表加载失败'
   }
   if (props.empty) {
@@ -132,11 +150,12 @@ const resolvedCaption = computed(() => {
   return resolvedAriaLabel.value
 })
 
-const stateDescription = computed(() =>
-  props.error
-    ? props.errorDescription.trim() || '请稍后重试或检查数据源'
-    : props.emptyDescription.trim() || '暂无图表数据',
-)
+const stateDescription = computed(() => {
+  if (props.error || engineError.value) {
+    return props.errorDescription.trim() || '请稍后重试或检查数据源'
+  }
+  return props.emptyDescription.trim() || '暂无图表数据'
+})
 
 const hostSizeClass = computed(() => {
   if (props.variant !== 'gauge') {
@@ -159,7 +178,9 @@ const chartStyle = computed(() => ({
 
 const hostStyle = computed(() => ({
   width: props.width,
-  minHeight: props.empty || props.error ? props.height : undefined,
+  minHeight: !engineReady.value || props.empty || props.error || engineError.value
+    ? props.height
+    : undefined,
 }))
 
 defineExpose({
@@ -181,11 +202,16 @@ defineExpose({
   justify-content: center;
   width: 100%;
   min-height: inherit;
-  padding: var(--dp-space-3, 12px) 0;
+  padding: var(--dp-space-component) 0;
+}
+
+.mark-chart-host__boot {
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
 }
 
 .mark-chart-host__caption {
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   line-height: 1.4;
   color: var(--dp-text-secondary);

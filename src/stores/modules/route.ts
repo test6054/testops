@@ -21,6 +21,17 @@ function passesTenantAdminRouteGate(userRole: string, userIsTenantAdmin: boolean
   return userRole === RoleEnum.SUPER_ADMIN || userIsTenantAdmin
 }
 
+/** 租户考试业务配置：仅 edu-user TenantAdmin；平台 SUPER_ADMIN 不得进菜单 */
+function passesEnterpriseTenantAdminRouteGate(
+  userRole: string,
+  userIsEnterpriseTenantAdmin: boolean,
+): boolean {
+  if (userRole === RoleEnum.SUPER_ADMIN) {
+    return false
+  }
+  return userIsEnterpriseTenantAdmin
+}
+
 function isSidebarMenuRoute(route: RouteRecordRaw): boolean {
   return !route.meta?.hideInMenu && !(route.redirect && !route.component && !route.components)
 }
@@ -97,6 +108,7 @@ const storeSetup = (): RouteStoreState => {
     const authStore = useAuthStore()
     const userRole = authStore.userRole
     const userIsTenantAdmin = userStore.isTenantAdmin
+    const userIsEnterpriseTenantAdmin = userStore.isEnterpriseTenantAdmin
     const currentPortfolioWorkShell = readPortfolioWorkShellCode()
 
     // 根据用户角色选择对应的路由
@@ -118,6 +130,7 @@ const storeSetup = (): RouteStoreState => {
       roleRoutes,
       userRole,
       userIsTenantAdmin,
+      userIsEnterpriseTenantAdmin,
       currentPortfolioWorkShell,
     )
     const flatRoutes = flatMultiLevelRoutes(cloneDeep(filteredRoutes))
@@ -133,10 +146,18 @@ const storeSetup = (): RouteStoreState => {
     routes: RouteRecordRaw[],
     userRole: string,
     userIsTenantAdmin: boolean,
+    userIsEnterpriseTenantAdmin: boolean,
     currentPortfolioWorkShell: PortfolioWorkShellCode | '',
   ): RouteRecordRaw[] => {
     return routes
       .filter((route) => {
+        if (
+          route.meta?.requireEnterpriseTenantAdmin
+          && !passesEnterpriseTenantAdminRouteGate(userRole, userIsEnterpriseTenantAdmin)
+        ) {
+          return false
+        }
+
         if (
           route.meta?.requireTenantAdmin
           && !passesTenantAdminRouteGate(userRole, userIsTenantAdmin)
@@ -144,8 +165,14 @@ const storeSetup = (): RouteStoreState => {
           return false
         }
 
-        if (userRole !== RoleEnum.SUPER_ADMIN) {
-          // 检查路由权限
+        if (userRole === RoleEnum.SUPER_ADMIN) {
+          // 与 hasRoutePermission 对齐：未显式纳入超管的租户考试业务页不进菜单
+          const roles = resolveRouteRoles(route)
+          const includesSuperAdmin = roles?.includes(RoleEnum.SUPER_ADMIN) === true
+          if (!includesSuperAdmin && !route.meta?.requireTenantAdmin) {
+            return false
+          }
+        } else {
           const roles = resolveRouteRoles(route)
           if (roles) {
             const hasRolePermission = roles.includes(userRole)
@@ -176,6 +203,7 @@ const storeSetup = (): RouteStoreState => {
               route.children,
               userRole,
               userIsTenantAdmin,
+              userIsEnterpriseTenantAdmin,
               currentPortfolioWorkShell,
             )
           : undefined

@@ -55,7 +55,7 @@
   .grading-workspace--confidential:not(.allow-print)::after {
     content: '涉密资料，禁止打印';
     display: block;
-    padding: 24px 0;
+    padding: var(--dp-space-page) 0;
     text-align: center;
     font-size: var(--dp-font-size-lg);
     color: #000;

@@ -18,13 +18,14 @@ import {
   getExamLayoutPaperSpecDescription,
   requireExamLayoutPaperSpecCode,
 } from '@/types/enums/exam-layout-paper-spec-enum'
+import { ExamPaperPageKindCode } from '@/types/enums/exam-paper-page-kind-enum'
 import { MarkOcrSceneCode } from '@/types/enums/mark-ocr-scene-enum'
 import { ObjectiveComparePolicyCode } from '@/types/enums/objective-compare-policy-enum'
 import {
   ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES,
   PaperMasterIdentityAreaTypeCode,
+  PaperMasterIdentityAreaTypeDescription,
 } from '@/types/enums/paper-master-identity-area-type-enum'
-import { createClientSnowflakeId } from '@/utils/client-snowflake'
 
 export {
   ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES,
@@ -42,7 +43,6 @@ export {
 
 export {
   ALL_EXAM_LAYOUT_PAPER_SPEC_CODES,
-  defaultBlankSheetPaperSpec,
   ExamLayoutPaperSpecCode,
   ExamLayoutPaperSpecDescription,
   ExamLayoutPaperSpecMm,
@@ -52,7 +52,7 @@ export {
 } from '@/types/enums/exam-layout-paper-spec-enum'
 
 export const EXAM_LAYOUT_BLOCK_TYPE_COLOR: Record<ExamLayoutBlockTypeCode, string> = {
-  [ExamLayoutBlockTypeCode.IDENTITY_BUBBLE]: 'rgba(22, 119, 255, 0.14)',
+  [ExamLayoutBlockTypeCode.IDENTITY_BUBBLE]: 'rgba(31, 90, 154, 0.14)',
   [ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX]: 'rgba(82, 196, 26, 0.14)',
   [ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER]: 'rgba(250, 173, 20, 0.16)',
   [ExamLayoutBlockTypeCode.QUESTION_STEM]: 'rgba(114, 46, 209, 0.12)',
@@ -60,7 +60,7 @@ export const EXAM_LAYOUT_BLOCK_TYPE_COLOR: Record<ExamLayoutBlockTypeCode, strin
 }
 
 export const EXAM_LAYOUT_BLOCK_TYPE_STROKE: Record<ExamLayoutBlockTypeCode, string> = {
-  [ExamLayoutBlockTypeCode.IDENTITY_BUBBLE]: '#1677ff',
+  [ExamLayoutBlockTypeCode.IDENTITY_BUBBLE]: '#2B67FF',
   [ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX]: '#52c41a',
   [ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER]: '#faad14',
   [ExamLayoutBlockTypeCode.QUESTION_STEM]: '#722ed1',
@@ -97,7 +97,7 @@ export function resolveBlockFill(blockType: string): string {
   if (code) {
     return EXAM_LAYOUT_BLOCK_TYPE_COLOR[code]
   }
-  return 'rgba(22, 119, 255, 0.08)'
+  return 'rgba(31, 90, 154, 0.08)'
 }
 
 export function resolveBlockStroke(blockType: string): string {
@@ -193,8 +193,13 @@ export function pageByNo(
   return document?.pages?.find((page) => page.pageNo === pageNo) ?? null
 }
 
-export function createClientBlockId(): string {
-  return createClientSnowflakeId()
+let nextDraftBlockCorrelationId = -1
+
+/** 生成草稿内的负关联序号，仅供画布定位与块选项关联，不预分配数据库主键。 */
+export function createDraftBlockCorrelationId(): string {
+  const correlationId = nextDraftBlockCorrelationId
+  nextDraftBlockCorrelationId -= 1
+  return String(correlationId)
 }
 
 export function createDefaultBlock(
@@ -203,7 +208,7 @@ export function createDefaultBlock(
   layer: number,
 ): ExamLayoutBlockDto {
   const block: ExamLayoutBlockDto = {
-    id: createClientBlockId(),
+    id: createDraftBlockCorrelationId(),
     pageNo,
     blockType,
     layer,
@@ -244,6 +249,59 @@ export function hasIdentityBlock(document: ExamLayoutDocument | null): boolean {
   return Boolean(
     document?.blocks?.some((block) => block.blockType === ExamLayoutBlockTypeCode.IDENTITY_BUBBLE),
   )
+}
+
+export interface IdentityFieldReadinessItem {
+  code: PaperMasterIdentityAreaTypeCode
+  label: string
+  ready: boolean
+  count: number
+}
+
+/** 实际身份承载页的三个学生身份强证据字段就绪状态；组合卷使用答题纸首页，单独试卷使用第 1 页。 */
+export function computeIdentityFieldReadiness(
+  document: ExamLayoutDocument | null,
+): IdentityFieldReadinessItem[] {
+  const identityPageNo = document?.layoutEntryKind === ExamLayoutEntryKindCode.PAPER_WITH_ANSWER_SHEET
+    ? document.pages.find((page) => page.pageKind === ExamPaperPageKindCode.ANSWER_SHEET)?.pageNo
+    : 1
+  return ALL_PAPER_MASTER_IDENTITY_AREA_TYPE_CODES.map((code) => {
+    const count = (document?.blocks ?? []).filter(
+      (block) => block.pageNo === identityPageNo
+        && block.blockType === ExamLayoutBlockTypeCode.IDENTITY_BUBBLE
+        && block.identityAreaType === code,
+    ).length
+    return {
+      code,
+      label: PaperMasterIdentityAreaTypeDescription[code],
+      ready: count === 1,
+      count,
+    }
+  })
+}
+
+/** 工作人员/禁识别区是否与学生身份强证据区发生几何冲突。 */
+export function hasStaffZoneIdentityConflict(document: ExamLayoutDocument | null): boolean {
+  const identityBlocks = (document?.blocks ?? []).filter(
+    (block) => block.blockType === ExamLayoutBlockTypeCode.IDENTITY_BUBBLE,
+  )
+  const forbiddenBlocks = (document?.blocks ?? []).filter(
+    (block) => block.blockType === ExamLayoutBlockTypeCode.FORBIDDEN_ZONE,
+  )
+  return identityBlocks.some((identity) => forbiddenBlocks.some((forbidden) => {
+    if (identity.pageNo !== forbidden.pageNo || !identity.rectNorm || !forbidden.rectNorm) {
+      return false
+    }
+    const xOverlap = Math.min(
+      identity.rectNorm.x + identity.rectNorm.w,
+      forbidden.rectNorm.x + forbidden.rectNorm.w,
+    ) - Math.max(identity.rectNorm.x, forbidden.rectNorm.x)
+    const yOverlap = Math.min(
+      identity.rectNorm.y + identity.rectNorm.h,
+      forbidden.rectNorm.y + forbidden.rectNorm.h,
+    ) - Math.max(identity.rectNorm.y, forbidden.rectNorm.y)
+    return xOverlap > 0 && yOverlap > 0
+  }))
 }
 
 const ANSWER_BLOCK_TYPES = new Set<string>([
@@ -360,7 +418,7 @@ export function computeLayoutRoiStats(document: ExamLayoutDocument | null): Layo
 export function validateLayoutDocumentForSave(document: ExamLayoutDocument | null): string[] {
   const reasons: string[] = []
   if (!document) {
-    return ['请先生成答题卡或自动预划区后再保存']
+    return ['请先生成答题纸或自动预划区后再保存']
   }
   if (!document.layoutName?.trim()) {
     reasons.push('请填写制卷名称')
@@ -396,6 +454,9 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
       }
       if (!page.naturalWidthPx || !page.naturalHeightPx) {
         reasons.push(`整卷试卷第 ${page.pageNo} 页尺寸未解析`)
+      }
+      if (!page.pageKind) {
+        reasons.push(`整卷试卷第 ${page.pageNo} 页缺少物理页类型`)
       }
     }
     const sourceQuestions = document.questions ?? []
@@ -434,10 +495,20 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
     }
     return reasons
   }
+  if (document.layoutEntryKind !== ExamLayoutEntryKindCode.PAPER_WITH_ANSWER_SHEET) {
+    reasons.push('制卷入口形态无效，请重新进入制卷设计')
+  }
+  if (!document.sourcePdfFileId?.trim()) {
+    reasons.push('组合卷缺少命题治理 A 卷源文件')
+  }
   if (!document.totalPages || document.totalPages <= 0) {
     reasons.push('总页数必须大于 0')
   }
   const pageNos = new Set<number>()
+  let paperPageCount = 0
+  let answerSheetPageCount = 0
+  let answerSectionStarted = false
+  let firstAnswerSheetPageNo: number | undefined
   for (const page of document.pages ?? []) {
     if (
       !page.pageNo
@@ -457,6 +528,23 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
     if (!page.naturalWidthPx || !page.naturalHeightPx) {
       reasons.push(`第 ${page.pageNo} 页尺寸未解析`)
     }
+    if (page.pageKind === ExamPaperPageKindCode.EXAM_PAPER) {
+      paperPageCount += 1
+      if (answerSectionStarted) {
+        reasons.push('组合卷页序必须先试题卷、后答题纸，不能交叉排列')
+      }
+    }
+    else if (page.pageKind === ExamPaperPageKindCode.ANSWER_SHEET) {
+      answerSectionStarted = true
+      answerSheetPageCount += 1
+      firstAnswerSheetPageNo ??= page.pageNo
+    }
+    else {
+      reasons.push(`组合卷第 ${page.pageNo} 页只能标记为试卷页或答题页`)
+    }
+  }
+  if (paperPageCount === 0 || answerSheetPageCount === 0) {
+    reasons.push('组合卷必须同时包含试题卷页与答题纸页')
   }
   if (document.totalPages && pageNos.size !== document.totalPages) {
     reasons.push('制卷页数量必须与总页数一致')
@@ -517,6 +605,9 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
     }
     if (block.blockType === ExamLayoutBlockTypeCode.IDENTITY_BUBBLE) {
       hasIdentity = true
+      if (block.pageNo !== firstAnswerSheetPageNo) {
+        reasons.push('学生身份强证据区只能位于答题纸首页')
+      }
     }
     if (block.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER && !block.layoutQuestionId) {
       reasons.push('书写作答区必须关联制卷题目')
@@ -545,6 +636,20 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
     }
     if (block.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX) {
       objectiveBlockIds.add(block.id)
+    }
+    const blockPageKind = document.pages.find((page) => page.pageNo === block.pageNo)?.pageKind
+    if (
+      (block.blockType === ExamLayoutBlockTypeCode.OBJECTIVE_MATRIX
+        || block.blockType === ExamLayoutBlockTypeCode.SUBJECTIVE_ANSWER)
+      && blockPageKind !== ExamPaperPageKindCode.ANSWER_SHEET
+    ) {
+      reasons.push('组合卷作答识别区只能位于答题纸页')
+    }
+    if (
+      block.blockType === ExamLayoutBlockTypeCode.QUESTION_STEM
+      && blockPageKind !== ExamPaperPageKindCode.EXAM_PAPER
+    ) {
+      reasons.push('组合卷题面区只能位于试题卷页')
     }
     if (!block.rectNorm || block.rectNorm.w <= 0 || block.rectNorm.h <= 0) {
       reasons.push('识别区域坐标不完整')
@@ -579,10 +684,11 @@ export function validateLayoutDocumentForSave(document: ExamLayoutDocument | nul
   return Array.from(new Set(reasons))
 }
 
-/** 有源整卷是否已有识别结果（重新识别会覆盖题单/ROI/身份区）。 */
+/** 当前源文件是否已有识别结果（重新识别会覆盖题单、ROI 与已生成答题纸）。 */
 export function layoutHasSourceFileDetectResult(document: ExamLayoutDocument | null): boolean {
   return (
-    document?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE
+    (document?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE
+      || document?.layoutEntryKind === ExamLayoutEntryKindCode.PAPER_WITH_ANSWER_SHEET)
     && (document.questions?.length ?? 0) > 0
   )
 }
@@ -604,6 +710,26 @@ function validateIdentityAreaTypes(document: ExamLayoutDocument | null): string[
     ) {
       reasons.push('身份填涂区类型无效，请选择学号、班级或姓名填涂区')
     }
+    if (
+      block.rectNorm
+      && (
+        block.rectNorm.w > 0.55
+        || block.rectNorm.h > 0.12
+        || block.rectNorm.w * block.rectNorm.h > 0.045
+      )
+    ) {
+      reasons.push('身份强证据区范围过大，不能包含命题人、审核人或评卷人签名')
+    }
+  }
+  for (const item of computeIdentityFieldReadiness(document)) {
+    if (item.count === 0) {
+      reasons.push(`首页缺少独立的${item.label}`)
+    } else if (item.count > 1) {
+      reasons.push(`首页存在重复的${item.label}`)
+    }
+  }
+  if (hasStaffZoneIdentityConflict(document)) {
+    reasons.push('工作人员/禁识别区与学生身份强证据区重叠')
   }
   return reasons
 }

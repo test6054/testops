@@ -22,17 +22,16 @@
 <script lang="ts" setup>
 import type { EChartsCoreOption } from 'echarts/core'
 import type { MarkTeacherDashboardPublishedExamInsightItemVO } from '@/apis/mark/teacher-dashboard'
-import { computed } from 'vue'
-import MarkChart from '@/components/chart/MarkChart.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import { buildPublishedInsightChartExams } from '@/utils/mark-dashboard-charts'
-import { buildDashboardPublishedInsightChartOption } from '@/utils/mark-echarts-options'
+import { computed, defineAsyncComponent } from 'vue'
 
 defineOptions({ name: 'PublishedExamInsightChart' })
-
 const props = defineProps<{
   insights: MarkTeacherDashboardPublishedExamInsightItemVO[]
 }>()
+const MarkChart = defineAsyncComponent(() => import('@/components/chart/MarkChart.vue'))
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import { buildPublishedInsightChartExams } from '@/utils/mark-dashboard-charts'
+import { buildDashboardPublishedInsightChartOption } from '@/utils/mark-echarts-options'
 
 const chartExams = computed(() => buildPublishedInsightChartExams(props.insights))
 
@@ -55,7 +54,7 @@ const chartAriaLabel = computed(() => {
 }
 
 .published-insight-chart__head {
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .published-insight-chart__title {

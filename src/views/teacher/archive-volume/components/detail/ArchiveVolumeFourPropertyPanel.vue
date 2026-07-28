@@ -351,15 +351,15 @@ async function runFourPropertyCheck() {
 .archive-quality-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
-  padding: var(--dp-space-3) var(--dp-space-4);
+  gap: var(--dp-space-block);
+  padding: var(--dp-space-component) var(--dp-space-block);
 }
 
 .archive-quality-panel__section {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
-  padding-top: var(--dp-space-4);
+  gap: var(--dp-space-component);
+  padding-top: var(--dp-space-block);
   border-top: 1px solid var(--dp-border-subtle);
 
   &:first-child {
@@ -372,21 +372,21 @@ async function runFourPropertyCheck() {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-quality-panel__section-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   margin-left: auto;
 }
 
 .archive-quality-panel__section-title {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--dp-type-panel-title-size);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .archive-quality-panel__stale-hint {
@@ -399,8 +399,8 @@ async function runFourPropertyCheck() {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--dp-space-2);
-  padding: var(--dp-space-4);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-block);
   border: 1px dashed var(--dp-border);
   border-radius: var(--dp-radius-control);
   background: var(--dp-surface-subtle);

@@ -22,6 +22,9 @@ import {
   BatchCorrectionApprovalStatusDescription,
 } from '@/types/enums/batch-correction-approval-status-enum'
 import {
+  BatchCorrectionItemExecutionStatusCode,
+} from '@/types/enums/batch-correction-item-execution-status-enum'
+import {
   ALL_GRADE_REVIEW_REASON_TYPE_CODES,
   GradeReviewReasonTypeDescription,
 } from '@/types/enums/grade-review-reason-type-enum'
@@ -41,6 +44,12 @@ export {
   BatchCorrectionApprovalStatusCode,
   BatchCorrectionApprovalStatusDescription,
 } from '@/types/enums/batch-correction-approval-status-enum'
+
+export {
+  ALL_BATCH_CORRECTION_ITEM_EXECUTION_STATUS_CODES,
+  BatchCorrectionItemExecutionStatusCode,
+  BatchCorrectionItemExecutionStatusDescription,
+} from '@/types/enums/batch-correction-item-execution-status-enum'
 
 export {
   ALL_GRADE_CORRECTION_STATUS_CODES,
@@ -164,6 +173,7 @@ export const REVIEW_REQUEST_STATUS_TONE: Record<GradeReviewRequestStatusCode, Ba
   [GradeReviewRequestStatusCode.APPROVED]: 'green',
   [GradeReviewRequestStatusCode.REJECTED]: 'red',
   [GradeReviewRequestStatusCode.CORRECTED]: 'purple',
+  [GradeReviewRequestStatusCode.INVALIDATED]: 'gray',
 }
 
 /** 复核申请状态下拉选项 */
@@ -188,7 +198,7 @@ export const REVIEW_REQUEST_FLOW_HINT = `${REVIEW_REQUEST_MAIN_FLOW_STATUSES.map
   strictEnumLabel(GradeReviewRequestStatusDescription, status, '复核申请状态'),
 ).join(
   ' → ',
-)}（${strictEnumLabel(GradeReviewRequestStatusDescription, GradeReviewRequestStatusCode.REJECTED, '复核申请状态')}终止）`
+)}（${strictEnumLabel(GradeReviewRequestStatusDescription, GradeReviewRequestStatusCode.REJECTED, '复核申请状态')}或${strictEnumLabel(GradeReviewRequestStatusDescription, GradeReviewRequestStatusCode.INVALIDATED, '复核申请状态')}终止）`
 
 /** 复核原因类型下拉选项 */
 export const GRADE_REVIEW_REASON_TYPE_OPTIONS: Array<{
@@ -438,7 +448,7 @@ export interface ExamGradeCorrectionRecordResponse {
   correctionStatus: GradeCorrectionStatusCode
   createTime: string
   updateTime?: string
-  /** 更正前成绩已发布时须重新发布 */
+  /** 更正前成绩已发布时须重新提交发布复核 */
   requiresRepublish?: boolean
   /** 更正后复核申请状态；多题申请可在全部题目更正前保持 APPROVED */
   reviewRequestStatusAfterCorrection?: GradeReviewRequestStatusCode
@@ -488,8 +498,19 @@ export const BATCH_CORRECTION_STATUS_TONE: Record<BatchCorrectionApprovalStatusC
   [BatchCorrectionApprovalStatusCode.PENDING_APPROVAL]: 'orange',
   [BatchCorrectionApprovalStatusCode.APPROVED]: 'blue',
   [BatchCorrectionApprovalStatusCode.EXECUTING]: 'blue',
+  [BatchCorrectionApprovalStatusCode.PARTIAL_FAILED]: 'orange',
   [BatchCorrectionApprovalStatusCode.COMPLETED]: 'green',
   [BatchCorrectionApprovalStatusCode.REJECTED]: 'red',
+}
+
+/** 批量更正明细执行状态徽标颜色 */
+export const BATCH_CORRECTION_ITEM_EXECUTION_STATUS_TONE: Record<
+  BatchCorrectionItemExecutionStatusCode,
+  BadgeTone
+> = {
+  [BatchCorrectionItemExecutionStatusCode.PENDING]: 'gray',
+  [BatchCorrectionItemExecutionStatusCode.SUCCEEDED]: 'green',
+  [BatchCorrectionItemExecutionStatusCode.FAILED]: 'red',
 }
 
 /** 批量更正审批状态下拉选项 */
@@ -507,6 +528,7 @@ export const BATCH_CORRECTION_MAIN_FLOW_STATUSES: BatchCorrectionApprovalStatusC
   BatchCorrectionApprovalStatusCode.PENDING_APPROVAL,
   BatchCorrectionApprovalStatusCode.APPROVED,
   BatchCorrectionApprovalStatusCode.EXECUTING,
+  BatchCorrectionApprovalStatusCode.PARTIAL_FAILED,
   BatchCorrectionApprovalStatusCode.COMPLETED,
 ]
 
@@ -559,6 +581,41 @@ export interface BatchCorrectionPlanCreateRequest {
   reason: string
 }
 
+export interface BatchCorrectionPlanUpdateRequest
+  extends Omit<BatchCorrectionPlanCreateRequest, 'examId'> {
+  planId: string
+}
+
+/** 批量更正逐生审批依据。 */
+export interface BatchCorrectionPlanItemDetailVO {
+  id: string
+  studentUserId: string
+  studentNo: string
+  studentName: string
+  paperInstanceId: string
+  reviewRequestId: string
+  requestReason: string
+  reasonType: GradeReviewReasonTypeCode
+  requestStatus: GradeReviewRequestStatusCode
+  finalScoreStatus: FinalScoreStatusCode
+  currentExamScore: number
+  currentDailyScore: number
+  beforeScore: number
+  afterScore: number
+  layoutQuestionId?: string
+  questionRefs: GradeReviewQuestionRefVO[]
+  itemOrder: number
+  executionStatus: BatchCorrectionItemExecutionStatusCode
+  executionFailureReason?: string
+  executedTime?: string
+  correctionRecordId?: string
+}
+
+export interface BatchCorrectionPlanDetailVO {
+  plan: ExamBatchGradeCorrectionPlan
+  items: BatchCorrectionPlanItemDetailVO[]
+}
+
 export interface BatchCorrectionPlanSubmitRequest {
   planId: string
 }
@@ -572,6 +629,26 @@ export interface BatchCorrectionPlanDecisionRequest {
 export interface BatchCorrectionPlanExecuteRequest {
   planId: string
   executeReason?: string
+}
+
+/** 批量更正执行失败明细摘要 */
+export interface BatchCorrectionPlanItemExecuteFailureVO {
+  itemId: string
+  studentUserId: string
+  paperInstanceId: string
+  reviewRequestId: string
+  failureReason: string
+}
+
+/** 批量更正计划执行结果 */
+export interface BatchCorrectionPlanExecuteResponse {
+  planId: string
+  approvalStatus: BatchCorrectionApprovalStatusCode
+  totalCount: number
+  succeededCount: number
+  failedCount: number
+  newlySucceededCount: number
+  failures: BatchCorrectionPlanItemExecuteFailureVO[]
 }
 
 /** 批量更正计划列表查询 - 对应 BatchCorrectionPlanListQuery */
@@ -603,6 +680,21 @@ export function createBatchCorrectionPlan(
   )
 }
 
+export function getBatchCorrectionPlanDetail(planId: string): Promise<BatchCorrectionPlanDetailVO> {
+  return http.post<BatchCorrectionPlanDetailVO>('/api/exam/grade-review/batch-correction/detail', {
+    planId,
+  })
+}
+
+export function updateBatchCorrectionPlan(
+  request: BatchCorrectionPlanUpdateRequest,
+): Promise<ExamBatchGradeCorrectionPlan> {
+  return http.post<ExamBatchGradeCorrectionPlan>(
+    '/api/exam/grade-review/batch-correction/update',
+    request,
+  )
+}
+
 export function submitBatchCorrectionPlan(
   request: BatchCorrectionPlanSubmitRequest,
 ): Promise<void> {
@@ -617,16 +709,24 @@ export function approveBatchCorrectionPlan(
 
 export function executeBatchCorrectionPlan(
   request: BatchCorrectionPlanExecuteRequest,
-): Promise<void> {
-  return http.post<void>('/api/exam/grade-review/batch-correction/execute', request)
+): Promise<BatchCorrectionPlanExecuteResponse> {
+  return http.post<BatchCorrectionPlanExecuteResponse>(
+    '/api/exam/grade-review/batch-correction/execute',
+    request,
+  )
 }
 
 /**
  * 单题更正合成总成绩预检：当前考试分 − 当前题分 + 更正后题分 + 平时分。
  * 缺少成绩快照时返回 null，由后端硬校验兜底。
  */
+type CorrectionScoreSnapshot = Pick<
+  GradeReviewRequestItemResponse,
+  'currentExamScore' | 'currentDailyScore' | 'questionRefs'
+>
+
 export function computeSingleQuestionCorrectionCompositeTotal(
-  request: GradeReviewRequestItemResponse,
+  request: CorrectionScoreSnapshot,
   layoutQuestionId: string,
   afterScore: number,
 ): number | null {
@@ -647,7 +747,7 @@ export function computeSingleQuestionCorrectionCompositeTotal(
 
 /** 补考 cap60 下单题更正合成总分是否超限 */
 export function isMakeupCap60SingleQuestionCorrectionExceeded(
-  request: GradeReviewRequestItemResponse,
+  request: CorrectionScoreSnapshot,
   layoutQuestionId: string,
   afterScore: number,
 ): boolean {

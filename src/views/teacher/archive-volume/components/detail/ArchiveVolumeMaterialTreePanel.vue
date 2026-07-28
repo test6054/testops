@@ -1,33 +1,53 @@
 <template>
   <aside class="archive-volume-material-tree">
-    <UiEmpty size="sm" v-if="catalogLoadFailed" description="目录加载失败">
-      <UiTextAction tone="primary" @click="loadCatalogLines">重新加载</UiTextAction>
-    </UiEmpty>
+    <UiSkeletonState v-if="catalogLoading && !treeGroups.length" variant="card" compact />
+    <UiAlertStrip
+      v-else-if="catalogLoadFailed"
+      tone="error"
+      title="归档目录加载失败"
+      :closable="false"
+      dense
+    >
+      <template #actions>
+        <UiButton size="sm" variant="outline" @click="loadCatalogLines">重新加载</UiButton>
+      </template>
+    </UiAlertStrip>
     <UiEmpty size="sm" v-else-if="!treeGroups.length" description="暂无目录项" />
-    <div v-else class="catalog-tree">
+    <div v-else class="catalog-tree" role="tree" aria-label="归档材料目录">
       <div class="catalog-tree__head">
         <span class="catalog-tree__head-title">目录</span>
         <span v-if="missingEntryCount > 0" class="catalog-tree__head-missing">
           缺件 {{ missingEntryCount }}
         </span>
       </div>
-      <UiAlertStrip v-if="materialStatsLoadFailed" tone="warning" title="就绪统计加载失败" dense>
-        <template #actions>
-          <UiTextAction tone="primary" @click="loadMaterialStats">重新加载</UiTextAction>
-        </template>
-      </UiAlertStrip>
-      <template v-for="group in treeGroups" :key="group.category">
+      <UiAlertStrip
+        v-if="materialStatsLoadFailed"
+        tone="warning"
+        title="就绪统计加载失败"
+        dense
+      />
+      <section
+        v-for="group in treeGroups"
+        :key="group.category"
+        role="group"
+        :aria-label="group.category"
+      >
         <div class="catalog-category">{{ group.category }}</div>
         <button
           v-for="entry in group.entries"
           :key="entry.key"
           type="button"
           class="catalog-entry catalog-entry--selectable"
+          role="treeitem"
+          :aria-selected="isSelected(entry.key)"
+          :aria-current="isSelected(entry.key) ? 'true' : undefined"
+          :aria-label="treeItemAriaLabel(entry)"
           :class="{
             'catalog-entry--selected': isSelected(entry.key),
             'catalog-entry--missing': entry.missing,
           }"
           @click="selectEntry(entry.key)"
+          @keydown="onTreeItemKeydown"
         >
           <span v-if="entry.code" class="catalog-code">{{ entry.code }}</span>
           <span v-else class="catalog-seq">{{ entry.seq }}</span>
@@ -46,9 +66,9 @@
               {{ entry.readySummary.ready }}/{{ entry.readySummary.total }}
             </span>
           </span>
-          <span v-if="entry.missing" class="catalog-missing-mark" aria-label="缺件">缺</span>
+          <span v-if="entry.missing" class="catalog-missing-mark" aria-hidden="true">缺</span>
         </button>
-      </template>
+      </section>
     </div>
   </aside>
 </template>
@@ -67,9 +87,10 @@ import {
   getArchiveVolumeCatalog,
   getArchiveVolumeMaterialStats,
 } from '@/apis/mark/archive-volume'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { ALL_ARCHIVE_MATERIAL_TYPE_CODES } from '@/types/enums/archive-material-type-enum'
 import {
   archiveMissingItemTargetsCatalogKey,
@@ -117,6 +138,9 @@ const catalogLines = ref<ArchiveVolumeCatalogLineVO[]>([])
 const catalogLoadFailed = ref(false)
 const catalogSummaries = ref<ArchiveVolumeMaterialCatalogReadySummaryVO[]>([])
 const materialStatsLoadFailed = ref(false)
+const catalogLoading = ref(false)
+let catalogLoadSeq = 0
+let materialStatsLoadSeq = 0
 
 function materialTypeLabel(code: ArchiveMaterialTypeCode) {
   return strictEnumLabel(ArchiveMaterialTypeDescription, code, 'materialType')
@@ -252,42 +276,105 @@ function selectEntry(key: string) {
   selectedKeys.value = [key]
 }
 
+function treeItemAriaLabel(entry: CatalogTreeEntry): string {
+  const state = entry.missing
+    ? '缺件'
+    : entry.readySummary
+      ? `就绪 ${entry.readySummary.ready}/${entry.readySummary.total}`
+      : '待核验'
+  return [entry.code || entry.seq, entry.title, entry.pageLabel, state].filter(Boolean).join('，')
+}
+
+function onTreeItemKeydown(event: KeyboardEvent): void {
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+    return
+  }
+  if (!(event.currentTarget instanceof HTMLElement)) {
+    return
+  }
+  const tree = event.currentTarget.closest('[role="tree"]')
+  if (!tree) {
+    return
+  }
+  const items = Array.from(tree.querySelectorAll<HTMLElement>('[role="treeitem"]'))
+  const currentIndex = items.indexOf(event.currentTarget)
+  const nextIndex = event.key === 'Home'
+    ? 0
+    : event.key === 'End'
+      ? items.length - 1
+      : event.key === 'ArrowDown'
+        ? Math.min(currentIndex + 1, items.length - 1)
+        : Math.max(currentIndex - 1, 0)
+  const next = items[nextIndex]
+  if (!next) {
+    return
+  }
+  event.preventDefault()
+  next.focus()
+}
+
 async function loadMaterialStats(): Promise<void> {
+  const requestSeq = ++materialStatsLoadSeq
+  const requestVolumeId = props.volumeId
   if (!props.volumeId) {
     catalogSummaries.value = []
     materialStatsLoadFailed.value = false
     return
   }
   try {
-    const stats = await getArchiveVolumeMaterialStats({ volumeId: props.volumeId })
+    const stats = await getArchiveVolumeMaterialStats({ volumeId: requestVolumeId })
+    if (requestSeq !== materialStatsLoadSeq || props.volumeId !== requestVolumeId) {
+      return
+    }
     catalogSummaries.value = stats.catalogSummaries
     materialStatsLoadFailed.value = false
   } catch (error) {
+    if (requestSeq !== materialStatsLoadSeq || props.volumeId !== requestVolumeId) {
+      return
+    }
     materialStatsLoadFailed.value = true
     showUserError(error, '加载材料统计失败')
   }
 }
 
 async function loadCatalogLines() {
+  const requestSeq = ++catalogLoadSeq
+  const requestVolumeId = props.volumeId
   if (!props.volumeId) {
     catalogLines.value = []
     catalogLoadFailed.value = false
     return
   }
   catalogLoadFailed.value = false
+  catalogLoading.value = true
   try {
-    const catalog = await getArchiveVolumeCatalog(props.volumeId)
+    const catalog = await getArchiveVolumeCatalog(requestVolumeId)
+    if (requestSeq !== catalogLoadSeq || props.volumeId !== requestVolumeId) {
+      return
+    }
     catalogLines.value = catalog.lines ?? []
   } catch (error) {
+    if (requestSeq !== catalogLoadSeq || props.volumeId !== requestVolumeId) {
+      return
+    }
     catalogLines.value = []
     catalogLoadFailed.value = true
     showUserError(error, '归档目录加载失败')
+  } finally {
+    if (requestSeq === catalogLoadSeq && props.volumeId === requestVolumeId) {
+      catalogLoading.value = false
+    }
   }
 }
 
 watch(
   () => props.volumeId,
   () => {
+    catalogLoadSeq += 1
+    materialStatsLoadSeq += 1
+    catalogLines.value = []
+    catalogSummaries.value = []
+    selectedKeys.value = []
     void loadCatalogLines()
     void loadMaterialStats()
   },
@@ -323,10 +410,10 @@ onMounted(() => {
   width: 100%;
   min-width: 280px;
   flex-shrink: 0;
-  padding: var(--dp-space-3);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
   box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dp-text-muted) 6%, transparent);
 }
 
@@ -334,9 +421,9 @@ onMounted(() => {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-2);
-  padding-bottom: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-tight);
+  padding-bottom: var(--dp-space-component-tight);
   border-bottom: 1px solid var(--dp-border-subtle);
 }
 
@@ -349,15 +436,15 @@ onMounted(() => {
 .catalog-tree__head-missing {
   font-size: var(--dp-font-size-xs);
   font-weight: 600;
-  color: var(--dp-orange-600, var(--dp-color-warning));
-  padding: 1px 6px;
+  color: var(--dp-orange-600, var(--dp-warning));
+  padding: 1px var(--dp-space-component-tight);
   border-radius: 3px;
-  background: color-mix(in srgb, var(--dp-orange-500, var(--dp-color-warning)) 10%, transparent);
+  background: color-mix(in srgb, var(--dp-orange-500, var(--dp-warning)) 10%, transparent);
 }
 
 .catalog-category {
-  margin: var(--dp-space-3) 0 4px;
-  font-size: var(--dp-font-size-xxs);
+  margin: var(--dp-space-component) 0 var(--dp-space-component-xs);
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
   color: var(--dp-text-muted);
   letter-spacing: 0.03em;
@@ -367,18 +454,18 @@ onMounted(() => {
 .catalog-entry {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   width: 100%;
   min-height: 34px;
-  padding: 5px 8px;
+  padding: 5px var(--dp-space-component-tight);
   border: none;
   border-radius: var(--dp-radius-control-inner);
   background: transparent;
   font: inherit;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    box-shadow 0.15s ease;
+    background-color var(--dp-duration-fast) var(--dp-ease-default),
+    box-shadow var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .catalog-entry--selectable:hover {
@@ -403,20 +490,20 @@ onMounted(() => {
 .catalog-seq {
   flex: 0 0 auto;
   min-width: 40px;
-  font-family: var(--dp-font-mono);
-  font-size: var(--dp-font-size-xxs);
+  font-family: var(--dp-font-family-code);
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
   text-align: left;
 }
 
 .catalog-missing-mark {
   flex: 0 0 auto;
-  font-size: 10px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 700;
-  color: var(--dp-orange-600, var(--dp-color-warning));
-  padding: 0 4px;
+  color: var(--dp-orange-600, var(--dp-warning));
+  padding: 0 var(--dp-space-component-xs);
   border-radius: 3px;
-  background: color-mix(in srgb, var(--dp-orange-500, var(--dp-color-warning)) 12%, transparent);
+  background: color-mix(in srgb, var(--dp-orange-500, var(--dp-warning)) 12%, transparent);
 }
 
 .archive-volume-material-tree__title {
@@ -433,13 +520,13 @@ onMounted(() => {
 .archive-volume-material-tree__meta {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   flex-shrink: 0;
 }
 
 .archive-volume-material-tree__pages,
 .archive-volume-material-tree__ready {
-  font-family: var(--dp-font-mono);
+  font-family: var(--dp-font-family-code);
   font-size: var(--dp-type-hint-size);
   color: var(--dp-text-muted);
   font-variant-numeric: tabular-nums;

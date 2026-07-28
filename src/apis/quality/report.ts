@@ -7,7 +7,7 @@ import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
  * 方法：create / update / delete / detail / page / transit-status / export
  *
  * 字段与 ReportVO / ReportSaveRequest / ReportStatusTransitRequest / ReportQueryRequest 严格一致。
- * /export 返回 void，文件 ID 由后端写库后通过 /detail 拿回 wordFileId/pdfFileId/excelFileId。
+ * /export 返回本次 exportTaskId，文件 ID 由后端写库后通过 /detail 拿回。
  */
 import type { PageResult, QueryDto } from '@/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
@@ -25,6 +25,8 @@ export interface ReportVO {
   trainingPlanId?: string
   trainingPlanCode?: string
   trainingPlanName?: string
+  accreditationCycleId?: string
+  accreditationCycleName?: string
   qualityCourseId?: string
   qualityCourseCode?: string
   qualityCourseName?: string
@@ -44,7 +46,9 @@ export interface ReportVO {
   archivedTime?: string
   /** 三格式导出状态机（IDLE/PENDING/PROCESSING/COMPLETED/FAILED） */
   exportStatus: ReportExportStatusCode
-  /** 导出失败原因（FAILED 状态下由 ReportExportExecutor 回填） */
+  /** 当前导出任务唯一身份；轮询必须绑定该值 */
+  exportTaskId?: string
+  /** 导出失败原因（FAILED 状态下由 QualityReportExportExecutor 回填） */
   exportErrorMessage?: string
   exportStartedTime?: string
   exportFinishedTime?: string
@@ -59,6 +63,7 @@ export interface ReportQueryRequest extends QueryDto {
   reportType?: ReportTypeCode
   programId?: string
   trainingPlanId?: string
+  accreditationCycleId?: string
   qualityCourseId?: string
   achievementResultId?: string
   schoolYear?: string
@@ -75,15 +80,13 @@ export interface ReportSaveRequest {
   reportType: ReportTypeCode
   programId: string
   trainingPlanId?: string
+  accreditationCycleId?: string
   qualityCourseId?: string
   achievementResultId?: string
   title: string
   schoolYear: string
   semester: SemesterCode
   bodyContent?: string
-  wordFileId?: string
-  pdfFileId?: string
-  excelFileId?: string
 }
 
 /** 报告编辑表单：学期未选时为 undefined，提交前须显式选择，禁止静默默认 */
@@ -92,15 +95,13 @@ export interface ReportEditorForm {
   reportType: ReportTypeCode
   programId: string
   trainingPlanId?: string
+  accreditationCycleId?: string
   qualityCourseId?: string
   achievementResultId?: string
   title: string
   schoolYear: string
   semester?: SemesterCode
   bodyContent?: string
-  wordFileId?: string
-  pdfFileId?: string
-  excelFileId?: string
 }
 
 /** 后端 ReportStatusTransitRequest 真值 */
@@ -142,11 +143,11 @@ export const reportApi = {
   transitStatus: (data: ReportStatusTransitRequest) =>
     http.post<void>(`${BASE}/transit-status`, data),
   /**
-   * 触发异步三格式导出：后端 ReportServiceImpl.export 仅写 exportStatus=PENDING 即返回；
-   * ReportExportScheduler 定时抢占后由 ReportExportExecutor 生成 Word/PDF/Excel
-   * 并上传 edu-storage，成功时回写 fileId + exportStatus=COMPLETED，失败则
-   * exportStatus=FAILED + exportErrorMessage。
-   * 前端通过 detail 轮询 exportStatus 获取进度。
+   * 触发异步三格式导出：后端写 exportStatus=PENDING 并返回本次 exportTaskId；
+   * 事务提交后立即抢占入导出池，QualityReportExportScheduler 兜底扫尾；
+   * QualityReportExportExecutor 生成 Word/PDF/Excel 并上传 edu-storage，
+   * 成功回写 fileId + COMPLETED，失败 FAILED + exportErrorMessage。
+   * 前端通过 detail 按 exportTaskId 轮询 exportStatus，禁止混淆前后两次任务。
    */
-  export: (id: string) => http.post<void>(`${BASE}/export`, { id }),
+  export: (id: string) => http.post<string>(`${BASE}/export`, { id }),
 }

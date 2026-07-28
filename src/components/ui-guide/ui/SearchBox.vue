@@ -78,13 +78,13 @@ const handleSearch = () => {
   min-height: var(--dp-control-height-md, 36px);
   border-radius: var(--dp-radius-control);
   border: 1px solid var(--dp-border);
-  background-color: var(--dp-bg-control);
+  background-color: var(--dp-surface);
   font-size: var(--dp-font-size-md);
   color: var(--dp-text-primary);
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background-color 0.2s ease;
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    box-shadow var(--dp-duration-normal) var(--dp-ease-default),
+    background-color var(--dp-duration-normal) var(--dp-ease-default);
 }
 
 .dp-search-box .ant-input-affix-wrapper:hover {
@@ -107,7 +107,7 @@ const handleSearch = () => {
 
 .dp-search-box .ant-input-prefix {
   color: var(--dp-text-muted);
-  margin-right: 8px;
+  margin-right: var(--dp-space-component-tight);
 }
 
 .dp-search-box .ant-input-affix-wrapper-disabled {

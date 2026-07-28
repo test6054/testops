@@ -50,7 +50,7 @@ const activation = useKioskDeviceActivation()
 
 .gate__panel {
   width: min(480px, 100%);
-  padding: 8px;
+  padding: var(--dp-space-component-tight);
   background: var(--kiosk-surface);
   border: 1px solid var(--kiosk-divider);
   border-radius: var(--kiosk-radius-lg);

@@ -32,7 +32,13 @@
       <template #toolbar>
         <UiButton size="sm" variant="outline" @click="addRow">添加材料行</UiButton>
       </template>
-      <input ref="rowFileInputRef" type="file" class="sr-only" @change="onRowFileChange" />
+      <input
+        ref="rowFileInputRef"
+        type="file"
+        class="tw:sr-only"
+        aria-label="选择课程平台同步文件"
+        @change="onRowFileChange"
+      />
       <UiDataTable
         pagination-mode="none"
         :columns="columns"
@@ -110,6 +116,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
+import { createClientSnowflakeId } from '@/utils/client-snowflake'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const props = withDefaults(
@@ -160,7 +167,7 @@ watch(
   () => props.open,
   (visible) => {
     if (visible) {
-      form.value.idempotencyKey = `CPS-${props.volumeId}-${Date.now()}`
+      form.value.idempotencyKey = `CPS-${props.volumeId}-${createClientSnowflakeId()}`
       if (rows.value.length === 0) {
         addRow()
       }
@@ -175,7 +182,7 @@ watch(
 
 function addRow() {
   rows.value.push({
-    uid: `${Date.now()}-${rows.value.length}`,
+    uid: createClientSnowflakeId(),
     catalogCode: '',
     studentNo: '',
   })
@@ -282,7 +289,7 @@ async function handleSubmit() {
 <style scoped>
 .archive-volume-course-sync__file-name {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
   max-width: 180px;

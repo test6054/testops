@@ -8,23 +8,28 @@ import type {
 } from '@/types/exam-workflow-task-dock'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { MARK_STAGE_TITLE, shouldShowStageSuggestionBanner } from '@/constants/mark-workspace-nav'
-import { WorkbenchNextActionKeyCode } from '@/types/enums/exam-workbench-next-action-key-enum'
+import { shouldShowStageSuggestionBanner } from '@/constants/mark-workspace-nav'
 import { MarkTeacherDashboardTodoTypeCode } from '@/types/enums/mark-teacher-dashboard-todo-type-enum'
 import {
+  buildApprovePublishReviewDockView,
   buildExperienceAssistCalibrationDockView,
+  buildSubmitPublishReviewDockView,
+  findApprovePublishReviewAction,
   findExperienceAssistCalibrationAction,
+  findSubmitPublishReviewAction,
+  isApprovePublishReviewActionPending,
   isExperienceAssistCalibrationActionPending,
+  isSubmitPublishReviewActionPending,
   resolveExperienceAssistCalibrationPendingCount,
 } from '@/utils/exam-workflow-next-action'
-import { resolveNextActionRouteName } from '@/utils/exam-workspace-entry-gates'
+import { navigateExamWorkspaceRoute } from '@/utils/exam-workspace-navigation'
 
 export type {
   ExamWorkflowTaskDockKind,
   ExamWorkflowTaskDockView,
 } from '@/types/exam-workflow-task-dock'
 
-/** 从工作台快照 pendingTodos 读取试评经验定标待办数（兼容旧调用方）。 */
+/** 从 nextActions 读取试评经验定标待办数；缺 nextAction 时再读 pendingTodos 合同字段。 */
 export function resolveExperienceAssistPendingCount(
   pendingTodos: { todoType: string, count?: number }[] | null | undefined,
   nextActions?: ExamWorkbenchNextActionResponse[] | null | undefined,
@@ -40,6 +45,13 @@ export function resolveExperienceAssistPendingCount(
 }
 
 const SESSION_DISMISS_PREFIX = 'mark-workflow-task-dismiss'
+
+const DOCK_KINDS: readonly ExamWorkflowTaskDockKind[] = [
+  'experience-assist',
+  'approve-publish-review',
+  'submit-publish-review',
+  'stage-suggestion',
+]
 
 function dismissStorageKey(examId: string, kind: ExamWorkflowTaskDockKind): string {
   return `${SESSION_DISMISS_PREFIX}:${examId}:${kind}`
@@ -83,16 +95,17 @@ export interface UseExamWorkflowTaskDockOptions {
   route: RouteLocationNormalizedLoaded
   isImmersiveWorkspace: ComputedRef<boolean>
   nextActions: ComputedRef<ExamWorkbenchNextActionResponse[]>
-  prepBlockingReasons: ComputedRef<string[]>
+  /** 入口合同路由；阶段建议动作唯一跳转真源 */
+  workspaceRouteName: ComputedRef<string | null | undefined>
+  /** 入口合同文案 */
+  enterActionLabel: ComputedRef<string | null | undefined>
   suggestedStageKey: ComputedRef<MarkStageKey | null | undefined>
   activeMarkStageKey: ComputedRef<MarkStageKey | null>
   stageSuggestionDescription: ComputedRef<string>
-  suggestedStageActionLabel: ComputedRef<string>
-  goSuggestedStageByKey: () => void
 }
 
 /**
- * 考试工作台悬浮任务条：试评定标消费 nextActions，阶段建议仍由旅程快照驱动。
+ * 考试工作台悬浮任务条：定标 / 签审 / 提交复核消费 nextActions；阶段建议只认入口合同。
  */
 export function useExamWorkflowTaskDock(options: UseExamWorkflowTaskDockOptions) {
   const router = useRouter()
@@ -101,15 +114,20 @@ export function useExamWorkflowTaskDock(options: UseExamWorkflowTaskDockOptions)
   const calibrationAction = computed(() =>
     findExperienceAssistCalibrationAction(options.nextActions.value),
   )
+  const approvePublishReviewAction = computed(() =>
+    findApprovePublishReviewAction(options.nextActions.value),
+  )
+  const submitPublishReviewAction = computed(() =>
+    findSubmitPublishReviewAction(options.nextActions.value),
+  )
 
   function syncDismissedFromSession(): void {
     const examId = options.examId.value
     const next = new Set<ExamWorkflowTaskDockKind>()
-    if (readSessionDismissed(examId, 'experience-assist')) {
-      next.add('experience-assist')
-    }
-    if (readSessionDismissed(examId, 'stage-suggestion')) {
-      next.add('stage-suggestion')
+    for (const kind of DOCK_KINDS) {
+      if (readSessionDismissed(examId, kind)) {
+        next.add(kind)
+      }
     }
     dismissedKinds.value = next
   }
@@ -122,67 +140,78 @@ export function useExamWorkflowTaskDock(options: UseExamWorkflowTaskDockOptions)
     if (!suggested || !active) {
       return false
     }
+    const routeName = options.workspaceRouteName.value?.trim()
+    const actionLabel = options.enterActionLabel.value?.trim()
+    if (!routeName || !actionLabel) {
+      return false
+    }
     return shouldShowStageSuggestionBanner(active, suggested)
   })
 
+  function clearDismissWhenInactive(kind: ExamWorkflowTaskDockKind, pending: boolean): void {
+    if (pending) {
+      return
+    }
+    if (!dismissedKinds.value.has(kind)) {
+      return
+    }
+    clearSessionDismissed(options.examId.value, kind)
+    const next = new Set(dismissedKinds.value)
+    next.delete(kind)
+    dismissedKinds.value = next
+  }
+
   watch(
     () => isExperienceAssistCalibrationActionPending(calibrationAction.value),
-    (pending) => {
-      if (pending) {
-        return
-      }
-      if (!dismissedKinds.value.has('experience-assist')) {
-        return
-      }
-      clearSessionDismissed(options.examId.value, 'experience-assist')
-      const next = new Set(dismissedKinds.value)
-      next.delete('experience-assist')
-      dismissedKinds.value = next
-    },
+    (pending) => clearDismissWhenInactive('experience-assist', pending),
   )
+  watch(
+    () => isApprovePublishReviewActionPending(approvePublishReviewAction.value),
+    (pending) => clearDismissWhenInactive('approve-publish-review', pending),
+  )
+  watch(
+    () => isSubmitPublishReviewActionPending(submitPublishReviewAction.value),
+    (pending) => clearDismissWhenInactive('submit-publish-review', pending),
+  )
+  watch(showStageSuggestion, (visible) => clearDismissWhenInactive('stage-suggestion', visible))
 
-  watch(showStageSuggestion, (visible) => {
-    if (visible) {
-      return
-    }
-    if (!dismissedKinds.value.has('stage-suggestion')) {
-      return
-    }
-    clearSessionDismissed(options.examId.value, 'stage-suggestion')
-    const next = new Set(dismissedKinds.value)
-    next.delete('stage-suggestion')
-    dismissedKinds.value = next
-  })
-
-  const experienceAssistTask = computed((): ExamWorkflowTaskDockView | null => {
+  function buildDockTask(
+    kind: ExamWorkflowTaskDockKind,
+    view: ExamWorkflowTaskDockView | null,
+  ): ExamWorkflowTaskDockView | null {
     if (options.isImmersiveWorkspace.value) {
       return null
     }
-    if (options.prepBlockingReasons.value.length > 0) {
+    if (!view) {
       return null
     }
-    const action = calibrationAction.value
-    if (!isExperienceAssistCalibrationActionPending(action)) {
+    if (dismissedKinds.value.has(kind)) {
       return null
     }
-    const targetRoute = resolveNextActionRouteName(
-      WorkbenchNextActionKeyCode.EXPERIENCE_ASSIST_CALIBRATION,
-      options.examId.value,
-    )
-    if (options.route.name === targetRoute) {
+    if (!view.routeName?.trim()) {
       return null
     }
-    if (dismissedKinds.value.has('experience-assist')) {
+    if (options.route.name === view.routeName
+      && (kind !== 'approve-publish-review' || options.route.query.pendingMyReview === '1')) {
       return null
     }
-    return buildExperienceAssistCalibrationDockView(action)
-  })
+    return view
+  }
+
+  const experienceAssistTask = computed((): ExamWorkflowTaskDockView | null =>
+    buildDockTask('experience-assist', buildExperienceAssistCalibrationDockView(calibrationAction.value)),
+  )
+
+  const approvePublishReviewTask = computed((): ExamWorkflowTaskDockView | null =>
+    buildDockTask('approve-publish-review', buildApprovePublishReviewDockView(approvePublishReviewAction.value)),
+  )
+
+  const submitPublishReviewTask = computed((): ExamWorkflowTaskDockView | null =>
+    buildDockTask('submit-publish-review', buildSubmitPublishReviewDockView(submitPublishReviewAction.value)),
+  )
 
   const stageSuggestionTask = computed((): ExamWorkflowTaskDockView | null => {
     if (options.isImmersiveWorkspace.value) {
-      return null
-    }
-    if (options.prepBlockingReasons.value.length > 0) {
       return null
     }
     if (!showStageSuggestion.value) {
@@ -191,23 +220,28 @@ export function useExamWorkflowTaskDock(options: UseExamWorkflowTaskDockOptions)
     if (dismissedKinds.value.has('stage-suggestion')) {
       return null
     }
-
-    const suggestedKey = options.suggestedStageKey.value
-    if (!suggestedKey) {
+    const routeName = options.workspaceRouteName.value?.trim()
+    const actionLabel = options.enterActionLabel.value?.trim()
+    if (!routeName || !actionLabel) {
       return null
     }
-
+    if (options.route.name === routeName) {
+      return null
+    }
     return {
       kind: 'stage-suggestion',
-      title: `建议下一步：${MARK_STAGE_TITLE[suggestedKey]}`,
+      title: `建议下一步：${actionLabel}`,
       description: options.stageSuggestionDescription.value,
-      actionLabel:
-        options.suggestedStageActionLabel.value || `前往${MARK_STAGE_TITLE[suggestedKey]}`,
+      actionLabel,
+      routeName,
     }
   })
 
-  const activeTask = computed(
-    (): ExamWorkflowTaskDockView | null => experienceAssistTask.value ?? stageSuggestionTask.value,
+  const activeTask = computed((): ExamWorkflowTaskDockView | null =>
+    experienceAssistTask.value
+    ?? approvePublishReviewTask.value
+    ?? submitPublishReviewTask.value
+    ?? stageSuggestionTask.value,
   )
 
   const showTaskDock = computed(() => activeTask.value != null)
@@ -223,24 +257,30 @@ export function useExamWorkflowTaskDock(options: UseExamWorkflowTaskDockOptions)
 
   function runActiveTaskAction(): void {
     const task = activeTask.value
-    if (!task) {
+    if (!task || !options.examId.value) {
       return
     }
-    if (task.kind === 'experience-assist') {
-      const action = calibrationAction.value
-      if (!action || !options.examId.value) {
-        return
-      }
-      void router.push({
-        name: resolveNextActionRouteName(
-          WorkbenchNextActionKeyCode.EXPERIENCE_ASSIST_CALIBRATION,
-          options.examId.value,
-        ),
-        params: { examId: options.examId.value },
-      })
-      return
+    const routeName = task.routeName?.trim()
+    if (!routeName) {
+      throw new Error(`任务条缺少 routeName：${task.kind}`)
     }
-    options.goSuggestedStageByKey()
+    const query = task.openPendingMyPublishReview === true
+      ? { pendingMyReview: '1' }
+      : undefined
+    const contractLabel = task.kind === 'experience-assist'
+      ? '定标任务条入口'
+      : task.kind === 'approve-publish-review'
+        ? '签审任务条入口'
+        : task.kind === 'submit-publish-review'
+          ? '提交发布复核任务条入口'
+          : '阶段建议任务条入口'
+    navigateExamWorkspaceRoute(
+      router,
+      routeName,
+      { examId: options.examId.value },
+      contractLabel,
+      query,
+    )
   }
 
   return {

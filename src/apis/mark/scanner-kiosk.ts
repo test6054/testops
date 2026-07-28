@@ -24,6 +24,7 @@ import type { TaskStatusCode } from '@/apis/mark/task-status'
 import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { ArchiveKioskHubListModeCode } from '@/types/enums/archive-kiosk-hub-list-mode-enum'
+import type { ArchiveScanBatchModeCode } from '@/types/enums/archive-scan-batch-mode-enum'
 import type { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
 import type { DirectScanProviderChainCode } from '@/types/enums/direct-scan-provider-chain-enum'
 import type { ExamScannerLedgerDataSourceCode } from '@/types/enums/exam-scanner-ledger-data-source-enum'
@@ -33,7 +34,7 @@ import type { ExamScannerPageServerReceiveStatusCode } from '@/types/enums/exam-
 import type { ExamScannerPageUploadStatusCode } from '@/types/enums/exam-scanner-page-upload-status-enum'
 import type { PageRegisterStateCode } from '@/types/enums/page-register-state-enum'
 import type { PortfolioAiTaskTypeCode } from '@/types/enums/portfolio-ai-task-type-enum'
-import type { ScannerKioskBlockReasonCode } from '@/types/enums/scanner-kiosk-block-reason-enum'
+import type { ScannerDriverTypeCode } from '@/types/enums/scanner-driver-type-enum'
 import type { ScannerKioskResumeActionCode } from '@/types/enums/scanner-kiosk-resume-action-enum'
 import type { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
@@ -60,11 +61,6 @@ export {
   PageRegisterStateCode,
   PageRegisterStateDescription,
 } from '@/types/enums/page-register-state-enum'
-export {
-  ALL_SCANNER_KIOSK_BLOCK_REASON_CODES,
-  ScannerKioskBlockReasonCode,
-  ScannerKioskBlockReasonDescription,
-} from '@/types/enums/scanner-kiosk-block-reason-enum'
 export {
   ALL_SCANNER_KIOSK_RESUME_ACTION_CODES,
   ScannerKioskResumeActionCode,
@@ -128,7 +124,7 @@ export interface ExamScannerCapabilitiesVO {
   supportsAdf?: boolean
   supportsDuplex?: boolean
   localScannerId?: string
-  driverType?: string
+  driverType?: ScannerDriverTypeCode
   scannerDisplayName?: string
   scannerConnected?: boolean
 }
@@ -225,16 +221,12 @@ export interface ExamScannerKioskContextVO {
   blockReason?: string
   directBlockReason?: string
   supplementBlockReason?: string
-  /** 一体机阻断原因码（如 E_KOS_004 去制卷） */
-  blockReasonCode?: ScannerKioskBlockReasonCode | null
   /** 续处理动作；后端未算出时为 null（A3） */
   resumeAction?: ScannerKioskResumeActionCode | null
   /** commit 成功但页登记待重试 */
   pageRegisterPending?: boolean
   pageRegisterPendingBatchId?: string
   pageRegisterDiagnostic?: string
-  /** 考试准备硬阻断项（与开批次接口同源） */
-  prepHardBlockingReasons?: string[]
   /** 考试准备建议项（不阻断直扫） */
   prepAdvisoryReasons?: string[]
   taskContract?: ExamScannerKioskTaskContractVO
@@ -416,15 +408,14 @@ export function bindScannerKioskPaper(request: ExamScannerKioskPaperBindRequest)
 /**
  * 扫描工作台开启批次锚点请求。
  *
- * declaredClassIds 必须从已选考试 t_exam_class_scope 范围内勾选；scanMode=SUPPLEMENT 时
- * 必须填写 targetPageNo + supplementReason，scanMode=ARCHIVE 与 DIRECT 不允许这两个字段。
+ * 班级范围由服务端在开批次时从考试真源冻结；scanMode=SUPPLEMENT 时
+ * 必须填写 targetPageNo + supplementReason。
  */
 export interface ExamScannerBatchStartRequest {
   examId: string
   scannerDeviceId: string
   /** 扫描站点 ID（绑定 station 时使用） */
   scannerStationId: string
-  declaredClassIds: string[]
   scanMode: ScannerKioskScanModeCode
   /** 仅 SUPPLEMENT 模式必填：补扫的目标页码（>=1） */
   targetPageNo?: number
@@ -455,8 +446,8 @@ export interface ExamScanBatchDiscardRequest {
  * <p>对齐后端 {@code com.nybc.mark.model.response.ExamScannerBatchLifecycleVO}。
  * Redis 锚点投影：work-order/start / discard 端点共用此结构。锚点已不存在（discard 后或未开启）
  * 时 {@code anchorExists=false}，{@code anchorMutated} 表示本次调用是否真正改写了锚点状态
- * （幂等回放为 false）。discard 端点遇到 Redis 中残留 pending pages 时通过
- * {@code pendingPageCount} 与 {@code pendingPagesDiagnostic} 反馈给调用方决定 commit 或主动丢弃。</p>
+ * （幂等回放为 false）。关闭/discard 时若仍有未 commit 页且未确认丢弃，后端抛 PARAM_ERROR，
+ * 不再以 200 + pendingPagesDiagnostic 软拒绝。</p>
  */
 export interface ExamScannerBatchLifecycleVO {
   /** 锚点是否存在（true=Redis 锚点存在或本次新建，false=不存在或已被清理） */
@@ -485,9 +476,8 @@ export interface ExamScannerBatchLifecycleVO {
   startedAt?: string
   /** 工作台锚点创建人用户 ID */
   startedBy?: string
-  /** discard 残留 pending pages 时的人类可读诊断 */
+  /** 历史字段：关闭拒绝已改 PARAM_ERROR；成功关闭时可带回关闭前 pending 快照 */
   pendingPagesDiagnostic?: string
-  /** discard 时 Redis 中仍残留的 pending pages 数量；无残留为 0 / undefined */
   pendingPageCount?: number
   /** 批次封存时间 */
   sealedTime?: string
@@ -657,7 +647,7 @@ export function listScannerKioskBoundPapers(
  * <p>一体机封存视图历史浏览专用：必须传 examId、scannerDeviceId、scannerStationId 三个 ID，
  * 后端 Controller 会强校验，防止跨 station 越权读取其它一体机的批次数据。</p>
  *
- * <p>缺省 includeDiscarded=true，让用户能查看完整生命周期（含已废弃批次的诊断信息）。</p>
+ * <p>includeDiscarded 必传：true 含已废弃批次，false 仅看有效批次。</p>
  */
 export interface ExamScannerKioskBatchHistoryRequest extends QueryDto {
   examId: string
@@ -665,8 +655,8 @@ export interface ExamScannerKioskBatchHistoryRequest extends QueryDto {
   scannerStationId: string
   /** 可选状态过滤：RECEIVED / BLOCKED / BOUND / COMPLETED / DISCARDED */
   status?: ScanBatchStatusCode
-  /** 缺省 true，明确传 false 时排除已废弃批次 */
-  includeDiscarded?: boolean
+  /** 是否包含已废弃批次 */
+  includeDiscarded: boolean
   /** 扫描开始时间下界（ISO 字符串） */
   scanStartTimeFrom?: string
   /** 扫描开始时间上界（ISO 字符串） */
@@ -763,6 +753,12 @@ export interface ScannerKioskPortfolioGapTaskPageRequest extends QueryDto {
 export interface PortfolioGapTaskSummaryInternalVO {
   id: string
   teacherId: string
+  /** 教师姓名（edu-user nickName） */
+  teacherName?: string
+  /** 教师工号（edu-user teacherNumber） */
+  teacherNumber?: string
+  /** 院系名称 */
+  departmentName?: string
   categoryId: string
   categoryName?: string
   taskTitle?: string
@@ -782,7 +778,7 @@ export interface ScanDispatchAdhocTicketCreateRequest {
   scannerStationId: string
   catalogCode?: string
   materialType?: ArchiveMaterialTypeCode
-  archiveBatchMode?: string
+  archiveBatchMode?: ArchiveScanBatchModeCode
   teacherId?: string
   collectMode?: PortfolioCollectModeCode
   gapTaskId?: string

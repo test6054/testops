@@ -63,6 +63,33 @@
         </p>
       </section>
 
+      <section class="formal-detail-drawer__section">
+        <h4 class="formal-detail-drawer__title">试评-正评一致性</h4>
+        <p class="formal-detail-drawer__text">
+          可比
+          {{ session.trialFormalMatchedSampleCount == null ? '—' : session.trialFormalMatchedSampleCount }}
+          · 漂移
+          {{ session.trialFormalDriftedSampleCount == null ? '—' : session.trialFormalDriftedSampleCount }}
+          · 一致性
+          {{
+            session.trialFormalConsistencyRate == null
+              ? '—'
+              : `${session.trialFormalConsistencyRate}%`
+          }}
+        </p>
+        <p v-if="session.trialFormalConsistencyCheckedTime" class="formal-detail-drawer__text">
+          最近刷新 {{ formatDateTime(session.trialFormalConsistencyCheckedTime) }}
+        </p>
+        <UiButton
+          variant="outline"
+          size="sm"
+          :disabled="session.sessionStatus === FormalSessionStatusCode.SESSION_CREATED"
+          @click="consistencyOpen = true"
+        >
+          查看定标对照
+        </UiButton>
+      </section>
+
       <section
         v-if="session.pauseReason || session.closeReason"
         class="formal-detail-drawer__section"
@@ -77,20 +104,25 @@
       </section>
     </template>
   </UiDrawer>
+
+  <TrialFormalConsistencyDrawer v-model:open="consistencyOpen" :session="session" />
 </template>
 
 <script lang="ts" setup>
 import type { FormalSessionResponse } from '@/apis/mark/marking-organization'
+import { ref } from 'vue'
 import {
   AllocationUnitDescription,
   FORMAL_SESSION_STATUS_TONE,
   FormalSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInfoGrid from '@/components/ui-guide/ui/InfoGrid.vue'
 import UiInfoGridItem from '@/components/ui-guide/ui/InfoGridItem.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
+import { FormalSessionStatusCode } from '@/types/enums/formal-session-status-enum'
 import {
   formatFormalSessionGradeClosureProgress,
   formatFormalSessionQuestionScope,
@@ -98,6 +130,7 @@ import {
 } from '@/utils/formal-session-display'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import TrialFormalConsistencyDrawer from './TrialFormalConsistencyDrawer.vue'
 
 defineOptions({ name: 'FormalSessionDetailDrawer' })
 
@@ -109,37 +142,39 @@ defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean]
 }>()
+
+const consistencyOpen = ref(false)
 </script>
 
 <style lang="scss" scoped>
 .formal-detail-drawer {
   &__section {
-    margin-top: 20px;
+    margin-top: var(--dp-space-block);
   }
 
   &__title {
-    margin: 0 0 8px;
+    margin: 0 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
 
   &__text {
-    margin: 0 0 6px;
+    margin: 0 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-sm);
     line-height: 1.6;
     color: var(--dp-text-secondary);
   }
 
   &__warn {
-    margin: 8px 0 0;
+    margin: var(--dp-space-component-tight) 0 0;
     font-size: var(--dp-font-size-xs);
-    color: var(--dp-color-warning);
+    color: var(--dp-warning);
   }
 
   &__error {
-    margin: 8px 0 0;
+    margin: var(--dp-space-component-tight) 0 0;
     font-size: var(--dp-font-size-xs);
-    color: var(--dp-color-error);
+    color: var(--dp-error);
   }
 }
 </style>

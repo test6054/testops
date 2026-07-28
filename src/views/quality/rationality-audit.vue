@@ -70,7 +70,7 @@
               </div>
             </template>
             <template v-else-if="column.key === 'checks'">
-              <div class="dp-space" style="--dp-space-gap: 8px">
+              <div class="dp-space dp-space--tight">
                 <UiTag :tone="booleanTagTone(record.contentAligned)" size="sm">内容一致</UiTag>
                 <UiTag :tone="booleanTagTone(record.rubricMeasurable)" size="sm">标准可衡量</UiTag>
                 <UiTag :tone="booleanTagTone(record.methodReasonable)" size="sm">方法合理</UiTag>
@@ -125,7 +125,7 @@
         </UiFormItem>
       </UiForm>
       <template #footer>
-        <div class="dp-space" style="--dp-space-gap: 8px">
+        <div class="dp-space dp-space--tight">
           <UiButton size="sm" variant="outline" @click="editOpen = false">取消</UiButton>
           <UiButton
             size="sm"
@@ -193,6 +193,7 @@ import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { ALL_SEMESTER_CODES, SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -289,6 +290,7 @@ function booleanTagTone(v?: boolean) {
 }
 
 async function loadList() {
+  const requestScope = beginQualityScopeRequest()
   const trainingPlanId = qualityStore.currentTrainingPlanId
   const { schoolYear, semester } = filterForm
   if (!trainingPlanId || !schoolYear || !semester) {
@@ -303,11 +305,21 @@ async function loadList() {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
     })
+    if (requestScope.isStale()) {
+      return
+    }
     list.value = pageResult.list
     listTotal.value = pageResult.total
     try {
-      overview.value = await getRationalityAuditCourseLedgerOverview(scope)
+      const nextOverview = await getRationalityAuditCourseLedgerOverview(scope)
+      if (requestScope.isStale()) {
+        return
+      }
+      overview.value = nextOverview
     } catch (e: unknown) {
+      if (requestScope.isStale()) {
+        return
+      }
       overview.value = {
         totalCourseCount: 0,
         auditedCourseCount: 0,
@@ -318,6 +330,9 @@ async function loadList() {
       showUserError(e, '审核覆盖率概览加载失败')
     }
   } catch (e: unknown) {
+    if (requestScope.isStale()) {
+      return
+    }
     list.value = []
     listTotal.value = 0
     overview.value = {
@@ -329,7 +344,9 @@ async function loadList() {
     }
     showUserError(e, '加载审核列表失败')
   } finally {
-    loading.value = false
+    if (!requestScope.isStale()) {
+      loading.value = false
+    }
   }
 }
 
@@ -476,7 +493,7 @@ async function submitAudit(
 }
 
 .course-name {
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
   font-weight: 500;
   line-height: 22px;
 }

@@ -1,5 +1,6 @@
 export type {
   QualitySelectorChangeValue,
+  WorkbenchRefreshOutcome,
   WorkbenchSignalRefreshHandler,
 } from './improvementWorkbenchShared'
 

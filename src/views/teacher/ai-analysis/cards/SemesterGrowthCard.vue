@@ -755,13 +755,13 @@ function growthValueText(value: number | undefined): string {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 .diagnosis-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .diagnosis-rate {
   margin-left: auto;
@@ -773,7 +773,7 @@ function growthValueText(value: number | undefined): string {
   font-weight: 600;
 }
 .diagnosis-text {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
@@ -783,9 +783,6 @@ function growthValueText(value: number | undefined): string {
 }
 .diagnosis-text--muted {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-muted);
-}
-.text-muted {
   color: var(--dp-text-muted);
 }
 </style>

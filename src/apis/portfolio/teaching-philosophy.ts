@@ -11,7 +11,6 @@ export interface PortfolioTeachingPhilosophyVO {
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
-  lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -48,7 +47,10 @@ export const portfolioTeachingPhilosophyApi = {
     )
   },
   save(request: PortfolioTeachingPhilosophySaveRequest) {
-    return http.post<string>('/api/portfolio/teaching-philosophy/save', request)
+    return http.post<PortfolioTeachingPhilosophyVO>(
+      '/api/portfolio/teaching-philosophy/save',
+      request,
+    )
   },
   delete(request: PortfolioTeachingPhilosophyDeleteRequest) {
     return http.post<void>('/api/portfolio/teaching-philosophy/delete', request)

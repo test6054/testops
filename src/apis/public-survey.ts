@@ -6,7 +6,7 @@ import type { SurveyIdentityFieldTypeCode } from '@/types/enums/survey-identity-
 /**
  * 公开问卷填写 API（无需认证）。
  *
- * 后端路径：/api/public/survey/:token
+ * 后端路径：POST /api/public/survey/get|submit；访问令牌走请求体，不落 URL 路径。
  */
 import http from '@/config/axios'
 import {
@@ -90,7 +90,12 @@ export interface PublicSurveyItemVO {
   sortOrder?: number
 }
 
+export interface PublicSurveyAccessRequest {
+  accessToken: string
+}
+
 export interface PublicSurveySubmitRequest {
+  accessToken: string
   respondentIdentity?: SurveyRespondentIdentityRequest
   answers: PublicSurveyAnswerSubmitRequest[]
 }
@@ -111,8 +116,8 @@ export interface PublicSurveySubmitResultVO {
 const PUBLIC_SURVEY = '/api/public/survey'
 
 export const publicSurveyApi = {
-  getSurvey: (token: string) =>
-    http.get<PublicSurveyVO>(`${PUBLIC_SURVEY}/${token}`),
-  submit: (token: string, data: PublicSurveySubmitRequest) =>
-    http.post<PublicSurveySubmitResultVO>(`${PUBLIC_SURVEY}/${token}/submit`, data),
+  getSurvey: (accessToken: string) =>
+    http.post<PublicSurveyVO>(`${PUBLIC_SURVEY}/get`, { accessToken }),
+  submit: (data: PublicSurveySubmitRequest) =>
+    http.post<PublicSurveySubmitResultVO>(`${PUBLIC_SURVEY}/submit`, data),
 }

@@ -1,5 +1,11 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type {
+  AccreditationCockpitActionKeyCode,
+} from '@/types/enums/accreditation-cockpit-action-key-enum'
+import type {
+  AccreditationStandardClauseStatusCode,
+} from '@/types/enums/accreditation-standard-clause-status-enum'
 import type { AnnualEvaluationPlanStatusCode } from '@/types/enums/annual-evaluation-plan-status-enum'
 import type { OnsiteVisitPlanStatusCode } from '@/types/enums/onsite-visit-plan-status-enum'
 import type { ProgramSupportProfileStatusCode } from '@/types/enums/program-support-profile-status-enum'
@@ -109,6 +115,8 @@ export interface AccreditationCycleVO {
   trainingPlanCode: string
   trainingPlanName: string
   accreditationStandardId?: string
+  predecessorMaintenanceCycleId?: string
+  predecessorMaintenanceCycleName?: string
   cycleCode: string
   cycleName: string
   currentPhase: AccreditationCyclePhaseCode
@@ -146,8 +154,26 @@ export interface AccreditationConclusionReadinessItemVO {
   message: string
 }
 
+/** 标准条款诊断 — 对齐后端 AccreditationStandardClauseDiagnosisVO */
+export interface AccreditationStandardClauseDiagnosisVO {
+  clauseKey: string
+  clauseTitle: string
+  clauseDescription: string
+  status: AccreditationStandardClauseStatusCode
+  evidenceCount: number
+  blockingReason: string
+  actionKey: AccreditationCockpitActionKeyCode
+  routeName?: string
+}
+
 export interface AccreditationCockpitVO {
-  activeCycle?: AccreditationCycleVO
+  applicationCycle?: AccreditationCycleVO
+  maintenanceCycle?: AccreditationCycleVO
+  /** 无在办申请周期时可新建，保持周期不阻断 */
+  canCreateCycle: boolean
+  standardCode?: string
+  standardName?: string
+  standardYear?: string
   annualPlanCount: number
   annualCoverageRate: number
   onsiteVisitPlanCount: number
@@ -158,13 +184,17 @@ export interface AccreditationCockpitVO {
   annualReportMaterialCount: number
   submittedAnnualReportMaterialCount: number
   approvedAnnualReportMaterialCount: number
+  predecessorApprovedAnnualReportMaterialCount: number
+  annualReportMaterialsApplicable: boolean
   annualReportMaterialsReady: boolean
   conclusionRegistrationReady: boolean
-  conclusionReadinessItems?: AccreditationConclusionReadinessItemVO[]
-  annualCourseCoverages?: AccreditationAnnualCourseCoverageSnapshot[]
+  conclusionReadinessItems: AccreditationConclusionReadinessItemVO[]
+  standardClauses: AccreditationStandardClauseDiagnosisVO[]
+  annualCourseCoverages: AccreditationAnnualCourseCoverageSnapshot[]
   conditionalDueDaysRemaining?: number
   onsiteReportDueDaysRemaining?: number
-  activeEvidenceCount: number
+  applicationEvidenceCount: number
+  maintenanceEvidenceCount: number
 }
 
 export interface AccreditationCycleQueryRequest extends QueryDto {
@@ -180,12 +210,10 @@ export interface AccreditationCycleSaveRequest {
   programId: string
   trainingPlanId: string
   accreditationStandardId?: string
+  predecessorMaintenanceCycleId?: string
   cycleCode: string
   cycleName: string
   remark?: string
-  onsiteVisitStart?: string
-  onsiteVisitEnd?: string
-  onsiteReportDueDate?: string
 }
 
 export interface TrainingPlanIdRequest {
@@ -247,6 +275,7 @@ export interface OnsiteVisitPlanSaveRequest {
   visitTitle: string
   visitStart: string
   visitEnd: string
+  reportDueDate: string
   leadExpertName?: string
   expertGroupRemark?: string
   auditSupervisionId?: string
@@ -260,6 +289,7 @@ export interface OnsiteChecklistItemVO {
   itemTitle: string
   itemDescription?: string
   responsibleUserId?: string
+  responsibleUserName?: string
   itemStatus: OnsiteChecklistItemStatusCode
   evidenceArchiveId?: string
   completedTime?: string
@@ -276,11 +306,13 @@ export interface OnsiteVisitPlanVO {
   visitTitle: string
   visitStart: string
   visitEnd: string
-  reportDueDate?: string
+  reportDueDate: string
   leadExpertName?: string
   expertGroupRemark?: string
   planStatus?: OnsiteVisitPlanStatusCode
   completedChecklistCount?: number
+  notApplicableChecklistCount?: number
+  closedChecklistCount?: number
   totalChecklistCount?: number
   remark?: string
   checklistItems?: OnsiteChecklistItemVO[]
@@ -298,7 +330,7 @@ export interface AnnualEvaluationPlanSaveRequest {
   id?: string
   programId: string
   trainingPlanId: string
-  accreditationCycleId?: string
+  accreditationCycleId: string
   planYear: string
   planTitle: string
   coverageTargetRate?: number
@@ -333,7 +365,7 @@ export interface OnsiteVisitPlanQueryRequest extends QueryDto {
   programId?: string
   trainingPlanId: string
   accreditationCycleId?: string
-  planStatus?: AnnualEvaluationPlanStatusCode
+  planStatus?: OnsiteVisitPlanStatusCode
   keyword?: string
 }
 
@@ -347,11 +379,22 @@ export interface AnnualEvaluationPlanCourseStatusUpdateRequest {
   evaluationCompleted: boolean
 }
 
+export interface AnnualEvaluationPlanStatusUpdateRequest {
+  id: string
+  planStatus: AnnualEvaluationPlanStatusCode
+}
+
+export interface OnsiteVisitPlanStatusUpdateRequest {
+  id: string
+  planStatus: OnsiteVisitPlanStatusCode
+  remark?: string
+}
+
 export interface AnnualEvaluationPlanVO {
   id: string
   programId: string
   trainingPlanId: string
-  accreditationCycleId?: string
+  accreditationCycleId: string
   planYear: string
   planTitle: string
   planStatus?: AnnualEvaluationPlanStatusCode
@@ -376,8 +419,8 @@ export interface AnnualReportMaterialSaveRequest {
 }
 
 export interface AnnualReportMaterialQueryRequest extends QueryDto {
-  accreditationCycleId?: string
-  trainingPlanId?: string
+  accreditationCycleId: string
+  trainingPlanId: string
   reportYear?: string
   materialCategory?: AnnualReportMaterialCategoryCode
   reportStatus?: AnnualReportMaterialStatusCode
@@ -421,6 +464,7 @@ export interface AccreditationEvidenceVO {
   id: string
   programId: string
   trainingPlanId: string
+  accreditationCycleId: string
   qualityCourseId?: string
   assessmentItemId?: string
   sourceExamId?: string
@@ -436,15 +480,18 @@ export interface AccreditationEvidenceVO {
   semester?: SemesterCode
   markScannedPageId?: string
   markPaperInstanceId?: string
-  evidenceStatus?: AccreditationEvidenceStatusCode
+  evidenceStatus: AccreditationEvidenceStatusCode
+  invalidReason?: string
   createTime?: string
 }
 
 export interface AccreditationEvidenceQueryRequest extends QueryDto {
   programId?: string
   trainingPlanId?: string
+  accreditationCycleId: string
   qualityCourseId?: string
   evidenceCategory?: AccreditationEvidenceCategoryCode
+  evidenceStatus?: AccreditationEvidenceStatusCode
   keyword?: string
 }
 
@@ -452,6 +499,7 @@ export interface AccreditationEvidenceSaveRequest {
   id?: string
   programId: string
   trainingPlanId: string
+  accreditationCycleId: string
   qualityCourseId?: string
   assessmentItemId?: string
   sourceExamId?: string
@@ -471,15 +519,28 @@ export interface AccreditationEvidenceSaveRequest {
 export interface ImportMarkExamEvidenceRequest {
   programId: string
   trainingPlanId: string
-  examIds: string[]
+  accreditationCycleId: string
+  scopes: ImportMarkExamEvidenceScope[]
+}
+
+export interface ImportMarkExamEvidenceScope {
+  sourceExamId: string
+  qualityCourseId: string
+  assessmentItemId: string
 }
 
 /** 认证证据登记可选的 edu-mark 来源考试 */
 export interface AccreditationLinkedExamOptionVO {
   sourceExamId: string
+  qualityCourseId: string
+  assessmentItemId: string
+  classId?: string
+  courseCode?: string
   courseName: string
   itemName: string
   label: string
+  selectable: boolean
+  blockingReason?: string
 }
 
 export const ANNUAL_REPORT_MATERIAL_STATUS_TONE: Record<AnnualReportMaterialStatusCode, BadgeTone>
@@ -529,6 +590,8 @@ export const accreditationApi = {
   annualPlanDelete: (id: string) => http.post<void>(`${BASE}/annual-plans/delete`, { id }),
   updateAnnualPlanCourseStatus: (data: AnnualEvaluationPlanCourseStatusUpdateRequest) =>
     http.post<void>(`${BASE}/annual-plans/update-course-status`, data),
+  transitionAnnualPlanStatus: (data: AnnualEvaluationPlanStatusUpdateRequest) =>
+    http.post<void>(`${BASE}/annual-plans/transition-status`, data),
   annualReportMaterialPage: (data: AnnualReportMaterialQueryRequest) =>
     http.post<PageResult<AnnualReportMaterialVO>>(`${BASE}/annual-report-materials/page`, data),
   annualReportMaterialCreate: (data: AnnualReportMaterialSaveRequest) =>
@@ -554,6 +617,8 @@ export const accreditationApi = {
   updateOnsitePlan: (data: OnsiteVisitPlanSaveRequest) =>
     http.post<void>(`${BASE}/onsite-plans/update`, data),
   deleteOnsitePlan: (id: string) => http.post<void>(`${BASE}/onsite-plans/delete`, { id }),
+  transitionOnsitePlanStatus: (data: OnsiteVisitPlanStatusUpdateRequest) =>
+    http.post<void>(`${BASE}/onsite-plans/transition-status`, data),
   updateChecklistItem: (data: OnsiteChecklistItemUpdateRequest) =>
     http.post<void>(`${BASE}/onsite-plans/update-checklist-item`, data),
   currentSupportProfile: (data: TrainingPlanIdRequest) =>

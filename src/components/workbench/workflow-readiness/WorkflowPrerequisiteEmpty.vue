@@ -56,7 +56,7 @@ function navigate(action: WorkflowReadinessAction): void {
 
 <style scoped>
 .workflow-prerequisite-empty__steps {
-  margin: 12px 0 0;
+  margin: var(--dp-space-component) 0 0;
   padding: 0;
   list-style: none;
   text-align: left;
@@ -65,7 +65,7 @@ function navigate(action: WorkflowReadinessAction): void {
 
 .workflow-prerequisite-empty__step {
   position: relative;
-  padding-left: 16px;
+  padding-left: var(--dp-space-block);
   font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
@@ -86,6 +86,6 @@ function navigate(action: WorkflowReadinessAction): void {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 </style>

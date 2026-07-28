@@ -72,7 +72,7 @@ export function resolveScanMonitorSignalActionLabel(
     case ExamScanMonitorSignalActionKeyCode.VIEW_ATTENTION:
       return '查看异常队列'
     case ExamScanMonitorSignalActionKeyCode.PUBLISH_SCORE:
-      return '去发布'
+      return '去提交复核'
     case ExamScanMonitorSignalActionKeyCode.REFRESH:
       return '刷新数据'
     default:

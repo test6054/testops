@@ -76,6 +76,8 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -84,9 +86,11 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 const nodeColumns: ColumnsType = [
   { title: '编码', dataIndex: 'nodeCode', key: 'nodeCode', width: 100, fixed: 'left' },
   { title: '名称', key: 'nodeName' },
-  { title: '权重', dataIndex: 'weight', key: 'weight', width: 80 },
+  { title: '权重', dataIndex: 'weight', key: 'weight', width: 72 },
+  { title: '已确认记录', key: 'confirmedRecordCount', width: 96 },
+  { title: '未确认记录', key: 'pendingRecordCount', width: 96 },
   { title: '状态', dataIndex: 'confirmationStatus', key: 'confirmationStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 220 },
+  { title: '操作', key: 'actions', width: 200 },
 ]
 
 const recordColumns: ColumnsType = [
@@ -150,12 +154,47 @@ function studentDisplay(record: ProcessEvaluationRecordVO): string {
 
 const nodes = ref<ProcessEvaluationNodeVO[]>([])
 const nodesLoading = ref(false)
+
+const evidenceGapNodes = computed(() =>
+  nodes.value.filter(
+    (node) =>
+      node.confirmationStatus === ConfirmationStatusCode.CONFIRMED
+      && (node.confirmedRecordCount == null || node.confirmedRecordCount <= 0),
+  ),
+)
+
+const evidenceGapStrip = computed(() => {
+  if (!evidenceGapNodes.value.length) {
+    return null
+  }
+  const labels = evidenceGapNodes.value
+    .map((node) => {
+      const pending = node.pendingRecordCount ?? 0
+      return pending > 0
+        ? `${node.nodeCode}（未确认 ${pending} 条）`
+        : `${node.nodeCode}（尚无成绩）`
+    })
+    .join('、')
+  return {
+    tone: 'error' as const,
+    tag: '证据缺口',
+    description:
+      `已确认节点缺少已确认成绩，达成度计算将拒绝跳过：${labels}。请完成录入并确认，或退回未就绪节点。`,
+  }
+})
 const nodePageNum = ref(1)
 const nodePageSize = ref(20)
 const nodeTotal = ref(0)
 const selectedNode = ref<ProcessEvaluationNodeVO | null>(null)
+const {
+  loadError: nodesLoadError,
+  beginLoad: beginNodesLoad,
+  failLoad: failNodesLoad,
+  okLoad: okNodesLoad,
+} = useUiTableLoadError()
 
 async function loadNodes() {
+  const scope = beginQualityScopeRequest()
   if (!qualityStore.currentQualityCourseId) {
     nodes.value = []
     nodeTotal.value = 0
@@ -163,12 +202,16 @@ async function loadNodes() {
     return
   }
   nodesLoading.value = true
+  beginNodesLoad()
   try {
     const page = await processNodeApi.page({
       pageNum: nodePageNum.value,
       pageSize: nodePageSize.value,
       qualityCourseId: qualityStore.currentQualityCourseId,
     })
+    if (scope.isStale()) {
+      return
+    }
     nodes.value = page.list
     nodeTotal.value = page.total
     if (selectedNode.value) {
@@ -176,12 +219,23 @@ async function loadNodes() {
       selectedNode.value = matched || nodes.value[0] || null
     }
     await loadSignalSummary()
+    if (scope.isStale()) {
+      return
+    }
+    okNodesLoad()
   } catch (error) {
+    if (scope.isStale()) {
+      return
+    }
     nodes.value = []
     nodeTotal.value = 0
+    signalSummary.value = null
+    failNodesLoad()
     showUserError(error, '过程性评价节点加载失败')
   } finally {
-    nodesLoading.value = false
+    if (!scope.isStale()) {
+      nodesLoading.value = false
+    }
   }
 }
 
@@ -385,6 +439,12 @@ async function changeNodeStatus(record: ProcessEvaluationNodeVO, target: Confirm
 
 const records = ref<ProcessEvaluationRecordVO[]>([])
 const recordsLoading = ref(false)
+const {
+  loadError: recordsLoadError,
+  beginLoad: beginRecordsLoad,
+  failLoad: failRecordsLoad,
+  okLoad: okRecordsLoad,
+} = useUiTableLoadError()
 const recordPageNum = ref(1)
 const recordPageSize = ref(20)
 const recordTotal = ref(0)
@@ -416,6 +476,7 @@ async function loadRecords() {
     return
   }
   recordsLoading.value = true
+  beginRecordsLoad()
   try {
     const page = await processRecordApi.page({
       pageNum: recordPageNum.value,
@@ -426,9 +487,11 @@ async function loadRecords() {
     records.value = page.list
     recordTotal.value = page.total
     await loadSignalSummary()
+    okRecordsLoad()
   } catch (err) {
     records.value = []
     recordTotal.value = 0
+    failRecordsLoad()
     showUserError(err, '过程性评价记录加载失败')
   } finally {
     recordsLoading.value = false
@@ -567,6 +630,7 @@ async function submitRecord() {
     void message.success('已保存')
     recordEditorVisible.value = false
     await loadRecords()
+    await loadNodes()
   } catch (error) {
     showUserError(error, '过程性评价记录保存失败')
   }
@@ -586,6 +650,7 @@ async function changeRecordStatus(
     await processRecordApi.updateConfirmationStatus({ id: record.id, confirmationStatus: target })
     void message.success(`已切换到 ${confirmationStatusLabel(target)}`)
     await loadRecords()
+    await loadNodes()
   } catch (error) {
     showUserError(error, '过程性评价记录状态更新失败')
   }
@@ -603,6 +668,7 @@ async function deleteRecord(record: ProcessEvaluationRecordVO) {
       await processRecordApi.delete(record.id)
       void message.success('已删除')
       await loadRecords()
+      await loadNodes()
     },
   })
 }
@@ -726,6 +792,7 @@ function openImportExcel() {
 
 async function handleImportFinished() {
   await loadRecords()
+  await loadNodes()
 }
 
 /* ========== 按课程目标查已确认记录 ========== */
@@ -739,10 +806,17 @@ const confirmedByGoalPageSize = ref(20)
 const confirmedByGoalTotal = ref(0)
 
 const signalSummary = ref<ProcessEvaluationSignalSummaryVO | null>(null)
+const signalLastSuccessAt = ref<string | null>(null)
+const distributionExpanded = ref(false)
+
+function markSignalSuccessAt(): void {
+  signalLastSuccessAt.value = new Date().toISOString().replace('T', ' ').slice(0, 19)
+}
 
 async function loadSignalSummary() {
   if (!qualityStore.currentQualityCourseId) {
     signalSummary.value = null
+    signalLastSuccessAt.value = null
     return
   }
   try {
@@ -750,6 +824,7 @@ async function loadSignalSummary() {
       qualityCourseId: qualityStore.currentQualityCourseId,
       nodeId: selectedNode.value?.id,
     })
+    markSignalSuccessAt()
   } catch (err) {
     signalSummary.value = null
     showUserError(err, '过程性评价指标加载失败')
@@ -799,24 +874,80 @@ function handleConfirmedByGoalPageChange(page: { current: number, pageSize: numb
   void queryConfirmedByGoal()
 }
 
-/* ========== 信号指标：节点 + 记录健康度 ========== */
+/* ========== 信号指标：配置状态优先，分布下沉 ========== */
+
+const configStatusStrip = computed(() => {
+  const summary = signalSummary.value
+  if (!summary || !qualityStore.currentQualityCourseId) {
+    return null
+  }
+  const totalWeight = summary.weightSum
+  const nodesConfigured = summary.nodeTotal > 0
+  const weightKnown = typeof totalWeight === 'number' && !Number.isNaN(totalWeight)
+  const weightOk = nodesConfigured && weightKnown && Math.abs(totalWeight - 1) < 0.01
+  const pendingNodes = summary.nodeDraftCount + summary.nodeReturnedCount
+  if (!nodesConfigured) {
+    return {
+      tone: 'warning' as const,
+      tag: '未配置',
+      description: '当前课程尚无过程性评价节点，请先新建节点并配置权重',
+    }
+  }
+  if (!weightKnown) {
+    return {
+      tone: 'error' as const,
+      tag: '权重未知',
+      description: '过程性评价权重合计未返回，禁止按已配平处理',
+    }
+  }
+  if (!weightOk) {
+    return {
+      tone: 'error' as const,
+      tag: '权重未配平',
+      description: `节点权重合计为 ${totalWeight}，须为 1 后才能作为正式过程成绩底座`,
+    }
+  }
+  if (summary.nodeReturnedCount > 0) {
+    return {
+      tone: 'warning' as const,
+      tag: '下一动作',
+      description: `有 ${summary.nodeReturnedCount} 个节点已退回，请修订后重新提交`,
+    }
+  }
+  if (summary.nodeDraftCount > 0) {
+    return {
+      tone: 'info' as const,
+      tag: '下一动作',
+      description: `有 ${summary.nodeDraftCount} 个节点仍在起草，请完善后提交确认`,
+    }
+  }
+  if (pendingNodes === 0) {
+    return {
+      tone: 'success' as const,
+      tag: '配置就绪',
+      description: '节点权重已配平且无待处置草稿/退回；可继续录入过程成绩记录',
+    }
+  }
+  return null
+})
 
 const signals = computed<SignalMetric[]>(() => {
   const summary = signalSummary.value
   if (!summary) {
     return []
   }
-  const totalWeight = summary.weightSum ?? 0
-  const avgCoverage = summary.avgCoverageRequired ?? 0
-  const weightOk = totalWeight === 0 || Math.abs(totalWeight - 1) < 0.01
+  const totalWeight = summary.weightSum
+  const avgCoverage = summary.avgCoverageRequired
+  const nodesConfigured = summary.nodeTotal > 0
+  const weightKnown = typeof totalWeight === 'number' && !Number.isNaN(totalWeight)
+  const weightOk = nodesConfigured && weightKnown && Math.abs(totalWeight - 1) < 0.01
 
   return [
-    { key: 'nodes-total', label: '节点总数', value: summary.nodeTotal, tone: 'blue' },
     {
-      key: 'nodes-confirmed',
-      label: '已确认节点',
-      value: summary.nodeConfirmedCount,
-      tone: summary.nodeConfirmedCount > 0 ? 'green' : 'gray',
+      key: 'weight-sum',
+      label: '权重合计',
+      value: !nodesConfigured ? '未配置' : weightKnown ? totalWeight : '—',
+      tone: !nodesConfigured ? 'orange' : weightOk ? 'green' : 'red',
     },
     {
       key: 'nodes-draft',
@@ -830,12 +961,29 @@ const signals = computed<SignalMetric[]>(() => {
       value: summary.nodeReturnedCount,
       tone: summary.nodeReturnedCount > 0 ? 'red' : 'gray',
     },
-    { key: 'weight-sum', label: '权重合计', value: totalWeight, tone: weightOk ? 'green' : 'red' },
     {
       key: 'coverage-avg',
       label: '平均覆盖率',
-      value: avgCoverage,
-      tone: avgCoverage >= 0.8 ? 'green' : avgCoverage > 0 ? 'orange' : 'gray',
+      value: typeof avgCoverage === 'number' && !Number.isNaN(avgCoverage) ? avgCoverage : '—',
+      tone: typeof avgCoverage === 'number' && !Number.isNaN(avgCoverage)
+        ? (avgCoverage >= 0.8 ? 'green' : avgCoverage > 0 ? 'orange' : 'gray')
+        : 'gray',
+    },
+  ]
+})
+
+const distributionSignals = computed<SignalMetric[]>(() => {
+  const summary = signalSummary.value
+  if (!summary) {
+    return []
+  }
+  return [
+    { key: 'nodes-total', label: '节点总数', value: summary.nodeTotal, tone: 'blue' },
+    {
+      key: 'nodes-confirmed',
+      label: '已确认节点',
+      value: summary.nodeConfirmedCount,
+      tone: summary.nodeConfirmedCount > 0 ? 'green' : 'gray',
     },
     { key: 'records-total', label: '当前节点记录', value: summary.recordTotal, tone: 'blue' },
     {
@@ -916,13 +1064,77 @@ function handleCourseChange(courseId: string | null) {
 
     <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="pe__empty" />
 
-    <SignalBand
-      v-else-if="qualityStore.currentQualityCourseId"
-      :metrics="signals"
-      variant="panel"
-      compact
-      class="pe__signals"
-    />
+    <template v-else-if="qualityStore.currentQualityCourseId">
+      <UiAlertStrip
+        v-if="configStatusStrip"
+        :tone="configStatusStrip.tone"
+        dense
+        inline
+        :show-icon="false"
+        class="pe__config-status"
+      >
+        <template #default>
+          <span class="pe__gate-row">
+            <UiTag
+              :tone="
+                configStatusStrip.tone === 'error'
+                  ? 'red'
+                  : configStatusStrip.tone === 'warning'
+                    ? 'orange'
+                    : configStatusStrip.tone === 'success'
+                      ? 'green'
+                      : 'blue'
+              "
+              size="sm"
+            >
+              {{ configStatusStrip.tag }}
+            </UiTag>
+            <span>{{ configStatusStrip.description }}</span>
+          </span>
+        </template>
+      </UiAlertStrip>
+      <UiAlertStrip
+        v-if="evidenceGapStrip"
+        :tone="evidenceGapStrip.tone"
+        dense
+        inline
+        :show-icon="false"
+        class="pe__config-status"
+      >
+        <template #default>
+          <span class="pe__gate-row">
+            <UiTag tone="red" size="sm">{{ evidenceGapStrip.tag }}</UiTag>
+            <span>{{ evidenceGapStrip.description }}</span>
+          </span>
+        </template>
+      </UiAlertStrip>
+      <SignalBand
+        :metrics="signals"
+        variant="panel"
+        compact
+        class="pe__signals"
+      />
+      <p v-if="signalLastSuccessAt" class="pe__sync-hint">
+        指标最近同步：{{ signalLastSuccessAt }}
+      </p>
+      <div v-if="distributionSignals.length" class="pe__charts-fold">
+        <UiButton
+          variant="ghost"
+          size="sm"
+          class="pe__charts-toggle"
+          @click="distributionExpanded = !distributionExpanded"
+        >
+          {{ distributionExpanded ? '收起节点/记录统计' : '展开节点/记录统计' }}
+        </UiButton>
+        <SignalBand
+          v-if="distributionExpanded"
+          :metrics="distributionSignals"
+          variant="panel"
+          compact
+          class="pe__signals-secondary"
+        />
+      </div>
+    </template>
 
     <UiAlertStrip
       v-else-if="!qualityStore.currentQualityCourseId"
@@ -936,7 +1148,7 @@ function handleCourseChange(courseId: string | null) {
       <template #default>
         <span class="pe__gate-row">
           <UiTag tone="blue" size="sm">未选择课程</UiTag>
-          <span>请在上方选择课程后再维护过程性评价节点与成绩</span>
+          <span>请在上方选择课程后再维护过程性评价节点与成绩（上下文未就绪）</span>
         </span>
       </template>
     </UiAlertStrip>
@@ -954,6 +1166,9 @@ function handleCourseChange(courseId: string | null) {
             :columns="nodeColumns"
             :data-source="nodes"
             :loading="nodesLoading"
+            :load-error="nodesLoadError"
+            empty-title="暂无过程性评价节点"
+            empty-description="请新建节点并配置权重"
             row-key="id"
             size="middle"
             v-model:current="nodePageNum"
@@ -980,6 +1195,21 @@ function handleCourseChange(courseId: string | null) {
               </template>
               <template v-else-if="column.key === 'weight'">
                 {{ record.weight == null ? '-' : record.weight.toFixed(2) }}
+              </template>
+              <template v-else-if="column.key === 'confirmedRecordCount'">
+                <span
+                  :class="
+                    record.confirmationStatus === ConfirmationStatusCode.CONFIRMED
+                      && (record.confirmedRecordCount == null || record.confirmedRecordCount <= 0)
+                      ? 'pe__record-gap'
+                      : undefined
+                  "
+                >
+                  {{ record.confirmedRecordCount ?? 0 }}
+                </span>
+              </template>
+              <template v-else-if="column.key === 'pendingRecordCount'">
+                {{ record.pendingRecordCount ?? 0 }}
               </template>
               <template v-else-if="column.key === 'confirmationStatus'">
                 <UiTag :tone="confirmationStatusColor(record.confirmationStatus)">
@@ -1011,7 +1241,7 @@ function handleCourseChange(courseId: string | null) {
           <template #default>
             <span class="pe__gate-row">
               <UiTag tone="blue" size="sm">未选择节点</UiTag>
-              <span>请在左侧点击过程评价节点后录入记录</span>
+              <span>请在左侧点击过程评价节点后录入记录（上下文未就绪）</span>
             </span>
           </template>
         </UiAlertStrip>
@@ -1019,7 +1249,7 @@ function handleCourseChange(courseId: string | null) {
         <UiCard v-else class="detail-table-card pe__record-card">
           <template #title>「{{ selectedNode.nodeName }}」记录</template>
           <template #extra>
-            <div class="dp-space" style="--dp-space-gap: 8px">
+            <div class="dp-space dp-space--tight">
               <UiButton
                 variant="primary"
                 size="sm"
@@ -1065,6 +1295,9 @@ function handleCourseChange(courseId: string | null) {
             :columns="recordColumns"
             :data-source="records"
             :loading="recordsLoading"
+            :load-error="recordsLoadError"
+            empty-title="暂无过程性评价记录"
+            empty-description="请录入或导入本节点成绩"
             row-key="id"
             size="middle"
             flat
@@ -1316,7 +1549,7 @@ function handleCourseChange(courseId: string | null) {
       hide-footer
       width="780px"
     >
-      <div class="pe__modal-toolbar dp-space dp-space--wrap" style="--dp-space-gap: 8px">
+      <div class="pe__modal-toolbar dp-space dp-space--wrap dp-space--tight">
         <span>课程目标：</span>
         <CourseGoalSelector
           :value="confirmedByGoalId || null"
@@ -1374,28 +1607,50 @@ function handleCourseChange(courseId: string | null) {
   }
 
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component-xs);
+  }
+
+  &__signals-secondary {
+    margin-top: var(--dp-space-component-tight);
+  }
+
+  &__config-status {
+    margin-bottom: var(--dp-space-component);
+  }
+
+  &__sync-hint {
+    margin: 0 0 var(--dp-space-component-tight);
+    color: var(--dp-text-secondary, #666);
+    font-size: var(--dp-font-size-sm, 12px);
+  }
+
+  &__charts-fold {
+    margin-bottom: var(--dp-space-component-tight);
+  }
+
+  &__charts-toggle {
+    padding-inline: 0;
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
   &__panel-title {
     margin: 0;
-    font-size: 15px;
+    font-size: var(--dp-type-panel-title-size);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -1403,7 +1658,7 @@ function handleCourseChange(courseId: string | null) {
   &__panel-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
@@ -1412,26 +1667,31 @@ function handleCourseChange(courseId: string | null) {
   }
 
   &__empty {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-component);
   }
 
   &__gate-row {
     display: inline-flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     min-width: 0;
     font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 
   &__sub-desc {
-    margin-top: 4px;
+    margin-top: var(--dp-space-component-xs);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
+  &__record-gap {
+    color: var(--dp-color-danger, #cf1322);
+    font-weight: 600;
+  }
+
   &__modal-toolbar {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__import-status-label {
@@ -1440,7 +1700,7 @@ function handleCourseChange(courseId: string | null) {
   }
 
   &__file-name {
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
@@ -1452,7 +1712,7 @@ function handleCourseChange(courseId: string | null) {
 .pe__gate-row {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
 }
 </style>

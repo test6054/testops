@@ -259,7 +259,7 @@ async function confirmDelete(record: ScannerAgentReleaseResponse) {
     void message.warning('仅平台超级管理员可维护扫描端发布包')
     return
   }
-  if (record.published === true) {
+  if (record.published) {
     showFormValidationMessage('当前发布版本不能删除')
     return
   }
@@ -278,7 +278,13 @@ async function confirmDelete(record: ScannerAgentReleaseResponse) {
     void message.warning('仅平台超级管理员可维护扫描端发布包')
     return
   }
-  if (record.published === true) {
+  await loadReleases()
+  const currentRelease = releases.value.find((item) => item.id === record.id)
+  if (!currentRelease) {
+    showFormValidationMessage('版本状态已变化，请刷新后重试')
+    return
+  }
+  if (currentRelease.published) {
     showFormValidationMessage('当前发布版本不能删除')
     return
   }
@@ -374,7 +380,7 @@ onMounted(() => {
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'fileSize'">
             <span v-if="record.fileSize != null">{{ formatFileSize(record.fileSize) }}</span>
-            <span v-else class="muted">-</span>
+            <span v-else class="dp-text-muted">-</span>
           </template>
           <template v-else-if="column.key === 'published'">
             <UiTag :tone="record.published === true ? 'green' : 'gray'" size="sm">
@@ -393,7 +399,7 @@ onMounted(() => {
                 计划 {{ formatDateTime(record.pushScheduledTime) }}
               </div>
             </template>
-            <span v-else class="muted">-</span>
+            <span v-else class="dp-text-muted">-</span>
           </template>
           <template v-else-if="column.key === 'createTime'">
             {{ record.createTime ? formatDateTime(record.createTime) : '-' }}
@@ -405,7 +411,7 @@ onMounted(() => {
               split
               @action="(key) => handleReleaseRowAction(key, record)"
             />
-            <span v-else class="muted">-</span>
+            <span v-else class="dp-text-muted">-</span>
           </template>
         </template>
       </UiDataTable>
@@ -476,9 +482,9 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .scanner-agent-releases__sub {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .scanner-agent-releases__hint {
@@ -486,9 +492,5 @@ onMounted(() => {
   font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
-}
-
-.muted {
-  color: var(--dp-text-tertiary);
 }
 </style>

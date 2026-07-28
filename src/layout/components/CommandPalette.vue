@@ -193,8 +193,8 @@ function handleAfterOpenChange(open: boolean) {
 .command-palette__input-wrap {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-3, 12px);
-  padding: var(--dp-space-4, 16px) var(--dp-space-5, 20px);
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-block);
   border-bottom: 1px solid var(--dp-border-subtle);
 }
 
@@ -219,12 +219,12 @@ function handleAfterOpenChange(open: boolean) {
 }
 
 .command-palette__esc {
-  padding: 2px 6px;
+  padding: 2px var(--dp-space-component-tight);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-xs, 4px);
-  font-size: var(--dp-font-size-xxs);
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
-  background: var(--dp-surface-elevated);
+  background: var(--dp-surface-chrome);
   font-family: var(--dp-font-family-code);
   line-height: 1.4;
 }
@@ -232,11 +232,11 @@ function handleAfterOpenChange(open: boolean) {
 .command-palette__results {
   max-height: 360px;
   overflow-y: auto;
-  padding: var(--dp-space-2, 8px);
+  padding: var(--dp-space-component-tight);
 }
 
 .command-palette__group-label {
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px) var(--dp-space-1, 4px);
+  padding: var(--dp-space-component-tight) var(--dp-space-component) var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xs, 12px);
   font-weight: var(--dp-font-weight-title, 600);
   color: var(--dp-text-muted);
@@ -249,13 +249,13 @@ function handleAfterOpenChange(open: boolean) {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border: none;
   border-radius: var(--dp-radius-control, 4px);
   background: transparent;
   cursor: pointer;
   text-align: left;
-  transition: background var(--dp-duration-fast, 150ms) ease;
+  transition: background var(--dp-duration-fast) var(--dp-ease-default);
 
   &:hover,
   &--active {
@@ -281,13 +281,49 @@ function handleAfterOpenChange(open: boolean) {
 .command-palette__loading {
   display: flex;
   justify-content: center;
-  padding: var(--dp-space-6, 24px) 0;
+  padding: var(--dp-space-page) 0;
 }
 
 .command-palette__empty {
-  padding: var(--dp-space-6, 24px) 0;
+  padding: var(--dp-space-page) 0;
   text-align: center;
   color: var(--dp-text-muted);
   font-size: var(--dp-font-size-md, 14px);
+}
+
+.command-palette__shortcut {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--dp-space-component);
+  width: 100%;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
+  border-radius: var(--dp-radius-control, 4px);
+}
+
+.command-palette__shortcut-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.command-palette__shortcut-keys {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--dp-space-component-xs);
+  flex-shrink: 0;
+}
+
+.command-palette__key {
+  padding: 2px var(--dp-space-component-tight);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-xs, 4px);
+  font-size: var(--dp-font-size-xs);
+  color: var(--dp-text-secondary);
+  background: var(--dp-surface-chrome);
+  font-family: var(--dp-font-family-code);
+  line-height: 1.4;
 }
 </style>

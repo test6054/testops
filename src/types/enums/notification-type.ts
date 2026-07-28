@@ -40,12 +40,26 @@ export enum NotificationTypeEnum {
   EXAM_REVIEW_PENDING = 'EXAM_REVIEW_PENDING',
   /** 试卷成绩发布 */
   EXAM_SCORE_PUBLISHED = 'EXAM_SCORE_PUBLISHED',
+  /** 成绩发布复核待签审 */
+  EXAM_SCORE_PUBLISH_REVIEW_PENDING = 'EXAM_SCORE_PUBLISH_REVIEW_PENDING',
+  /** 成绩发布复核已退回 */
+  EXAM_SCORE_PUBLISH_REVIEW_REJECTED = 'EXAM_SCORE_PUBLISH_REVIEW_REJECTED',
   /** 试卷成绩撤回 */
   EXAM_SCORE_WITHDRAWN = 'EXAM_SCORE_WITHDRAWN',
   /** 试卷导出完成 */
   EXAM_EXPORT_COMPLETED = 'EXAM_EXPORT_COMPLETED',
   /** 试卷复核处理 */
   EXAM_GRADE_REVIEW_UPDATED = 'EXAM_GRADE_REVIEW_UPDATED',
+  /** 缺考已确认 */
+  EXAM_ABSENCE_CONFIRMED = 'EXAM_ABSENCE_CONFIRMED',
+  /** 缺考已撤销 */
+  EXAM_ABSENCE_REVOKED = 'EXAM_ABSENCE_REVOKED',
+  /** 成绩已同步至教务 */
+  EXAM_GRADE_PASSBACK_SUCCEEDED = 'EXAM_GRADE_PASSBACK_SUCCEEDED',
+  /** 教务成绩回写失败 */
+  EXAM_GRADE_PASSBACK_FAILED = 'EXAM_GRADE_PASSBACK_FAILED',
+  /** 教务侧成绩已作废 */
+  EXAM_GRADE_PASSBACK_VOIDED = 'EXAM_GRADE_PASSBACK_VOIDED',
   /** 重新提交申请 */
   RESUBMIT_REQUESTED = 'RESUBMIT_REQUESTED',
   /** 重新提交申请通过 */
@@ -292,9 +306,16 @@ export const ALL_NOTIFICATION_TYPE_CODES: readonly NotificationTypeEnum[] = [
   NotificationTypeEnum.EXAM_SCAN_COMPLETED,
   NotificationTypeEnum.EXAM_REVIEW_PENDING,
   NotificationTypeEnum.EXAM_SCORE_PUBLISHED,
+  NotificationTypeEnum.EXAM_SCORE_PUBLISH_REVIEW_PENDING,
+  NotificationTypeEnum.EXAM_SCORE_PUBLISH_REVIEW_REJECTED,
   NotificationTypeEnum.EXAM_SCORE_WITHDRAWN,
   NotificationTypeEnum.EXAM_EXPORT_COMPLETED,
   NotificationTypeEnum.EXAM_GRADE_REVIEW_UPDATED,
+  NotificationTypeEnum.EXAM_ABSENCE_CONFIRMED,
+  NotificationTypeEnum.EXAM_ABSENCE_REVOKED,
+  NotificationTypeEnum.EXAM_GRADE_PASSBACK_SUCCEEDED,
+  NotificationTypeEnum.EXAM_GRADE_PASSBACK_FAILED,
+  NotificationTypeEnum.EXAM_GRADE_PASSBACK_VOIDED,
   NotificationTypeEnum.RESUBMIT_REQUESTED,
   NotificationTypeEnum.RESUBMIT_APPROVED,
   NotificationTypeEnum.RESUBMIT_REJECTED,
@@ -429,9 +450,16 @@ export const NotificationTypeDescription: Record<NotificationTypeEnum, string> =
   [NotificationTypeEnum.EXAM_SCAN_COMPLETED]: '试卷扫描完成',
   [NotificationTypeEnum.EXAM_REVIEW_PENDING]: '试卷待复核',
   [NotificationTypeEnum.EXAM_SCORE_PUBLISHED]: '试卷成绩发布',
+  [NotificationTypeEnum.EXAM_SCORE_PUBLISH_REVIEW_PENDING]: '成绩发布复核待签审',
+  [NotificationTypeEnum.EXAM_SCORE_PUBLISH_REVIEW_REJECTED]: '成绩发布复核已退回',
   [NotificationTypeEnum.EXAM_SCORE_WITHDRAWN]: '试卷成绩撤回',
   [NotificationTypeEnum.EXAM_EXPORT_COMPLETED]: '试卷导出完成',
   [NotificationTypeEnum.EXAM_GRADE_REVIEW_UPDATED]: '试卷复核处理',
+  [NotificationTypeEnum.EXAM_ABSENCE_CONFIRMED]: '缺考已确认',
+  [NotificationTypeEnum.EXAM_ABSENCE_REVOKED]: '缺考已撤销',
+  [NotificationTypeEnum.EXAM_GRADE_PASSBACK_SUCCEEDED]: '成绩已同步至教务',
+  [NotificationTypeEnum.EXAM_GRADE_PASSBACK_FAILED]: '教务成绩回写失败',
+  [NotificationTypeEnum.EXAM_GRADE_PASSBACK_VOIDED]: '教务侧成绩已作废',
   [NotificationTypeEnum.RESUBMIT_REQUESTED]: '重新提交申请',
   [NotificationTypeEnum.RESUBMIT_APPROVED]: '重新提交申请通过',
   [NotificationTypeEnum.RESUBMIT_REJECTED]: '重新提交申请被拒',

@@ -110,6 +110,6 @@ watch(
 
 <style lang="scss" scoped>
 .paper-quality-card__metrics {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
 }
 </style>

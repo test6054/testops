@@ -5,6 +5,7 @@ export enum GradeReviewRequestStatusCode {
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
   CORRECTED = 'CORRECTED',
+  INVALIDATED = 'INVALIDATED',
 }
 
 export const ALL_GRADE_REVIEW_REQUEST_STATUS_CODES: readonly GradeReviewRequestStatusCode[] = [
@@ -13,6 +14,7 @@ export const ALL_GRADE_REVIEW_REQUEST_STATUS_CODES: readonly GradeReviewRequestS
   GradeReviewRequestStatusCode.APPROVED,
   GradeReviewRequestStatusCode.REJECTED,
   GradeReviewRequestStatusCode.CORRECTED,
+  GradeReviewRequestStatusCode.INVALIDATED,
 ]
 
 export const GradeReviewRequestStatusDescription: Record<GradeReviewRequestStatusCode, string> = {
@@ -21,5 +23,6 @@ export const GradeReviewRequestStatusDescription: Record<GradeReviewRequestStatu
   [GradeReviewRequestStatusCode.APPROVED]: '已通过',
   [GradeReviewRequestStatusCode.REJECTED]: '已驳回',
   [GradeReviewRequestStatusCode.CORRECTED]: '已更正',
+  [GradeReviewRequestStatusCode.INVALIDATED]: '已作废',
 }
 

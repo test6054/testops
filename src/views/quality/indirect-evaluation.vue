@@ -22,6 +22,7 @@ import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { ConfirmationStatusCode } from '@/types/enums/confirmation-status-enum'
 import { showUserError } from '@/utils/error-handler'
@@ -185,11 +186,24 @@ async function handleScopeChange(): Promise<void> {
 
 /** 培养方案作用域变更后按序刷新问卷、题项与答卷 */
 async function reloadIndirectWorkbench(): Promise<void> {
+  const scope = beginQualityScopeRequest()
   await surveyPanelRef.value?.loadForms()
+  if (scope.isStale()) {
+    return
+  }
   await loadSignalSummary()
+  if (scope.isStale()) {
+    return
+  }
   if (selectedForm.value) {
     await surveyPanelRef.value?.loadItems()
+    if (scope.isStale()) {
+      return
+    }
     await surveyPanelRef.value?.refreshValidCounts()
+    if (scope.isStale()) {
+      return
+    }
     if (selectedItem.value) {
       await responsePanelRef.value?.loadResponses()
     }
@@ -331,7 +345,7 @@ onActivated(async () => {
 <style scoped lang="scss">
 .ie {
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 }
 </style>

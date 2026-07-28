@@ -70,14 +70,14 @@ async function handleExport() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   width: 100%;
 }
 
 .archive-volume-events-panel__actions {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-events-panel__title {

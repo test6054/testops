@@ -265,7 +265,10 @@ function removeSupervisionEvidenceItem(index: number) {
   supEditor.evidenceItems.splice(index, 1)
 }
 
-async function loadList(options?: { refreshSignals?: boolean }) {
+async function loadList(options?: {
+  refreshSignals?: boolean
+  settleAfterMutation?: boolean
+}): Promise<'applied' | 'failed' | 'stale'> {
   const scope = beginQualityScopeRequest()
   supLoading.value = true
   beginLoad()
@@ -282,26 +285,33 @@ async function loadList(options?: { refreshSignals?: boolean }) {
     supTotal.value = page.total
     if (supList.value.length === 0 && supTotal.value > 0 && supQuery.pageNum > 1) {
       supQuery.pageNum -= 1
-      await loadList(options)
-      return
+      return await loadList(options)
     }
     if (options?.refreshSignals) {
-      await refreshWorkbenchSignalsAfterMutation(
+      const signalOutcome = await refreshWorkbenchSignalsAfterMutation(
         scope,
         props.onWorkbenchRefresh,
         props.onLoadError,
         '工作台指标加载失败',
       )
+      if (signalOutcome !== 'applied') {
+        okLoad()
+        return signalOutcome
+      }
     }
     okLoad()
+    return 'applied'
   } catch (error) {
     if (isQualityScopeStaleError(error) || scope.isStale()) {
-      return
+      return 'stale'
     }
     failLoad()
     const err = toUserError(error, '督导复查记录加载失败')
     props.onLoadError?.(err)
     showUserError(error, '督导复查记录加载失败')
+    if (options?.settleAfterMutation) {
+      return 'failed'
+    }
     throw err
   } finally {
     supLoading.value = false
@@ -451,7 +461,7 @@ async function submitSupEditor() {
       void message.success('已保存')
     }
     supEditorVisible.value = false
-    await loadList({ refreshSignals: true })
+    await loadList({ refreshSignals: true, settleAfterMutation: true })
   } finally {
     supEditorSubmitting.value = false
   }
@@ -464,7 +474,7 @@ async function handleSupDelete(record: AuditSupervisionVO) {
     onOk: async () => {
       await auditSupervisionApi.delete(record.id)
       void message.success('已删除')
-      await loadList({ refreshSignals: true })
+      await loadList({ refreshSignals: true, settleAfterMutation: true })
     },
   })
 }
@@ -862,7 +872,7 @@ defineExpose({
 <style scoped lang="scss">
 .iwb-tab {
   &__sub-desc {
-    margin-top: 4px;
+    margin-top: var(--dp-space-component-xs);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
@@ -874,12 +884,12 @@ defineExpose({
   &__detail-toolbar {
     display: flex;
     justify-content: flex-end;
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__detail-row {
-    padding: 12px;
-    margin-bottom: 12px;
+    padding: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     background: var(--dp-surface-subtle);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
@@ -889,8 +899,8 @@ defineExpose({
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__detail-row-title {

@@ -7,6 +7,8 @@ import type { ArchiveBusinessTypeCode, ExpertPackageTypeCode } from './types'
 import type { PageResult, QueryDto } from '@/types'
 import type { ArchiveDestructionDecisionCode } from '@/types/enums/archive-destruction-decision-enum'
 import type { ArchiveDigitalStatusCode } from '@/types/enums/archive-digital-status-enum'
+import type { ExportTaskStatusCode } from '@/types/enums/export-task-status-enum'
+import type { QualityArchiveDestructionEventTypeCode } from '@/types/enums/quality-archive-destruction-event-type-enum'
 import type { QualityArchiveDestructionLedgerExportDecisionCode } from '@/types/enums/quality-archive-destruction-ledger-export-decision-enum'
 import type { QualityArchiveDestructionStatusCode } from '@/types/enums/quality-archive-destruction-status-enum'
 import http from '@/config/axios'
@@ -23,6 +25,7 @@ export interface ArchiveVO {
   fileId?: string
   fileName?: string
   expertPackageType?: ExpertPackageTypeCode
+  accreditationCycleId?: string
   archiveCategory?: string
   retentionPolicyCode?: string
   retentionYears?: number
@@ -32,6 +35,15 @@ export interface ArchiveVO {
   destructionRequestUserId?: string
   destructionExecuteUserId?: string
   destructionHistoryPresent?: boolean
+  destructionRecordId?: string
+  destructionTargetFileCount?: number
+  ledgerExportDecision?: QualityArchiveDestructionLedgerExportDecisionCode
+  ledgerSkipReason?: string
+  ledgerFileId?: string
+  ledgerExportTime?: string
+  storageCleanupAttempts?: number
+  storageCleanupError?: string
+  destructionWitnessUserId?: string
   retentionDueTime?: string
   retentionExpired?: boolean
   archivedTime?: string
@@ -47,6 +59,8 @@ export interface ArchiveQueryRequest extends QueryDto {
   businessType?: ArchiveBusinessTypeCode
   excludeBusinessType?: ArchiveBusinessTypeCode
   businessId?: string
+  expertPackageType?: ExpertPackageTypeCode
+  accreditationCycleId?: string
   archiveCategory?: string
   digitalStatus?: ArchiveDigitalStatusCode
   destructionStatus?: QualityArchiveDestructionStatusCode
@@ -70,11 +84,31 @@ export interface ArchiveSaveRequest {
 export interface ExpertPackageExportRequest {
   packageType: ExpertPackageTypeCode
   targetId: string
+  accreditationCycleId?: string
   archiveCode?: string
   retentionYears?: number
   archiveCategory?: string
   notes?: string
   recipientUserIds?: string[]
+}
+
+/** 专家材料包异步导出任务 - 对齐后端 ExpertPackageExportTaskVO。 */
+export interface ExpertPackageExportTaskVO {
+  id: string
+  packageType: ExpertPackageTypeCode
+  targetId: string
+  accreditationCycleId?: string
+  taskStatus: ExportTaskStatusCode
+  archiveId?: string
+  fileId?: string
+  fileName?: string
+  fileSize?: string
+  cleanupPending: boolean
+  errorMessage?: string
+  startedTime?: string
+  completedTime?: string
+  createTime?: string
+  updateTime?: string
 }
 
 /** SignalBand 汇总响应 - 对齐后端 ArchiveSignalSummaryVO */
@@ -108,8 +142,7 @@ export interface ArchiveDestructionFlowRecordVO {
   id: string
   archiveId: string
   destructionRecordId?: string
-  eventType: string
-  eventTypeLabel: string
+  eventType: QualityArchiveDestructionEventTypeCode
   destructionStatus?: QualityArchiveDestructionStatusCode
   beforeStatus?: QualityArchiveDestructionStatusCode
   afterStatus?: QualityArchiveDestructionStatusCode
@@ -127,7 +160,7 @@ export interface ArchiveDestructionLedgerPageRequest extends QueryDto {
 export interface ArchiveDestructionLedgerRowVO {
   archiveId: string
   archiveCode: string
-  businessType: string
+  businessType: ArchiveBusinessTypeCode
   businessId?: string
   destructionRecordId: string
   destructionStatus: QualityArchiveDestructionStatusCode
@@ -159,9 +192,13 @@ export const archiveApi = {
   update: (data: ArchiveSaveRequest) => http.post<void>(`${BASE}/update`, data),
   confirmArchiveOffice: (id: string) => http.post<void>(`${BASE}/confirm-archive-office`, { id }),
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
-  /** 专家材料包导出（按毕业要求 / 按专业认证整包；同步打包，延长超时） */
+  /** 提交专家材料包异步导出任务，返回任务 ID。 */
   exportExpertPackage: (data: ExpertPackageExportRequest) =>
-    http.post<string>(`${BASE}/export-expert-package`, data, { timeout: 120000 }),
+    http.post<string>(`${BASE}/export-expert-package`, data),
+  getExpertPackageExportTask: (id: string) =>
+    http.post<ExpertPackageExportTaskVO>(`${BASE}/expert-package-export-task/detail`, { id }),
+  cancelExpertPackageExportTask: (id: string) =>
+    http.post<void>(`${BASE}/expert-package-export-task/cancel`, { id }),
   requestDestruction: (data: ArchiveDestructionRequest) =>
     http.post<ArchiveVO>(`${BASE}/destruction/request`, data),
   approveDestruction: (data: ArchiveDestructionApprovalRequest) =>

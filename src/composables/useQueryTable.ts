@@ -21,10 +21,16 @@ export interface UseQueryTableOptions<T, F extends Record<string, unknown>> {
   onLoaded?: (rows: T[], params: QueryDto & F) => void | Promise<void>
 }
 
+export interface QueryTableLoadOptions {
+  /** 覆盖本次加载失败提示；写后刷新应带「已写入，列表刷新失败」语义 */
+  errorMessage?: string
+}
+
 /**
  * 标准后端分页列表：QueryDto + PageResult + UiDataTable server 模式。
  * 内建 loadError，失败时勿把空列表伪装成「暂无数据」。
  * 筛选变更调用 search() 重置到第 1 页；翻页调用 handlePageChange。
+ * loadPage 返回是否成功（过期响应视为 false，不覆盖当前页）。
  */
 export function useQueryTable<T, F extends Record<string, unknown> = Record<string, never>>(
   loadFn: QueryTableLoader<T, F>,
@@ -39,7 +45,7 @@ export function useQueryTable<T, F extends Record<string, unknown> = Record<stri
   const requestToken = ref(0)
   const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 
-  async function loadPage(): Promise<void> {
+  async function loadPage(loadOptions?: QueryTableLoadOptions): Promise<boolean> {
     const currentToken = ++requestToken.value
     const requestParams = {
       ...filters.value,
@@ -51,7 +57,7 @@ export function useQueryTable<T, F extends Record<string, unknown> = Record<stri
     try {
       const page = await loadFn(requestParams)
       if (currentToken !== requestToken.value) {
-        return
+        return false
       }
       rows.value = page.list
       pageTotal.value = page.total
@@ -63,14 +69,17 @@ export function useQueryTable<T, F extends Record<string, unknown> = Record<stri
       }
       okLoad()
       await options?.onLoaded?.(rows.value, requestParams)
+      return true
     } catch (error) {
       if (currentToken !== requestToken.value) {
-        return
+        return false
       }
-      rows.value = []
-      pageTotal.value = 0
       failLoad()
-      showUserError(error, options?.errorMessage ?? '加载失败')
+      showUserError(
+        error,
+        loadOptions?.errorMessage ?? options?.errorMessage ?? '加载失败',
+      )
+      return false
     } finally {
       if (currentToken === requestToken.value) {
         loading.value = false

@@ -151,13 +151,13 @@
               >
                 {{ incidentLevelLabel(incidents[index].incidentLevel) }}
               </UiTag>
-              <span v-else class="muted">-</span>
+              <span v-else class="dp-text-muted">-</span>
             </template>
             <template v-else-if="column.key === 'incidentType'">
               <span v-if="incidents[index].incidentType">
                 {{ incidentTypeLabel(incidents[index].incidentType) }}
               </span>
-              <span v-else class="muted">-</span>
+              <span v-else class="dp-text-muted">-</span>
             </template>
             <template v-else-if="column.key === 'resolved'">
               <UiTag :tone="incidents[index].resolved ? 'green' : 'orange'" size="sm">
@@ -177,7 +177,7 @@
               >
                 {{ incidents[index].detail }}
               </UiTypographyParagraph>
-              <span v-else class="muted">-</span>
+              <span v-else class="dp-text-muted">-</span>
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
@@ -186,7 +186,7 @@
                 split
                 @action="(key) => handleIncidentAction(key, incidents[index])"
               />
-              <span v-else class="muted">-</span>
+              <span v-else class="dp-text-muted">-</span>
             </template>
           </template>
         </UiDataTable>
@@ -240,7 +240,7 @@
               >
                 {{ record.diagnostic }}
               </UiTypographyParagraph>
-              <span v-else class="muted">-</span>
+              <span v-else class="dp-text-muted">-</span>
             </template>
           </template>
         </UiDataTable>
@@ -802,7 +802,7 @@ onActivated(() => {
 <style lang="scss" scoped>
 .audit-trail {
   &__tabs {
-    padding: 0 16px;
+    padding: 0 var(--dp-space-block);
   }
 
   &__exam-select {
@@ -814,7 +814,7 @@ onActivated(() => {
   }
 
   &__empty {
-    padding: 20px 0;
+    padding: var(--dp-space-block) 0;
   }
 
   &__hint {

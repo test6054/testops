@@ -291,15 +291,15 @@ onMounted(() => {
 .account-form {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .remember-row {
-  margin-top: -8px;
+  margin-top: calc(-1 * var(--dp-space-component-tight));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 .forgot-link {
@@ -317,8 +317,8 @@ onMounted(() => {
 .student-hint {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 10px 14px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component) var(--dp-space-block);
   background: var(--dp-blue-50);
   border: 1px solid rgba(37, 99, 235, 0.15);
   border-radius: var(--dp-radius-control);
@@ -346,8 +346,8 @@ onMounted(() => {
 .login-error {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component) var(--dp-space-block);
   background: var(--dp-red-50);
   border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: var(--dp-radius-control);

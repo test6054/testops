@@ -83,6 +83,8 @@ export interface MarkTeacherDashboardPendingTodoItemVO {
   count: number
   blocking?: boolean
   workspacePath: string
+  /** 待办入口按钮文案；后端 MarkTeacherDashboardTodoTypeEnum.enterActionLabel */
+  enterActionLabel: string
 }
 
 export interface MarkTeacherDashboardOngoingExamItemVO {
@@ -101,10 +103,14 @@ export interface MarkTeacherDashboardOngoingExamItemVO {
   pendingReviewTaskCount?: number
   pendingGradeCount?: number
   confirmedUnpublishedScoreCount?: number
+  pendingPublishReviewScoreCount?: number
   publishedScoreCount?: number
   blockingTodoCount?: number
   pendingTodos?: MarkTeacherDashboardPendingTodoItemVO[]
-  recommendedWorkspacePath?: string
+  /** 推荐工作台路由；与列表 workspaceRouteName 同源 */
+  recommendedWorkspacePath: string
+  /** 推荐进入文案；与列表 enterActionLabel 同源 */
+  recommendedEnterActionLabel: string
   updateTime?: string
 }
 
@@ -135,7 +141,10 @@ export interface MarkTeacherDashboardOverviewVO {
   publishedExamInsights: MarkTeacherDashboardPublishedExamInsightItemVO[]
 }
 
-export interface MarkTeacherDashboardOngoingExamPageQuery extends QueryDto {}
+export interface MarkTeacherDashboardOngoingExamPageQuery extends QueryDto {
+  /** 六步旅程筛选键；缺省表示不过滤 */
+  journeyKey?: MarkTeacherDashboardJourneyKeyCode
+}
 
 export interface MarkTeacherDashboardPendingTodoPageQuery extends QueryDto {
   todoScope?: MarkTeacherDashboardPendingTodoScopeCode

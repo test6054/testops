@@ -1,8 +1,8 @@
 import { registerTheme } from 'echarts/core'
+import { MARK_ECHARTS_THEME } from '@/config/mark-echarts-theme-name'
 import { MARK_ECHARTS_PALETTE, resolveThemeColor } from '@/utils/mark-echarts-options'
 
-/** mark-vue 唯一 ECharts 主题名，与 vue-echarts theme 属性对齐 */
-export const MARK_ECHARTS_THEME = 'mark'
+export { MARK_ECHARTS_THEME } from '@/config/mark-echarts-theme-name'
 
 let registered = false
 

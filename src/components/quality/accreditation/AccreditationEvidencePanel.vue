@@ -5,6 +5,7 @@ import type {
   AccreditationCycleVO,
   AccreditationEvidenceSaveRequest,
   AccreditationEvidenceVO,
+  AccreditationLinkedExamOptionVO,
 } from '@/apis/quality/accreditation'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
@@ -15,6 +16,8 @@ import {
   AccreditationEvidenceAnchorTypeDescription,
   AccreditationEvidenceCategoryCode,
   AccreditationEvidenceCategoryDescription,
+  AccreditationEvidenceStatusCode,
+  AccreditationEvidenceStatusDescription,
   ALL_ACCREDITATION_EVIDENCE_CATEGORY_CODES,
 } from '@/apis/quality/accreditation'
 import { archiveApi } from '@/apis/quality/archive'
@@ -23,6 +26,7 @@ import { CourseSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiCheckboxGroup from '@/components/ui-guide/ui/UiCheckboxGroup.vue'
@@ -40,6 +44,7 @@ import {
   expertPackageExportBlockers,
 } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { ExpertPackageTypeCode } from '@/types/enums/expert-package-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
@@ -48,11 +53,12 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 const props = defineProps<{
   programId: string
   trainingPlanId: string
-  activeCycle?: AccreditationCycleVO
+  applicationCycle?: AccreditationCycleVO
+  maintenanceCycle?: AccreditationCycleVO
   cockpit?: AccreditationCockpitVO
 }>()
 
-const emit = defineEmits<{ 'count-change': [count: number], "exported": [] }>()
+const emit = defineEmits<{ changed: [], exported: [] }>()
 
 const CATEGORY_TABS: { key: '' | AccreditationEvidenceCategoryCode, label: string }[] = [
   { key: '', label: '全部' },
@@ -68,10 +74,13 @@ const columns: ColumnsType = [
   { title: '类别', dataIndex: 'evidenceCategory', key: 'evidenceCategory', width: 100 },
   { title: '锚点', dataIndex: 'anchorType', key: 'anchorType', width: 110 },
   { title: '学年', dataIndex: 'schoolYear', key: 'schoolYear', width: 90 },
+  { title: '有效性', dataIndex: 'evidenceStatus', key: 'evidenceStatus', width: 240 },
   { title: '操作', key: 'actions', width: 200 },
 ]
 
 const loading = ref(false)
+const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
+const submitting = ref(false)
 const exporting = ref(false)
 const evidences = ref<AccreditationEvidenceVO[]>([])
 const evidenceQuery = reactive({ pageNum: 1, pageSize: 10 })
@@ -80,12 +89,13 @@ const categoryFilter = ref<'' | AccreditationEvidenceCategoryCode>('')
 const evidenceOpen = ref(false)
 const evidenceDrawerTitle = ref('登记认证证据')
 const markImportOpen = ref(false)
-const linkedExams = ref<{ examId: string, label: string }[]>([])
-const selectedExamIds = ref<string[]>([])
+const linkedExams = ref<AccreditationLinkedExamOptionVO[]>([])
+const selectedExamOptionKeys = ref<string[]>([])
 
 const evidenceForm = reactive<AccreditationEvidenceSaveRequest>({
   programId: '',
   trainingPlanId: '',
+  accreditationCycleId: '',
   evidenceCategory: AccreditationEvidenceCategoryCode.HOMEWORK,
   anchorType: AccreditationEvidenceAnchorTypeCode.MANUAL,
   evidenceCode: '',
@@ -95,27 +105,53 @@ const evidenceForm = reactive<AccreditationEvidenceSaveRequest>({
 })
 const evidenceEditing = computed(() => !!evidenceForm.id)
 
-const canMutateEvidence = computed(() => canMutateAccreditationEvidence(props.activeCycle))
+const selectedCycleId = ref('')
+const cycleOptions = computed(() => [
+  ...(props.applicationCycle
+    ? [{ value: props.applicationCycle.id, label: `在办申请 · ${props.applicationCycle.cycleName}` }]
+    : []),
+  ...(props.maintenanceCycle
+    ? [{ value: props.maintenanceCycle.id, label: `有效保持 · ${props.maintenanceCycle.cycleName}` }]
+    : []),
+])
+const selectedCycle = computed(() => [props.applicationCycle, props.maintenanceCycle]
+  .find(cycle => cycle?.id === selectedCycleId.value))
+const canMutateEvidence = computed(() =>
+  selectedCycle.value?.id === props.applicationCycle?.id
+  && canMutateAccreditationEvidence(props.applicationCycle),
+)
+const selectedEvidenceCount = computed(() => {
+  if (selectedCycleId.value === props.applicationCycle?.id) {
+    return props.cockpit?.applicationEvidenceCount ?? 0
+  }
+  if (selectedCycleId.value === props.maintenanceCycle?.id) {
+    return props.cockpit?.maintenanceEvidenceCount ?? 0
+  }
+  return 0
+})
 
 const canExportPackage = computed(() =>
-  canExportExpertPackage(props.activeCycle, props.cockpit, evidenceTotal.value),
+  canExportExpertPackage(selectedCycle.value, props.cockpit, selectedEvidenceCount.value),
 )
 
 const exportPackageHint = computed(() => {
   const blockers = expertPackageExportBlockers(
-    props.activeCycle,
+    selectedCycle.value,
     props.cockpit,
-    evidenceTotal.value,
+    selectedEvidenceCount.value,
   )
   return blockers.length ? blockers.join('；') : ''
 })
 
 const evidenceMutationHint = computed(() => {
-  if (!props.activeCycle) {
-    return '请先创建并启用认证周期后再登记证据'
+  if (!selectedCycle.value) {
+    return '请选择在办申请或有效保持周期后查看认证证据'
+  }
+  if (selectedCycle.value.id !== props.applicationCycle?.id) {
+    return '有效保持周期证据是认证结论形成时的正式材料，仅可下载查阅和导出专家材料包'
   }
   if (!canMutateEvidence.value) {
-    if (props.activeCycle.conclusionRegisteredTime) {
+    if (props.applicationCycle?.conclusionRegisteredTime) {
       return '认证结论登记后原始资料证据已冻结，仅可下载查阅'
     }
     return '当前认证阶段不允许维护原始资料证据'
@@ -123,22 +159,19 @@ const evidenceMutationHint = computed(() => {
   return ''
 })
 
-function emitCount() {
-  emit('count-change', evidenceTotal.value)
-}
-
 async function loadEvidences() {
-  if (!props.trainingPlanId) {
+  if (!props.trainingPlanId || !selectedCycleId.value) {
     evidences.value = []
     evidenceTotal.value = 0
-    emitCount()
     return
   }
   loading.value = true
+  beginLoad()
   try {
     const result = await accreditationApi.evidencePage({
       programId: props.programId,
       trainingPlanId: props.trainingPlanId,
+      accreditationCycleId: selectedCycleId.value,
       evidenceCategory: categoryFilter.value || undefined,
       pageNum: evidenceQuery.pageNum,
       pageSize: evidenceQuery.pageSize,
@@ -147,13 +180,15 @@ async function loadEvidences() {
     evidenceTotal.value = result.total
     evidenceQuery.pageNum = result.pageNum
     evidenceQuery.pageSize = result.pageSize
+    okLoad()
     if (evidences.value.length === 0 && evidenceTotal.value > 0 && evidenceQuery.pageNum > 1) {
       evidenceQuery.pageNum -= 1
       await loadEvidences()
-      return
     }
-    emitCount()
   } catch (e) {
+    evidences.value = []
+    evidenceTotal.value = 0
+    failLoad()
     showUserError(e, '认证证据加载失败')
   } finally {
     loading.value = false
@@ -168,10 +203,7 @@ async function loadLinkedExams() {
       trainingPlanId: props.trainingPlanId,
       programId: props.programId,
     })
-    linkedExams.value = options.map((item) => ({
-      examId: item.sourceExamId,
-      label: item.label,
-    }))
+    linkedExams.value = options
   } catch (e) {
     showUserError(e, '关联考试选项加载失败')
   }
@@ -181,6 +213,7 @@ function resetEvidenceForm(category?: AccreditationEvidenceCategoryCode) {
   evidenceForm.id = undefined
   evidenceForm.programId = props.programId
   evidenceForm.trainingPlanId = props.trainingPlanId
+  evidenceForm.accreditationCycleId = selectedCycleId.value
   evidenceForm.qualityCourseId = undefined
   evidenceForm.assessmentItemId = undefined
   evidenceForm.sourceExamId = undefined
@@ -217,6 +250,7 @@ function openEvidenceEdit(record: AccreditationEvidenceVO) {
   evidenceForm.id = record.id
   evidenceForm.programId = record.programId
   evidenceForm.trainingPlanId = record.trainingPlanId
+  evidenceForm.accreditationCycleId = record.accreditationCycleId
   evidenceForm.qualityCourseId = record.qualityCourseId
   evidenceForm.assessmentItemId = record.assessmentItemId
   evidenceForm.sourceExamId = record.sourceExamId
@@ -243,6 +277,9 @@ watch(evidenceFileName, (name) => {
 })
 
 async function submitEvidence() {
+  if (submitting.value) {
+    return
+  }
   if (!evidenceForm.storageFileId) {
     void message.error('请先上传证据文件')
     return
@@ -259,6 +296,7 @@ async function submitEvidence() {
     id: evidenceForm.id,
     programId: evidenceForm.programId,
     trainingPlanId: evidenceForm.trainingPlanId,
+    accreditationCycleId: evidenceForm.accreditationCycleId,
     qualityCourseId: evidenceForm.qualityCourseId || undefined,
     assessmentItemId: evidenceForm.assessmentItemId || undefined,
     sourceExamId: evidenceForm.sourceExamId || undefined,
@@ -274,6 +312,7 @@ async function submitEvidence() {
     markScannedPageId: evidenceForm.markScannedPageId || undefined,
     markPaperInstanceId: evidenceForm.markPaperInstanceId || undefined,
   }
+  submitting.value = true
   try {
     if (evidenceForm.id) {
       await accreditationApi.evidenceUpdate(request)
@@ -284,8 +323,11 @@ async function submitEvidence() {
     }
     evidenceOpen.value = false
     await loadEvidences()
+    emit('changed')
   } catch (e) {
     showUserError(e, '认证证据保存失败')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -297,17 +339,24 @@ async function downloadEvidence(record: AccreditationEvidenceVO) {
 }
 
 async function deleteEvidence(id: string) {
+  if (submitting.value) {
+    return
+  }
   if (!canMutateEvidence.value) {
     void message.error(evidenceMutationHint.value || '当前不可删除认证证据')
     return
   }
   const ok = await confirmAsync({ title: '确认删除该证据？' })
   if (!ok) return
+  submitting.value = true
   try {
     await accreditationApi.evidenceDelete(id)
     await loadEvidences()
+    emit('changed')
   } catch (e) {
     showUserError(e, '认证证据删除失败')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -323,31 +372,51 @@ async function openMarkImport() {
     return
   }
   await loadLinkedExams()
-  selectedExamIds.value = []
+  selectedExamOptionKeys.value = []
   markImportOpen.value = true
 }
 
 async function submitMarkImport() {
-  if (selectedExamIds.value.length === 0) {
-    showFormValidationMessage('请选择至少一场已关联阅卷考试的考试')
+  if (submitting.value) {
     return
   }
+  if (selectedExamOptionKeys.value.length === 0) {
+    showFormValidationMessage('请选择至少一个已配置教学班的考试考核范围')
+    return
+  }
+  const selectedOptions = linkedExams.value.filter(item =>
+    selectedExamOptionKeys.value.includes(`${item.sourceExamId}:${item.assessmentItemId}`)
+    && item.selectable,
+  )
+  if (selectedOptions.length !== selectedExamOptionKeys.value.length) {
+    showFormValidationMessage('所选考试考核范围存在未配置教学班的课程，请重新选择')
+    return
+  }
+  submitting.value = true
   try {
     const count = await accreditationApi.importMarkExamEvidence({
       programId: props.programId,
       trainingPlanId: props.trainingPlanId,
-      examIds: selectedExamIds.value,
+      accreditationCycleId: selectedCycleId.value,
+      scopes: selectedOptions.map(item => ({
+        sourceExamId: item.sourceExamId,
+        qualityCourseId: item.qualityCourseId,
+        assessmentItemId: item.assessmentItemId,
+      })),
     })
-    void message.success(`已同步 ${count} 条扫描页证据`)
+    void message.success(`已完成 ${count} 条扫描页证据变更`)
     markImportOpen.value = false
     await loadEvidences()
+    emit('changed')
   } catch (e) {
     showUserError(e, '扫描页证据同步失败')
+  } finally {
+    submitting.value = false
   }
 }
 
 async function exportExpertPackage() {
-  if (!props.trainingPlanId) return
+  if (!props.trainingPlanId || !selectedCycle.value) return
   if (!canExportPackage.value) {
     void message.error(exportPackageHint.value || '专家材料包导出条件未满足')
     return
@@ -357,7 +426,8 @@ async function exportExpertPackage() {
     await archiveApi.exportExpertPackage({
       packageType: ExpertPackageTypeCode.PROGRAM_ACCREDITATION,
       targetId: props.trainingPlanId,
-      archiveCode: `ACCRED-PKG-${props.trainingPlanId}`,
+      accreditationCycleId: selectedCycle.value.id,
+      archiveCode: `ACCRED-PKG-${props.trainingPlanId}-${selectedCycle.value.id}`,
       archiveCategory: ExpertPackageTypeCode.PROGRAM_ACCREDITATION,
       notes: '认证驾驶舱导出专业认证专家材料包',
     })
@@ -381,7 +451,16 @@ watch(categoryFilter, async () => {
   await loadEvidences()
 })
 watch(
-  () => [props.programId, props.trainingPlanId],
+  () => [props.applicationCycle?.id, props.maintenanceCycle?.id],
+  () => {
+    if (!cycleOptions.value.some(option => option.value === selectedCycleId.value)) {
+      selectedCycleId.value = props.applicationCycle?.id ?? props.maintenanceCycle?.id ?? ''
+    }
+  },
+  { immediate: true },
+)
+watch(
+  () => [props.programId, props.trainingPlanId, selectedCycleId.value],
   async () => {
     evidenceQuery.pageNum = 1
     await loadEvidences()
@@ -403,6 +482,12 @@ defineExpose({ loadEvidences })
         </UiRadio>
       </UiRadioGroup>
       <div class="toolbar-actions">
+        <UiSelect
+          v-model="selectedCycleId"
+          :options="cycleOptions"
+          placeholder="选择证据认证周期"
+          class="evidence-cycle-select"
+        />
         <UiButton
           size="sm"
           variant="primary"
@@ -436,6 +521,7 @@ defineExpose({ loadEvidences })
       :columns="columns"
       :data-source="evidences"
       :loading="loading"
+      :load-error="loadError"
       :total="evidenceTotal"
       row-key="id"
       @page-change="handleEvidencePageChange"
@@ -459,6 +545,28 @@ defineExpose({ loadEvidences })
             )
           }}
         </template>
+        <template v-else-if="column.key === 'evidenceStatus'">
+          <div class="evidence-validity">
+            <UiTag
+              size="sm"
+              :tone="record.evidenceStatus === AccreditationEvidenceStatusCode.ACTIVE ? 'green' : 'orange'"
+            >
+              {{
+                strictEnumLabel(
+                  AccreditationEvidenceStatusDescription,
+                  record.evidenceStatus,
+                  '认证证据状态',
+                )
+              }}
+            </UiTag>
+            <span
+              v-if="record.evidenceStatus === AccreditationEvidenceStatusCode.STALE"
+              class="evidence-invalid-reason"
+            >
+              {{ record.invalidReason }}
+            </span>
+          </div>
+        </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
             :items="[
@@ -481,6 +589,7 @@ defineExpose({ loadEvidences })
       width="520"
       :hide-footer="false"
       ok-text="保存"
+      :confirm-loading="submitting"
       @ok="submitEvidence"
     >
       <UiForm layout="vertical">
@@ -544,14 +653,21 @@ defineExpose({ loadEvidences })
       width="520"
       :hide-footer="false"
       ok-text="同步"
+      :confirm-loading="submitting"
       @ok="submitMarkImport"
     >
       <p v-if="linkedExams.length === 0" class="hint">
-        培养方案下考核环节未绑定 edu-mark 考试 ID，请先在课程矩阵配置 sourceExamId。
+        培养方案下没有可导入的阅卷考试考核范围，请先为质量课程配置教学班并绑定 edu-mark 考试。
       </p>
-      <UiCheckboxGroup v-else v-model="selectedExamIds" class="exam-list" direction="vertical">
-        <UiCheckbox v-for="exam in linkedExams" :key="exam.examId" :value="exam.examId">
+      <UiCheckboxGroup v-else v-model="selectedExamOptionKeys" class="exam-list" direction="vertical">
+        <UiCheckbox
+          v-for="exam in linkedExams"
+          :key="`${exam.sourceExamId}:${exam.assessmentItemId}`"
+          :value="`${exam.sourceExamId}:${exam.assessmentItemId}`"
+          :disabled="!exam.selectable"
+        >
           {{ exam.label }}
+          <span v-if="exam.blockingReason" class="exam-blocking-reason">（{{ exam.blockingReason }}）</span>
         </UiCheckbox>
       </UiCheckboxGroup>
     </UiDrawer>
@@ -562,32 +678,49 @@ defineExpose({ loadEvidences })
 .evidence-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 .toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--dp-space-component);
   align-items: center;
   justify-content: space-between;
 }
 .toolbar-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   flex-wrap: wrap;
+}
+.evidence-cycle-select {
+  width: min(320px, 72vw);
 }
 .exam-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
+}
+.exam-blocking-reason {
+  color: var(--dp-text-muted);
 }
 .hint {
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 .file-hint {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
-  margin: 8px 0 0;
+  color: var(--dp-text-muted);
+  margin: var(--dp-space-component-tight) 0 0;
+}
+.evidence-validity {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dp-space-1);
+}
+.evidence-invalid-reason {
+  color: var(--dp-text-muted);
+  font-size: var(--dp-font-size-xs);
+  line-height: var(--dp-line-height-tight);
 }
 </style>

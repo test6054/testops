@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
-import LayoutCanvas from '@/components/mark/layout-designer/LayoutCanvas.vue'
+import { defineAsyncComponent } from 'vue'
 
 /**
  * 轻量画布包装（复核微调等）。
@@ -22,6 +22,8 @@ const emit = defineEmits<{
   'focus-block': [block: ExamLayoutBlockDto | null]
   "patch": [document: ExamLayoutDocument]
 }>()
+
+const LayoutCanvas = defineAsyncComponent(() => import('@/components/mark/layout-designer/LayoutCanvas.vue'))
 </script>
 
 <template>

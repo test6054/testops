@@ -184,43 +184,43 @@ const resolveTagVariant = (tag: TimelineTag) => {
 .ui-activity-timeline {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-block);
   container-type: inline-size;
 }
 
 .ui-activity-timeline--bordered {
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
 }
 
 .ui-activity-timeline--compact {
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .ui-activity-timeline__groups {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-block);
 }
 
 .ui-activity-timeline__group {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .ui-activity-timeline__group-header {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
 }
 
 .ui-activity-timeline__group-badge {
   flex-shrink: 0;
   min-height: 30px;
-  padding: 0 12px;
+  padding: 0 var(--dp-space-component);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -254,7 +254,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
 .ui-activity-timeline__item {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
-  gap: 14px;
+  gap: var(--dp-space-block);
   align-items: stretch;
 }
 
@@ -270,7 +270,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
   width: 14px;
   height: 14px;
   border-radius: var(--dp-radius-full);
-  margin-top: 14px;
+  margin-top: var(--dp-space-block);
   border: 3px solid var(--dp-surface);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--dp-text-primary) 8%, transparent);
 }
@@ -316,8 +316,8 @@ const resolveTagVariant = (tag: TimelineTag) => {
 .ui-activity-timeline__card {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2, 8px);
-  padding: 2px 0 var(--dp-space-4, 18px);
+  gap: var(--dp-space-component-tight);
+  padding: 2px 0 var(--dp-space-block);
   background: transparent;
   border: none;
   border-radius: 0;
@@ -337,7 +337,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-3, 10px);
+  gap: var(--dp-space-component);
 }
 
 .ui-activity-timeline__title {
@@ -352,8 +352,8 @@ const resolveTagVariant = (tag: TimelineTag) => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 6px;
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .ui-activity-timeline__time,
@@ -374,14 +374,14 @@ const resolveTagVariant = (tag: TimelineTag) => {
 .ui-activity-timeline__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .ui-activity-timeline__files {
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 10px 12px;
+  padding: var(--dp-space-component);
   background: var(--dp-gray-50);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control-inner);
@@ -390,9 +390,9 @@ const resolveTagVariant = (tag: TimelineTag) => {
 .ui-activity-timeline__file-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--dp-space-component);
   min-width: 0;
-  padding: 8px 0;
+  padding: var(--dp-space-component-tight) 0;
 }
 
 .ui-activity-timeline__file-row:not(:last-child) {
@@ -422,16 +422,16 @@ const resolveTagVariant = (tag: TimelineTag) => {
 }
 
 .ui-activity-timeline--compact .ui-activity-timeline__group {
-  gap: 10px;
+  gap: var(--dp-space-component);
 }
 
 .ui-activity-timeline--compact .ui-activity-timeline__card {
-  gap: 6px;
-  padding-bottom: 14px;
+  gap: var(--dp-space-component-tight);
+  padding-bottom: var(--dp-space-block);
 }
 
 .ui-activity-timeline--compact .ui-activity-timeline__title {
-  font-size: 15px;
+  font-size: var(--dp-type-panel-title-size);
 }
 
 .ui-activity-timeline--compact .ui-activity-timeline__content {
@@ -440,14 +440,14 @@ const resolveTagVariant = (tag: TimelineTag) => {
 }
 
 .ui-activity-timeline--compact .ui-activity-timeline__files {
-  padding: 8px 10px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
 }
 
 @container (max-width: 520px) {
   .ui-activity-timeline__group-header {
     align-items: flex-start;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   .ui-activity-timeline__group-line {
@@ -456,13 +456,13 @@ const resolveTagVariant = (tag: TimelineTag) => {
 
   .ui-activity-timeline__item {
     grid-template-columns: 18px minmax(0, 1fr);
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   .ui-activity-timeline__dot {
     width: 10px;
     height: 10px;
-    margin-top: 12px;
+    margin-top: var(--dp-space-component);
     border-width: 2px;
   }
 
@@ -472,8 +472,8 @@ const resolveTagVariant = (tag: TimelineTag) => {
   }
 
   .ui-activity-timeline__card {
-    gap: 6px;
-    padding-bottom: 12px;
+    gap: var(--dp-space-component-tight);
+    padding-bottom: var(--dp-space-component);
   }
 
   .ui-activity-timeline__title {
@@ -483,7 +483,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
   .ui-activity-timeline__meta-row {
     align-items: flex-start;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--dp-space-component-xs);
   }
 
   .ui-activity-timeline__file-row {
@@ -503,7 +503,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
 
   .ui-activity-timeline__item {
     grid-template-columns: 20px minmax(0, 1fr);
-    gap: 10px;
+    gap: var(--dp-space-component);
   }
 }
 </style>

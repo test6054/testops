@@ -12,7 +12,7 @@ import {
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 原型 dim-pill 语义色，对应 exam-prototype.html `.dim-pill--*`。 */
-export type ArchiveDimPillTone = 'ok' | 'warn' | 'info' | 'pending' | 'error' | 'purple'
+export type ArchiveDimPillTone = 'ok' | 'warn' | 'info' | 'pending' | 'error'
 
 export interface ArchiveDimPillItem {
   tone: ArchiveDimPillTone
@@ -66,7 +66,7 @@ export function appraisalStatusDimTone(status: ArchiveAppraisalStatusCode): Arch
     return 'ok'
   }
   if (status === ArchiveAppraisalStatusCode.OPINION_RECORDED) {
-    return 'purple'
+    return 'info'
   }
   if (status === ArchiveAppraisalStatusCode.REJECTED) {
     return 'error'
@@ -74,23 +74,37 @@ export function appraisalStatusDimTone(status: ArchiveAppraisalStatusCode): Arch
   return 'pending'
 }
 
-/** 组装列表「五维状态」dim-pill 行，顺序与原型一致。 */
+/** 组装列表关键状态：保留主状态与真实阻塞，正常维度不重复染色。 */
 export function buildArchiveVolumeDimPills(record: ArchiveVolumeResponse): ArchiveDimPillItem[] {
   const pills: ArchiveDimPillItem[] = [
     {
       tone: volumeStatusDimTone(record.volumeStatus),
       label: strictEnumLabel(ArchiveVolumeStatusDescription, record.volumeStatus, 'volumeStatus'),
     },
-    {
+  ]
+  if (
+    record.integrityStatus === ArchiveIntegrityStatusCode.FAILED
+    || record.integrityStatus === ArchiveIntegrityStatusCode.CHECKING
+  ) {
+    pills.push({
       tone: integrityStatusDimTone(record.integrityStatus),
       label: strictEnumLabel(ArchiveIntegrityStatusDescription, record.integrityStatus, 'integrityStatus'),
-    },
-    {
+    })
+  }
+  if (
+    record.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
+    || record.transferStatus === ArchiveTransferStatusCode.REJECTED
+  ) {
+    pills.push({
       tone: transferStatusDimTone(record.transferStatus),
       label: strictEnumLabel(ArchiveTransferStatusDescription, record.transferStatus, 'transferStatus'),
-    },
-  ]
-  if (record.appraisalStatus) {
+    })
+  }
+  if (
+    record.appraisalStatus === ArchiveAppraisalStatusCode.REMINDER_SENT
+    || record.appraisalStatus === ArchiveAppraisalStatusCode.REQUESTED
+    || record.appraisalStatus === ArchiveAppraisalStatusCode.REJECTED
+  ) {
     pills.push({
       tone: appraisalStatusDimTone(record.appraisalStatus),
       label: strictEnumLabel(ArchiveAppraisalStatusDescription, record.appraisalStatus, 'appraisalStatus'),
@@ -103,7 +117,7 @@ export function buildArchiveVolumeDimPills(record: ArchiveVolumeResponse): Archi
     pills.push({ tone: 'warn', label: '定密待确认' })
   }
   if (record.securityLevel === 'CONFIDENTIAL') {
-    pills.push({ tone: 'purple', label: '机密' })
+    pills.push({ tone: 'pending', label: '机密' })
   }
-  return pills
+  return pills.slice(0, 4)
 }

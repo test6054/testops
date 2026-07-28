@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
 import type {
   PortfolioMaterialRefVO,
   PortfolioMaterialSaveRequest,
@@ -8,14 +7,10 @@ import type {
   PortfolioMaterialVersionVO,
   PortfolioMaterialVO,
 } from '@/apis/portfolio/types'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  ArchiveMaterialOcrStatusDescription,
-} from '@/apis/mark/archive-ocr-status'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_MATERIAL_STATUS_OPTIONS,
@@ -53,6 +48,10 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
+import {
+  ArchiveMaterialOcrStatusCode,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/types/enums/archive-material-ocr-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import {
   buildPortfolioIntakeReassignQuery,
@@ -96,12 +95,21 @@ function materialRefFreezeStatusLabel(status: PortfolioMaterialRefVO['freezeStat
   return strictEnumLabel(PortfolioMaterialRefFreezeStatusDescription, status, '材料引用冻结状态')
 }
 
+/** OCR 状态色：与 mark 归档材料同源枚举，展示映射留在 portfolio 页内，避免依赖 mark API 模块。 */
+const PORTFOLIO_MATERIAL_OCR_STATUS_TONE: Record<ArchiveMaterialOcrStatusCode, BadgeTone> = {
+  [ArchiveMaterialOcrStatusCode.NONE]: 'gray',
+  [ArchiveMaterialOcrStatusCode.PENDING]: 'blue',
+  [ArchiveMaterialOcrStatusCode.RUNNING]: 'orange',
+  [ArchiveMaterialOcrStatusCode.COMPLETED]: 'green',
+  [ArchiveMaterialOcrStatusCode.FAILED]: 'red',
+}
+
 function ocrStatusLabel(status: ArchiveMaterialOcrStatusCode): string {
   return strictEnumLabel(ArchiveMaterialOcrStatusDescription, status, '文字识别状态')
 }
 
 function ocrStatusTone(status: ArchiveMaterialOcrStatusCode) {
-  return strictEnumTone(ARCHIVE_MATERIAL_OCR_STATUS_TONE, status, '文字识别状态')
+  return strictEnumTone(PORTFOLIO_MATERIAL_OCR_STATUS_TONE, status, '文字识别状态')
 }
 
 const materialTypeOptions = PORTFOLIO_MATERIAL_TYPE_OPTIONS.map((item) => ({
@@ -169,6 +177,7 @@ const form = reactive<PortfolioMaterialSaveRequest>({
 })
 const attachmentFileName = ref<string>()
 const requestToken = ref(0)
+const versionRequestToken = ref(0)
 
 const modalTitle = computed(() => (editingId.value ? '编辑材料' : '登记材料'))
 const showSearchResults = computed(() => searchKeyword.value.trim().length > 0)
@@ -352,6 +361,10 @@ async function deleteMaterial(row: PortfolioMaterialVO) {
 }
 
 async function openVersionHistory(row: PortfolioMaterialVO) {
+  const scopeTeacherId = targetTeacherId.value
+  const scopeToken = requestToken.value
+  const versionToken = ++versionRequestToken.value
+  const materialId = row.id
   versionMaterialTitle.value = row.materialTitle ?? row.id
   versionModalOpen.value = true
   versionLoading.value = true
@@ -359,16 +372,33 @@ async function openVersionHistory(row: PortfolioMaterialVO) {
   refRows.value = []
   try {
     const [versions, refs] = await Promise.all([
-      portfolioMaterialApi.listVersions(row.id),
-      portfolioMaterialApi.listRefs(row.id),
+      portfolioMaterialApi.listVersions(materialId),
+      portfolioMaterialApi.listRefs(materialId),
     ])
+    if (
+      versionRequestToken.value !== versionToken
+      || requestToken.value !== scopeToken
+      || targetTeacherId.value !== scopeTeacherId
+      || !versionModalOpen.value
+    ) {
+      return
+    }
     versionRows.value = versions ?? []
     refRows.value = refs ?? []
   } catch (error) {
+    if (
+      versionRequestToken.value !== versionToken
+      || requestToken.value !== scopeToken
+      || targetTeacherId.value !== scopeTeacherId
+    ) {
+      return
+    }
     showUserError(error, '加载材料版本失败')
     versionModalOpen.value = false
   } finally {
-    versionLoading.value = false
+    if (versionRequestToken.value === versionToken) {
+      versionLoading.value = false
+    }
   }
 }
 
@@ -380,7 +410,10 @@ async function voidMaterial(row: PortfolioMaterialVO) {
   if (!(await confirmProxyWrite('作废材料'))) {
     return
   }
-  const operation = `void:${row.id}`
+  const scopeTeacherId = targetTeacherId.value
+  const scopeToken = requestToken.value
+  const materialId = row.id
+  const operation = `void:${materialId}`
   operationKey.value = operation
   const confirmed = await confirmAsync({
     title: '作废材料（仅影响未来）',
@@ -391,11 +424,18 @@ async function voidMaterial(row: PortfolioMaterialVO) {
     if (operationKey.value === operation) operationKey.value = ''
     return
   }
+  if (requestToken.value !== scopeToken || targetTeacherId.value !== scopeTeacherId) {
+    if (operationKey.value === operation) operationKey.value = ''
+    showUserError(new Error('教师范围已变化，请重新确认作废'), '作废材料已取消')
+    return
+  }
   try {
-    await portfolioMaterialApi.voidForFuture(row.id)
+    await portfolioMaterialApi.voidForFuture(materialId)
+    if (requestToken.value !== scopeToken || targetTeacherId.value !== scopeTeacherId) return
     void message.success('材料已作废')
     await loadPage()
   } catch (error) {
+    if (requestToken.value !== scopeToken || targetTeacherId.value !== scopeTeacherId) return
     showUserError(error, '作废材料失败')
   } finally {
     if (operationKey.value === operation) operationKey.value = ''
@@ -567,7 +607,11 @@ watch(
   () => targetTeacherId.value,
   () => {
     requestToken.value += 1
+    versionRequestToken.value += 1
     formModalOpen.value = false
+    versionModalOpen.value = false
+    versionRows.value = []
+    refRows.value = []
     resetFormContext()
     searchRows.value = []
     searchPageTotal.value = 0
@@ -581,8 +625,8 @@ watch(
       <ContextBar
         layout="workbench"
         show-title
-        title="材料库"
-        subtitle="教师佐证材料登记、文字识别检索与复用"
+        title="佐证材料库"
+        subtitle="佐证材料登记、版本与检索；日常采集请走「材料采集」"
       >
         <template #actions>
           <UiButton
@@ -607,7 +651,7 @@ watch(
         tone="warning"
         title="档案已封存写禁"
         :description="archiveWriteBlockMessage"
-        class="mb-3"
+        class="dp-mb-component"
       />
 
       <UiFilterBar v-model="filterModel" :fields="filterFields" @search="handleSearch">
@@ -777,7 +821,7 @@ watch(
           </ul>
           <UiEmpty v-else size="sm" description="暂无版本" />
         </UiCard>
-        <UiCard title="业务引用" style="margin-top: 12px">
+        <UiCard title="业务引用" style="margin-top: var(--dp-space-component)">
           <ul v-if="refRows.length" class="teacher-materials__version-list">
             <li v-for="item in refRows" :key="item.id">
               <strong>{{ materialRefScopeLabel(item.refScope) }}</strong>
@@ -797,7 +841,7 @@ watch(
 .teacher-materials__field {
   display: block;
   width: 100%;
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .teacher-materials__select {
@@ -811,9 +855,9 @@ watch(
 .teacher-materials__version-list li {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
-  padding: 8px 0;
+  padding: var(--dp-space-component-tight) 0;
   border-bottom: 1px solid var(--dp-border-subtle);
   font-size: var(--dp-font-size-sm);
 }

@@ -48,6 +48,7 @@ import type {
   PortfolioIndustryPackSaveRequest,
   PortfolioIndustryPackVO,
   PortfolioPublishImpactApproveRequest,
+  PortfolioPublishImpactReportExportRequest,
   PortfolioPublishImpactReportGetRequest,
   PortfolioPublishImpactReportVO,
   PortfolioRuleHistoryPageRequest,
@@ -162,7 +163,7 @@ export const portfolioIndicatorTenantApi: PortfolioIndicatorTenantApi = {
     http.post<PortfolioIndicatorExportResultVO>(`${TENANT}/export/indicator-catalog`, data),
   exportSnapshotDiff: (data: PortfolioExportSnapshotDiffRequest) =>
     http.post<PortfolioIndicatorExportResultVO>(`${TENANT}/export/snapshot-diff`, data),
-  exportImpactReport: (data: PortfolioPublishImpactReportGetRequest) =>
+  exportImpactReport: (data: PortfolioPublishImpactReportExportRequest) =>
     http.post<PortfolioIndicatorExportResultVO>(`${TENANT}/export/impact-report`, data),
   computeTrial: (data: PortfolioIndicatorComputeTrialRequest) =>
     http.post<PortfolioIndicatorScoreComputeResult>(`${TENANT}/compute/trial`, data),

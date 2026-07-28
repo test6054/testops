@@ -22,9 +22,7 @@
       v-else-if="loading !== true && !detail"
       description="复核任务加载失败或不存在"
       class="review-task-detail-page__empty"
-    >
-      <UiButton size="sm" variant="outline" @click="loadTask">重试</UiButton>
-    </UiEmpty>
+    />
 
     <template v-else-if="detail">
       <div
@@ -161,7 +159,7 @@
                 <UiTypographyText v-if="detail.aiTraceId" copyable>
                   {{ detail.aiTraceId }}
                 </UiTypographyText>
-                <span v-else class="muted">-</span>
+                <span v-else class="dp-text-muted">-</span>
               </UiDescriptionsItem>
               <UiDescriptionsItem v-if="detail.evaluationCriteria" label="评分细则">
                 <UiTypographyText :content="detail.evaluationCriteria" />
@@ -185,7 +183,7 @@
                         <UiTypographyText :content="item.annotationText || '（无批注正文）'" />
                       </template>
                       <template #description>
-                        <span class="muted">{{ formatDateTime(item.createTime) }}</span>
+                        <span class="dp-text-muted">{{ formatDateTime(item.createTime) }}</span>
                       </template>
                     </UiListItemMeta>
                   </UiListItem>
@@ -511,7 +509,7 @@ function timelineColor(status: AiExecutionStatusCode): string {
   return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, 'AI 执行状态')
 }
 
-const labelStyle: CSSProperties = { color: 'var(--dp-text-tertiary)', width: '100px' }
+const labelStyle: CSSProperties = { color: 'var(--dp-text-muted)', width: '100px' }
 
 const annotations = ref<AnnotationResponse[]>([])
 const annotationsLoading = ref(false)
@@ -585,19 +583,19 @@ watch(
 .review-task-detail-page {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   min-width: 0;
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__invalidated-banner {
-    margin-bottom: 12px;
-    padding: 12px 16px;
+    margin-bottom: var(--dp-space-component);
+    padding: var(--dp-space-component) var(--dp-space-block);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    background: var(--dp-surface-soft);
+    background: var(--dp-surface-subtle);
   }
 
   &__invalidated-title {
@@ -607,7 +605,7 @@ watch(
   }
 
   &__invalidated-text {
-    margin-top: 4px;
+    margin-top: var(--dp-space-component-xs);
     font-size: var(--dp-font-size-xs);
     line-height: 1.6;
     color: var(--dp-text-secondary);
@@ -619,9 +617,9 @@ watch(
     line-height: 1.6;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
     background: var(--dp-fill-quaternary);
-    padding: 12px;
+    padding: var(--dp-space-component);
     border-radius: var(--dp-radius-panel);
   }
 
@@ -640,19 +638,15 @@ watch(
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__execution-head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component-xs);
   }
-}
-
-.muted {
-  color: var(--dp-text-tertiary);
 }
 </style>

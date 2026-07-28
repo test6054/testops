@@ -195,7 +195,7 @@ export function formatExamWindowCompactRange(
   return `${startAt.format('YYYY/MM/DD')} ${formatClock(startAt)}-${endAt.format('YYYY/MM/DD')} ${formatClock(endAt)}`
 }
 
-/** 完整考试时间窗，用于列表 hover 提示。 */
+/** 完整考试时间窗文案（列表摘要旁展开 / 读屏）。 */
 export function formatExamWindowFullRange(
   start: DateLike,
   end: DateLike,

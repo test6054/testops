@@ -423,21 +423,21 @@ async function handleSubmit() {
    参考问卷星移动端设计语言
    ============================================================ */
 .m-survey {
-  --survey-page-bg: var(--dp-bg-layout);
+  --survey-page-bg: var(--dp-bg-muted);
   --survey-border: var(--dp-border-subtle);
   --survey-border-light: var(--dp-border-subtle);
-  --survey-surface: var(--dp-bg-container);
+  --survey-surface: var(--dp-surface);
   --survey-surface-muted: var(--dp-fill-quaternary);
   --survey-text: var(--dp-text-primary);
   --survey-text-secondary: var(--dp-text-secondary);
-  --survey-text-muted: var(--dp-text-tertiary);
+  --survey-text-muted: var(--dp-text-muted);
   --survey-text-placeholder: var(--dp-text-quaternary);
   --survey-warning-bg: var(--dp-warning-bg);
   --survey-warning-text: var(--dp-warning);
   --survey-success-bg: var(--dp-success-bg);
   --survey-success-text: var(--dp-success);
   --survey-danger: var(--dp-error);
-  --survey-on-primary: var(--dp-text-light-solid);
+  --survey-on-primary: var(--dp-text-inverse);
   --survey-primary: var(--dp-color-primary);
   --survey-primary-bg: var(--dp-color-primary-bg);
   --survey-primary-border: var(--dp-color-primary-border);
@@ -460,7 +460,7 @@ async function handleSubmit() {
   justify-content: center;
   min-height: 100vh;
   min-height: 100dvh;
-  padding: 24px 20px;
+  padding: var(--dp-space-page) var(--dp-space-block);
   text-align: center;
 }
 
@@ -488,7 +488,7 @@ async function handleSubmit() {
   justify-content: center;
   font-size: 28px;
   font-weight: 700;
-  margin-bottom: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-component);
 }
 
 .m-survey__icon--warn {
@@ -510,19 +510,19 @@ async function handleSubmit() {
   font-size: var(--dp-font-size-2xl);
   font-weight: 600;
   color: var(--survey-text);
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
 }
 
 .m-survey__status-text {
   font-size: var(--dp-font-size-md);
   color: var(--survey-text-secondary);
-  margin: 8px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
 }
 
 .m-survey__status-hint {
   font-size: var(--dp-font-size-sm);
   color: var(--survey-text-muted);
-  margin-top: 12px;
+  margin-top: var(--dp-space-component);
 }
 
 /* --- 封面页 --- */
@@ -535,15 +535,15 @@ async function handleSubmit() {
 }
 
 .m-survey__cover-header {
-  padding: 28px 20px 0;
+  padding: var(--dp-space-page) var(--dp-space-block) 0;
   text-align: center;
 }
 
 .m-survey__cover-badge {
   display: inline-block;
-  padding: 4px 16px;
+  padding: var(--dp-space-component-xs) var(--dp-space-block);
   background: var(--survey-primary-bg);
-  border-radius: 20px;
+  border-radius: var(--dp-radius-full);
   color: var(--survey-primary);
   font-size: var(--dp-font-size-sm);
   font-weight: 500;
@@ -556,7 +556,7 @@ async function handleSubmit() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px 20px;
+  padding: var(--dp-space-page) var(--dp-space-block);
   text-align: center;
 }
 
@@ -565,14 +565,14 @@ async function handleSubmit() {
   font-weight: 700;
   color: var(--dp-text-primary);
   line-height: 1.4;
-  margin: 0 0 16px;
+  margin: 0 0 var(--dp-space-block);
 }
 
 .m-survey__cover-desc {
-  font-size: 15px;
+  font-size: var(--dp-type-panel-title-size);
   color: var(--dp-text-secondary);
   line-height: 1.6;
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   max-width: 320px;
 }
 
@@ -580,7 +580,7 @@ async function handleSubmit() {
   font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
   line-height: 1.5;
-  margin: 0 0 20px;
+  margin: 0 0 var(--dp-space-block);
   max-width: 300px;
   font-style: italic;
 }
@@ -588,10 +588,10 @@ async function handleSubmit() {
 .m-survey__cover-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-text-tertiary);
-  margin-bottom: 8px;
+  color: var(--dp-text-muted);
+  margin-bottom: var(--dp-space-component-tight);
 
   svg {
     opacity: 0.7;
@@ -600,11 +600,11 @@ async function handleSubmit() {
 
 .m-survey__cover-info {
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .m-survey__cover-action {
-  padding: var(--dp-space-4, 16px) var(--dp-space-4, 16px) var(--dp-space-8, 32px);
+  padding: var(--dp-space-block) var(--dp-space-section);
   text-align: center;
 }
 
@@ -619,14 +619,14 @@ async function handleSubmit() {
 
 .m-survey__page-body {
   flex: 1;
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) 88px;
+  padding: var(--dp-space-component) var(--dp-space-block) 88px;
 }
 
 .m-survey__page-title {
   font-size: var(--dp-font-size-2xl);
   font-weight: 600;
   color: var(--survey-text);
-  margin: 16px 0 6px;
+  margin: var(--dp-space-block) 0 var(--dp-space-component-tight);
   text-align: center;
 }
 
@@ -634,7 +634,7 @@ async function handleSubmit() {
   font-size: var(--dp-font-size-md);
   color: var(--survey-text-secondary);
   text-align: center;
-  margin: 0 0 28px;
+  margin: 0 0 var(--dp-space-page);
 }
 
 /* --- 进度条 --- */
@@ -651,7 +651,7 @@ async function handleSubmit() {
   left: 12px;
   top: 10px;
   display: inline-flex;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   padding: 2px;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--survey-border);
@@ -662,9 +662,9 @@ async function handleSubmit() {
   border: none;
   background: transparent;
   color: var(--survey-text-secondary);
-  font-size: var(--dp-font-size-xxs);
+  font-size: var(--dp-font-size-xs);
   line-height: 1;
-  padding: 6px 10px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border-radius: var(--dp-radius-full);
   cursor: pointer;
 }
@@ -687,8 +687,8 @@ async function handleSubmit() {
   height: 100%;
   transform-origin: left center;
   background: var(--survey-primary);
-  border-radius: 3px;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: var(--dp-radius-xs);
+  transition: transform var(--dp-duration-page) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .m-survey__progress-text {
@@ -704,11 +704,11 @@ async function handleSubmit() {
 .m-survey__identity-icon {
   text-align: center;
   color: var(--survey-primary);
-  margin-top: var(--dp-space-5, 20px);
+  margin-top: var(--dp-space-block);
 }
 
 .m-survey__field {
-  margin-bottom: 20px;
+  margin-bottom: var(--dp-space-block);
 }
 
 .m-survey__field-label {
@@ -716,20 +716,20 @@ async function handleSubmit() {
   font-size: var(--dp-font-size-md);
   font-weight: 500;
   color: var(--survey-text);
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .m-survey__input {
   width: 100%;
   height: 48px;
-  padding: 0 16px;
+  padding: 0 var(--dp-space-block);
   border: 1.5px solid var(--survey-border);
-  border-radius: 12px;
+  border-radius: var(--dp-radius-card);
   font-size: var(--dp-font-size-lg);
   color: var(--survey-text);
   background: var(--survey-surface);
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color var(--dp-duration-normal);
   box-sizing: border-box;
   -webkit-appearance: none;
 
@@ -745,14 +745,14 @@ async function handleSubmit() {
 
 /* --- 题目区 --- */
 .m-survey__question {
-  padding-top: 32px;
+  padding-top: var(--dp-space-section);
 }
 
 .m-survey__q-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-block);
 }
 
 .m-survey__q-index {
@@ -761,20 +761,20 @@ async function handleSubmit() {
   justify-content: center;
   min-width: 36px;
   height: 28px;
-  padding: 0 8px;
+  padding: 0 var(--dp-space-component-tight);
   background: var(--survey-primary);
   color: var(--survey-on-primary);
   font-size: var(--dp-font-size-sm);
   font-weight: 700;
-  border-radius: 14px;
+  border-radius: var(--dp-radius-overlay);
 }
 
 .m-survey__required {
   font-size: var(--dp-font-size-xs);
   color: var(--survey-on-primary);
   background: var(--survey-danger);
-  padding: 2px 8px;
-  border-radius: 10px;
+  padding: 2px var(--dp-space-component-tight);
+  border-radius: var(--dp-radius-panel);
   font-weight: 500;
 }
 
@@ -789,12 +789,12 @@ async function handleSubmit() {
   font-weight: 600;
   color: var(--survey-text);
   line-height: 1.6;
-  margin: 0 0 28px;
+  margin: 0 0 var(--dp-space-page);
 }
 
 /* --- 量表题 --- */
 .m-survey__scale {
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
 }
 
 .m-survey__scale-labels {
@@ -802,13 +802,13 @@ async function handleSubmit() {
   justify-content: space-between;
   font-size: var(--dp-font-size-xs);
   color: var(--survey-text-muted);
-  margin-bottom: 12px;
-  padding: 0 4px;
+  margin-bottom: var(--dp-space-component);
+  padding: 0 var(--dp-space-component-xs);
 }
 
 .m-survey__scale-btns {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   justify-content: center;
 }
 
@@ -816,13 +816,13 @@ async function handleSubmit() {
   width: 52px;
   height: 52px;
   border: 2px solid var(--survey-border);
-  border-radius: 14px;
+  border-radius: var(--dp-radius-overlay);
   background: var(--survey-surface);
   font-size: var(--dp-font-size-xl);
   font-weight: 600;
   color: var(--survey-text);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--dp-duration-normal);
   -webkit-tap-highlight-color: transparent;
 
   &:active {
@@ -835,28 +835,27 @@ async function handleSubmit() {
   background: var(--survey-primary);
   color: var(--survey-on-primary);
   box-shadow: var(--dp-shadow-sm);
-  transform: scale(1.05);
 }
 
 /* --- 选择题 --- */
 .m-survey__choices {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 .m-survey__choice {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-block);
   border: 1.5px solid var(--survey-border);
-  border-radius: 12px;
+  border-radius: var(--dp-radius-card);
   background: var(--survey-surface);
-  font-size: 15px;
+  font-size: var(--dp-type-panel-title-size);
   color: var(--survey-text);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--dp-duration-normal);
   text-align: left;
   -webkit-tap-highlight-color: transparent;
   width: 100%;
@@ -890,7 +889,7 @@ async function handleSubmit() {
   font-weight: 600;
   color: var(--survey-text-secondary);
   flex-shrink: 0;
-  transition: all 0.2s;
+  transition: all var(--dp-duration-normal);
 }
 
 .m-survey__choice-text {
@@ -908,7 +907,7 @@ async function handleSubmit() {
   font-size: var(--dp-font-size-xs);
   color: var(--survey-text-muted);
   text-align: center;
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
 }
 
 /* --- 开放文本 --- */
@@ -918,7 +917,7 @@ async function handleSubmit() {
 
 .m-survey__textarea {
   width: 100%;
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
   border: 1.5px solid var(--survey-border);
   border-radius: var(--dp-radius-panel);
   font-size: var(--dp-font-size-lg);
@@ -945,7 +944,7 @@ async function handleSubmit() {
   text-align: right;
   font-size: var(--dp-font-size-xs);
   color: var(--survey-text-placeholder);
-  margin-top: 6px;
+  margin-top: var(--dp-space-component-tight);
 }
 
 /* --- 底部导航 --- */
@@ -955,9 +954,9 @@ async function handleSubmit() {
   left: 0;
   right: 0;
   display: flex;
-  gap: 12px;
-  padding: 12px 20px;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
+  padding-bottom: calc(var(--dp-space-component) + env(safe-area-inset-bottom, 0px));
   background: var(--survey-surface);
   border-top: 1px solid var(--survey-border-light);
   z-index: 20;
@@ -968,11 +967,11 @@ async function handleSubmit() {
   flex: 1;
   height: 48px;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--dp-radius-card);
   font-size: var(--dp-font-size-lg);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--dp-duration-normal);
   -webkit-tap-highlight-color: transparent;
 
   &:active {
@@ -1003,14 +1002,14 @@ async function handleSubmit() {
 }
 
 .m-survey__btn--retry {
-  margin-top: 16px;
-  padding: 0 24px;
+  margin-top: var(--dp-space-block);
+  padding: 0 var(--dp-space-page);
   height: 44px;
   border: none;
-  border-radius: 22px;
+  border-radius: var(--dp-radius-full);
   background: var(--survey-primary);
   color: var(--survey-on-primary);
-  font-size: 15px;
+  font-size: var(--dp-type-panel-title-size);
   font-weight: 600;
   cursor: pointer;
 }
@@ -1018,7 +1017,7 @@ async function handleSubmit() {
 .m-survey__btn--lg {
   height: 52px;
   font-size: 17px;
-  border-radius: 26px;
+  border-radius: var(--dp-radius-full);
   width: 100%;
   max-width: 280px;
   margin: 0 auto;
@@ -1030,7 +1029,7 @@ async function handleSubmit() {
 .slide-left-leave-active,
 .slide-right-enter-active,
 .slide-right-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--dp-duration-slow) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .slide-left-enter-from {

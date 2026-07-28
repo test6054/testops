@@ -5,13 +5,8 @@
       class="archive-volume-remediation-panel__signals-error"
       tone="warning"
       title="整改概览加载失败"
-      description="任务列表不受影响，可重试加载概览指标。"
       dense
-    >
-      <template #actions>
-        <UiButton size="sm" variant="outline" @click="loadRemediationStats">重新加载</UiButton>
-      </template>
-    </UiAlertStrip>
+    />
     <SignalBand
       v-else-if="remediationSignalMetrics.length > 0"
       class="archive-volume-remediation-panel__signals"
@@ -105,7 +100,7 @@
         :show-icon="false"
       >
         <template #default>
-          <span style="display: inline-flex; align-items: center; gap: 8px">
+          <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
             <UiTag tone="blue" size="sm">未选择批次</UiTag>
             <span>请选择迎评批次后查看整改任务</span>
           </span>
@@ -376,9 +371,10 @@ import type {
   ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ARCHIVE_EVALUATION_CAMPAIGN_STATUS_OPTIONS,
@@ -425,6 +421,7 @@ import { SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
+  applyTripleSemesterChange,
   createAcademicYearSemesterTripleDefaults,
   ensureTriplePeriodPair,
   parseTripleFromAcademicYear,
@@ -507,7 +504,7 @@ interface ArchiveRemediationCreateTaskForm {
   volumeId: string
   taskTitle: string
   taskDescription: string
-  diagnosticCode: string
+  diagnosticCode: ArchiveRemediationDiagnosticCode | undefined
   assigneeUserId: string | undefined
   dueTime: string | undefined
 }
@@ -517,7 +514,7 @@ const createTaskForm = reactive<ArchiveRemediationCreateTaskForm>({
   volumeId: '',
   taskTitle: '',
   taskDescription: '',
-  diagnosticCode: '',
+  diagnosticCode: undefined,
   assigneeUserId: undefined,
   dueTime: undefined,
 })
@@ -557,6 +554,8 @@ const canShowCreateRemediationTask = computed(
     canCreateRemediationTask.value === true
     && selectedCampaign.value?.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE,
 )
+const deadlineClockMs = ref(Date.now())
+let deadlineClockTimer: ReturnType<typeof setInterval> | undefined
 
 function remediationStatusLabel(code: ArchiveRemediationStatusCode) {
   return strictEnumLabel(ArchiveRemediationStatusDescription, code, 'taskStatus')
@@ -576,7 +575,7 @@ function remediationPriorityTone(code: ArchiveRemediationPriorityCode): BadgeTon
 
 /** 整改截止相对时限着色：已逾期=红，7 天内到期=橙，其余不着色。 */
 function remediationDeadlineClass(dueTime: string): string {
-  const remaining = new Date(dueTime).getTime() - Date.now()
+  const remaining = new Date(dueTime).getTime() - deadlineClockMs.value
   if (remaining < 0) return 'remediation-deadline--overdue'
   if (remaining <= 7 * 24 * 60 * 60 * 1000) return 'remediation-deadline--soon'
   return ''
@@ -584,7 +583,7 @@ function remediationDeadlineClass(dueTime: string): string {
 
 /** 整改截止相对时限文案：已逾期/剩余天数；距截止超过 7 天不展示。 */
 function remediationDeadlineHint(dueTime: string): string {
-  const remaining = new Date(dueTime).getTime() - Date.now()
+  const remaining = new Date(dueTime).getTime() - deadlineClockMs.value
   if (remaining >= 0 && remaining > 7 * 24 * 60 * 60 * 1000) return ''
   const days = Math.max(1, Math.ceil(Math.abs(remaining) / (24 * 60 * 60 * 1000)))
   return remaining < 0 ? `（已逾期 ${days} 天）` : `（剩余 ${days} 天）`
@@ -890,7 +889,7 @@ function openCreateTaskModal() {
   createTaskForm.volumeId = ''
   createTaskForm.taskTitle = ''
   createTaskForm.taskDescription = ''
-  createTaskForm.diagnosticCode = ''
+  createTaskForm.diagnosticCode = undefined
   createTaskForm.assigneeUserId = undefined
   createTaskForm.dueTime = undefined
   createTaskOpen.value = true
@@ -931,7 +930,7 @@ async function submitCreateTask() {
       volumeId: createTaskForm.volumeId.trim(),
       taskTitle: createTaskForm.taskTitle.trim(),
       taskDescription: createTaskForm.taskDescription.trim() || undefined,
-      diagnosticCode: createTaskForm.diagnosticCode.trim() || undefined,
+      diagnosticCode: createTaskForm.diagnosticCode,
       assigneeUserId: createTaskForm.assigneeUserId,
       dueTime: createTaskForm.dueTime,
     })
@@ -956,6 +955,9 @@ async function openTask(taskId: string) {
 }
 
 onMounted(() => {
+  deadlineClockTimer = window.setInterval(() => {
+    deadlineClockMs.value = Date.now()
+  }, 60_000)
   void loadGrants().then(async () => {
     try {
       const stats = await getOpenRemediationStats()
@@ -967,32 +969,47 @@ onMounted(() => {
   void loadCampaigns()
 })
 
+onBeforeUnmount(() => {
+  if (deadlineClockTimer !== undefined) {
+    window.clearInterval(deadlineClockTimer)
+  }
+})
+
 watch(
   () => campaignForm.academicYearStartYear,
   (startYear) => {
     applyAcademicYearStartYearChange(campaignForm, startYear)
   },
 )
+
+watch(
+  () => campaignForm.semester,
+  (semester) => {
+    if (semester == null && campaignForm.academicYearStartYear != null) {
+      applyTripleSemesterChange(campaignForm, undefined)
+    }
+  },
+)
 </script>
 
 <style scoped>
 .archive-volume-remediation-panel__signals {
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .archive-volume-remediation-panel__signals-error {
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .archive-volume-remediation-panel__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
 }
 
 .archive-volume-remediation-panel__task-pagination {
-  margin-top: 16px;
+  margin-top: var(--dp-space-block);
   display: flex;
   justify-content: flex-end;
 }
@@ -1008,8 +1025,8 @@ watch(
 .archive-volume-remediation-panel__campaign-rate {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2);
-  padding: 0 var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
+  padding: 0 var(--dp-space-component-tight);
 }
 
 .archive-volume-remediation-panel__campaign-rate-label {
@@ -1019,24 +1036,24 @@ watch(
 }
 
 .detail-desc {
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-block);
 }
 
 .task-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-remediation-card-list {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
-  padding: var(--dp-space-3) 0;
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component) 0;
 }
 
 .remediation-card {
-  padding: var(--dp-space-4) var(--dp-space-5);
+  padding: var(--dp-space-block);
   border: 1px solid var(--dp-border-subtle);
   border-left: 3px solid var(--dp-gray-400);
   border-radius: var(--dp-radius-panel);
@@ -1060,7 +1077,7 @@ watch(
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .remediation-card__main {
@@ -1071,30 +1088,30 @@ watch(
 .remediation-card__title {
   font-size: var(--dp-font-size-md);
   font-weight: 600;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
 }
 
 .remediation-card__desc {
-  margin: var(--dp-space-1) 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-font-size-xs);
   line-height: 1.5;
-  color: var(--dp-text-3);
+  color: var(--dp-text-muted);
 }
 
 .remediation-card__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
-  margin-top: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .remediation-card__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-4);
-  margin-top: var(--dp-space-2);
+  gap: var(--dp-space-block);
+  margin-top: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-4);
+  color: var(--dp-text-secondary);
 }
 
 .remediation-card__meta b {
@@ -1114,7 +1131,7 @@ watch(
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   flex-shrink: 0;
 }
 </style>

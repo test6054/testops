@@ -293,10 +293,10 @@ onActivated(() => {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
 
     & + & {
-      margin-top: var(--dp-space-3, 12px);
+      margin-top: var(--dp-space-component);
     }
   }
 
@@ -304,8 +304,8 @@ onActivated(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 

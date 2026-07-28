@@ -15,6 +15,9 @@ import {
 } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
 import ConfidentialWatermarkLayer from '@/components/mark/ConfidentialWatermarkLayer.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { buildConfidentialWatermarkLines } from '@/composables/useConfidentialWatermark'
 
 /** 母版题目区域 ROI（百分比定位，已由父级换算） */
@@ -45,9 +48,15 @@ const props = withDefaults(
     watermarkLines?: string[]
     /** 是否在卷面影像上叠操作者水印（默认开启，用于试卷/扫描页追溯） */
     viewerWatermark?: boolean
+    /** 父级正在获取影像地址或 blob。 */
+    loading?: boolean
+    /** 父级取图失败原因；与浏览器图片解码失败统一展示。 */
+    errorText?: string
   }>(),
   {
     viewerWatermark: true,
+    loading: false,
+    errorText: '',
   },
 )
 
@@ -75,6 +84,9 @@ const grayscale = ref(false)
 const panX = ref(0)
 const panY = ref(0)
 const isPanning = ref(false)
+const imageLoading = ref(false)
+const imageError = ref('')
+const imageAttempt = ref(0)
 let panPointerId: number | null = null
 let panOriginX = 0
 let panOriginY = 0
@@ -89,6 +101,8 @@ const imageTransform = computed(
 const imageFilter = computed(() => (grayscale.value ? 'grayscale(1)' : 'none'))
 const canvasMinHeight = computed(() => `${props.minHeight ?? 420}px`)
 const canPan = computed(() => Boolean(props.src) && zoomLevel.value > 1)
+const showLoading = computed(() => props.loading || imageLoading.value)
+const resolvedError = computed(() => props.errorText || imageError.value)
 
 function resetPan(): void {
   panX.value = 0
@@ -159,6 +173,39 @@ function onCanvasPointerMove(event: PointerEvent): void {
   panY.value = panOriginY + (event.clientY - panStartY)
 }
 
+function onCanvasKeydown(event: KeyboardEvent): void {
+  if (canPan.value !== true) {
+    return
+  }
+  const delta = event.shiftKey ? 40 : 16
+  if (event.key === 'ArrowLeft') panX.value -= delta
+  else if (event.key === 'ArrowRight') panX.value += delta
+  else if (event.key === 'ArrowUp') panY.value -= delta
+  else if (event.key === 'ArrowDown') panY.value += delta
+  else if (event.key === 'Home') resetPan()
+  else return
+  event.preventDefault()
+}
+
+function onImageLoad(): void {
+  imageLoading.value = false
+  imageError.value = ''
+}
+
+function onImageError(): void {
+  imageLoading.value = false
+  imageError.value = '影像文件加载失败，请重新加载'
+}
+
+function retryImage(): void {
+  if (!props.src) {
+    return
+  }
+  imageAttempt.value += 1
+  imageError.value = ''
+  imageLoading.value = true
+}
+
 function endCanvasPan(event: PointerEvent): void {
   if (panPointerId !== event.pointerId) {
     return
@@ -170,11 +217,15 @@ function endCanvasPan(event: PointerEvent): void {
 // 切换影像时重置缩放/旋转/平移；灰度作为持久核对偏好不重置
 watch(
   () => props.src,
-  () => {
+  (src) => {
     zoomLevel.value = 1
     rotation.value = 0
     resetPan()
+    imageAttempt.value = 0
+    imageError.value = ''
+    imageLoading.value = Boolean(src)
   },
+  { immediate: true },
 )
 </script>
 
@@ -188,13 +239,30 @@ watch(
         'scan-stage__canvas--confidential': props.confidential,
       }"
       :style="{ minHeight: canvasMinHeight }"
+      :tabindex="canPan ? 0 : undefined"
+      :aria-busy="showLoading || undefined"
+      aria-label="扫描影像查看区"
       @pointerdown="onCanvasPointerDown"
       @pointermove="onCanvasPointerMove"
       @pointerup="endCanvasPan"
       @pointercancel="endCanvasPan"
       @contextmenu="onConfidentialContextMenu"
+      @keydown="onCanvasKeydown"
     >
-      <div v-if="!src" class="scan-stage__empty">
+      <UiSkeletonState v-if="showLoading" variant="card" compact />
+      <UiEmpty
+        v-else-if="resolvedError"
+        size="sm"
+        title="影像加载失败"
+        :description="resolvedError"
+      >
+        <template #action>
+          <UiButton v-if="src" size="sm" variant="outline" @click="retryImage">
+            重新加载
+          </UiButton>
+        </template>
+      </UiEmpty>
+      <div v-else-if="!src" class="scan-stage__empty">
         {{ emptyText || '暂无影像' }}
       </div>
       <div v-else class="scan-stage__paper-wrap">
@@ -205,11 +273,14 @@ watch(
         />
         <img
           class="scan-stage__image"
+          :key="`${src}:${imageAttempt}`"
           :src="src"
           :alt="caption || '扫描影像'"
           :style="{ transform: imageTransform, filter: imageFilter }"
           draggable="false"
           @contextmenu="onConfidentialContextMenu"
+          @load="onImageLoad"
+          @error="onImageError"
         />
         <div
           v-if="roi"
@@ -218,13 +289,14 @@ watch(
         />
       </div>
 
-      <div v-if="src" class="scan-stage__tools">
-        <div class="scan-stage__group">
+      <div v-if="src && !showLoading && !resolvedError" class="scan-stage__tools" role="toolbar" aria-label="影像查看工具">
+        <div class="scan-stage__group" role="group" aria-label="缩放">
           <button
             type="button"
             class="scan-stage__btn"
             :disabled="zoomLevel <= ZOOM_MIN"
             title="缩小"
+            aria-label="缩小影像"
             @click="zoomOut"
           >
             <MinusOutlined />
@@ -235,30 +307,33 @@ watch(
             class="scan-stage__btn"
             :disabled="zoomLevel >= ZOOM_MAX"
             title="放大"
+            aria-label="放大影像"
             @click="zoomIn"
           >
             <PlusOutlined />
           </button>
-          <button type="button" class="scan-stage__btn" title="适配窗口" @click="fitToScreen">
+          <button type="button" class="scan-stage__btn" title="适配窗口" aria-label="适配窗口" @click="fitToScreen">
             <ExpandOutlined />
           </button>
         </div>
-        <span class="scan-stage__divider" />
-        <div class="scan-stage__group">
-          <button type="button" class="scan-stage__btn" title="左转 90°" @click="rotateLeft">
+        <span class="scan-stage__divider" aria-hidden="true" />
+        <div class="scan-stage__group" role="group" aria-label="旋转">
+          <button type="button" class="scan-stage__btn" title="左转 90°" aria-label="向左旋转 90 度" @click="rotateLeft">
             <UndoOutlined />
           </button>
           <span class="scan-stage__info">{{ rotation }}°</span>
-          <button type="button" class="scan-stage__btn" title="右转 90°" @click="rotateRight">
+          <button type="button" class="scan-stage__btn" title="右转 90°" aria-label="向右旋转 90 度" @click="rotateRight">
             <RedoOutlined />
           </button>
         </div>
-        <span class="scan-stage__divider" />
+        <span class="scan-stage__divider" aria-hidden="true" />
         <button
           type="button"
           class="scan-stage__btn scan-stage__btn--toggle"
           :class="{ 'scan-stage__btn--active': grayscale }"
           title="灰度核对"
+          aria-label="切换灰度核对"
+          :aria-pressed="grayscale"
           @click="toggleGrayscale"
         >
           灰度
@@ -273,7 +348,7 @@ watch(
 .scan-stage {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .scan-stage__canvas {
@@ -317,13 +392,13 @@ watch(
   display: block;
   max-width: 100%;
   max-height: 100%;
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
   box-shadow: var(--scan-paper-shadow);
   user-select: none;
   transform-origin: center center;
   transition:
-    transform var(--dp-duration-fast) ease,
-    filter var(--dp-duration-fast) ease;
+    transform var(--dp-duration-fast) var(--dp-ease-default),
+    filter var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .scan-stage__canvas--confidential .scan-stage__image {
@@ -331,7 +406,7 @@ watch(
 }
 
 .scan-stage__canvas--panning .scan-stage__image {
-  transition: filter var(--dp-duration-fast) ease;
+  transition: filter var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .scan-stage__roi {
@@ -349,8 +424,8 @@ watch(
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   background: var(--scan-toolbar-bg);
   border: 1px solid var(--scan-toolbar-border);
   border-radius: var(--dp-radius-panel);
@@ -372,7 +447,7 @@ watch(
 .scan-stage__btn {
   min-width: 34px;
   height: 34px;
-  padding: 0 8px;
+  padding: 0 var(--dp-space-component-tight);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -382,7 +457,7 @@ watch(
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-md);
   cursor: pointer;
-  transition: background var(--dp-duration-fast) ease;
+  transition: background var(--dp-duration-fast) var(--dp-ease-default);
 }
 .scan-stage__btn:hover:not(:disabled) {
   background: var(--dp-surface-subtle);
@@ -403,7 +478,7 @@ watch(
 
 .scan-stage__info {
   min-width: 48px;
-  padding: 0 4px;
+  padding: 0 var(--dp-space-component-xs);
   text-align: center;
   font-variant-numeric: tabular-nums;
   font-size: var(--dp-font-size-sm);

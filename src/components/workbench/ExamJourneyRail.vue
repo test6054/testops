@@ -42,9 +42,9 @@ function handleSelect(stage: WorkbenchStage): void {
 <style lang="scss" scoped>
 .exam-journey-rail {
   flex-shrink: 0;
-  padding: var(--dp-space-1) var(--dp-space-3);
+  padding: var(--dp-space-component-xs) var(--dp-space-component);
   overflow-x: auto;
   background: var(--dp-surface);
-  border-bottom: 1px solid var(--dp-border);
+  border-bottom: 1px solid var(--ant-color-split);
 }
 </style>

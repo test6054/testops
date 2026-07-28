@@ -37,9 +37,6 @@ const props = defineProps<{
   sessionReadiness?: SessionCreateReadinessResponse | null
 }>()
 
-/** 与 edu-mark MarkingOrganizationServiceImpl.DEFAULT_TRIAL_SAMPLE_SIZE 保持一致 */
-const MARKING_TRIAL_DEFAULT_SAMPLE_SIZE = 5
-
 const title = computed(() => (props.phase === 'trial' ? '试评继承配置' : '正评继承配置'))
 
 const description = computed(() =>
@@ -125,11 +122,13 @@ const items = computed((): UiDescriptionItem[] => {
   }
 
   if (props.phase === 'trial') {
+    const trialSampleSize = props.policy?.trialSampleSize
     rows.push({
       key: 'trial-sample-size',
       label: '试评样本量',
-      value: `启动时最多 ${MARKING_TRIAL_DEFAULT_SAMPLE_SIZE} 份`,
-      helper: '实际抽样不超过可评阅答卷或切片总量',
+      value: trialSampleSize != null ? `启动时最多 ${trialSampleSize} 份` : '未配置',
+      valueTone: trialSampleSize != null && trialSampleSize > 0 ? 'blue' : 'orange',
+      helper: '来自题组分配策略；实际抽样不超过可评阅答卷或切片总量',
       span: 2,
     })
   }
@@ -140,6 +139,6 @@ const items = computed((): UiDescriptionItem[] => {
 
 <style lang="scss" scoped>
 .session-group-create-summary {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
 }
 </style>

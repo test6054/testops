@@ -1,7 +1,7 @@
 /** 阅卷任务流订阅范围 */
 export enum MarkingTaskStreamSubscribeScopeCode {
-  TEACHER = 'teacher',
-  GROUP_LEADER = 'groupLeader',
+  TEACHER = 'TEACHER',
+  GROUP_LEADER = 'GROUP_LEADER',
 }
 
 export const ALL_MARKING_TASK_STREAM_SUBSCRIBE_SCOPE_CODES: readonly MarkingTaskStreamSubscribeScopeCode[] = [
@@ -13,4 +13,3 @@ export const MarkingTaskStreamSubscribeScopeDescription: Record<MarkingTaskStrea
   [MarkingTaskStreamSubscribeScopeCode.TEACHER]: '教师个人任务',
   [MarkingTaskStreamSubscribeScopeCode.GROUP_LEADER]: '题组组长考试进度',
 }
-

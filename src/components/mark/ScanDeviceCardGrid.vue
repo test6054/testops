@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { ExamScanMonitorDeviceResponse } from '@/apis/mark/exam-progress'
+import { computed } from 'vue'
 import { ScannerEndpointOnlineStatusCode } from '@/apis/mark/exam-mark-scanner'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -9,9 +10,11 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ScanDeviceCardGrid' })
 
-defineProps<{
+const props = defineProps<{
   devices: ExamScanMonitorDeviceResponse[]
   loading?: boolean
+  /** 设备列表接口失败；与真实空列表互斥展示 */
+  loadFailed?: boolean
   selectedDeviceId?: string
 }>()
 
@@ -23,25 +26,48 @@ function deviceOnline(device: ExamScanMonitorDeviceResponse): boolean {
   return device.endpointOnlineStatus === ScannerEndpointOnlineStatusCode.ONLINE
 }
 
+/** 离线与有在途批次优先，便于监控页先处置风险端。 */
+const sortedDevices = computed(() => {
+  const list = [...props.devices]
+  list.sort((left, right) => {
+    const leftRisk = Number(!deviceOnline(left)) * 2 + Number(Boolean(left.activeScanBatchId))
+    const rightRisk = Number(!deviceOnline(right)) * 2 + Number(Boolean(right.activeScanBatchId))
+    if (leftRisk !== rightRisk) {
+      return rightRisk - leftRisk
+    }
+    const leftName = left.deviceName || left.scannerDeviceId
+    const rightName = right.deviceName || right.scannerDeviceId
+    return leftName.localeCompare(rightName, 'zh-CN')
+  })
+  return list
+})
+
 function heartbeatLabel(device: ExamScanMonitorDeviceResponse): string {
   if (!device.lastHeartbeatTime) {
-    return '无心跳记录'
+    return '无心跳'
   }
   return formatDateTimeWithSeconds(device.lastHeartbeatTime)
 }
 
-function activeBatchLabel(device: ExamScanMonitorDeviceResponse): string | null {
-  if (!device.activeScanBatchStatus) {
-    return null
+function activeBatchLabel(device: ExamScanMonitorDeviceResponse): string {
+  if (!device.activeScanBatchStatus && !device.activeScanBatchId && !device.activeScanBatchNo) {
+    return '无在途批次'
   }
-  const statusLabel = strictEnumLabel(
-    ScanBatchStatusDescription,
-    device.activeScanBatchStatus,
-    '扫描批次状态',
-  )
-  const pageCount = device.activeScanBatchPageCount ?? 0
-  const batchNo = device.activeScanBatchNo || device.activeScanBatchId
-  return [batchNo, statusLabel, `${pageCount} 页`].filter(Boolean).join(' · ')
+  const statusLabel = device.activeScanBatchStatus
+    ? strictEnumLabel(
+        ScanBatchStatusDescription,
+        device.activeScanBatchStatus,
+        '扫描批次状态',
+      )
+    : '—'
+  const pageCount
+    = device.activeScanBatchPageCount == null ? '—' : `${device.activeScanBatchPageCount} 页`
+  const batchNo = device.activeScanBatchNo || device.activeScanBatchId || '—'
+  return `${batchNo} · ${statusLabel} · ${pageCount}`
+}
+
+function pendingUploadLabel(device: ExamScanMonitorDeviceResponse): string {
+  return device.pendingUploadPageCount == null ? '—' : String(device.pendingUploadPageCount)
 }
 
 function handleSelect(device: ExamScanMonitorDeviceResponse): void {
@@ -53,54 +79,59 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
   <WorkbenchSurfaceCard class="scan-device-grid" :class="{ 'scan-device-grid--loading': loading }">
     <template #head>
       <span class="scan-device-grid__title">本考试扫描端</span>
-      <span class="scan-device-grid__meta">{{ devices.length }} 台</span>
+      <span class="scan-device-grid__meta">{{ loadFailed ? '加载失败' : `${devices.length} 台` }}</span>
     </template>
-    <div v-if="devices.length === 0" class="scan-device-grid__empty">
+    <div v-if="loadFailed && devices.length === 0" class="scan-device-grid__empty">
+      <span>扫描端列表加载失败，不能视为无在线端</span>
+    </div>
+    <div v-else-if="devices.length === 0" class="scan-device-grid__empty">
       暂无绑定一体机或历史扫描批次关联的扫描端
     </div>
-    <div v-else class="scan-device-grid__list">
-      <button
-        v-for="device in devices"
-        :key="device.scannerDeviceId"
-        type="button"
-        class="scan-device-grid__card"
-        :class="{
-          'scan-device-grid__card--online': deviceOnline(device),
-          'scan-device-grid__card--offline': !deviceOnline(device),
-          'scan-device-grid__card--selected': selectedDeviceId === device.scannerDeviceId,
-        }"
-        @click="handleSelect(device)"
-      >
-        <div class="scan-device-grid__card-head">
+    <ul v-else class="scan-device-grid__list" role="list">
+      <li v-for="device in sortedDevices" :key="device.scannerDeviceId">
+        <button
+          type="button"
+          class="scan-device-grid__row"
+          :class="{
+            'scan-device-grid__row--offline': !deviceOnline(device),
+            'scan-device-grid__row--selected': selectedDeviceId === device.scannerDeviceId,
+          }"
+          :aria-pressed="selectedDeviceId === device.scannerDeviceId"
+          @click="handleSelect(device)"
+        >
           <span
-            class="scan-device-grid__pulse"
-            :class="{ 'scan-device-grid__pulse--online': deviceOnline(device) }"
+            class="scan-device-grid__dot"
+            :class="{ 'scan-device-grid__dot--online': deviceOnline(device) }"
+            aria-hidden="true"
           />
-          <span class="scan-device-grid__name">{{
-            device.deviceName || device.scannerDeviceId
-          }}</span>
-          <UiTag :tone="deviceOnline(device) ? 'green' : 'orange'" size="sm">
+          <span class="scan-device-grid__identity">
+            <span class="scan-device-grid__name">{{
+              device.deviceName || device.scannerDeviceId
+            }}</span>
+            <span class="scan-device-grid__meta-line">
+              {{ device.scannerIp || '无 IP' }}
+              <template v-if="device.kioskBoundToCurrentExam"> · 一体机</template>
+            </span>
+          </span>
+          <UiTag
+            class="scan-device-grid__status"
+            :tone="deviceOnline(device) ? 'green' : 'orange'"
+            size="sm"
+          >
             {{ deviceOnline(device) ? '在线' : '离线' }}
           </UiTag>
-          <UiTag v-if="device.kioskBoundToCurrentExam" tone="blue" size="sm">一体机</UiTag>
-        </div>
-        <div class="scan-device-grid__id">{{ device.scannerDeviceId }}</div>
-        <div v-if="activeBatchLabel(device)" class="scan-device-grid__batch">
-          {{ activeBatchLabel(device) }}
-        </div>
-        <div class="scan-device-grid__stats">
-          <div>
-            <div class="scan-device-grid__stat-label">待上传页</div>
-            <div class="scan-device-grid__stat-value">{{ device.pendingUploadPageCount ?? 0 }}</div>
-          </div>
-          <div>
-            <div class="scan-device-grid__stat-label">Agent 版本</div>
-            <div class="scan-device-grid__stat-version">{{ device.agentVersion ?? '—' }}</div>
-          </div>
-        </div>
-        <div class="scan-device-grid__heartbeat">最后心跳 {{ heartbeatLabel(device) }}</div>
-      </button>
-    </div>
+          <span class="scan-device-grid__batch" :title="activeBatchLabel(device)">
+            {{ activeBatchLabel(device) }}
+          </span>
+          <span class="scan-device-grid__pending" title="待上传页">
+            待传 {{ pendingUploadLabel(device) }}
+          </span>
+          <span class="scan-device-grid__heartbeat" :title="`最后心跳 ${heartbeatLabel(device)}`">
+            {{ heartbeatLabel(device) }}
+          </span>
+        </button>
+      </li>
+    </ul>
   </WorkbenchSurfaceCard>
 </template>
 
@@ -122,31 +153,38 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--dp-space-component-tight);
+    padding: var(--dp-space-component) 0;
     text-align: center;
     font-size: var(--dp-font-size-sm);
     color: var(--dp-text-muted);
   }
 
   &__list {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--dp-space-2, 8px);
-  }
-
-  &__card {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-2, 8px);
-    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+    gap: var(--dp-space-component-xs);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: 8px minmax(0, 1.4fr) auto minmax(0, 1.6fr) auto minmax(120px, 0.8fr);
+    align-items: center;
+    gap: var(--dp-space-component-tight) var(--dp-space-component);
+    width: 100%;
+    min-height: 44px;
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     text-align: left;
     border: 1px solid var(--dp-border);
-    border-radius: var(--dp-radius-panel);
+    border-radius: var(--dp-radius-control);
     background: var(--dp-surface);
     cursor: pointer;
-    transition:
-      border-color 0.2s ease,
-      box-shadow 0.2s ease;
 
     &:hover {
       border-color: var(--dp-color-primary);
@@ -154,11 +192,7 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
 
     &--selected {
       border-color: var(--dp-color-primary);
-      box-shadow: 0 0 0 1px var(--dp-color-primary);
-    }
-
-    &--online {
-      background: var(--dp-success-bg);
+      box-shadow: inset 0 0 0 1px var(--dp-color-primary);
     }
 
     &--offline {
@@ -166,14 +200,7 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
     }
   }
 
-  &__card-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__pulse {
+  &__dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
@@ -182,84 +209,80 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
 
     &--online {
       background: var(--dp-success);
-      animation: scan-device-pulse 2s ease-in-out infinite;
     }
   }
 
+  &__identity {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
   &__name {
-    flex: 1;
-    font-size: var(--dp-font-size-md);
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
     color: var(--dp-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  &__id {
+  &__meta-line {
     font-size: var(--dp-font-size-xs);
-    font-family: var(--dp-font-mono);
     color: var(--dp-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  &__batch {
-    font-size: var(--dp-font-size-xs);
-    color: var(--dp-text-secondary);
-  }
-
-  &__stats {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    margin-top: 4px;
-  }
-
-  &__stat-label {
-    font-size: var(--dp-font-size-xxs);
-    color: var(--dp-text-muted);
-  }
-
-  &__stat-value {
-    font-size: var(--dp-font-size-xl);
-    font-weight: 700;
-    font-family: var(--dp-font-mono);
-    color: var(--dp-text-primary);
-  }
-
-  &__stat-version {
-    font-size: var(--dp-font-size-sm);
-    font-weight: 500;
-    color: var(--dp-text-secondary);
-  }
-
+  &__batch,
+  &__pending,
   &__heartbeat {
-    font-size: var(--dp-font-size-xxs);
-    color: var(--dp-text-muted);
+    font-size: var(--dp-font-size-xs);
+    color: var(--dp-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__pending {
+    font-variant-numeric: tabular-nums;
   }
 }
 
-@keyframes scan-device-pulse {
-  0%,
-  100% {
-    opacity: 1;
+@media (max-width: 960px) {
+  .scan-device-grid__row {
+    grid-template-columns: 8px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'dot identity status'
+      'dot batch batch'
+      'dot pending heartbeat';
   }
-  50% {
-    opacity: 0.45;
-  }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .scan-device-grid__status--scanning .scan-device-grid__status-dot {
-    animation: none;
+  .scan-device-grid__dot {
+    grid-area: dot;
   }
-}
 
-@media (max-width: 1100px) {
-  .scan-device-grid__list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .scan-device-grid__identity {
+    grid-area: identity;
   }
-}
 
-@media (max-width: 640px) {
-  .scan-device-grid__list {
-    grid-template-columns: minmax(0, 1fr);
+  .scan-device-grid__status {
+    grid-area: status;
+    justify-self: end;
+  }
+
+  .scan-device-grid__batch {
+    grid-area: batch;
+  }
+
+  .scan-device-grid__pending {
+    grid-area: pending;
+  }
+
+  .scan-device-grid__heartbeat {
+    grid-area: heartbeat;
   }
 }
 </style>

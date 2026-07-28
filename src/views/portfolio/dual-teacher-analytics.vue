@@ -194,7 +194,7 @@ onMounted(loadStats)
 <style scoped>
 .grid {
   display: grid;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 </style>

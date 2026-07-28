@@ -381,15 +381,15 @@ watch(
 
 <style scoped>
 .archive-template-preview__signal {
-  margin-bottom: var(--dp-space-4);
+  margin-bottom: var(--dp-space-block);
 }
 
 .archive-template-preview__meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-2) var(--dp-space-3);
-  margin-bottom: var(--dp-space-4);
-  padding: var(--dp-space-4);
+  gap: var(--dp-space-component-tight) var(--dp-space-component);
+  margin-bottom: var(--dp-space-block);
+  padding: var(--dp-space-block);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface-subtle);
@@ -398,7 +398,7 @@ watch(
 .archive-template-preview__field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   min-width: 0;
 }
 
@@ -424,16 +424,16 @@ watch(
 }
 
 .archive-template-preview__desc {
-  padding-top: var(--dp-space-1);
+  padding-top: var(--dp-space-component-xs);
   border-top: 1px dashed var(--dp-border);
 }
 
 .archive-template-preview__tabs-wrap {
-  margin-top: var(--dp-space-1);
+  margin-top: var(--dp-space-component-xs);
 }
 
 .archive-template-preview__tabs :deep(.ant-tabs-nav) {
-  margin-bottom: var(--dp-space-2);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .archive-template-preview__tabs :deep(.ant-table) {

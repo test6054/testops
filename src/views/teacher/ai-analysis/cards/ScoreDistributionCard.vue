@@ -4,7 +4,7 @@
       <h3 class="stats-card__title">成绩分数分布</h3>
     </template>
     <template #toolbar>
-      <div class="dp-space" style="--dp-space-gap: 8px">
+      <div class="dp-space dp-space--tight">
         <UiSelect
           size="sm"
           :model-value="props.classId"
@@ -32,7 +32,7 @@
         :hint="histogramChartHint"
         :item-count="histogramBarItems.length"
         :option="histogramChartOption"
-        height="300px"
+        height="var(--dp-chart-height-panel)"
         :aria-label="histogramChartAriaLabel"
         empty-description="选定考试并刷新后展示分数段分布"
         class="score-dist__chart"
@@ -216,8 +216,3 @@ watch(
 )
 </script>
 
-<style lang="scss" scoped>
-.score-dist__chart {
-  width: 100%;
-}
-</style>

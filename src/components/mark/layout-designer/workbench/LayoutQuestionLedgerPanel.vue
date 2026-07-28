@@ -38,6 +38,8 @@ interface QuestionRow {
   question: ExamLayoutQuestionDto
   questionNo: string
   printedQuestionNo: string | null
+  sectionLabel: string | null
+  materialRef: string | null
   ocrSceneLabel: string
   questionTypeLabel: string
   fullScore: number
@@ -53,6 +55,8 @@ const rows = computed((): QuestionRow[] =>
       question,
       questionNo: question.questionNo,
       printedQuestionNo: question.printedQuestionNo ?? null,
+      sectionLabel: question.sectionLabel ?? null,
+      materialRef: question.materialRef ?? null,
       ocrSceneLabel: question.ocrScene
         ? strictEnumLabel(MarkOcrSceneDescription, question.ocrScene, 'OCR 场景')
         : '',
@@ -71,6 +75,8 @@ const rows = computed((): QuestionRow[] =>
 const columns: ColumnsType<QuestionRow> = [
   { title: '全局题号', dataIndex: 'questionNo', width: 84, align: 'center', fixed: 'left' },
   { title: '纸面题号', dataIndex: 'printedQuestionNo', width: 84, align: 'center' },
+  { title: '大题', dataIndex: 'sectionLabel', width: 64, align: 'center' },
+  { title: '材料', dataIndex: 'materialRef', width: 64, align: 'center' },
   { title: 'OCR 场景', dataIndex: 'ocrSceneLabel', width: 108 },
   { title: '题型', dataIndex: 'questionTypeLabel', width: 72, align: 'center' },
   { title: '满分', dataIndex: 'fullScore', width: 72, align: 'right' },
@@ -109,7 +115,7 @@ function handleRowClick(record: QuestionRow): void {
         <template #default>
           <span class="layout-question-ledger__gate-row">
             <UiTag tone="blue" size="sm">待完成资料入口</UiTag>
-            <span class="layout-question-ledger__gate-text">请先完成资料入口：整卷识别或生成答题卡</span>
+            <span class="layout-question-ledger__gate-text">请先完成资料入口：整卷识别或生成答题纸</span>
           </span>
         </template>
       </UiAlertStrip>
@@ -172,14 +178,14 @@ function handleRowClick(record: QuestionRow): void {
 .layout-question-ledger {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 12px;
+  gap: var(--dp-space-component);
   min-height: 240px;
 
   &__header {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    margin-bottom: 8px;
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__title {
@@ -199,14 +205,14 @@ function handleRowClick(record: QuestionRow): void {
   }
 
   &__gate {
-    margin: var(--dp-space-2) 0;
+    margin: var(--dp-space-component-tight) 0;
     max-width: 100%;
   }
 
   &__gate-row {
     display: inline-flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     min-width: 0;
   }
 

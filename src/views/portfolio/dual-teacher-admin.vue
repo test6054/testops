@@ -8,12 +8,13 @@ import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { PortfolioDualTeacherCertLevelCode } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioDualTeacherApplicationStatusDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -33,15 +34,16 @@ import { useQueryTable } from '@/composables/useQueryTable'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { PORTFOLIO_DUAL_TEACHER_CERT_LEVEL_LABEL } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { hasTeacherTenantPermission } from '@/utils/permission'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const authStore = useAuthStore()
 const userStore = useUserStore()
+const router = useRouter()
 const { accessScope, ensureLoaded } = usePortfolioReviewAccess()
 const collegeEligibilityById = ref<Record<string, PortfolioDualTeacherEligibilityFreezeVO>>({})
 const previewingId = ref('')
@@ -63,6 +65,13 @@ const opinionModal = reactive({
   id: '',
   title: '',
   opinion: '',
+})
+/** 意见确认写入中：关闭弹窗时不释放行锁 */
+const opinionSubmitting = ref(false)
+/** 双师台账导出审批用途 */
+const exportApplyModal = reactive({
+  open: false,
+  purpose: '',
 })
 /** 双师院审：受管教研室负责人或租户全校范围（与后端 assertCanCollegeReviewDualTeacher 一致） */
 const canCollegeReview = computed(() => {
@@ -145,7 +154,7 @@ function dualTeacherRowClassName(record: PortfolioDualTeacherApplicationVO): str
 
 const columns: ColumnsType = [
   { title: '申请单号', dataIndex: 'applicationNo', key: 'applicationNo' },
-  { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 100 },
+  { title: '教师', key: 'teacher', width: 160 },
   { title: '状态', dataIndex: 'applicationStatus', key: 'applicationStatus', width: 120 },
   { title: '等级', dataIndex: 'certLevel', key: 'certLevel', width: 80 },
   { title: '认定年度', dataIndex: 'certYear', key: 'certYear', width: 88 },
@@ -276,29 +285,54 @@ function handleDualTeacherRowAction(key: string, record: PortfolioDualTeacherApp
     void previewEligibility(record.id)
     return
   }
-  actionTeacherId.value = record.teacherUserId ? String(record.teacherUserId) : undefined
-  void reloadLifecycleState().then(() => {
-    if (key === 'collegeReturn' || key === 'academicReturn' || key === 'academicReject') {
+  if (writing.value || !record.id) {
+    return
+  }
+  const actionContext = {
+    applicationId: String(record.id),
+    teacherId: record.teacherUserId ? String(record.teacherUserId) : '',
+    action: key as DualTeacherWorkflowAction | 'collegeReturn' | 'academicReturn' | 'academicReject',
+  }
+  // 先冻结行目标，预检期间禁止切行串写
+  workflowId.value = actionContext.applicationId
+  actionTeacherId.value = actionContext.teacherId || undefined
+  void (async () => {
+    try {
+      await reloadLifecycleState()
+      if (workflowId.value !== actionContext.applicationId) {
+        return
+      }
       if (!assertArchiveWritable('双师认定审核')) {
         return
       }
-      openOpinionModal(key, record.id)
-      return
+      if (
+        actionContext.action === 'collegeReturn'
+        || actionContext.action === 'academicReturn'
+        || actionContext.action === 'academicReject'
+      ) {
+        openOpinionModal(actionContext.action, actionContext.applicationId)
+        return
+      }
+      await executeDualTeacherWorkflow(actionContext.action, actionContext.applicationId)
+    } catch (error) {
+      if (workflowId.value === actionContext.applicationId) {
+        showUserError(error, '双师认定流程操作失败')
+      }
+    } finally {
+      if (
+        workflowId.value === actionContext.applicationId
+        && !opinionModal.open
+      ) {
+        workflowId.value = ''
+      }
     }
-    if (!assertArchiveWritable('双师认定审核')) {
-      return
-    }
-    void runWorkflow(key as DualTeacherWorkflowAction, record.id)
-  })
+  })()
 }
 
 function openOpinionModal(
   action: 'collegeReturn' | 'academicReturn' | 'academicReject',
   id: string,
 ) {
-  if (writing.value) {
-    return
-  }
   opinionModal.open = true
   opinionModal.action = action
   opinionModal.id = id
@@ -312,6 +346,19 @@ function openOpinionModal(
   }
 }
 
+/** 意见弹窗关闭时释放行锁，避免取消后台账仍不可操作。 */
+function onOpinionModalOpenChange(open: boolean): void {
+  opinionModal.open = open
+  if (
+    !open
+    && !opinionSubmitting.value
+    && workflowId.value
+    && workflowId.value === opinionModal.id
+  ) {
+    workflowId.value = ''
+  }
+}
+
 async function confirmOpinionModal() {
   if (!opinionModal.action || !opinionModal.id) {
     return Promise.reject(new Error('缺少审核动作或申请 ID'))
@@ -320,63 +367,72 @@ async function confirmOpinionModal() {
     showFormValidationMessage('请填写审核意见')
     return Promise.reject(new Error('审核意见为空'))
   }
-  const action = opinionModal.action
-  const id = opinionModal.id
-  const auditOpinion = opinionModal.opinion.trim()
-  if (action === 'academicReject') {
+  const actionContext = {
+    applicationId: opinionModal.id,
+    action: opinionModal.action,
+    auditOpinion: opinionModal.opinion.trim(),
+  }
+  if (actionContext.action === 'academicReject') {
     const confirmed = await confirmAsync({
       title: '确认驳回双师认定',
       content: '驳回后本次申请终止，教师须重新发起认定申请。',
       type: 'warning',
       okText: '确认驳回',
     })
-    if (!confirmed || writing.value) {
-      return Promise.reject(new Error('用户取消驳回或写入中'))
+    if (!confirmed) {
+      return Promise.reject(new Error('用户取消驳回'))
     }
+  }
+  if (workflowId.value && workflowId.value !== actionContext.applicationId) {
+    return Promise.reject(new Error('审核目标已切换'))
   }
   if (!assertArchiveWritable('双师认定审核')) {
     return Promise.reject(new Error('档案封存写禁'))
   }
+  opinionSubmitting.value = true
   opinionModal.open = false
-  await runWorkflow(action, id, auditOpinion)
+  workflowId.value = actionContext.applicationId
+  try {
+    await executeDualTeacherWorkflow(
+      actionContext.action,
+      actionContext.applicationId,
+      actionContext.auditOpinion,
+    )
+  } finally {
+    opinionSubmitting.value = false
+    if (workflowId.value === actionContext.applicationId) {
+      workflowId.value = ''
+    }
+  }
 }
 
-async function runWorkflow(
-  action:
-    | 'submit'
-    | 'collegeApprove'
-    | 'collegeReturn'
-    | 'academicApprove'
-    | 'academicReturn'
-    | 'academicReject',
+async function executeDualTeacherWorkflow(
+  action: DualTeacherWorkflowAction,
   id: string,
   auditOpinion?: string,
 ) {
-  if (writing.value) {
+  if (action === 'submit') {
+    await portfolioDualTeacherApi.submit({ id })
+  } else if (action === 'collegeApprove') {
+    await portfolioDualTeacherApi.collegeApprove({ id, auditOpinion })
+  } else if (action === 'collegeReturn') {
+    await portfolioDualTeacherApi.collegeReturn({ id, auditOpinion })
+  } else if (action === 'academicApprove') {
+    await portfolioDualTeacherApi.academicApprove({ id, auditOpinion })
+  } else if (action === 'academicReturn') {
+    await portfolioDualTeacherApi.academicReturn({ id, auditOpinion })
+  } else {
+    await portfolioDualTeacherApi.academicReject({ id, auditOpinion })
+  }
+  if (workflowId.value !== id) {
     return
   }
-  workflowId.value = id
+  collegeEligibilityById.value = {}
+  void message.success('操作成功')
   try {
-    if (action === 'submit') {
-      await portfolioDualTeacherApi.submit({ id })
-    } else if (action === 'collegeApprove') {
-      await portfolioDualTeacherApi.collegeApprove({ id, auditOpinion })
-    } else if (action === 'collegeReturn') {
-      await portfolioDualTeacherApi.collegeReturn({ id, auditOpinion })
-    } else if (action === 'academicApprove') {
-      await portfolioDualTeacherApi.academicApprove({ id, auditOpinion })
-    } else if (action === 'academicReturn') {
-      await portfolioDualTeacherApi.academicReturn({ id, auditOpinion })
-    } else {
-      await portfolioDualTeacherApi.academicReject({ id, auditOpinion })
-    }
-    collegeEligibilityById.value = {}
-    void message.success('操作成功')
     await loadPage()
   } catch (error) {
-    showUserError(error, '双师认定流程操作失败')
-  } finally {
-    workflowId.value = ''
+    showUserError(error, '操作已生效，台账同步失败')
   }
 }
 
@@ -384,13 +440,36 @@ async function exportRoster() {
   if (writing.value) {
     return
   }
+  exportApplyModal.purpose = ''
+  exportApplyModal.open = true
+}
+
+async function confirmExportApply() {
+  const exportPurpose = exportApplyModal.purpose.trim()
+  if (!exportPurpose) {
+    showFormValidationMessage('请填写导出用途')
+    return Promise.reject(new Error('导出用途为空'))
+  }
+  const scope = accessScope.value
+  const tenantWide = Boolean(scope?.tenantWide)
+  const departmentId = scope?.reviewerDepartmentId
+  if (!tenantWide && !departmentId) {
+    showFormValidationMessage('当前账号缺少院系范围，无法申请导出双师台账')
+    return Promise.reject(new Error('缺少院系范围'))
+  }
   exporting.value = true
   try {
-    const result = await portfolioDualTeacherApi.exportRoster()
-    await downloadPortfolioExcelExport(result)
-    void message.success(`已导出 ${result.rowCount} 条`)
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.DUAL_TEACHER_ROSTER,
+      businessRef: tenantWide ? {} : { departmentId },
+      exportPurpose,
+    })
+    exportApplyModal.open = false
+    void message.success('已提交双师台账导出审批')
+    void router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出双师认定名册失败')
+    showUserError(error, '提交双师台账导出审批失败')
+    return Promise.reject(error)
   } finally {
     exporting.value = false
   }
@@ -408,7 +487,7 @@ async function handleImportSuccess() {
     <template #context>
       <ContextBar show-title layout="workbench" title="双师认定台账">
         <template #actions>
-          <UiButton size="sm" variant="outline" :disabled="writing" @click="loadPage">
+          <UiButton size="sm" variant="outline" :disabled="writing" @click="() => void loadPage()">
             刷新
           </UiButton>
           <UiButton
@@ -428,7 +507,7 @@ async function handleImportSuccess() {
             :disabled="writing"
             @click="exportRoster"
           >
-            导出台账
+            申请导出台账
           </UiButton>
         </template>
       </ContextBar>
@@ -438,7 +517,7 @@ async function handleImportSuccess() {
       tone="warning"
       title="档案已封存写禁"
       :description="archiveWriteBlockMessage"
-      class="mb-3"
+      class="dp-mb-component"
     />
     <UiPlatformExcelImportModal
       v-model:open="importModalOpen"
@@ -464,7 +543,14 @@ async function handleImportSuccess() {
         @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'certLevel'">
+          <template v-if="column.key === 'teacher'">
+            <div>{{ record.teacherName || '—' }}</div>
+            <div class="dual-teacher-admin__teacher-meta">
+              {{ record.teacherNumber || '—' }}
+              <template v-if="record.departmentName"> · {{ record.departmentName }}</template>
+            </div>
+          </template>
+          <template v-else-if="column.key === 'certLevel'">
             {{
               record.certLevel
                 ? (PORTFOLIO_DUAL_TEACHER_CERT_LEVEL_LABEL[record.certLevel as PortfolioDualTeacherCertLevelCode] ?? record.certLevel)
@@ -478,7 +564,7 @@ async function handleImportSuccess() {
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
             </UiTag>
 
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -524,12 +610,28 @@ async function handleImportSuccess() {
       </UiDataTable>
     </WorkbenchSurfaceCard>
     <UiDialog
+      v-model:open="exportApplyModal.open"
+      title="申请导出双师台账"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="confirmExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="exportApplyModal.purpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批与水印）"
+      />
+    </UiDialog>
+    <UiDialog
       v-model:open="opinionModal.open"
       :title="opinionModal.title"
       ok-text="确认"
       cancel-text="取消"
       :confirm-loading="writing"
       @ok="confirmOpinionModal"
+      @update:open="onOpinionModalOpenChange"
     >
       <UiTextarea
         size="sm"
@@ -540,3 +642,16 @@ async function handleImportSuccess() {
     </UiDialog>
   </StageWorkbenchShell>
 </template>
+
+<style scoped lang="scss">
+.dual-teacher-admin__teacher-meta {
+  margin-top: 2px;
+  color: var(--dp-text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.dual-teacher-admin__row-active {
+  background: var(--dp-surface-subtle);
+}
+</style>

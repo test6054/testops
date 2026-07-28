@@ -13,8 +13,6 @@
           size="sm"
           v-if="templateSetsLoadFailed"
           description="归档模板套加载失败"
-          action-label="重新加载"
-          @action="loadTemplateSets"
         />
         <UiDataTable
           v-else
@@ -81,8 +79,6 @@
           size="sm"
           v-if="templateSetsLoadFailed"
           description="归档模板套加载失败"
-          action-label="重新加载"
-          @action="loadTemplateSets"
         />
         <UiDataTable
           v-else
@@ -260,9 +256,7 @@
       <UiEmpty
         size="sm"
         v-if="auditLoadFailed"
-        description="模板版本历史加载失败"
-        action-label="重新加载"
-        @action="loadAuditRows"
+        description="模板版本历史加载失败；关闭后重新打开将再次拉取"
       />
       <UiDataTable
         v-else
@@ -352,9 +346,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
-import { RoleEnum } from '@/types/enums'
 import { ArchiveMaterialDeliveryModeCode } from '@/types/enums/archive-material-delivery-mode-enum'
 import { archiveTenantTemplateOperationTypeLabel } from '@/types/enums/archive-tenant-template-operation-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -365,11 +357,10 @@ import ArchiveTemplateSetPreviewDrawer from '@/views/teacher/archive-volume/comp
 
 defineOptions({ name: 'ArchiveVolumeTemplateSetsPanel' })
 
-const authStore = useAuthStore()
 const userStore = useUserStore()
-/** MVR-314：与路由 requireTenantAdmin / BE requireTenantAdminForConfig 同源 */
+/** 与 BE requireTenantAdminForConfig 同源：仅企业管理员可维护模板写操作 */
 const canManageArchiveConfig = computed(
-  () => authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin,
+  () => userStore.isEnterpriseTenantAdmin === true,
 )
 
 const activeScopeTab = ref<ArchiveTemplateScopeCode>(ArchiveTemplateScopeCode.PLATFORM)
@@ -657,7 +648,7 @@ async function loadTenantSetDetail(templateSetCode: string) {
 async function openEditDrawer(templateSetCode: string) {
   // MVR-381：与 canManageArchiveConfig / BE requireTenantAdminForConfig 二次拦截
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可编辑归档模板')
+    void message.warning('仅企业管理员可编辑归档模板')
     return
   }
   editorDrawerOpen.value = true
@@ -690,7 +681,7 @@ function openCopyModal(record: ArchiveTenantTemplateSetResponse, defaultTargetSe
   if (templateSetsLoadFailed.value) return
   // MVR-381：复制入口与 canManageArchiveConfig 二次拦截
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可复制归档模板')
+    void message.warning('仅企业管理员可复制归档模板')
     return
   }
   copySource.value = record
@@ -705,7 +696,7 @@ async function submitCopy() {
   }
   // MVR-314：模板配置写二次拦截
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可维护归档模板')
+    void message.warning('仅企业管理员可维护归档模板')
     return
   }
   if (templateSetsLoadFailed.value) {
@@ -742,7 +733,7 @@ async function submitCopyAll() {
   }
   // MVR-314：模板配置写二次拦截
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可维护归档模板')
+    void message.warning('仅企业管理员可维护归档模板')
     return
   }
   if (templateSetsLoadFailed.value) {
@@ -773,7 +764,7 @@ function openResyncModal(record: ArchiveTenantTemplateSetResponse) {
   if (templateSetsLoadFailed.value) return
   // MVR-381/421：重同步入口与 canManageArchiveConfig ∧ canResyncTenantSet 二次拦截
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可重新同步归档模板')
+    void message.warning('仅企业管理员可重新同步归档模板')
     return
   }
   if (canResyncTenantSet(record) !== true) {
@@ -878,7 +869,7 @@ async function submitRestoreFromAudit(auditId: string): Promise<void> {
   // MVR-314：模板配置写二次拦截
   // MVR-431：恢复写闸与 canManageArchiveConfig 严格叠闸
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可维护归档模板')
+    void message.warning('仅企业管理员可维护归档模板')
     return
   }
   if (!auditTarget.value || auditLoadFailed.value || templateSetsLoadFailed.value) {
@@ -892,7 +883,7 @@ async function submitRestoreFromAudit(auditId: string): Promise<void> {
     onOk: async () => {
       // MVR-938：onOk 再认 canManageArchiveConfig，防确认等待期间配置写权漂移
       if (canManageArchiveConfig.value !== true) {
-        void message.warning('仅超级管理员或租户管理员可维护归档模板')
+        void message.warning('仅企业管理员可维护归档模板')
         return
       }
       restoringAuditId.value = auditId
@@ -917,7 +908,7 @@ async function submitResync() {
   }
   // MVR-314/421：模板配置写 ∧ 可重同步源版本二次拦截
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可维护归档模板')
+    void message.warning('仅企业管理员可维护归档模板')
     return
   }
   if (!resyncTarget.value || canResyncTenantSet(resyncTarget.value) !== true) {
@@ -948,7 +939,7 @@ async function saveTenantSet() {
   }
   // MVR-314：模板配置写二次拦截
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可维护归档模板')
+    void message.warning('仅企业管理员可维护归档模板')
     return
   }
   if (!selectedSetCode.value || templateSetsLoadFailed.value) return
@@ -1040,11 +1031,11 @@ onMounted(() => {
 .archive-template-sets-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-template-sets-panel__tabs {
-  margin-top: 16px;
+  margin-top: var(--dp-space-block);
 }
 
 .archive-template-sets-panel__copy-bar {
@@ -1052,8 +1043,8 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--dp-space-3);
-  padding: var(--dp-space-3) var(--dp-space-4);
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border-top: 1px solid var(--dp-border);
   background: var(--dp-surface-subtle);
 }
@@ -1061,29 +1052,29 @@ onMounted(() => {
 .archive-template-sets-panel__copy-all {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   flex-wrap: wrap;
 }
 
 .archive-template-sets-panel__copy-all-label {
   font-size: var(--dp-font-size-md);
-  color: var(--dp-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 
 .archive-template-sets-panel__release {
-  margin-right: var(--dp-space-2);
+  margin-right: var(--dp-space-component-tight);
 }
 
 .archive-template-sets-panel__resync-alert {
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .archive-template-sets-panel__resync-form {
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .archive-template-sets-panel__audit-meta {
-  margin: 0 0 var(--dp-space-3);
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
@@ -1091,6 +1082,6 @@ onMounted(() => {
 .archive-template-editor__retention {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 </style>

@@ -29,6 +29,7 @@ export const MARK_DASHBOARD_TODO_COUNT_UNIT: Record<MarkTeacherDashboardTodoType
   [MarkTeacherDashboardTodoTypeCode.GRADE_PENDING]: '题',
   [MarkTeacherDashboardTodoTypeCode.PROCESSING_OPEN]: '项',
   [MarkTeacherDashboardTodoTypeCode.SCORE_UNPUBLISHED]: '份',
+  [MarkTeacherDashboardTodoTypeCode.SCORE_PENDING_PUBLISH_REVIEW]: '份',
   [MarkTeacherDashboardTodoTypeCode.CANDIDATE_UNBOUND]: '项',
   [MarkTeacherDashboardTodoTypeCode.ARBITRATION_PENDING]: '项',
   [MarkTeacherDashboardTodoTypeCode.SPOT_CHECK_PENDING]: '项',
@@ -46,6 +47,7 @@ const ATTENTION_TYPES = new Set([
   'PROCESSING_OPEN',
   'SPOT_CHECK_PENDING',
   'EXPERIENCE_ASSIST_PENDING',
+  'SCORE_PENDING_PUBLISH_REVIEW',
 ])
 
 /** 期末周紧急：影响评阅公正或主链，今日应处理。 */
@@ -61,7 +63,7 @@ export function isAttentionTodo(todo: MarkTeacherDashboardPendingTodoItemVO): bo
 
 export function resolveTodoUrgency(todo: MarkTeacherDashboardPendingTodoItemVO): MarkDashboardTodoUrgency {
   if (isUrgentTodo(todo)) return 'urgent'
-  if (todo.todoType === 'SCORE_UNPUBLISHED') return 'info'
+  if (todo.todoType === 'SCORE_UNPUBLISHED' || todo.todoType === 'SCORE_PENDING_PUBLISH_REVIEW') return 'info'
   if (isAttentionTodo(todo)) return 'attention'
   return 'normal'
 }
@@ -116,26 +118,17 @@ export function sumTodoCountByType(
     .reduce((sum, todo) => sum + (todo.count ?? 0), 0)
 }
 
-/** 待办行操作按钮：按业务类型精确动词，与高校阅卷主链动作一致。 */
-export const MARK_DASHBOARD_TODO_ACTION_LABEL: Record<MarkTeacherDashboardTodoTypeCode, string> = {
-  [MarkTeacherDashboardTodoTypeCode.SCAN_ATTENTION]: '查异常',
-  [MarkTeacherDashboardTodoTypeCode.PROCESSING_OPEN]: '查进度',
-  [MarkTeacherDashboardTodoTypeCode.GRADE_PENDING]: '去评阅',
-  [MarkTeacherDashboardTodoTypeCode.REVIEW_PENDING]: '去复核',
-  [MarkTeacherDashboardTodoTypeCode.SCORE_UNPUBLISHED]: '去发布',
-  [MarkTeacherDashboardTodoTypeCode.CANDIDATE_UNBOUND]: '去绑定',
-  [MarkTeacherDashboardTodoTypeCode.ARBITRATION_PENDING]: '去仲裁',
-  [MarkTeacherDashboardTodoTypeCode.SPOT_CHECK_PENDING]: '去抽检',
-  [MarkTeacherDashboardTodoTypeCode.EXPERIENCE_ASSIST_PENDING]: '去定标',
-}
-
-/** 待办行操作按钮文案；阻断项仍按类型语义，不泛化为「处理」。 */
+/** 待办行操作按钮文案；只认后端 enterActionLabel 合同，禁止前端平行动词表。 */
 export function resolveTodoActionLabel(todo: MarkTeacherDashboardPendingTodoItemVO): string {
   const todoType = todo.todoType
   if (!ALL_MARK_TEACHER_DASHBOARD_TODO_TYPE_CODES.includes(todoType)) {
     throw new Error(`未知待办类型: ${String(todoType)}`)
   }
-  return MARK_DASHBOARD_TODO_ACTION_LABEL[todoType]
+  const label = todo.enterActionLabel?.trim()
+  if (!label) {
+    throw new Error(`待办缺少 enterActionLabel 合同字段: todoType=${todoType}`)
+  }
+  return label
 }
 
 /** 待办行主标题：以考试名区分同类型多条。 */
@@ -199,11 +192,28 @@ export function resolvePendingTodoScopeByTab(
   return MarkTeacherDashboardPendingTodoScopeCode.ALL
 }
 
-export function resolveDefaultPendingTodoTab(
-  todos: MarkTeacherDashboardPendingTodoItemVO[],
+/** 将后端待办 scope 还原为概览 Tab；与 resolvePendingTodoScopeByTab 互逆。 */
+export function resolvePendingTodoTabByScope(
+  scope: MarkTeacherDashboardPendingTodoScopeCode,
 ): MarkDashboardPendingTodoTabKey {
-  if (countUrgentTodos(todos) > 0) return 'urgent'
-  if (countAttentionTodos(todos) > 0) return 'attention'
+  if (scope === MarkTeacherDashboardPendingTodoScopeCode.URGENT) return 'urgent'
+  if (scope === MarkTeacherDashboardPendingTodoScopeCode.ATTENTION) return 'attention'
+  return 'all'
+}
+
+/**
+ * 首次进入或未选手动 Tab 时的默认档位。
+ * 计数优先用 signalMetrics 全量 totals，禁止只用 TopN 列表推断优先级。
+ */
+export function resolveDefaultPendingTodoTab(
+  totals?: MarkDashboardPendingTodoTotals,
+  todos: MarkTeacherDashboardPendingTodoItemVO[] = [],
+): MarkDashboardPendingTodoTabKey {
+  const urgent = totals?.urgentTodoCount ?? countUrgentTodos(todos)
+  if (urgent > 0) return 'urgent'
+  const attention = totals?.attentionTodoCount
+    ?? todos.filter((todo) => !isUrgentTodo(todo) && isAttentionTodo(todo)).length
+  if (attention > 0) return 'attention'
   return 'all'
 }
 

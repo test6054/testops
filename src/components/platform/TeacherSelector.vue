@@ -12,6 +12,8 @@ interface Props {
   value?: string | string[] | null
   mode?: 'multiple'
   departmentId?: string | null
+  /** 选择列表中排除的用户 ID（如提交发布复核时禁止选本人） */
+  excludeUserIds?: string[] | null
   placeholder?: string
   allowClear?: boolean
   disabled?: boolean
@@ -19,6 +21,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  excludeUserIds: null,
   placeholder: '请选择教师',
   allowClear: true,
   disabled: false,
@@ -75,6 +78,7 @@ watch(
     void loadOptions()
   },
 )
+
 
 function teacherDisplayName(option: TeacherUserInfoDto): string {
   return option.nickName
@@ -166,8 +170,24 @@ function selectValueToTeacherIds(value: UiOptionValue | UiOptionValue[] | undefi
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
+const excludedUserIdSet = computed(() => {
+  const set = new Set<string>()
+  for (const raw of props.excludeUserIds ?? []) {
+    const id = normalizeTeacherUserId(raw)
+    if (id) set.add(id)
+  }
+  return set
+})
+
+function isExcludedTeacherId(teacherId: string | null | undefined): boolean {
+  if (!teacherId) return false
+  return excludedUserIdSet.value.has(teacherId)
+}
+
 const selectOptions = computed<UiSelectOption[]>(() =>
-  options.value.map(option => ({ value: option.id, label: teacherDisplayName(option) })),
+  options.value
+    .filter((option) => !isExcludedTeacherId(option.id))
+    .map((option) => ({ value: option.id, label: teacherDisplayName(option) })),
 )
 
 const controlStyle = computed(() => ({
@@ -182,8 +202,17 @@ function handleSearch(value: string): void {
   }, 300)
 }
 
+function stripExcludedTeacherIds(value: string | string[] | null): string | string[] | null {
+  if (value == null) return null
+  if (Array.isArray(value)) {
+    const kept = value.filter((id) => !isExcludedTeacherId(id))
+    return kept
+  }
+  return isExcludedTeacherId(value) ? null : value
+}
+
 function handleChange(value: UiOptionValue | UiOptionValue[] | undefined): void {
-  const next = selectValueToTeacherIds(value)
+  const next = stripExcludedTeacherIds(selectValueToTeacherIds(value))
   internalValue.value = next ?? undefined
   const option = Array.isArray(next)
     ? options.value.filter(item => next.includes(item.id))
@@ -191,6 +220,22 @@ function handleChange(value: UiOptionValue | UiOptionValue[] | undefined): void 
   emit('update:value', next)
   emit('change', next, option)
 }
+
+watch(
+  excludedUserIdSet,
+  () => {
+    const cleaned = stripExcludedTeacherIds(normalizeSelectValue(props.value))
+    const current = normalizeSelectValue(props.value)
+    const same
+      = Array.isArray(cleaned) && Array.isArray(current)
+        ? cleaned.length === current.length && cleaned.every((id, i) => id === current[i])
+        : cleaned === current
+    if (!same) {
+      internalValue.value = cleaned ?? undefined
+      emit('update:value', cleaned)
+    }
+  },
+)
 
 watch(
   () => props.value,

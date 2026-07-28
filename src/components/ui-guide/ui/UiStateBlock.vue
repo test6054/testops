@@ -159,9 +159,9 @@ const containerStyle = computed(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
   min-height: 88px;
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
   border: 1px solid var(--state-border);
   border-radius: var(--dp-radius-panel);
   background: var(--state-surface);
@@ -169,9 +169,9 @@ const containerStyle = computed(() => {
 }
 
 .ui-state-block--compact {
-  gap: var(--dp-space-1, 6px);
+  gap: var(--dp-space-component-xs);
   min-height: 72px;
-  padding: 10px;
+  padding: var(--dp-space-component);
 }
 
 .ui-state-block--sm {
@@ -180,7 +180,7 @@ const containerStyle = computed(() => {
 
 .ui-state-block--lg {
   min-height: 96px;
-  padding: var(--dp-space-3, 12px) 12px;
+  padding: var(--dp-space-component);
 }
 
 .ui-state-block--empty {
@@ -240,7 +240,7 @@ const containerStyle = computed(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: var(--dp-space-component);
   max-width: 520px;
 }
 
@@ -281,7 +281,7 @@ const containerStyle = computed(() => {
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 4px;
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-component-xs);
 }
 </style>

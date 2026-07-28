@@ -243,6 +243,40 @@ function injectColumnMinWidth<RecordType>(
   }
 }
 
+function resolveHeaderAriaSort(
+  order: ColumnType['sortOrder'] | ColumnType['defaultSortOrder'] | undefined,
+): 'ascending' | 'descending' | 'none' {
+  if (order === 'ascend') {
+    return 'ascending'
+  }
+  if (order === 'descend') {
+    return 'descending'
+  }
+  return 'none'
+}
+
+/** 可排序列表头注入 aria-sort，满足 WCAG 1.3.1 / 4.1.2 */
+function injectColumnAriaSort<RecordType>(
+  column: ColumnType<RecordType>,
+): ColumnType<RecordType> {
+  const sortable = column.sorter != null && column.sorter !== false
+  if (!sortable && column.sortOrder == null && column.defaultSortOrder == null) {
+    return column
+  }
+  const prevCustomHeaderCell = column.customHeaderCell
+  return {
+    ...column,
+    customHeaderCell: (col) => {
+      const base = prevCustomHeaderCell?.(col) ?? {}
+      const order = column.sortOrder ?? column.defaultSortOrder
+      return {
+        ...base,
+        'aria-sort': resolveHeaderAriaSort(order),
+      }
+    },
+  }
+}
+
 /**
  * 按列 key / title 推断窄视口隐藏策略；显式 meta.hideBelow 优先。
  */
@@ -319,24 +353,25 @@ export function normalizeDataTableColumn<RecordType = Record<string, unknown>>(
 ): UiDataTableColumn<RecordType> {
   const columnKey = resolveColumnKey(column)
   const withMinWidth = injectColumnMinWidth(column)
-  const withMeta = withMinWidth as UiDataTableColumn<RecordType>
-  const alignRight = withMeta.meta?.numeric || withMinWidth.align === 'right'
+  const withAriaSort = injectColumnAriaSort(withMinWidth)
+  const withMeta = withAriaSort as UiDataTableColumn<RecordType>
+  const alignRight = withMeta.meta?.numeric || withAriaSort.align === 'right'
   if (columnKey === 'actions') {
     return {
-      ...withMinWidth,
-      align: withMinWidth.align ?? 'center',
-      fixed: withMinWidth.fixed ?? 'right',
+      ...withAriaSort,
+      align: withAriaSort.align ?? 'center',
+      fixed: withAriaSort.fixed ?? 'right',
     }
   }
   if (!alignRight) {
-    return withMinWidth
+    return withAriaSort
   }
   const classNames = [
-    typeof withMinWidth.className === 'string' ? withMinWidth.className : '',
+    typeof withAriaSort.className === 'string' ? withAriaSort.className : '',
     'ui-data-table__col--numeric',
   ].filter(Boolean)
   return {
-    ...withMinWidth,
+    ...withAriaSort,
     align: 'right',
     className: classNames.join(' ') || undefined,
   }

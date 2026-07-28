@@ -17,6 +17,7 @@ export const FINAL_SCORE_STATUS_TONE: Record<FinalScoreStatusCode, BadgeTone> = 
   [FinalScoreStatusCode.CALCULATED]: 'blue',
   [FinalScoreStatusCode.CONFIRMED]: 'blue',
   [FinalScoreStatusCode.CORRECTED]: 'orange',
+  [FinalScoreStatusCode.PENDING_PUBLISH_REVIEW]: 'yellow',
   [FinalScoreStatusCode.PUBLISHED]: 'green',
   [FinalScoreStatusCode.WITHDRAWN]: 'red',
 }

@@ -1,6 +1,7 @@
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import message from 'ant-design-vue/es/message'
 import { parseSemesterCode } from '@/types/enums/semester-enum'
+import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 
 /** 与后端 BizException(PARAM_ERROR) 文案一致 */
 export const ACADEMIC_YEAR_SEMESTER_PAIR_MESSAGE = '学年和学期须同时选择'
@@ -17,7 +18,7 @@ export function isAcademicYearSemesterPairFilled(
 
 /**
  * 构造可选学年学期筛选：两者皆空返回 {}，两者皆有返回成对字段；单填返回 null。
- * 归档卷宽筛、工作台双空默认当前学期等均使用此函数。
+ * 归档卷历史全量、宽检索等可选域使用此函数。
  */
 export function buildOptionalAcademicYearSemesterQuery(
   academicYear?: string | null,
@@ -44,6 +45,25 @@ export function buildRequiredAcademicYearSemesterQuery(
     return null
   }
   return { academicYear: year, semester }
+}
+
+/**
+ * 阅卷工作台必填学年学期：空学年回退本学期；有学年无学期补当前季节学期。
+ * 禁止返回空值，禁止空筛全量。
+ */
+export function requireWorkbenchAcademicYearSemester(
+  academicYear?: string | null,
+  semester?: SemesterCode | null,
+): { academicYear: string, semester: SemesterCode } {
+  const year = academicYear?.trim() || ''
+  if (year && semester) {
+    return { academicYear: year, semester }
+  }
+  const current = getDefaultAcademicYearAndSemester()
+  if (year) {
+    return { academicYear: year, semester: current.semester }
+  }
+  return current
 }
 
 /** 请求前校验学年学期成对；失败时提示并返回 false。 */

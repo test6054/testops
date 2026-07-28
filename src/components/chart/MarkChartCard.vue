@@ -12,12 +12,24 @@
     </template>
 
     <template #chart>
-      <slot />
+      <UiEmpty
+        v-if="errorText"
+        size="sm"
+        title="图表加载失败"
+        :description="errorText"
+      >
+        <template #action>
+          <UiButton size="sm" variant="outline" @click="emit('retry')">重新加载</UiButton>
+        </template>
+      </UiEmpty>
+      <slot v-else />
     </template>
   </UiStatisticChartCard>
 </template>
 
 <script lang="ts" setup>
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiStatisticChartCard from '@/components/ui-guide/ui/UiStatisticChartCard.vue'
 
 defineOptions({ name: 'MarkChartCard' })
@@ -28,14 +40,20 @@ withDefaults(
     description?: string
     loading?: boolean
     chartMinHeight?: string | number
+    errorText?: string
   }>(),
   {
     title: '',
     description: '',
     loading: false,
     chartMinHeight: 300,
+    errorText: '',
   },
 )
+
+const emit = defineEmits<{
+  retry: []
+}>()
 </script>
 
 <style scoped>

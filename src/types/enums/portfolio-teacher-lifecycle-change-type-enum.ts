@@ -8,6 +8,7 @@ export enum PortfolioTeacherLifecycleChangeTypeCode {
   LONG_SICK_LEAVE = 'LONG_SICK_LEAVE',
   REHIRED = 'REHIRED',
   RESUME_FROM_HOLD = 'RESUME_FROM_HOLD',
+  CANCEL_TRANSFER_OUT = 'CANCEL_TRANSFER_OUT',
   EXPORT_COMPLETED = 'EXPORT_COMPLETED',
 }
 
@@ -23,5 +24,6 @@ export const PortfolioTeacherLifecycleChangeTypeDescription: Record<
   [PortfolioTeacherLifecycleChangeTypeCode.LONG_SICK_LEAVE]: '长期病假',
   [PortfolioTeacherLifecycleChangeTypeCode.REHIRED]: '返聘',
   [PortfolioTeacherLifecycleChangeTypeCode.RESUME_FROM_HOLD]: '恢复在职',
+  [PortfolioTeacherLifecycleChangeTypeCode.CANCEL_TRANSFER_OUT]: '撤销调出',
   [PortfolioTeacherLifecycleChangeTypeCode.EXPORT_COMPLETED]: '迁出导出完成',
 }

@@ -9,11 +9,16 @@ import type {
 } from '@/apis/quality/accreditation'
 import type {
   SelfAssessmentSectionEvidenceRefItem,
+  SelfAssessmentSectionEvidenceRefVO,
   SelfAssessmentSectionVO,
 } from '@/apis/quality/self-assessment-section'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import { accreditationApi } from '@/apis/quality/accreditation'
+import {
+  accreditationApi,
+  AccreditationEvidenceStatusCode,
+  AccreditationEvidenceStatusDescription,
+} from '@/apis/quality/accreditation'
 import {
   SELF_ASSESSMENT_SECTION_CONTENT_STATUS_TONE,
   selfAssessmentSectionApi,
@@ -42,7 +47,7 @@ defineOptions({ name: 'SelfAssessmentReportPanel' })
 
 const props = defineProps<{
   cockpit?: AccreditationCockpitVO
-  activeCycle?: AccreditationCycleVO
+  applicationCycle?: AccreditationCycleVO
   programId?: string
   trainingPlanId?: string
 }>()
@@ -79,8 +84,17 @@ const selectedEvidenceIds = ref<string[]>([])
 interface SelfAssessmentSectionEditorModel {
   narrativeContent: string
   evidenceNarrative: string
-  evidenceRefs: SelfAssessmentSectionEvidenceRefItem[]
+  evidenceRefs: SelfAssessmentSectionEditorEvidenceRef[]
 }
+
+type SelfAssessmentSectionEditorEvidenceRef = SelfAssessmentSectionEvidenceRefItem
+  & Pick<
+    SelfAssessmentSectionEvidenceRefVO,
+    | 'accreditationEvidenceTitle'
+    | 'accreditationEvidenceStatus'
+    | 'accreditationEvidenceReferenceValid'
+    | 'accreditationEvidenceInvalidReason'
+  >
 
 const editor = reactive<SelfAssessmentSectionEditorModel>({
   narrativeContent: '',
@@ -94,19 +108,30 @@ const activeSection = computed(() =>
 
 const readyCount = computed(() => sections.value.filter((item) => item.materialReady).length)
 
-const canEdit = computed(() => canEditSelfAssessmentSection(props.activeCycle))
+const invalidEvidenceRefCount = computed(() => sections.value.reduce((count, section) =>
+  count + (section.evidenceRefs || []).filter(ref =>
+    ref.refType === SelfAssessmentSectionEvidenceRefTypeCode.ACCREDITATION_EVIDENCE
+    && ref.accreditationEvidenceReferenceValid !== true,
+  ).length, 0))
+
+const canEdit = computed(() => canEditSelfAssessmentSection(props.applicationCycle))
 
 const canSubmit = computed(() => {
-  if (!props.activeCycle) return false
-  return canSubmitSelfAssessment(props.activeCycle) && readyCount.value >= 8
+  if (!props.applicationCycle) return false
+  return canSubmitSelfAssessment(props.applicationCycle)
+    && readyCount.value >= 8
+    && invalidEvidenceRefCount.value === 0
 })
 
 const submitHint = computed(() => {
-  if (!props.activeCycle) return '请先创建并登记认证周期'
+  if (!props.applicationCycle) return '请先创建并登记认证申请周期'
   if (readyCount.value < 8) {
     return `章节正文就绪 ${readyCount.value}/8，请补齐 narrative 或通过 AI 生成自评报告`
   }
-  if (!canSubmitSelfAssessment(props.activeCycle)) {
+  if (invalidEvidenceRefCount.value > 0) {
+    return `仍有 ${invalidEvidenceRefCount.value} 条认证证据引用已失效，请重新同步并替换后再提交`
+  }
+  if (!canSubmitSelfAssessment(props.applicationCycle)) {
     return '当前认证阶段不允许提交自评报告'
   }
   return '八节正文已就绪，可在「认证周期」Tab 提交自评报告'
@@ -119,11 +144,15 @@ function syncEditor(section?: SelfAssessmentSectionVO) {
     refType: item.refType,
     fieldPath: item.fieldPath,
     accreditationEvidenceId: item.accreditationEvidenceId,
+    accreditationEvidenceTitle: item.accreditationEvidenceTitle,
+    accreditationEvidenceStatus: item.accreditationEvidenceStatus,
+    accreditationEvidenceReferenceValid: item.accreditationEvidenceReferenceValid,
+    accreditationEvidenceInvalidReason: item.accreditationEvidenceInvalidReason,
   }))
 }
 
 async function loadSections() {
-  const cycleId = props.activeCycle?.id
+  const cycleId = props.applicationCycle?.id
   if (!cycleId) {
     sections.value = []
     sectionTotal.value = 0
@@ -171,7 +200,11 @@ async function saveSection() {
       id: section.id,
       narrativeContent: editor.narrativeContent,
       evidenceNarrative: editor.evidenceNarrative,
-      evidenceRefs: editor.evidenceRefs,
+      evidenceRefs: editor.evidenceRefs.map(item => ({
+        refType: item.refType,
+        fieldPath: item.fieldPath,
+        accreditationEvidenceId: item.accreditationEvidenceId,
+      })),
     })
     void message.success('章节已保存')
     await loadSections()
@@ -188,7 +221,7 @@ function removeEvidenceRef(index: number) {
 }
 
 async function loadEvidenceOptions(keyword?: string) {
-  if (!props.programId || !props.trainingPlanId) {
+  if (!props.programId || !props.trainingPlanId || !props.applicationCycle?.id) {
     evidenceOptions.value = []
     return
   }
@@ -199,9 +232,13 @@ async function loadEvidenceOptions(keyword?: string) {
       pageSize: 50,
       programId: props.programId,
       trainingPlanId: props.trainingPlanId,
+      accreditationCycleId: props.applicationCycle.id,
+      evidenceStatus: AccreditationEvidenceStatusCode.ACTIVE,
       keyword: keyword?.trim() || undefined,
     })
     evidenceOptions.value = page.list
+    const activeEvidenceIds = new Set(evidenceOptions.value.map(item => item.id))
+    selectedEvidenceIds.value = selectedEvidenceIds.value.filter(id => activeEvidenceIds.has(id))
   } catch (error) {
     evidenceOptions.value = []
     showUserError(error, '认证证据加载失败')
@@ -211,7 +248,7 @@ async function loadEvidenceOptions(keyword?: string) {
 }
 
 async function openEvidenceDrawer() {
-  if (!props.programId || !props.trainingPlanId) return
+  if (!props.programId || !props.trainingPlanId || !props.applicationCycle?.id) return
   evidenceDrawerOpen.value = true
   evidenceKeyword.value = ''
   selectedEvidenceIds.value = editor.evidenceRefs
@@ -228,11 +265,17 @@ function applySelectedEvidence() {
   const keptFieldRefs = editor.evidenceRefs.filter(
     (item) => item.refType === SelfAssessmentSectionEvidenceRefTypeCode.FIELD_PATH,
   )
-  const evidenceRefs: SelfAssessmentSectionEvidenceRefItem[] = [...keptFieldRefs]
+  const evidenceRefs: SelfAssessmentSectionEditorEvidenceRef[] = [...keptFieldRefs]
   for (const evidenceId of selectedEvidenceIds.value) {
+    const evidence = evidenceOptions.value.find(item => item.id === evidenceId)
+    if (!evidence) continue
     evidenceRefs.push({
       refType: SelfAssessmentSectionEvidenceRefTypeCode.ACCREDITATION_EVIDENCE,
       accreditationEvidenceId: evidenceId,
+      accreditationEvidenceTitle: evidence.evidenceTitle,
+      accreditationEvidenceStatus: evidence.evidenceStatus,
+      accreditationEvidenceReferenceValid: true,
+      accreditationEvidenceInvalidReason: evidence.invalidReason,
     })
   }
   editor.evidenceRefs = evidenceRefs
@@ -247,6 +290,20 @@ function sectionStatusLabel(section: SelfAssessmentSectionVO): string {
   )
 }
 
+function evidenceReferenceStatusLabel(reference: SelfAssessmentSectionEditorEvidenceRef): string {
+  if (reference.accreditationEvidenceReferenceValid !== true) {
+    return '引用失效'
+  }
+  if (!reference.accreditationEvidenceStatus) {
+    throw new Error('有效认证证据引用缺少证据状态')
+  }
+  return strictEnumLabel(
+    AccreditationEvidenceStatusDescription,
+    reference.accreditationEvidenceStatus,
+    '认证证据状态',
+  )
+}
+
 function sectionStatusTone(section: SelfAssessmentSectionVO) {
   return strictEnumTone(
     SELF_ASSESSMENT_SECTION_CONTENT_STATUS_TONE,
@@ -256,7 +313,7 @@ function sectionStatusTone(section: SelfAssessmentSectionVO) {
 }
 
 watch(
-  () => props.activeCycle?.id,
+  () => props.applicationCycle?.id,
   () => {
     sectionPageNum.value = 1
     void loadSections()
@@ -279,7 +336,7 @@ watch(activeSectionKey, () => {
 
     <p class="self-assessment-panel__hint">{{ submitHint }}</p>
 
-    <UiAlertStrip v-if="!activeCycle" tone="info" size="sm" dense inline :show-icon="false">
+    <UiAlertStrip v-if="!applicationCycle" tone="info" size="sm" dense inline :show-icon="false">
       <template #default>
         <span style="display: inline-flex; align-items: center; gap: 8px">
           <UiTag tone="blue" size="sm">未登记周期</UiTag>
@@ -359,9 +416,27 @@ watch(activeSectionKey, () => {
                 {{
                   evidenceRef.refType === SelfAssessmentSectionEvidenceRefTypeCode.FIELD_PATH
                     ? evidenceRef.fieldPath
-                    : evidenceRef.accreditationEvidenceId
+                    : evidenceRef.accreditationEvidenceTitle || evidenceRef.accreditationEvidenceId
                 }}
               </span>
+              <template
+                v-if="evidenceRef.refType === SelfAssessmentSectionEvidenceRefTypeCode.ACCREDITATION_EVIDENCE"
+              >
+                <UiTag
+                  :tone="evidenceRef.accreditationEvidenceReferenceValid === true
+                    ? 'green'
+                    : 'orange'"
+                  size="sm"
+                >
+                  {{ evidenceReferenceStatusLabel(evidenceRef) }}
+                </UiTag>
+                <span
+                  v-if="evidenceRef.accreditationEvidenceReferenceValid !== true"
+                  class="self-assessment-panel__evidence-invalid-reason"
+                >
+                  {{ evidenceRef.accreditationEvidenceInvalidReason || '认证证据不存在或已删除' }}
+                </span>
+              </template>
               <UiButton v-if="canEdit" variant="ghost" size="sm" @click="removeEvidenceRef(index)">
                 移除
               </UiButton>
@@ -512,6 +587,11 @@ watch(activeSectionKey, () => {
   align-items: center;
   gap: 8px;
   font-size: var(--dp-font-size-sm);
+}
+
+.self-assessment-panel__evidence-invalid-reason {
+  color: var(--dp-text-muted);
+  font-size: var(--dp-font-size-xs);
 }
 
 .self-assessment-panel__evidence-empty {

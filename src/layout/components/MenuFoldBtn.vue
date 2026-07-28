@@ -19,7 +19,7 @@
       :body-style="{
         'border-right': '1px solid var(--dp-border-subtle)',
         'box-sizing': 'border-box',
-        'background-color': 'var(--dp-bg-container)',
+        'background-color': 'var(--dp-surface)',
       }"
       :footer="null"
       :header="false"

@@ -11,8 +11,9 @@ import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioPrivacyConsentApi } from '@/apis/portfolio/privacy-consent'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiButton from '@/components/ui-guide/ui/UiButton.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -27,8 +28,12 @@ const { currentUserId } = usePortfolioTeacherAccess()
 
 const loading = ref(false)
 const submitting = ref(false)
-const loadError = ref(false)
+const stateLoadError = ref(false)
+const noticeLoadError = ref(false)
+const noticeStale = ref(false)
+const stateStale = ref(false)
 const requestToken = ref(0)
+const pageGeneration = ref(0)
 const notice = ref<PortfolioPrivacyConsentNoticeVO | null>(null)
 const state = ref<PortfolioPrivacyConsentVO | null>(null)
 
@@ -38,6 +43,7 @@ const teacherId = computed(() =>
 const blockedMode = computed(() => route.query.mode === 'blocked')
 const errorMode = computed(() => route.query.mode === 'error')
 const manageMode = computed(() => route.query.mode === 'manage')
+const loadError = computed(() => stateLoadError.value || noticeLoadError.value)
 const actionDisabled = computed(
   () => loading.value || loadError.value || !notice.value || !state.value,
 )
@@ -52,34 +58,81 @@ const isProxyPrivacyTarget = computed(() => {
 
 const privacyWriteBlocked = computed(() => isProxyPrivacyTarget.value)
 
+function buildActionPayload(boundTeacherId: string | undefined, boundPolicyVersion: string) {
+  return {
+    ...(boundTeacherId ? { teacherId: boundTeacherId } : {}),
+    policyVersion: boundPolicyVersion,
+  }
+}
+
 async function load() {
-  const currentToken = requestToken.value + 1
-  requestToken.value = currentToken
+  const currentToken = ++requestToken.value
+  const boundTeacherId = teacherId.value
   loading.value = true
-  loadError.value = false
-  notice.value = null
-  state.value = null
+  stateLoadError.value = false
+  noticeLoadError.value = false
   try {
     const stateResult = await portfolioPrivacyConsentApi.getCurrent(
-      teacherId.value ? { teacherId: teacherId.value } : undefined,
+      boundTeacherId ? { teacherId: boundTeacherId } : undefined,
     )
-    if (requestToken.value !== currentToken) return
+    if (
+      requestToken.value !== currentToken
+      || teacherId.value !== boundTeacherId
+    ) {
+      return
+    }
     state.value = stateResult
+    stateStale.value = false
     try {
-      notice.value = await portfolioPrivacyConsentApi.getNotice()
+      const noticeResult = await portfolioPrivacyConsentApi.getNotice()
+      if (
+        requestToken.value !== currentToken
+        || teacherId.value !== boundTeacherId
+      ) {
+        return
+      }
+      notice.value = noticeResult
+      noticeStale.value = false
+      noticeLoadError.value = false
     } catch (error) {
-      if (requestToken.value !== currentToken) return
-      notice.value = null
+      if (
+        requestToken.value !== currentToken
+        || teacherId.value !== boundTeacherId
+      ) {
+        return
+      }
+      noticeLoadError.value = true
+      if (notice.value) {
+        noticeStale.value = true
+      } else {
+        notice.value = null
+      }
       showUserError(error, '加载个人信息处理告知失败')
     }
-    if (stateResult.collectionAllowed && !manageMode.value) {
+    if (
+      stateResult.collectionAllowed
+      && !manageMode.value
+      && requestToken.value === currentToken
+      && teacherId.value === boundTeacherId
+    ) {
       await router.replace('/portfolio/teacher/home')
     }
   } catch (error) {
-    if (requestToken.value !== currentToken) return
-    state.value = null
-    notice.value = null
-    loadError.value = true
+    if (
+      requestToken.value !== currentToken
+      || teacherId.value !== boundTeacherId
+    ) {
+      return
+    }
+    stateLoadError.value = true
+    if (state.value) {
+      stateStale.value = true
+    } else {
+      state.value = null
+    }
+    if (!notice.value) {
+      noticeLoadError.value = true
+    }
     showUserError(error, '加载个人信息处理状态失败')
   } finally {
     if (requestToken.value === currentToken) loading.value = false
@@ -91,15 +144,34 @@ async function grant() {
     void message.warning('不可代他人签署个人信息处理同意')
     return
   }
-
+  const boundTeacherId = teacherId.value
+  const boundPolicyVersion = notice.value?.policyVersion
+  const boundGeneration = pageGeneration.value
+  if (!boundPolicyVersion) {
+    showUserError(null, '告知文本未就绪，不能签署')
+    return
+  }
   submitting.value = true
   try {
-    state.value = await portfolioPrivacyConsentApi.grant(
-      teacherId.value ? { teacherId: teacherId.value } : undefined,
+    const nextState = await portfolioPrivacyConsentApi.grant(
+      buildActionPayload(boundTeacherId, boundPolicyVersion),
     )
+    if (
+      pageGeneration.value !== boundGeneration
+      || teacherId.value !== boundTeacherId
+    ) {
+      return
+    }
+    state.value = nextState
     void message.success('已同意，可开始使用档案袋')
     await router.replace('/portfolio/teacher/home')
   } catch (error) {
+    if (
+      pageGeneration.value !== boundGeneration
+      || teacherId.value !== boundTeacherId
+    ) {
+      return
+    }
     showUserError(error, '同意失败')
   } finally {
     submitting.value = false
@@ -111,14 +183,33 @@ async function decline() {
     void message.warning('不可代他人暂不授权')
     return
   }
-
+  const boundTeacherId = teacherId.value
+  const boundPolicyVersion = notice.value?.policyVersion
+  const boundGeneration = pageGeneration.value
+  if (!boundPolicyVersion) {
+    showUserError(null, '告知文本未就绪，不能操作')
+    return
+  }
   submitting.value = true
   try {
-    state.value = await portfolioPrivacyConsentApi.decline(
-      teacherId.value ? { teacherId: teacherId.value } : undefined,
+    const nextState = await portfolioPrivacyConsentApi.decline(
+      buildActionPayload(boundTeacherId, boundPolicyVersion),
     )
+    if (
+      pageGeneration.value !== boundGeneration
+      || teacherId.value !== boundTeacherId
+    ) {
+      return
+    }
+    state.value = nextState
     void message.info('已暂不授权')
   } catch (error) {
+    if (
+      pageGeneration.value !== boundGeneration
+      || teacherId.value !== boundTeacherId
+    ) {
+      return
+    }
     showUserError(error, '暂不授权失败')
   } finally {
     submitting.value = false
@@ -138,14 +229,33 @@ async function withdraw() {
   })
   if (!confirmed) return
 
-  const targetTeacherId = teacherId.value
+  const boundTeacherId = teacherId.value
+  const boundPolicyVersion = notice.value?.policyVersion || state.value?.currentPolicyVersion
+  const boundGeneration = pageGeneration.value
+  if (!boundPolicyVersion) {
+    showUserError(null, '告知版本未知，不能撤回')
+    return
+  }
   submitting.value = true
   try {
-    state.value = await portfolioPrivacyConsentApi.withdraw(
-      targetTeacherId ? { teacherId: targetTeacherId } : undefined,
+    const nextState = await portfolioPrivacyConsentApi.withdraw(
+      buildActionPayload(boundTeacherId, boundPolicyVersion),
     )
+    if (
+      pageGeneration.value !== boundGeneration
+      || teacherId.value !== boundTeacherId
+    ) {
+      return
+    }
+    state.value = nextState
     void message.success('已撤回同意，新增采集已停止')
   } catch (error) {
+    if (
+      pageGeneration.value !== boundGeneration
+      || teacherId.value !== boundTeacherId
+    ) {
+      return
+    }
     showUserError(error, '撤回同意失败')
   } finally {
     submitting.value = false
@@ -162,6 +272,7 @@ function goHome() {
 watch(
   () => [route.query.teacherId, route.query.mode],
   () => {
+    pageGeneration.value += 1
     void load()
   },
   { immediate: true },
@@ -176,7 +287,11 @@ watch(
         show-title
         title="个人信息处理同意"
         subtitle="管理教师数据采集与使用授权"
-      />
+      >
+        <template #actions>
+          <UiButton size="sm" variant="outline" :loading="loading" @click="load">刷新</UiButton>
+        </template>
+      </ContextBar>
     </template>
     <div v-if="isProxyPrivacyTarget" class="privacy-consent__proxy-gate" role="status">
       <span class="privacy-consent__proxy-text">
@@ -192,9 +307,15 @@ watch(
         show-note
       />
     </div>
-    <UiCard title="教师数据采集与使用说明" style="margin-top: 16px">
+    <UiCard title="教师数据采集与使用说明" style="margin-top: var(--dp-space-block)">
+      <UiAlertStrip
+        v-if="noticeStale || stateStale"
+        tone="warning"
+        class="privacy-consent__stale"
+        title="同步失败"
+      />
       <p v-if="errorMode" class="privacy-consent__warn">
-        同意状态暂不可用，请刷新后重试。在确认同意前不能进入档案采集。
+        同意状态暂不可用。在确认同意前不能进入档案采集。
       </p>
       <p
         v-else-if="
@@ -207,7 +328,7 @@ watch(
       <p v-if="notice" class="privacy-consent__version">告知版本：{{ notice.policyVersion }}</p>
       <pre v-if="notice" class="privacy-consent__body">{{ notice.noticeMarkdown }}</pre>
       <p v-else-if="loading" class="privacy-consent__hint">正在加载告知文本…</p>
-      <p v-else-if="loadError" class="privacy-consent__warn">
+      <p v-else-if="loadError && !notice" class="privacy-consent__warn">
         告知文本或同意状态加载失败，不能执行授权操作。
       </p>
       <div v-if="!privacyWriteBlocked" class="privacy-consent__actions">
@@ -238,6 +359,7 @@ watch(
           </UiButton>
           <UiButton
             size="sm"
+            variant="outline"
             :loading="submitting"
             :disabled="actionDisabled || privacyWriteBlocked"
             @click="decline"
@@ -245,67 +367,72 @@ watch(
             暂不授权
           </UiButton>
         </template>
-        <UiButton
-          size="sm"
-          v-if="loadError"
-          variant="outline"
-          :loading="loading"
-          @click="() => load()"
-        >
-          重试
-        </UiButton>
       </div>
     </UiCard>
   </StageWorkbenchShell>
 </template>
 
-<style scoped lang="scss">
+<style scoped>
 .privacy-consent__proxy-gate {
   display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-component-tight);
   align-items: center;
-  justify-content: space-between;
-  gap: var(--dp-space-3);
-  min-height: 40px;
-  max-height: 48px;
-  margin-top: var(--dp-space-3);
-  padding: 0 var(--dp-space-3);
-  border: 1px solid var(--dp-border-secondary);
-  border-radius: var(--dp-radius-md);
-  background: var(--dp-bg-secondary);
-  font-size: var(--dp-font-size-sm);
+  margin-top: var(--dp-space-block);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-xs);
+  background: var(--dp-fill-quaternary);
 }
 .privacy-consent__proxy-text {
+  flex: 1;
+  min-width: 200px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
-  min-width: 0;
+}
+.privacy-consent__identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-component-tight);
+  align-items: flex-start;
+  margin-top: var(--dp-space-component);
+}
+.privacy-consent__identity-label {
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+}
+.privacy-consent__stale {
+  margin-bottom: var(--dp-space-component);
 }
 .privacy-consent__warn {
-  margin: 0 0 var(--dp-space-3);
-  color: var(--dp-warning-text);
-  font-size: var(--dp-font-size-md);
-  line-height: 1.5;
+  margin: 0 0 var(--dp-space-component);
+  color: var(--dp-warning, #d48806);
+  font-size: var(--dp-font-size-sm);
 }
 .privacy-consent__version {
-  margin: 0 0 var(--dp-space-2);
-  color: var(--dp-text-secondary);
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
 }
 .privacy-consent__body {
-  margin: 0 0 var(--dp-space-4);
-  padding: var(--dp-space-3);
-  max-height: 480px;
+  margin: 0 0 var(--dp-space-block);
+  padding: var(--dp-space-component);
+  max-height: 360px;
   overflow: auto;
   white-space: pre-wrap;
-  font-size: var(--dp-font-size-sm);
-  line-height: 1.6;
-  background: var(--dp-bg-muted);
+  word-break: break-word;
+  background: var(--dp-fill-quaternary);
   border-radius: var(--dp-radius-xs);
+  font-size: var(--dp-font-size-sm);
 }
 .privacy-consent__hint {
-  margin: 0 0 var(--dp-space-3);
+  margin: 0 0 var(--dp-space-component);
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .privacy-consent__actions {
   display: flex;
-  gap: var(--dp-space-2);
+  flex-wrap: wrap;
+  gap: var(--dp-space-component-tight);
 }
 </style>

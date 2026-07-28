@@ -1,22 +1,38 @@
 import type {ComputedRef, Ref} from 'vue';
-import type {PortfolioTeacherLifecycleStateVO} from '@/apis/portfolio/teacher-lifecycle';
-/**
- * 教师生命周期档案写禁：封存/迁出等状态下前端预禁写操作。
- * 后端 assertArchiveWritable 仍是权威；本 composable 仅提升体验，不替代服务端守卫。
- */
+import type { PortfolioTeacherLifecycleStateVO } from '@/apis/portfolio/teacher-lifecycle'
 import { computed, ref, watch } from 'vue'
 import {
-  portfolioTeacherLifecycleApi
-  
+  portfolioTeacherLifecycleApi,
+  PortfolioTeacherLifecycleStatusCode,
 } from '@/apis/portfolio/teacher-lifecycle'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
 import { showFormValidationMessage } from '@/utils/error-handler'
+import { portfolioLifecycleStatusDisplay } from '@/utils/portfolio-lifecycle-tag'
+
+/**
+ * 教师生命周期档案写禁：封存/迁出等状态下前端预禁写操作。
+ * 能力未知（拉取失败）时前端 fail-closed；后端 assertArchiveWritable 仍是权威。
+ */
 
 export interface PortfolioArchiveWriteGuardOptions {
   /** 覆盖目标教师；默认 page scope 的 targetTeacherId */
   teacherId?: Ref<string | undefined> | ComputedRef<string | undefined>
   /** 是否在 teacherId 变化时自动拉取；默认 true */
   autoLoad?: boolean
+}
+
+function formatCapabilityClock(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) {
+    return '—'
+  }
+  return date.toLocaleString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    month: '2-digit',
+    day: '2-digit',
+  })
 }
 
 export function usePortfolioArchiveWriteGuard(options?: PortfolioArchiveWriteGuardOptions) {
@@ -38,65 +54,132 @@ export function usePortfolioArchiveWriteGuard(options?: PortfolioArchiveWriteGua
   const lifecycleState = ref<PortfolioTeacherLifecycleStateVO | null>(null)
   const loading = ref(false)
   const loadFailed = ref(false)
+  const lastSuccessAt = ref<string | null>(null)
 
-  const archiveWriteForbidden = computed(() => Boolean(lifecycleState.value?.archiveWriteForbidden))
-  const evaluationHeld = computed(() => Boolean(lifecycleState.value?.evaluationHeld))
-  const lifecycleStatusLabel = computed(
-    () => lifecycleState.value?.lifecycleStatusLabel || lifecycleState.value?.lifecycleStatus || '',
+  /** 能力未知（拉取失败）时也视为禁止写入，避免页面继续展示可写。 */
+  const archiveWriteCapabilityUnknown = computed(() => loadFailed.value)
+  const archiveWriteForbidden = computed(
+    () => loadFailed.value || Boolean(lifecycleState.value?.archiveWriteForbidden),
   )
+  const evaluationHeld = computed(() => Boolean(lifecycleState.value?.evaluationHeld))
+  /** 展示唯一真源：PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL；无状态为空串。 */
+  const lifecycleStatusDisplay = computed(() => {
+    const status = lifecycleState.value?.lifecycleStatus
+    return status ? portfolioLifecycleStatusDisplay(status) : ''
+  })
   const archiveWriteBlockMessage = computed(() => {
-    if (!archiveWriteForbidden.value) {
+    if (loadFailed.value) {
+      const staleHint = lastSuccessAt.value
+        ? `上次成功确认 ${formatCapabilityClock(lastSuccessAt.value)}，当前能力未知。`
+        : '当前尚未成功确认教师生命周期状态。'
+      return `教师生命周期状态未知，禁止档案填报与改写。${staleHint}请重新确认教师状态后再操作。`
+    }
+    if (!lifecycleState.value?.archiveWriteForbidden) {
       return ''
     }
-    const status = lifecycleStatusLabel.value || '非在职'
+    if (!lifecycleState.value.lifecycleStatus) {
+      throw new Error('枚举合同不同步：写禁态缺少教师生命周期状态')
+    }
+    const status = portfolioLifecycleStatusDisplay(lifecycleState.value.lifecycleStatus)
     return `教师生命周期为「${status}」，禁止档案填报与改写。历史档案只读可查。`
   })
   const evaluationHoldBlockMessage = computed(() => {
+    if (loadFailed.value) {
+      return '教师生命周期状态未知，禁止参与进行中评价。请重新确认教师状态后再操作。'
+    }
     if (!evaluationHeld.value) {
       return ''
     }
-    const status = lifecycleStatusLabel.value || '非在职'
-    return `教师生命周期为「${status}」，禁止参与进行中评价（含材料确认与异议）。`
+    if (!lifecycleState.value?.lifecycleStatus) {
+      throw new Error('枚举合同不同步：参评 hold 缺少教师生命周期状态')
+    }
+    const statusCode = lifecycleState.value.lifecycleStatus
+    const status = portfolioLifecycleStatusDisplay(statusCode)
+    // 暂挂：暂停新参评，但不剥夺已进入公示/异议阶段的程序权利。
+    if (statusCode === PortfolioTeacherLifecycleStatusCode.TEMP_HOLD) {
+      return `教师生命周期为「${status}」，暂停新参评与材料确认；若评价已进入公示或异议处理，公示期内仍可提交异议。`
+    }
+    return `教师生命周期为「${status}」，禁止参与进行中评价（含材料确认）。`
+  })
+  const evaluationObjectionBlockMessage = computed(() => {
+    if (loadFailed.value) {
+      return '教师生命周期状态未知，禁止提交评价公示异议。请重新确认教师状态后再操作。'
+    }
+    const statusCode = lifecycleState.value?.lifecycleStatus
+    if (
+      statusCode !== PortfolioTeacherLifecycleStatusCode.SEALED
+      && statusCode !== PortfolioTeacherLifecycleStatusCode.TRANSFER_FROZEN
+      && statusCode !== PortfolioTeacherLifecycleStatusCode.TRANSFERRED
+    ) {
+      return ''
+    }
+    const status = portfolioLifecycleStatusDisplay(statusCode)
+    return `教师生命周期为「${status}」，禁止提交评价公示异议。`
   })
 
+  /** 重新拉取教师生命周期写禁能力；失败保留上次成功状态，但前端写路径仍 fail-closed。 */
   async function reloadLifecycleState(): Promise<void> {
     const teacherUserId = resolvedTeacherId.value
     if (!teacherUserId) {
       lifecycleState.value = null
       loadFailed.value = false
+      lastSuccessAt.value = null
       return
     }
     loading.value = true
-    loadFailed.value = false
     try {
       const state = await portfolioTeacherLifecycleApi.get({ teacherUserId })
       lifecycleState.value = state ?? null
+      loadFailed.value = false
+      lastSuccessAt.value = new Date().toISOString()
     } catch {
-      // 拉取失败时不假成功放行：保持上次状态；首次失败则视为未知，assert 时再提示
       loadFailed.value = true
-      lifecycleState.value = null
     } finally {
       loading.value = false
     }
   }
 
   /**
-   * 写操作前调用：若写禁则提示并返回 false。
+   * 写操作前调用：写禁或生命周期能力未知时均阻断；不得在 loadFailed 时 fail-open。
    */
   function assertArchiveWritable(actionLabel?: string): boolean {
-    if (archiveWriteForbidden.value) {
+    if (loadFailed.value) {
+      const suffix = actionLabel ? `（${actionLabel}）` : ''
+      showFormValidationMessage(`教师生命周期状态未知，请重新确认后再操作${suffix}`)
+      return false
+    }
+    if (lifecycleState.value?.archiveWriteForbidden) {
       const suffix = actionLabel ? `（${actionLabel}）` : ''
       showFormValidationMessage(archiveWriteBlockMessage.value + suffix)
       return false
     }
-    // 拉取失败不前端硬拦：以后端 assertArchiveWritable 为权威，避免可用性误伤
     return true
   }
 
   function assertEvaluationParticipable(actionLabel?: string): boolean {
+    if (loadFailed.value) {
+      const suffix = actionLabel ? `（${actionLabel}）` : ''
+      showFormValidationMessage(`教师生命周期状态未知，请重新确认后再操作${suffix}`)
+      return false
+    }
     if (evaluationHeld.value) {
       const suffix = actionLabel ? `（${actionLabel}）` : ''
       showFormValidationMessage(evaluationHoldBlockMessage.value + suffix)
+      return false
+    }
+    return true
+  }
+
+  /** 公示异议写前守卫：封存/迁出禁；TEMP_HOLD 允许（与参评 hold 分离）。 */
+  function assertCanSubmitEvaluationObjection(actionLabel?: string): boolean {
+    if (loadFailed.value) {
+      const suffix = actionLabel ? `（${actionLabel}）` : ''
+      showFormValidationMessage(`教师生命周期状态未知，请重新确认后再操作${suffix}`)
+      return false
+    }
+    if (evaluationObjectionBlockMessage.value) {
+      const suffix = actionLabel ? `（${actionLabel}）` : ''
+      showFormValidationMessage(evaluationObjectionBlockMessage.value + suffix)
       return false
     }
     return true
@@ -117,13 +200,17 @@ export function usePortfolioArchiveWriteGuard(options?: PortfolioArchiveWriteGua
     lifecycleState,
     loading,
     loadFailed,
+    lastSuccessAt,
+    archiveWriteCapabilityUnknown,
     archiveWriteForbidden,
     evaluationHeld,
-    lifecycleStatusLabel,
+    lifecycleStatusDisplay,
     archiveWriteBlockMessage,
     evaluationHoldBlockMessage,
+    evaluationObjectionBlockMessage,
     reloadLifecycleState,
     assertArchiveWritable,
     assertEvaluationParticipable,
+    assertCanSubmitEvaluationObjection,
   }
 }

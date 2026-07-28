@@ -68,6 +68,9 @@ export const AI_ANALYSIS_EXAM_FILTER_COURSE_ID_KEY: InjectionKey<Ref<string | un
 /** 教学/聚类 Tab 考试列表加载态 */
 export const AI_ANALYSIS_EXAMS_LOADING_KEY: InjectionKey<Ref<boolean>> = Symbol('aiAnalysisExamsLoading')
 
+/** 教学/聚类 Tab 考试列表加载失败（保留上次成功列表） */
+export const AI_ANALYSIS_EXAMS_LOAD_FAILED_KEY: InjectionKey<Ref<boolean>> = Symbol('aiAnalysisExamsLoadFailed')
+
 /** 学年学期选项与考试选项（范围面板只读消费） */
 export const AI_ANALYSIS_ACADEMIC_YEAR_OPTIONS_KEY: InjectionKey<ComputedRef<Array<{ label: string, value: string }>>> = Symbol('aiAnalysisAcademicYearOptions')
 export const AI_ANALYSIS_SEMESTER_OPTIONS_KEY: InjectionKey<ComputedRef<Array<{ label: string, value: string }>>> = Symbol('aiAnalysisSemesterOptions')
@@ -102,15 +105,20 @@ export function useAiAnalysisScope() {
   const classLabel = ref('')
   const referenceDepartmentId = ref<string | undefined>(undefined)
   const examsLoading = ref(false)
+  const examsLoadFailed = ref(false)
   const exams = ref<ExamSummaryResponse[]>([])
   const pinnedExam = ref<ExamSummaryResponse | null>(null)
   const authorizedCourses = ref<CourseListVO[]>([])
   const overview = ref<AiAnalysisCenterOverviewResponse | null>(null)
   const overviewLoading = ref(false)
   const overviewLoadFailed = ref(false)
-  const reloadToken = ref(0)
+  /** 教学 Tab 卡片刷新代际；与聚类分离，避免单卡生成广播整页重载 */
+  const teachingReloadToken = ref(0)
+  /** 聚类 / 题目分析工作台刷新代际 */
+  const clusterReloadToken = ref(0)
   let examRequestSequence = 0
   let overviewRequestSequence = 0
+  let pinnedExamRequestSequence = 0
 
   const academicYearOptions = computed(() =>
     generateAcademicYearOptions().map(year => ({ label: year, value: year })),
@@ -166,9 +174,9 @@ export function useAiAnalysisScope() {
       || selectedExam.value?.examName
       || examOptions.value.find(item => item.value === examId.value)?.label
   })
-  /** MVR-285：默认拒绝假可写；仅 overview.canManageReviewerWrites 为 true 时开放生成 */
+  /** MVR-285：默认拒绝假可写；概览失败时 capability 未知 fail-closed；仅正式 true 开放生成 */
   const canManageReviewerWrites = computed(
-    () => overview.value?.canManageReviewerWrites === true,
+    () => !overviewLoadFailed.value && overview.value?.canManageReviewerWrites === true,
   )
 
 
@@ -293,7 +301,6 @@ export function useAiAnalysisScope() {
       if (requestSequence !== overviewRequestSequence) {
         return
       }
-      overview.value = null
       overviewLoadFailed.value = true
       showUserError(error, '智能分析中心概览加载失败')
     }
@@ -304,22 +311,32 @@ export function useAiAnalysisScope() {
     }
   }
 
-  async function syncPinnedExam(id?: string): Promise<void> {
+  /**
+   * 拉取锁定考试摘要；返回局部值，由调用方在 generation 校验后原子写入 pinnedExam。
+   * 失败时返回 null 且不清除调用方已有 pinned。
+   */
+  async function syncPinnedExam(id?: string): Promise<ExamSummaryResponse | null> {
     if (!id) {
-      pinnedExam.value = null
-      return
+      return null
     }
     const inPage = exams.value.find(exam => exam.examId === id)
     if (inPage) {
-      pinnedExam.value = inPage
-      return
+      return inPage
     }
+    const pinnedSequence = ++pinnedExamRequestSequence
     try {
-      pinnedExam.value = examSummaryFromDetail(await getExamDetail(id))
+      const detail = await getExamDetail(id)
+      if (pinnedSequence !== pinnedExamRequestSequence) {
+        return null
+      }
+      return examSummaryFromDetail(detail)
     }
     catch (error) {
-      pinnedExam.value = null
-      showUserError(error, '考试详情加载失败')
+      if (pinnedSequence !== pinnedExamRequestSequence) {
+        return null
+      }
+      showUserError(error, '考试摘要未加载')
+      return null
     }
   }
 
@@ -331,10 +348,19 @@ export function useAiAnalysisScope() {
       if (requestSequence !== examRequestSequence) {
         return
       }
+      examsLoadFailed.value = false
       exams.value = page.list
-      await syncPinnedExam(examId.value)
+      const nextPinned = await syncPinnedExam(examId.value)
       if (requestSequence !== examRequestSequence) {
         return
+      }
+      if (examId.value) {
+        if (nextPinned) {
+          pinnedExam.value = nextPinned
+        }
+        // 锁定考试摘要失败时保留上次 pinned，禁止伪装为无考试
+      } else {
+        pinnedExam.value = null
       }
       const mergedExams = pinnedExam.value
         ? [pinnedExam.value, ...exams.value.filter(exam => exam.examId !== pinnedExam.value!.examId)]
@@ -349,7 +375,7 @@ export function useAiAnalysisScope() {
       if (requestSequence !== examRequestSequence) {
         return
       }
-      exams.value = []
+      examsLoadFailed.value = true
       showUserError(error, '考试列表加载失败')
     }
     finally {
@@ -359,10 +385,18 @@ export function useAiAnalysisScope() {
     }
   }
 
+  /** 全量刷新：教学 + 聚类 + 概览 + 考试列表（手动刷新入口） */
   function refreshAnalysis() {
-    reloadToken.value += 1
+    teachingReloadToken.value += 1
+    clusterReloadToken.value += 1
     void loadOverview()
     void loadExams()
+  }
+
+  /** 聚类/题目分析写入后：只刷新概览信号与聚类工作台，不重载教学四卡 */
+  function refreshClusterAnalysis() {
+    clusterReloadToken.value += 1
+    void loadOverview()
   }
 
   watch([academicYear, semester, referenceDepartmentId, classId, examFilterCourseId], () => {
@@ -524,6 +558,7 @@ export function useAiAnalysisScope() {
   provide(AI_ANALYSIS_EXAM_ID_KEY, examId)
   provide(AI_ANALYSIS_EXAM_FILTER_COURSE_ID_KEY, examFilterCourseId)
   provide(AI_ANALYSIS_EXAMS_LOADING_KEY, examsLoading)
+  provide(AI_ANALYSIS_EXAMS_LOAD_FAILED_KEY, examsLoadFailed)
   provide(AI_ANALYSIS_ACADEMIC_YEAR_OPTIONS_KEY, academicYearOptions)
   provide(AI_ANALYSIS_SEMESTER_OPTIONS_KEY, semesterOptions)
   provide(AI_ANALYSIS_EXAM_OPTIONS_KEY, filteredExamOptions)
@@ -543,11 +578,13 @@ export function useAiAnalysisScope() {
     classLabel,
     referenceDepartmentId,
     examsLoading,
+    examsLoadFailed,
     overview,
     overviewLoading,
     overviewLoadFailed,
     canManageReviewerWrites,
-    reloadToken,
+    teachingReloadToken,
+    clusterReloadToken,
     academicYearOptions,
     semesterOptions,
     courseOptions,
@@ -557,7 +594,9 @@ export function useAiAnalysisScope() {
     setClassScope,
     setExamFilterCourse,
     loadExams,
+    loadOverview,
     refreshAnalysis,
+    refreshClusterAnalysis,
     examLocked,
   }
 }
@@ -575,6 +614,7 @@ export function useAiAnalysisScopeContext() {
   const scopeCourseLabel = inject(AI_ANALYSIS_SCOPE_COURSE_LABEL_KEY, null)
   const classLabel = inject(AI_ANALYSIS_CLASS_LABEL_KEY, null)
   const examsLoading = inject(AI_ANALYSIS_EXAMS_LOADING_KEY, null)
+  const examsLoadFailed = inject(AI_ANALYSIS_EXAMS_LOAD_FAILED_KEY, null)
   const academicYearOptions = inject(AI_ANALYSIS_ACADEMIC_YEAR_OPTIONS_KEY, null)
   const semesterOptions = inject(AI_ANALYSIS_SEMESTER_OPTIONS_KEY, null)
   const examOptions = inject(AI_ANALYSIS_EXAM_OPTIONS_KEY, null)
@@ -594,6 +634,7 @@ export function useAiAnalysisScopeContext() {
     || !scopeCourseLabel
     || !classLabel
     || !examsLoading
+    || !examsLoadFailed
     || !academicYearOptions
     || !semesterOptions
     || !examOptions
@@ -616,6 +657,7 @@ export function useAiAnalysisScopeContext() {
     scopeCourseLabel,
     classLabel,
     examsLoading,
+    examsLoadFailed,
     academicYearOptions,
     semesterOptions,
     examOptions,

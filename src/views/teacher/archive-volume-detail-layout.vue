@@ -338,7 +338,7 @@ watch(volumeId, () => {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  background: var(--dp-bg-layout);
+  background: var(--dp-bg-muted);
 
   &__header {
     --sidebar-width: 260px;
@@ -346,8 +346,8 @@ watch(volumeId, () => {
     grid-template-columns: var(--sidebar-width) auto minmax(0, 1fr) auto;
     align-items: center;
     height: 56px;
-    padding: 0 24px 0 0;
-    background: var(--dp-bg-container);
+    padding: 0 var(--dp-space-page) 0 0;
+    background: var(--dp-surface);
     border-bottom: 1px solid var(--dp-border-subtle);
     flex-shrink: 0;
 
@@ -364,10 +364,10 @@ watch(volumeId, () => {
     grid-column: 1;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     width: var(--sidebar-width);
     flex-shrink: 0;
-    padding-left: 24px;
+    padding-left: var(--dp-space-page);
     cursor: pointer;
     min-width: 0;
   }
@@ -381,7 +381,7 @@ watch(volumeId, () => {
   &__logo-title {
     font-size: var(--dp-font-size-lg);
     font-weight: 600;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -392,7 +392,7 @@ watch(volumeId, () => {
     min-width: 0;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--dp-space-component);
   }
 
   &__header-switcher {
@@ -425,7 +425,7 @@ watch(volumeId, () => {
 
   &__header-right {
     grid-column: 4;
-    margin-left: 16px;
+    margin-left: var(--dp-space-block);
     flex-shrink: 0;
     min-width: 0;
   }
@@ -441,29 +441,31 @@ watch(volumeId, () => {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    background: var(--dp-bg-layout);
+    background: var(--dp-bg-muted);
   }
 
   &__content {
     flex: 1;
     overflow: auto;
-    padding: var(--dp-space-3);
-    background: var(--dp-bg-layout);
+    padding: var(--dp-space-component);
+    background: var(--dp-bg-muted);
 
     :deep(> *) {
-      max-width: min(100%, 1680px);
+      width: 100%;
+      max-width: min(100%, var(--dp-content-max-width-wide));
       margin: 0 auto;
+      box-sizing: border-box;
     }
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   @media (max-width: bp.$layout-mobile-max) {
     &__header {
       grid-template-columns: auto minmax(0, 1fr) auto;
-      padding: 0 16px;
+      padding: 0 var(--dp-space-block);
     }
 
     &__logo {
@@ -493,7 +495,7 @@ watch(volumeId, () => {
 
     &__header-right {
       grid-column: 3;
-      margin-left: 8px;
+      margin-left: var(--dp-space-component-tight);
     }
 
     &__menu-toggle {

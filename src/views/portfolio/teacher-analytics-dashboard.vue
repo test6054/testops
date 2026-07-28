@@ -13,7 +13,7 @@ import type {
   PortfolioKeyTeacherAnalyticsVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioCockpitSummaryVO } from '@/apis/portfolio/types'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioCockpitApi } from '@/apis/portfolio/cockpit'
 import {
@@ -32,6 +32,7 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
@@ -40,6 +41,19 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioHrMetricDistributionSection from '@/views/portfolio/components/PortfolioHrMetricDistributionSection.vue'
+
+function readRouteStringParam(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
+/** 可选计数字段缺失显示 —，禁止冒充 0 */
+function optionalMetric(value: number | string | null | undefined): string {
+  if (value == null || value === '') {
+    return '—'
+  }
+  return String(value)
+}
 
 const loading = ref(false)
 const router = useRouter()
@@ -49,8 +63,18 @@ const userStore = useUserStore()
 const isDepartmentScoped = computed(
   () => route.path.includes('/department/') || !userStore.isTenantAdmin,
 )
+const queryCampusOrgId = computed(() => readRouteStringParam(route.query.campusOrgId))
+const queryDepartmentId = computed(() => readRouteStringParam(route.query.departmentId))
 const pageTitle = '师资分析驾驶舱'
-const pageSubtitle = '院系师资结构、双师与双岗、外聘教师统计'
+const pageSubtitle = computed(() => {
+  if (queryDepartmentId.value) {
+    return `院系范围 departmentId=${queryDepartmentId.value}`
+  }
+  if (queryCampusOrgId.value) {
+    return `校区范围 campusOrgId=${queryCampusOrgId.value}`
+  }
+  return '院系师资结构、双师与双岗、外聘教师统计'
+})
 
 const deptStats = ref<PortfolioDeptStructureStatVO | null>(null)
 const schoolSummary = ref<PortfolioCockpitSummaryVO | null>(null)
@@ -60,15 +84,20 @@ const keyTeacherStats = ref<PortfolioKeyTeacherAnalyticsVO | null>(null)
 const externalStats = ref<PortfolioExternalTeacherStatsVO | null>(null)
 const loadFailed = ref(false)
 const requestToken = ref(0)
+const sectionErrors = ref<Record<string, string>>({})
+
+const sectionErrorList = computed(() =>
+  Object.entries(sectionErrors.value).map(([key, label]) => ({ key, label })),
+)
 
 /** 顶部 KPI 摘要：专任教师总数、双师教师、双岗教师、外聘教师 */
 const kpiStats = computed(() => {
-  const items: Array<{ key: string, label: string, value: number, hint: string }> = []
+  const items: Array<{ key: string, label: string, value: string, hint: string }> = []
   if (deptStats.value) {
     items.push({
       key: 'totalTeachers',
       label: '专任教师总数',
-      value: deptStats.value.totalTeacherCount,
+      value: optionalMetric(deptStats.value.totalTeacherCount),
       hint: `${deptStats.value.departments.length} 个院系`,
     })
   }
@@ -76,24 +105,30 @@ const kpiStats = computed(() => {
     items.push({
       key: 'dualTeachers',
       label: '双师教师',
-      value: dualStats.value.structureDualTeacherCount ?? 0,
-      hint: `占比 ${dualStats.value.dualTeacherRatioPercent ?? 0}%`,
+      value: optionalMetric(dualStats.value.structureDualTeacherCount),
+      hint: dualStats.value.dualTeacherRatioPercent == null
+        ? '占比 —'
+        : `占比 ${dualStats.value.dualTeacherRatioPercent}%`,
     })
   }
   if (doubleDutyStats.value) {
     items.push({
       key: 'doubleDutyTeachers',
       label: '双岗教师',
-      value: doubleDutyStats.value.structureDoubleDutyCount ?? 0,
-      hint: `占比 ${doubleDutyStats.value.doubleDutyRatioPercent ?? 0}%`,
+      value: optionalMetric(doubleDutyStats.value.structureDoubleDutyCount),
+      hint: doubleDutyStats.value.doubleDutyRatioPercent == null
+        ? '占比 —'
+        : `占比 ${doubleDutyStats.value.doubleDutyRatioPercent}%`,
     })
   }
   if (externalStats.value) {
     items.push({
       key: 'externalTeachers',
       label: '外聘教师',
-      value: externalStats.value.totalCount ?? 0,
-      hint: `在册有效 ${externalStats.value.activeCount ?? 0}`,
+      value: optionalMetric(externalStats.value.totalCount),
+      hint: externalStats.value.activeCount == null
+        ? '在册有效 —'
+        : `在册有效 ${externalStats.value.activeCount}`,
     })
   }
   return items
@@ -199,15 +234,44 @@ const completenessDistributionRows: Array<{
 function distributionCount(
   summary: PortfolioCockpitSummaryVO,
   key: (typeof completenessDistributionRows)[number]['summaryKey'],
-): number {
-  return summary[key] ?? 0
+): string {
+  return optionalMetric(summary[key])
 }
 
 function goTeacherDirectory(completenessLevel: PortfolioCompletenessLevelCode) {
+  const query: Record<string, string> = { completenessLevel }
+  if (queryDepartmentId.value) {
+    query.departmentId = queryDepartmentId.value
+  }
+  if (queryCampusOrgId.value) {
+    query.campusOrgId = queryCampusOrgId.value
+  }
   void router.push({
     path: '/portfolio/teachers',
-    query: { completenessLevel },
+    query,
   })
+}
+
+async function resolveSchoolSummaryScope(): Promise<PortfolioCockpitSummaryVO> {
+  if (queryDepartmentId.value) {
+    return portfolioCockpitApi.deptSummary({ departmentId: queryDepartmentId.value })
+  }
+  if (isDepartmentScoped.value) {
+    const currentUserId = userStore.userInfo.userId
+    if (!currentUserId) {
+      throw new Error('当前用户未登录，无法定位所属院系')
+    }
+    const detail = await portfolioTeacherApi.get(currentUserId)
+    if (!detail.departmentId) {
+      throw new Error('当前教师未关联院系')
+    }
+    return portfolioCockpitApi.deptSummary({
+      departmentId: detail.departmentId,
+    })
+  }
+  return portfolioCockpitApi.schoolSummary(
+    queryCampusOrgId.value ? { campusOrgId: queryCampusOrgId.value } : {},
+  )
 }
 
 async function loadAll() {
@@ -215,12 +279,7 @@ async function loadAll() {
   requestToken.value = currentToken
   loading.value = true
   loadFailed.value = false
-  deptStats.value = null
-  schoolSummary.value = null
-  dualStats.value = null
-  doubleDutyStats.value = null
-  keyTeacherStats.value = null
-  externalStats.value = null
+  sectionErrors.value = {}
   const sections: Array<{
     key: string
     label: string
@@ -235,13 +294,9 @@ async function loadAll() {
     },
     {
       key: 'school',
-      label: isDepartmentScoped.value ? '院系档案汇总' : '全校档案汇总',
+      label: queryDepartmentId.value || isDepartmentScoped.value ? '院系档案汇总' : '全校档案汇总',
       load: async () => {
-        if (isDepartmentScoped.value) {
-          schoolSummary.value = await portfolioCockpitApi.deptSummary({})
-        } else {
-          schoolSummary.value = await portfolioCockpitApi.schoolSummary()
-        }
+        schoolSummary.value = await resolveSchoolSummaryScope()
       },
     },
     {
@@ -270,7 +325,7 @@ async function loadAll() {
       label: '外聘教师统计',
       load: async () => {
         // 外聘台账 stats 仍为 tenantWide 管理口径；院系看板不请求以免越权失败整页红
-        if (isDepartmentScoped.value) {
+        if (isDepartmentScoped.value || queryDepartmentId.value) {
           externalStats.value = null
           return
         }
@@ -286,11 +341,18 @@ async function loadAll() {
         if (requestToken.value !== currentToken) {
           return
         }
+        const nextErrors = { ...sectionErrors.value }
+        delete nextErrors[section.key]
+        sectionErrors.value = nextErrors
       } catch (error) {
         if (requestToken.value !== currentToken) {
           return
         }
         anyFailed = true
+        sectionErrors.value = {
+          ...sectionErrors.value,
+          [section.key]: section.label,
+        }
         showUserError(error, `${section.label}加载失败`)
       }
     }
@@ -311,6 +373,19 @@ async function loadAll() {
 }
 
 onMounted(loadAll)
+
+watch(
+  () => [queryCampusOrgId.value, queryDepartmentId.value, route.path] as const,
+  (next, prev) => {
+    if (!prev) {
+      return
+    }
+    if (next[0] === prev[0] && next[1] === prev[1] && next[2] === prev[2]) {
+      return
+    }
+    void loadAll()
+  },
+)
 </script>
 
 <template>
@@ -328,6 +403,13 @@ onMounted(loadAll)
       </ContextBar>
     </template>
     <UiSpin :spinning="loading">
+      <UiAlertStrip
+        v-for="item in sectionErrorList"
+        :key="item.key"
+        tone="error"
+        :title="`${item.label}加载失败`"
+        class="dp-mb-tight"
+      />
       <UiEmpty
         size="sm"
         v-if="!loading && !deptStats && !dualStats && !doubleDutyStats && !keyTeacherStats && !externalStats && !schoolSummary"
@@ -343,7 +425,7 @@ onMounted(loadAll)
           </div>
         </div>
         <div class="grid">
-          <UiCard v-if="schoolSummary" :title="isDepartmentScoped ? '院系档案完整度与五框架' : '全校档案完整度与五框架'">
+          <UiCard v-if="schoolSummary" :title="queryDepartmentId || isDepartmentScoped ? '院系档案完整度与五框架' : '全校档案完整度与五框架'">
             <div class="analytics-completeness">
               <button
                 v-for="item in completenessDistributionRows"
@@ -362,8 +444,8 @@ onMounted(loadAll)
                     {
                       key: 'framework',
                       label: `${schoolSummary.currentAcademicYear ?? '本学年'} 五框架`,
-                      value: String(schoolSummary.courseArchiveFrameworkSlotDone ?? 0),
-                      unit: `/${schoolSummary.courseArchiveFrameworkSlotTotal ?? 0}`,
+                      value: optionalMetric(schoolSummary.courseArchiveFrameworkSlotDone),
+                      unit: `/${schoolSummary.courseArchiveFrameworkSlotTotal}`,
                       tone: 'blue' as const,
                     },
                   ]
@@ -373,7 +455,7 @@ onMounted(loadAll)
                     {
                       key: 'fullyComplete',
                       label: '齐备课程',
-                      value: String(schoolSummary.courseArchiveFullyCompleteCount),
+                      value: optionalMetric(schoolSummary.courseArchiveFullyCompleteCount),
                       unit: '门',
                       tone: 'green' as const,
                     },
@@ -506,40 +588,40 @@ onMounted(loadAll)
           <UiCard v-if="keyTeacherStats" title="骨干 / 专业带头人">
             <UiStatPanel
               :items="[
-                { key: 'total', label: '台账总数', value: String(keyTeacherStats.totalCount) },
+                { key: 'total', label: '台账总数', value: optionalMetric(keyTeacherStats.totalCount) },
                 {
                   key: 'active',
                   label: '在册',
-                  value: String(keyTeacherStats.activeCount),
+                  value: optionalMetric(keyTeacherStats.activeCount),
                   tone: 'green',
                 },
                 {
                   key: 'structureTeachers',
                   label: '在岗教师',
-                  value: String(keyTeacherStats.structureTeacherCount ?? 0),
+                  value: optionalMetric(keyTeacherStats.structureTeacherCount),
                 },
                 {
                   key: 'structureKey',
                   label: '在岗骨干',
-                  value: String(keyTeacherStats.structureKeyTeacherCount ?? 0),
+                  value: optionalMetric(keyTeacherStats.structureKeyTeacherCount),
                   tone: 'green',
                 },
                 {
                   key: 'keyRatio',
                   label: '骨干比例%',
-                  value: String(keyTeacherStats.keyTeacherRatioPercent ?? 0),
+                  value: optionalMetric(keyTeacherStats.keyTeacherRatioPercent),
                   tone: 'blue',
                 },
                 {
                   key: 'structureLeader',
                   label: '在岗带头人',
-                  value: String(keyTeacherStats.structureProgramLeaderCount ?? 0),
+                  value: optionalMetric(keyTeacherStats.structureProgramLeaderCount),
                   tone: 'green',
                 },
                 {
                   key: 'leaderRatio',
                   label: '带头人比例%',
-                  value: String(keyTeacherStats.programLeaderRatioPercent ?? 0),
+                  value: optionalMetric(keyTeacherStats.programLeaderRatioPercent),
                   tone: 'blue',
                 },
               ]"
@@ -557,7 +639,7 @@ onMounted(loadAll)
               :show-pagination="false"
               :sticky-header="false"
               :total="keyTeacherStats.statusCounts.length"
-              style="margin-top: 16px"
+              style="margin-top: var(--dp-space-block)"
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'registryStatus'">
@@ -576,7 +658,7 @@ onMounted(loadAll)
               :show-pagination="false"
               :sticky-header="false"
               :total="(keyTeacherStats.typeCounts || []).length"
-              style="margin-top: 16px"
+              style="margin-top: var(--dp-space-block)"
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'registryType'">
@@ -595,7 +677,7 @@ onMounted(loadAll)
               :show-pagination="false"
               :sticky-header="false"
               :total="(keyTeacherStats.keyTeacherDepartmentCounts || []).length"
-              style="margin-top: 16px"
+              style="margin-top: var(--dp-space-block)"
             />
           </UiCard>
           <UiCard v-if="externalStats" title="外聘教师">
@@ -604,18 +686,18 @@ onMounted(loadAll)
                 {
                   key: 'total',
                   label: '筛选总数',
-                  value: String(externalStats.totalCount ?? 0),
+                  value: optionalMetric(externalStats.totalCount),
                 },
                 {
                   key: 'active',
                   label: '在册有效',
-                  value: String(externalStats.activeCount ?? 0),
+                  value: optionalMetric(externalStats.activeCount),
                   tone: 'green',
                 },
                 {
                   key: 'avgContribution',
                   label: '贡献度均值',
-                  value: String(externalStats.avgContributionScore ?? 0),
+                  value: optionalMetric(externalStats.avgContributionScore),
                   tone: 'blue',
                 },
                 {
@@ -638,7 +720,7 @@ onMounted(loadAll)
               :show-pagination="false"
               :sticky-header="false"
               :total="externalStats.contractStatusCounts.length"
-              style="margin-top: 16px; margin-bottom: 16px"
+              style="margin-top: var(--dp-space-block); margin-bottom: var(--dp-space-block)"
             />
             <UiDataTable
               :columns="dimensionColumns"
@@ -653,6 +735,16 @@ onMounted(loadAll)
             />
           </UiCard>
         </div>
+        <PortfolioHrMetricDistributionSection
+          v-if="schoolSummary"
+          class="analytics-hr"
+          :political-affiliation-distribution="schoolSummary.politicalAffiliationDistribution"
+          :education-degree-distribution="schoolSummary.educationDegreeDistribution"
+          :age-band-distribution="schoolSummary.ageBandDistribution"
+          :tenure-band-distribution="schoolSummary.tenureBandDistribution"
+          :retirement-window-distribution="schoolSummary.retirementWindowDistribution"
+          :post-category-distribution="schoolSummary.postCategoryDistribution"
+        />
       </template>
     </UiSpin>
   </StageWorkbenchShell>
@@ -662,15 +754,15 @@ onMounted(loadAll)
 .kpi-strip {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--dp-space-4, 16px);
-  margin-bottom: var(--dp-space-4, 16px);
+  gap: var(--dp-space-block);
+  margin-bottom: var(--dp-space-block);
 }
 .kpi-panel {
   background: var(--dp-surface, #fff);
   border: 1px solid var(--dp-border-subtle, #eef0f2);
   border-radius: var(--dp-radius-panel, 8px);
   box-shadow: var(--dp-shadow-xs, 0 1px 2px rgba(26, 35, 50, 0.04));
-  padding: var(--dp-space-4, 16px) var(--dp-space-5, 20px);
+  padding: var(--dp-space-block);
 }
 .kpi-panel__label {
   font-size: var(--dp-font-size-xs, 12px);
@@ -681,27 +773,30 @@ onMounted(loadAll)
   font-weight: 700;
   color: var(--dp-text-primary, rgba(0, 0, 0, 0.88));
   line-height: 1.2;
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
   font-variant-numeric: tabular-nums;
 }
 .kpi-panel__hint {
-  font-size: var(--dp-font-size-xxs);
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
 }
 .grid {
   display: grid;
-  gap: var(--dp-space-4, 16px);
+  gap: var(--dp-space-block);
   grid-template-columns: repeat(2, 1fr);
+}
+.analytics-hr {
+  margin-top: var(--dp-space-block);
 }
 .analytics-completeness {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 .analytics-completeness__chip {
-  padding: 4px 10px;
+  padding: var(--dp-space-component-xs) var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-xs);
   background: transparent;

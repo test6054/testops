@@ -1,11 +1,10 @@
 <script setup lang="ts">
+import type { AccreditationStandardClauseDiagnosisVO } from '@/apis/quality/accreditation'
+import type { SignalMetricIconTone } from '@/types/workbench'
 import { SafetyCertificateOutlined } from '@ant-design/icons-vue'
-import { computed, onActivated, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  AccreditationCycleStatusCode,
-  ALL_ACCREDITATION_CYCLE_PHASE_CODES,
-} from '@/apis/quality/accreditation'
+import { ALL_ACCREDITATION_CYCLE_PHASE_CODES } from '@/apis/quality/accreditation'
 import { ConfirmationStatusCode } from '@/apis/quality/types'
 import AccreditationAnnualPanel from '@/components/quality/accreditation/AccreditationAnnualPanel.vue'
 import AccreditationAnnualReportMaterialPanel from '@/components/quality/accreditation/AccreditationAnnualReportMaterialPanel.vue'
@@ -17,6 +16,7 @@ import SelfAssessmentReportPanel from '@/components/quality/accreditation/SelfAs
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
@@ -27,15 +27,23 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useAccreditationWorkbench } from '@/composables/useAccreditationWorkbench'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { useAuthStore } from '@/stores'
 import { useQualityStore } from '@/stores/modules/quality'
+import { AccreditationCockpitActionKeyCode, AccreditationCockpitActionKeyDescription } from '@/types/enums/accreditation-cockpit-action-key-enum'
+import { AccreditationStandardClauseStatusCode } from '@/types/enums/accreditation-standard-clause-status-enum'
+import { isValidRole, RoleEnum } from '@/utils/permission'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const {
   cockpit,
   cockpitLoading,
   programId,
   trainingPlanId,
-  activeCycle,
-  activeCycleId,
+  applicationCycle,
+  applicationCycleId,
+  maintenanceCycle,
+  maintenanceCycleId,
+  workflowCycle,
   hasScope,
   phaseStages,
   metrics,
@@ -48,6 +56,7 @@ const {
 } = useAccreditationWorkbench()
 
 const qualityStore = useQualityStore()
+const authStore = useAuthStore()
 const router = useRouter()
 
 /** 认证正式办理要求培养方案已确认；未确认仅钉条 */
@@ -63,7 +72,6 @@ const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
 
 const workbenchReady = computed(() => !planGateMode.value && hasScope.value)
 
-
 const professionDrawerOpen = ref(false)
 
 const activeTab = ref('cycle')
@@ -76,7 +84,6 @@ const accTabItems = [
   { key: 'support', label: '师资与支持' },
   { key: 'evidence', label: '专家材料证据' },
 ]
-const evidenceCount = ref(0)
 
 const cyclePanelRef = ref<InstanceType<typeof AccreditationCyclePanel>>()
 const annualPanelRef = ref<InstanceType<typeof AccreditationAnnualPanel>>()
@@ -86,120 +93,91 @@ const onsitePanelRef = ref<InstanceType<typeof AccreditationOnsitePanel>>()
 const supportPanelRef = ref<InstanceType<typeof AccreditationSupportPanel>>()
 const evidencePanelRef = ref<InstanceType<typeof AccreditationEvidencePanel>>()
 
-function readinessReady(itemKey: string): boolean {
-  return (
-    cockpit.value?.conclusionReadinessItems?.find((item) => item.itemKey === itemKey)?.ready
-    === true
-  )
-}
+/** 标准条款诊断真源：后端 standardClauses，禁止本地用 conclusionReadiness 冒充 */
+const standardClauses = computed(
+  () => cockpit.value?.standardClauses ?? [],
+)
 
-/** CEEAA 2024 标准对齐检查：以驾驶舱 conclusionReadinessItems 为真源，禁止用 activeCycle 存在性误判通过 */
-const ceeaa2024CheckItems = computed(() => {
-  const c = cockpit.value
-  return [
-    {
-      key: '4.1-student',
-      label: '4.1 学生·思政引领',
-      desc: '学生管理制度中应体现思政引领和品德培养措施',
-      passed:
-        readinessReady('SELF_ASSESSMENT_ACCEPTED') && readinessReady('SUPPORT_PROFILE_CONFIRMED'),
-    },
-    {
-      key: '4.2-objective',
-      label: '4.2 培养目标·为党育人',
-      desc: '培养目标应符合"为党育人、为国育才"总要求',
-      passed:
-        readinessReady('GRADUATION_REQUIREMENT_READY')
-        && readinessReady('PROGRAM_QUALITY_REPORT_READY'),
-    },
-    {
-      key: '4.3-graduate',
-      label: '4.3 毕业要求·工程报国',
-      desc: '毕业要求应包含工程伦理和职业规范（含工程报国意识）',
-      passed:
-        readinessReady('GRADUATION_REQUIREMENT_READY')
-        && readinessReady('ACHIEVEMENT_RESULT_READY'),
-    },
-    {
-      key: '4.4-curriculum',
-      label: '4.4 课程体系·价值导向',
-      desc: '课程设置和教学实施应体现正确的价值导向',
-      passed:
-        readinessReady('ENABLED_QUALITY_COURSE_READY')
-        && readinessReady('COURSE_GOAL_READY')
-        && readinessReady('SUPPORT_MATRIX_READY'),
-    },
-    {
-      key: '4.5-faculty',
-      label: '4.5 师资队伍·师德师风',
-      desc: '教师应具有良好的师德师风',
-      passed: readinessReady('FACULTY_PROFILE_READY'),
-    },
-    {
-      key: '4.6-support',
-      label: '4.6 支持条件',
-      desc: '教室/实验室/设备等支持条件',
-      passed: c?.supportProfileConfirmed === true || readinessReady('SUPPORT_PROFILE_CONFIRMED'),
-    },
-    {
-      key: '4.7-achievement',
-      label: '4.7 持续改进·达成度闭环',
-      desc: '"评价→分析→改进→再评价"闭环机制',
-      passed:
-        readinessReady('ACHIEVEMENT_RESULT_READY')
-        && readinessReady('IMPROVEMENT_TASK_CLOSED')
-        && c?.annualReportMaterialsReady === true,
-    },
-  ]
+const showAllStandardClauses = ref(false)
+
+const blockedStandardClauses = computed(() =>
+  standardClauses.value.filter(
+    (item) => item.status === AccreditationStandardClauseStatusCode.BLOCKED,
+  ),
+)
+
+const passedStandardClauseCount = computed(
+  () => standardClauses.value.length - blockedStandardClauses.value.length,
+)
+
+const visibleStandardClauses = computed(() => {
+  if (showAllStandardClauses.value || blockedStandardClauses.value.length === 0) {
+    return standardClauses.value
+  }
+  return blockedStandardClauses.value
+})
+
+const standardCheckTitle = computed(() => {
+  const code = cockpit.value?.standardCode
+  const year = cockpit.value?.standardYear
+  const name = cockpit.value?.standardName
+  if (code && year) {
+    return `${code} ${year}${name ? ` · ${name}` : ''}`
+  }
+  if (name) {
+    return name
+  }
+  return '认证标准条款诊断'
 })
 
 const canCreateCycle = computed(
-  () => hasScope.value && activeCycle.value?.cycleStatus !== AccreditationCycleStatusCode.ACTIVE,
+  () => workbenchReady.value && cockpit.value?.canCreateCycle === true,
 )
+
+const hasAnyCycle = computed(() => !!applicationCycle.value || !!maintenanceCycle.value)
+const createCycleLabel = computed(() => maintenanceCycle.value ? '启动复认证申请' : '新建认证申请')
 
 const signalMetrics = computed(() => {
   const base = metrics.value
   if (!base.length) return base
   return [
-    ...base.map((item) => ({
-      ...item,
-      iconTone: item.tone === 'green'
-        ? 'green' as const
-        : item.tone === 'red'
-          ? 'red' as const
-          : item.tone === 'orange'
-            ? 'orange' as const
-            : item.tone === 'blue'
-              ? 'blue' as const
-              : 'gray' as const,
-      helper: item.helper ?? '认证驾驶舱',
-    })),
+    ...base.map((item) => {
+      const iconTone: SignalMetricIconTone
+        = item.tone === 'green'
+          ? 'green'
+          : item.tone === 'blue'
+            ? 'blue'
+            : item.tone === 'purple'
+              ? 'purple'
+              : 'gray'
+      return {
+        ...item,
+        iconTone,
+        helper: item.helper ?? '认证驾驶舱',
+      }
+    }),
     {
-      key: 'evidence',
-      label: '专家材料证据',
-      value: String(evidenceCount.value),
+      key: 'application-evidence',
+      label: '申请期认证证据',
+      value: cockpit.value?.applicationCycle
+        ? String(cockpit.value.applicationEvidenceCount)
+        : '不适用',
       iconTone: 'blue' as const,
-      helper: '证据条目',
+      helper: '当前在办申请周期',
+    },
+    {
+      key: 'maintenance-evidence',
+      label: '保持期认证证据',
+      value: cockpit.value?.maintenanceCycle
+        ? String(cockpit.value.maintenanceEvidenceCount)
+        : '不适用',
+      iconTone: 'gray' as const,
+      helper: '当前有效保持周期',
     },
   ]
 })
 
 const annualCourseCoverages = computed(() => cockpit.value?.annualCourseCoverages || [])
-
-const showAllCeeaaChecks = ref(false)
-
-const ceeaaPendingItems = computed(() => ceeaa2024CheckItems.value.filter((item) => !item.passed))
-
-const ceeaaPassedCount = computed(
-  () => ceeaa2024CheckItems.value.length - ceeaaPendingItems.value.length,
-)
-
-const visibleCeeaaCheckItems = computed(() => {
-  if (showAllCeeaaChecks.value || ceeaaPendingItems.value.length === 0) {
-    return ceeaa2024CheckItems.value
-  }
-  return ceeaaPendingItems.value
-})
 
 async function refreshAll() {
   await reloadCockpit(true)
@@ -223,25 +201,27 @@ function onCreateCycle() {
   cyclePanelRef.value?.openCreate()
 }
 
-/** CEEAA 未通过项一键跳转至对应修复页面或驾驶舱 Tab */
-function goFixCheckItem(key: string): void {
-  switch (key) {
-    case '4.1-student':
-    case '4.2-objective':
-    case '4.3-graduate':
-      void router.push({ name: 'QualityTrainingPlanWorkbench' })
-      return
-    case '4.4-curriculum':
-      goCourseMatrix()
-      return
-    case '4.5-faculty':
-      void router.push({ name: 'QualityEvaluationWorkgroup' })
-      return
-    case '4.6-support':
+/** 按后端 actionKey / routeName 跳转；已覆盖项也可进入查看 */
+function goClauseAction(item: AccreditationStandardClauseDiagnosisVO): void {
+  strictEnumLabel(AccreditationCockpitActionKeyDescription, item.actionKey, '认证条款整改动作')
+  switch (item.actionKey) {
+    case AccreditationCockpitActionKeyCode.OPEN_SUPPORT_TAB:
       activeTab.value = 'support'
-      return
-    case '4.7-achievement':
+      break
+    case AccreditationCockpitActionKeyCode.OPEN_EVIDENCE_TAB:
+      activeTab.value = 'evidence'
+      break
+    case AccreditationCockpitActionKeyCode.OPEN_COURSE_MATRIX:
+      goCourseMatrix()
+      break
+    case AccreditationCockpitActionKeyCode.OPEN_IMPROVEMENT:
       goImprovement()
+      break
+    case AccreditationCockpitActionKeyCode.OPEN_TRAINING_PLAN_WORKBENCH:
+      void router.push({ name: item.routeName || 'QualityTrainingPlanWorkbench' })
+      break
+    case AccreditationCockpitActionKeyCode.NONE:
+      break
   }
 }
 
@@ -250,6 +230,31 @@ function openProfessionConfig(name: string) {
   void router.push({ name })
 }
 
+interface ProfessionConfigLink {
+  name: string
+  label: string
+  roles?: readonly RoleEnum[]
+}
+
+const professionConfigLinks = computed((): ProfessionConfigLink[] => {
+  const links: ProfessionConfigLink[] = [
+    { name: 'QualityProgramEvaluationProfile', label: '专业评价口径' },
+    { name: 'QualityProfessionAlgorithmProfile', label: '专业算法实例' },
+    { name: 'QualityEvaluationWorkgroup', label: '评价工作组' },
+    {
+      name: 'QualityScaleConversionRule',
+      label: '量表换算规则',
+      roles: [RoleEnum.SUPER_ADMIN],
+    },
+  ]
+  const role = authStore.userRole
+  if (!isValidRole(role)) {
+    return links.filter((link) => !link.roles)
+  }
+  return links.filter(
+    (link) => !link.roles || link.roles.includes(role) || role === RoleEnum.SUPER_ADMIN,
+  )
+})
 
 const accreditationMoreActionItems = computed(() => [
   { key: 'refresh', label: '刷新', disabled: !workbenchReady.value || cockpitLoading.value },
@@ -261,14 +266,11 @@ function onAccreditationMoreAction(key: string) {
   }
 }
 
-onMounted(refreshAll)
-useQualityScopedLoader(refreshAll, { watchScope: true, immediate: false, reloadOnActivated: false })
+function onEvidenceChanged(): void {
+  void reloadCockpit(true)
+}
 
-onActivated(() => {
-  if (hasScope.value) {
-    void refreshAll()
-  }
-})
+useQualityScopedLoader(refreshAll, { watchScope: true, immediate: true, reloadOnActivated: true })
 </script>
 
 <template>
@@ -277,7 +279,7 @@ onActivated(() => {
       <QualityPageContextBar show-title title="工程教育认证驾驶舱">
         <template #actions>
           <UiButton variant="primary" size="sm" :disabled="!canCreateCycle" @click="onCreateCycle">
-            新建认证周期
+            {{ createCycleLabel }}
           </UiButton>
           <UiButton
             variant="outline"
@@ -304,7 +306,7 @@ onActivated(() => {
     <template v-if="workbenchReady" #rail>
       <StageRail
         :stages="phaseStages"
-        :active-key="activeCycle?.currentPhase"
+        :active-key="workflowCycle?.currentPhase"
         compact
         @select="onPhaseSelect"
       />
@@ -316,50 +318,97 @@ onActivated(() => {
 
     <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="acc-empty" />
 
-    <template v-else-if="workbenchReady">
-      <WorkbenchSurfaceCard v-if="activeCycle" class="acc-standard-check">
+    <template v-else-if="workbenchReady && !cockpit && !cockpitLoading">
+      <UiEmpty
+        size="sm"
+        title="认证驾驶舱加载失败"
+        description="切换培养方案或使用「刷新」后将再次拉取；失败态不展示空周期"
+        class="acc-empty"
+      />
+    </template>
+
+    <template v-else-if="workbenchReady && cockpit && !hasAnyCycle">
+      <UiEmpty
+        size="sm"
+        title="尚未建立认证业务周期"
+        description="当前培养方案既无在办认证申请，也无有效认证状态保持责任"
+        :action-label="canCreateCycle ? createCycleLabel : undefined"
+        class="acc-empty"
+        @action="onCreateCycle"
+      />
+      <AccreditationCyclePanel
+        ref="cyclePanelRef"
+        :program-id="programId"
+        :training-plan-id="trainingPlanId"
+        :cockpit="cockpit"
+        @refresh="refreshAll"
+        @go-ai-report="goAiProgramReport"
+      />
+    </template>
+
+    <template v-else-if="workbenchReady && hasAnyCycle">
+      <WorkbenchSurfaceCard v-if="standardClauses.length" class="acc-standard-check">
         <template #head>
           <div class="acc-standard-check__head">
             <div class="acc-standard-check__title">
               <SafetyCertificateOutlined />
-              <span>CEEAA 2024 标准对齐</span>
+              <span>{{ standardCheckTitle }}</span>
             </div>
             <div class="acc-standard-check__summary">
-              <UiTag :tone="ceeaaPendingItems.length ? 'orange' : 'green'" size="sm">
-                已覆盖 {{ ceeaaPassedCount }}/{{ ceeaa2024CheckItems.length }}
+              <UiTag :tone="blockedStandardClauses.length ? 'orange' : 'green'" size="sm">
+                已覆盖 {{ passedStandardClauseCount }}/{{ standardClauses.length }}
               </UiTag>
               <UiButton
                 size="sm"
-                v-if="ceeaaPendingItems.length > 0"
+                v-if="blockedStandardClauses.length > 0"
                 variant="ghost"
-                @click="showAllCeeaaChecks = !showAllCeeaaChecks"
+                @click="showAllStandardClauses = !showAllStandardClauses"
               >
                 {{
-                  showAllCeeaaChecks ? '仅看待完善' : `还有 ${ceeaaPendingItems.length} 项待完善`
+                  showAllStandardClauses
+                    ? '仅看待完善'
+                    : `还有 ${blockedStandardClauses.length} 项待完善`
                 }}
               </UiButton>
             </div>
           </div>
         </template>
-        <p v-if="ceeaaPendingItems.length === 0" class="acc-standard-check__ok">
-          当前周期标准检查项均已覆盖，可继续下方认证工作。
+        <p v-if="blockedStandardClauses.length === 0" class="acc-standard-check__ok">
+          当前周期标准检查项均已覆盖；仍可点击条款查看依据。
         </p>
-        <div v-else class="acc-standard-check__grid">
+        <div class="acc-standard-check__grid">
           <button
-            v-for="item in visibleCeeaaCheckItems"
-            :key="item.key"
+            v-for="item in visibleStandardClauses"
+            :key="item.clauseKey"
             type="button"
             class="acc-standard-check__item"
-            :class="{ 'acc-standard-check__item--actionable': !item.passed }"
-            :disabled="item.passed"
-            @click="goFixCheckItem(item.key)"
+            :class="{
+              'acc-standard-check__item--actionable':
+                item.status === AccreditationStandardClauseStatusCode.BLOCKED
+                || item.status === AccreditationStandardClauseStatusCode.PASSED,
+            }"
+            @click="goClauseAction(item)"
           >
-            <UiTag :tone="item.passed ? 'green' : 'orange'" size="sm">
-              {{ item.passed ? '已覆盖' : '待完善' }}
+            <UiTag
+              :tone="
+                item.status === AccreditationStandardClauseStatusCode.PASSED ? 'green' : 'orange'
+              "
+              size="sm"
+            >
+              {{
+                item.status === AccreditationStandardClauseStatusCode.PASSED ? '已覆盖' : '待完善'
+              }}
             </UiTag>
-            <span class="acc-standard-check__label">{{ item.label }}</span>
-            <span class="acc-standard-check__desc">{{ item.desc }}</span>
-            <span v-if="!item.passed" class="acc-standard-check__fix">去完善 →</span>
+            <span class="acc-standard-check__label">{{ item.clauseTitle }}</span>
+            <span class="acc-standard-check__desc">{{ item.clauseDescription }}</span>
+            <span class="acc-standard-check__reason">{{ item.blockingReason }}</span>
+            <span class="acc-standard-check__fix">
+              {{
+                item.status === AccreditationStandardClauseStatusCode.PASSED
+                  ? '查看依据 →'
+                  : '去完善 →'
+              }}
+            </span>
           </button>
         </div>
         <div v-if="annualCourseCoverages.length" class="acc-course-coverage">
@@ -395,7 +444,7 @@ onActivated(() => {
       <SelfAssessmentReportPanel
         v-else-if="activeTab === 'self-assessment'"
         :cockpit="cockpit"
-        :active-cycle="activeCycle"
+        :application-cycle="applicationCycle"
         :program-id="programId"
         :training-plan-id="trainingPlanId"
         @go-ai-report="goAiProgramReport"
@@ -406,7 +455,7 @@ onActivated(() => {
         ref="annualPanelRef"
         :program-id="programId"
         :training-plan-id="trainingPlanId"
-        :active-cycle-id="activeCycleId"
+        :maintenance-cycle-id="maintenanceCycleId"
         @refresh="refreshAll"
       />
       <AccreditationAnnualReportMaterialPanel
@@ -414,8 +463,8 @@ onActivated(() => {
         ref="annualReportMaterialPanelRef"
         :program-id="programId"
         :training-plan-id="trainingPlanId"
-        :active-cycle="activeCycle"
-        :active-cycle-id="activeCycleId"
+        :maintenance-cycle="maintenanceCycle"
+        :maintenance-cycle-id="maintenanceCycleId"
         @refresh="refreshAll"
       />
       <AccreditationOnsitePanel
@@ -423,8 +472,8 @@ onActivated(() => {
         ref="onsitePanelRef"
         :program-id="programId"
         :training-plan-id="trainingPlanId"
-        :active-cycle="activeCycle"
-        :active-cycle-id="activeCycleId"
+        :application-cycle="applicationCycle"
+        :application-cycle-id="applicationCycleId"
         @refresh="refreshAll"
       />
       <AccreditationSupportPanel
@@ -439,9 +488,10 @@ onActivated(() => {
         ref="evidencePanelRef"
         :program-id="programId"
         :training-plan-id="trainingPlanId"
-        :active-cycle="activeCycle"
+        :application-cycle="applicationCycle"
+        :maintenance-cycle="maintenanceCycle"
         :cockpit="cockpit"
-        @count-change="evidenceCount = $event"
+        @changed="onEvidenceChanged"
         @exported="goArchive"
       />
     </template>
@@ -449,36 +499,14 @@ onActivated(() => {
     <UiDrawer v-model:open="professionDrawerOpen" title="专业配置" :width="420" :hide-footer="true">
       <div class="acc-profession-links">
         <UiButton
+          v-for="link in professionConfigLinks"
+          :key="link.name"
           variant="outline"
           size="sm"
           block
-          @click="openProfessionConfig('QualityProgramEvaluationProfile')"
+          @click="openProfessionConfig(link.name)"
         >
-          专业评价口径
-        </UiButton>
-        <UiButton
-          variant="outline"
-          size="sm"
-          block
-          @click="openProfessionConfig('QualityProfessionAlgorithmProfile')"
-        >
-          专业算法实例
-        </UiButton>
-        <UiButton
-          variant="outline"
-          size="sm"
-          block
-          @click="openProfessionConfig('QualityEvaluationWorkgroup')"
-        >
-          评价工作组
-        </UiButton>
-        <UiButton
-          variant="outline"
-          size="sm"
-          block
-          @click="openProfessionConfig('QualityScaleConversionRule')"
-        >
-          量表换算规则
+          {{ link.label }}
         </UiButton>
       </div>
     </UiDrawer>
@@ -488,36 +516,36 @@ onActivated(() => {
 <style scoped>
 .acc-profession-links {
   display: grid;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .acc-scope__select {
   width: 200px;
 }
 .acc-empty {
-  margin: var(--dp-space-4) 0;
+  margin: var(--dp-space-block) 0;
 }
 .acc-standard-check {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .acc-standard-check__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--dp-space-component);
   width: 100%;
   flex-wrap: wrap;
 }
 .acc-standard-check__title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .acc-standard-check__summary {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .acc-standard-check__ok {
   margin: 0;
@@ -527,28 +555,23 @@ onActivated(() => {
 .acc-standard-check__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .acc-standard-check__item {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 4px 8px;
+  gap: var(--dp-space-component-xs) var(--dp-space-component-tight);
   align-items: center;
-  padding: 8px;
+  padding: var(--dp-space-component-tight);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control);
   background: var(--dp-surface);
   text-align: left;
   width: 100%;
-
-  &:disabled {
-    cursor: default;
-  }
-}
-.acc-standard-check__item--actionable {
   cursor: pointer;
-  transition: border-color 0.2s ease;
+  transition: border-color var(--dp-duration-normal) var(--dp-ease-default);
 }
+.acc-standard-check__item:hover,
 .acc-standard-check__item--actionable:hover {
   border-color: var(--dp-color-primary-border);
 }
@@ -560,6 +583,11 @@ onActivated(() => {
   font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
+.acc-standard-check__reason {
+  grid-column: 1 / -1;
+  font-size: var(--dp-font-size-xs);
+  color: var(--dp-text-muted);
+}
 .acc-standard-check__fix {
   grid-column: 1 / -1;
   font-size: var(--dp-font-size-xs);
@@ -569,10 +597,10 @@ onActivated(() => {
 .acc-course-coverage {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: var(--dp-space-component);
+  padding-top: var(--dp-space-component);
   border-top: 1px dashed var(--dp-border);
   font-size: var(--dp-font-size-xs);
 }
@@ -581,12 +609,12 @@ onActivated(() => {
   color: var(--dp-text-secondary);
 }
 .acc-course-coverage__item {
-  padding: 2px 8px;
+  padding: 2px var(--dp-space-component-tight);
   border-radius: var(--dp-radius-full);
   background: color-mix(in srgb, var(--dp-success) 12%, transparent);
   color: var(--dp-success);
 }
 .acc-tabs :deep(.ant-tabs-nav) {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 </style>

@@ -6,6 +6,7 @@ export enum PortfolioAffiliationChangeTypeCode {
   ORG_ADJUST = 'ORG_ADJUST',
   TRANSFER_IN = 'TRANSFER_IN',
   TRANSFER_OUT = 'TRANSFER_OUT',
+  TRANSFER_OUT_CANCELLED = 'TRANSFER_OUT_CANCELLED',
   IDENTITY_CLOSE = 'IDENTITY_CLOSE',
 }
 
@@ -16,6 +17,7 @@ export const ALL_PORTFOLIO_AFFILIATION_CHANGE_TYPE_CODES: readonly PortfolioAffi
   PortfolioAffiliationChangeTypeCode.ORG_ADJUST,
   PortfolioAffiliationChangeTypeCode.TRANSFER_IN,
   PortfolioAffiliationChangeTypeCode.TRANSFER_OUT,
+  PortfolioAffiliationChangeTypeCode.TRANSFER_OUT_CANCELLED,
   PortfolioAffiliationChangeTypeCode.IDENTITY_CLOSE,
 ]
 
@@ -26,5 +28,6 @@ export const PortfolioAffiliationChangeTypeDescription: Record<PortfolioAffiliat
   [PortfolioAffiliationChangeTypeCode.ORG_ADJUST]: '扩展组织调整',
   [PortfolioAffiliationChangeTypeCode.TRANSFER_IN]: '调入',
   [PortfolioAffiliationChangeTypeCode.TRANSFER_OUT]: '调出',
+  [PortfolioAffiliationChangeTypeCode.TRANSFER_OUT_CANCELLED]: '撤销调出恢复',
   [PortfolioAffiliationChangeTypeCode.IDENTITY_CLOSE]: '身份关闭',
 }

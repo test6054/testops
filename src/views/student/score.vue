@@ -3,7 +3,7 @@
     <template #context>
       <ContextBar layout="workbench" show-title title="我的成绩">
         <template #status>
-          <UiTag v-if="reviewOpenCount > 0" tone="orange" size="sm">
+          <UiTag v-if="(reviewOpenCount ?? 0) > 0" tone="orange" size="sm">
             复核开放 {{ reviewOpenCount }} 场
           </UiTag>
         </template>
@@ -22,6 +22,14 @@
     <UiSkeletonState v-if="pageBootstrapping" :rows="4" compact />
 
     <template v-else>
+      <UiAlertStrip
+        v-if="publishedTopLoadFailed"
+        tone="warning"
+        dense
+        title="已发布成绩摘要加载失败"
+        class="student-score__top-alert"
+      />
+
       <!-- 最近一场已发布详情卡 -->
       <WorkbenchSurfaceCard v-if="latestPublished" class="student-score__latest-card">
         <template #head>
@@ -31,7 +39,7 @@
               <span>最近一场已发布成绩</span>
               <UiTag tone="green" size="sm">已发布</UiTag>
             </div>
-            <div class="dp-space" style="--dp-space-gap: 8px">
+            <div class="dp-space dp-space--tight">
               <UiButton size="sm" @click="goDetail(latestPublished.examId)">查看明细</UiButton>
               <UiButton
                 v-if="canSubmitReview(latestPublished) === true"
@@ -137,15 +145,15 @@
               </UiTag>
             </template>
             <template v-else-if="column.key === 'finalScore'">
-              <template v-if="record.finalScoreStatus === FinalScoreStatusCode.PUBLISHED">
+              <template v-if="record.finalScoreStatus === StudentFacingFinalScoreStatusCode.PUBLISHED">
                 {{ formatPublishedScore(record) }}
               </template>
-              <span v-else-if="record.finalScoreStatus === FinalScoreStatusCode.CORRECTED" class="student-score__muted">更正待重发</span>
-              <span v-else-if="record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN" class="student-score__muted">成绩已撤回</span>
-              <span v-else class="student-score__muted">—</span>
+              <span v-else-if="record.finalScoreStatus === StudentFacingFinalScoreStatusCode.CORRECTED" class="student-score__muted">更正待重发</span>
+              <span v-else-if="record.finalScoreStatus === StudentFacingFinalScoreStatusCode.WITHDRAWN" class="student-score__muted">成绩已撤回</span>
+              <span v-else class="student-score__muted">未发布</span>
             </template>
             <template v-else-if="column.key === 'publishedTime'">
-              <template v-if="record.finalScoreStatus === FinalScoreStatusCode.PUBLISHED">
+              <template v-if="record.finalScoreStatus === StudentFacingFinalScoreStatusCode.PUBLISHED">
                 {{ requirePublishedTime(record) }}
               </template>
               <span v-else class="student-score__muted">—</span>
@@ -179,11 +187,6 @@ import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  FINAL_SCORE_STATUS_TONE,
-  FinalScoreStatusCode,
-  FinalScoreStatusDescription,
-} from '@/apis/mark/final-score-status'
-import {
   canSubmitReview,
   getMyExamStats,
   pageMyExams,
@@ -193,6 +196,7 @@ import {
 } from '@/apis/mark/student-exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -201,10 +205,17 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
+import {
+  StudentFacingFinalScoreStatusCode,
+} from '@/types/enums/student-facing-final-score-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime, formatScore } from '@/utils/format'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import {
+  studentFacingFinalScoreStatusLabel,
+  studentFacingFinalScoreStatusTone,
+} from '@/utils/student-final-score-status'
 
 defineOptions({ name: 'StudentScore' })
 
@@ -212,6 +223,7 @@ const router = useRouter()
 const pageBootstrapping = ref(false)
 const examStats = ref<StudentExamStatsResponse | null>(null)
 const publishedTopExams = ref<StudentExamItemVO[]>([])
+const publishedTopLoadFailed = ref(false)
 
 const {
   loading: tableLoading,
@@ -238,11 +250,11 @@ const examColumns: ColumnType<StudentExamItemVO>[] = [
 ]
 
 function finalScoreStatusTone(item: StudentExamItemVO): BadgeTone {
-  return strictEnumTone(FINAL_SCORE_STATUS_TONE, item.finalScoreStatus, '最终成绩状态')
+  return studentFacingFinalScoreStatusTone(item.finalScoreStatus)
 }
 
 function finalScoreStatusLabel(item: StudentExamItemVO): string {
-  return strictEnumLabel(FinalScoreStatusDescription, item.finalScoreStatus, '最终成绩状态')
+  return studentFacingFinalScoreStatusLabel(item.finalScoreStatus)
 }
 
 function reviewWindowStatusTone(item: StudentExamItemVO): BadgeTone {
@@ -257,11 +269,11 @@ function reviewWindowStatusLabel(item: StudentExamItemVO): string {
   )
 }
 
-const publishedCount = computed(() => examStats.value?.publishedCount ?? 0)
+const publishedCount = computed(() => examStats.value?.publishedCount ?? null)
 
-const reviewOpenCount = computed(() => examStats.value?.reviewOpenCount ?? 0)
+const reviewOpenCount = computed(() => examStats.value?.reviewOpenCount ?? null)
 
-const unpublishedCount = computed(() => examStats.value?.unpublishedCount ?? 0)
+const unpublishedCount = computed(() => examStats.value?.unpublishedCount ?? null)
 
 const latestPublished = computed<StudentExamItemVO | null>(() => publishedTopExams.value[0] ?? null)
 
@@ -322,15 +334,15 @@ const insightItems = computed(() => {
   }
 
   // 复核窗口提示
-  if (reviewOpenCount.value > 0) {
+  if ((reviewOpenCount.value ?? 0) > 0) {
     items.push({
       key: 'review-window',
       label: '复核窗口开放',
-      value: reviewOpenCount.value,
+      value: reviewOpenCount.value as number,
       unit: '场',
       tone: 'orange',
     })
-  } else if (publishedCount.value > 0) {
+  } else if ((publishedCount.value ?? 0) > 0) {
     items.push({
       key: 'review-window',
       label: '复核窗口',
@@ -340,11 +352,11 @@ const insightItems = computed(() => {
   }
 
   // 待发布等待
-  if (unpublishedCount.value > 0) {
+  if ((unpublishedCount.value ?? 0) > 0) {
     items.push({
       key: 'unpublished',
       label: '待发布等待',
-      value: unpublishedCount.value,
+      value: unpublishedCount.value as number,
       unit: '场',
       tone: 'purple',
     })
@@ -353,45 +365,48 @@ const insightItems = computed(() => {
   return items
 })
 
-const summarySignalMetrics = computed(() =>
-  toSignalMetrics([
+const summarySignalMetrics = computed(() => {
+  const dash = '—'
+  const statsMissing = examStats.value == null
+  return toSignalMetrics([
     {
       key: 'total',
       label: '考试总数',
-      value: examStats.value?.totalExamCount ?? 0,
-      unit: '场',
+      value: statsMissing ? dash : (examStats.value?.totalExamCount ?? dash),
+      unit: statsMissing ? undefined : '场',
       tone: 'blue',
     },
     {
       key: 'published',
       label: '已发布',
-      value: publishedCount.value,
-      unit: '场',
-      tone: publishedCount.value > 0 ? 'green' : 'gray',
+      value: publishedCount.value == null ? dash : publishedCount.value,
+      unit: publishedCount.value == null ? undefined : '场',
+      tone: (publishedCount.value ?? 0) > 0 ? 'green' : 'gray',
     },
     {
       key: 'review-open',
       label: '复核开放',
-      value: reviewOpenCount.value,
-      unit: '场',
-      tone: reviewOpenCount.value > 0 ? 'orange' : 'gray',
+      value: reviewOpenCount.value == null ? dash : reviewOpenCount.value,
+      unit: reviewOpenCount.value == null ? undefined : '场',
+      tone: (reviewOpenCount.value ?? 0) > 0 ? 'orange' : 'gray',
     },
-  ]),
-)
+  ])
+})
 
 const insightSignalMetrics = computed(() => toSignalMetrics(insightItems.value))
 
 async function loadPublishedTopExams(): Promise<void> {
+  publishedTopLoadFailed.value = false
   try {
     const page = await pageMyExams({
-      finalScoreStatus: FinalScoreStatusCode.PUBLISHED,
+      finalScoreStatus: StudentFacingFinalScoreStatusCode.PUBLISHED,
       orderByPublishedTimeDesc: true,
       pageNum: 1,
       pageSize: 2,
     })
     publishedTopExams.value = page.list
   } catch (error) {
-    publishedTopExams.value = []
+    publishedTopLoadFailed.value = true
     showUserError(error, '已发布成绩摘要加载失败')
   }
 }
@@ -429,7 +444,7 @@ function buildExamScoreActions(record: StudentExamItemVO): UiTableRowActionItem[
     {
       key: 'detail',
       label: '查看详情',
-      disabled: record.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED,
+      disabled: record.finalScoreStatus !== StudentFacingFinalScoreStatusCode.PUBLISHED,
     },
     {
       key: 'appeal',
@@ -478,21 +493,21 @@ onActivated(reloadPage)
 <style lang="scss" scoped>
 .student-score {
   &__latest-card {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   &__latest-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--dp-space-component);
     width: 100%;
   }
 
   &__latest-title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-lg);
     font-weight: var(--dp-font-weight-title);
   }
@@ -500,17 +515,17 @@ onActivated(reloadPage)
   &__list-head {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-lg);
     font-weight: var(--dp-font-weight-title);
   }
 
   &__insights {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   &__list-card {
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
   }
 
   &__hint {
@@ -521,7 +536,7 @@ onActivated(reloadPage)
 .latest-grid {
   display: grid;
   grid-template-columns: 220px 1fr;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   align-items: stretch;
 
   &__score {
@@ -529,7 +544,7 @@ onActivated(reloadPage)
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
     /* 与全站其他卡片视觉对齐：用纯色浅绿底 + 1px 边框，去除 135deg 渐变 */
     background: var(--dp-green-50);
     border: 1px solid var(--dp-green-200);
@@ -537,8 +552,8 @@ onActivated(reloadPage)
 
     .score-label {
       font-size: var(--dp-font-size-xs);
-      color: var(--dp-text-tertiary);
-      margin: 0 0 8px;
+      color: var(--dp-text-muted);
+      margin: 0 0 var(--dp-space-component-tight);
     }
 
     .score-value {
@@ -554,29 +569,29 @@ onActivated(reloadPage)
       }
 
       .score-unit {
-        margin-left: 4px;
+        margin-left: var(--dp-space-component-xs);
       }
     }
 
     .score-helper {
-      margin: 8px 0 0;
+      margin: var(--dp-space-component-tight) 0 0;
       font-size: var(--dp-font-size-xs);
-      color: var(--dp-text-tertiary);
+      color: var(--dp-text-muted);
     }
   }
 
   &__info {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     align-content: center;
 
     .info-row {
       display: grid;
       grid-template-columns: 96px 1fr;
       align-items: center;
-      gap: 12px;
-      padding: 6px 0;
+      gap: var(--dp-space-component);
+      padding: var(--dp-space-component-tight) 0;
       font-size: var(--dp-font-size-sm);
       border-bottom: 1px dashed var(--dp-border-subtle);
 
@@ -585,11 +600,11 @@ onActivated(reloadPage)
       }
 
       .info-label {
-        color: var(--dp-text-tertiary);
+        color: var(--dp-text-muted);
       }
 
       .info-value {
-        color: var(--dp-text);
+        color: var(--dp-text-primary);
         font-weight: 500;
       }
     }
@@ -599,10 +614,10 @@ onActivated(reloadPage)
 .student-score__exam-no {
   margin-top: 2px;
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .student-score__muted {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 </style>

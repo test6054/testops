@@ -16,6 +16,7 @@ export const MARK_EXAM_QUALITY_SYNC_STATUS_TONE: Record<
 > = {
   [MarkExamQualitySyncStatusCode.NOT_CONFIGURED]: 'orange',
   [MarkExamQualitySyncStatusCode.NOT_SYNCED]: 'gray',
+  [MarkExamQualitySyncStatusCode.PARTIALLY_SYNCED]: 'orange',
   [MarkExamQualitySyncStatusCode.SYNCED]: 'green',
 }
 
@@ -29,11 +30,23 @@ export interface MarkExamSyncStatusRequest {
 export interface MarkExamSyncStatusVO {
   status: MarkExamQualitySyncStatusCode
   examId?: string
-  qualityCourseId?: string
+  matchedCourseCount: number
+  syncedCourseCount: number
+  courseStatuses: MarkExamCourseSyncStatusVO[]
+  syncedRecordCount?: number
+  message?: string
+}
+
+export interface MarkExamCourseSyncStatusVO {
+  status: MarkExamQualitySyncStatusCode
+  qualityCourseId: string
+  qualityCourseName?: string
+  qualityCourseCode?: string
+  classId?: string
   trainingPlanId?: string
   assessmentItemId?: string
   scoreBatchId?: string
-  syncedRecordCount?: number
+  syncedRecordCount: number
   message?: string
 }
 

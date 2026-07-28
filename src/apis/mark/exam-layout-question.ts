@@ -13,6 +13,8 @@ import http from '@/config/axios'
 export interface ExamPaperPageTemplateResponse {
   pageTemplateId: string
   pageNo: number
+  /** 统一印刷包物理页型；决定试题页、答题页的扫描与识别职责。 */
+  pageKind: ExamPaperPageKindCode
   templateFileId?: string
   widthPx?: number
   heightPx?: number

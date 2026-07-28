@@ -58,7 +58,7 @@ const completedNavigated = ref(false)
 const autoResumeAttempted = ref(false)
 const jobMessage = computed(() => scanFlow.currentJob.value?.message ?? '')
 
-const lifecycleStatusLabel = computed(() => {
+const workOrderStatusDisplay = computed(() => {
   const status = scanFlow.lifecycle.value?.status
   if (!status) {
     return '—'
@@ -406,7 +406,7 @@ function goBack() {
     </section>
 
     <p v-if="scanFlow.lifecycle.value?.batchExternalNo" class="portfolio-scan-session__hint">
-      工单 {{ scanFlow.lifecycle.value.batchExternalNo }}； 状态 {{ lifecycleStatusLabel }}；
+      工单 {{ scanFlow.lifecycle.value.batchExternalNo }}； 状态 {{ workOrderStatusDisplay }}；
       {{ scanFlow.currentJob.value?.status ?? '等待扫描服务' }}； 已扫
       {{ scanFlow.currentJob.value?.scannedPages ?? 0 }} 页
       <span v-if="scanFlow.lifecycle.value.diagnostic">
@@ -423,10 +423,10 @@ function goBack() {
 .portfolio-scan-session {
   max-width: 720px;
   margin: 0 auto;
-  padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px);
+  padding: var(--dp-space-block) var(--dp-space-component);
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .portfolio-scan-session__head {
@@ -444,13 +444,13 @@ function goBack() {
 .portfolio-scan-session__scanner {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-md);
 }
 
 .portfolio-scan-session__select {
-  margin-top: 4px;
-  padding: 6px 8px;
+  margin-top: var(--dp-space-component-xs);
+  padding: var(--dp-space-component-tight);
   width: 100%;
 }
 
@@ -461,7 +461,7 @@ function goBack() {
 .portfolio-scan-session__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .portfolio-scan-session__hint {

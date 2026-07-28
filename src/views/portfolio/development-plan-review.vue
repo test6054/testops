@@ -4,13 +4,14 @@ import type { PortfolioDevelopmentPlanVO } from '@/apis/portfolio/teacher-platfo
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_OPTIONS,
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
   PortfolioDevelopmentPlanStatusCode,
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -28,8 +29,8 @@ import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchive
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -50,6 +51,7 @@ function planStatusTone(status: PortfolioDevelopmentPlanStatusCode): BadgeTone {
 const { loadTree, portfolioOrgOptions } = usePortfolioOrgTree()
 const { canPickTeachers } = usePortfolioTeacherAccess()
 const route = useRoute()
+const router = useRouter()
 
 const filterForm = reactive<ReviewFilterModel>({
   planStatus: PortfolioDevelopmentPlanStatusCode.DEPARTMENT_PENDING,
@@ -94,7 +96,7 @@ const filterFields = computed<FilterField[]>(() => [
 
 const loading = ref(false)
 const exporting = ref(false)
-const exportConfirmOpen = ref(false)
+const exportApplyOpen = ref(false)
 const exportPurpose = ref('')
 const rows = ref<PortfolioDevelopmentPlanVO[]>([])
 const pageNum = ref(1)
@@ -310,47 +312,57 @@ async function confirmReview(): Promise<void> {
     }
     reviewSubmitting.value = false
     resetReviewContext()
-    await loadPage()
   } catch (error) {
     if (reviewOperationToken.value !== context.operationToken) {
       return
     }
     showUserError(error, '审核发展规划失败')
+    return
   } finally {
     if (reviewOperationToken.value === context.operationToken) {
       reviewSubmitting.value = false
     }
   }
+  await loadPage()
 }
 
-function openExportConfirm() {
-  if (exporting.value) return
-  exportPurpose.value = ''
-  exportConfirmOpen.value = true
-}
-
-async function exportPlans() {
-  if (exporting.value) return
+function openExportApply() {
   if (!filterForm.planYear) {
     showFormValidationMessage('请填写年度')
     return
   }
+  exportPurpose.value = ''
+  exportApplyOpen.value = true
+}
+
+async function submitExportApply() {
   const purpose = exportPurpose.value.trim()
   if (!purpose) {
     showFormValidationMessage('请填写导出用途')
-    return
+    return Promise.reject(new Error('导出用途为空'))
+  }
+  if (!filterForm.planYear) {
+    showFormValidationMessage('请填写年度')
+    return Promise.reject(new Error('年度为空'))
+  }
+  if (exporting.value) {
+    return Promise.reject(new Error('导出申请进行中'))
   }
   exporting.value = true
   try {
-    const result = await portfolioDevelopmentPlanApi.exportExcel({
-      planYear: filterForm.planYear,
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.DEVELOPMENT_PLAN,
+      businessRef: {
+        planYear: filterForm.planYear,
+      },
       exportPurpose: purpose,
     })
-    await downloadPortfolioExcelExport(result)
-    exportConfirmOpen.value = false
-    void message.success('规划已导出')
+    exportApplyOpen.value = false
+    void message.success('已提交发展规划导出审批')
+    await router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出规划失败')
+    showUserError(error, '提交发展规划导出审批失败')
+    return Promise.reject(error)
   } finally {
     exporting.value = false
   }
@@ -388,9 +400,9 @@ watch(
             variant="primary"
             :loading="exporting"
             :disabled="exporting"
-            @click="openExportConfirm"
+            @click="openExportApply"
           >
-            导出表格文件
+            申请导出
           </UiButton>
         </template>
       </ContextBar>
@@ -459,7 +471,7 @@ watch(
         v-if="reviewOwnerTeacherId && archiveWriteForbidden"
         tone="warning"
         :message="archiveWriteBlockMessage || '该教师档案当前禁止审核跃迁'"
-        class="mb-3"
+        class="dp-mb-component"
       />
       <UiTextarea
         size="sm"
@@ -487,31 +499,20 @@ watch(
         </UiButton>
       </template>
     </UiDialog>
-
     <UiDialog
-      v-model:open="exportConfirmOpen"
-      title="导出"
-      ok-text="确认导出"
+      v-model:open="exportApplyOpen"
+      title="申请导出发展规划台账"
+      ok-text="提交审批"
       cancel-text="取消"
       :confirm-loading="exporting"
-      @ok="exportPlans"
+      @ok="submitExportApply"
     >
-      <label class="export-purpose__label">导出用途（必填）</label>
       <UiTextarea
-        v-model="exportPurpose"
         size="sm"
+        v-model="exportPurpose"
         :rows="3"
-        placeholder="请填写本次导出用途（写入审计）"
-        :disabled="exporting"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
       />
     </UiDialog>
   </StageWorkbenchShell>
 </template>
-
-<style scoped>
-.export-purpose__label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
-}
-</style>

@@ -2,8 +2,9 @@
 import type { ExamMaterialLayoutModeCode } from '@/apis/mark/exam'
 import type {
   ExamLayoutDocument,
-  ExamLayoutGenerateQuestionRequest,
 } from '@/apis/mark/exam-layout-design'
+import type { AnswerBookletSourceModeCode } from '@/types/enums/answer-booklet-source-mode-enum'
+import type { ExamLayoutPaperSpecCode } from '@/types/enums/exam-layout-paper-spec-enum'
 import LayoutEntryGateway from '@/components/mark/layout-designer/LayoutEntryGateway.vue'
 
 withDefaults(
@@ -11,6 +12,7 @@ withDefaults(
   document: ExamLayoutDocument | null
   examId: string
   materialLayoutMode?: ExamMaterialLayoutModeCode
+  answerBookletSourceMode?: AnswerBookletSourceModeCode
   generating?: boolean
   detecting?: boolean
   readonly?: boolean
@@ -22,7 +24,8 @@ withDefaults(
 )
 
 defineEmits<{
-  'generate-sheet': [paperSpec: string, questions: ExamLayoutGenerateQuestionRequest[]]
+  'generate-sheet': [paperSpec: ExamLayoutPaperSpecCode]
+  'import-institution-answer-booklet': [sourceFileId: string]
   'auto-detect': [sourcePdfFileId: string]
   "patch": [document: ExamLayoutDocument]
   'focus-upload': []
@@ -35,10 +38,12 @@ defineEmits<{
       :document="document"
       :exam-id="examId"
       :material-layout-mode="materialLayoutMode"
+      :answer-booklet-source-mode="answerBookletSourceMode"
       :generating="generating"
       :detecting="detecting"
       :readonly="readonly"
       @generate-sheet="(...args) => $emit('generate-sheet', ...args)"
+      @import-institution-answer-booklet="(...args) => $emit('import-institution-answer-booklet', ...args)"
       @auto-detect="(...args) => $emit('auto-detect', ...args)"
       @patch="$emit('patch', $event)"
     />

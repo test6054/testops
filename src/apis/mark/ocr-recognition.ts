@@ -1,5 +1,6 @@
 import type { MarkOcrProviderTypeCode } from './ocr-types'
 import type { QuestionTypeCode } from './question-type'
+import type { MarkOcrSceneCode } from '@/types/enums/mark-ocr-scene-enum'
 import http from '@/config/axios'
 
 export interface MarkOcrPaperSliceQueryRequest {
@@ -13,7 +14,7 @@ export interface MarkOcrPaperSliceVO {
   layoutQuestionId: string
   questionNo: string
   questionType: QuestionTypeCode
-  ocrScene?: string
+  ocrScene?: MarkOcrSceneCode
   fullScore: number
   pageNo: number
   sortNo: number
@@ -35,7 +36,7 @@ export interface MarkOcrRecognizeResponse {
   diagnosticCode?: string
   diagnosticMessage?: string
   preprocessSummary?: string
-  ocrScene?: string
+  ocrScene?: MarkOcrSceneCode
   manualReviewRequired?: boolean
   emptyAnswer?: boolean
 }

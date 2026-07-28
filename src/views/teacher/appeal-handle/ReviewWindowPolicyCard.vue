@@ -14,6 +14,12 @@
     </template>
 
     <UiSkeletonState v-if="loading" variant="card" compact />
+    <UiAlertStrip
+      v-else-if="loadFailed"
+      tone="error"
+      title="复核窗口策略加载失败"
+      dense
+    />
     <template v-else>
       <UiForm layout="vertical" :model="form">
         <UiRow :gutter="16">
@@ -82,7 +88,7 @@
         </UiRow>
       </UiForm>
 
-      <div v-if="canManageReviewerWrites === true" class="dp-space" style="--dp-space-gap: 8px">
+      <div v-if="canManageReviewerWrites === true" class="dp-space dp-space--tight">
         <UiButton size="sm" variant="primary" :loading="saving" @click="handleSave">
           保存策略
         </UiButton>
@@ -121,7 +127,7 @@
         v-else
         tone="warning"
         title="当前账号仅可查看复核窗口策略，无保存/激活/关闭权限"
-        style="margin-top: 8px"
+        style="margin-top: var(--dp-space-component-tight)"
       />
     </template>
   </WorkbenchSurfaceCard>
@@ -139,6 +145,7 @@ import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import {
   activateReviewWindow,
   closeReviewWindow,
+  getReviewSummary,
   getReviewWindowPolicy,
   GRADE_REVIEW_REASON_TYPE_OPTIONS,
   REVIEW_WINDOW_FLOW_HINT,
@@ -152,6 +159,7 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
@@ -160,7 +168,9 @@ import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewWindowPolicyCard' })
@@ -182,12 +192,15 @@ const canManageReviewerWrites = ref(false)
 /** 已持久化策略（能力位壳无 policyStatus / id 时不算） */
 const hasPersistedPolicy = computed(() => Boolean(policy.value?.id || policy.value?.policyStatus))
 const loading = ref(false)
+const loadFailed = ref(false)
 const saving = ref(false)
 const savingAndActivating = ref(false)
 const activating = ref(false)
 const closing = ref(false)
 /** MVR-210：未发布 BOUND 卷计数，与 BE countBoundPaperInstancesWithoutPublishedScore 同源 */
 const unpublishedBoundPaperCount = ref<number | null>(null)
+/** examId + reloadToken 请求代际 */
+let policyLoadGeneration = 0
 
 /** MVR-210：激活门禁与 BE activateReviewWindowUnderLock 同源（未全发布 / 关闭时间已过 / 状态）。 */
 const canActivateReviewWindow = computed(() => {
@@ -257,6 +270,14 @@ const form = reactive<{
   allowedReasonTypes: [],
 })
 
+function resetPolicyFormToUnread(): void {
+  form.openTime = ''
+  form.closeTime = ''
+  form.maxRequestCount = 1
+  form.visibleMaterialScope = VisibleMaterialScopeCode.SCORE_ONLY
+  form.allowedReasonTypes = []
+}
+
 const scopeOptions: { label: string, value: VisibleMaterialScopeCode }[] = [
   {
     label: strictEnumLabel(
@@ -284,27 +305,52 @@ const scopeOptions: { label: string, value: VisibleMaterialScopeCode }[] = [
   },
 ]
 
-async function refreshUnpublishedBoundGate(): Promise<void> {
-  if (!props.examId) {
+async function refreshUnpublishedBoundGate(examId: string, loadGeneration: number): Promise<void> {
+  if (!examId) {
     unpublishedBoundPaperCount.value = null
     return
   }
   try {
-    const gate: ArchiveVolumeExamGateResponse = await getArchiveVolumeExamGate(props.examId)
-    unpublishedBoundPaperCount.value = gate.unpublishedBoundPaperCount ?? 0
+    const gate: ArchiveVolumeExamGateResponse = await getArchiveVolumeExamGate(examId)
+    if (loadGeneration !== policyLoadGeneration || props.examId !== examId) {
+      return
+    }
+    // 门禁字段缺失视为合同错误，保持 null fail-closed，禁止 ?? 0
+    if (gate.unpublishedBoundPaperCount == null) {
+      unpublishedBoundPaperCount.value = null
+      showUserError(new Error('未发布 BOUND 门禁字段缺失'), '未发布成绩门禁合同不完整')
+      return
+    }
+    unpublishedBoundPaperCount.value = gate.unpublishedBoundPaperCount
   } catch (error) {
+    if (loadGeneration !== policyLoadGeneration || props.examId !== examId) {
+      return
+    }
     unpublishedBoundPaperCount.value = null
     showUserError(error, '未发布成绩门禁查询失败')
   }
 }
 
 async function reload(): Promise<void> {
-  if (!props.examId) return
+  const examId = props.examId
+  if (!examId) return
+  const loadGeneration = ++policyLoadGeneration
   loading.value = true
+  loadFailed.value = false
+  policy.value = null
+  canManageReviewerWrites.value = false
+  unpublishedBoundPaperCount.value = null
+  resetPolicyFormToUnread()
   try {
     // MVR-210：先刷新未发布 BOUND 门禁，再加载策略；二者独立，不可互相覆盖。
-    await refreshUnpublishedBoundGate()
-    const data = await getReviewWindowPolicy(props.examId)
+    await refreshUnpublishedBoundGate(examId, loadGeneration)
+    if (loadGeneration !== policyLoadGeneration || props.examId !== examId) {
+      return
+    }
+    const data = await getReviewWindowPolicy(examId)
+    if (loadGeneration !== policyLoadGeneration || props.examId !== examId) {
+      return
+    }
     // MVR-279：无 id/policyStatus 的能力位壳不当作已配置策略
     const persisted = Boolean(data?.id || data?.policyStatus)
     policy.value = persisted ? data : null
@@ -315,13 +361,23 @@ async function reload(): Promise<void> {
       form.maxRequestCount = data.maxRequestCount ?? 1
       form.visibleMaterialScope = data.visibleMaterialScope || VisibleMaterialScopeCode.SCORE_ONLY
       form.allowedReasonTypes = data.allowedReasonTypes || []
+    } else {
+      // 本场明确无策略：保持新建默认空白，不得保留上一场草稿
+      resetPolicyFormToUnread()
     }
   } catch (e) {
+    if (loadGeneration !== policyLoadGeneration || props.examId !== examId) {
+      return
+    }
     policy.value = null
     canManageReviewerWrites.value = false
+    loadFailed.value = true
+    resetPolicyFormToUnread()
     showUserError(e, '成绩复核窗口加载失败')
   } finally {
-    loading.value = false
+    if (loadGeneration === policyLoadGeneration) {
+      loading.value = false
+    }
   }
 }
 
@@ -421,12 +477,44 @@ async function handleClose(): Promise<void> {
   if (closing.value === true || activating.value === true || saving.value === true || savingAndActivating.value === true) {
     return
   }
+  const examId = props.examId
+  let pendingSummaryText = '待处理申请数加载失败，关闭前请自行确认复核待办'
+  try {
+    const summary = await getReviewSummary(examId)
+    const pendingTotal
+      = summary.pendingRequestCount + summary.inReviewRequestCount + summary.approvedRequestCount
+    pendingSummaryText
+      = `当前待办：待领取 ${summary.pendingRequestCount} · 处理中 ${summary.inReviewRequestCount} · 已通过待更正 ${summary.approvedRequestCount}（合计 ${pendingTotal}）`
+  } catch {
+    // 确认文案降级，不阻断关闭门禁确认
+  }
+  const openTimeText = form.openTime ? formatDateTime(form.openTime) : '—'
+  const closeTimeText = form.closeTime ? formatDateTime(form.closeTime) : '—'
+  const confirmed = await confirmAsync({
+    title: '确认关闭复核窗口？',
+    content:
+      `考试 ID：${examId}\n`
+      + `开放时间：${openTimeText}\n`
+      + `关闭时间：${closeTimeText}\n`
+      + `${pendingSummaryText}\n`
+      + '关闭后学生端不可再提交新的复核申请；已领取/已通过待更正的处理不受自动撤销。',
+    type: 'warning',
+    okText: '确认关闭',
+    cancelText: '取消',
+  })
+  if (!confirmed) {
+    return
+  }
   closing.value = true
   try {
-    await closeReviewWindow(props.examId)
+    await closeReviewWindow(examId)
     void message.success('已关闭')
-    await reload()
-    emit('changed')
+    try {
+      await reload()
+      emit('changed')
+    } catch (error) {
+      showUserError(error, '复核窗口已关闭，但策略刷新失败')
+    }
   } catch (e) {
     showUserError(e, '成绩复核窗口关闭失败')
   } finally {

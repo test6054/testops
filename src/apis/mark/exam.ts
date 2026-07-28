@@ -1,14 +1,21 @@
-import type { ExamCandidateResponse, ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
 /**
  * 阅卷考试主记录 API - 对接 edu-mark 模块 ExamMarkController 的考试主对象接口。
  *
  * 仅保留考试主记录、详情、状态与制卷形态字段；考试范围、模板、扫描、成绩、复核等
  * 后端对象分别由同目录具体 API 文件承接。
  */
+import type { ExamCandidateResponse, ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { WorkflowBlockingItem } from '@/components/workbench/workflow-readiness/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { AnswerBookletSourceModeCode } from '@/types/enums/answer-booklet-source-mode-enum'
+import type { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
+import type { ExamLayoutPaperSpecCode } from '@/types/enums/exam-layout-paper-spec-enum'
 import type { ExamRosterScopeModeCode } from '@/types/enums/exam-roster-scope-mode-enum'
+import type { ExamScanMaterialScopeCode } from '@/types/enums/exam-scan-material-scope-enum'
+import type { ExamWorkbenchPriorityReasonCode } from '@/types/enums/exam-workbench-priority-reason-code-enum'
 import type { MarkingOrganizationStatusCode } from '@/types/enums/marking-organization-status-enum'
+import type { ReviewWindowPolicyStatusCode } from '@/types/enums/review-window-policy-status-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 import {
@@ -215,6 +222,8 @@ export interface ExamSummaryResponse {
 export interface ExamWorkbenchPageQueryRequest extends ExamPageQueryRequest {
   /** 列表范围 */
   listScope: ExamListScopeCode
+  /** 优先推进原因；KPI/原因深链的唯一过滤真源，由服务端 EXISTS 在分页前执行。 */
+  priorityReasonCode?: ExamWorkbenchPriorityReasonCode
 }
 
 /** 考试工作台范围计数 - 对应 ExamWorkbenchScopeCountResponse */
@@ -275,6 +284,22 @@ export interface ExamWorkbenchSummaryResponse {
   openProcessingTaskCount: number
   scanAttentionCount: number
   needReviewGradeResultCount: number
+  /** 是否命中优先推进集合 - 对应 ExamWorkbenchSummaryResponse.hasPrioritySignal */
+  hasPrioritySignal: boolean
+  /** 优先推进原因编码列表 - 对应 ExamWorkbenchSummaryResponse.priorityReasonCodes */
+  priorityReasonCodes: ExamWorkbenchPriorityReasonCode[]
+  /** 最紧急优先原因编码 */
+  primaryPriorityReasonCode?: ExamWorkbenchPriorityReasonCode
+  /** 最紧急优先原因文案 */
+  primaryPriorityReasonMessage?: string
+  /** 列表进入工作台路由 name；优先/筛选/非默认入口均由后端唯一决议 */
+  workspaceRouteName: string
+  /** 列表进入按钮文案；优先/筛选/非默认入口均由后端唯一决议 */
+  enterActionLabel: string
+  /** 概览次入口路由；列表可不消费，关考复盘可空 */
+  secondaryWorkspaceRouteName?: string | null
+  /** 概览次入口文案；与 secondaryWorkspaceRouteName 同有同无 */
+  secondaryEnterActionLabel?: string | null
 }
 
 /** 考试范围班级引用 - 对应 ExamClassRefVO */
@@ -359,6 +384,10 @@ export interface ExamDetailResponse {
   /** 整卷印刷来源 */
   printSourceMode?: ExamPrintSourceModeCode
   printSourceModeMessage?: string
+  /** 考后实际回收并扫描的材料范围 */
+  scanMaterialScope?: ExamScanMaterialScopeCode
+  /** 答题纸母版来源 */
+  answerBookletSourceMode?: AnswerBookletSourceModeCode
   layoutModeLocked?: boolean
   pageTemplateReady?: boolean
   layoutConfigured?: boolean
@@ -369,18 +398,16 @@ export interface ExamDetailResponse {
   subjectiveRegionConfiguredCount?: number
   printPackageReady?: boolean
   printPackageCount?: number
-  /** 制卷入口形态编码 - 对应 ExamDetailResponse.layoutEntryKind */
-  layoutEntryKind?: string
+  /** 制卷入口形态 - 对应 ExamDetailResponse.layoutEntryKind */
+  layoutEntryKind?: ExamLayoutEntryKindCode
   layoutEntryKindMessage?: string
-  /** 制卷纸张规格编码 - 对应 ExamDetailResponse.layoutPaperSpec */
-  layoutPaperSpec?: string
+  /** 制卷纸张规格 - 对应 ExamDetailResponse.layoutPaperSpec */
+  layoutPaperSpec?: ExamLayoutPaperSpecCode
   layoutPaperSpecMessage?: string
   /** 扫描印张说明（1张1面 / 1张2面 / N页）- 对应 ExamDetailResponse.scanPaperStyleText */
   scanPaperStyleText?: string
   /** 准备建议项（提示能力缺口，不阻断扫描） */
   prepAdvisoryReasons: string[]
-  /** 准备硬阻断项（当前为空列表；扫描登记不依赖制卷形态硬阻断） */
-  prepBlockingReasons: string[]
   /** 按制卷形态与印刷来源生成的教务场景引导 */
   prepScenarioGuide?: ExamPrepScenarioGuideResponse
   /** 涉密 / 统考涉密场次；为 true 时前端启用强制水印与警示条 */
@@ -410,6 +437,8 @@ export interface ExamMaterialLayoutSaveRequest {
   examId: string
   materialLayoutMode: ExamMaterialLayoutModeCode
   printSourceMode?: ExamPrintSourceModeCode
+  scanMaterialScope: ExamScanMaterialScopeCode
+  answerBookletSourceMode?: AnswerBookletSourceModeCode
 }
 
 /** 创建考试请求 - 对应 ExamCreateRequest */
@@ -642,6 +671,73 @@ export function deleteExam(request: ExamDeleteRequest): Promise<boolean> {
 /** 归档关闭考试（状态 ACTIVE -> CLOSED）。 */
 export function closeExam(request: ExamCloseRequest): Promise<boolean> {
   return http.post<boolean>('/api/mark/exams/close', request)
+}
+
+/** 关考就绪度 - 与后端 ExamCloseReadinessResponse 同源。 */
+export interface ExamCloseReadinessResponse {
+  examId: string
+  examStatus: ExamStatusCode
+  closePrerequisitesSatisfied: boolean
+  closeExamReady: boolean
+  unreconciledAbsenceCandidateCount: number
+  pendingAbsenceRecordCount: number
+  unresolvedAbsenceScorePolicyCount: number
+  unresolvedPaperBindingCount: number
+  gradablePaperCount: number
+  unpublishedBoundPaperCount: number
+  reviewWindowConfigured: boolean
+  reviewWindowPolicyStatus?: ReviewWindowPolicyStatusCode
+  reviewWindowClosed: boolean
+  pendingReviewRequestCount: number
+  inReviewRequestCount: number
+  approvedReviewRequestCount: number
+  unresolvedReviewRequestCount: number
+  blockingItems: WorkflowBlockingItem[]
+}
+
+/** 查询与关考写路径同源的完整就绪度。 */
+export function getExamCloseReadiness(examId: string): Promise<ExamCloseReadinessResponse> {
+  return http.post<ExamCloseReadinessResponse>('/api/mark/exams/close-readiness', { examId })
+}
+
+/** 考试生命周期批量上限，与后端 ExamBatchLifecycleRequest.@Size(max=50) 一致 */
+export const EXAM_BATCH_LIFECYCLE_MAX = 50
+
+/** 考试生命周期批量请求 - 对应 ExamBatchLifecycleRequest */
+export interface ExamBatchLifecycleRequest {
+  /** 考试 ID 列表（字符串 Long）；单次最多 50 */
+  examIds: string[]
+}
+
+/** 考试生命周期批量失败明细 - 对应 ExamBatchLifecycleFailureResponse */
+export interface ExamBatchLifecycleFailureResponse {
+  examId: string
+  examName?: string
+  code?: number
+  message?: string
+}
+
+/** 考试生命周期批量响应 - 对应 ExamBatchLifecycleResponse */
+export interface ExamBatchLifecycleResponse {
+  totalCount: number
+  successCount: number
+  failureCount: number
+  successExamIds: string[]
+  failures: ExamBatchLifecycleFailureResponse[]
+}
+
+/** 批量关闭考试；部分失败不回滚已成功场次。 */
+export function batchCloseExams(
+  request: ExamBatchLifecycleRequest,
+): Promise<ExamBatchLifecycleResponse> {
+  return http.post<ExamBatchLifecycleResponse>('/api/mark/exams/batch-close', request)
+}
+
+/** 批量删除考试；部分失败不回滚已成功场次。 */
+export function batchDeleteExams(
+  request: ExamBatchLifecycleRequest,
+): Promise<ExamBatchLifecycleResponse> {
+  return http.post<ExamBatchLifecycleResponse>('/api/mark/exams/batch-delete', request)
 }
 
 /** DISTINCT 学期查询请求 - 对应 ExamDistinctTermQueryRequest */

@@ -5,6 +5,7 @@ import type {
   ScannerKioskScanModeCode,
 } from '@/apis/mark/scanner-kiosk'
 import type { ArchiveScanBatchModeCode } from '@/types/enums/archive-scan-batch-mode-enum'
+import type { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
 import type { DocumentBlankPageStatusCode } from '@/types/enums/document-blank-page-status-enum'
 import type { DocumentBusinessSceneCode } from '@/types/enums/document-business-scene-enum'
 import type { PortfolioAiTaskTypeCode } from '@/types/enums/portfolio-ai-task-type-enum'
@@ -65,7 +66,6 @@ export interface ScanWorkOrderStartRequest {
   scannerDeviceId: string
   scannerStationId: string
   examId?: string
-  declaredClassIds?: string[]
   examScanMode?: ScannerKioskScanModeCode
   targetPageNo?: number
   supplementReason?: string
@@ -147,7 +147,7 @@ export interface ScanWorkOrderArchiveContextVO {
   volumeId?: string
   archiveNo?: string
   archiveTitle?: string
-  volumeStatus?: string
+  volumeStatus?: ArchiveVolumeStatusCode
   catalogCode?: string
   materialType?: ArchiveMaterialTypeCode
   archiveBatchMode?: ArchiveScanBatchModeCode
@@ -172,13 +172,6 @@ export interface ScanWorkOrderContextVO {
 export interface ScanWorkOrderCommitRequest {
   taskKind: ScanTaskKindCode
   batchExternalNo: string
-  examId?: string
-  reportId?: string
-  declaredClassIds?: string[]
-  examScanMode?: ScannerKioskScanModeCode
-  targetPageNo?: number
-  supplementReason?: string
-  replaceTargetPage?: boolean
   pageCount?: number
   sourceFileIds?: string[]
   containerFileId?: string
@@ -220,7 +213,6 @@ export interface ExamScanWorkOrderStartRequest {
   scannerDeviceId: string
   scannerStationId: string
   examId?: string
-  declaredClassIds?: string[]
   examScanMode?: ScannerKioskScanModeCode
   targetPageNo?: number
   supplementReason?: string
@@ -236,6 +228,11 @@ export interface ExamScanWorkOrderDiscardRequest {
   scannerDeviceId: string
   scannerStationId: string
   discardPendingPages: boolean
+}
+
+/** 考试扫描 commit 是纯结束命令；工单冻结合同与 pending 页账本均由后端读取。 */
+export interface ExamScanWorkOrderCommitRequest {
+  batchExternalNo: string
 }
 
 export interface ScanWorkOrderContextRequest {
@@ -287,7 +284,7 @@ export function startExamScanWorkOrder(
 }
 
 export function commitExamScanWorkOrder(
-  request: Omit<ScanWorkOrderCommitRequest, 'taskKind'>,
+  request: ExamScanWorkOrderCommitRequest,
 ): Promise<ScanWorkOrderLifecycleVO> {
   return commitScanWorkOrder({ ...request, taskKind: ScanTaskKindCode.EXAM_MARKING })
 }

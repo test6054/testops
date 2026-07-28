@@ -1,10 +1,15 @@
 import type {
   PortfolioArchiveAuditFlowBindingVO,
   PortfolioArchiveAuditFlowBindRequest,
+  PortfolioArchiveAuditFlowOptionVO,
   PortfolioArchiveCategoryDeleteRequest,
   PortfolioArchiveCategoryListRequest,
   PortfolioArchiveCategorySaveRequest,
   PortfolioArchiveCategoryTreeNodeVO,
+  PortfolioArchiveEnumOptionDeleteRequest,
+  PortfolioArchiveEnumOptionListRequest,
+  PortfolioArchiveEnumOptionSaveRequest,
+  PortfolioArchiveEnumOptionVO,
   PortfolioArchiveFieldDefSaveRequest,
   PortfolioArchiveFieldDefVO,
   PortfolioArchiveFieldDeleteRequest,
@@ -17,6 +22,7 @@ import type {
   PortfolioArchiveTemplateVersionVO,
   PortfolioArchiveVersionActionRequest,
   PortfolioArchiveVersionMutationRequest,
+  PortfolioArchiveVersionPublishRequest,
 } from '@/apis/portfolio/types'
 import http from '@/config/axios'
 
@@ -37,11 +43,17 @@ export const portfolioArchiveTemplateApi = {
     http.post<string>(`${BASE}/field/save`, data),
   deleteFieldDef: (data: PortfolioArchiveFieldDeleteRequest) =>
     http.post<void>(`${BASE}/field/delete`, data),
+  listEnumOptions: (data: PortfolioArchiveEnumOptionListRequest) =>
+    http.post<PortfolioArchiveEnumOptionVO[]>(`${BASE}/enum-option/list`, data),
+  saveEnumOption: (data: PortfolioArchiveEnumOptionSaveRequest) =>
+    http.post<string>(`${BASE}/enum-option/save`, data),
+  deleteEnumOption: (data: PortfolioArchiveEnumOptionDeleteRequest) =>
+    http.post<void>(`${BASE}/enum-option/delete`, data),
   saveDraftVersion: (data: PortfolioArchiveVersionActionRequest) =>
     http.post<string>(`${BASE}/version/save-draft`, data),
   trialVersion: (data: PortfolioArchiveVersionMutationRequest) =>
     http.post<void>(`${BASE}/version/trial`, data),
-  publishVersion: (data: PortfolioArchiveVersionMutationRequest) =>
+  publishVersion: (data: PortfolioArchiveVersionPublishRequest) =>
     http.post<void>(`${BASE}/version/publish`, data),
   deprecateVersion: (data: PortfolioArchiveVersionMutationRequest) =>
     http.post<void>(`${BASE}/version/deprecate`, data),
@@ -57,4 +69,6 @@ export const portfolioArchiveTemplateApi = {
     http.post<void>(`${BASE}/audit-flow/bind`, data),
   getAuditFlowBinding: (data: PortfolioArchiveVersionActionRequest) =>
     http.post<PortfolioArchiveAuditFlowBindingVO | null>(`${BASE}/audit-flow/get`, data),
+  listAuditFlowOptions: () =>
+    http.post<PortfolioArchiveAuditFlowOptionVO[]>(`${BASE}/audit-flow/options`, {}),
 }

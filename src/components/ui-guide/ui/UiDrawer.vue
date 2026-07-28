@@ -6,7 +6,7 @@
     :mask-closable="props.maskClosable"
     :placement="props.placement"
     :width="props.width"
-    root-class-name="ui-drawer-root"
+    :root-class-name="drawerRootClassName"
     v-bind="$attrs"
     @close="handleClose"
   >
@@ -21,8 +21,14 @@
             <h3 class="ui-drawer__title">{{ props.title }}</h3>
           </slot>
         </div>
-        <button v-if="props.closable" class="ui-drawer__close" type="button" @click="handleClose">
-          ×
+        <button
+          v-if="props.closable"
+          class="ui-drawer__close"
+          type="button"
+          aria-label="关闭"
+          @click="handleClose"
+        >
+          <CloseOutlined />
         </button>
       </header>
 
@@ -45,6 +51,7 @@
 </template>
 
 <script lang="ts" setup>
+import { CloseOutlined } from '@ant-design/icons-vue'
 import { computed, useSlots } from 'vue'
 import UiButton from './Button.vue'
 
@@ -61,6 +68,8 @@ const props = withDefaults(
     placement?: 'left' | 'right' | 'top' | 'bottom'
     closable?: boolean
     maskClosable?: boolean
+    /** 默认关闭；仅产品确有遮挡语义时启用轻量 blur */
+    maskBlur?: boolean
     confirmLoading?: boolean
     okText?: string
     cancelText?: string
@@ -73,6 +82,7 @@ const props = withDefaults(
     placement: 'right',
     closable: true,
     maskClosable: true,
+    maskBlur: false,
     confirmLoading: false,
     okText: '确定',
     cancelText: '取消',
@@ -89,6 +99,9 @@ const emit = defineEmits<{
 }>()
 const slots = useSlots()
 const closeOnlyHeader = computed(() => props.closable && !props.title && !slots.header)
+const drawerRootClassName = computed(() =>
+  props.maskBlur ? 'ui-drawer-root ui-drawer-root--mask-blur' : 'ui-drawer-root',
+)
 
 const handleClose = () => {
   emit('update:open', false)
@@ -112,13 +125,13 @@ const handleOk = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-4, 16px) var(--dp-space-4, 16px) 0;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-block) 0;
 }
 
 .ui-drawer__header--close-only {
   justify-content: flex-end;
-  padding: var(--dp-space-2, 8px) var(--dp-space-2, 8px) 0;
+  padding: var(--dp-space-component-tight) 0;
 }
 
 .ui-drawer__header--close-only .ui-drawer__header-main {
@@ -134,7 +147,7 @@ const handleOk = () => {
   margin: 0;
   font-size: var(--dp-font-size-lg);
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   color: var(--dp-text-primary);
 }
 
@@ -148,37 +161,48 @@ const handleOk = () => {
   border-radius: var(--dp-radius-full, 999px);
   background: transparent;
   color: var(--dp-text-secondary);
+  font-size: 14px;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    transform 0.15s ease;
+    background-color var(--dp-duration-fast) var(--dp-ease-default),
+    color var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .ui-drawer__close:hover {
   background: var(--dp-gray-100);
   color: var(--dp-text-primary);
-  transform: scale(1.05);
 }
 
 .ui-drawer__close:active {
-  transform: scale(0.95);
+  background: var(--dp-gray-200);
+  color: var(--dp-text-primary);
+}
+
+.ui-drawer__close:focus-visible {
+  outline: 2px solid var(--dp-focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-drawer__close {
+    transition: none;
+  }
 }
 
 .ui-drawer__body {
   flex: 1;
-  padding: var(--dp-space-4, 16px);
+  padding: var(--dp-space-block);
 }
 
 .ui-drawer__header--close-only + .ui-drawer__body {
-  padding-top: var(--dp-space-2, 8px);
+  padding-top: var(--dp-space-component-tight);
 }
 
 .ui-drawer__footer {
   display: flex;
   justify-content: flex-end;
-  gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) var(--dp-space-4, 16px);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border-top: 1px solid color-mix(in srgb, var(--dp-border) 60%, transparent);
 }
 </style>
@@ -200,6 +224,10 @@ const handleOk = () => {
 
   .ant-drawer-mask {
     background-color: color-mix(in srgb, var(--dp-text-primary) 30%, transparent) !important;
+    backdrop-filter: none;
+  }
+
+  &.ui-drawer-root--mask-blur .ant-drawer-mask {
     backdrop-filter: blur(3px);
   }
 
@@ -228,7 +256,7 @@ const handleOk = () => {
     &.ant-drawer-panel-motion-right-appear-active {
       transform: none !important;
       clip-path: inset(0 0 0 0);
-      transition: clip-path 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      transition: clip-path var(--dp-duration-slow) cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
   }
 
@@ -239,7 +267,7 @@ const handleOk = () => {
     &.ant-drawer-panel-motion-right-leave-active {
       transform: none !important;
       clip-path: inset(0 0 0 100%);
-      transition: clip-path 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      transition: clip-path var(--dp-duration-slow) cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
   }
 

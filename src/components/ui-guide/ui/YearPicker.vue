@@ -111,12 +111,12 @@ const handleOpenChange = (open: boolean) => {
   width: 100%;
   border-radius: var(--dp-radius-control);
   border: 1px solid var(--dp-border);
-  background-color: var(--dp-bg-control);
+  background-color: var(--dp-surface);
   box-shadow: none;
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background-color 0.2s ease;
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    box-shadow var(--dp-duration-normal) var(--dp-ease-default),
+    background-color var(--dp-duration-normal) var(--dp-ease-default);
 }
 
 .ui-year-picker--sm :deep(.ant-picker) {

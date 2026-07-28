@@ -21,7 +21,7 @@ import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grad
 import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { listOperationLogs } from '@/apis/mark/admin-audit'
 import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import { getExamDetail } from '@/apis/mark/exam'
@@ -291,6 +291,14 @@ export function useMarkingTaskDetailState() {
     }, MARKING_WITHDRAW_TOAST_MS)
   }
 
+  const rawGoToTask = navigation.goToTask
+  /** 提交链路 / 用户主动切换 分发；构造后再绑定具体实现 */
+  const goToTaskDispatch = {
+    run: (targetTaskId: string) => {
+      rawGoToTask(targetTaskId)
+    },
+  }
+
   const submitCtx = useMarkingSubmit({
     taskId,
     task,
@@ -301,7 +309,9 @@ export function useMarkingTaskDetailState() {
     isReadOnly: isScoreReadOnly,
     canSubmit,
     nextTaskId: navigation.nextNavTaskId,
-    goToTask: navigation.goToTask,
+    goToTask: (targetTaskId: string) => {
+      goToTaskDispatch.run(targetTaskId)
+    },
     loadTask: () => loadTaskHolder.run(),
     ensureBatchLoaded: navigation.ensureBatchLoaded,
     tenantId,
@@ -415,6 +425,65 @@ export function useMarkingTaskDetailState() {
     })
   }
 
+  /** 提交成功后的自动跳转放行，避免 hasGradingDraft 误拦 */
+  let bypassDirtyLeaveGuard = false
+
+  async function confirmLeaveIfDirty(): Promise<boolean> {
+    if (bypassDirtyLeaveGuard || !submitCtx.hasGradingDraft.value) {
+      return true
+    }
+    return confirmAsync({
+      title: '尚未提交的阅卷内容将丢失',
+      content: '尚未提交的教师给分与批注不会写入。确认离开当前任务？',
+      type: 'warning',
+      okText: '继续离开',
+      cancelText: '留在当前任务',
+    })
+  }
+
+  /** 提交链路自动下一份：允许携带尚未清空的本地草稿态 */
+  function goToTaskAfterSubmit(targetTaskId: string): void {
+    bypassDirtyLeaveGuard = true
+    rawGoToTask(targetTaskId)
+  }
+
+  /** 教师主动切换任务（按钮 / 快捷键）：有草稿则确认 */
+  function goToTaskFromUser(targetTaskId: string): void {
+    if (!targetTaskId || targetTaskId === taskId.value) {
+      return
+    }
+    void (async () => {
+      bypassDirtyLeaveGuard = false
+      if (!(await confirmLeaveIfDirty())) {
+        return
+      }
+      bypassDirtyLeaveGuard = true
+      rawGoToTask(targetTaskId)
+    })()
+  }
+
+  goToTaskDispatch.run = goToTaskAfterSubmit
+  navigation.goToTask = goToTaskFromUser
+
+  const canKeyboardWithdraw = computed(() => {
+    if (examDetail.value?.status !== ExamStatusCode.ACTIVE) {
+      return false
+    }
+    const entry = latestWithdrawable.value
+    if (!entry) {
+      return false
+    }
+    return canWithdrawMarkingEntry(entry)
+  })
+
+  onBeforeRouteLeave(async () => {
+    if (bypassDirtyLeaveGuard) {
+      bypassDirtyLeaveGuard = false
+      return true
+    }
+    return confirmLeaveIfDirty()
+  })
+
   useMarkingKeyboard({
     submitting: submitCtx.submitting,
     canSubmit,
@@ -428,7 +497,7 @@ export function useMarkingTaskDetailState() {
     expandedWholeQuestionKey,
     wholeQuestions,
     getWholeQuestionForm,
-    goToTask: navigation.goToTask,
+    goToTask: goToTaskFromUser,
     submit: async () => {
       if (taskRecycledBlocked.value === true) {
         void message.warning('该任务已被组长回收，当前批阅将无法提交')
@@ -445,6 +514,7 @@ export function useMarkingTaskDetailState() {
     onWithdraw: () => {
       void handleWithdrawLatest()
     },
+    canWithdraw: canKeyboardWithdraw,
     applyModalOpen: submitCtx.applyModalOpen,
     onApplyModalKey: submitCtx.handleApplyModalKey,
   })
@@ -1005,7 +1075,7 @@ export function useMarkingTaskDetailState() {
   ): void {
     // MVR-414：整卷快捷数字与 isScoreReadOnly 二次闸（非 UI 入口亦不可写）
     if (isScoreReadOnly.value === true) return
-    if (score > question.fullScore) return
+    if (score < 0 || score > question.fullScore) return
     getWholeQuestionForm(question.layoutQuestionId).score = score
   }
 
@@ -1016,7 +1086,11 @@ export function useMarkingTaskDetailState() {
   function applyPrimaryQuickScore(score: number | undefined): void {
     if (isScoreReadOnly.value === true) return
     if (score === undefined || Number.isNaN(Number(score))) return
-    form.score = Number(score)
+    const nextScore = Number(score)
+    const fullScore = questionView.value?.fullScore
+    if (nextScore < 0) return
+    if (fullScore != null && nextScore > fullScore) return
+    form.score = nextScore
   }
 
   const revealOpen = ref(false)
@@ -1041,7 +1115,12 @@ export function useMarkingTaskDetailState() {
     revealedIdentity.value = null
   }
 
-  function handleAnonymousRevealed(result: AnonymousRevealResponse): void {
+    function handleAnonymousRevealed(result: AnonymousRevealResponse): void {
+    const ttlMinutes = Number(result.revealTtlMinutes)
+    if (!Number.isFinite(ttlMinutes) || ttlMinutes <= 0) {
+      showFormValidationMessage('解匿名有效期契约异常')
+      return
+    }
     revealedIdentity.value = result
     if (revealExpireTimer) {
       window.clearTimeout(revealExpireTimer)
@@ -1050,6 +1129,7 @@ export function useMarkingTaskDetailState() {
     const expireAt = Date.parse(result.revealExpireTime)
     if (!Number.isFinite(expireAt)) {
       showFormValidationMessage('身份查看时间异常')
+      revealedIdentity.value = null
       return
     }
     revealExpireTimer = window.setTimeout(clearRevealedIdentity, Math.max(expireAt - Date.now(), 0))

@@ -2,7 +2,6 @@
 import type { PortfolioArchiveRecordStatusCode } from '@/apis/portfolio/enums'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { PortfolioTeacherJourneyKey } from '@/constants/portfolio-teacher-journey'
-import type { WorkbenchStage } from '@/types/workbench'
 import { computed, reactive, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -14,18 +13,19 @@ import PortfolioTeacherJourneyRail from '@/components/portfolio/PortfolioTeacher
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import PortfolioTeacherReviewStatusTable from '@/components/portfolio/PortfolioTeacherReviewStatusTable.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
-import {
-  PORTFOLIO_TEACHER_JOURNEY_STEPS,
-  resolvePortfolioJourneyDefaultRoute,
-} from '@/constants/portfolio-teacher-journey'
+import { usePortfolioTeacherJourneyRail } from '@/composables/usePortfolioTeacherJourneyRail'
+import { resolvePortfolioJourneyDefaultRoute } from '@/constants/portfolio-teacher-journey'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const activeJourneyKey: PortfolioTeacherJourneyKey = 'review'
+const { journeyStages, loadFailed, lastSuccessAt } = usePortfolioTeacherJourneyRail(activeJourneyKey)
 
 interface TeacherReviewStatusFilterForm extends Record<string, unknown> {
   academicYear?: string
@@ -68,14 +68,6 @@ const filterFields = computed<FilterField[]>(() => [
 
 const highlightRecordId = computed(() =>
   typeof route.query.highlightRecordId === 'string' ? route.query.highlightRecordId : undefined,
-)
-
-const journeyStages = computed((): WorkbenchStage[] =>
-  PORTFOLIO_TEACHER_JOURNEY_STEPS.map((step) => ({
-    key: step.key,
-    title: step.title,
-    status: step.key === 'review' ? 'active' : 'pending',
-  })),
 )
 
 function readRecordStatusFromQuery(value: unknown): PortfolioArchiveRecordStatusCode | undefined {
@@ -121,11 +113,18 @@ watch(
     </template>
     <template #rail>
       <PortfolioTeacherJourneyRail
+        v-if="journeyStages.length > 0"
         :stages="journeyStages"
-        active-key="review"
+        :active-key="activeJourneyKey"
         @select="navigateJourney"
       />
     </template>
+
+    <UiAlertStrip
+      v-if="loadFailed"
+      tone="error"
+      title="旅程快照加载失败"
+    />
 
     <UiFilterBar
       v-model="filterModel"
@@ -147,6 +146,6 @@ watch(
 
 <style scoped lang="scss">
 .teacher-review-status__filter {
-  margin: var(--dp-space-4);
+  margin: var(--dp-space-block);
 }
 </style>

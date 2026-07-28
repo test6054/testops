@@ -25,12 +25,12 @@
           </p>
         </div>
         <UiButton
-          v-if="showActions && step.status === 'pending' && step.routeName"
+          v-if="showActions && step.status === 'pending' && step.routeName && step.actionLabel"
           variant="outline"
           size="sm"
           @click="navigate(step)"
         >
-          {{ step.actionLabel ?? '前往' }}
+          {{ step.actionLabel }}
         </UiButton>
       </li>
     </ol>
@@ -76,10 +76,10 @@ function navigate(step: WorkflowReadinessStep): void {
 
 <style scoped>
 .workflow-readiness-panel {
-  margin-bottom: var(--dp-space-3);
-  padding: var(--dp-space-3) var(--dp-space-4);
-  border: 1px solid var(--dp-border-light);
-  border-radius: var(--dp-radius-md);
+  margin-bottom: var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-control);
   background: var(--dp-surface);
 }
 
@@ -88,26 +88,26 @@ function navigate(step: WorkflowReadinessStep): void {
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-3);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 
 .workflow-readiness-panel__title {
   margin: 0;
   font-size: var(--dp-font-size-md);
   font-weight: 600;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
 }
 
 .workflow-readiness-panel__metrics {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .workflow-readiness-panel__metric {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-4);
+  color: var(--dp-text-quaternary);
 }
 
 .workflow-readiness-panel__steps {
@@ -116,17 +116,17 @@ function navigate(step: WorkflowReadinessStep): void {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .workflow-readiness-panel__step {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-3);
-  padding: var(--dp-space-2) var(--dp-space-3);
-  border: 1px solid var(--dp-border-light);
-  border-radius: var(--dp-radius-sm);
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-xs);
   background: var(--dp-surface-subtle);
 }
 
@@ -137,14 +137,14 @@ function navigate(step: WorkflowReadinessStep): void {
 .workflow-readiness-panel__step-label {
   font-size: var(--dp-font-size-md);
   font-weight: 500;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
 }
 
 .workflow-readiness-panel__step-desc {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-font-size-xs);
   line-height: 1.5;
-  color: var(--dp-text-4);
+  color: var(--dp-text-quaternary);
 }
 
 .workflow-readiness-panel__step-main {

@@ -23,6 +23,10 @@ import {
   ALL_ACHIEVEMENT_DETAIL_TYPE_CODES,
 } from '@/types/enums/achievement-detail-type-enum'
 import {
+  AchievementStaleSourceTypeCode,
+  AchievementStaleSourceTypeDescription,
+} from '@/types/enums/achievement-stale-source-type-enum'
+import {
   AchievementStatusCode,
   AchievementStatusDescription,
   ALL_ACHIEVEMENT_STATUS_CODES,
@@ -256,6 +260,8 @@ export {
   AchievementAuditStatusDescription,
   AchievementDetailTypeCode,
   AchievementDetailTypeDescription,
+  AchievementStaleSourceTypeCode,
+  AchievementStaleSourceTypeDescription,
   AchievementStatusCode,
   AchievementStatusDescription,
   AchievementTargetTypeCode,

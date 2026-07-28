@@ -1,7 +1,7 @@
 @layer dp-base {
   body {
-    --margin: 16px;
-    --padding: 16px;
+    --margin: var(--dp-space-block);
+    --padding: var(--dp-space-block);
   }
 
   html,
@@ -20,7 +20,7 @@
     overflow-x: hidden;
     overflow-y: auto;
     color: var(--dp-text-secondary);
-    background-color: var(--dp-bg-container);
+    background-color: var(--dp-surface);
     -moz-osx-font-smoothing: grayscale;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;

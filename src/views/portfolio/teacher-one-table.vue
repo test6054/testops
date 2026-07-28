@@ -9,6 +9,7 @@ import {
   PortfolioCompletenessLevelDescription,
   PortfolioTeacherIdentityTypeDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
@@ -29,8 +30,11 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import {
+  formatPortfolioNullableCount,
+} from '@/utils/portfolio-nullable-count'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -38,7 +42,7 @@ const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const loading = ref(false)
 const exporting = ref(false)
-const exportConfirmOpen = ref(false)
+const exportApplyOpen = ref(false)
 const exportPurpose = ref('')
 const loadFailed = ref(false)
 const summary = ref<PortfolioTeacherOneTableSummaryVO | null>(null)
@@ -122,10 +126,17 @@ function completenessSummaryText(summaryData: PortfolioTeacherOneTableSummaryVO)
 }
 
 function courseArchiveSummaryText(summaryData: PortfolioTeacherOneTableSummaryVO): string {
-  if ((summaryData.courseArchiveFrameworkSlotTotal ?? 0) <= 0) {
+  if (summaryData.courseArchiveFrameworkSlotTotal == null) {
     return '—'
   }
-  return `${summaryData.currentAcademicYear ?? '本学年'} · 讲授 ${summaryData.courseArchiveTaughtCourseCount ?? 0} 门 · 五框架 ${summaryData.courseArchiveFrameworkSlotDone ?? 0}/${summaryData.courseArchiveFrameworkSlotTotal ?? 0} · 齐备 ${summaryData.courseArchiveFullyCompleteCount ?? 0} 门`
+  if (summaryData.courseArchiveFrameworkSlotTotal <= 0) {
+    return '未配置'
+  }
+  const taught = formatPortfolioNullableCount(summaryData.courseArchiveTaughtCourseCount)
+  const done = formatPortfolioNullableCount(summaryData.courseArchiveFrameworkSlotDone)
+  const total = formatPortfolioNullableCount(summaryData.courseArchiveFrameworkSlotTotal)
+  const complete = formatPortfolioNullableCount(summaryData.courseArchiveFullyCompleteCount)
+  return `${summaryData.currentAcademicYear ?? '本学年'} · 讲授 ${taught} 门 · 五框架 ${done}/${total} · 齐备 ${complete} 门`
 }
 
 function openCategoryArchive(categoryId: string, recordId?: string) {
@@ -155,54 +166,48 @@ function openCategoryCorrection(categoryId: string, recordId?: string) {
   })
 }
 
-function openExportConfirm() {
-  if (exporting.value || loading.value) {
-    return
-  }
+function openExportApply() {
   if (canPickTeachers.value && !targetTeacherId.value) {
     showFormValidationMessage('请先选择目标教师')
+    return
+  }
+  if (exporting.value) {
     return
   }
   exportPurpose.value = ''
-  exportConfirmOpen.value = true
+  exportApplyOpen.value = true
 }
 
-async function exportOneTable() {
-  if (canPickTeachers.value && !targetTeacherId.value) {
-    showFormValidationMessage('请先选择目标教师')
-    return
-  }
+async function submitExportApply() {
   const purpose = exportPurpose.value.trim()
   if (!purpose) {
     showFormValidationMessage('请填写导出用途')
-    return
+    return Promise.reject(new Error('导出用途为空'))
   }
-  const scopeToken = requestToken.value
-  const teacherId = targetTeacherId.value
+  if (canPickTeachers.value && !targetTeacherId.value) {
+    showFormValidationMessage('请先选择目标教师')
+    return Promise.reject(new Error('缺少教师'))
+  }
+  if (exporting.value) {
+    return Promise.reject(new Error('导出申请进行中'))
+  }
   exporting.value = true
   try {
-    const result = await portfolioTeacherApi.exportOneTable({
-      teacherId: teacherId || undefined,
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.TEACHER_ONE_TABLE,
+      businessRef: {
+        teacherId: targetTeacherId.value || undefined,
+      },
       exportPurpose: purpose,
     })
-    if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
-      return
-    }
-    await downloadPortfolioExcelExport(result)
-    if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
-      return
-    }
-    exportConfirmOpen.value = false
-    void message.success(`已导出 ${result.rowCount} 行`)
+    exportApplyOpen.value = false
+    void message.success('已提交教师一张表导出审批')
+    await router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
-      return
-    }
-    showUserError(error, '导出教师一张表失败')
+    showUserError(error, '提交教师一张表导出审批失败')
+    return Promise.reject(error)
   } finally {
-    if (requestToken.value === scopeToken && targetTeacherId.value === teacherId) {
-      exporting.value = false
-    }
+    exporting.value = false
   }
 }
 
@@ -232,9 +237,9 @@ usePortfolioScopedLoader(
             variant="primary"
             :loading="exporting"
             :disabled="loading || (canPickTeachers && !targetTeacherId)"
-            @click="openExportConfirm"
+            @click="openExportApply"
           >
-            导出一张表
+            申请导出
           </UiButton>
         </template>
       </ContextBar>
@@ -261,10 +266,10 @@ usePortfolioScopedLoader(
             {{ summary.title ?? '—' }}
           </UiDescriptionsItem>
           <UiDescriptionsItem label="成果数">
-            {{ summary.achievementCount ?? 0 }}
+            {{ formatPortfolioNullableCount(summary.achievementCount) }}
           </UiDescriptionsItem>
           <UiDescriptionsItem label="荣誉数">
-            {{ summary.honorCount ?? 0 }}
+            {{ formatPortfolioNullableCount(summary.honorCount) }}
           </UiDescriptionsItem>
           <UiDescriptionsItem label="完整度">
             <UiTag
@@ -292,7 +297,7 @@ usePortfolioScopedLoader(
                 v-for="tag in summary.identityTags"
                 :key="tag"
                 tone="blue"
-                style="margin-right: 4px"
+                style="margin-right: var(--dp-space-component-xs)"
               >
                 {{ identityLabel(tag) }}
               </UiTag>
@@ -311,14 +316,14 @@ usePortfolioScopedLoader(
           </UiButton>
         </div>
       </UiCard>
-      <UiCard v-if="summary?.recentChangeSummary?.length" title="近期变更" style="margin-top: 16px">
+      <UiCard v-if="summary?.recentChangeSummary?.length" title="近期变更" style="margin-top: var(--dp-space-block)">
         <ul class="change-list">
           <li v-for="(item, index) in summary.recentChangeSummary" :key="index">
             {{ item }}
           </li>
         </ul>
       </UiCard>
-      <UiCard v-if="summary" title="档案分类汇总" style="margin-top: 16px">
+      <UiCard v-if="summary" title="档案分类汇总" style="margin-top: var(--dp-space-block)">
         <UiDataTable
           :columns="categoryColumns"
           :data-source="summary.categories"
@@ -351,33 +356,30 @@ usePortfolioScopedLoader(
         </UiDataTable>
       </UiCard>
     </UiSpin>
+    <UiDialog
+      v-model:open="exportApplyOpen"
+      title="申请导出教师一张表"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="submitExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="exportPurpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
-
-  <UiDialog
-    v-model:open="exportConfirmOpen"
-    title="导出教师一张表"
-    ok-text="确认导出"
-    cancel-text="取消"
-    :confirm-loading="exporting"
-    @ok="exportOneTable"
-  >
-    <label class="export-purpose__label">导出用途（必填）</label>
-    <UiTextarea
-      v-model="exportPurpose"
-      size="sm"
-      :rows="3"
-      placeholder="请填写本次导出用途（写入审计）"
-      :disabled="exporting"
-    />
-  </UiDialog>
 </template>
 
 <style scoped>
 .actions {
-  margin-top: 12px;
+  margin-top: var(--dp-space-component);
 }
 .correction-badge {
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 .change-list {
   margin: 0;

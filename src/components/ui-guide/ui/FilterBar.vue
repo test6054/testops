@@ -7,7 +7,11 @@
     <slot />
 
     <template v-for="field in fields" :key="field.key">
-      <div class="dp-filter-bar__field" :style="getFieldStyle(field)">
+      <div
+        class="dp-filter-bar__field"
+        :style="getFieldStyle(field)"
+        :data-shortcut-target="field.shortcutTarget || undefined"
+      >
         <span v-if="field.label && showLabels" class="dp-filter-bar__label">{{ field.label }}</span>
         <UiSearchBox
           v-if="(field.type || 'input') === 'input' && field.inputPrefixIcon === 'search'"
@@ -322,15 +326,15 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .dp-filter-bar--panel {
-  border: 1px solid var(--dp-border);
+  border: 1px solid var(--dp-panel-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
-  padding: var(--dp-space-2) var(--dp-space-3);
-  box-shadow: var(--dp-shadow-xs);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .dp-filter-bar--plain {
@@ -345,7 +349,7 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-1, 4px);
+  gap: var(--dp-space-component-xs);
 }
 
 .dp-filter-bar__control {
@@ -369,7 +373,7 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
 .dp-advanced-filter__actions {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
   flex-wrap: wrap;
   flex: 0 1 auto;
   flex-shrink: 0;
@@ -398,7 +402,7 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
 :deep(.dp-btn),
 :deep(.ant-btn) {
   min-height: var(--dp-control-height-md, 36px);
-  padding: 6px 12px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border-radius: var(--dp-radius-control);
   white-space: nowrap;
 }

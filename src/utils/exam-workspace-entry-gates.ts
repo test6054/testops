@@ -3,23 +3,8 @@ import type {
   MarkingProgressResponse,
 } from '@/apis/mark/exam-progress'
 import type { ExamJourneyKey } from '@/constants/exam-journey'
-import type { MarkStageKey } from '@/stores/modules/markStage'
 import { WorkbenchNextActionKeyCode } from '@/apis/mark/exam-progress'
 import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
-import { resolveScanStageEntryRouteName } from '@/utils/resolve-scan-stage-entry'
-
-const NEXT_ACTION_ROUTE: Record<WorkbenchNextActionKeyCode, string> = {
-  [WorkbenchNextActionKeyCode.START_SCAN]: 'TeacherExamWorkspaceScanBatches',
-  [WorkbenchNextActionKeyCode.ENTER_REVIEW]: 'TeacherExamWorkspaceReviewBatchConfirm',
-  [WorkbenchNextActionKeyCode.ENTER_MARKING]: 'TeacherExamWorkspaceMarkingTaskPool',
-  [WorkbenchNextActionKeyCode.EXPERIENCE_ASSIST_CALIBRATION]:
-    'TeacherExamWorkspaceMarkingExperienceAssistPolicy',
-}
-
-/** 是否存在扫描登记硬阻断 */
-export function hasPrepHardBlocking(prepBlockingReasons: string[] | null | undefined): boolean {
-  return (prepBlockingReasons?.length ?? 0) > 0
-}
 
 export function findWorkbenchNextAction(
   nextActions: ExamWorkbenchNextActionResponse[] | null | undefined,
@@ -29,39 +14,53 @@ export function findWorkbenchNextAction(
 }
 
 /**
- * 是否允许从准备页进入扫描登记：消费后端 nextActions.START_SCAN，无 nextActions 时仅看硬阻断。
+ * 是否允许从准备页进入扫描登记：仅看 START_SCAN 合同 enabled；
+ * 缺 nextAction 时 fail-closed。制卷/名册硬阻断不再参与。
  */
 export function canStartScanRegistration(
-  prepBlockingReasons: string[] | null | undefined,
   nextActions?: ExamWorkbenchNextActionResponse[] | null,
 ): boolean {
   const action = findWorkbenchNextAction(nextActions, WorkbenchNextActionKeyCode.START_SCAN)
-  if (action) {
-    // MVR-987：仅认 BE nextAction.enabled===true，禁止 truthy 回退假可进扫描
-    return action.enabled === true
+  // MVR-987：仅认 BE nextAction.enabled===true；缺 nextAction fail-closed
+  if (!action) {
+    return false
   }
-  return hasPrepHardBlocking(prepBlockingReasons) !== true
+  return action.enabled === true
 }
 
 /** 是否允许进入批量复核：消费后端 nextActions.ENTER_REVIEW */
 export function canEnterReviewBatch(
   nextActions?: ExamWorkbenchNextActionResponse[] | null,
-  progress?: MarkingProgressResponse | null,
+  _progress?: MarkingProgressResponse | null,
 ): boolean {
   const action = findWorkbenchNextAction(nextActions, WorkbenchNextActionKeyCode.ENTER_REVIEW)
-  if (action) {
-    // MVR-987：仅认 BE nextAction.enabled===true
-    return action.enabled === true
-  }
-  if (!progress) {
+  // MVR-987：仅认 BE nextAction.enabled===true；缺 nextAction fail-closed
+  if (!action) {
     return false
   }
-  const needReviewGrades = progress.needReviewGradeResultCount ?? 0
-  if (needReviewGrades > 0) {
-    return true
+  return action.enabled === true
+}
+
+/** 是否可提交发布复核：消费后端 nextActions.SUBMIT_PUBLISH_REVIEW */
+export function canSubmitPublishReview(
+  nextActions?: ExamWorkbenchNextActionResponse[] | null,
+): boolean {
+  const action = findWorkbenchNextAction(nextActions, WorkbenchNextActionKeyCode.SUBMIT_PUBLISH_REVIEW)
+  if (!action) {
+    return false
   }
-  const pendingReview = progress.pendingReviewTaskCount + progress.inProgressReviewTaskCount
-  return progress.gradablePaperCount > 0 && pendingReview > 0
+  return action.enabled === true
+}
+
+/** 是否可签审待我复核：消费后端 nextActions.APPROVE_PUBLISH_REVIEW */
+export function canApprovePublishReview(
+  nextActions?: ExamWorkbenchNextActionResponse[] | null,
+): boolean {
+  const action = findWorkbenchNextAction(nextActions, WorkbenchNextActionKeyCode.APPROVE_PUBLISH_REVIEW)
+  if (!action) {
+    return false
+  }
+  return action.enabled === true && action.openPendingMyPublishReview === true
 }
 
 export function resolveNextActionDisabledReason(
@@ -75,90 +74,67 @@ export function resolveNextActionDisabledReason(
   return action.disabledReason
 }
 
-/** 首个 enabled 的 nextAction；若传入 suggestedStageKey 则优先匹配目标阶段对应动作。 */
-export function resolvePrimaryEnabledNextAction(
-  nextActions: ExamWorkbenchNextActionResponse[] | null | undefined,
-  suggestedStageKey?: MarkStageKey | null,
-): ExamWorkbenchNextActionResponse | undefined {
-  if (!nextActions?.length) {
-    return undefined
-  }
-  if (suggestedStageKey) {
-    const matched = nextActions.find(
-      (item) => item.enabled === true && item.targetStageKey === suggestedStageKey,
-    )
-    if (matched) {
-      return matched
-    }
-  }
-  return nextActions.find((item) => item.enabled === true)
-}
-
-export function resolveNextActionRouteName(
-  actionKey: WorkbenchNextActionKeyCode,
-  examId?: string,
-  scanAttentionCount?: number,
+/**
+ * 解析完整 nextAction 跳转路由。
+ * 定标已启用：采信 blockingItems[0].targetRouteName；
+ * 其余（含定标未启用）：采信后端 workspaceRouteName，禁止 FE 平行路由表。
+ */
+export function resolveWorkbenchNextActionRouteName(
+  action: ExamWorkbenchNextActionResponse,
 ): string {
-  if (actionKey === WorkbenchNextActionKeyCode.START_SCAN && examId) {
-    return resolveScanStageEntryRouteName({ scanAttentionCount })
+  if (action.actionKey === WorkbenchNextActionKeyCode.EXPERIENCE_ASSIST_CALIBRATION
+    && action.enabled === true) {
+    const route = action.blockingItems?.[0]?.targetRouteName?.trim()
+    if (!route) {
+      throw new Error('经验定标 nextAction 已启用但缺少 blockingItems[0].targetRouteName')
+    }
+    return route
   }
-  return NEXT_ACTION_ROUTE[actionKey]
+  const route = action.workspaceRouteName?.trim()
+  if (!route) {
+    throw new Error(`nextAction 缺少 workspaceRouteName：${action.actionKey}`)
+  }
+  return route
 }
 
 /**
- * 考试列表智能入口：按主链与进度跳转到最优子页。
- * gradablePaperCount 缺失时用 totalQuestionGradeCount 作复核/阅卷代理。
+ * 解析完整 nextAction 主按钮文案。
+ * 经验定标已启用时必须采信 blockingItems[0].actionLabel，禁止回落 nextAction.label。
  */
-/** 扫描监控需优先处置的异常数（不含识别复核 NEED_REVIEW，后者走阅卷复核入口）。 */
-export function countBlockingScanAttention(
-  scanAttentionCount: number,
-  needReviewGradeResultCount?: number,
-): number {
-  const needReviewGrades = needReviewGradeResultCount ?? 0
-  return Math.max(0, scanAttentionCount - needReviewGrades)
+export function resolveWorkbenchNextActionLabel(
+  action: ExamWorkbenchNextActionResponse,
+): string {
+  if (action.actionKey === WorkbenchNextActionKeyCode.EXPERIENCE_ASSIST_CALIBRATION
+    && action.enabled === true) {
+    const label = action.blockingItems?.[0]?.actionLabel?.trim()
+    if (!label) {
+      throw new Error('经验定标 nextAction 已启用但缺少 blockingItems[0].actionLabel')
+    }
+    return label
+  }
+  if (!action.label?.trim()) {
+    throw new Error(`nextAction 缺少 label：${action.actionKey}`)
+  }
+  return action.label.trim()
 }
 
-export function resolveSmartExamEntryRouteName(exam: {
-  status: string
-  scanAttentionCount: number
-  questionCount: number
-  totalQuestionGradeCount: number
-  pendingReviewTaskCount: number
-  inProgressReviewTaskCount: number
-  gradablePaperCount?: number
-  needReviewGradeResultCount?: number
-  openProcessingTaskCount: number
-  confirmedQuestionGradeCount: number
+/**
+ * 解析列表行进入路由：只认后端 workspaceRouteName 合同，禁止前端进度启发或平行路由表。
+ */
+export function requireExamEntryWorkspaceRouteName(exam: {
+  examId?: string | number
+  workspaceRouteName?: string
 }): string {
-  if (exam.status === 'CLOSED') {
-    return 'TeacherExamWorkspaceOverview'
+  const routeName = exam.workspaceRouteName?.trim()
+  if (!routeName) {
+    throw new Error(`考试 ${exam.examId ?? '—'} 缺少 workspaceRouteName 合同字段`)
   }
-  const needReviewGrades = exam.needReviewGradeResultCount ?? 0
-  if (countBlockingScanAttention(exam.scanAttentionCount, needReviewGrades) > 0) {
-    return 'TeacherExamWorkspaceScanMonitor'
-  }
-  const pendingReview = exam.pendingReviewTaskCount + exam.inProgressReviewTaskCount
-  const hasGradableWork = (exam.gradablePaperCount ?? 0) > 0 || exam.totalQuestionGradeCount > 0
-  if (needReviewGrades > 0 || (hasGradableWork && pendingReview > 0)) {
-    return 'TeacherExamWorkspaceReviewBatchConfirm'
-  }
-  if (exam.totalQuestionGradeCount > 0) {
-    if (exam.openProcessingTaskCount > 0) {
-      return 'TeacherExamWorkspaceMarkingTaskPool'
-    }
-    if (Math.max(0, exam.totalQuestionGradeCount - exam.confirmedQuestionGradeCount) > 0) {
-      return 'TeacherExamWorkspaceMarkingTaskPool'
-    }
-    return 'TeacherExamWorkspaceScoreSummary'
-  }
-  if (exam.questionCount <= 0) {
-    return 'TeacherExamWorkspacePrep'
-  }
-  return 'TeacherExamWorkspaceScanBatches'
+  return routeName
 }
 
+/** 按教师端六步旅程定义解析顺序，用于侧栏建议阶段前后比较。 */
 export function resolveJourneyIndex(journeyKey: ExamJourneyKey): number {
-  const order: ExamJourneyKey[] = [
+  const journeyOrder: ExamJourneyKey[] = [
     MarkTeacherDashboardJourneyKeyCode.PREP,
     MarkTeacherDashboardJourneyKeyCode.SCAN,
     MarkTeacherDashboardJourneyKeyCode.ASSIGN,
@@ -166,5 +142,5 @@ export function resolveJourneyIndex(journeyKey: ExamJourneyKey): number {
     MarkTeacherDashboardJourneyKeyCode.PUBLISH,
     MarkTeacherDashboardJourneyKeyCode.ARCHIVE,
   ]
-  return order.indexOf(journeyKey)
+  return journeyOrder.indexOf(journeyKey)
 }

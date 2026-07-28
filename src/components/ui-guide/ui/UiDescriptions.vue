@@ -70,7 +70,7 @@ const antSize = computed<'small' | 'middle' | 'default'>(() => {
 
 .ui-descriptions--sm :deep(.ant-descriptions-item-label),
 .ui-descriptions--sm :deep(.ant-descriptions-item-content) {
-  padding-bottom: 8px;
+  padding-bottom: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   line-height: 1.5;
 }

@@ -158,6 +158,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioScanOps',
         component: () => import('@/views/portfolio/portfolio-scan-ops.vue'),
         meta: {
+          layoutWide: true,
           title: '档案袋扫描运营',
           // PF-P0-418：BE 档案袋扫描运营仅 requireTeacherMarkOpsPermission（教师运维门禁），
           // 非租户管理员独占。禁止 requireTenantAdmin 把具备 SCH_TECH 运维权限的教师挡在深链外；
@@ -205,6 +206,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherProcessJournal',
         component: () => import('@/views/portfolio/teacher-process-journal.vue'),
         meta: {
+          layoutWide: true,
           title: '过程记录',
           roles: ALL_ROLES,
           icon: 'form',
@@ -240,6 +242,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherIntake',
         component: () => import('@/views/portfolio/teacher-intake.vue'),
         meta: {
+          layoutWide: true,
           title: '材料采集',
           roles: ALL_ROLES,
           icon: 'cloud-upload',
@@ -253,6 +256,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherReviewStatus',
         component: () => import('@/views/portfolio/teacher-review-status.vue'),
         meta: {
+          layoutWide: true,
           title: '审核进度',
           roles: ALL_ROLES,
           icon: 'audit',
@@ -266,6 +270,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioExportApprovalMine',
         component: () => import('@/views/portfolio/export-approval-mine.vue'),
         meta: {
+          layoutWide: true,
           title: '我的导出申请',
           roles: ALL_ROLES,
           icon: 'download',
@@ -279,6 +284,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherDoubleHighTasks',
         component: () => import('@/views/portfolio/shuanggao-tasks.vue'),
         meta: {
+          layoutWide: true,
           title: '我的双高任务',
           roles: ALL_ROLES,
           icon: 'schedule',
@@ -361,6 +367,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherGap',
         component: () => import('@/views/portfolio/teacher-gap.vue'),
         meta: {
+          layoutWide: true,
           title: '补采任务',
           roles: ALL_ROLES,
           hideInMenu: true,
@@ -372,6 +379,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioArchiveCategoryEdit',
         component: () => import('@/views/portfolio/archive-category-edit.vue'),
         meta: {
+          layoutWide: true,
           title: '分类填报',
           roles: ALL_ROLES,
           hideInMenu: true,
@@ -383,6 +391,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherCorrection',
         component: () => import('@/views/portfolio/correction.vue'),
         meta: {
+          layoutWide: true,
           title: '我的纠错',
           roles: ALL_ROLES,
           icon: 'exception',
@@ -397,6 +406,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherEvaluation',
         component: () => import('@/views/portfolio/teacher-evaluation.vue'),
         meta: {
+          layoutWide: true,
           title: '我的评价',
           roles: ALL_ROLES,
           icon: 'form',
@@ -418,10 +428,12 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherMaterials',
         component: () => import('@/views/portfolio/teacher-materials.vue'),
         meta: {
-          title: '材料库',
+          layoutWide: true,
+          title: '佐证材料库',
           roles: ALL_ROLES,
           hideInMenu: true,
           keepAlive: false,
+          ...portfolioTeacherMenuMeta,
         },
       },
       {
@@ -470,6 +482,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherCourseArchive',
         component: () => import('@/views/portfolio/teacher-course-archive.vue'),
         meta: {
+          layoutWide: true,
           title: '课程档案',
           roles: ALL_ROLES,
           icon: 'book',
@@ -484,6 +497,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherHonor',
         component: () => import('@/views/portfolio/teacher-honor.vue'),
         meta: {
+          layoutWide: true,
           title: '获奖情况',
           roles: ALL_ROLES,
           icon: 'trophy',
@@ -538,13 +552,79 @@ export const portfolioRoutes: RouteRecordRaw[] = [
       {
         path: 'admin/integration',
         name: 'PortfolioIntegrationDashboard',
-        component: () => import('@/views/portfolio/integration-dashboard.vue'),
+        component: () => import('@/views/portfolio/integration/cockpit.vue'),
         meta: {
+          layoutWide: true,
           title: '数据集成中心',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'cloud-sync',
           hideInMenu: false,
           ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioOrgMenuMeta,
+        },
+      },
+      {
+        path: 'admin/integration/connection',
+        name: 'PortfolioIntegrationConnection',
+        component: () => import('@/views/portfolio/integration/connection.vue'),
+        meta: {
+          layoutWide: true,
+          title: '连接与映射',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          hideInMenu: true,
+          keepAlive: true,
+          ...portfolioOrgMenuMeta,
+        },
+      },
+      {
+        path: 'admin/integration/sync',
+        name: 'PortfolioIntegrationSync',
+        component: () => import('@/views/portfolio/integration/sync.vue'),
+        meta: {
+          layoutWide: true,
+          title: '同步运行',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          hideInMenu: true,
+          keepAlive: true,
+          ...portfolioOrgMenuMeta,
+        },
+      },
+      {
+        path: 'admin/integration/identity',
+        name: 'PortfolioIntegrationIdentity',
+        component: () => import('@/views/portfolio/integration/identity.vue'),
+        meta: {
+          layoutWide: true,
+          title: '身份与冲突',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          hideInMenu: true,
+          keepAlive: true,
+          ...portfolioOrgMenuMeta,
+        },
+      },
+      {
+        path: 'admin/integration/report',
+        name: 'PortfolioIntegrationReport',
+        component: () => import('@/views/portfolio/integration/report.vue'),
+        meta: {
+          layoutWide: true,
+          title: '上报与异常',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          hideInMenu: true,
+          keepAlive: true,
+          ...portfolioOrgMenuMeta,
+        },
+      },
+      {
+        path: 'admin/integration/dictionary',
+        name: 'PortfolioIntegrationDictionary',
+        component: () => import('@/views/portfolio/integration/dictionary.vue'),
+        meta: {
+          layoutWide: true,
+          title: '字典与健康',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          hideInMenu: true,
           keepAlive: true,
           ...portfolioOrgMenuMeta,
         },
@@ -562,12 +642,12 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           keepAlive: true,
           ...portfolioGovernanceMenuMeta,
         },
-      },
-      {
+      }, {
         path: 'admin/export-approval',
         name: 'PortfolioExportApprovalAdmin',
         component: () => import('@/views/portfolio/export-approval-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '导出审批',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'safety-certificate',
@@ -582,6 +662,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioMaskRuleAdmin',
         component: () => import('@/views/portfolio/mask-rule-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '脱敏规则',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'eye-invisible',
@@ -596,6 +677,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioAuditLogAdmin',
         component: () => import('@/views/portfolio/audit-log-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '审计日志',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'file-search',
@@ -610,6 +692,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioPolicyLibraryAdmin',
         component: () => import('@/views/portfolio/policy-library-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '政策文件库',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'book',
@@ -624,6 +707,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTemplateAdmin',
         component: () => import('@/views/portfolio/template-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '档案模板配置',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'file-protect',
@@ -638,6 +722,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioArchiveScoreRuleAdmin',
         component: () => import('@/views/portfolio/archive-score-rule-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '档案评分规则',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'calculator',
@@ -652,6 +737,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherDirectory',
         component: () => import('@/views/portfolio/teacher-directory.vue'),
         meta: {
+          layoutWide: true,
           title: '教师名册',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'team',
@@ -672,6 +758,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherLifecycleAdmin',
         component: () => import('@/views/portfolio/teacher-lifecycle-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '教师生命周期',
           // PF-P0-402：院系审核人/负责人须可进站内信深链审批；BE 按院系 scope 硬拦
           roles: ALL_ROLES,
@@ -709,6 +796,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           query: { ...to.query },
         }),
         meta: {
+          layoutWide: true,
           title: 'AI 候选字段确认',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           hideInMenu: true,
@@ -746,12 +834,16 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDepartmentReview',
         component: () => import('@/views/portfolio/department-review.vue'),
         meta: {
+          layoutWide: true,
           title: '院系审核台',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
           icon: 'audit',
           hideInMenu: false,
           keepAlive: true,
+          // 多教师审核队列：本页 teacherId 是筛选项而非教师 scope，
+          // 渲染「当前教师」头会与队列口径冲突（切教师后页头与队列不一致）
+          hidePortfolioScope: true,
           ...portfolioDepartmentMenuMeta,
           // PF-P0-405：院系负责人也可能处教师壳；站内信深链须注册（requirePortfolioReviewer 仍拦非审核人）
           portfolioWorkShells: [
@@ -766,6 +858,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioReviewerBrowse',
         component: () => import('@/views/portfolio/reviewer-browse.vue'),
         meta: {
+          layoutWide: true,
           title: '档案浏览',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -787,6 +880,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDepartmentGap',
         component: () => import('@/views/portfolio/department-gap.vue'),
         meta: {
+          layoutWide: true,
           title: '补采督办',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -808,6 +902,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDepartmentObjection',
         component: () => import('@/views/portfolio/department-objection.vue'),
         meta: {
+          layoutWide: true,
           title: '公示异议',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -827,8 +922,9 @@ export const portfolioRoutes: RouteRecordRaw[] = [
       {
         path: 'department/title-promotion-review',
         name: 'PortfolioDepartmentTitlePromotionReview',
-        component: () => import('@/views/portfolio/title-promotion-admin.vue'),
+        component: () => import('@/views/portfolio/title-promotion/application-review.vue'),
         meta: {
+          layoutWide: true,
           title: '职称申报院审',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -850,6 +946,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDepartmentDualTeacherReview',
         component: () => import('@/views/portfolio/dual-teacher-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '双师认定院审',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -891,6 +988,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDoubleHighTasks',
         component: () => import('@/views/portfolio/shuanggao-tasks.vue'),
         meta: {
+          layoutWide: true,
           title: '双高任务台账',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'schedule',
@@ -904,6 +1002,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDoubleHighMonitor',
         component: () => import('@/views/portfolio/shuanggao-monitor.vue'),
         meta: {
+          layoutWide: true,
           title: '双高建设监测',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'line-chart',
@@ -916,8 +1015,9 @@ export const portfolioRoutes: RouteRecordRaw[] = [
       {
         path: 'school/title-promotion',
         name: 'PortfolioTitlePromotionAdmin',
-        component: () => import('@/views/portfolio/title-promotion-admin.vue'),
+        redirect: { name: 'PortfolioTitlePromotionTasks' },
         meta: {
+          layoutWide: true,
           title: '职称申报治理',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'solution',
@@ -928,10 +1028,50 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'school/title-promotion/tasks',
+        name: 'PortfolioTitlePromotionTasks',
+        component: () => import('@/views/portfolio/title-promotion/task-policy.vue'),
+        meta: {
+          layoutWide: true,
+          title: '职称任务与政策',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          hideInMenu: true,
+          keepAlive: true,
+          ...portfolioGovernanceMenuMeta,
+        },
+      },
+      {
+        path: 'school/title-promotion/applications',
+        name: 'PortfolioTitlePromotionApplications',
+        component: () => import('@/views/portfolio/title-promotion/application-review.vue'),
+        meta: {
+          layoutWide: true,
+          title: '职称申请审核',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          hideInMenu: true,
+          keepAlive: true,
+          ...portfolioGovernanceMenuMeta,
+        },
+      },
+      {
+        path: 'school/title-promotion/publicity',
+        name: 'PortfolioTitlePromotionPublicity',
+        component: () => import('@/views/portfolio/title-promotion/publicity-archive.vue'),
+        meta: {
+          layoutWide: true,
+          title: '职称公示与归档',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          hideInMenu: true,
+          keepAlive: true,
+          ...portfolioGovernanceMenuMeta,
+        },
+      },
+      {
         path: 'school/title-criteria-templates',
         name: 'PortfolioTitleCriteriaTemplates',
         component: () => import('@/views/portfolio/title-criteria-templates.vue'),
         meta: {
+          layoutWide: true,
           title: '职称资格条件模板',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'profile',
@@ -946,6 +1086,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioEthicsSanctionAdmin',
         component: () => import('@/views/portfolio/ethics-sanction-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '师德处分',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'safety',
@@ -960,6 +1101,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioComplianceThresholdAdmin',
         component: () => import('@/views/portfolio/compliance-threshold-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '结构合规阈值',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'control',
@@ -974,6 +1116,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioReportingAdmin',
         component: () => import('@/views/portfolio/reporting-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '上级报送共享',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'cloud-upload',
@@ -988,6 +1131,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioExpertAssignmentAdmin',
         component: () => import('@/views/portfolio/expert-assignment-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '外部专家授权',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'user-add',
@@ -1002,6 +1146,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioExpertWorkbench',
         component: () => import('@/views/portfolio/expert-workbench.vue'),
         meta: {
+          layoutWide: true,
           title: '专家评审工作台',
           roles: ALL_ROLES,
           icon: 'audit',
@@ -1015,6 +1160,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioExpertReview',
         component: () => import('@/views/portfolio/expert-review.vue'),
         meta: {
+          layoutWide: true,
           title: '外部专家脱敏审阅',
           roles: ALL_ROLES,
           hideInMenu: true,
@@ -1027,6 +1173,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioExpertEvaluationFill',
         component: () => import('@/views/portfolio/evaluation-fill-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '外部专家评价填报',
           roles: ALL_ROLES,
           hideInMenu: true,
@@ -1039,6 +1186,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioCorrectionAdmin',
         component: () => import('@/views/portfolio/correction-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '纠错处理',
           // PF-P0-406：租户管理员站内信 jump 本路径；禁止仅挂 DEPARTMENT_REVIEW 壳（校管默认治理壳会 404）
           ...PORTFOLIO_ADMIN_ROUTE_META,
@@ -1058,6 +1206,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioSourceFixAdmin',
         component: () => import('@/views/portfolio/source-fix-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '源修复重算',
           // PF-P0-406：与纠错同为校管写路径，壳与治理/配置对齐
           ...PORTFOLIO_ADMIN_ROUTE_META,
@@ -1077,6 +1226,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioIndicatorPlatform',
         component: () => import('@/views/portfolio/indicator-platform-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '平台指标资产',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'table',
@@ -1091,6 +1241,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioIndicatorTenant',
         component: () => import('@/views/portfolio/indicator-tenant-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '租户指标配置',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'setting',
@@ -1105,6 +1256,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioIndicatorEligibility',
         component: () => import('@/views/portfolio/indicator-eligibility.vue'),
         meta: {
+          layoutWide: true,
           title: '资格规则',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'branches',
@@ -1133,6 +1285,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioIndicatorHistory',
         component: () => import('@/views/portfolio/indicator-history.vue'),
         meta: {
+          layoutWide: true,
           title: '规则快照历史',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'history',
@@ -1147,6 +1300,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioIndicatorOps',
         component: () => import('@/views/portfolio/indicator-ops-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '计分与审计',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'audit',
@@ -1161,6 +1315,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioIndicatorDashboard',
         component: () => import('@/views/portfolio/indicator-dashboard-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '指标看板',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'bar-chart',
@@ -1175,6 +1330,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioIndicatorReferenceStatus',
         component: () => import('@/views/portfolio/indicator-reference-status.vue'),
         meta: {
+          layoutWide: true,
           title: '指标引用状态',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'link',
@@ -1189,6 +1345,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherIndicator',
         component: () => import('@/views/portfolio/teacher-indicator.vue'),
         meta: {
+          layoutWide: true,
           title: '资格评估',
           roles: ALL_ROLES,
           icon: 'safety-certificate',
@@ -1205,6 +1362,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           query: { ...to.query },
         }),
         meta: {
+          layoutWide: true,
           title: '双师认定申请（旧入口）',
           roles: ALL_ROLES,
           hideInMenu: true,
@@ -1216,6 +1374,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDualTeacherAdmin',
         component: () => import('@/views/portfolio/dual-teacher-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '双师认定',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'audit',
@@ -1229,6 +1388,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDualTeacherAnalytics',
         component: () => import('@/views/portfolio/dual-teacher-analytics.vue'),
         meta: {
+          layoutWide: true,
           title: '双师分析',
           // PF-P0-419 / PRD §7.12：BE analyticsStats 已按院系 scope；禁止 requireTenantAdmin 挡院系负责人
           roles: ALL_ROLES,
@@ -1250,6 +1410,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioSchoolDualTeacherAnalytics',
         component: () => import('@/views/portfolio/dual-teacher-analytics.vue'),
         meta: {
+          layoutWide: true,
           title: '双师分析',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1268,6 +1429,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDepartmentDualTeacherAnalytics',
         component: () => import('@/views/portfolio/dual-teacher-analytics.vue'),
         meta: {
+          layoutWide: true,
           title: '院系双师分析',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1288,6 +1450,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioExternalTeacherAdmin',
         component: () => import('@/views/portfolio/external-teacher-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '外聘教师',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'team',
@@ -1302,6 +1465,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioPolicyLedgerAdmin',
         component: () => import('@/views/portfolio/policy-ledger-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '政策专项台账',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'book',
@@ -1316,6 +1480,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDevelopmentPlanAdmin',
         component: () => import('@/views/portfolio/development-plan-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '教师年度规划',
           roles: ALL_ROLES,
           icon: 'calendar',
@@ -1335,6 +1500,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDevelopmentPlanDepartmentAdmin',
         component: () => import('@/views/portfolio/development-plan-department-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '部门年度规划',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1356,6 +1522,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDevelopmentPlanReview',
         component: () => import('@/views/portfolio/development-plan-review.vue'),
         meta: {
+          layoutWide: true,
           title: '规划审核',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1391,6 +1558,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioHonorLibraryAdmin',
         component: () => import('@/views/portfolio/honor-library-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '荣誉库',
           // PF-P0-420 / PRD：BE page/honorStats 已 assertCanReadTeacherPlatformRegistry + 院系 scope；禁止 requireTenantAdmin 挡院系
           roles: ALL_ROLES,
@@ -1412,6 +1580,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioSchoolHonorLibrary',
         component: () => import('@/views/portfolio/honor-library-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '荣誉库',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1430,6 +1599,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDepartmentHonorLibrary',
         component: () => import('@/views/portfolio/honor-library-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '院系荣誉库',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1450,6 +1620,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioKeyTeacherAdmin',
         component: () => import('@/views/portfolio/key-teacher-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '骨干/带头人',
           // PF-P0-423：BE page/export/analytics 已院系 scope；写 save/revoke 仍 tenantWide
           roles: ALL_ROLES,
@@ -1471,6 +1642,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioSchoolKeyTeacherAdmin',
         component: () => import('@/views/portfolio/key-teacher-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '骨干/带头人',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1489,6 +1661,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDepartmentKeyTeacherAdmin',
         component: () => import('@/views/portfolio/key-teacher-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '院系骨干/带头人',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1509,6 +1682,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDoubleDutyAdmin',
         component: () => import('@/views/portfolio/double-duty-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '双肩挑台账',
           // PF-P0-423：BE page/export/analytics 已院系 scope；写仍 assertCanManage
           roles: ALL_ROLES,
@@ -1530,6 +1704,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioSchoolDoubleDutyAdmin',
         component: () => import('@/views/portfolio/double-duty-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '双肩挑台账',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1548,6 +1723,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDepartmentDoubleDutyAdmin',
         component: () => import('@/views/portfolio/double-duty-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '院系双肩挑台账',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1568,6 +1744,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherSalaryAdmin',
         component: () => import('@/views/portfolio/teacher-salary-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '教师工资',
           // PF-P0-421：BE page/export 已支持院系 scope；禁止 requireTenantAdmin 挡院系读
           roles: ALL_ROLES,
@@ -1589,6 +1766,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioSchoolTeacherSalary',
         component: () => import('@/views/portfolio/teacher-salary-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '教师工资',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1607,6 +1785,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDepartmentTeacherSalary',
         component: () => import('@/views/portfolio/teacher-salary-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '院系教师工资',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1627,6 +1806,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherLibraryAdmin',
         component: () => import('@/views/portfolio/teacher-library-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '图书借阅',
           // PF-P0-421：BE page 已院系 scope；stats 同步 scope；禁止 requireTenantAdmin 挡院系读
           roles: ALL_ROLES,
@@ -1648,6 +1828,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioSchoolTeacherLibrary',
         component: () => import('@/views/portfolio/teacher-library-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '图书借阅',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1666,6 +1847,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDepartmentTeacherLibrary',
         component: () => import('@/views/portfolio/teacher-library-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '院系图书借阅',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1686,6 +1868,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherRecommendationAdmin',
         component: () => import('@/views/portfolio/teacher-recommendation-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '优秀教师推荐',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'like',
@@ -1700,6 +1883,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDevelopmentRecordAdmin',
         component: () => import('@/views/portfolio/development-record-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '发展档案库',
           // PF-P0-420：BE page 已院系 scope；禁止 requireTenantAdmin 挡院系负责人
           roles: ALL_ROLES,
@@ -1721,6 +1905,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioSchoolDevelopmentRecord',
         component: () => import('@/views/portfolio/development-record-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '发展档案库',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1739,6 +1924,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDepartmentDevelopmentRecord',
         component: () => import('@/views/portfolio/development-record-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '院系发展档案',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1759,6 +1945,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioAchievementComprehensive',
         component: () => import('@/views/portfolio/achievement-comprehensive.vue'),
         meta: {
+          layoutWide: true,
           title: '成果综合查询',
           // PF-P0-420：BE comprehensivePage/achievementStats 已院系 scope
           roles: ALL_ROLES,
@@ -1780,6 +1967,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioSchoolAchievementComprehensive',
         component: () => import('@/views/portfolio/achievement-comprehensive.vue'),
         meta: {
+          layoutWide: true,
           title: '成果综合查询',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1798,6 +1986,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDepartmentAchievementComprehensive',
         component: () => import('@/views/portfolio/achievement-comprehensive.vue'),
         meta: {
+          layoutWide: true,
           title: '院系成果综合查询',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1845,6 +2034,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioEvaluationFillAdmin',
         component: () => import('@/views/portfolio/evaluation-fill-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '评价填报',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'edit',
@@ -1859,6 +2049,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioEvaluationComprehensiveAdmin',
         component: () => import('@/views/portfolio/evaluation-comprehensive-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '评价综合分析',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'bar-chart',
@@ -1873,6 +2064,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTrainingArchiveAdmin',
         component: () => import('@/views/portfolio/training-archive-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '培训档案',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'read',
@@ -1887,6 +2079,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDeptOneTable',
         component: () => import('@/views/portfolio/dept-one-table.vue'),
         meta: {
+          layoutWide: true,
           title: '部门一张表',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1908,6 +2101,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherAnalyticsDashboard',
         component: () => import('@/views/portfolio/teacher-analytics-dashboard.vue'),
         meta: {
+          layoutWide: true,
           title: '师资分析看板',
           // PF-P0-417 / PRD §7.12：院系可看本院系群体师资分析；禁止 requireTenantAdmin 挡院系负责人
           roles: ALL_ROLES,
@@ -1928,6 +2122,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioSchoolTeacherAnalyticsDashboard',
         component: () => import('@/views/portfolio/teacher-analytics-dashboard.vue'),
         meta: {
+          layoutWide: true,
           title: '师资分析看板',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1946,6 +2141,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDepartmentTeacherAnalyticsDashboard',
         component: () => import('@/views/portfolio/teacher-analytics-dashboard.vue'),
         meta: {
+          layoutWide: true,
           title: '院系师资分析',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -1966,6 +2162,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioAlertCenter',
         component: () => import('@/views/portfolio/alert-center.vue'),
         meta: {
+          layoutWide: true,
           title: '预警中心',
           // PF-P0-415 / PRD §7.4.11 / §7.30.2：学校看全校、院系看本院系；禁止 requireTenantAdmin 把院系负责人挡在门外
           roles: ALL_ROLES,
@@ -1987,6 +2184,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioSchoolAlertCenter',
         component: () => import('@/views/portfolio/alert-center.vue'),
         meta: {
+          layoutWide: true,
           title: '预警中心',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -2006,6 +2204,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDepartmentAlertCenter',
         component: () => import('@/views/portfolio/alert-center.vue'),
         meta: {
+          layoutWide: true,
           title: '院系预警中心',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -2088,6 +2287,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioAnnualReportAnalytics',
         component: () => import('@/views/portfolio/annual-report-analytics.vue'),
         meta: {
+          layoutWide: true,
           title: '年度报告',
           // PF-P0-416 / PRD §7.7.7 / §7.12：院系可生成/查看本院系教师年报；禁止 requireTenantAdmin 挡院系负责人
           roles: ALL_ROLES,
@@ -2109,6 +2309,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioSchoolAnnualReportAnalytics',
         component: () => import('@/views/portfolio/annual-report-analytics.vue'),
         meta: {
+          layoutWide: true,
           title: '年度报告',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -2127,6 +2328,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDepartmentAnnualReportAnalytics',
         component: () => import('@/views/portfolio/annual-report-analytics.vue'),
         meta: {
+          layoutWide: true,
           title: '院系年度报告',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -2147,6 +2349,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioDepartmentDoubleHighTasks',
         component: () => import('@/views/portfolio/shuanggao-tasks.vue'),
         meta: {
+          layoutWide: true,
           title: '双高任务台账',
           roles: ALL_ROLES,
           requirePortfolioReviewer: true,
@@ -2221,6 +2424,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioEvaluationWorkgroupNav',
         component: () => import('@/views/portfolio/evaluation-workgroup-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '评价工作组',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'team',
@@ -2236,6 +2440,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeachingResourceLibrary',
         component: () => import('@/views/portfolio/teaching-resource-library-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '教学资源库',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'read',
@@ -2250,6 +2455,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioResearchResourceLibrary',
         component: () => import('@/views/portfolio/research-resource-library-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '科研资源库',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'experiment',
@@ -2264,6 +2470,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioPracticeResourceLibrary',
         component: () => import('@/views/portfolio/practice-resource-library-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '实践资源库',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'tool',
@@ -2278,6 +2485,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioNationalAchievement',
         component: () => import('@/views/portfolio/national-achievement-admin.vue'),
         meta: {
+          layoutWide: true,
           title: '国家级成果',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'crown',
@@ -2292,6 +2500,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherOneTable',
         component: () => import('@/views/portfolio/teacher-one-table.vue'),
         meta: {
+          layoutWide: true,
           title: '教师一张表',
           roles: ALL_ROLES,
           icon: 'table',

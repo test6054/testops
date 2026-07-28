@@ -29,16 +29,41 @@
             执行完整性自检
           </UiButton>
           <UiButton
-            v-if="canWaiveIntegrity === true"
+            v-if="canRequestIntegrityWaive === true"
             size="sm"
             variant="outline"
-            :loading="waivingIntegrity === true"
-            @click="openWaiveIntegrityModal"
+            :loading="requestingIntegrityWaive === true"
+            @click="openRequestIntegrityWaiveModal"
           >
-            授权豁免
+            申请豁免
+          </UiButton>
+          <UiButton
+            v-if="canApproveIntegrityWaive === true"
+            size="sm"
+            variant="primary"
+            :loading="approvingIntegrityWaive === true"
+            @click="submitApproveIntegrityWaive"
+          >
+            审批通过
+          </UiButton>
+          <UiButton
+            v-if="canApproveIntegrityWaive === true"
+            size="sm"
+            variant="outline"
+            :loading="rejectingIntegrityWaive === true"
+            @click="openRejectIntegrityWaiveModal"
+          >
+            驳回申请
           </UiButton>
         </div>
       </div>
+
+      <p
+        v-if="detail.integrityWaivePending === true && canApproveIntegrityWaive !== true"
+        class="archive-quality-panel__pass-hint"
+      >
+        完整性豁免申请待审批
+      </p>
 
       <div v-if="!displayedIntegrityResult" class="archive-quality-panel__empty">
         <p class="archive-quality-panel__empty-title">尚未执行完整性自检</p>
@@ -80,12 +105,32 @@
               延迟补交
             </UiTextAction>
             <UiTextAction
-              v-if="canWaiveMaterialMissing === true"
+              v-if="canShowRequestMaterialWaive(missingTableRow(record))"
               tone="primary"
-              @click="openWaiveMissingModal(missingTableRow(record))"
+              @click="openRequestMaterialWaiveModal(missingTableRow(record))"
             >
-              缺失豁免
+              申请缺失豁免
             </UiTextAction>
+            <UiTextAction
+              v-if="canShowApproveMaterialWaive(missingTableRow(record))"
+              tone="primary"
+              @click="submitApproveMaterialWaive(missingTableRow(record))"
+            >
+              审批豁免
+            </UiTextAction>
+            <UiTextAction
+              v-if="canShowApproveMaterialWaive(missingTableRow(record))"
+              tone="primary"
+              @click="openRejectMaterialWaiveModal(missingTableRow(record))"
+            >
+              驳回
+            </UiTextAction>
+            <span
+              v-if="findPendingMaterialWaive(missingTableRow(record)) && canShowApproveMaterialWaive(missingTableRow(record)) !== true"
+              class="archive-quality-panel__pass-hint"
+            >
+              待审批
+            </span>
           </template>
         </template>
       </UiDataTable>
@@ -133,24 +178,24 @@
     </UiDrawer>
 
     <UiDrawer
-      :open="waiveMissingOpen"
-      title="材料缺失豁免"
+      :open="requestMaterialWaiveOpen"
+      title="申请材料缺失豁免"
       :width="520"
-      :confirm-loading="waiveMissingSubmitting === true"
-      ok-text="授权豁免"
+      :confirm-loading="requestingMaterialWaive === true"
+      ok-text="提交申请"
       :hide-footer="false"
-      @update:open="(v: boolean) => (waiveMissingOpen = v)"
-      @close="waiveMissingOpen = false"
-      @confirm="submitWaiveMissing"
+      @update:open="(v: boolean) => (requestMaterialWaiveOpen = v)"
+      @close="requestMaterialWaiveOpen = false"
+      @confirm="submitRequestMaterialWaive"
     >
       <UiForm layout="vertical">
         <UiFormItem label="材料类型">
-          {{ waiveMissingTarget ? materialTypeLabel(waiveMissingTarget.materialType) : '—' }}
+          {{ materialWaiveTarget ? materialTypeLabel(materialWaiveTarget.materialType) : '—' }}
         </UiFormItem>
         <UiFormItem label="豁免原因" required>
           <UiTextarea
             size="sm"
-            v-model="waiveMissingReason"
+            v-model="materialWaiveReason"
             :maxlength="500"
             :rows="3"
             :show-count="true"
@@ -160,21 +205,72 @@
     </UiDrawer>
 
     <UiDrawer
-      :open="waiveIntegrityOpen"
-      title="卷完整性豁免"
+      :open="rejectMaterialWaiveOpen"
+      title="驳回材料缺失豁免"
       :width="520"
-      :confirm-loading="waivingIntegrity === true"
-      ok-text="授权豁免"
+      :confirm-loading="rejectingMaterialWaive === true"
+      ok-text="确认驳回"
       :hide-footer="false"
-      @update:open="(v: boolean) => (waiveIntegrityOpen = v)"
-      @close="waiveIntegrityOpen = false"
-      @confirm="submitWaiveIntegrity"
+      @update:open="(v: boolean) => (rejectMaterialWaiveOpen = v)"
+      @close="rejectMaterialWaiveOpen = false"
+      @confirm="submitRejectMaterialWaive"
+    >
+      <UiForm layout="vertical">
+        <UiFormItem label="材料类型">
+          {{ materialWaiveTarget ? materialTypeLabel(materialWaiveTarget.materialType) : '—' }}
+        </UiFormItem>
+        <UiFormItem label="驳回原因" required>
+          <UiTextarea
+            size="sm"
+            v-model="materialWaiveRejectReason"
+            :maxlength="500"
+            :rows="3"
+            :show-count="true"
+          />
+        </UiFormItem>
+      </UiForm>
+    </UiDrawer>
+
+    <UiDrawer
+      :open="requestIntegrityWaiveOpen"
+      title="申请卷完整性豁免"
+      :width="520"
+      :confirm-loading="requestingIntegrityWaive === true"
+      ok-text="提交申请"
+      :hide-footer="false"
+      @update:open="(v: boolean) => (requestIntegrityWaiveOpen = v)"
+      @close="requestIntegrityWaiveOpen = false"
+      @confirm="submitRequestIntegrityWaive"
     >
       <UiForm layout="vertical">
         <UiFormItem label="豁免原因" required>
           <UiTextarea
             size="sm"
-            v-model="waiveIntegrityReason"
+            v-model="integrityWaiveReason"
+            :maxlength="500"
+            :rows="3"
+            :show-count="true"
+          />
+        </UiFormItem>
+      </UiForm>
+    </UiDrawer>
+
+    <UiDrawer
+      :open="rejectIntegrityWaiveOpen"
+      title="驳回完整性豁免"
+      :width="520"
+      :confirm-loading="rejectingIntegrityWaive === true"
+      ok-text="确认驳回"
+      :hide-footer="false"
+      @update:open="(v: boolean) => (rejectIntegrityWaiveOpen = v)"
+      @close="rejectIntegrityWaiveOpen = false"
+      @confirm="submitRejectIntegrityWaive"
+    >
+      <UiForm layout="vertical">
+        <UiFormItem label="驳回原因" required>
+          <UiTextarea
+            size="sm"
+            v-model="integrityWaiveRejectReason"
             :maxlength="500"
             :rows="3"
             :show-count="true"
@@ -192,6 +288,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveIntegrityMissingItemVO,
   ArchiveMaterialTypeCode,
+  ArchiveMaterialWaivePendingItemVO,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
@@ -199,11 +296,15 @@ import message from 'ant-design-vue/es/message'
 import { reactive, ref } from 'vue'
 import {
   allowArchiveMaterialDelay,
+  approveArchiveMaterialWaive,
+  approveArchiveVolumeIntegrityWaive,
   ARCHIVE_INTEGRITY_STATUS_TONE,
   ArchiveIntegrityStatusDescription,
   ArchiveMaterialTypeDescription,
-  waiveArchiveMaterialMissing,
-  waiveArchiveVolumeIntegrity,
+  rejectArchiveMaterialWaive,
+  rejectArchiveVolumeIntegrityWaive,
+  requestArchiveMaterialWaive,
+  requestArchiveVolumeIntegrityWaive,
 } from '@/apis/mark/archive-volume'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -223,21 +324,26 @@ defineOptions({ name: 'ArchiveVolumeIntegrityPanel' })
 
 const props = withDefaults(
   defineProps<{
-
-  volumeId: string
-  detail: ArchiveVolumeDetailResponse
-  displayedIntegrityResult: NonNullable<ArchiveVolumeDetailResponse['latestIntegrityCheck']> | null
-  checkingIntegrity: boolean
-  canRunIntegrity?: boolean
-  canAllowMaterialDelay?: boolean
-  canWaiveMaterialMissing?: boolean
-  canWaiveIntegrity?: boolean
-}>(),
+    volumeId: string
+    detail: ArchiveVolumeDetailResponse
+    displayedIntegrityResult: NonNullable<ArchiveVolumeDetailResponse['latestIntegrityCheck']> | null
+    checkingIntegrity: boolean
+    currentUserId?: string
+    canRunIntegrity?: boolean
+    canAllowMaterialDelay?: boolean
+    canRequestIntegrityWaive?: boolean
+    canApproveIntegrityWaive?: boolean
+    canRequestMaterialWaive?: boolean
+    canApproveMaterialWaive?: boolean
+  }>(),
   {
-  canRunIntegrity: false,
-  canAllowMaterialDelay: false,
-  canWaiveMaterialMissing: false,
-  canWaiveIntegrity: false,
+    currentUserId: '',
+    canRunIntegrity: false,
+    canAllowMaterialDelay: false,
+    canRequestIntegrityWaive: false,
+    canApproveIntegrityWaive: false,
+    canRequestMaterialWaive: false,
+    canApproveMaterialWaive: false,
   },
 )
 
@@ -246,16 +352,23 @@ const emit = defineEmits<{
   'run-integrity-check': []
 }>()
 
-const waivingIntegrity = ref(false)
+const requestingIntegrityWaive = ref(false)
+const approvingIntegrityWaive = ref(false)
+const rejectingIntegrityWaive = ref(false)
 const delayAllowOpen = ref(false)
 const delayAllowSubmitting = ref(false)
-const waiveMissingOpen = ref(false)
-const waiveMissingSubmitting = ref(false)
-const waiveIntegrityOpen = ref(false)
-const waiveMissingReason = ref('')
-const waiveIntegrityReason = ref('')
+const requestMaterialWaiveOpen = ref(false)
+const requestingMaterialWaive = ref(false)
+const rejectingMaterialWaive = ref(false)
+const rejectMaterialWaiveOpen = ref(false)
+const requestIntegrityWaiveOpen = ref(false)
+const rejectIntegrityWaiveOpen = ref(false)
+const materialWaiveReason = ref('')
+const materialWaiveRejectReason = ref('')
+const integrityWaiveReason = ref('')
+const integrityWaiveRejectReason = ref('')
 const delayAllowTarget = ref<ArchiveIntegrityMissingItemVO | null>(null)
-const waiveMissingTarget = ref<ArchiveIntegrityMissingItemVO | null>(null)
+const materialWaiveTarget = ref<ArchiveIntegrityMissingItemVO | null>(null)
 
 interface ArchiveIntegrityDelayAllowForm {
   deadline: string | undefined
@@ -272,7 +385,7 @@ const delayAllowForm = reactive<ArchiveIntegrityDelayAllowForm>({
 const missingColumns: ColumnsType<ArchiveIntegrityMissingItemVO> = [
   { title: '缺项材料', key: 'materialType' },
   { title: '目录', dataIndex: 'catalogName' },
-  { title: '操作', key: 'missingActions', width: 180 },
+  { title: '操作', key: 'missingActions', width: 220 },
 ]
 
 function isArchiveIntegrityMissingItem(record: unknown): record is ArchiveIntegrityMissingItemVO {
@@ -310,8 +423,39 @@ function integrityStatusTone(
   return strictEnumTone(ARCHIVE_INTEGRITY_STATUS_TONE, code, 'integrityStatus')
 }
 
+function findPendingMaterialWaive(
+  item: ArchiveIntegrityMissingItemVO,
+): ArchiveMaterialWaivePendingItemVO | undefined {
+  const pendings = props.detail.pendingMaterialWaives
+  if (!pendings?.length) {
+    return undefined
+  }
+  return pendings.find(
+    (pending) =>
+      pending.materialType === item.materialType
+      && (pending.catalogCode ?? '') === (item.catalogCode ?? ''),
+  )
+}
+
+function canShowRequestMaterialWaive(item: ArchiveIntegrityMissingItemVO): boolean {
+  return props.canRequestMaterialWaive === true && !findPendingMaterialWaive(item)
+}
+
+function canShowApproveMaterialWaive(item: ArchiveIntegrityMissingItemVO): boolean {
+  if (props.canApproveMaterialWaive !== true) {
+    return false
+  }
+  const pending = findPendingMaterialWaive(item)
+  if (!pending) {
+    return false
+  }
+  if (!props.currentUserId || !pending.requestUserId) {
+    return true
+  }
+  return String(pending.requestUserId) !== String(props.currentUserId)
+}
+
 function openDelayAllowModal(item: ArchiveIntegrityMissingItemVO) {
-  // MVR-348：与 canAllowMaterialDelay 同源二次拦截
   if (props.canAllowMaterialDelay !== true) {
     void message.warning('当前账号无延迟补交登记权限')
     return
@@ -364,83 +508,197 @@ async function submitDelayAllow() {
   }
 }
 
-function openWaiveMissingModal(item: ArchiveIntegrityMissingItemVO) {
-  // MVR-348：与 canWaiveMaterialMissing 同源二次拦截
-  if (props.canWaiveMaterialMissing !== true) {
-    void message.warning('当前账号无材料缺失豁免权限')
+function openRequestMaterialWaiveModal(item: ArchiveIntegrityMissingItemVO) {
+  if (canShowRequestMaterialWaive(item) !== true) {
+    void message.warning('当前账号不可申请材料缺失豁免')
     return
   }
-  waiveMissingTarget.value = item
-  waiveMissingReason.value = ''
-  waiveMissingOpen.value = true
+  materialWaiveTarget.value = item
+  materialWaiveReason.value = ''
+  requestMaterialWaiveOpen.value = true
 }
 
-async function submitWaiveMissing() {
-  if (waiveMissingSubmitting.value === true) {
+async function submitRequestMaterialWaive() {
+  if (requestingMaterialWaive.value === true) {
     return
   }
-  if (props.canWaiveMaterialMissing !== true) {
-    void message.warning('当前账号无材料缺失豁免权限')
+  if (!materialWaiveTarget.value) return
+  if (canShowRequestMaterialWaive(materialWaiveTarget.value) !== true) {
+    void message.warning('当前账号不可申请材料缺失豁免')
     return
   }
-  if (!waiveMissingTarget.value) return
-  if (!waiveMissingReason.value.trim()) {
+  if (!materialWaiveReason.value.trim()) {
     showFormValidationMessage('请填写豁免原因')
     return
   }
-  waiveMissingSubmitting.value = true
+  requestingMaterialWaive.value = true
   try {
-    await waiveArchiveMaterialMissing({
+    await requestArchiveMaterialWaive({
       volumeId: props.volumeId,
-      materialType: waiveMissingTarget.value.materialType,
-      catalogCode: waiveMissingTarget.value.catalogCode,
-      reason: waiveMissingReason.value.trim(),
+      materialType: materialWaiveTarget.value.materialType,
+      catalogCode: materialWaiveTarget.value.catalogCode,
+      reason: materialWaiveReason.value.trim(),
     })
-    void message.success('已授权材料缺失豁免')
-    waiveMissingOpen.value = false
+    void message.success('已提交材料缺失豁免申请')
+    requestMaterialWaiveOpen.value = false
     emit('refreshed')
   } catch (error) {
-    showUserError(error, '材料缺失豁免失败')
+    showUserError(error, '申请材料缺失豁免失败')
   } finally {
-    waiveMissingSubmitting.value = false
+    requestingMaterialWaive.value = false
   }
 }
 
-function openWaiveIntegrityModal() {
-  // MVR-348：与 canWaiveIntegrity 同源二次拦截
-  if (props.canWaiveIntegrity !== true) {
-    void message.warning('当前账号无完整性豁免权限')
+async function submitApproveMaterialWaive(item: ArchiveIntegrityMissingItemVO) {
+  if (canShowApproveMaterialWaive(item) !== true) {
+    void message.warning('当前账号不可审批材料缺失豁免')
     return
   }
-  waiveIntegrityReason.value = ''
-  waiveIntegrityOpen.value = true
+  try {
+    await approveArchiveMaterialWaive({
+      volumeId: props.volumeId,
+      materialType: item.materialType,
+      catalogCode: item.catalogCode,
+    })
+    void message.success('已审批通过材料缺失豁免')
+    emit('refreshed')
+  } catch (error) {
+    showUserError(error, '审批材料缺失豁免失败')
+  }
 }
 
-async function submitWaiveIntegrity() {
-  if (waivingIntegrity.value === true) {
+function openRejectMaterialWaiveModal(item: ArchiveIntegrityMissingItemVO) {
+  if (canShowApproveMaterialWaive(item) !== true) {
+    void message.warning('当前账号不可驳回材料缺失豁免')
     return
   }
-  if (props.canWaiveIntegrity !== true) {
-    void message.warning('当前账号无完整性豁免权限')
+  materialWaiveTarget.value = item
+  materialWaiveRejectReason.value = ''
+  rejectMaterialWaiveOpen.value = true
+}
+
+async function submitRejectMaterialWaive() {
+  if (rejectingMaterialWaive.value === true) {
     return
   }
-  if (!waiveIntegrityReason.value.trim()) {
+  if (!materialWaiveTarget.value) return
+  if (canShowApproveMaterialWaive(materialWaiveTarget.value) !== true) {
+    void message.warning('当前账号不可驳回材料缺失豁免')
+    return
+  }
+  if (!materialWaiveRejectReason.value.trim()) {
+    showFormValidationMessage('请填写驳回原因')
+    return
+  }
+  rejectingMaterialWaive.value = true
+  try {
+    await rejectArchiveMaterialWaive({
+      volumeId: props.volumeId,
+      materialType: materialWaiveTarget.value.materialType,
+      catalogCode: materialWaiveTarget.value.catalogCode,
+      rejectReason: materialWaiveRejectReason.value.trim(),
+    })
+    void message.success('已驳回材料缺失豁免申请')
+    rejectMaterialWaiveOpen.value = false
+    emit('refreshed')
+  } catch (error) {
+    showUserError(error, '驳回材料缺失豁免失败')
+  } finally {
+    rejectingMaterialWaive.value = false
+  }
+}
+
+function openRequestIntegrityWaiveModal() {
+  if (props.canRequestIntegrityWaive !== true) {
+    void message.warning('当前账号不可申请完整性豁免')
+    return
+  }
+  integrityWaiveReason.value = ''
+  requestIntegrityWaiveOpen.value = true
+}
+
+async function submitRequestIntegrityWaive() {
+  if (requestingIntegrityWaive.value === true) {
+    return
+  }
+  if (props.canRequestIntegrityWaive !== true) {
+    void message.warning('当前账号不可申请完整性豁免')
+    return
+  }
+  if (!integrityWaiveReason.value.trim()) {
     showFormValidationMessage('请填写豁免原因')
     return
   }
-  waivingIntegrity.value = true
+  requestingIntegrityWaive.value = true
   try {
-    await waiveArchiveVolumeIntegrity({
+    await requestArchiveVolumeIntegrityWaive({
       volumeId: props.volumeId,
-      reason: waiveIntegrityReason.value.trim(),
+      reason: integrityWaiveReason.value.trim(),
     })
-    void message.success('已授权完整性豁免')
-    waiveIntegrityOpen.value = false
+    void message.success('已提交完整性豁免申请')
+    requestIntegrityWaiveOpen.value = false
     emit('refreshed')
   } catch (error) {
-    showUserError(error, '完整性豁免失败')
+    showUserError(error, '申请完整性豁免失败')
   } finally {
-    waivingIntegrity.value = false
+    requestingIntegrityWaive.value = false
+  }
+}
+
+async function submitApproveIntegrityWaive() {
+  if (approvingIntegrityWaive.value === true) {
+    return
+  }
+  if (props.canApproveIntegrityWaive !== true) {
+    void message.warning('当前账号不可审批完整性豁免')
+    return
+  }
+  approvingIntegrityWaive.value = true
+  try {
+    await approveArchiveVolumeIntegrityWaive(props.volumeId)
+    void message.success('已审批通过完整性豁免')
+    emit('refreshed')
+  } catch (error) {
+    showUserError(error, '审批完整性豁免失败')
+  } finally {
+    approvingIntegrityWaive.value = false
+  }
+}
+
+function openRejectIntegrityWaiveModal() {
+  if (props.canApproveIntegrityWaive !== true) {
+    void message.warning('当前账号不可驳回完整性豁免')
+    return
+  }
+  integrityWaiveRejectReason.value = ''
+  rejectIntegrityWaiveOpen.value = true
+}
+
+async function submitRejectIntegrityWaive() {
+  if (rejectingIntegrityWaive.value === true) {
+    return
+  }
+  if (props.canApproveIntegrityWaive !== true) {
+    void message.warning('当前账号不可驳回完整性豁免')
+    return
+  }
+  if (!integrityWaiveRejectReason.value.trim()) {
+    showFormValidationMessage('请填写驳回原因')
+    return
+  }
+  rejectingIntegrityWaive.value = true
+  try {
+    await rejectArchiveVolumeIntegrityWaive({
+      volumeId: props.volumeId,
+      rejectReason: integrityWaiveRejectReason.value.trim(),
+    })
+    void message.success('已驳回完整性豁免申请')
+    rejectIntegrityWaiveOpen.value = false
+    emit('refreshed')
+  } catch (error) {
+    showUserError(error, '驳回完整性豁免失败')
+  } finally {
+    rejectingIntegrityWaive.value = false
   }
 }
 </script>
@@ -449,43 +707,43 @@ async function submitWaiveIntegrity() {
 .archive-quality-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
-  padding: var(--dp-space-3) var(--dp-space-4);
+  gap: var(--dp-space-block);
+  padding: var(--dp-space-component) var(--dp-space-block);
 }
 
 .archive-quality-panel__section {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .archive-quality-panel__section-head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-quality-panel__section-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   margin-left: auto;
 }
 
 .archive-quality-panel__section-title {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--dp-type-panel-title-size);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .archive-quality-panel__empty {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--dp-space-2);
-  padding: var(--dp-space-4);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-block);
   border: 1px dashed var(--dp-border);
   border-radius: var(--dp-radius-control);
   background: var(--dp-surface-subtle);

@@ -105,11 +105,7 @@
     </div>
 
     <div v-else class="archive-volume-ocr-search__empty">
-      <UiAlertStrip v-if="materialStatsLoadFailed" tone="warning" title="文字识别统计加载失败">
-        <template #actions>
-          <UiButton size="sm" variant="outline" @click="loadMaterialStats">重新加载</UiButton>
-        </template>
-      </UiAlertStrip>
+      <UiAlertStrip v-if="materialStatsLoadFailed" tone="warning" title="文字识别统计加载失败" dense />
       <div class="archive-volume-ocr-search__overview-head">
         <span class="archive-volume-ocr-search__overview-title">材料文字识别状态</span>
         <UiButton
@@ -536,7 +532,7 @@ onMounted(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
     width: 100%;
     min-width: 0;
   }
@@ -545,17 +541,17 @@ onMounted(() => {
     display: flex;
     align-items: baseline;
     flex-wrap: wrap;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     min-width: 0;
     flex: 1;
   }
 
   &__title {
-    font-size: 15px;
+    font-size: var(--dp-type-panel-title-size);
     font-weight: 600;
     line-height: 1.4;
     color: var(--dp-text-primary);
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
   }
 
   &__hint {
@@ -572,27 +568,27 @@ onMounted(() => {
   &__search {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     width: 100%;
     min-width: 0;
-    padding: var(--dp-space-2) var(--dp-space-3);
-    border-radius: var(--dp-radius-panel, 8px);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
+    border-radius: var(--dp-radius-panel);
     background: color-mix(
       in srgb,
-      var(--dp-primary) 4%,
-      var(--dp-surface-subtle, var(--dp-bg-layout))
+      var(--dp-color-primary) 4%,
+      var(--dp-surface-subtle, var(--dp-bg-muted))
     );
-    border: 1px solid color-mix(in srgb, var(--dp-primary) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--dp-color-primary) 10%, transparent);
     transition:
-      border-color 0.2s ease,
-      background-color 0.2s ease;
+      border-color var(--dp-duration-normal) var(--dp-ease-default),
+      background-color var(--dp-duration-normal) var(--dp-ease-default);
 
     &:focus-within {
-      border-color: color-mix(in srgb, var(--dp-primary) 32%, transparent);
+      border-color: color-mix(in srgb, var(--dp-color-primary) 32%, transparent);
       background: color-mix(
         in srgb,
-        var(--dp-primary) 6%,
-        var(--dp-surface-subtle, var(--dp-bg-layout))
+        var(--dp-color-primary) 6%,
+        var(--dp-surface-subtle, var(--dp-bg-muted))
       );
     }
   }
@@ -608,11 +604,11 @@ onMounted(() => {
 
   &__results,
   &__empty {
-    padding: var(--dp-space-3) var(--dp-space-4);
+    padding: var(--dp-space-component) var(--dp-space-block);
   }
 
   &__result-meta {
-    margin: 0 0 var(--dp-space-2);
+    margin: 0 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
     font-variant-numeric: tabular-nums;
@@ -625,24 +621,24 @@ onMounted(() => {
   }
 
   &__hit-item {
-    padding: var(--dp-space-3);
-    margin-bottom: var(--dp-space-2);
-    border: 1px solid var(--dp-border-light);
-    border-radius: var(--dp-radius-panel, 8px);
+    padding: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component-tight);
+    border: 1px solid var(--dp-border-subtle);
+    border-radius: var(--dp-radius-panel);
     background: var(--dp-surface);
     transition:
-      border-color 0.2s ease,
-      box-shadow 0.2s ease,
-      transform 0.15s ease;
+      border-color var(--dp-duration-normal) var(--dp-ease-default),
+      box-shadow var(--dp-duration-normal) var(--dp-ease-default),
+      transform var(--dp-duration-fast) var(--dp-ease-default);
 
     &:last-child {
       margin-bottom: 0;
     }
 
     &:hover {
-      border-color: color-mix(in srgb, var(--dp-primary) 28%, var(--dp-border-light));
-      box-shadow: var(--dp-shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.06));
-      transform: translateY(-1px);
+      border-color: color-mix(in srgb, var(--dp-color-primary) 28%, var(--dp-border-subtle));
+      box-shadow: var(--dp-shadow-sm);
+      transform: var(--dp-lift-sm);
     }
   }
 
@@ -650,8 +646,8 @@ onMounted(() => {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: var(--dp-space-2);
-    margin-bottom: 6px;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__file-name {
@@ -661,15 +657,15 @@ onMounted(() => {
   }
 
   &__student {
-    font-size: var(--dp-font-size-xxs);
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
   &__page-no {
     margin-left: auto;
-    font-size: 10px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
-    font-family: var(--dp-font-mono), ui-monospace, monospace;
+    font-family: var(--dp-font-family-code), ui-monospace, monospace;
     padding: 1px 5px;
     border-radius: 3px;
     background: color-mix(in srgb, var(--dp-text-muted) 8%, transparent);
@@ -678,13 +674,13 @@ onMounted(() => {
   &__hit-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--dp-space-3);
-    margin-top: 6px;
+    gap: var(--dp-space-component);
+    margin-top: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
   }
 
   &__pager {
-    margin-top: var(--dp-space-3);
+    margin-top: var(--dp-space-component);
     display: flex;
     justify-content: flex-end;
   }
@@ -693,10 +689,10 @@ onMounted(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--dp-space-3);
-    padding: var(--dp-space-2) var(--dp-space-3);
-    border-radius: var(--dp-radius-control, 6px);
-    background: var(--dp-surface-subtle, var(--dp-bg-layout));
+    margin-bottom: var(--dp-space-component);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
+    border-radius: var(--dp-radius-control);
+    background: var(--dp-surface-subtle, var(--dp-bg-muted));
     border: 1px solid var(--dp-border-subtle);
   }
 
@@ -713,18 +709,18 @@ onMounted(() => {
 }
 
 :deep(.archive-search-snippet-block) {
-  padding: var(--dp-space-2) var(--dp-space-3);
-  border-radius: var(--dp-radius-control-inner, 4px);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
+  border-radius: var(--dp-radius-control-inner);
   background: color-mix(in srgb, var(--dp-text-muted) 5%, transparent);
   font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
-  margin-bottom: 4px;
+  margin-bottom: var(--dp-space-component-xs);
 }
 
 :deep(.archive-search-snippet-mark) {
-  background: color-mix(in srgb, var(--dp-primary) 18%, transparent);
-  color: var(--dp-primary);
+  background: color-mix(in srgb, var(--dp-color-primary) 18%, transparent);
+  color: var(--dp-color-primary);
   font-weight: 600;
   padding: 0 2px;
   border-radius: 2px;

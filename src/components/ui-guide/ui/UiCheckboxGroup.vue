@@ -58,12 +58,12 @@ provide(uiCheckboxGroupKey, true)
 .ui-checkbox-group :deep(.ant-checkbox-group) {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .ui-checkbox-group--vertical :deep(.ant-checkbox-group) {
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
 }
 </style>

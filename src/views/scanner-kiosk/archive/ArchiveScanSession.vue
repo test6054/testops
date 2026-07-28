@@ -367,17 +367,17 @@ function goBack() {
 .archive-scan-session {
   max-width: 720px;
   margin: 0 auto;
-  padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px);
+  padding: var(--dp-space-block) var(--dp-space-component);
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .archive-scan-session__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 .archive-scan-session__title {
@@ -390,8 +390,8 @@ function goBack() {
 .archive-scan-session__scanner {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
   font-size: var(--dp-font-size-md);
@@ -404,15 +404,15 @@ function goBack() {
 }
 
 .archive-scan-session__select {
-  margin-top: 4px;
-  padding: 6px 8px;
+  margin-top: var(--dp-space-component-xs);
+  padding: var(--dp-space-component-tight);
   width: 100%;
 }
 
 .archive-scan-session__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-scan-session__hint {

@@ -90,7 +90,7 @@ const logo = computed(() => appStore.getLogo())
       font-size: var(--dp-font-size-2xl);
       line-height: 32px;
       display: flex;
-      padding: 0 20px;
+      padding: 0 var(--dp-space-block);
       align-items: center;
       justify-content: start;
       // background-image: url('@/assets/images/login_h5.jpg');
@@ -102,7 +102,7 @@ const logo = computed(() => appStore.getLogo())
       img {
         width: 34px;
         height: 34px;
-        margin-right: 8px;
+        margin-right: var(--dp-space-component-tight);
       }
     }
 
@@ -126,7 +126,7 @@ const logo = computed(() => appStore.getLogo())
       font-weight: 500;
       font-size: var(--dp-font-size-2xl);
       line-height: 32px;
-      margin-bottom: 20px;
+      margin-bottom: var(--dp-space-block);
     }
 
     &__form {
@@ -138,7 +138,7 @@ const logo = computed(() => appStore.getLogo())
 
       :deep(.ant-tabs-tab) {
         color: var(--dp-text-secondary);
-        margin: 0 20px 0 0;
+        margin: 0 var(--dp-space-block) 0 0;
       }
 
       :deep(.ant-tabs-tab-btn) {
@@ -148,7 +148,7 @@ const logo = computed(() => appStore.getLogo())
       }
 
       :deep(.ant-tabs-content-holder) {
-        margin-top: 10px;
+        margin-top: var(--dp-space-component);
       }
 
       :deep(.ant-tabs-tab-active),
@@ -224,7 +224,7 @@ const logo = computed(() => appStore.getLogo())
       font-weight: 500;
       font-size: var(--dp-font-size-2xl);
       line-height: 32px;
-      margin-bottom: 20px;
+      margin-bottom: var(--dp-space-block);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -232,7 +232,7 @@ const logo = computed(() => appStore.getLogo())
       img {
         width: 34px;
         height: 34px;
-        margin-right: 8px;
+        margin-right: var(--dp-space-component-tight);
       }
     }
 
@@ -262,7 +262,7 @@ const logo = computed(() => appStore.getLogo())
       font-weight: 500;
       font-size: var(--dp-font-size-2xl);
       line-height: 32px;
-      margin-bottom: 20px;
+      margin-bottom: var(--dp-space-block);
     }
 
     &__form {
@@ -283,7 +283,7 @@ const logo = computed(() => appStore.getLogo())
       }
 
       :deep(.ant-tabs-content-holder) {
-        margin-top: 10px;
+        margin-top: var(--dp-space-component);
       }
 
       :deep(.ant-tabs-tab-active),
@@ -302,7 +302,7 @@ const logo = computed(() => appStore.getLogo())
 
     &__oauth {
       margin-top: auto;
-      margin-bottom: 20px;
+      margin-bottom: var(--dp-space-block);
 
       :deep(.ant-divider-inner-text) {
         color: var(--dp-text-muted);
@@ -326,7 +326,7 @@ const logo = computed(() => appStore.getLogo())
           font-size: var(--dp-font-size-xs);
           font-weight: 400;
           line-height: 20px;
-          padding: 6px 10px;
+          padding: var(--dp-space-component-tight) var(--dp-space-component);
           align-items: center;
           border: 1px solid var(--dp-border-subtle);
           border-radius: var(--dp-radius-full);
@@ -344,7 +344,7 @@ const logo = computed(() => appStore.getLogo())
 
         .mode svg {
           font-size: var(--dp-font-size-lg);
-          margin-right: 10px;
+          margin-right: var(--dp-space-component);
         }
 
         .mode:hover,

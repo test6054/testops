@@ -35,9 +35,7 @@ export interface PortfolioTeacherLifecycleExportRequest {
 export interface PortfolioTeacherLifecycleStateVO {
   teacherUserId: string | number
   lifecycleStatus: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   changeType?: PortfolioTeacherLifecycleChangeTypeCode
-  changeTypeLabel?: string
   effectiveTime?: string
   reasonText?: string
   archiveWriteForbidden?: boolean
@@ -51,7 +49,6 @@ export interface PortfolioTeacherLifecycleTransferExportVO {
   officialRecordCount?: number
   attachmentCount?: number
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   exportedAt?: string
 }
 
@@ -79,8 +76,6 @@ export const portfolioTeacherLifecycleApi = {
     http.post<PortfolioTeacherLifecycleStateVO>(`${BASE}/apply`, data),
   get: (data: PortfolioTeacherLifecycleGetRequest) =>
     http.post<PortfolioTeacherLifecycleStateVO>(`${BASE}/get`, data),
-  exportTransferPackage: (data: PortfolioTeacherLifecycleExportRequest) =>
-    http.post<PortfolioTeacherLifecycleTransferExportVO>(`${BASE}/export-transfer-package`, data),
   importTransferPackage: (data: PortfolioTeacherLifecycleImportRequest) =>
     http.post<PortfolioTeacherLifecycleTransferImportVO>(`${BASE}/import-transfer-package`, data),
   pageEvents: (data: PortfolioTeacherLifecycleEventPageRequest) =>
@@ -97,6 +92,44 @@ export const portfolioTeacherLifecycleApi = {
 
 export const PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL = PortfolioTeacherLifecycleStatusDescription
 
+/** 与后端 PortfolioTeacherLifecycleChangeTypeEnum.label 对齐的展示真源 */
+export const PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_TYPE_LABEL: Record<
+  PortfolioTeacherLifecycleChangeTypeCode,
+  string
+> = {
+  LEFT: '离职',
+  RETIRED: '退休',
+  TRANSFERRED_OUT: '调出',
+  STUDY_LEAVE: '访学',
+  SECONDMENT: '挂职',
+  LONG_SICK_LEAVE: '长期病假',
+  REHIRED: '返聘',
+  RESUME_FROM_HOLD: '恢复在职',
+  CANCEL_TRANSFER_OUT: '撤销调出',
+  EXPORT_COMPLETED: '迁出导出完成',
+}
+
+/** 与后端 PortfolioTeacherLifecycleSourceTypeEnum.label 对齐 */
+export const PORTFOLIO_TEACHER_LIFECYCLE_SOURCE_TYPE_LABEL: Record<
+  PortfolioTeacherLifecycleSourceTypeCode,
+  string
+> = {
+  MANUAL: '人工登记',
+  HR_SYNC: '人事同步',
+  SELF_DECLARE: '自助申报',
+}
+
+/** 与后端 PortfolioTeacherLifecycleApprovalStatusEnum.label 对齐 */
+export const PORTFOLIO_TEACHER_LIFECYCLE_APPROVAL_STATUS_LABEL: Record<
+  PortfolioTeacherLifecycleApprovalStatusCode,
+  string
+> = {
+  PENDING: '待审批',
+  APPROVED: '已通过',
+  REJECTED: '已驳回',
+  APPLIED: '已生效',
+}
+
 export const PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS: Array<{
   value: PortfolioTeacherLifecycleChangeTypeCode
   label: string
@@ -110,6 +143,7 @@ export const PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS: Array<{
   { value: PortfolioTeacherLifecycleChangeTypeCode.LONG_SICK_LEAVE, label: '长期病假（暂挂）', from: [PortfolioTeacherLifecycleStatusCode.ACTIVE] },
   { value: PortfolioTeacherLifecycleChangeTypeCode.REHIRED, label: '返聘（恢复在职）', from: [PortfolioTeacherLifecycleStatusCode.SEALED] },
   { value: PortfolioTeacherLifecycleChangeTypeCode.RESUME_FROM_HOLD, label: '暂挂恢复在职', from: [PortfolioTeacherLifecycleStatusCode.TEMP_HOLD] },
+  { value: PortfolioTeacherLifecycleChangeTypeCode.CANCEL_TRANSFER_OUT, label: '撤销调出（恢复在职）', from: [PortfolioTeacherLifecycleStatusCode.TRANSFER_FROZEN] },
 ]
 
 export interface PortfolioTeacherLifecycleEventPageRequest {
@@ -129,19 +163,17 @@ export interface PortfolioTeacherLifecycleDeclareDecisionRequest {
 export interface PortfolioTeacherLifecycleEventVO {
   id?: string | number
   teacherUserId?: string | number
+  teacherName?: string
+  teacherNumber?: string
+  departmentName?: string
   fromStatus?: PortfolioTeacherLifecycleStatusCode
-  fromStatusLabel?: string
   toStatus?: PortfolioTeacherLifecycleStatusCode
-  toStatusLabel?: string
   changeType?: PortfolioTeacherLifecycleChangeTypeCode
-  changeTypeLabel?: string
   effectiveTime?: string
   reasonText?: string
   createTime?: string
   sourceType?: PortfolioTeacherLifecycleSourceTypeCode
-  sourceTypeLabel?: string
   approvalStatus?: PortfolioTeacherLifecycleApprovalStatusCode
-  approvalStatusLabel?: string
   approvedBy?: string | number
   approvedTime?: string
   approvalComment?: string
@@ -158,7 +190,6 @@ export interface PortfolioTeacherLifecycleSnapshotVO {
   fromStatus?: PortfolioTeacherLifecycleStatusCode
   toStatus?: PortfolioTeacherLifecycleStatusCode
   changeType?: PortfolioTeacherLifecycleChangeTypeCode
-  changeTypeLabel?: string
   beforeMetricsJson?: string
   afterMetricsJson?: string
   createTime?: string

@@ -53,14 +53,14 @@ function goDirectory() {
 
 <style scoped lang="scss">
 .portfolio-teacher-pick-gate {
-  margin-bottom: var(--dp-space-2); max-height: 48px;
+  margin-bottom: var(--dp-space-component-tight); max-height: 48px;
   max-width: 100%;
 }
 
 .portfolio-teacher-pick-gate__row {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
 }
 

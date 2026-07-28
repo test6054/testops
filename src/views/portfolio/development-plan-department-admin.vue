@@ -7,6 +7,7 @@ import type {
 } from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS,
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
@@ -16,6 +17,7 @@ import {
   PortfolioDevelopmentPlanStatusDescription,
   PortfolioDevelopmentPlanTypeCode,
 } from '@/apis/portfolio/enums'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -33,15 +35,17 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { useQueryTable } from '@/composables/useQueryTable'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
+import { createClientSnowflakeId } from '@/utils/client-snowflake'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const { loadTree, portfolioOrgOptions } = usePortfolioOrgTree()
+const router = useRouter()
 const activeTab = ref('plans')
 const exporting = ref(false)
-const exportConfirmOpen = ref(false)
+const exportApplyOpen = ref(false)
 const exportPurpose = ref('')
 const submitting = ref(false)
 const planTabItems = [
@@ -192,10 +196,11 @@ async function createPlan() {
     void message.success('已创建部门年度规划')
     form.planTitle = ''
     form.planSummary = ''
-    await loadPage()
   } catch (error) {
     showUserError(error, '创建部门规划失败')
+    return
   }
+  await loadPage()
 }
 
 async function submitPlan(id: string) {
@@ -204,41 +209,60 @@ async function submitPlan(id: string) {
   }
   submitting.value = true
   try {
+    const items = await portfolioDevelopmentPlanApi.listItems({ planId: id })
+    if (!items.length) {
+      showFormValidationMessage('请先保存至少一条规划目标明细')
+      return
+    }
     await portfolioDevelopmentPlanApi.submit({ id })
     void message.success('已提交')
-    await loadPage()
   } catch (error) {
     showUserError(error, '提交规划失败')
+    return
   } finally {
     submitting.value = false
   }
+  await loadPage()
 }
 
-function openExportConfirm() {
-  if (exporting.value) return
+function openExportApply() {
+  if (!form.planYear) {
+    showFormValidationMessage('请填写规划年度')
+    return
+  }
   exportPurpose.value = ''
-  exportConfirmOpen.value = true
+  exportApplyOpen.value = true
 }
 
-async function exportPlans() {
-  if (exporting.value) return
+async function submitExportApply() {
   const purpose = exportPurpose.value.trim()
   if (!purpose) {
     showFormValidationMessage('请填写导出用途')
-    return
+    return Promise.reject(new Error('导出用途为空'))
+  }
+  if (!form.planYear) {
+    showFormValidationMessage('请填写规划年度')
+    return Promise.reject(new Error('规划年度为空'))
+  }
+  if (exporting.value) {
+    return Promise.reject(new Error('导出申请进行中'))
   }
   exporting.value = true
   try {
-    const result = await portfolioDevelopmentPlanApi.exportExcel({
-      planYear: form.planYear,
-      planType: PortfolioDevelopmentPlanTypeCode.DEPARTMENT,
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.DEVELOPMENT_PLAN,
+      businessRef: {
+        planYear: form.planYear,
+        developmentPlanType: PortfolioDevelopmentPlanTypeCode.DEPARTMENT,
+      },
       exportPurpose: purpose,
     })
-    await downloadPortfolioExcelExport(result)
-    exportConfirmOpen.value = false
-    void message.success('规划已导出')
+    exportApplyOpen.value = false
+    void message.success('已提交部门发展规划导出审批')
+    await router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出规划失败')
+    showUserError(error, '提交部门发展规划导出审批失败')
+    return Promise.reject(error)
   } finally {
     exporting.value = false
   }
@@ -257,7 +281,7 @@ function handleDepartmentPlanRowAction(key: string, planId: string) {
 
 function createEmptyPlanItem(): DevelopmentPlanItemEditorRow {
   return {
-    rowKey: `new-${Date.now()}-${planItems.value.length}`,
+    rowKey: `new-${createClientSnowflakeId()}`,
     itemTitle: '',
     itemGoal: '',
     indicatorCode: '',
@@ -280,12 +304,12 @@ function toEditableItem(item: PortfolioDevelopmentPlanItemVO): DevelopmentPlanIt
   }
 }
 
-async function loadPlanItems() {
-  if (!selectedPlanId.value) {
+async function loadPlanItems(targetPlanId?: string) {
+  const planId = targetPlanId ?? selectedPlanId.value
+  if (!planId) {
     planItems.value = []
     return
   }
-  const planId = selectedPlanId.value
   const currentToken = ++planItemsRequestToken.value
   itemLoading.value = true
   try {
@@ -321,7 +345,8 @@ async function savePlanItems() {
   if (itemSaving.value) {
     return
   }
-  if (!selectedPlanId.value) {
+  const planId = selectedPlanId.value
+  if (!planId) {
     showFormValidationMessage('请选择规划')
     return
   }
@@ -347,14 +372,18 @@ async function savePlanItems() {
   }
   itemSaving.value = true
   try {
-    await portfolioDevelopmentPlanApi.batchSaveItems({ planId: selectedPlanId.value, items })
+    await portfolioDevelopmentPlanApi.batchSaveItems({ planId, items })
     void message.success('规划明细已保存')
-    await loadPlanItems()
   } catch (error) {
     showUserError(error, '保存规划明细失败')
+    return
   } finally {
     itemSaving.value = false
   }
+  if (selectedPlanId.value !== planId) {
+    return
+  }
+  await loadPlanItems(planId)
 }
 
 onMounted(async () => {
@@ -379,9 +408,9 @@ onMounted(async () => {
             variant="primary"
             :loading="exporting"
             :disabled="exporting"
-            @click="openExportConfirm"
+            @click="openExportApply"
           >
-            导出表格文件
+            申请导出
           </UiButton>
         </template>
       </ContextBar>
@@ -429,7 +458,7 @@ onMounted(async () => {
           :loading="loading"
           :load-error="loadError"
           row-key="id"
-          style="margin-top: 16px"
+          style="margin-top: var(--dp-space-block)"
           @page-change="handlePageChange"
         >
           <template #bodyCell="{ column, record }">
@@ -472,9 +501,9 @@ onMounted(async () => {
             placeholder="选择规划"
             style="width: 320px"
             :options="planOptions"
-            @change="loadPlanItems"
+            @change="() => void loadPlanItems()"
           />
-          <UiButton size="sm" :disabled="!selectedPlanId" @click="loadPlanItems">
+          <UiButton size="sm" :disabled="!selectedPlanId" @click="() => void loadPlanItems()">
             刷新明细
           </UiButton>
           <UiButton variant="primary" size="sm" v-if="planItemEditable" @click="addPlanItemRow">
@@ -492,7 +521,7 @@ onMounted(async () => {
         </div>
         <UiAlertStrip v-if="!selectedPlanId" tone="info" size="sm" dense inline :show-icon="false">
           <template #default>
-            <span style="display: inline-flex; align-items: center; gap: 8px">
+            <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
               <UiTag tone="blue" size="sm">未选择规划</UiTag>
               <span>请选择发展规划后再编辑明细项</span>
             </span>
@@ -508,7 +537,7 @@ onMounted(async () => {
           :show-pagination="false"
           :sticky-header="false"
           flat
-          style="margin-top: 16px"
+          style="margin-top: var(--dp-space-block)"
         >
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'itemTitle'">
@@ -577,22 +606,19 @@ onMounted(async () => {
         </UiDataTable>
       </template>
     </UiCard>
-
     <UiDialog
-      v-model:open="exportConfirmOpen"
-      title="导出"
-      ok-text="确认导出"
+      v-model:open="exportApplyOpen"
+      title="申请导出部门发展规划台账"
+      ok-text="提交审批"
       cancel-text="取消"
       :confirm-loading="exporting"
-      @ok="exportPlans"
+      @ok="submitExportApply"
     >
-      <label class="export-purpose__label">导出用途（必填）</label>
       <UiTextarea
-        v-model="exportPurpose"
         size="sm"
+        v-model="exportPurpose"
         :rows="3"
-        placeholder="请填写本次导出用途（写入审计）"
-        :disabled="exporting"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
       />
     </UiDialog>
   </StageWorkbenchShell>
@@ -602,18 +628,18 @@ onMounted(async () => {
 .toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-block);
 }
 .form-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .input {
   width: 100px;
-  padding: 4px 8px;
-  border: 1px solid var(--dp-border-default);
+  padding: var(--dp-space-component-xs) var(--dp-space-component-tight);
+  border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control);
 }
 .input--wide {
@@ -625,10 +651,5 @@ onMounted(async () => {
 }
 .input--short {
   width: 72px;
-}
-.export-purpose__label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 13px;
 }
 </style>

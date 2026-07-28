@@ -77,8 +77,22 @@ export const useQualityStore = defineStore(
     /** Layout / 页面范围切换代际，供 keepAlive 页面统一刷新 */
     const scopeChangeEpoch = ref(0)
 
+    /**
+     * 页面 scoped loader 重载代际（仅内存）。
+     * 与 scopeChangeEpoch 互补：同 scope 下并行 reload / activated 竞态靠本字段失效旧响应。
+     */
+    const scopedLoadGeneration = ref(0)
+
     function bumpScopeChangeEpoch(): void {
       scopeChangeEpoch.value += 1
+    }
+
+    function setScopedLoadGeneration(generation: number): void {
+      scopedLoadGeneration.value = generation
+    }
+
+    function bumpScopedLoadGeneration(): void {
+      scopedLoadGeneration.value += 1
     }
 
     /* ========== Computed ========== */
@@ -317,6 +331,7 @@ export const useQualityStore = defineStore(
       qualityCourseOptions,
       qualityCourseLoading,
       scopeChangeEpoch,
+      scopedLoadGeneration,
 
       // computed
       hasProgram,
@@ -340,6 +355,8 @@ export const useQualityStore = defineStore(
       setQualityCourse,
       reset,
       sanitizePersistedScope,
+      setScopedLoadGeneration,
+      bumpScopedLoadGeneration,
     }
   },
   {

@@ -1,4 +1,5 @@
 import type {
+  ArchiveVolumeCatalogCoverageGapVO,
   ArchiveVolumeCatalogLineSaveRequest,
   ArchiveVolumeCatalogLineVO,
   ArchiveVolumeCatalogResponse
@@ -18,6 +19,7 @@ import { showUserError } from '@/utils/error-handler'
 
 /**
  * 归档卷目录编制：草稿生成、编辑保存与确认。
+ * 确认前依赖后端必交覆盖门禁；前端同步展示缺口并禁用确认。
  */
 export function useArchiveVolumeCatalog(volumeId: () => string) {
   const loading = ref(false)
@@ -31,6 +33,17 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
   const catalogStatus = computed(() => catalog.value?.catalogStatus ?? ArchiveCatalogStatusCode.NOT_STARTED)
   const isConfirmed = computed(() => catalogStatus.value === ArchiveCatalogStatusCode.CONFIRMED)
   const isDraft = computed(() => catalogStatus.value === ArchiveCatalogStatusCode.DRAFT)
+  const requiredCoverageReady = computed(() => catalog.value?.requiredCoverageReady === true)
+  const requiredCoverageGaps = computed<ArchiveVolumeCatalogCoverageGapVO[]>(
+    () => catalog.value?.requiredCoverageGaps ?? [],
+  )
+  const canConfirmCatalog = computed(
+    () =>
+      !isConfirmed.value
+      && !loadFailed.value
+      && editableLines.value.length > 0
+      && requiredCoverageReady.value,
+  )
 
   async function loadCatalog() {
     const id = volumeId()
@@ -130,6 +143,11 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
       void message.error('目录状态已失效，请重新加载后再操作')
       return
     }
+    if (!requiredCoverageReady.value) {
+      const firstGap = requiredCoverageGaps.value[0]
+      void message.error(firstGap?.missingReason ?? '必交材料未覆盖，无法确认目录')
+      return
+    }
     confirming.value = true
     try {
       await confirmArchiveVolumeCatalog(id, revision)
@@ -138,6 +156,7 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
     }
     catch (error) {
       showUserError(error, '确认归档目录失败')
+      await loadCatalog()
     }
     finally {
       confirming.value = false
@@ -176,6 +195,9 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
     catalogStatus,
     isConfirmed,
     isDraft,
+    requiredCoverageReady,
+    requiredCoverageGaps,
+    canConfirmCatalog,
     loadCatalog,
     generateDraft,
     updateLine,

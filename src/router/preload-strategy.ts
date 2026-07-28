@@ -93,7 +93,6 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherExamWorkspaceReviewTaskDetail: () => import('@/views/teacher/review-task-detail.vue'),
   TeacherExamWorkspaceMarkingTaskDetail: () => import('@/views/teacher/marking-task-detail.vue'),
   TeacherExamWorkspaceScoreSummary: () => import('@/views/teacher/score-finalize.vue'),
-  TeacherExamWorkspaceScoreRelease: () => import('@/views/teacher/score-finalize.vue'),
   TeacherExamWorkspaceScoreAbsence: () => import('@/views/teacher/absence-confirm.vue'),
   TeacherExamWorkspaceScoreAppeal: () => import('@/views/teacher/appeal-handle.vue'),
   TeacherExamWorkspaceArchivePackage: () => import('@/views/teacher/archive-volume/archive-volume-exam-progress.vue'),
@@ -226,8 +225,8 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
     'TeacherExamWorkspaceMarkingTaskPool',
     'TeacherExamWorkspaceScoreSummary',
   ],
+  // 制卷 LayoutDesigner 含 konva/pdf 重 chunk：进入备考页不主动预取，用户点菜单再加载
   TeacherExamWorkspacePrep: [
-    'TeacherExamWorkspaceLayoutDesigner',
     'TeacherExamWorkspaceCandidateRoster',
     'TeacherExamWorkspaceScanBatches',
   ],
@@ -269,17 +268,12 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
     'TeacherExamWorkspaceReviewBatchConfirm',
   ],
   TeacherExamWorkspaceScoreSummary: [
-    'TeacherExamWorkspaceScoreRelease',
-    'TeacherExamWorkspaceArchiveStatistics',
-  ],
-  TeacherExamWorkspaceScoreRelease: [
     'TeacherExamWorkspaceScoreAppeal',
     'TeacherExamWorkspaceArchiveStatistics',
   ],
   TeacherExamWorkspaceOverview: [
     'TeacherExamList',
     'TeacherExamWorkspacePrep',
-    'TeacherExamWorkspaceLayoutDesigner',
     'TeacherExamWorkspaceCandidateRoster',
   ],
   TeacherExamWorkspaceMarkingTaskDetail: ['TeacherExamWorkspaceMarkingTaskPool'],
@@ -299,7 +293,8 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
   TeacherExamWorkspaceArchivePackage: ['TeacherExamWorkspaceArchivePackage', 'TeacherArchiveVolumeList'],
   TeacherExamWorkspaceArchiveExports: ['TeacherExamWorkspaceArchiveTeachingAffairs', 'TeacherExamWorkspaceArchivePackage'],
   TeacherExamWorkspaceArchiveTeachingAffairs: ['TeacherExamWorkspaceArchiveExports', 'TeacherExamWorkspaceArchivePackage'],
-  TeacherArchiveVolumeList: ['TeacherArchiveVolumeWorkspace', 'TeacherArchiveVolumeDetail', 'TeacherArchiveVolumeSearch', 'TeacherArchiveVolumeRemediationDetail', 'TeacherArchiveScanOps'],
+  // 归档详情含多 Tab 大面板：列表页不预取详情 chunk，点击进入再加载
+  TeacherArchiveVolumeList: ['TeacherArchiveVolumeWorkspace', 'TeacherArchiveVolumeSearch', 'TeacherArchiveVolumeRemediationDetail', 'TeacherArchiveScanOps'],
   TeacherArchiveVolumeDetail: ['TeacherArchiveVolumeList', 'TeacherArchiveScanOps'],
   TeacherArchiveVolumeWorkspace: ['TeacherArchiveVolumeList', 'TeacherArchiveScanOps'],
   TeacherArchiveScanOps: ['TeacherArchiveVolumeList', 'TeacherArchiveVolumeEvalCampaign'],
@@ -417,7 +412,8 @@ export class RoutePreloadManager {
       const userStore = useUserStore()
       const userRole = authStore.userRole
       const isTenantAdmin = userStore.isTenantAdmin
-      if (!hasRouteNamePermission(routeName, userRole, isTenantAdmin)) {
+      const isEnterpriseTenantAdmin = userStore.isEnterpriseTenantAdmin
+      if (!hasRouteNamePermission(routeName, userRole, isTenantAdmin, isEnterpriseTenantAdmin)) {
         return
       }
     }

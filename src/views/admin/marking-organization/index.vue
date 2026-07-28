@@ -708,13 +708,13 @@ onActivated(() => {
 <style lang="scss" scoped>
 .org-index {
   &__readonly-banner {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__overview-title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-lg);
     font-weight: 600;
     color: var(--dp-text-primary);
@@ -725,18 +725,18 @@ onActivated(() => {
   }
 
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
 
     &--empty {
       text-align: center;
-      padding: var(--dp-space-3, 12px) var(--dp-space-3, 12px);
+      padding: var(--dp-space-component);
     }
   }
 
@@ -744,8 +744,8 @@ onActivated(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel-title {
@@ -755,33 +755,33 @@ onActivated(() => {
     color: var(--dp-text-primary);
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__empty-title {
-    margin: 0 0 8px;
-    font-size: 15px;
+    margin: 0 0 var(--dp-space-component-tight);
+    font-size: var(--dp-type-panel-title-size);
     font-weight: 600;
     color: var(--dp-text-primary);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__empty-desc {
-    margin: 8px 0 16px;
+    margin: var(--dp-space-component-tight) 0 var(--dp-space-block);
     font-size: var(--dp-font-size-md);
     line-height: 1.5;
     color: var(--dp-text-secondary);
   }
 
   &__descriptions {
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
 
     :deep(.ant-descriptions-item-label) {
       width: 140px;
@@ -791,10 +791,10 @@ onActivated(() => {
 
   &__actions {
     display: flex;
-    gap: 8px;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--dp-border-light);
+    gap: var(--dp-space-component-tight);
+    margin-top: var(--dp-space-block);
+    padding-top: var(--dp-space-block);
+    border-top: 1px solid var(--dp-border-subtle);
   }
 
   &__hint {
@@ -802,7 +802,7 @@ onActivated(() => {
   }
 
   &__switch-hint {
-    margin-left: 8px;
+    margin-left: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }

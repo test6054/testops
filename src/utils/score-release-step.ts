@@ -3,7 +3,7 @@ import type { FinalScoreRiskOverviewResponse } from '@/apis/mark/exam-score'
 /** 成绩发布主链步骤状态 */
 export type ScoreReleaseStepStatus = 'done' | 'active' | 'pending'
 
-/** 成绩发布主链步骤（确认 → 发布） */
+/** 成绩确认与发布进度步骤（同页双段进度，非双路由） */
 export interface ScoreReleaseStep {
   key: 'confirm' | 'publish'
   label: string
@@ -12,29 +12,22 @@ export interface ScoreReleaseStep {
 }
 
 /**
- * 构造成绩发布两步主链；真源为 riskOverview.readyToPublish 与当前路由步骤。
+ * 按 riskOverview 构造确认/发布进度；无独立路由步骤，禁止传入历史 currentStep。
  */
 export function buildScoreReleaseSteps(
-  currentStep: 'confirm' | 'publish',
   overview: FinalScoreRiskOverviewResponse | null,
   allScoresPublished?: boolean,
 ): ScoreReleaseStep[] {
-  const confirmDone = overview?.readyToPublish === true
+  const confirmDone = overview?.readyToSubmitPublishReview === true
   const publishDone = allScoresPublished === true
 
-  const confirmStatus: ScoreReleaseStepStatus = confirmDone
-    ? 'done'
-    : currentStep === 'confirm'
-      ? 'active'
-      : 'pending'
+  const confirmStatus: ScoreReleaseStepStatus = confirmDone ? 'done' : 'active'
 
   let publishStatus: ScoreReleaseStepStatus
   if (publishDone) {
     publishStatus = 'done'
-  } else if (currentStep === 'publish') {
-    publishStatus = 'active'
   } else if (confirmDone) {
-    publishStatus = 'pending'
+    publishStatus = 'active'
   } else {
     publishStatus = 'pending'
   }
@@ -50,10 +43,13 @@ export function buildScoreReleaseSteps(
     },
     {
       key: 'publish',
-      label: '成绩发布',
+      label: '发布复核',
       description: publishDone
         ? `已发布 ${overview?.publishedCount ?? 0} 人`
-        : `可发布 ${overview?.confirmedCount ?? 0} 人`,
+        : `可提交复核 ${overview?.publishableCount ?? 0} 人`
+          + ((overview?.pendingPublishReviewCount ?? 0) > 0
+            ? ` · 待签审 ${overview?.pendingPublishReviewCount} 人`
+            : ''),
       status: publishStatus,
     },
   ]

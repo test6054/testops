@@ -63,8 +63,8 @@ provide(uiRadioGroupKey, true)
 .ui-radio-group :deep(.ant-radio-group) {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px;
+  gap: var(--dp-space-component-xs);
+  padding: var(--dp-space-component-xs);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control);
   background: var(--dp-gray-100);
@@ -78,7 +78,7 @@ provide(uiRadioGroupKey, true)
 
 .ui-radio-group :deep(.ant-radio-button-wrapper) {
   height: auto;
-  padding: 0 14px;
+  padding: 0 var(--dp-space-block);
   border: none;
   border-radius: var(--dp-radius-control-inner);
   background: transparent;
@@ -88,9 +88,9 @@ provide(uiRadioGroupKey, true)
   line-height: var(--dp-control-height-sm, 32px);
   box-shadow: none;
   transition:
-    color 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease;
+    color var(--dp-duration-normal) var(--dp-ease-default),
+    background-color var(--dp-duration-normal) var(--dp-ease-default),
+    box-shadow var(--dp-duration-normal) var(--dp-ease-default);
 }
 
 .ui-radio-group--sm :deep(.ant-radio-button-wrapper) {

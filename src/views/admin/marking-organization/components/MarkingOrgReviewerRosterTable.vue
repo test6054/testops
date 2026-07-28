@@ -185,7 +185,7 @@ const rows = computed((): RosterRow[] => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
     width: 100%;
   }
 
@@ -207,7 +207,7 @@ const rows = computed((): RosterRow[] => {
   &__progress {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
   }
 
@@ -216,7 +216,7 @@ const rows = computed((): RosterRow[] => {
     max-width: 60px;
     height: 3px;
     border-radius: 2px;
-    background: var(--dp-surface-sunken);
+    background: var(--dp-bg-muted);
     overflow: hidden;
   }
 
@@ -225,11 +225,11 @@ const rows = computed((): RosterRow[] => {
     height: 100%;
     background: var(--dp-color-primary);
     transform-origin: left center;
-    transition: transform 0.2s ease;
+    transition: transform var(--dp-duration-normal) var(--dp-ease-default);
   }
 
   &__warn {
-    color: var(--dp-color-warning);
+    color: var(--dp-warning);
     font-weight: 600;
   }
 }

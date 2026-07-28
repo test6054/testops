@@ -717,7 +717,7 @@ defineExpose({
     class="ie__empty"
   >
     <template #default>
-      <span style="display: inline-flex; align-items: center; gap: 8px">
+      <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
         <UiTag tone="blue" size="sm">未选择条目</UiTag>
         <span>请在左侧选择问卷/评价条目后查看作答</span>
       </span>
@@ -729,7 +729,7 @@ defineExpose({
       「{{ selectedItem.itemCode }} · {{ selectedItem.itemText.substring(0, 24) }}…」答卷
     </template>
     <template #extra>
-      <div class="dp-space" style="--dp-space-gap: 8px">
+      <div class="dp-space dp-space--tight">
         <UiSegmented v-model="responseListFilter" :options="responseListFilterOptions" size="sm" />
         <UiButton
           v-if="selectedForm && isTeacherResponseWritable(selectedForm)"
@@ -842,7 +842,7 @@ defineExpose({
         </template>
         <template v-else-if="column.key === 'convertedScore'">
           <span :class="isScorePendingConversion(record) ? 'ie__sub-desc ie__sub-desc--warn' : ''">
-            {{ record.convertedScore == null ? '-' : record.convertedScore.toFixed(2) }}
+            {{ record.convertedScore == null ? '-' : record.convertedScore.toFixed(6) }}
           </span>
         </template>
         <template v-else-if="column.key === 'conversionStatus'">
@@ -1048,6 +1048,7 @@ defineExpose({
               :min="0"
               :max="1"
               :step="0.01"
+              :precision="6"
               style="width: 100%"
               placeholder="可暂留空，保存后进入待换算 Tab 再录入"
             />
@@ -1137,11 +1138,11 @@ defineExpose({
 <style scoped lang="scss">
 .ie {
   &__empty {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-component);
   }
 
   &__sub-desc {
-    margin-left: 4px;
+    margin-left: var(--dp-space-component-xs);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
 
@@ -1156,27 +1157,27 @@ defineExpose({
   }
 
   &__pending-strip {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__score-hint {
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
   }
 
   &__audit-collapse {
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
   }
 
   &__audit-entry {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-sm);
   }
 
   &__audit-action {
     font-weight: 500;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
   }
 
   &__audit-score {
@@ -1190,12 +1191,12 @@ defineExpose({
   &__answer-group {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px 12px;
+    gap: var(--dp-space-component-tight) var(--dp-space-component);
   }
 
   &__audit-list {
     margin: 0;
-    padding-left: 16px;
+    padding-left: var(--dp-space-block);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }

@@ -1,7 +1,7 @@
 import type { ExamWorkbenchPrepStepResponse } from '@/apis/mark/exam-progress'
 import type { WorkflowReadinessStep } from '@/components/workbench/workflow-readiness/types'
 import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
-import { resolvePrepStepRouteName } from '@/utils/exam-prep-step-ui'
+import { requirePrepStepWorkspaceRouteName } from '@/utils/exam-prep-step-ui'
 
 export interface ResolveIncompletePrepStepsInput {
   prepSteps: PrepStepCard[]
@@ -24,7 +24,7 @@ function buildExamWorkspaceRouteContext(examId: string): {
   }
 }
 
-/** 将未完成 prepSteps 映射为 WorkflowReadinessStep，路由来自 prep step key 真源。 */
+/** 将未完成 prepSteps 映射为 WorkflowReadinessStep，路由采信卡片上的合同路由。 */
 export function resolveIncompletePrepWorkflowSteps(
   input: ResolveIncompletePrepStepsInput,
 ): WorkflowReadinessStep[] {
@@ -59,7 +59,7 @@ export function resolveIncompletePrepWorkflowStepsFromSnapshot(
       status: 'pending' as const,
       description: step.advisoryReason ?? step.statusText ?? step.title,
       actionLabel: `前往${step.title}`,
-      routeName: resolvePrepStepRouteName(step.key),
+      routeName: requirePrepStepWorkspaceRouteName(step),
       routeParams,
       routeQuery,
     }))

@@ -7,14 +7,37 @@ import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { MarkingTaskStatusCode } from '@/types/enums/marking-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
 
+/** 本批任务进度：位置 + 已完成/剩余（Trust 层进度感知）。 */
 export interface BatchProgress {
+  /** 当前任务在本批列表中的 1-based 位次 */
   current: number
+  /** 本批任务总量 */
   total: number
+  /** 已提交/定稿份数 */
+  completed: number
+  /** 已分配/批改中份数（待继续） */
+  remaining: number
+  /** 已完成占比 0-100 */
+  percent: number
 }
 
 export interface UseMarkingTaskNavigationOptions {
   task: Ref<MarkingTaskResponse | null>
   isWholePaperTask: Ref<boolean>
+}
+
+function isUnreadTaskStatus(status: MarkingTaskResponse['taskStatus']): boolean {
+  return (
+    status === MarkingTaskStatusCode.ALLOCATED
+    || status === MarkingTaskStatusCode.IN_PROGRESS
+  )
+}
+
+function isCompletedTaskStatus(status: MarkingTaskResponse['taskStatus']): boolean {
+  return (
+    status === MarkingTaskStatusCode.SUBMITTED
+    || status === MarkingTaskStatusCode.FINALIZED
+  )
 }
 
 export function useMarkingTaskNavigation(options: UseMarkingTaskNavigationOptions) {
@@ -25,18 +48,32 @@ export function useMarkingTaskNavigation(options: UseMarkingTaskNavigationOption
 
   const navPrevLabel = computed(() => (options.isWholePaperTask.value ? '上一份' : '上一题'))
 
-  function isUnreadTaskStatus(status: MarkingTaskResponse['taskStatus']): boolean {
-    return (
-      status === MarkingTaskStatusCode.ALLOCATED
-      || status === MarkingTaskStatusCode.IN_PROGRESS
-    )
-  }
-
   const batchProgress = computed<BatchProgress | null>(() => {
-    if (!options.task.value || batchTasks.value.length === 0) return null
-    const idx = batchTasks.value.findIndex((t) => t.id === options.task.value!.id)
-    if (idx < 0) return null
-    return { current: idx + 1, total: batchTasks.value.length }
+    if (!options.task.value || batchTasks.value.length === 0) {
+      return null
+    }
+    const idx = batchTasks.value.findIndex((item) => item.id === options.task.value!.id)
+    if (idx < 0) {
+      return null
+    }
+    let completed = 0
+    let remaining = 0
+    for (const item of batchTasks.value) {
+      if (isCompletedTaskStatus(item.taskStatus)) {
+        completed += 1
+      } else if (isUnreadTaskStatus(item.taskStatus)) {
+        remaining += 1
+      }
+    }
+    const total = batchTasks.value.length
+    const percent = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0
+    return {
+      current: idx + 1,
+      total,
+      completed,
+      remaining,
+      percent,
+    }
   })
 
   const prevTaskId = computed<string>(() => {

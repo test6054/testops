@@ -9,7 +9,7 @@ import type {
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   PortfolioEvaluationObjectionHandleActionCode,
   PortfolioEvaluationObjectionHandleActionDescription,
@@ -20,6 +20,7 @@ import {
   PortfolioEvaluationSceneDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
   PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
@@ -30,6 +31,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
@@ -37,10 +39,10 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -102,8 +104,11 @@ function requiresCorrectedScore(objectionType: PortfolioEvaluationObjectionTypeC
 }
 
 const route = useRoute()
+const router = useRouter()
 const loading = ref(false)
 const exporting = ref(false)
+const exportApplyOpen = ref(false)
+const exportPurpose = ref('')
 const handlingId = ref('')
 const rows = ref<PortfolioEvaluationObjectionSummaryVO[]>([])
 const pageNum = ref(1)
@@ -446,19 +451,38 @@ function handleObjectionRowAction(key: string, row: PortfolioEvaluationObjection
   }
 }
 
-/** 导出异议台账 Excel（含业务场景）。 */
-async function exportObjectionExcel(): Promise<void> {
+function openObjectionExportApply(): void {
   if (exporting.value || loading.value || Boolean(handlingId.value)) {
     return
   }
+  exportPurpose.value = ''
+  exportApplyOpen.value = true
+}
+
+async function submitObjectionExportApply() {
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return Promise.reject(new Error('导出用途为空'))
+  }
+  if (exporting.value || loading.value || Boolean(handlingId.value)) {
+    return Promise.reject(new Error('导出申请进行中'))
+  }
   exporting.value = true
   try {
-    const result = await portfolioEvaluationPublicityApi.exportObjectionExcel({
-      pageNum: 1,
-      pageSize: pageSize.value,
-      objectionStatus: objectionStatusFilter.value || undefined,
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.EVALUATION_OBJECTION,
+      businessRef: {
+        objectionStatus: objectionStatusFilter.value || undefined,
+      },
+      exportPurpose: purpose,
     })
-    await downloadPortfolioExcelExport(result)
+    exportApplyOpen.value = false
+    void message.success('已提交评价异议导出审批')
+    await router.push({ name: 'PortfolioExportApprovalMine' })
+  } catch (error) {
+    showUserError(error, '提交评价异议导出审批失败')
+    return Promise.reject(error)
   } finally {
     exporting.value = false
   }
@@ -485,9 +509,9 @@ void loadPage()
             variant="primary"
             :loading="exporting"
             :disabled="exporting || loading || Boolean(handlingId)"
-            @click="() => void exportObjectionExcel()"
+            @click="openObjectionExportApply"
           >
-            导出台账
+            申请导出台账
           </UiButton>
           <UiButton
             size="sm"
@@ -565,7 +589,7 @@ void loadPage()
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
             </UiTag>
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <span v-else>-</span>
@@ -727,17 +751,32 @@ void loadPage()
         </UiButton>
       </template>
     </UiDrawer>
+    <UiDialog
+      v-model:open="exportApplyOpen"
+      title="申请导出评价异议台账"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="submitObjectionExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="exportPurpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
 .department-objection__status-filter {
   width: 140px;
-  margin-right: var(--dp-space-2);
+  margin-right: var(--dp-space-component-tight);
 }
 
 .department-objection__meta {
-  margin: 0 0 var(--dp-space-3);
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
@@ -745,8 +784,8 @@ void loadPage()
 .department-objection__review-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: var(--dp-space-3);
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
 }
 
 .department-objection__section-title {
@@ -766,7 +805,7 @@ void loadPage()
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .department-objection__materials-label {
@@ -777,7 +816,7 @@ void loadPage()
 .department-objection__field {
   display: block;
   width: 100%;
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .department-objection__opinion {

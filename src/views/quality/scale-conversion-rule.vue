@@ -285,7 +285,7 @@ function removeItem(index: number) {
 
 function formatScore(value: number): string {
   return Number(value)
-    .toFixed(2)
+    .toFixed(6)
     .replace(/\.?0+$/, '')
 }
 
@@ -327,6 +327,11 @@ function validateEditor(): ScaleConversionRuleItemSaveRequest[] | null {
       void message.error(`第 ${index + 1} 条换算分值不能为空`)
       return null
     }
+    const normalizedScore = Number(item.normalizedScore)
+    if (normalizedScore < 0 || normalizedScore > 1) {
+      void message.error(`第 ${index + 1} 条换算分值须在 [0,1]，超出将抬高认证达成度`)
+      return null
+    }
     if (normalizedSourceValues.has(sourceValue)) {
       void message.error(`原始值重复：${sourceValue}`)
       return null
@@ -334,7 +339,7 @@ function validateEditor(): ScaleConversionRuleItemSaveRequest[] | null {
     normalizedSourceValues.add(sourceValue)
     items.push({
       sourceValue,
-      normalizedScore: Number(item.normalizedScore),
+      normalizedScore,
       sortOrder: item.sortOrder ?? index + 1,
     })
   }
@@ -530,7 +535,7 @@ onActivated(() => {
         </UiFormItem>
         <UiFormItem label="换算条目" required>
           <div class="scr__items-header">
-            <span class="scr__items-tip">原始值与换算分值按当前业务条目直接维护</span>
+            <span class="scr__items-tip">原始值映射到 [0,1] 归一化分；超限会污染工程认证间接达成度</span>
             <UiTextAction @click="addItem">新增条目</UiTextAction>
           </div>
           <div v-if="editor.items.length" class="scr__item-list">
@@ -548,7 +553,7 @@ onActivated(() => {
                   :min="0"
                   :max="1"
                   :step="0.01"
-                  :precision="2"
+                  :precision="6"
                   class="scr__number"
                   placeholder="换算分值"
                 />
@@ -581,22 +586,22 @@ onActivated(() => {
 <style scoped lang="scss">
 .scr {
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
@@ -610,7 +615,7 @@ onActivated(() => {
   &__panel-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
@@ -625,8 +630,8 @@ onActivated(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
@@ -638,18 +643,18 @@ onActivated(() => {
   &__item-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--dp-space-component);
   }
 
   &__item-row {
     display: grid;
     grid-template-columns: 48px minmax(180px, 1.5fr) minmax(140px, 0.9fr) minmax(120px, 0.8fr) 88px;
-    gap: 10px;
+    gap: var(--dp-space-component);
     align-items: center;
-    padding: 12px;
+    padding: var(--dp-space-component);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    background: var(--dp-surface-elevated);
+    background: var(--dp-surface-chrome);
   }
 
   &__item-cell {
@@ -671,11 +676,11 @@ onActivated(() => {
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
     border: 1px dashed var(--dp-border);
     border-radius: var(--dp-radius-panel);
     color: var(--dp-text-secondary);
-    background: var(--dp-surface-elevated);
+    background: var(--dp-surface-chrome);
   }
 }
 </style>

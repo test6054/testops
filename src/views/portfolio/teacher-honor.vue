@@ -52,6 +52,7 @@ const categoryLoading = ref(false)
 const saving = ref(false)
 const creatingCategory = ref(false)
 const loadFailed = ref(false)
+const listSyncFailed = ref(false)
 const rows = ref<PortfolioTeacherHonorVO[]>([])
 const categories = ref<PortfolioTeacherHonorCategoryVO[]>([])
 const modalOpen = ref(false)
@@ -126,7 +127,7 @@ function honorLevelLabel(code: PortfolioHonorLevelCode) {
   return strictEnumLabel(PortfolioHonorLevelDescription, code, '荣誉等级')
 }
 
-async function loadData() {
+async function loadData(): Promise<boolean> {
   const currentToken = requestToken.value + 1
   requestToken.value = currentToken
   if (canPickTeachers.value && !targetTeacherId.value) {
@@ -136,9 +137,10 @@ async function loadData() {
     creatingCategory.value = false
     uploadingFile.value = false
     loadFailed.value = false
+    listSyncFailed.value = false
     rows.value = []
     categories.value = []
-    return
+    return true
   }
   loading.value = true
   categoryLoading.value = true
@@ -146,7 +148,7 @@ async function loadData() {
   try {
     const honorRows = await portfolioTeacherHonorApi.list({ teacherId: scopeTeacherId() })
     if (requestToken.value !== currentToken) {
-      return
+      return false
     }
     rows.value = honorRows
     try {
@@ -158,18 +160,22 @@ async function loadData() {
       }
     } catch (error) {
       if (requestToken.value === currentToken) {
-        categories.value = []
         showUserError(error, '荣誉分类加载失败')
       }
     }
+    listSyncFailed.value = false
+    return true
   } catch (error) {
     if (requestToken.value !== currentToken) {
-      return
+      return false
     }
-    rows.value = []
-    categories.value = []
-    loadFailed.value = true
+    if (rows.value.length === 0) {
+      loadFailed.value = true
+    } else {
+      listSyncFailed.value = true
+    }
     showUserError(error, '加载荣誉记录失败')
+    return false
   } finally {
     if (requestToken.value === currentToken) {
       loading.value = false
@@ -196,6 +202,9 @@ function openModal(row?: PortfolioTeacherHonorVO) {
 }
 
 async function saveHonor() {
+  if (readonlyMode.value) {
+    return
+  }
   if (saving.value || Boolean(deletingHonorId.value) || Boolean(deletingCategoryId.value)) {
     return
   }
@@ -206,6 +215,7 @@ async function saveHonor() {
     return
   }
 
+  const scopeToken = requestToken.value
   saving.value = true
   try {
     await portfolioTeacherHonorApi.save({
@@ -219,11 +229,17 @@ async function saveHonor() {
       descriptionText: form.descriptionText.trim() || undefined,
       fileId: form.fileId || undefined,
     })
+    if (requestToken.value !== scopeToken) return
     void message.success('荣誉记录已保存')
     modalOpen.value = false
     resetForm()
-    await loadData()
+    const synced = await loadData()
+    if (!synced && requestToken.value === scopeToken) {
+      listSyncFailed.value = true
+      showUserError(new Error('列表同步失败'), '荣誉已保存，列表同步失败')
+    }
   } catch (error) {
+    if (requestToken.value !== scopeToken) return
     showUserError(error, '保存荣誉记录失败')
   } finally {
     saving.value = false
@@ -255,7 +271,11 @@ async function removeHonor(row: PortfolioTeacherHonorVO) {
     await portfolioTeacherHonorApi.delete({ id: row.id, teacherId })
     if (requestToken.value !== operationToken) return
     void message.success('已删除')
-    await loadData()
+    const synced = await loadData()
+    if (!synced && requestToken.value === operationToken) {
+      listSyncFailed.value = true
+      showUserError(new Error('列表同步失败'), '荣誉已删除，列表同步失败')
+    }
   } catch (error) {
     if (requestToken.value !== operationToken) return
     showUserError(error, '删除荣誉记录失败')
@@ -403,6 +423,7 @@ watch(
     deletingCategoryId.value = ''
     uploadingFile.value = false
     loadFailed.value = false
+    listSyncFailed.value = false
     rows.value = []
     categories.value = []
     modalOpen.value = false
@@ -423,15 +444,22 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
       tone="warning"
       title="档案已封存写禁"
       :description="archiveWriteBlockMessage"
-      class="mb-3"
+      class="dp-mb-component"
+    />
+    <UiAlertStrip
+      v-if="listSyncFailed"
+      tone="warning"
+      title="荣誉列表同步失败"
+      class="dp-mb-component"
     />
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
     <UiCard v-else-if="loadFailed" title="加载失败">
-      <UiEmpty size="sm" description="荣誉档案加载失败">
-        <UiButton size="sm" variant="primary" @click="loadData">重试</UiButton>
-      </UiEmpty>
+      <UiEmpty
+        size="sm"
+        description="荣誉档案加载失败"
+      />
     </UiCard>
 
     <template v-else>
@@ -485,7 +513,7 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
         </UiDataTable>
       </UiCard>
 
-      <UiCard title="荣誉分类" :loading="categoryLoading" style="margin-top: 16px">
+      <UiCard title="荣誉分类" :loading="categoryLoading" style="margin-top: var(--dp-space-block)">
         <template #extra>
           <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCategoryModal">
             新建分类
@@ -521,8 +549,10 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 
   <UiDialog
     v-model:open="modalOpen"
-    :title="editing ? '编辑荣誉' : '新增荣誉'"
+    :title="readonlyMode ? '查看荣誉' : editing ? '编辑荣誉' : '新增荣誉'"
     :confirm-loading="saving"
+    :hide-ok="readonlyMode"
+    :cancel-text="readonlyMode ? '关闭' : '取消'"
     @ok="saveHonor"
     @cancel="resetForm"
   >
@@ -597,6 +627,6 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 .teacher-honor__attachment {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 </style>

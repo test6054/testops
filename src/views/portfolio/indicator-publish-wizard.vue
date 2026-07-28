@@ -24,22 +24,23 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiStep from '@/components/ui-guide/ui/UiStep.vue'
 import UiSteps from '@/components/ui-guide/ui/UiSteps.vue'
-import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const router = useRouter()
 const sceneCode = ref<PfSceneCode>(PfSceneCode.PERFORMANCE)
-const academicYear = ref('2025-2026')
+const academicYear = ref(getDefaultAcademicYearAndSemester().academicYear)
 const step = ref(1)
 const operationKey = ref('')
 const writing = computed(() => Boolean(operationKey.value))
@@ -52,6 +53,8 @@ const exportConfirmOpen = ref(false)
 const exportPurpose = ref('')
 const impactReportId = ref('')
 const trialPassed = ref(false)
+const workflowDraftHash = ref('')
+const draftHashStale = ref(false)
 const readiness = ref<PortfolioIndicatorEngineReadinessVO | null>(null)
 const impactReport = ref<PortfolioPublishImpactReportVO | null>(null)
 const impactSummary = ref<PortfolioImpactIndicatorSummaryDto | null>(null)
@@ -76,6 +79,8 @@ function endOperation(key: string) {
 function resetWorkflow() {
   trialPassed.value = false
   workflowSceneCode.value = null
+  workflowDraftHash.value = ''
+  draftHashStale.value = false
   impactReportId.value = ''
   impactReport.value = null
   impactSummary.value = null
@@ -136,7 +141,13 @@ async function runTrial() {
       void message.error('试算未通过，无法进入影响分析')
       return
     }
+    if (!model.draftSnapshotHash) {
+      void message.error('试算结果缺少草稿 hash，无法继续发布流程')
+      return
+    }
     workflowSceneCode.value = targetSceneCode
+    workflowDraftHash.value = model.draftSnapshotHash
+    draftHashStale.value = false
     step.value = 2
     void message.success('试算通过')
   } catch (error) {
@@ -162,10 +173,26 @@ async function runImpactPreview() {
     resetWorkflow()
     return
   }
+  if (!workflowDraftHash.value) {
+    showFormValidationMessage('试算草稿 hash 缺失，请重新试算')
+    resetWorkflow()
+    return
+  }
   const targetSceneCode = sceneCode.value
+  const expectedDraftHash = workflowDraftHash.value
   const operation = 'impact'
   if (!beginOperation(operation)) return
   try {
+    const currentModel = await portfolioIndicatorTenantApi.getModel({
+      sceneCode: targetSceneCode,
+    })
+    if (sceneCode.value !== targetSceneCode || workflowSceneCode.value !== targetSceneCode) return
+    if (currentModel.draftSnapshotHash !== expectedDraftHash) {
+      draftHashStale.value = true
+      showFormValidationMessage('草稿 hash 已变化，试算与影响报告已失效，请重新试算')
+      resetWorkflow()
+      return
+    }
     const reportId = await portfolioIndicatorTenantApi.impactPreview({
       sceneCode: targetSceneCode,
     })
@@ -173,6 +200,12 @@ async function runImpactPreview() {
       id: reportId,
     })
     if (sceneCode.value !== targetSceneCode || workflowSceneCode.value !== targetSceneCode) return
+    if (report.draftSnapshotHash !== expectedDraftHash) {
+      draftHashStale.value = true
+      showFormValidationMessage('影响报告草稿 hash 与试算不一致，请重新试算')
+      resetWorkflow()
+      return
+    }
     if (!applyImpactSummary(report)) {
       impactReportId.value = ''
       impactReport.value = null
@@ -181,6 +214,7 @@ async function runImpactPreview() {
     }
     impactReportId.value = reportId
     impactReport.value = report
+    draftHashStale.value = false
     step.value = 3
     void message.success('影响分析完成')
   } catch (error) {
@@ -199,6 +233,8 @@ const requiresApproval = computed(() =>
 const canPublish = computed(
   () =>
     Boolean(impactReportId.value)
+    && Boolean(workflowDraftHash.value)
+    && !draftHashStale.value
     && pfImpactApprovalAllowsPublish(impactReport.value?.approvalStatus),
 )
 const showTaskStrategy = computed(() => {
@@ -225,9 +261,37 @@ async function publish() {
     || workflowSceneCode.value !== targetSceneCode
     || !targetImpactReportId
     || !impactReport.value
+    || !workflowDraftHash.value
   ) {
     showFormValidationMessage('当前场景尚未完成试算和影响分析')
     resetWorkflow()
+    return
+  }
+  if (impactReport.value.draftSnapshotHash !== workflowDraftHash.value) {
+    draftHashStale.value = true
+    showFormValidationMessage('草稿 hash 已漂移，请重新试算并生成影响报告')
+    resetWorkflow()
+    return
+  }
+  const operation = 'publish'
+  if (!beginOperation(operation)) return
+  try {
+    const currentModel = await portfolioIndicatorTenantApi.getModel({
+      sceneCode: targetSceneCode,
+    })
+    if (
+      sceneCode.value !== targetSceneCode
+      || currentModel.draftSnapshotHash !== workflowDraftHash.value
+    ) {
+      draftHashStale.value = true
+      showFormValidationMessage('草稿已被其他管理员修改，请重新试算')
+      resetWorkflow()
+      endOperation(operation)
+      return
+    }
+  } catch (error) {
+    showUserError(error, '发布前校验草稿 hash 失败')
+    endOperation(operation)
     return
   }
   if (!pfImpactApprovalAllowsPublish(impactReport.value.approvalStatus)) {
@@ -237,6 +301,7 @@ async function publish() {
         ? 'A/B 级变更须先完成影响分析审批，方可发布'
         : '当前影响分析审批状态不允许发布',
     )
+    endOperation(operation)
     return
   }
   if (
@@ -244,14 +309,14 @@ async function publish() {
     && !currentTaskRuleStrategy.value
   ) {
     showFormValidationMessage('B 级变更须选择进行中任务规则策略')
+    endOperation(operation)
     return
   }
   if (!/^\d{4}-\d{4}$/.test(targetAcademicYear)) {
     showFormValidationMessage('学年格式应为四位年起止年，中间用短横线连接')
+    endOperation(operation)
     return
   }
-  const operation = 'publish'
-  if (!beginOperation(operation)) return
   if (
     !(await confirmAsync({
       title: '确认发布指标模型？',
@@ -354,7 +419,7 @@ onMounted(loadReadiness)
       </UiButton>
     </UiCard>
     <UiCard>
-      <UiSteps :current="step - 1" size="small" style="margin-bottom: 16px">
+      <UiSteps :current="step - 1" size="small" style="margin-bottom: var(--dp-space-block)">
         <UiStep title="试算" />
         <UiStep title="影响分析" />
         <UiStep title="发布" />
@@ -388,6 +453,7 @@ onMounted(loadReadiness)
         </UiButton>
       </div>
       <div v-else-if="step === 2" class="actions">
+        <p v-if="workflowDraftHash">草稿 hash：<code>{{ workflowDraftHash }}</code></p>
         <UiButton
           size="sm"
           :disabled="writing"
@@ -398,7 +464,7 @@ onMounted(loadReadiness)
         <UiButton
           size="sm"
           :loading="previewing"
-          :disabled="writing"
+          :disabled="writing || !workflowDraftHash || draftHashStale"
           variant="primary"
           @click="runImpactPreview"
         >
@@ -407,6 +473,8 @@ onMounted(loadReadiness)
       </div>
       <div v-else class="actions">
         <p>影响报告编号：{{ impactReportId }}</p>
+        <p v-if="workflowDraftHash">草稿 hash：<code>{{ workflowDraftHash }}</code></p>
+        <p v-if="draftHashStale" class="readiness-error">草稿 hash 已失效，请从试算重新开始。</p>
         <UiCard v-if="impactReport" title="变更治理（§8.31.1）" class="impact-summary-card">
           <div class="impact-summary">
             <span>
@@ -518,19 +586,19 @@ onMounted(loadReadiness)
 .toolbar,
 .actions {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
   flex-wrap: wrap;
 }
 .readiness {
   display: flex;
-  gap: 12px;
+  gap: var(--dp-space-component);
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
 }
 .readiness-error {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   color: var(--dp-error);
 }
 .scene-tag {
@@ -541,23 +609,23 @@ onMounted(loadReadiness)
 }
 .impact-summary {
   display: flex;
-  gap: 12px;
+  gap: var(--dp-space-component);
   flex-wrap: wrap;
   font-size: var(--dp-font-size-sm);
 }
 .impact-task-summary {
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
 }
 .approval-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component);
 }
 .strategy-row {
-  margin-top: 12px;
+  margin-top: var(--dp-space-component);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
 }
 .strategy-hint {
   margin: 0;
@@ -565,7 +633,7 @@ onMounted(loadReadiness)
   color: var(--dp-text-secondary);
 }
 .impact-changed-list {
-  margin: 12px 0 0;
+  margin: var(--dp-space-component) 0 0;
   padding-left: 18px;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);

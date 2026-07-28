@@ -22,6 +22,14 @@
     <template #signal>
       <div class="archive-volume-settings__signal-stack">
         <UiAlertStrip
+          v-if="canManageArchiveConfig !== true"
+          class="archive-volume-settings__readonly-tip"
+          tone="info"
+          title="只读查看"
+          description="当前账号可查看本租户归档配置；维护职责、密级、协作、时限与模板须由企业管理员操作。"
+          dense
+        />
+        <UiAlertStrip
           v-if="s1TipVisible"
           class="archive-volume-settings__s1-tip"
           :tone="s1TipTone"
@@ -47,7 +55,7 @@
               考试列表
             </UiButton>
             <UiButton
-              v-if="s1AttentionLoadFailed"
+              v-if="s1AttentionLoadFailed === true"
               size="sm"
               variant="outline"
               :loading="s1AttentionLoading === true"
@@ -179,7 +187,7 @@
       </section>
 
       <section v-else-if="settingsTab === 'security'" class="archive-volume-settings__panel">
-        <UiEmpty size="sm" v-if="policyLoadFailed" description="密级策略加载失败">
+        <UiEmpty size="sm" v-if="policyLoadFailed === true" description="密级策略加载失败">
           <template #action>
             <UiButton size="sm" variant="outline" @click="loadPolicy">重新加载</UiButton>
           </template>
@@ -257,7 +265,7 @@
       </section>
 
       <section v-else-if="settingsTab === 'collaboration'" class="archive-volume-settings__panel">
-        <UiEmpty size="sm" v-if="collaborationLoadFailed" description="协作策略加载失败">
+        <UiEmpty size="sm" v-if="collaborationLoadFailed === true" description="协作策略加载失败">
           <template #action>
             <UiButton size="sm" variant="outline" @click="loadCollaborationPolicy">
               重新加载
@@ -347,7 +355,7 @@
             <template #toolbar>
               <div class="archive-volume-settings__section-toolbar">
                 <span class="archive-volume-settings__section-hint">
-                  须保留一条租户默认；可按院系覆盖法规节点、临期提醒与院系审核门禁
+                  须保留一条租户默认；可按院系覆盖法规节点、临期提醒与院系审核。「逾期硬截止」开启后超期禁止提交/发起院系审核，须正式展期；关闭则为软截止，超期须填说明方可提交（工程认证/评估建议开启硬截止）
                 </span>
                 <div class="archive-volume-settings__section-actions">
                   <UiButton
@@ -411,7 +419,7 @@
                 </template>
                 <template v-else-if="column.key === 'overdueSubmitBlock'">
                   <UiCheckbox v-model="deadlineRows[index].overdueSubmitBlock">
-                    逾期硬阻断
+                    逾期硬截止
                   </UiCheckbox>
                 </template>
                 <template v-else-if="column.key === 'departmentReviewEnabled'">
@@ -492,9 +500,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveS1AutoCreateAttention } from '@/composables/useArchiveS1AutoCreateAttention'
-import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
-import { RoleEnum } from '@/types/enums'
 import {
   ARCHIVE_DEADLINE_TIER_OPTIONS,
   ArchiveDeadlineTierCode,
@@ -508,6 +514,7 @@ import {
   ALL_ARCHIVE_SUBMIT_MODE_CODES,
   ArchiveSubmitModeDescription,
 } from '@/types/enums/archive-submit-mode-enum'
+import { createClientSnowflakeId } from '@/utils/client-snowflake'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ArchiveExternalFondsRetryPanel from './components/ArchiveExternalFondsRetryPanel.vue'
@@ -520,11 +527,10 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
-const authStore = useAuthStore()
 const userStore = useUserStore()
-/** MVR-314：与路由 requireTenantAdmin / BE requireTenantAdminForConfig 同源 */
+/** 与 BE requireTenantAdminForConfig 同源：仅企业管理员可维护；教师只读 */
 const canManageArchiveConfig = computed(
-  () => authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin,
+  () => userStore.isEnterpriseTenantAdmin === true,
 )
 
 const router = useRouter()
@@ -722,19 +728,19 @@ const deadlineColumns: ColumnsType<DeadlineRow> = [
   { title: '院系', key: 'departmentId', width: 180 },
   { title: '法规节点', key: 'deadlineTier', width: 200 },
   { title: '临期提醒(天)', key: 'leadDays', width: 120 },
-  { title: '逾期阻断', key: 'overdueSubmitBlock', width: 110 },
+  { title: '逾期硬截止', key: 'overdueSubmitBlock', width: 120 },
   { title: '院系审核', key: 'departmentReviewEnabled', width: 110 },
   { title: '操作', key: 'actions', width: 80 },
 ]
 
 function newRowKey() {
-  return `row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  return `row-${createClientSnowflakeId()}`
 }
 
 function addDutyRow() {
   // MVR-391：与 canManageArchiveConfig / BE requireTenantAdminForConfig 二次拦截
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅企业管理员可维护归档配置')
     return
   }
   dutyRows.value.push({
@@ -748,7 +754,7 @@ function addDutyRow() {
 
 function removeDutyRow(index: number) {
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅企业管理员可维护归档配置')
     return
   }
   dutyRows.value.splice(index, 1)
@@ -790,7 +796,7 @@ async function loadDepartments() {
 function addPolicyRow() {
   // MVR-391：与 canManageArchiveConfig 二次拦截
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅企业管理员可维护归档配置')
     return
   }
   policyRows.value.push({
@@ -802,7 +808,7 @@ function addPolicyRow() {
 
 function removePolicyRow(index: number) {
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅企业管理员可维护归档配置')
     return
   }
   policyRows.value.splice(index, 1)
@@ -823,7 +829,7 @@ function buildDefaultDeadlineRow(isTenantDefault: boolean): DeadlineRow {
 function addDeadlineRow() {
   // MVR-391：与 canManageArchiveConfig 二次拦截
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅企业管理员可维护归档配置')
     return
   }
   deadlineRows.value.push(buildDefaultDeadlineRow(false))
@@ -831,7 +837,7 @@ function addDeadlineRow() {
 
 function removeDeadlineRow(index: number) {
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅企业管理员可维护归档配置')
     return
   }
   if (deadlineRows.value[index]?.isTenantDefault) return
@@ -883,7 +889,7 @@ async function saveCollaborationPolicyForm() {
   if (collaborationLoadFailed.value || saving.value === true) return
   // MVR-314：配置写二次拦截
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅企业管理员可维护归档配置')
     return
   }
   saving.value = true
@@ -932,7 +938,7 @@ async function saveDeadlinePolicyRows() {
   if (!validateDeadlineRows()) return
   // MVR-314：配置写二次拦截
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅企业管理员可维护归档配置')
     return
   }
   saving.value = true
@@ -998,7 +1004,7 @@ async function saveDutyGrants() {
   if (!validateDutyRows()) return
   // MVR-314：配置写二次拦截
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅企业管理员可维护归档配置')
     return
   }
   saving.value = true
@@ -1024,7 +1030,7 @@ async function saveSecurityPolicyRows() {
   if (policyLoadFailed.value || saving.value === true) return
   // MVR-314：配置写二次拦截
   if (canManageArchiveConfig.value !== true) {
-    void message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅企业管理员可维护归档配置')
     return
   }
   if (policyRows.value.length === 0) {
@@ -1095,7 +1101,7 @@ onMounted(() => {
 .archive-volume-settings__signal-stack {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-volume-settings__duty-wide {
@@ -1103,7 +1109,7 @@ onMounted(() => {
 }
 
 .archive-volume-settings__duty-footer {
-  padding: var(--dp-space-2) var(--dp-space-4);
+  padding: var(--dp-space-component-tight) var(--dp-space-block);
   border-top: 1px solid var(--dp-border-subtle);
   font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
@@ -1111,7 +1117,7 @@ onMounted(() => {
 .archive-volume-settings__panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-volume-settings__section-toolbar {
@@ -1119,7 +1125,7 @@ onMounted(() => {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   width: 100%;
 }
 
@@ -1133,21 +1139,21 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   margin-left: auto;
 }
 
 .archive-volume-settings__collaboration-form {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
-  padding: var(--dp-space-4);
+  gap: var(--dp-space-block);
+  padding: var(--dp-space-block);
 }
 
 .archive-volume-settings__field {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   max-width: 420px;
 }
 </style>

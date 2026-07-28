@@ -3,6 +3,8 @@ import { useQualityStore } from '@/stores/modules/quality'
 /** 质量模块范围快照：用于并发请求返回时校验是否仍对应当前筛选条件 */
 export interface QualityScopeSnapshot {
   epoch: number
+  /** useQualityScopedLoader 重载代际；同 scope 并行 reload 靠此失效 */
+  loadGeneration: number
   programId: string
   trainingPlanId: string
   qualityCourseId: string
@@ -13,16 +15,18 @@ export function captureQualityScope(): QualityScopeSnapshot {
   const store = useQualityStore()
   return {
     epoch: store.scopeChangeEpoch,
+    loadGeneration: store.scopedLoadGeneration,
     programId: store.currentProgramId,
     trainingPlanId: store.currentTrainingPlanId,
     qualityCourseId: store.currentQualityCourseId,
   }
 }
 
-/** 判断捕获的快照是否已落后于当前 Store 范围 */
+/** 判断捕获的快照是否已落后于当前 Store 范围或 scoped loader 代际 */
 export function isQualityScopeStale(snapshot: QualityScopeSnapshot): boolean {
   const store = useQualityStore()
   return snapshot.epoch !== store.scopeChangeEpoch
+    || snapshot.loadGeneration !== store.scopedLoadGeneration
     || snapshot.programId !== store.currentProgramId
     || snapshot.trainingPlanId !== store.currentTrainingPlanId
     || snapshot.qualityCourseId !== store.currentQualityCourseId
@@ -54,7 +58,7 @@ export function assertQualityScopeFresh(scope: QualityScopeRequestToken): void {
 
 /**
  * 在发起质量域异步请求前调用；响应落地前用 isStale() 判断是否丢弃。
- * 不改变 API 契约，仅协调前端并发范围切换。
+ * 不改变 API 契约，仅协调前端并发范围切换与 scoped loader 重载竞态。
  */
 export function beginQualityScopeRequest(): QualityScopeRequestToken {
   const snapshot = captureQualityScope()

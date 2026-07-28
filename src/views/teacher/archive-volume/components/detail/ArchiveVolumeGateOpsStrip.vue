@@ -6,7 +6,8 @@ interface ArchiveGateOpsItem {
   key: string
   title: string
   description?: string
-  actionLabel: string
+  /** 可操作门禁必填；checklistFail / grantsFail 等只读提示可缺省 */
+  actionLabel?: string
   tone?: 'blue' | 'orange' | 'red' | 'gray'
 }
 
@@ -24,7 +25,7 @@ const emit = defineEmits<{
 <template>
   <div v-if="items.length" class="archive-gate-ops" role="list">
     <button
-      v-for="item in items"
+      v-for="item in items.filter((row) => row.actionLabel)"
       :key="item.key"
       type="button"
       class="archive-gate-ops__item"
@@ -36,6 +37,17 @@ const emit = defineEmits<{
       <span class="archive-gate-ops__title">{{ item.title }}</span>
       <span class="archive-gate-ops__cta">{{ item.actionLabel }}</span>
     </button>
+    <div
+      v-for="item in items.filter((row) => !row.actionLabel)"
+      :key="`info-${item.key}`"
+      class="archive-gate-ops__item archive-gate-ops__item--info"
+      :class="`archive-gate-ops__item--${item.tone ?? 'orange'}`"
+      role="listitem"
+      :title="item.description || item.title"
+    >
+      <span class="archive-gate-ops__title">{{ item.title }}</span>
+      <span v-if="item.description" class="archive-gate-ops__desc">{{ item.description }}</span>
+    </div>
   </div>
 </template>
 
@@ -43,25 +55,25 @@ const emit = defineEmits<{
 .archive-gate-ops {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-3);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 
 .archive-gate-ops__item {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   max-width: 100%;
   min-height: 32px;
-  padding: 4px 10px;
+  padding: var(--dp-space-component-xs) var(--dp-space-component);
   border: 1px solid color-mix(in srgb, var(--dp-orange-500) 28%, var(--dp-border));
   border-radius: var(--dp-radius-control);
   background: color-mix(in srgb, var(--dp-orange-500) 8%, var(--dp-surface));
   text-align: left;
   cursor: pointer;
   transition:
-    border-color 0.2s ease,
-    background 0.2s ease;
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    background var(--dp-duration-normal) var(--dp-ease-default);
 
   &:hover {
     border-color: color-mix(in srgb, var(--dp-color-primary) 40%, var(--dp-border));
@@ -89,6 +101,15 @@ const emit = defineEmits<{
   background: var(--dp-gray-50);
 }
 
+.archive-gate-ops__item--info {
+  cursor: default;
+
+  &:hover {
+    border-color: inherit;
+    background: inherit;
+  }
+}
+
 .archive-gate-ops__title {
   font-size: var(--dp-font-size-xs);
   font-weight: 600;
@@ -101,5 +122,11 @@ const emit = defineEmits<{
   font-weight: 600;
   color: var(--dp-color-primary);
   white-space: nowrap;
+}
+
+.archive-gate-ops__desc {
+  font-size: var(--dp-font-size-xs);
+  color: var(--dp-text-secondary);
+  line-height: 1.3;
 }
 </style>

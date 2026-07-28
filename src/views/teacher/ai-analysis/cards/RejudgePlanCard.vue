@@ -98,7 +98,7 @@
         <UiAlertStrip
           tone="warning"
           title="执行后会重算受影响题目的成绩与考试统计，此操作不可撤销。"
-          style="margin-bottom: 12px"
+          style="margin-bottom: var(--dp-space-component)"
         />
         <UiTextarea
           size="sm"

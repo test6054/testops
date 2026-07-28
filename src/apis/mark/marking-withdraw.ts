@@ -28,8 +28,8 @@ export function formatMarkingWithdrawWindowLabel(withdrawWindowMinutes: number):
 
 /**
  * 撤回已提交阅卷任务（租户配置的撤回窗口内）。
- * POST /api/mark/organization/withdraw-task
+ * POST /api/mark/organization/task/withdraw
  */
 export function withdrawMarkingTask(request: MarkingTaskWithdrawRequest): Promise<MarkingTaskResponse> {
-  return http.post<MarkingTaskResponse>('/api/mark/organization/withdraw-task', request)
+  return http.post<MarkingTaskResponse>('/api/mark/organization/task/withdraw', request)
 }

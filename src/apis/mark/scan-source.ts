@@ -36,7 +36,6 @@ export interface ExamTeacherScanSupplementRequest {
   examId: string
   scannerDeviceId: string
   scannerStationId: string
-  declaredClassIds: string[]
   scanMode: ScannerKioskScanModeCode
   /** 补扫上下文扫描批次 ID（须与设备一致） */
   scanBatchId?: string

@@ -97,18 +97,18 @@ const handleClick = (evt: MouseEvent) => {
   --metric-icon-border: color-mix(in srgb, var(--dp-blue-200) 90%, transparent);
   display: flex;
   align-items: flex-start;
-  gap: var(--dp-space-3, 10px);
+  gap: var(--dp-space-component);
   min-width: 0;
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 14px);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border: 1px solid var(--metric-border);
   border-radius: var(--dp-radius-panel, 8px);
   background: var(--dp-fill-quaternary);
   box-shadow: none;
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease,
-    background-color 0.2s ease;
+    transform var(--dp-duration-normal) var(--dp-ease-default),
+    box-shadow var(--dp-duration-normal) var(--dp-ease-default),
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    background-color var(--dp-duration-normal) var(--dp-ease-default);
 }
 
 .ui-metric-card--clickable {
@@ -118,7 +118,7 @@ const handleClick = (evt: MouseEvent) => {
 .ui-metric-card--clickable:hover {
   border-color: color-mix(in srgb, var(--metric-text) 20%, var(--dp-border));
   box-shadow: var(--dp-shadow-sm);
-  transform: translateY(-1px);
+  transform: var(--dp-lift-sm);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -128,8 +128,8 @@ const handleClick = (evt: MouseEvent) => {
 }
 
 .ui-metric-card--compact {
-  gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
 }
 
 .ui-metric-card__content {
@@ -137,14 +137,14 @@ const handleClick = (evt: MouseEvent) => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-1, 6px);
+  gap: var(--dp-space-component-xs);
 }
 
 .ui-metric-card__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .ui-metric-card__icon {
@@ -163,7 +163,7 @@ const handleClick = (evt: MouseEvent) => {
 
 .ui-metric-card__icon :deep(.anticon),
 .ui-metric-card__icon :deep(svg) {
-  font-size: 15px;
+  font-size: var(--dp-type-panel-title-size);
 }
 
 .ui-metric-card__label {
@@ -178,7 +178,7 @@ const handleClick = (evt: MouseEvent) => {
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
   flex-shrink: 0;
 }
 
@@ -186,7 +186,7 @@ const handleClick = (evt: MouseEvent) => {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: var(--dp-space-1, 4px);
+  gap: var(--dp-space-component-xs);
 }
 
 .ui-metric-card__value {
@@ -208,7 +208,7 @@ const handleClick = (evt: MouseEvent) => {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   min-height: 20px;
 }
 
@@ -308,7 +308,7 @@ const handleClick = (evt: MouseEvent) => {
 
 @media (max-width: bp.$layout-mobile-max) {
   .ui-metric-card {
-    padding: var(--dp-space-3, 14px) var(--dp-space-4, 16px);
+    padding: var(--dp-space-component) var(--dp-space-block);
   }
 }
 </style>

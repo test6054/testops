@@ -388,23 +388,23 @@ function formatBytes(bytes: number): string {
 <style scoped lang="scss">
 .ird {
   &__intro {
-    margin-bottom: var(--dp-space-4);
+    margin-bottom: var(--dp-space-block);
   }
 
   &__upload-zone {
-    padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px);
+    padding: var(--dp-space-block) var(--dp-space-component);
     border: 1px dashed var(--dp-border);
     border-radius: var(--dp-radius-panel);
     background: var(--dp-surface-subtle);
   }
 
   &__selected-file {
-    margin-top: var(--dp-space-3);
+    margin-top: var(--dp-space-component);
   }
 
   &__file-label {
     display: block;
-    margin-bottom: var(--dp-space-3);
+    margin-bottom: var(--dp-space-component);
     font-size: var(--dp-font-size-md);
     color: var(--dp-text-secondary);
   }
@@ -413,15 +413,15 @@ function formatBytes(bytes: number): string {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--dp-space-3, 12px);
-    padding: var(--dp-space-3, 12px) 0 var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-component) 0 var(--dp-space-component);
   }
 
   &__processing-text {
     text-align: center;
 
     h4 {
-      margin: 0 0 8px;
+      margin: 0 0 var(--dp-space-component-tight);
       font-size: var(--dp-font-size-lg);
       font-weight: 600;
       color: var(--dp-text-primary);
@@ -429,7 +429,7 @@ function formatBytes(bytes: number): string {
   }
 
   &__processing-hint {
-    margin: 0 0 4px;
+    margin: 0 0 var(--dp-space-component-xs);
     font-size: var(--dp-font-size-sm);
     color: var(--dp-text-muted);
   }
@@ -440,11 +440,11 @@ function formatBytes(bytes: number): string {
   }
 
   &__warnings {
-    margin-bottom: var(--dp-space-3);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__warning-line {
-    margin: 0 0 4px;
+    margin: 0 0 var(--dp-space-component-xs);
     font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
@@ -452,11 +452,11 @@ function formatBytes(bytes: number): string {
   &__extract-text {
     max-height: 360px;
     margin: 0;
-    padding: var(--dp-space-3);
+    padding: var(--dp-space-component);
     overflow: auto;
     border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-control);
-    background: var(--dp-bg-container);
+    background: var(--dp-surface);
     font-family: var(--dp-font-family);
     font-size: var(--dp-font-size-sm);
     line-height: 1.6;
@@ -469,8 +469,8 @@ function formatBytes(bytes: number): string {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 8px;
-    margin-top: var(--dp-space-3);
+    gap: var(--dp-space-component-tight);
+    margin-top: var(--dp-space-component);
 
     &--upload,
     &--failed {

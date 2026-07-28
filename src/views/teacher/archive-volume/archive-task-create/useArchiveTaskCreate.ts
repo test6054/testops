@@ -8,22 +8,21 @@ import type {
 import type { ArchiveTenantTemplateSetResponse } from '@/apis/mark/archive-platform-template'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import {
-  ArchiveScoreSourceCode,
   ArchiveSecurityLevelCode,
   createArchiveTask,
-  discardArchiveTaskScoreProof,
 } from '@/apis/mark/archive-volume'
 import { useUserStore } from '@/stores/modules/user'
 import { ArchiveTaskProvenanceCode } from '@/types/enums/archive-task-provenance-enum'
+import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import {
-  composeAcademicYear,
-  getDefaultAcademicYearAndSemester,
-  parseAcademicYearStart,
-} from '@/utils/academic-year'
-import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+  getUserErrorMessage,
+  rejectFormValidation,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { ARCHIVE_TASK_CREATE_SECTION_ORDER } from './archive-task-create-context'
 
 export type {
@@ -74,15 +73,6 @@ function normalizeTeacherUserId(userId: string | number | null | undefined): str
   return String(userId)
 }
 
-function defaultScoreSourceForProvenance(
-  provenance: ArchiveTaskProvenanceCode | null,
-): ArchiveScoreSourceCode {
-  if (provenance === ArchiveTaskProvenanceCode.HISTORICAL_DIGITIZE) {
-    return ArchiveScoreSourceCode.NOT_REQUIRED
-  }
-  return ArchiveScoreSourceCode.OFFLINE_CONFIRMED
-}
-
 export function useArchiveTaskCreate() {
   const router = useRouter()
   const route = useRoute()
@@ -97,8 +87,6 @@ export function useArchiveTaskCreate() {
   const planFormRef = ref<FormInstance>()
 
   const defaultTerm = getDefaultAcademicYearAndSemester()
-  const defaultStartYear
-    = parseAcademicYearStart(defaultTerm.academicYear) ?? new Date().getFullYear()
 
   const routeProvenance = parseRouteProvenance(route.query.provenance)
   const wizardState = reactive<ArchiveTaskCreateWizardState>({
@@ -111,7 +99,7 @@ export function useArchiveTaskCreate() {
     courseName: '',
     archiveTitle: '',
     archiveNo: '',
-    academicYearStartYear: defaultStartYear,
+    academicYear: defaultTerm.academicYear,
     semester: defaultTerm.semester,
     departmentId: null,
     departmentName: '',
@@ -125,7 +113,6 @@ export function useArchiveTaskCreate() {
     templateSetCode: null,
     templateSetName: '',
     examForm: undefined,
-    scoreSource: defaultScoreSourceForProvenance(wizardState.provenance),
     securityLevel: ArchiveSecurityLevelCode.INTERNAL,
     retentionYears: undefined,
     permanentRetention: false,
@@ -140,14 +127,28 @@ export function useArchiveTaskCreate() {
       { required: true, message: '请输入归档标题', trigger: ['change', 'blur'] },
       { max: 512, message: '归档标题最多 512 个字符', trigger: ['change', 'blur'] },
     ],
-    academicYearStartYear: [{ required: true, message: '请选择学年起始年', trigger: 'change' }],
+    academicYear: [
+      { required: true, message: '请输入学年', trigger: 'blur' },
+      {
+        validator: async (_rule, value: string): Promise<void> => {
+          const academicYear = value?.trim()
+          if (!academicYear) {
+            return rejectFormValidation('请输入学年')
+          }
+          const match = /^(\d{4})-(\d{4})$/.exec(academicYear)
+          if (!match || Number(match[2]) !== Number(match[1]) + 1) {
+            return rejectFormValidation('学年格式应为 2024-2025')
+          }
+        },
+        trigger: 'blur',
+      },
+    ],
     semester: [{ required: true, message: '请选择学期', trigger: 'change' }],
     teachingClassId: [{ required: true, message: '请选择授课班级', trigger: 'change' }],
   }
 
   const planRules: Record<string, Rule[]> = {
     templateSetCode: [{ required: true, message: '请选择目录模板套', trigger: 'change' }],
-    scoreSource: [{ required: true, message: '请选择成绩事实源', trigger: 'change' }],
     securityLevel: [{ required: true, message: '请选择密级', trigger: 'change' }],
     responsibleUserId: [{ required: true, message: '请选择归档责任人', trigger: 'change' }],
   }
@@ -169,7 +170,7 @@ export function useArchiveTaskCreate() {
   )
 
   function resolveAcademicYear(): string {
-    return composeAcademicYear(basicForm.academicYearStartYear)
+    return basicForm.academicYear.trim()
   }
 
   const provenanceLabel = computed(() => {
@@ -184,12 +185,7 @@ export function useArchiveTaskCreate() {
   })
 
   async function applyProvenanceDefaults(provenance: ArchiveTaskProvenanceCode): Promise<boolean> {
-    const nextScoreSource = defaultScoreSourceForProvenance(provenance)
-    if (nextScoreSource !== ArchiveScoreSourceCode.OFFLINE_CONFIRMED) {
-      if (!(await discardStagedScoreProof())) return false
-    }
     wizardState.provenance = provenance
-    planForm.scoreSource = nextScoreSource
     return true
   }
 
@@ -359,8 +355,6 @@ export function useArchiveTaskCreate() {
         academicYear: resolveAcademicYear(),
         semester: basicForm.semester,
         examForm: planForm.examForm,
-        scoreSource: planForm.scoreSource,
-        scoreProofFileId: planForm.scoreProofFileId ?? undefined,
         securityLevel: planForm.securityLevel,
         teachingClassId: basicForm.teachingClassId,
         departmentId: basicForm.departmentId,
@@ -370,7 +364,6 @@ export function useArchiveTaskCreate() {
         responsibleUserId: planForm.responsibleUserId ?? undefined,
         archiveDueTimeOverride: planForm.archiveDueTimeOverride,
       })
-      planForm.scoreProofFileId = null
       void message.success('课程考核袋已创建，请继续整理材料')
       void router.push({ name: 'TeacherArchiveVolumeDetail', params: { volumeId }, query: { tab: 'materials' } })
       return null
@@ -383,25 +376,9 @@ export function useArchiveTaskCreate() {
     }
   }
 
-  async function discardStagedScoreProof(): Promise<boolean> {
-    const fileId = planForm.scoreProofFileId
-    if (!fileId) return true
-    try {
-      await discardArchiveTaskScoreProof(fileId)
-      planForm.scoreProofFileId = null
-      return true
-    } catch (error) {
-      showUserError(error, '清理临时成绩证明失败')
-      return false
-    }
-  }
-
   async function handleGoBack(): Promise<void> {
-    if (!(await discardStagedScoreProof())) return
     void router.push({ name: 'TeacherArchiveVolumeList' })
   }
-
-  onBeforeRouteLeave(async () => discardStagedScoreProof())
 
   watch(
     () => route.query.provenance,

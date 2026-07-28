@@ -66,7 +66,7 @@ const inGroup = inject(uiCheckboxGroupKey, undefined) === true
 }
 
 .ui-checkbox :deep(.ant-checkbox + span) {
-  padding-inline-start: 10px;
+  padding-inline-start: var(--dp-space-component);
   color: var(--dp-text-secondary);
 }
 
@@ -78,9 +78,9 @@ const inGroup = inject(uiCheckboxGroupKey, undefined) === true
   background: var(--dp-bg-control);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--dp-surface) 35%, transparent);
   transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease;
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    background-color var(--dp-duration-normal) var(--dp-ease-default),
+    box-shadow var(--dp-duration-normal) var(--dp-ease-default);
 }
 
 .ui-checkbox:hover :deep(.ant-checkbox-inner) {

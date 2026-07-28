@@ -38,7 +38,7 @@ interface MarkChartAxisLabelStyle {
 }
 
 export const MARK_ECHARTS_PALETTE: MarkEchartsPalette = {
-  primary: '#1677ff',
+  primary: '#2B67FF',
   success: '#16a34a',
   warning: '#f59e0b',
   danger: '#dc2626',
@@ -1066,7 +1066,7 @@ export function buildDistributionBarChartOption(
   )
 }
 
-/** 热力图单元格：题号矩阵、答题卡网格等一维进度/得分展示 */
+/** 热力图单元格：题号矩阵、答卷网格等一维进度/得分展示 */
 export interface MarkHeatmapCell {
   key: string | number
   label: string
@@ -1127,7 +1127,7 @@ export function buildHeatmapChartOption(
               borderColor: resolveThemeColor('--dp-color-primary', MARK_ECHARTS_PALETTE.primary),
               borderWidth: 2,
               shadowBlur: 8,
-              shadowColor: 'rgba(22, 119, 255, 0.2)',
+              shadowColor: 'rgba(31, 90, 154, 0.2)',
             },
           }
         })

@@ -9,6 +9,7 @@ export enum PortfolioHrEmploymentStatusCode {
   LONG_SICK_LEAVE = 'LONG_SICK_LEAVE',
   REHIRED = 'REHIRED',
   RESUME_FROM_HOLD = 'RESUME_FROM_HOLD',
+  CANCEL_TRANSFER_OUT = 'CANCEL_TRANSFER_OUT',
 }
 
 export const PortfolioHrEmploymentStatusDescription: Record<
@@ -24,4 +25,5 @@ export const PortfolioHrEmploymentStatusDescription: Record<
   [PortfolioHrEmploymentStatusCode.LONG_SICK_LEAVE]: '长期病假',
   [PortfolioHrEmploymentStatusCode.REHIRED]: '返聘',
   [PortfolioHrEmploymentStatusCode.RESUME_FROM_HOLD]: '恢复在职',
+  [PortfolioHrEmploymentStatusCode.CANCEL_TRANSFER_OUT]: '撤销调出',
 }

@@ -7,7 +7,7 @@ import type {
 } from '@/apis/portfolio/policy-ledger'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
-import { onMounted, reactive, ref } from 'vue'
+import { reactive, ref } from 'vue'
 import {
   portfolioIndustryEducationProjectApi,
   portfolioVirtualTeachingRoomActivityApi,
@@ -42,10 +42,18 @@ import {
   PortfolioPolicyLedgerReviewStatusCode,
   PortfolioPolicyLedgerReviewStatusDescription,
 } from '@/types/enums/portfolio-policy-ledger-review-status-enum'
-import { PortfolioVirtualTeachingRoomActivityTypeCode } from '@/types/enums/portfolio-virtual-teaching-room-activity-type-enum'
-import { PortfolioVirtualTeachingRoomRoleCode } from '@/types/enums/portfolio-virtual-teaching-room-role-enum'
+import {
+  ALL_PORTFOLIO_VIRTUAL_TEACHING_ROOM_ACTIVITY_TYPE_CODES,
+  PortfolioVirtualTeachingRoomActivityTypeCode,
+  PortfolioVirtualTeachingRoomActivityTypeDescription,
+} from '@/types/enums/portfolio-virtual-teaching-room-activity-type-enum'
+import {
+  ALL_PORTFOLIO_VIRTUAL_TEACHING_ROOM_ROLE_CODES,
+  PortfolioVirtualTeachingRoomRoleCode,
+  PortfolioVirtualTeachingRoomRoleDescription,
+} from '@/types/enums/portfolio-virtual-teaching-room-role-enum'
 import { showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -54,6 +62,7 @@ const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
   = usePortfolioArchiveWriteGuard()
 const tab = ref<'virtual' | 'industry'>('virtual')
 const loading = ref(false)
+const loadError = ref(false)
 const virtualRows = ref<PortfolioVirtualTeachingRoomActivityVO[]>([])
 const industryRows = ref<PortfolioIndustryEducationProjectVO[]>([])
 const virtualTotal = ref(0)
@@ -93,8 +102,8 @@ const saving = ref(false)
 const virtualColumns: ColumnsType = [
   { title: '教研室', dataIndex: 'roomName', key: 'roomName' },
   { title: '活动', dataIndex: 'activityTitle', key: 'activityTitle' },
-  { title: '类型', dataIndex: 'activityTypeLabel', key: 'activityTypeLabel', width: 160 },
-  { title: '角色', dataIndex: 'roleLabel', key: 'roleLabel', width: 100 },
+  { title: '类型', dataIndex: 'activityType', key: 'activityType', width: 160 },
+  { title: '角色', dataIndex: 'roleCode', key: 'roleCode', width: 100 },
   { title: '多身份', key: 'ownerIdentityLayers', width: 220 },
   { title: '生命周期', key: 'lifecycleStatus', width: 160 },
   { title: '状态', key: 'reviewStatus', width: 100 },
@@ -102,7 +111,7 @@ const virtualColumns: ColumnsType = [
 ]
 const industryColumns: ColumnsType = [
   { title: '项目', dataIndex: 'projectName', key: 'projectName' },
-  { title: '类型', dataIndex: 'projectTypeLabel', key: 'projectTypeLabel', width: 120 },
+  { title: '类型', dataIndex: 'projectType', key: 'projectType', width: 120 },
   { title: '阶段', dataIndex: 'stageCode', key: 'stageCode', width: 100 },
   { title: '角色', dataIndex: 'roleCode', key: 'roleCode', width: 100 },
   { title: '多身份', key: 'ownerIdentityLayers', width: 220 },
@@ -120,12 +129,47 @@ function statusTone(
   return 'gray'
 }
 
+function resetVirtualForm() {
+  virtualForm.roomName = ''
+  virtualForm.activityTitle = ''
+  virtualForm.partnerEnterprise = ''
+  virtualForm.leadUnit = ''
+  virtualForm.activityType = PortfolioVirtualTeachingRoomActivityTypeCode.JOINT_PREP
+  virtualForm.roleCode = PortfolioVirtualTeachingRoomRoleCode.MEMBER
+}
 
-async function loadPage() {
+function resetIndustryForm() {
+  industryForm.projectName = ''
+  industryForm.enterpriseName = ''
+  industryForm.projectType = PortfolioIndustryEducationProjectTypeCode.INDUSTRY_COLLEGE
+  industryForm.stageCode = PortfolioIndustryEducationProjectStageCode.ACCEPT
+  industryForm.roleCode = PortfolioVirtualTeachingRoomRoleCode.LEADER
+}
+
+function isPageScopeCurrent(
+  token: number,
+  ledgerType: 'virtual' | 'industry',
+  teacherId: string,
+  filter: PortfolioPolicyLedgerReviewStatusCode | '',
+  page: number,
+): boolean {
+  return (
+    token === pageRequestToken.value
+    && tab.value === ledgerType
+    && targetTeacherId.value === teacherId
+    && reviewFilter.value === filter
+    && pageNum.value === page
+  )
+}
+
+async function loadPage(options?: { errorMessage?: string }): Promise<boolean> {
   if (canPickTeachers.value && !targetTeacherId.value) {
     virtualRows.value = []
     industryRows.value = []
-    return
+    virtualTotal.value = 0
+    industryTotal.value = 0
+    loadError.value = false
+    return true
   }
   const currentToken = ++pageRequestToken.value
   const teacherId = targetTeacherId.value
@@ -133,6 +177,7 @@ async function loadPage() {
   const requestedPage = pageNum.value
   const requestedFilter = reviewFilter.value
   loading.value = true
+  loadError.value = false
   try {
     if (ledgerType === 'virtual') {
       const page = await portfolioVirtualTeachingRoomActivityApi.page({
@@ -141,12 +186,14 @@ async function loadPage() {
         teacherUserId: teacherId || undefined,
         reviewStatus: requestedFilter || undefined,
       })
-      if (
-        currentToken !== pageRequestToken.value
-        || tab.value !== ledgerType
-        || targetTeacherId.value !== teacherId
-      ) {
-        return
+      if (!isPageScopeCurrent(
+        currentToken,
+        ledgerType,
+        teacherId,
+        requestedFilter,
+        requestedPage,
+      )) {
+        return false
       }
       virtualRows.value = page.list ?? []
       virtualTotal.value = page.total ?? 0
@@ -157,22 +204,32 @@ async function loadPage() {
         teacherUserId: teacherId || undefined,
         reviewStatus: requestedFilter || undefined,
       })
-      if (
-        currentToken !== pageRequestToken.value
-        || tab.value !== ledgerType
-        || targetTeacherId.value !== teacherId
-      ) {
-        return
+      if (!isPageScopeCurrent(
+        currentToken,
+        ledgerType,
+        teacherId,
+        requestedFilter,
+        requestedPage,
+      )) {
+        return false
       }
       industryRows.value = page.list ?? []
       industryTotal.value = page.total ?? 0
     }
+    loadError.value = false
+    return true
   } catch (error) {
-    if (currentToken !== pageRequestToken.value) return
-    showUserError(error, '加载政策专项台账失败')
+    if (currentToken !== pageRequestToken.value) return false
+    loadError.value = true
+    showUserError(error, options?.errorMessage ?? '加载政策专项台账失败')
+    return false
   } finally {
     if (currentToken === pageRequestToken.value) loading.value = false
   }
+}
+
+async function refreshListAfterWrite(settledLabel: string) {
+  await loadPage({ errorMessage: `${settledLabel}，列表刷新失败` })
 }
 
 /** 切换政策台账类型时重置分页并加载对应记录。 */
@@ -180,6 +237,7 @@ function switchLedgerTab(nextTab: 'virtual' | 'industry'): void {
   if (tab.value === nextTab) return
   tab.value = nextTab
   pageNum.value = 1
+  pageRequestToken.value += 1
   void loadPage()
 }
 
@@ -197,6 +255,7 @@ async function saveVirtual() {
   }
   const teacherId = targetTeacherId.value
   const currentFormEpoch = formEpoch.value
+  const ledgerType = tab.value
   saving.value = true
   try {
     await portfolioVirtualTeachingRoomActivityApi.save({
@@ -209,16 +268,21 @@ async function saveVirtual() {
       leadUnit: virtualForm.leadUnit || undefined,
     })
     void message.success('虚拟教研室活动已保存')
-    if (formEpoch.value === currentFormEpoch && targetTeacherId.value === teacherId) {
-      virtualForm.roomName = ''
-      virtualForm.activityTitle = ''
-      void loadPage()
-    }
   } catch (error) {
     showUserError(error, '保存虚拟教研室活动失败')
+    return
   } finally {
     saving.value = false
   }
+  if (
+    formEpoch.value !== currentFormEpoch
+    || targetTeacherId.value !== teacherId
+    || tab.value !== ledgerType
+  ) {
+    return
+  }
+  resetVirtualForm()
+  await refreshListAfterWrite('虚拟教研室活动已保存')
 }
 
 async function saveIndustry() {
@@ -235,6 +299,7 @@ async function saveIndustry() {
   }
   const teacherId = targetTeacherId.value
   const currentFormEpoch = formEpoch.value
+  const ledgerType = tab.value
   saving.value = true
   try {
     await portfolioIndustryEducationProjectApi.save({
@@ -246,15 +311,21 @@ async function saveIndustry() {
       enterpriseName: industryForm.enterpriseName || undefined,
     })
     void message.success('产教项目已保存')
-    if (formEpoch.value === currentFormEpoch && targetTeacherId.value === teacherId) {
-      industryForm.projectName = ''
-      void loadPage()
-    }
   } catch (error) {
     showUserError(error, '保存产教项目失败')
+    return
   } finally {
     saving.value = false
   }
+  if (
+    formEpoch.value !== currentFormEpoch
+    || targetTeacherId.value !== teacherId
+    || tab.value !== ledgerType
+  ) {
+    return
+  }
+  resetIndustryForm()
+  await refreshListAfterWrite('产教项目已保存')
 }
 
 type PolicyLedgerRecord
@@ -272,12 +343,13 @@ async function submitLedgerReview(kind: 'virtual' | 'industry', record: PolicyLe
         : portfolioIndustryEducationProjectApi
     await api.submitReview({ id: record.id, statusVersion: record.statusVersion })
     void message.success('已提交审核')
-    void loadPage()
   } catch (error) {
     showUserError(error, '提交政策专项审核失败')
+    return
   } finally {
     if (operationKey.value === key) operationKey.value = ''
   }
+  await refreshListAfterWrite('已提交审核')
 }
 
 /** 按冻结证据指纹和状态版本完成四眼审核，拒绝对陈旧对象写入。 */
@@ -317,12 +389,13 @@ async function reviewLedger(
         : portfolioIndustryEducationProjectApi
     await api.review(request)
     void message.success(approved ? '审核已通过' : '已退回修改')
-    void loadPage()
   } catch (error) {
     showUserError(error, approved ? '审核通过失败' : '退回审核失败')
+    return
   } finally {
     if (operationKey.value === key) operationKey.value = ''
   }
+  await refreshListAfterWrite(approved ? '审核已通过' : '已退回修改')
 }
 
 /** 按后端审核状态机投影当前行允许的唯一动作集合。 */
@@ -365,14 +438,12 @@ usePortfolioScopedLoader(
   () => {
     formEpoch.value += 1
     pageNum.value = 1
+    resetVirtualForm()
+    resetIndustryForm()
     void loadPage()
   },
   () => targetTeacherId.value,
 )
-
-onMounted(() => {
-  void loadPage()
-})
 </script>
 
 <template>
@@ -380,7 +451,7 @@ onMounted(() => {
     <template #context>
       <ContextBar show-title layout="workbench" title="政策专项台账">
         <template #actions>
-          <UiButton size="sm" variant="outline" :loading="loading" @click="loadPage">刷新</UiButton>
+          <UiButton size="sm" variant="outline" :loading="loading" @click="() => void loadPage()">刷新</UiButton>
         </template>
       </ContextBar>
     </template>
@@ -435,25 +506,19 @@ onMounted(() => {
           size="sm"
           v-model="virtualForm.activityType"
           style="width: 200px"
-          :options="[
-            { label: '国/省级建设任务', value: 'NATIONAL_PROVINCIAL_TASK' },
-            { label: '联合课程开发', value: 'JOINT_COURSE' },
-            { label: '联合备课教研', value: 'JOINT_PREP' },
-            { label: '资源库共建', value: 'RESOURCE_POOL' },
-            { label: '教材/实训开发', value: 'TEXTBOOK_OR_TRAINING' },
-            { label: '成果推广', value: 'PROMOTION' },
-          ]"
+          :options="ALL_PORTFOLIO_VIRTUAL_TEACHING_ROOM_ACTIVITY_TYPE_CODES.map((code) => ({
+            label: PortfolioVirtualTeachingRoomActivityTypeDescription[code],
+            value: code,
+          }))"
         />
         <UiSelect
           size="sm"
           v-model="virtualForm.roleCode"
           style="width: 140px"
-          :options="[
-            { label: '负责人', value: 'LEADER' },
-            { label: '核心成员', value: 'CORE' },
-            { label: '参与成员', value: 'MEMBER' },
-            { label: '外部导师', value: 'EXTERNAL_MENTOR' },
-          ]"
+          :options="ALL_PORTFOLIO_VIRTUAL_TEACHING_ROOM_ROLE_CODES.map((code) => ({
+            label: PortfolioVirtualTeachingRoomRoleDescription[code],
+            value: code,
+          }))"
         />
         <UiButton
           size="sm"
@@ -467,6 +532,7 @@ onMounted(() => {
       </div>
       <UiDataTable
         :loading="loading"
+        :load-error="loadError"
         :columns="virtualColumns"
         :data-source="virtualRows"
         :pagination="{
@@ -481,7 +547,25 @@ onMounted(() => {
         row-key="id"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'ownerIdentityLayers'">
+          <template v-if="column.key === 'activityType'">
+            {{
+              strictEnumLabel(
+                PortfolioVirtualTeachingRoomActivityTypeDescription,
+                record.activityType,
+                '虚拟教研室活动类型',
+              )
+            }}
+          </template>
+          <template v-else-if="column.key === 'roleCode'">
+            {{
+              strictEnumLabel(
+                PortfolioVirtualTeachingRoomRoleDescription,
+                record.roleCode,
+                '虚拟教研室成员角色',
+              )
+            }}
+          </template>
+          <template v-else-if="column.key === 'ownerIdentityLayers'">
             <PortfolioOwnerIdentityLayersCell
               :layers="record.ownerIdentityLayers"
               :note="record.ownerMultiIdentityNote"
@@ -490,7 +574,7 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
             </UiTag>
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <UiTag v-if="record.archiveWriteForbidden" tone="red" class="ml-1">档案写禁</UiTag>
@@ -550,11 +634,10 @@ onMounted(() => {
           size="sm"
           v-model="industryForm.roleCode"
           style="width: 120px"
-          :options="[
-            { label: '负责人', value: 'LEADER' },
-            { label: '核心', value: 'CORE' },
-            { label: '参与', value: 'MEMBER' },
-          ]"
+          :options="ALL_PORTFOLIO_VIRTUAL_TEACHING_ROOM_ROLE_CODES.map((code) => ({
+            label: PortfolioVirtualTeachingRoomRoleDescription[code],
+            value: code,
+          }))"
         />
         <UiButton
           size="sm"
@@ -568,6 +651,7 @@ onMounted(() => {
       </div>
       <UiDataTable
         :loading="loading"
+        :load-error="loadError"
         :columns="industryColumns"
         :data-source="industryRows"
         :pagination="{
@@ -582,7 +666,34 @@ onMounted(() => {
         row-key="id"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'ownerIdentityLayers'">
+          <template v-if="column.key === 'projectType'">
+            {{
+              strictEnumLabel(
+                PortfolioIndustryEducationProjectTypeDescription,
+                record.projectType,
+                '产教融合项目类型',
+              )
+            }}
+          </template>
+          <template v-else-if="column.key === 'stageCode'">
+            {{
+              strictEnumLabel(
+                PortfolioIndustryEducationProjectStageDescription,
+                record.stageCode,
+                '产教融合项目建设阶段',
+              )
+            }}
+          </template>
+          <template v-else-if="column.key === 'roleCode'">
+            {{
+              strictEnumLabel(
+                PortfolioVirtualTeachingRoomRoleDescription,
+                record.roleCode,
+                '虚拟教研室成员角色',
+              )
+            }}
+          </template>
+          <template v-else-if="column.key === 'ownerIdentityLayers'">
             <PortfolioOwnerIdentityLayersCell
               :layers="record.ownerIdentityLayers"
               :note="record.ownerMultiIdentityNote"
@@ -591,7 +702,7 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
             </UiTag>
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <UiTag v-if="record.archiveWriteForbidden" tone="red" class="ml-1">档案写禁</UiTag>
@@ -629,28 +740,28 @@ onMounted(() => {
 
 <style scoped>
 .policy-ledger__block {
-  margin-top: var(--dp-space-4);
+  margin-top: var(--dp-space-block);
 }
 .policy-ledger__toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
 }
 .policy-ledger__hint {
-  margin: 12px 0 0;
+  margin: var(--dp-space-component) 0 0;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .policy-ledger__form {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .input {
-  padding: 6px 8px;
+  padding: var(--dp-space-component-tight);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-xs);
   min-width: 140px;

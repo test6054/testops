@@ -63,7 +63,8 @@ export const useUserStore = defineStore(
     const studentClassName = computed(() => userInfo.studentDetails?.className || '')
     const studentEnrollmentYear = computed(() => userInfo.studentDetails?.enrollmentYear ?? null)
 
-    // 是否为租户管理员（SUPER_ADMIN 恒为 true；SCH_TECH 以 check-permission 为准）
+    // 路由 requireTenantAdmin：平台 SUPER_ADMIN 投影为可进系统管理页；
+    // 租户考试业务 / 归档配置写闸勿用本字段，改用 isEnterpriseTenantAdmin。
     const isTenantAdmin = computed(() => {
       const authStore = useAuthStore()
       if (authStore.userRole === RoleEnum.SUPER_ADMIN) {
@@ -71,6 +72,9 @@ export const useUserStore = defineStore(
       }
       return userInfo.isTenantAdmin === true
     })
+
+    /** edu-user TenantAdmin 真值；不含平台 SUPER_ADMIN 角色投影。对齐 BE hasFullTenantReadView / 租户阅卷策略闸。 */
+    const isEnterpriseTenantAdmin = computed(() => userInfo.isTenantAdmin === true)
 
     // 租户信息
     const tenantInfo = computed(() => ({
@@ -278,6 +282,7 @@ export const useUserStore = defineStore(
       studentClassName,
       studentEnrollmentYear,
       isTenantAdmin,
+      isEnterpriseTenantAdmin,
       tenantInfo,
       isLoading,
       getUserInfoPromise,

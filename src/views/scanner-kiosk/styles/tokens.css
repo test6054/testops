@@ -23,37 +23,36 @@
      色彩系统
      ============================================================ */
 
-  /* 主色：稳重蓝（不与 ant primary 蓝撞） */
-  --kiosk-primary: #1f5fff;
-  --kiosk-primary-pressed: #1448cc;
-  --kiosk-primary-soft: #eaf1ff;
-  --kiosk-primary-on: #ffffff;
+  /* 品牌 / 状态 / 基础表面：桥接平台 --dp-*，禁止第二套 SaaS 色真源 */
+  --kiosk-primary: var(--dp-color-primary);
+  --kiosk-primary-pressed: var(--dp-color-primary-active);
+  --kiosk-primary-soft: var(--dp-color-primary-bg);
+  --kiosk-primary-on: var(--dp-text-inverse);
 
-  /* 状态色：高对比、像物理状态灯 */
-  --kiosk-success: #1f9d55;
-  --kiosk-success-soft: #e6f6ec;
-  --kiosk-warning: #d97706;
-  --kiosk-warning-soft: #fff5e6;
-  --kiosk-danger: #c5263e;
-  --kiosk-danger-soft: #fdecef;
-  --kiosk-neutral: #5e6573;
-  --kiosk-neutral-soft: #f0f2f7;
+  --kiosk-success: var(--dp-success);
+  --kiosk-success-soft: var(--dp-success-bg);
+  --kiosk-warning: var(--dp-warning);
+  --kiosk-warning-soft: var(--dp-warning-bg);
+  --kiosk-danger: var(--dp-danger);
+  --kiosk-danger-soft: var(--dp-error-bg);
+  --kiosk-neutral: var(--dp-text-secondary);
+  --kiosk-neutral-soft: var(--dp-surface-subtle);
 
-  /* 表面层 */
-  --kiosk-canvas: #0d1320;          /* 大画布预览背景，深色衬白纸 */
-  --kiosk-canvas-soft: #161e30;     /* 画布工具浮层 */
-  --kiosk-surface: #ffffff;         /* 信息面板 */
-  --kiosk-surface-alt: #f7f9fc;     /* 次级面板 */
-  --kiosk-rail: #f4f6fb;            /* SideRail 背景 */
-  --kiosk-divider: #e4e8f0;
-  --kiosk-divider-strong: #ccd2dd;
-  --kiosk-page-bg: #eef1f6;         /* 全页背景 */
+  /* 设备专属：深色纸张画布与预览浮层保持独立，不桥接 SaaS 表面 */
+  --kiosk-canvas: #0d1320;
+  --kiosk-canvas-soft: #161e30;
+  --kiosk-surface: var(--dp-surface);
+  --kiosk-surface-alt: var(--dp-surface-subtle);
+  --kiosk-rail: var(--dp-bg-muted);
+  --kiosk-divider: var(--dp-border);
+  --kiosk-divider-strong: var(--dp-border-strong, var(--dp-border));
+  --kiosk-page-bg: var(--dp-bg-muted);
 
-  /* 文字 */
-  --kiosk-ink-primary: #0e1322;
-  --kiosk-ink-secondary: #4b5365;
-  --kiosk-ink-tertiary: #8993a8;
-  --kiosk-ink-disabled: #b6bcc9;
+  /* 文字：主文案桥接平台；画布上文字保持设备专属对比 */
+  --kiosk-ink-primary: var(--dp-text-primary);
+  --kiosk-ink-secondary: var(--dp-text-secondary);
+  --kiosk-ink-tertiary: var(--dp-text-muted);
+  --kiosk-ink-disabled: var(--dp-text-quaternary);
   --kiosk-ink-on-canvas: #f7f9ff;
   --kiosk-ink-on-canvas-secondary: #aab3c5;
 
@@ -139,9 +138,11 @@
      ============================================================ */
 
   --kiosk-easing: cubic-bezier(0.2, 0.8, 0.4, 1);
-  --kiosk-dur-fast: 120ms;
-  --kiosk-dur-base: 200ms;
-  --kiosk-dur-slow: 280ms;
+  --kiosk-dur-fast: var(--dp-duration-fast);
+  --kiosk-dur-base: var(--dp-duration-normal);
+  --kiosk-dur-slow: var(--dp-duration-slow);
+  --kiosk-dur-page: var(--dp-duration-page);
+  --kiosk-dur-emphasis: var(--dp-duration-emphasis);
 
   /* ============================================================
      设备指示灯（统一：纯色圆点 + 细环，禁止大范围光晕脉冲）
@@ -183,4 +184,50 @@
 .hub-entry,
 .hub-signal--clickable {
   touch-action: manipulation;
+}
+
+/* P2-47：kiosk 原生控件统一 focus-visible 契约；允许 outline:none 仅当有可见替代 */
+.kiosk-layout button:focus:not(:focus-visible),
+.kiosk-layout summary:focus:not(:focus-visible),
+.kiosk-layout input:focus:not(:focus-visible),
+.kiosk-layout select:focus:not(:focus-visible),
+.kiosk-layout textarea:focus:not(:focus-visible),
+.hub-shell button:focus:not(:focus-visible),
+.hub-entry:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.kiosk-layout button:focus-visible,
+.kiosk-layout summary:focus-visible,
+.kiosk-layout input:focus-visible,
+.kiosk-layout select:focus-visible,
+.kiosk-layout textarea:focus-visible,
+.hub-shell button:focus-visible,
+.hub-entry:focus-visible,
+.hub-signal--clickable:focus-visible {
+  outline: 2px solid var(--kiosk-primary);
+  outline-offset: 2px;
+}
+
+/* P2-46：根层关闭非必要无限动画；加载态保留静态可见性，不依赖闪烁 */
+@media (prefers-reduced-motion: reduce) {
+  .setup-signal__pulse,
+  .state-dot.state-running,
+  .canvas-empty-icon--pulse,
+  .spinning {
+    animation: none !important;
+  }
+
+  .spinning {
+    opacity: 0.85;
+  }
+
+  .setup-signal__pulse,
+  .state-dot.state-running {
+    opacity: 1;
+  }
+
+  .canvas-empty-icon--pulse {
+    opacity: 0.75;
+  }
 }

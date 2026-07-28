@@ -7,16 +7,16 @@ import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioTitlePromotionApi } from '@/apis/portfolio/title-promotion'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
-import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
-import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
@@ -56,6 +56,8 @@ const categoryOptions = ref<Array<{ value: string, label: string }>>([])
 const total = ref(0)
 const editorOpen = ref(false)
 const editingId = ref<string | undefined>()
+/** 编辑态 CAS 基准；新建为空 */
+const editingUpdateTime = ref<string | undefined>()
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 
 interface CriteriaTemplateForm {
@@ -107,8 +109,9 @@ const columns: ColumnsType = [
   { title: '核验类型', dataIndex: 'checkType', key: 'checkType', width: 160 },
   { title: '路径', dataIndex: 'pathCode', key: 'pathCode', width: 110 },
   { title: '期望值', dataIndex: 'expectedValue', key: 'expectedValue', width: 100 },
+  { title: '任务引用', dataIndex: 'openTaskRefCount', key: 'openTaskRefCount', width: 100 },
   { title: '启用', dataIndex: 'enabled', key: 'enabled', width: 80 },
-  { title: '操作', key: 'action', width: 160 },
+  { title: '操作', key: 'action', width: 180 },
 ]
 
 async function loadData() {
@@ -133,6 +136,7 @@ async function loadData() {
 
 function openCreate() {
   editingId.value = undefined
+  editingUpdateTime.value = undefined
   form.templateCode = ''
   form.templateTitle = ''
   form.criteriaDescription = ''
@@ -153,6 +157,7 @@ function openCreate() {
 
 function openEdit(row: PortfolioTitleCriteriaTemplateVO) {
   editingId.value = row.id
+  editingUpdateTime.value = row.updateTime
   form.templateCode = row.templateCode
   form.templateTitle = row.templateTitle
   form.criteriaDescription = row.criteriaDescription || ''
@@ -253,6 +258,10 @@ async function saveTemplate() {
     showFormValidationMessage('硬门槛模板必须开启「不满足阻断提交」')
     return
   }
+  if (editingId.value && !editingUpdateTime.value) {
+    showFormValidationMessage('缺少模板更新时间，请关闭抽屉后重新打开编辑')
+    return
+  }
   saving.value = true
   try {
     await portfolioTitlePromotionApi.saveCriteriaTemplate({
@@ -279,10 +288,15 @@ async function saveTemplate() {
         form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? true : form.blockOnFail,
       enabled: form.enabled,
       sortNo: form.sortNo,
+      expectedUpdateTime: editingUpdateTime.value,
     })
     void message.success('条件模板已保存')
     editorOpen.value = false
-    await loadData()
+    try {
+      await loadData()
+    } catch (error) {
+      showUserError(error, '模板已保存，列表刷新失败')
+    }
   } catch (error) {
     showUserError(error, '保存条件模板失败')
   } finally {
@@ -309,10 +323,30 @@ async function loadCategoryOptions() {
 }
 
 async function toggleEnabled(row: PortfolioTitleCriteriaTemplateVO, enabled: boolean) {
+  if (!enabled && row.canDisable === false) {
+    showFormValidationMessage(row.disableBlockReason || '模板仍被未关闭职称任务引用，无法停用')
+    return
+  }
+  if (!row.updateTime) {
+    showFormValidationMessage('缺少模板更新时间，请刷新列表后重试')
+    return
+  }
   try {
-    await portfolioTitlePromotionApi.enableCriteriaTemplate({ id: row.id, enabled })
+    const updated = await portfolioTitlePromotionApi.enableCriteriaTemplate({
+      id: row.id,
+      enabled,
+      expectedUpdateTime: row.updateTime,
+    })
     void message.success(enabled ? '已启用' : '已停用')
-    await loadData()
+    const index = rows.value.findIndex((item) => item.id === row.id)
+    if (index >= 0) {
+      rows.value[index] = updated
+    }
+    try {
+      await loadData()
+    } catch (error) {
+      showUserError(error, '启停已生效，列表刷新失败')
+    }
   } catch (error) {
     showUserError(error, '启停失败')
   }
@@ -381,6 +415,11 @@ onMounted(() => {
           <template v-else-if="column.key === 'pathCode'">
             {{ strictEnumLabel(PortfolioTitleCriteriaPathDescription, record.pathCode, '路径') }}
           </template>
+          <template v-else-if="column.key === 'openTaskRefCount'">
+            <span v-if="isTemplateRecord(record)">
+              {{ record.openTaskRefCount == null ? '—' : record.openTaskRefCount }}
+            </span>
+          </template>
           <template v-else-if="column.key === 'enabled'">
             <UiTag :tone="record.enabled ? 'green' : 'gray'">
               {{ record.enabled ? '启用' : '停用' }}
@@ -395,6 +434,7 @@ onMounted(() => {
                 v-if="isTemplateRecord(record)"
                 :model-value="Boolean(record.enabled)"
                 size="sm"
+                :disabled="Boolean(record.enabled) && record.canDisable === false"
                 @change="(checked) => toggleEnabled(record, Boolean(checked))"
               />
             </div>
@@ -528,8 +568,8 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-3);
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 
 .title-criteria__keyword {
@@ -538,13 +578,13 @@ onMounted(() => {
 
 .title-criteria__row-actions {
   display: flex;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .title-criteria__drawer-form {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .title-criteria__field-label {
@@ -555,13 +595,13 @@ onMounted(() => {
 .title-criteria__switch-row {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .title-criteria__drawer-actions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--dp-space-2);
-  margin-top: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component-tight);
 }
 </style>

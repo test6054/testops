@@ -17,7 +17,9 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -27,7 +29,6 @@ import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -59,6 +60,7 @@ const achievementTabItems = [
 ]
 const loading = ref(false)
 const loadError = ref(false)
+const catalogLastSuccessAt = ref<string | null>(null)
 const requestToken = ref(0)
 const rows = ref<PortfolioNationalAchievementCatalogVO[]>([])
 const pageNum = ref(1)
@@ -66,11 +68,13 @@ const pageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const total = ref(0)
 const recordLoading = ref(false)
 const recordLoadError = ref(false)
+const recordLastSuccessAt = ref<string | null>(null)
 const recordRequestToken = ref(0)
 const recordRows = ref<PortfolioDevelopmentRecordVO[]>([])
 const recordPageNum = ref(1)
 const recordPageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const recordTotal = ref(0)
+const refreshError = ref<string | null>(null)
 const operationKey = ref('')
 const operating = computed(() => Boolean(operationKey.value))
 const editorOpen = ref(false)
@@ -92,6 +96,7 @@ const form = reactive<CatalogForm>({
   indicatorCode: undefined,
   buildCycleMonths: undefined,
   enabled: true,
+  expectedUpdateTime: undefined,
   requirements: [],
 })
 
@@ -149,10 +154,9 @@ async function loadCatalogs() {
     if (requestToken.value !== currentToken) return
     rows.value = result.list ?? []
     total.value = result.total ?? 0
+    catalogLastSuccessAt.value = new Date().toISOString()
   } catch (error) {
     if (requestToken.value !== currentToken) return
-    rows.value = []
-    total.value = 0
     loadError.value = true
     showUserError(error, '加载成果目录失败')
   } finally {
@@ -175,10 +179,9 @@ async function loadRecords() {
     if (recordRequestToken.value !== currentToken) return
     recordRows.value = result.list ?? []
     recordTotal.value = result.total ?? 0
+    recordLastSuccessAt.value = new Date().toISOString()
   } catch (error) {
     if (recordRequestToken.value !== currentToken) return
-    recordRows.value = []
-    recordTotal.value = 0
     recordLoadError.value = true
     showUserError(error, '加载国家级成果实例失败')
   } finally {
@@ -207,6 +210,7 @@ function resetForm() {
     indicatorCode: undefined,
     buildCycleMonths: undefined,
     enabled: true,
+    expectedUpdateTime: undefined,
     requirements: [createRequirement(0)],
   })
 }
@@ -234,6 +238,7 @@ async function openEdit(row: PortfolioNationalAchievementCatalogVO) {
       indicatorCode: detail.indicatorCode,
       buildCycleMonths: detail.buildCycleMonths,
       enabled: detail.enabled,
+      expectedUpdateTime: detail.updateTime,
       requirements: detail.requirements.map((item, index) => ({
         requirementCode: item.requirementCode,
         requirementTitle: item.requirementTitle,
@@ -290,6 +295,7 @@ async function saveCatalog() {
   }
   const operation = `catalog:save:${form.id ?? 'new'}`
   if (!beginOperation(operation)) return
+  refreshError.value = null
   try {
     await portfolioNationalAchievementApi.saveCatalog({
       id: form.id,
@@ -300,38 +306,71 @@ async function saveCatalog() {
       indicatorCode: form.indicatorCode?.trim() || undefined,
       buildCycleMonths: form.buildCycleMonths,
       enabled: form.enabled,
+      expectedUpdateTime: form.id ? form.expectedUpdateTime : undefined,
       requirements,
     })
     void message.success('成果目录已保存')
     editorOpen.value = false
-    await loadCatalogs()
   } catch (error) {
     showUserError(error, '保存成果目录失败')
+    return
   } finally {
     endOperation(operation)
+  }
+  try {
+    await loadCatalogs()
+    if (loadError.value) {
+      refreshError.value = '目录已保存，但刷新列表失败；下方可能为陈旧数据。'
+    }
+  } catch (error) {
+    refreshError.value = '目录已保存，但刷新列表失败；下方可能为陈旧数据。'
+    showUserError(error, '刷新成果目录失败')
   }
 }
 
 async function deleteCatalog(row: PortfolioNationalAchievementCatalogVO) {
   const operation = `catalog:delete:${row.id}`
   if (!beginOperation(operation)) return
+  if (row.canDelete === false) {
+    endOperation(operation)
+    showFormValidationMessage(row.deleteBlockReason || '成果目录仍被引用，不能删除')
+    return
+  }
+  if (!row.updateTime) {
+    endOperation(operation)
+    showFormValidationMessage('目录缺少 updateTime，无法安全删除')
+    return
+  }
   const confirmed = await confirmAsync({
     title: '确认删除成果目录？',
-    content: `将删除「${row.catalogName}」及全部标准要求；已被发展规划引用时系统会拒绝删除。`,
+    content: `将删除「${row.catalogName}」及全部标准要求；已被规划引用或已有正式成果时系统会拒绝删除。`,
     type: 'error',
   })
   if (!confirmed) {
     endOperation(operation)
     return
   }
+  refreshError.value = null
   try {
-    await portfolioNationalAchievementApi.deleteCatalog({ id: row.id })
+    await portfolioNationalAchievementApi.deleteCatalog({
+      id: row.id,
+      expectedUpdateTime: row.updateTime,
+    })
     void message.success('成果目录已删除')
-    await loadCatalogs()
   } catch (error) {
     showUserError(error, '删除成果目录失败')
+    return
   } finally {
     endOperation(operation)
+  }
+  try {
+    await loadCatalogs()
+    if (loadError.value) {
+      refreshError.value = '目录已删除，但刷新列表失败；下方可能为陈旧数据。'
+    }
+  } catch (error) {
+    refreshError.value = '目录已删除，但刷新列表失败；下方可能为陈旧数据。'
+    showUserError(error, '刷新成果目录失败')
   }
 }
 
@@ -373,7 +412,17 @@ void loadCatalogs()
         divided
         @change="onTabChange"
       />
+      <UiAlertStrip
+        v-if="refreshError"
+        tone="warning"
+        :message="refreshError"
+      />
       <template v-if="activeTab === 'catalog'">
+        <UiAlertStrip
+          v-if="loadError"
+          tone="error"
+          title="成果目录加载失败"
+        />
         <div class="achievement-admin__toolbar">
           <UiInput size="sm" v-model="filter.keyword" clearable placeholder="目录名称或标准描述" />
           <UiInput size="sm" v-model="filter.categoryCode" clearable placeholder="分类编码" />
@@ -435,7 +484,12 @@ void loadCatalogs()
               <UiTableActions
                 :items="[
                   { key: 'edit', label: '编辑', disabled: operating },
-                  { key: 'delete', label: '删除', tone: 'danger', disabled: operating },
+                  {
+                    key: 'delete',
+                    label: '删除',
+                    tone: 'danger',
+                    disabled: operating || record.canDelete === false,
+                  },
                 ]"
                 @action="(key) => (key === 'edit' ? openEdit(record) : deleteCatalog(record))"
               />
@@ -444,6 +498,11 @@ void loadCatalogs()
         </UiDataTable>
       </template>
       <template v-else-if="activeTab === 'records'">
+        <UiAlertStrip
+          v-if="recordLoadError"
+          tone="error"
+          title="正式成果实例加载失败"
+        />
         <div class="achievement-admin__toolbar">
           <UiInput
             size="sm"
@@ -602,26 +661,26 @@ void loadCatalogs()
 .achievement-admin__toolbar {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) 160px 140px 120px auto;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 .achievement-admin__form-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0 16px;
+  gap: 0 var(--dp-space-block);
 }
 .achievement-admin__requirements-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 .achievement-admin__requirement-row {
   display: grid;
   grid-template-columns: 100px 1fr 160px 150px 90px auto;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 @media (max-width: 900px) {
   .achievement-admin__toolbar,

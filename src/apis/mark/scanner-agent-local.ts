@@ -8,6 +8,7 @@ import type { LocalScanPageSideCode } from '@/types/enums/local-scan-page-side-e
 import type { LocalScanPageStatusCode } from '@/types/enums/local-scan-page-status-enum'
 import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import type { ScannerAgentDiagnosticStatusCode } from '@/types/enums/scanner-agent-diagnostic-status-enum'
+import type { ScannerDriverTypeCode } from '@/types/enums/scanner-driver-type-enum'
 import { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import { rejectUserError } from '@/utils/error-handler'
 import {
@@ -164,7 +165,7 @@ export enum ScannerBlankPagePolicyCode {
 export interface ScannerDeviceInfo {
   localScannerId: string
   displayName: string
-  driverType: string
+  driverType: ScannerDriverTypeCode
   supportsAdf: boolean
   supportsDuplex: boolean
   available: boolean
@@ -348,8 +349,6 @@ export interface ScanJobResponse {
   scanJobId: string
   /** 当前扫描任务所属考试 ID，Agent 边界按字符串返回 */
   examId: string
-  /** 当前扫描任务声明的班级范围，顺序必须与 Kiosk 上下文一致 */
-  declaredClassIds: string[]
   scannerDeviceId: string
   scannerStationId: string
   batchExternalNo: string

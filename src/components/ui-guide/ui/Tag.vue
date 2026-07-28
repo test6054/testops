@@ -56,15 +56,15 @@ const resolvedTone = computed<BadgeTone>(() => (props.empty ? 'gray' : props.ton
   font-weight: 600;
   letter-spacing: 0.01em;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--dp-duration-fast) var(--dp-ease-default),
+    border-color var(--dp-duration-fast) var(--dp-ease-default),
+    color var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .ui-tag--sm {
   min-height: 22px;
   padding: 0 9px;
-  font-size: var(--dp-font-size-xxs);
+  font-size: var(--dp-font-size-xs);
 }
 
 .ui-tag--md {

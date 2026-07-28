@@ -49,6 +49,9 @@ const {
   editableLines,
   catalogStatus,
   isConfirmed,
+  requiredCoverageReady,
+  requiredCoverageGaps,
+  canConfirmCatalog,
   loadCatalog,
   generateDraft,
   updateLine,
@@ -58,6 +61,11 @@ const {
 } = useArchiveVolumeCatalog(() => props.volumeId)
 
 const effectiveStatus = computed(() => props.catalogStatus ?? catalogStatus.value)
+const coverageGapSummary = computed(() => {
+  const gaps = requiredCoverageGaps.value
+  if (gaps.length === 0) return ''
+  return gaps.map(gap => gap.missingReason).join('；')
+})
 
 const columns = computed<ColumnsType>(() => [
   { title: '序号', dataIndex: 'lineNo', key: 'lineNo', width: 64 },
@@ -174,6 +182,10 @@ async function handleConfirm() {
   if (saving.value === true || confirming.value === true || exporting.value === true) {
     return
   }
+  if (!canConfirmCatalog.value) {
+    void message.error(coverageGapSummary.value || '必交材料未覆盖，无法确认目录')
+    return
+  }
   await confirmCatalog()
   emit('refreshed')
 }
@@ -222,7 +234,7 @@ defineExpose({ loadCatalog })
           size="sm"
           variant="primary"
           :loading="confirming === true"
-          :disabled="isConfirmed || loadFailed || editableLines.length === 0"
+          :disabled="!canConfirmCatalog"
           @click="handleConfirm"
         >
           确认目录
@@ -240,10 +252,9 @@ defineExpose({ loadCatalog })
     </template>
 
     <UiAlertStrip
-      v-if="loadFailed"
+      v-if="loadFailed === true"
       tone="error"
       title="目录加载失败"
-      description="当前保留的是上次成功加载的内容，重新加载成功前不能编辑或确认。"
       :inline="false"
     >
       <template #actions>
@@ -252,7 +263,13 @@ defineExpose({ loadCatalog })
         </UiButton>
       </template>
     </UiAlertStrip>
-
+    <UiAlertStrip
+      v-else-if="readonly === false && isConfirmed !== true && requiredCoverageReady !== true && requiredCoverageGaps.length > 0"
+      tone="warning"
+      title="必交材料未覆盖，暂不可确认目录"
+      :description="coverageGapSummary"
+      :inline="false"
+    />
     <UiSkeletonState v-if="loading" variant="card" compact />
 
     <div v-else-if="editableLines.length === 0" class="archive-volume-catalog-editor__empty-strip">
@@ -312,13 +329,13 @@ defineExpose({ loadCatalog })
 .archive-volume-catalog-editor {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-volume-catalog-editor__title-wrap {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-catalog-editor__title {
@@ -335,16 +352,16 @@ defineExpose({ loadCatalog })
 .archive-volume-catalog-editor__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-catalog-editor__empty-strip {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   min-height: 48px;
-  padding: var(--dp-space-3) var(--dp-space-4);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border: 1px dashed var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: color-mix(in srgb, var(--dp-gray-50) 80%, var(--dp-surface));

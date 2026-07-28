@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { AccreditationCockpitVO, AccreditationCycleVO } from '@/apis/quality/accreditation'
+import type { AccreditationCockpitVO } from '@/apis/quality/accreditation'
 import type {
   ArchiveDestructionFlowRecordVO,
   ArchiveQueryRequest,
@@ -8,6 +8,7 @@ import type {
   ArchiveSignalSummaryVO,
   ArchiveVO,
   ExpertPackageExportRequest,
+  ExpertPackageExportTaskVO,
 } from '@/apis/quality/archive'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
@@ -27,6 +28,7 @@ import {
   ExpertPackageTypeDescription,
 } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import ArchiveDestructionConsequenceSummary from '@/components/quality/ArchiveDestructionConsequenceSummary.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import {
@@ -46,6 +48,7 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
@@ -71,6 +74,8 @@ import {
 } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useUserStore } from '@/stores/modules/user'
 import { ArchiveDestructionDecisionCode } from '@/types/enums/archive-destruction-decision-enum'
@@ -78,6 +83,13 @@ import {
   ALL_ARCHIVE_DIGITAL_STATUS_CODES,
   ArchiveDigitalStatusDescription,
 } from '@/types/enums/archive-digital-status-enum'
+import {
+  ExportTaskStatusCode,
+  ExportTaskStatusDescription,
+} from '@/types/enums/export-task-status-enum'
+import {
+  QualityArchiveDestructionEventTypeDescription,
+} from '@/types/enums/quality-archive-destruction-event-type-enum'
 import {
   QualityArchiveDestructionLedgerExportDecisionCode,
   QualityArchiveDestructionLedgerExportDecisionDescription,
@@ -87,7 +99,7 @@ import {
   QualityArchiveDestructionStatusCode,
   QualityArchiveDestructionStatusDescription,
 } from '@/types/enums/quality-archive-destruction-status-enum'
-import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -104,6 +116,14 @@ function archiveBusinessTypeColor(value: ArchiveBusinessTypeCode): BadgeTone {
 
 function destructionStatusLabel(value: QualityArchiveDestructionStatusCode): string {
   return strictEnumLabel(QualityArchiveDestructionStatusDescription, value, '销毁状态')
+}
+
+function destructionEventTypeLabel(value: ArchiveDestructionFlowRecordVO['eventType']): string {
+  return strictEnumLabel(
+    QualityArchiveDestructionEventTypeDescription,
+    value,
+    '销毁审计事件类型',
+  )
 }
 
 function destructionStatusTone(value: QualityArchiveDestructionStatusCode): BadgeTone {
@@ -227,9 +247,16 @@ const filterFields = computed((): FilterField[] => {
 
 const exportVisible = ref(false)
 const exportSubmitting = ref(false)
+const exportTask = ref<ExpertPackageExportTaskVO | null>(null)
+const exportTaskPollError = ref<string | null>(null)
+let exportTaskPollGeneration = 0
+const EXPORT_TASK_POLL_INTERVAL_MS = 3000
+const EXPORT_TASK_POLL_MAX_ATTEMPTS = 7200
+const EXPORT_TASK_POLL_MAX_FAILURES = 5
 const exportForm = reactive<ExpertPackageExportRequest>({
   packageType: ExpertPackageTypeCode.REQUIREMENT,
   targetId: '',
+  accreditationCycleId: '',
   archiveCode: '',
   retentionYears: 20,
   archiveCategory: '',
@@ -238,16 +265,71 @@ const exportForm = reactive<ExpertPackageExportRequest>({
 })
 const exportTrainingPlanId = ref('')
 const exportCockpit = ref<AccreditationCockpitVO | undefined>()
-const exportActiveCycle = ref<AccreditationCycleVO | undefined>()
-const exportEvidenceCount = ref(0)
 const exportReadinessLoading = ref(false)
+const exportReadinessUnknown = ref(false)
+
+const exportTaskActive = computed(() =>
+  exportTask.value?.taskStatus === ExportTaskStatusCode.PENDING
+  || exportTask.value?.taskStatus === ExportTaskStatusCode.GENERATING,
+)
+
+function exportTaskStatusLabel(status: ExportTaskStatusCode): string {
+  return strictEnumLabel(ExportTaskStatusDescription, status, '专家材料包任务状态')
+}
+
+function exportTaskStatusTone(status: ExportTaskStatusCode): BadgeTone {
+  if (status === ExportTaskStatusCode.COMPLETED) return 'green'
+  if (status === ExportTaskStatusCode.FAILED) return 'red'
+  if (status === ExportTaskStatusCode.GENERATING) return 'blue'
+  return 'gray'
+}
+
+const exportCycleOptions = computed(() => {
+  const cockpit = exportCockpit.value
+  return [
+    ...(cockpit?.applicationCycle
+      ? [{
+          value: cockpit.applicationCycle.id,
+          label: `在办申请 · ${cockpit.applicationCycle.cycleName}`,
+        }]
+      : []),
+    ...(cockpit?.maintenanceCycle
+      ? [{
+          value: cockpit.maintenanceCycle.id,
+          label: `有效保持 · ${cockpit.maintenanceCycle.cycleName}`,
+        }]
+      : []),
+  ]
+})
+
+const exportCycle = computed(() => [
+  exportCockpit.value?.applicationCycle,
+  exportCockpit.value?.maintenanceCycle,
+].find(cycle => cycle?.id === exportForm.accreditationCycleId))
+
+const exportEvidenceCount = computed(() => {
+  const cockpit = exportCockpit.value
+  if (!cockpit) {
+    return 0
+  }
+  if (exportForm.accreditationCycleId === cockpit.applicationCycle?.id) {
+    return cockpit.applicationEvidenceCount
+  }
+  if (exportForm.accreditationCycleId === cockpit.maintenanceCycle?.id) {
+    return cockpit.maintenanceEvidenceCount
+  }
+  return 0
+})
 
 const exportProgramBlockers = computed(() => {
   if (exportForm.packageType !== ExpertPackageTypeCode.PROGRAM_ACCREDITATION) {
     return []
   }
+  if (exportReadinessUnknown.value) {
+    return ['认证导出就绪状态未知，禁止导出；请切换培养方案或离开再进入后重新校验']
+  }
   return expertPackageExportBlockers(
-    exportActiveCycle.value,
+    exportCycle.value,
     exportCockpit.value,
     exportEvidenceCount.value,
   )
@@ -257,8 +339,11 @@ const canSubmitProgramExport = computed(() => {
   if (exportForm.packageType !== ExpertPackageTypeCode.PROGRAM_ACCREDITATION) {
     return true
   }
+  if (exportReadinessUnknown.value) {
+    return false
+  }
   return canExportExpertPackage(
-    exportActiveCycle.value,
+    exportCycle.value,
     exportCockpit.value,
     exportEvidenceCount.value,
   )
@@ -267,20 +352,24 @@ const canSubmitProgramExport = computed(() => {
 async function loadProgramExportReadiness(trainingPlanId: string) {
   if (!trainingPlanId.trim()) {
     exportCockpit.value = undefined
-    exportActiveCycle.value = undefined
-    exportEvidenceCount.value = 0
+    exportForm.accreditationCycleId = ''
+    exportReadinessUnknown.value = false
     return
   }
   exportReadinessLoading.value = true
+  exportReadinessUnknown.value = false
   try {
     const cockpit = await accreditationApi.cockpit({ trainingPlanId: trainingPlanId.trim() })
     exportCockpit.value = cockpit
-    exportActiveCycle.value = cockpit.activeCycle
-    exportEvidenceCount.value = cockpit.activeEvidenceCount ?? 0
+    const cycleIds = [cockpit.applicationCycle?.id, cockpit.maintenanceCycle?.id]
+    if (!cycleIds.includes(exportForm.accreditationCycleId)) {
+      exportForm.accreditationCycleId = cockpit.applicationCycle?.id ?? cockpit.maintenanceCycle?.id ?? ''
+    }
+    exportReadinessUnknown.value = false
   } catch (error) {
     exportCockpit.value = undefined
-    exportActiveCycle.value = undefined
-    exportEvidenceCount.value = 0
+    exportForm.accreditationCycleId = ''
+    exportReadinessUnknown.value = true
     showUserError(error, '认证导出就绪状态加载失败')
   } finally {
     exportReadinessLoading.value = false
@@ -325,31 +414,58 @@ function buildArchiveListQuery(): ArchiveQueryRequest {
 }
 
 const signalSummary = ref<ArchiveSignalSummaryVO | null>(null)
+const {
+  loadError: listLoadError,
+  beginLoad: beginListLoad,
+  failLoad: failListLoad,
+  okLoad: okListLoad,
+} = useUiTableLoadError()
 
 async function loadList() {
+  const scope = beginQualityScopeRequest()
   loading.value = true
+  beginListLoad()
   try {
     const listQuery = buildArchiveListQuery()
     const page = await archiveApi.page(listQuery)
+    if (scope.isStale()) {
+      return
+    }
     list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
     try {
-      signalSummary.value = await archiveApi.signalSummary(listQuery)
+      const summary = await archiveApi.signalSummary(listQuery)
+      if (scope.isStale()) {
+        return
+      }
+      signalSummary.value = summary
     } catch (error) {
+      if (scope.isStale()) {
+        return
+      }
       signalSummary.value = null
       showUserError(error, '归档状态统计加载失败')
     }
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()
+      return
     }
+    okListLoad()
   } catch (error) {
+    if (scope.isStale()) {
+      return
+    }
+    // 失败可见：保留上次成功列表，避免轮询/写后刷新失败把台账抹成空表
     signalSummary.value = null
+    failListLoad()
     showUserError(error, '质量归档材料加载失败')
   } finally {
-    loading.value = false
+    if (!scope.isStale()) {
+      loading.value = false
+    }
   }
 }
 
@@ -378,7 +494,10 @@ watch(
   },
 )
 
-onBeforeUnmount(stopDestructionPolling)
+onBeforeUnmount(() => {
+  stopDestructionPolling()
+  exportTaskPollGeneration++
+})
 
 const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
   if (!qualityStore.currentTrainingPlanId) {
@@ -429,9 +548,17 @@ function handleResetSearch() {
 }
 
 function openExport() {
+  if (exportTaskActive.value) {
+    exportVisible.value = true
+    return
+  }
+  exportTaskPollGeneration++
+  exportTask.value = null
+  exportTaskPollError.value = null
   Object.assign(exportForm, {
     packageType: ExpertPackageTypeCode.REQUIREMENT,
     targetId: '',
+    accreditationCycleId: '',
     archiveCode: '',
     retentionYears: 20,
     archiveCategory: '',
@@ -440,9 +567,86 @@ function openExport() {
   })
   exportTrainingPlanId.value = qualityStore.currentTrainingPlanId || ''
   exportCockpit.value = undefined
-  exportActiveCycle.value = undefined
-  exportEvidenceCount.value = 0
+  exportReadinessUnknown.value = false
   exportVisible.value = true
+}
+
+/**
+ * 按任务 ID 轮询后台生成结果；完成后刷新归档台账并打开本次生成的正式归档。
+ */
+async function pollExpertPackageExportTask(taskId: string) {
+  const generation = ++exportTaskPollGeneration
+  let failureCount = 0
+  for (let attempt = 0; attempt < EXPORT_TASK_POLL_MAX_ATTEMPTS; attempt++) {
+    if (generation !== exportTaskPollGeneration) return
+    await new Promise(resolve => setTimeout(resolve, EXPORT_TASK_POLL_INTERVAL_MS))
+    if (generation !== exportTaskPollGeneration) return
+    let task: ExpertPackageExportTaskVO
+    try {
+      task = await archiveApi.getExpertPackageExportTask(taskId)
+      failureCount = 0
+      exportTaskPollError.value = null
+    } catch (error) {
+      failureCount++
+      exportTaskPollError.value = getUserErrorMessage(error, '专家材料包任务状态同步失败')
+      if (failureCount >= EXPORT_TASK_POLL_MAX_FAILURES) return
+      continue
+    }
+    exportTask.value = task
+    if (task.taskStatus === ExportTaskStatusCode.COMPLETED) {
+      if (!task.archiveId || !task.fileId) {
+        exportTaskPollError.value = '专家材料包任务已完成但缺少归档或文件结果'
+        return
+      }
+      void message.success('专家材料包已生成并登记归档')
+      exportVisible.value = false
+      await loadList()
+      await openDetail({ id: task.archiveId })
+      return
+    }
+    if (task.taskStatus === ExportTaskStatusCode.FAILED) {
+      void message.error(task.errorMessage || '专家材料包生成失败')
+      return
+    }
+    if (task.taskStatus === ExportTaskStatusCode.CANCELLED) {
+      void message.info('专家材料包生成任务已取消')
+      return
+    }
+  }
+  exportTaskPollError.value = '专家材料包任务超过 6 小时仍未完成，已停止自动同步'
+}
+
+async function cancelExpertPackageExportTask() {
+  const task = exportTask.value
+  if (!task || !exportTaskActive.value) return
+  const confirmed = await confirmAsync({
+    title: '取消专家材料包生成？',
+    content: '已生成但尚未形成正式归档的临时文件会由后台清理。',
+    type: 'warning',
+  })
+  if (!confirmed) return
+  exportSubmitting.value = true
+  try {
+    await archiveApi.cancelExpertPackageExportTask(task.id)
+    exportTaskPollGeneration++
+    exportTask.value = await archiveApi.getExpertPackageExportTask(task.id)
+    exportTaskPollError.value = null
+    void message.info('专家材料包生成任务已取消')
+  } finally {
+    exportSubmitting.value = false
+  }
+}
+
+function resumeExpertPackageTaskPolling() {
+  if (exportTask.value && exportTaskActive.value) {
+    void pollExpertPackageExportTask(exportTask.value.id)
+  }
+}
+
+function resetExpertPackageExportTask() {
+  exportTaskPollGeneration++
+  exportTask.value = null
+  exportTaskPollError.value = null
 }
 
 async function submitExport() {
@@ -452,6 +656,10 @@ async function submitExport() {
   }
   if (exportForm.packageType === ExpertPackageTypeCode.PROGRAM_ACCREDITATION) {
     await loadProgramExportReadiness(exportForm.targetId.trim())
+    if (!exportForm.accreditationCycleId) {
+      void message.error('请选择本次专家材料包绑定的认证周期')
+      return
+    }
     if (!canSubmitProgramExport.value) {
       void message.error(
         exportProgramBlockers.value.join('；') || '专业认证专家材料包导出条件未满足',
@@ -461,7 +669,7 @@ async function submitExport() {
   }
   exportSubmitting.value = true
   try {
-    const archiveId = await archiveApi.exportExpertPackage({
+    const taskId = await archiveApi.exportExpertPackage({
       ...exportForm,
       targetId: exportForm.targetId.trim(),
       archiveCode: exportForm.archiveCode?.trim() || undefined,
@@ -471,12 +679,19 @@ async function submitExport() {
         ? exportForm.recipientUserIds
         : undefined,
     })
-    void message.success('专家材料包导出成功')
-    exportVisible.value = false
-    await loadList()
-    if (archiveId) {
-      await openDetail({ id: archiveId })
+    if (!taskId) {
+      throw new Error('专家材料包接口未返回任务 ID')
     }
+    exportTask.value = {
+      id: taskId,
+      packageType: exportForm.packageType,
+      targetId: exportForm.targetId,
+      accreditationCycleId: exportForm.accreditationCycleId || undefined,
+      taskStatus: ExportTaskStatusCode.PENDING,
+      cleanupPending: false,
+    }
+    void message.success('专家材料包任务已提交后台生成')
+    void pollExpertPackageExportTask(taskId)
   } finally {
     exportSubmitting.value = false
   }
@@ -728,7 +943,12 @@ const destructionDecision = ref<ArchiveDestructionDecisionCode>(
 const destructionRequestOpen = ref(false)
 const destructionApprovalOpen = ref(false)
 const destructionSuperviseOpen = ref(false)
+const destructionExecuteOpen = ref(false)
+const destructionExecuteMode = ref<'execute' | 'retry'>('execute')
 const destructionSubmitting = ref(false)
+const destructionMutationSettled = ref(false)
+const destructionListSyncFailed = ref(false)
+const destructionMutationMessage = ref('')
 const destructionFlowOpen = ref(false)
 const destructionFlowLoading = ref(false)
 const destructionFlowRecords = ref<ArchiveDestructionFlowRecordVO[]>([])
@@ -750,15 +970,42 @@ const ledgerDecisionOptions = [
   },
 ]
 
+function resetDestructionMutationState() {
+  destructionMutationSettled.value = false
+  destructionListSyncFailed.value = false
+  destructionMutationMessage.value = ''
+}
+
+function upsertArchiveInList(vo: ArchiveVO) {
+  const index = list.value.findIndex((item) => item.id === vo.id)
+  if (index >= 0) {
+    list.value[index] = vo
+  }
+}
+
+async function settleDestructionMutation(messageText: string, vo: ArchiveVO) {
+  destructionTarget.value = vo
+  upsertArchiveInList(vo)
+  destructionMutationSettled.value = true
+  destructionMutationMessage.value = messageText
+  await loadList()
+  destructionListSyncFailed.value = listLoadError.value
+}
+
 function openDestructionRequest(record: ArchiveVO) {
   destructionTarget.value = record
   destructionReason.value = ''
   destructionLedgerDecision.value = undefined
   destructionLedgerSkipReason.value = ''
+  resetDestructionMutationState()
   destructionRequestOpen.value = true
 }
 
 async function submitDestructionRequest() {
+  if (destructionMutationSettled.value) {
+    destructionRequestOpen.value = false
+    return
+  }
   if (!destructionTarget.value) return
   if (!destructionReason.value.trim()) {
     showFormValidationMessage('请填写销毁原因')
@@ -779,16 +1026,17 @@ async function submitDestructionRequest() {
   const confirmed = await confirmAsync({
     title: '确认发起销毁申请',
     content:
-      destructionLedgerDecision.value
-      === QualityArchiveDestructionLedgerExportDecisionCode.EXPORT_FIRST
+      `材料 ${destructionTarget.value.archiveCode}：`
+      + (destructionLedgerDecision.value
+        === QualityArchiveDestructionLedgerExportDecisionCode.EXPORT_FIRST
         ? '将先生成并归档本份材料的销毁清册，再提交销毁申请。确认后不可撤销该申请单据。'
-        : '你已确认跳过电子清册导出。确认后将直接提交销毁申请。',
+        : '你已确认跳过电子清册导出。确认后将直接提交销毁申请。'),
     okText: '确认并提交',
   })
   if (!confirmed) return
   destructionSubmitting.value = true
   try {
-    await archiveApi.requestDestruction({
+    const vo = await archiveApi.requestDestruction({
       archiveId: destructionTarget.value.id,
       reason: destructionReason.value.trim(),
       ledgerExportDecision: destructionLedgerDecision.value,
@@ -798,14 +1046,13 @@ async function submitDestructionRequest() {
           ? destructionLedgerSkipReason.value.trim()
           : undefined,
     })
-    void message.success(
+    await settleDestructionMutation(
       destructionLedgerDecision.value
       === QualityArchiveDestructionLedgerExportDecisionCode.EXPORT_FIRST
         ? '清册已导出并提交销毁申请'
         : '销毁申请已提交',
+      vo,
     )
-    destructionRequestOpen.value = false
-    await loadList()
   } catch (error) {
     showUserError(error, '销毁申请提交失败')
   } finally {
@@ -817,10 +1064,15 @@ function openDestructionApproval(record: ArchiveVO, decision: ArchiveDestruction
   destructionTarget.value = record
   destructionDecision.value = decision
   destructionRemark.value = ''
+  resetDestructionMutationState()
   destructionApprovalOpen.value = true
 }
 
 async function submitDestructionApproval() {
+  if (destructionMutationSettled.value) {
+    destructionApprovalOpen.value = false
+    return
+  }
   if (!destructionTarget.value) return
   if (
     destructionDecision.value === ArchiveDestructionDecisionCode.REJECTED
@@ -831,14 +1083,12 @@ async function submitDestructionApproval() {
   }
   destructionSubmitting.value = true
   try {
-    await archiveApi.approveDestruction({
+    const vo = await archiveApi.approveDestruction({
       archiveId: destructionTarget.value.id,
       decision: destructionDecision.value,
       remark: destructionRemark.value.trim() || undefined,
     })
-    void message.success('销毁审批已提交')
-    destructionApprovalOpen.value = false
-    await loadList()
+    await settleDestructionMutation('销毁审批已提交', vo)
   } catch (error) {
     showUserError(error, '销毁审批提交失败')
   } finally {
@@ -846,51 +1096,67 @@ async function submitDestructionApproval() {
   }
 }
 
+function openDestructionExecute(record: ArchiveVO, mode: 'execute' | 'retry') {
+  destructionTarget.value = record
+  destructionExecuteMode.value = mode
+  resetDestructionMutationState()
+  destructionExecuteOpen.value = true
+}
+
 function handleDestructionExecute(record: ArchiveVO) {
-  void confirmAsync({
-    title: `确认执行销毁 ${record.archiveCode}？`,
-    content: '执行后将异步物理删除归档文件，操作不可撤销。',
-    type: 'error',
-    okText: '执行销毁',
-    onOk: async () => {
-      await archiveApi.executeDestruction(record.id)
-      void message.success('销毁执行已发起')
-      await loadList()
-    },
-  })
+  openDestructionExecute(record, 'execute')
 }
 
 function handleDestructionRetry(record: ArchiveVO) {
-  void confirmAsync({
-    title: `重新执行销毁 ${record.archiveCode}？`,
-    content: '确认故障已经排除后重新执行物理删除，系统将重新开始失败计数。',
-    type: 'error',
-    okText: '重试销毁',
-    onOk: async () => {
-      await archiveApi.retryDestruction(record.id)
-      void message.success('销毁重试已发起')
-      await loadList()
-    },
-  })
+  openDestructionExecute(record, 'retry')
+}
+
+async function submitDestructionExecute() {
+  if (destructionMutationSettled.value) {
+    destructionExecuteOpen.value = false
+    return
+  }
+  if (!destructionTarget.value) return
+  destructionSubmitting.value = true
+  try {
+    const vo
+      = destructionExecuteMode.value === 'retry'
+        ? await archiveApi.retryDestruction(destructionTarget.value.id)
+        : await archiveApi.executeDestruction(destructionTarget.value.id)
+    await settleDestructionMutation(
+      destructionExecuteMode.value === 'retry' ? '销毁重试已发起' : '销毁执行已发起',
+      vo,
+    )
+  } catch (error) {
+    showUserError(
+      error,
+      destructionExecuteMode.value === 'retry' ? '销毁重试失败' : '销毁执行失败',
+    )
+  } finally {
+    destructionSubmitting.value = false
+  }
 }
 
 function openDestructionSupervise(record: ArchiveVO) {
   destructionTarget.value = record
   destructionRemark.value = ''
+  resetDestructionMutationState()
   destructionSuperviseOpen.value = true
 }
 
 async function submitDestructionSupervise() {
+  if (destructionMutationSettled.value) {
+    destructionSuperviseOpen.value = false
+    return
+  }
   if (!destructionTarget.value) return
   destructionSubmitting.value = true
   try {
-    await archiveApi.superviseDestruction({
+    const vo = await archiveApi.superviseDestruction({
       archiveId: destructionTarget.value.id,
       remark: destructionRemark.value.trim() || undefined,
     })
-    void message.success('监销确认完成')
-    destructionSuperviseOpen.value = false
-    await loadList()
+    await settleDestructionMutation('监销确认完成', vo)
   } catch (error) {
     showUserError(error, '监销确认失败')
   } finally {
@@ -932,11 +1198,13 @@ const signals = computed<SignalMetric[]>(() => {
   if (!summary) {
     return []
   }
-  const confirmed = summary.confirmedCount ?? 0
-  const pending = summary.pendingCount ?? 0
-  const expertCount = summary.expertPackageCount ?? 0
+  // 合同字段必填；缺字段不得用 ??0 伪装成真实业务零值
+  const confirmed = summary.confirmedCount
+  const pending = summary.pendingCount
+  const expertCount = summary.expertPackageCount
+  const reportCount = summary.reportCount
   return [
-    { key: 'total', label: '归档总数', value: summary.totalCount ?? 0, tone: 'blue' },
+    { key: 'total', label: '归档总数', value: summary.totalCount, tone: 'blue' },
     {
       key: 'confirmed',
       label: '已确认',
@@ -964,8 +1232,8 @@ const signals = computed<SignalMetric[]>(() => {
     {
       key: 'report',
       label: '报告归档',
-      value: summary.reportCount ?? 0,
-      tone: (summary.reportCount ?? 0) > 0 ? 'blue' : 'gray',
+      value: reportCount,
+      tone: reportCount > 0 ? 'blue' : 'gray',
     },
   ]
 })
@@ -1042,9 +1310,9 @@ watch(
   () => exportForm.packageType,
   () => {
     exportForm.targetId = ''
+    exportForm.accreditationCycleId = ''
     exportCockpit.value = undefined
-    exportActiveCycle.value = undefined
-    exportEvidenceCount.value = 0
+    exportReadinessUnknown.value = false
   },
 )
 
@@ -1056,8 +1324,8 @@ watch(
       || !exportState.targetId.trim()
     ) {
       exportCockpit.value = undefined
-      exportActiveCycle.value = undefined
-      exportEvidenceCount.value = 0
+      exportForm.accreditationCycleId = ''
+      exportReadinessUnknown.value = false
       return
     }
     await loadProgramExportReadiness(exportState.targetId.trim())
@@ -1127,12 +1395,26 @@ onMounted(async () => {
           @reset="handleResetSearch"
         />
 
+        <UiAlertStrip
+          v-if="listLoadError && list.length > 0"
+          tone="warning"
+          dense
+          inline
+          :show-icon="false"
+          class="archive-page__list-stale"
+        >
+          列表同步失败，当前为上次成功数据
+        </UiAlertStrip>
+
         <UiDataTable
           v-model:current="query.pageNum"
           v-model:page-size="query.pageSize"
           :columns="columns"
           :data-source="list"
           :loading="loading"
+          :load-error="listLoadError"
+          empty-title="暂无归档材料"
+          empty-description="请登记归档材料或导出专家材料包"
           row-key="id"
           size="middle"
           :total="total"
@@ -1204,12 +1486,9 @@ onMounted(async () => {
       v-model:open="exportVisible"
       title="导出专家材料包"
       :width="560"
-      :confirm-loading="exportSubmitting"
       :hide-footer="false"
-      ok-text="触发导出"
-      @ok="submitExport"
     >
-      <UiForm layout="vertical" :model="exportForm">
+      <UiForm v-if="!exportTask" layout="vertical" :model="exportForm">
         <UiFormItem label="材料包类型" required>
           <UiRadioGroup v-model="exportForm.packageType" size="sm" block>
             <UiRadio
@@ -1246,6 +1525,18 @@ onMounted(async () => {
             v-model:value="exportForm.targetId"
             :program-id="qualityStore.currentProgramId || null"
             placeholder="请选择培养方案"
+          />
+        </UiFormItem>
+        <UiFormItem
+          v-if="exportForm.packageType === ExpertPackageTypeCode.PROGRAM_ACCREDITATION"
+          label="认证周期"
+          required
+        >
+          <UiSelect
+            v-model="exportForm.accreditationCycleId"
+            :options="exportCycleOptions"
+            :disabled="exportReadinessLoading || !exportForm.targetId"
+            placeholder="请选择在办申请或有效保持周期"
           />
         </UiFormItem>
         <div
@@ -1299,6 +1590,108 @@ onMounted(async () => {
           <UiTextarea size="sm" v-model="exportForm.notes" :rows="2" placeholder="可选" />
         </UiFormItem>
       </UiForm>
+      <div v-else class="archive-page__export-task">
+        <div class="archive-page__export-task-head">
+          <div>
+            <p class="archive-page__export-task-label">后台生成任务</p>
+            <p class="archive-page__export-task-id">{{ exportTask.id }}</p>
+          </div>
+          <UiTag :tone="exportTaskStatusTone(exportTask.taskStatus)" size="sm">
+            {{ exportTaskStatusLabel(exportTask.taskStatus) }}
+          </UiTag>
+        </div>
+        <UiAlertStrip
+          v-if="exportTask.taskStatus === ExportTaskStatusCode.PENDING"
+          tone="info"
+          dense
+          :show-icon="false"
+        >
+          任务已进入生成队列，等待后台抢占
+        </UiAlertStrip>
+        <UiAlertStrip
+          v-else-if="exportTask.taskStatus === ExportTaskStatusCode.GENERATING"
+          tone="info"
+          dense
+          :show-icon="false"
+        >
+          正在校验材料并生成可离线交付的完整 ZIP
+        </UiAlertStrip>
+        <UiAlertStrip
+          v-else-if="exportTask.taskStatus === ExportTaskStatusCode.FAILED"
+          tone="error"
+          dense
+          :show-icon="false"
+        >
+          {{ exportTask.errorMessage || '专家材料包生成失败' }}
+          <template v-if="exportTask.cleanupPending">；未归档文件正在后台补偿清理</template>
+        </UiAlertStrip>
+        <UiAlertStrip
+          v-else-if="exportTask.taskStatus === ExportTaskStatusCode.CANCELLED"
+          tone="warning"
+          dense
+          :show-icon="false"
+        >
+          任务已取消，未形成正式归档
+          <template v-if="exportTask.cleanupPending">；未归档文件正在后台补偿清理</template>
+        </UiAlertStrip>
+        <UiAlertStrip
+          v-if="exportTaskPollError"
+          tone="warning"
+          dense
+          :show-icon="false"
+        >
+          {{ exportTaskPollError }}
+        </UiAlertStrip>
+        <UiDescriptions :column="1" size="small">
+          <UiDescriptionsItem label="材料包类型">
+            {{ ExpertPackageTypeDescription[exportTask.packageType] }}
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="提交时间">
+            {{ exportTask.createTime || '刚刚提交' }}
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="exportTask.startedTime" label="开始生成">
+            {{ exportTask.startedTime }}
+          </UiDescriptionsItem>
+        </UiDescriptions>
+      </div>
+      <template #footer>
+        <UiButton variant="outline" size="sm" @click="exportVisible = false">关闭</UiButton>
+        <UiButton
+          v-if="exportTaskActive"
+          variant="outline"
+          status="danger"
+          size="sm"
+          :loading="exportSubmitting"
+          @click="cancelExpertPackageExportTask"
+        >
+          取消任务
+        </UiButton>
+        <UiButton
+          v-else-if="exportTask"
+          variant="primary"
+          size="sm"
+          @click="resetExpertPackageExportTask"
+        >
+          重新填写
+        </UiButton>
+        <UiButton
+          v-else
+          variant="primary"
+          size="sm"
+          :loading="exportSubmitting"
+          @click="submitExport"
+        >
+          提交后台生成
+        </UiButton>
+        <UiButton
+          v-if="exportTaskPollError && exportTaskActive"
+          variant="outline"
+          size="sm"
+          @click="resumeExpertPackageTaskPolling"
+        >
+          重新同步
+        </UiButton>
+      </template>
     </UiDrawer>
 
     <UiDrawer
@@ -1472,6 +1865,9 @@ onMounted(async () => {
         <UiDescriptionsItem label="关联业务对象">
           {{ detailRecord.businessLabel }}
         </UiDescriptionsItem>
+        <UiDescriptionsItem v-if="detailRecord.accreditationCycleId" label="认证周期 ID">
+          {{ detailRecord.accreditationCycleId }}
+        </UiDescriptionsItem>
         <UiDescriptionsItem label="归档文件">
           <UiTextAction v-if="detailRecord.fileId" @click="downloadArchiveFile(detailRecord)">
             {{ detailRecord.fileName }}
@@ -1519,10 +1915,31 @@ onMounted(async () => {
       :width="520"
       :confirm-loading="destructionSubmitting"
       :hide-footer="false"
-      ok-text="确认后提交申请"
+      :ok-text="destructionMutationSettled ? '关闭' : '确认后提交申请'"
       @ok="submitDestructionRequest"
     >
-      <UiForm layout="vertical">
+      <ArchiveDestructionConsequenceSummary
+        v-if="destructionTarget"
+        :archive="destructionTarget"
+        :pending-ledger-decision="
+          destructionMutationSettled ? undefined : destructionLedgerDecision
+        "
+        :pending-ledger-skip-reason="
+          destructionMutationSettled ? undefined : destructionLedgerSkipReason
+        "
+      />
+      <UiAlertStrip
+        v-if="destructionMutationSettled"
+        :tone="destructionListSyncFailed ? 'warning' : 'success'"
+        dense
+        inline
+        :show-icon="false"
+        class="archive-page__mutation-result"
+      >
+        {{ destructionMutationMessage }}
+        <template v-if="destructionListSyncFailed">；列表同步失败</template>
+      </UiAlertStrip>
+      <UiForm v-else layout="vertical">
         <UiFormItem label="销毁原因" required>
           <UiTextarea
             size="sm"
@@ -1565,13 +1982,28 @@ onMounted(async () => {
       :title="
         destructionDecision === ArchiveDestructionDecisionCode.APPROVED ? '批准销毁' : '驳回销毁'
       "
-      :width="480"
+      :width="520"
       :confirm-loading="destructionSubmitting"
       :hide-footer="false"
-      ok-text="提交审批"
+      :ok-text="destructionMutationSettled ? '关闭' : '提交审批'"
       @ok="submitDestructionApproval"
     >
-      <UiForm layout="vertical">
+      <ArchiveDestructionConsequenceSummary
+        v-if="destructionTarget"
+        :archive="destructionTarget"
+      />
+      <UiAlertStrip
+        v-if="destructionMutationSettled"
+        :tone="destructionListSyncFailed ? 'warning' : 'success'"
+        dense
+        inline
+        :show-icon="false"
+        class="archive-page__mutation-result"
+      >
+        {{ destructionMutationMessage }}
+        <template v-if="destructionListSyncFailed">；列表同步失败</template>
+      </UiAlertStrip>
+      <UiForm v-else layout="vertical">
         <UiFormItem
           label="审批意见"
           :required="destructionDecision === ArchiveDestructionDecisionCode.REJECTED"
@@ -1591,15 +2023,75 @@ onMounted(async () => {
     </UiDrawer>
 
     <UiDrawer
-      v-model:open="destructionSuperviseOpen"
-      title="监销确认"
-      :width="480"
+      v-model:open="destructionExecuteOpen"
+      :title="destructionExecuteMode === 'retry' ? '重试销毁' : '执行销毁'"
+      :width="520"
       :confirm-loading="destructionSubmitting"
       :hide-footer="false"
-      ok-text="确认监销"
+      :ok-text="
+        destructionMutationSettled
+          ? '关闭'
+          : destructionExecuteMode === 'retry'
+            ? '重试销毁'
+            : '执行销毁'
+      "
+      @ok="submitDestructionExecute"
+    >
+      <ArchiveDestructionConsequenceSummary
+        v-if="destructionTarget"
+        :archive="destructionTarget"
+      />
+      <UiAlertStrip
+        v-if="destructionMutationSettled"
+        :tone="destructionListSyncFailed ? 'warning' : 'success'"
+        dense
+        inline
+        :show-icon="false"
+        class="archive-page__mutation-result"
+      >
+        {{ destructionMutationMessage }}
+        <template v-if="destructionListSyncFailed">；列表同步失败</template>
+      </UiAlertStrip>
+      <UiAlertStrip
+        v-else
+        tone="warning"
+        dense
+        inline
+        :show-icon="false"
+      >
+        {{
+          destructionExecuteMode === 'retry'
+            ? '确认故障已排除后重新执行物理删除；系统将基于当前销毁台账继续清理尝试。'
+            : '执行后将异步物理删除归档文件，操作不可撤销。'
+        }}
+      </UiAlertStrip>
+    </UiDrawer>
+
+    <UiDrawer
+      v-model:open="destructionSuperviseOpen"
+      title="监销确认"
+      :width="520"
+      :confirm-loading="destructionSubmitting"
+      :hide-footer="false"
+      :ok-text="destructionMutationSettled ? '关闭' : '确认监销'"
       @ok="submitDestructionSupervise"
     >
-      <UiForm layout="vertical">
+      <ArchiveDestructionConsequenceSummary
+        v-if="destructionTarget"
+        :archive="destructionTarget"
+      />
+      <UiAlertStrip
+        v-if="destructionMutationSettled"
+        :tone="destructionListSyncFailed ? 'warning' : 'success'"
+        dense
+        inline
+        :show-icon="false"
+        class="archive-page__mutation-result"
+      >
+        {{ destructionMutationMessage }}
+        <template v-if="destructionListSyncFailed">；列表同步失败</template>
+      </UiAlertStrip>
+      <UiForm v-else layout="vertical">
         <UiFormItem label="监销备注">
           <UiTextarea size="sm" v-model="destructionRemark" :rows="3" placeholder="可选" />
         </UiFormItem>
@@ -1612,6 +2104,10 @@ onMounted(async () => {
       :width="560"
       :hide-footer="true"
     >
+      <ArchiveDestructionConsequenceSummary
+        v-if="destructionTarget"
+        :archive="destructionTarget"
+      />
       <UiEmpty
         size="sm"
         v-if="!destructionFlowLoading && destructionFlowRecords.length === 0"
@@ -1620,7 +2116,7 @@ onMounted(async () => {
       <UiTimeline v-else>
         <UiTimelineItem v-for="item in destructionFlowRecords" :key="item.id">
           <div class="archive-page__flow-item">
-            <div class="archive-page__flow-title">{{ item.eventTypeLabel }}</div>
+            <div class="archive-page__flow-title">{{ destructionEventTypeLabel(item.eventType) }}</div>
             <div class="archive-page__flow-meta">{{ item.eventTime }}</div>
             <div v-if="item.destructionStatus" class="archive-page__flow-meta">
               <UiTag :tone="destructionStatusTone(item.destructionStatus)" size="sm">
@@ -1647,22 +2143,22 @@ onMounted(async () => {
 <style scoped lang="scss">
 .archive {
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
@@ -1676,7 +2172,7 @@ onMounted(async () => {
   &__panel-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
@@ -1689,7 +2185,7 @@ onMounted(async () => {
   }
 
   &__alert {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   &__number-full {
@@ -1697,7 +2193,7 @@ onMounted(async () => {
   }
 
   &__stacked-control {
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
 
     &--first {
       margin-top: 0;
@@ -1705,14 +2201,14 @@ onMounted(async () => {
   }
 
   &__file-name {
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
     color: var(--dp-text-secondary);
     font-size: var(--dp-font-size-sm);
     line-height: 20px;
   }
 
   &__export-readiness {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   &__export-readiness-text {
@@ -1723,7 +2219,7 @@ onMounted(async () => {
   }
 
   &__export-blockers {
-    margin: 8px 0 0;
+    margin: var(--dp-space-component-tight) 0 0;
     padding-left: 18px;
     color: var(--dp-text-secondary);
     font-size: var(--dp-font-size-sm);
@@ -1739,7 +2235,7 @@ onMounted(async () => {
   &__flow-item {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--dp-space-component-xs);
   }
 
   &__flow-title {
@@ -1753,5 +2249,47 @@ onMounted(async () => {
     line-height: 20px;
     color: var(--dp-text-secondary);
   }
+}
+
+.archive-page__mutation-result {
+  margin-bottom: var(--dp-space-component);
+}
+
+.archive-page__list-stale {
+  margin-bottom: var(--dp-space-component);
+}
+
+.archive-page__export-task {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-component);
+}
+
+.archive-page__export-task-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--dp-space-component);
+  padding-bottom: var(--dp-space-component);
+  border-bottom: 1px solid var(--dp-border);
+}
+
+.archive-page__export-task-label,
+.archive-page__export-task-id {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.archive-page__export-task-label {
+  color: var(--dp-text-primary);
+  font-size: var(--dp-type-panel-title-size);
+  font-weight: 600;
+}
+
+.archive-page__export-task-id {
+  margin-top: var(--dp-space-component-xs);
+  color: var(--dp-text-muted);
+  font-size: var(--dp-font-size-sm);
+  overflow-wrap: anywhere;
 }
 </style>

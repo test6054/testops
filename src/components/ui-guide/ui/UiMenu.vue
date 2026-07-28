@@ -15,11 +15,11 @@ defineOptions({ name: 'UiMenu', inheritAttrs: false })
   color: var(--dp-text-primary);
 }
 .ui-menu :deep(.ant-menu-item-selected) {
-  color: var(--dp-primary);
+  color: var(--dp-color-primary);
   background: var(--dp-blue-50) !important;
 }
 .ui-menu :deep(.ant-menu-item:hover),
 .ui-menu :deep(.ant-menu-submenu-title:hover) {
-  color: var(--dp-primary);
+  color: var(--dp-color-primary);
 }
 </style>

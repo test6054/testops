@@ -13,10 +13,14 @@ import type { PfIndicatorStatusCode } from '@/types/enums/pf-indicator-status-en
 import type { PfModelStatusCode } from '@/types/enums/pf-model-status-enum'
 import type { PfRuleChangeLevelCode } from '@/types/enums/pf-rule-change-level-enum'
 import type { PfScoreRuleTypeCode } from '@/types/enums/pf-score-rule-type-enum'
+import type { PortfolioIndicatorApplicabilityCode } from '@/types/enums/portfolio-indicator-applicability-code'
 import type { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
-import type {
-  PortfolioIndicatorDimensionL1Code} from '@/types/enums/portfolio-indicator-dimension-l1-code-enum';
+import type { PortfolioIndicatorDimensionL1Code } from '@/types/enums/portfolio-indicator-dimension-l1-code-enum'
+import type { PortfolioIndustryPackAssessmentSectionCode } from '@/types/enums/portfolio-industry-pack-assessment-section-code-enum'
+import type { PortfolioIndustryPackDictSectionCode } from '@/types/enums/portfolio-industry-pack-dict-section-code-enum'
+import type { PortfolioIndustryPackWeightCode } from '@/types/enums/portfolio-industry-pack-weight-code-enum'
 import type { PortfolioRuleTrackCode } from '@/types/enums/portfolio-rule-track-enum'
+import type { PortfolioTeacherIdentityTypeCode } from '@/types/enums/portfolio-teacher-identity-type-enum'
 import {
   ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES,
   PfEligibilityAuditStatusDescription,
@@ -217,7 +221,7 @@ export interface PortfolioIndicatorDefinitionVO {
   defaultDataSource: PfIndicatorDataSourceChannelCode
   defaultRuleTemplateId?: string
   policyAlign?: string
-  applicableTeachers: string
+  applicableTeachers?: PortfolioIndicatorApplicabilityCode[]
   seedVersion?: string
   auditRequired: boolean
   redLineFlag: boolean
@@ -267,6 +271,7 @@ export interface PortfolioIndicatorRuleTemplateSaveRequest {
 }
 
 export interface PortfolioIndicatorIndustryPackDictionarySectionDto {
+  sectionCode: PortfolioIndustryPackDictSectionCode
   categories?: string[]
   requiredFields?: string[]
   levels?: string[]
@@ -274,24 +279,22 @@ export interface PortfolioIndicatorIndustryPackDictionarySectionDto {
 }
 
 export interface PortfolioIndicatorIndustryPackDictionaryDto {
-  enterprisePractice?: PortfolioIndicatorIndustryPackDictionarySectionDto
-  qualification?: PortfolioIndicatorIndustryPackDictionarySectionDto
-  industryProject?: PortfolioIndicatorIndustryPackDictionarySectionDto
+  sections: PortfolioIndicatorIndustryPackDictionarySectionDto[]
 }
 
 export interface PortfolioIndicatorIndustryPackWeightsDto {
-  enterprisePractice?: number
-  qualification?: number
-  industryProject?: number
-  teachingContribution?: number
-  socialService?: number
-  trainingDevelopment?: number
+  enterprisePractice: number
+  qualification: number
+  industryProject: number
+  teachingContribution: number
+  socialService: number
+  trainingDevelopment: number
 }
 
 export interface PortfolioIndicatorIndustryPackAssessmentSectionDto {
-  sectionId?: string
+  sectionCode: PortfolioIndustryPackAssessmentSectionCode
   title?: string
-  fieldRefs?: string[]
+  fieldRefs: PortfolioIndustryPackWeightCode[]
 }
 
 export interface PortfolioIndicatorIndustryPackAssessmentTemplateDto {
@@ -432,11 +435,12 @@ export interface PortfolioTenantIndicatorConfigVO {
   id: string
   indicatorCode: string
   indicatorName: string
+  platformStatus: PfIndicatorStatusCode
   enabled: boolean
   standardScore?: number
   capScore?: number
   paramsOverride?: PortfolioIndicatorSeedTemplateParamsDto
-  applicableTeacherTypes?: string
+  applicableTeacherTypes?: PortfolioIndicatorApplicabilityCode[]
   applicableScenes?: PfSceneCode[]
   auditChain?: PortfolioIndicatorAuditChainDto
 }
@@ -447,7 +451,7 @@ export interface PortfolioTenantIndicatorConfigSaveRequest {
   standardScore?: number
   capScore?: number
   paramsOverride?: PortfolioIndicatorSeedTemplateParamsDto
-  applicableTeacherTypes?: string
+  applicableTeacherTypes?: PortfolioIndicatorApplicabilityCode[]
   applicableScenes?: PfSceneCode[]
   auditChain?: PortfolioIndicatorAuditChainDto
 }
@@ -486,7 +490,7 @@ export interface PortfolioIndicatorDefinitionSaveRequest {
   defaultDataSource?: PfIndicatorDataSourceChannelCode
   defaultRuleTemplateId?: string
   policyAlign?: string
-  applicableTeachers?: string
+  applicableTeachers?: PortfolioIndicatorApplicabilityCode[]
   seedVersion?: string
   auditRequired?: boolean
   redLineFlag?: boolean
@@ -533,7 +537,6 @@ export interface PortfolioIndicatorComputeLogVO {
   explainText?: string
   computedTime?: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -559,7 +562,6 @@ export interface PortfolioEligibilityEvalLogVO {
   explainText?: string
   evaluatedTime?: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -772,7 +774,6 @@ export interface PortfolioIndicatorAutoCollectSummaryResponse {
   collectedCount: number
   skippedCount: number
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -880,8 +881,11 @@ export interface PortfolioEligibilityRuleGetRequest {
 
 export interface PortfolioPublishImpactReportGetRequest {
   id: string
-  /** 仅导出时必填；get 查询可不传 */
-  exportPurpose?: string
+}
+
+export interface PortfolioPublishImpactReportExportRequest {
+  id: string
+  exportPurpose: string
 }
 
 export interface PortfolioIndicatorAutoCollectRequest {
@@ -980,8 +984,7 @@ export interface PortfolioIndicatorCollegeCompareVO {
 }
 
 export interface PortfolioIndicatorTeacherTypeCompareItemVO {
-  teacherTypeCode: string
-  teacherTypeLabel: string
+  teacherTypeCode: PortfolioTeacherIdentityTypeCode
   usageCount: number
   distinctIndicatorCount: number
   distinctTeacherCount: number
@@ -1056,7 +1059,7 @@ export interface PortfolioIndicatorTenantApi {
     data: PortfolioExportSnapshotDiffRequest,
   ) => Promise<PortfolioIndicatorExportResultVO>
   exportImpactReport: (
-    data: PortfolioPublishImpactReportGetRequest,
+    data: PortfolioPublishImpactReportExportRequest,
   ) => Promise<PortfolioIndicatorExportResultVO>
   computeTrial: (
     data: PortfolioIndicatorComputeTrialRequest,

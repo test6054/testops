@@ -34,18 +34,7 @@
       description="无法确认当前租户可用的目录模板，课程考核袋暂不可创建。"
       dense
       class="create-layout__submit-error"
-    >
-      <template #actions>
-        <UiButton
-          size="sm"
-          variant="outline"
-          :loading="ac.templateLoading.value"
-          @click="ac.loadTemplateSets"
-        >
-          重新加载
-        </UiButton>
-      </template>
-    </UiAlertStrip>
+    />
     <UiSpin :spinning="ac.submitting.value" tip="正在创建…">
       <TaskBasicInfoStep
         :basic-rules="ac.basicRules"

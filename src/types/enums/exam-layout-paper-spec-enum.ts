@@ -1,5 +1,5 @@
 /**
- * 标准答题卡纸张规格
+ * 标准答题纸纸张规格
  */
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -16,8 +16,8 @@ export const ALL_EXAM_LAYOUT_PAPER_SPEC_CODES: readonly ExamLayoutPaperSpecCode[
 
 /** 纸张规格文案 */
 export const ExamLayoutPaperSpecDescription: Record<ExamLayoutPaperSpecCode, string> = {
-  [ExamLayoutPaperSpecCode.A4_1COL]: 'A4 单栏',
-  [ExamLayoutPaperSpecCode.A3_2COL]: 'A3 双栏',
+  [ExamLayoutPaperSpecCode.A4_1COL]: 'A4 单逻辑页',
+  [ExamLayoutPaperSpecCode.A3_2COL]: 'A3 横向双逻辑页',
 }
 
 /** 纸张规格毫米尺寸 */
@@ -39,11 +39,6 @@ export const ExamLayoutPaperSpecOptions: Array<{ value: ExamLayoutPaperSpecCode,
     label: strictEnumLabel(ExamLayoutPaperSpecDescription, ExamLayoutPaperSpecCode.A4_1COL, '纸张规格'),
   },
 ]
-
-/** 高校期末默认空白答题卡规格 - 与 ExamLayoutPaperSpec.defaultBlankSheet() 一致 */
-export function defaultBlankSheetPaperSpec(): ExamLayoutPaperSpecCode {
-  return ExamLayoutPaperSpecCode.A3_2COL
-}
 
 export function getExamLayoutPaperSpecDescription(code: ExamLayoutPaperSpecCode): string {
   return strictEnumLabel(ExamLayoutPaperSpecDescription, code, '纸张规格')

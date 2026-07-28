@@ -22,7 +22,6 @@ export interface PortfolioComplianceThresholdVO {
 
 export interface PortfolioComplianceMetricVO {
   metricCode: PortfolioComplianceAlertTypeCode
-  metricLabel: string
   scopeType: PortfolioComplianceScopeTypeCode
   departmentId?: string
   numeratorValue?: string
@@ -35,6 +34,19 @@ export interface PortfolioComplianceMetricVO {
   alertLevel?: PortfolioComplianceAlertLevelCode
   summaryText: string
   computedTime?: string
+}
+
+/** 指标定义目录 - PortfolioComplianceMetricDefinitionVO */
+export interface PortfolioComplianceMetricDefinitionVO {
+  metricCode: PortfolioComplianceAlertTypeCode
+  metricLabel: string
+  compareDirection: PortfolioComplianceCompareDirectionCode
+  unitLabel: string
+  valueMin: string
+  valueMax: string
+  suggestedRangeHint: string
+  requiresDenominatorBasis: boolean
+  requiresCounselorRatioStandard: boolean
 }
 
 export interface PortfolioComplianceThresholdSaveRequest {
@@ -62,6 +74,12 @@ export const portfolioComplianceApi = {
 
   deleteThreshold: (data: { id: string }) =>
     http.post<void>('/api/portfolio/compliance/threshold/delete', data),
+
+  listMetricDefinitions: () =>
+    http.post<PortfolioComplianceMetricDefinitionVO[]>(
+      '/api/portfolio/compliance/metric/definitions',
+      {},
+    ),
 
   getMetrics: (data: {
     scopeType?: PortfolioComplianceScopeTypeCode

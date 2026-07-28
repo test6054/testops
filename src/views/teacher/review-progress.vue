@@ -16,7 +16,7 @@
 
     <ExamSelectGateStrip v-if="!selectedExamId" class="progress-page__empty" />
 
-    <UiEmpty size="sm" v-else-if="loadFailed" title="加载失败" class="progress-page__empty" />
+    <UiAlertStrip v-else-if="loadFailed" tone="error" title="复核进度加载失败" class="progress-page__empty" />
 
     <UiSkeletonState v-else-if="loading && !progress" variant="card" compact />
 
@@ -44,14 +44,13 @@
                 <MarkGaugeBlock v-bind="confirmedGaugeBlockProps">
                   <div class="mark-gauge-block__formula">
                     <strong>{{ progress.confirmedQuestionGradeCount }}</strong>
-                    <span class="muted"> / {{ progress.totalQuestionGradeCount }} 题次 </span>
+                    <span class="dp-text-muted"> / {{ progress.totalQuestionGradeCount }} 题次 </span>
                   </div>
                   <p v-if="progress.totalQuestionGradeCount <= 0" class="mark-gauge-block__hint">
                     暂无应复核题次
                   </p>
                 </MarkGaugeBlock>
               </div>
-              <SignalBand :metrics="overviewSignalMetrics" compact variant="inline" />
             </div>
           </WorkbenchSurfaceCard>
         </UiCol>
@@ -72,12 +71,6 @@
                 :aria-label="statusDistributionAriaLabel"
               />
               <SignalBand :metrics="statusSignalMetrics" compact variant="inline" />
-              <SignalBand
-                :metrics="auxSignalMetrics"
-                compact
-                variant="inline"
-                class="status-card__aux"
-              />
             </div>
           </WorkbenchSurfaceCard>
         </UiCol>
@@ -163,19 +156,19 @@
               <UiTag v-if="record.pendingTaskCount > 0" tone="orange" size="sm">
                 {{ record.pendingTaskCount }}
               </UiTag>
-              <span v-else class="muted">0</span>
+              <span v-else class="dp-text-muted">0</span>
             </template>
             <template v-else-if="column.key === 'inProgress'">
               <UiTag v-if="record.inProgressTaskCount > 0" tone="blue" size="sm">
                 {{ record.inProgressTaskCount }}
               </UiTag>
-              <span v-else class="muted">0</span>
+              <span v-else class="dp-text-muted">0</span>
             </template>
             <template v-else-if="column.key === 'rejected'">
               <UiTag v-if="record.rejectedTaskCount > 0" tone="red" size="sm">
                 {{ record.rejectedTaskCount }}
               </UiTag>
-              <span v-else class="muted">0</span>
+              <span v-else class="dp-text-muted">0</span>
             </template>
           </template>
         </UiDataTable>
@@ -227,7 +220,7 @@
               <span v-if="record.diagnostic" class="processing-card__diagnostic">{{
                 record.diagnostic
               }}</span>
-              <span v-else class="muted">-</span>
+              <span v-else class="dp-text-muted">-</span>
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
@@ -296,6 +289,7 @@ import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiProgressBar from '@/components/ui-guide/ui/UiProgressBar.vue'
@@ -663,6 +657,7 @@ const statusDistributionAriaLabel = computed(() => {
 
 const overviewSignalMetrics = computed(() => toSignalMetrics(overviewStatItems.value))
 
+/** 页顶唯一信号带：确认率主指标 + 底量 + 非零告警（扫描异常/未完成任务），卡内不再重复铺指标 */
 const pageSignalMetrics = computed((): SignalMetric[] => {
   if (!progress.value) {
     return []
@@ -675,15 +670,14 @@ const pageSignalMetrics = computed((): SignalMetric[] => {
       unit: '%',
       tone: confirmedPercent.value >= 100 ? 'green' : 'blue',
     },
-    ...toSignalMetrics(overviewStatItems.value),
+    ...overviewSignalMetrics.value,
+    ...toSignalMetrics(auxStatItems.value).filter((metric) => Number(metric.value) > 0),
   ]
 })
 
 const statusSignalMetrics = computed(() =>
   toShareSignalMetrics(statusBreakdown.value, totalTaskCount.value, '暂无复核任务'),
 )
-
-const auxSignalMetrics = computed(() => toSignalMetrics(auxStatItems.value))
 
 const auxStatItems = computed((): UiStatPanelItem[] => {
   if (!progress.value) return []
@@ -864,7 +858,7 @@ onActivated(() => {
 .progress-page {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
   min-width: 0;
   padding: 0;
   /* 滚动页：surface 随内容增高，避免 flex 吃满视口产生底部空白 */
@@ -873,12 +867,12 @@ onActivated(() => {
   }
 
   &__empty {
-    padding: var(--dp-space-4) 0;
+    padding: var(--dp-space-block) 0;
   }
 }
 
 .overview-row {
-  row-gap: var(--dp-space-4);
+  row-gap: var(--dp-space-block);
 }
 
 .status-card {
@@ -887,8 +881,8 @@ onActivated(() => {
   &__title {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
-    font-size: 15px;
+    gap: var(--dp-space-component-tight);
+    font-size: var(--dp-type-panel-title-size);
     font-weight: 600;
     color: var(--dp-text-primary);
     letter-spacing: -0.01em;
@@ -897,11 +891,11 @@ onActivated(() => {
   &__body {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
   }
 
   &__aux {
-    padding-top: var(--dp-space-3, 12px);
+    padding-top: var(--dp-space-component);
     border-top: 1px solid var(--dp-border-subtle);
   }
 }
@@ -912,8 +906,8 @@ onActivated(() => {
   &__title {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
-    font-size: 15px;
+    gap: var(--dp-space-component-tight);
+    font-size: var(--dp-type-panel-title-size);
     font-weight: 600;
     color: var(--dp-text-primary);
     letter-spacing: -0.01em;
@@ -922,15 +916,15 @@ onActivated(() => {
   &__body {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
   }
 
   &__ring-block {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 4px 0 8px;
+    gap: var(--dp-space-component-tight);
+    padding: var(--dp-space-component-xs) 0 var(--dp-space-component-tight);
   }
 
   &__gauge {
@@ -939,14 +933,14 @@ onActivated(() => {
 
   &__formula {
     font-size: var(--dp-font-size-lg);
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
     text-align: center;
   }
 
   &__hint {
     margin: 0;
     font-size: var(--dp-font-size-xs);
-    color: var(--dp-text-tertiary);
+    color: var(--dp-text-muted);
     text-align: center;
   }
 }
@@ -955,8 +949,8 @@ onActivated(() => {
   &__title {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
-    font-size: 15px;
+    gap: var(--dp-space-component-tight);
+    font-size: var(--dp-type-panel-title-size);
     font-weight: 600;
     color: var(--dp-text-primary);
     letter-spacing: -0.01em;
@@ -967,8 +961,8 @@ onActivated(() => {
   &__title {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
-    font-size: 15px;
+    gap: var(--dp-space-component-tight);
+    font-size: var(--dp-type-panel-title-size);
     font-weight: 600;
     color: var(--dp-text-primary);
     letter-spacing: -0.01em;
@@ -986,7 +980,7 @@ onActivated(() => {
 
 .progress-page__chart,
 .progress-page__heatmap {
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-block);
 }
 
 .question-cell--highlight {
@@ -1003,7 +997,7 @@ onActivated(() => {
 .question-cell {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   min-width: 0;
 }
 
@@ -1014,16 +1008,12 @@ onActivated(() => {
 }
 
 .progress-detail {
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
-}
-
-.muted {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .empty-block {
-  padding: var(--dp-space-3, 12px) 0;
+  padding: var(--dp-space-component) 0;
 }
 </style>

@@ -11,6 +11,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
@@ -19,7 +20,6 @@ import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
@@ -216,8 +216,6 @@ async function loadPage() {
       return
     }
     failLoad()
-    rows.value = []
-    total.value = 0
     showUserError(error, '加载失败')
   } finally {
     if (currentToken === pageRequestToken.value) {
@@ -256,17 +254,31 @@ async function downloadRow(row: PortfolioExportApprovalVO) {
   }
   downloadLoading.value = true
   try {
-    const result = await portfolioSecurityApi.downloadExport({ id: row.id })
-    if (!result.fileNodeId) {
+    const authorized = await portfolioSecurityApi.downloadExport({ id: row.id })
+    if (!authorized.fileNodeId) {
       showFormValidationMessage('审批产物尚未生成')
       return
     }
     await downloadPortfolioExcelExport({
-      fileNodeId: result.fileNodeId,
-      fileName: result.fileName ?? `档案袋导出-${row.id}.xlsx`,
+      fileNodeId: authorized.fileNodeId,
+      fileName: authorized.fileName ?? `档案袋导出-${row.id}.xlsx`,
     })
-    void message.success('已开始下载')
-    await loadPage()
+    // 文件已落到客户端后再确认 DOWNLOADED；确认失败保留授权态并可见
+    try {
+      const confirmed = await portfolioSecurityApi.confirmDownloadExport({ id: row.id })
+      const idx = rows.value.findIndex((item) => item.id === row.id)
+      if (idx >= 0) {
+        rows.value[idx] = confirmed
+      }
+      void message.success('下载完成')
+    } catch (error) {
+      showUserError(error, '文件已下载，下载状态确认失败')
+    }
+    try {
+      await loadPage()
+    } catch (error) {
+      showUserError(error, '列表同步失败')
+    }
   } catch (error) {
     showUserError(error, '下载失败')
   } finally {

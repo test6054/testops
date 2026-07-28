@@ -68,7 +68,7 @@ const statusTone = computed<BadgeTone>(() => {
 
 <style scoped>
 .archive-volume-catalog-preview {
-  padding: var(--dp-space-3) var(--dp-space-4);
+  padding: var(--dp-space-component) var(--dp-space-block);
 }
 
 .catalog-entry__title {
@@ -80,7 +80,7 @@ const statusTone = computed<BadgeTone>(() => {
 }
 
 .catalog-entry__pages {
-  font-family: var(--dp-font-mono);
+  font-family: var(--dp-font-family-code);
   font-size: var(--dp-type-hint-size);
   color: var(--dp-text-muted);
 }

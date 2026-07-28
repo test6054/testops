@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import type { ExamMaterialLayoutModeCode } from '@/apis/mark/exam'
-import type {
-  ExamLayoutDocument,
-  ExamLayoutGenerateQuestionRequest,
-} from '@/apis/mark/exam-layout-design'
-import type { LayoutQuestionDraft } from '@/utils/layout-question-templates'
+import type { ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
+import type { AnswerBookletSourceModeCode } from '@/types/enums/answer-booklet-source-mode-enum'
 import QuestionCircleOutlined from '@ant-design/icons-vue/QuestionCircleOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
@@ -23,32 +20,18 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
 import {
   ALL_EXAM_LAYOUT_PAPER_SPEC_CODES,
-  defaultBlankSheetPaperSpec,
   ExamLayoutPaperSpecCode,
   ExamLayoutPaperSpecOptions,
 } from '@/types/enums/exam-layout-paper-spec-enum'
-import {
-  ALL_MARK_OCR_SCENE_CODES,
-  MarkOcrSceneCode,
-  MarkOcrSceneDescription,
-} from '@/types/enums/mark-ocr-scene-enum'
-import { createClientSnowflakeId } from '@/utils/client-snowflake'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { layoutHasSourceFileDetectResult } from '@/utils/exam-layout-designer'
-import {
-  buildGenerateQuestionsFromDrafts,
-  createAnswerSheetDefaultQuestionRows,
-  createQuestionDraft,
-  defaultFullScore,
-  defaultOptionCount,
-  deriveQuestionType,
-} from '@/utils/layout-question-templates'
 
 const props = withDefaults(
   defineProps<{
     document: ExamLayoutDocument | null
     examId: string
     materialLayoutMode?: ExamMaterialLayoutModeCode
+    answerBookletSourceMode?: AnswerBookletSourceModeCode
     generating?: boolean
     detecting?: boolean
     /** MVR-973：默认拒绝；仅父层显式 false 可写 */
@@ -62,33 +45,21 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  'generate-sheet': [paperSpec: string, questions: ExamLayoutGenerateQuestionRequest[]]
+  'generate-sheet': [paperSpec: ExamLayoutPaperSpecCode]
+  'import-institution-answer-booklet': [sourceFileId: string]
   'auto-detect': [sourcePdfFileId: string]
   "patch": [document: ExamLayoutDocument]
 }>()
 
-const OCR_SCENE_OPTIONS = ALL_MARK_OCR_SCENE_CODES.map((value) => ({
-  label: MarkOcrSceneDescription[value],
-  value,
-}))
-
-const QUICK_SCENE_OPTIONS = [
-  { label: '选择', value: MarkOcrSceneCode.CHOICE },
-  { label: '判断', value: MarkOcrSceneCode.TRUE_FALSE },
-  { label: '填空', value: MarkOcrSceneCode.FILL_BLANK },
-  { label: '数值', value: MarkOcrSceneCode.NUMERIC },
-  { label: '计算', value: MarkOcrSceneCode.CALCULATION },
-  { label: '作图', value: MarkOcrSceneCode.DRAWING },
-  { label: '编程', value: MarkOcrSceneCode.PROGRAMMING },
-]
-
 const PAPER_SPEC_TOOLTIP: Partial<Record<ExamLayoutPaperSpecCode, string>> = {
-  [ExamLayoutPaperSpecCode.A3_2COL]: 'A3 横版：适合 1 张 2 面双面扫描；客观左栏、主观右栏',
-  [ExamLayoutPaperSpecCode.A4_1COL]: 'A4 单栏：通常 1 张 1 面单面扫描；多页时按总页数推导印张',
+  [ExamLayoutPaperSpecCode.A3_2COL]: 'A3 横向物理面：每面并排承载 2 个 A4 逻辑页；印张正反面与必扫范围由实际总页数和考试扫描范围生成。',
+  [ExamLayoutPaperSpecCode.A4_1COL]: 'A4 物理面：每面承载 1 个 A4 逻辑页；多页时按实际页序生成印张与正反面合同。',
 }
 
 const sourcePdfFileId = ref(props.document?.sourcePdfFileId ?? '')
 const sourcePdfFileName = ref('')
+const answerBookletSourceFileId = ref(props.document?.answerBookletSourceFileId ?? '')
+const answerBookletSourceFileName = ref('')
 const sourceFileCanAutoDetect = computed(() => {
   if (!sourcePdfFileId.value.trim()) {
     return false
@@ -100,11 +71,10 @@ const sourceFileCanAutoDetect = computed(() => {
 })
 const paperSpec = ref<ExamLayoutPaperSpecCode>(
   ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((code) => code === props.document?.paperSpec)
-  ?? defaultBlankSheetPaperSpec(),
+  ?? ExamLayoutPaperSpecCode.A3_2COL,
 )
 const layoutName = ref(props.document?.layoutName ?? '')
 const printSafeMarginMm = ref(props.document?.printSafeMarginMm ?? 5)
-const questionRows = ref<LayoutQuestionDraft[]>(createAnswerSheetDefaultQuestionRows())
 
 watch(
   () => props.document?.sourcePdfFileId,
@@ -135,6 +105,15 @@ watch(
 
 const isAnswerSheetMode = computed(() => props.materialLayoutMode === 'ANSWER_SHEET')
 const isFullPaperMode = computed(() => props.materialLayoutMode === 'FULL_PAPER')
+const usesInstitutionAnswerBooklet = computed(
+  () => props.answerBookletSourceMode === 'INSTITUTION_TEMPLATE',
+)
+const governedPaperReady = computed(() => Boolean(sourcePdfFileId.value.trim()))
+const governedPaperDetected = computed(
+  () => props.document?.layoutEntryKind === ExamLayoutEntryKindCode.PAPER_WITH_ANSWER_SHEET
+    && (props.document.pages?.some((page) => page.pageKind === 'EXAM_PAPER') ?? false)
+    && (props.document.questions?.length ?? 0) > 0,
+)
 /** 只读或未选材料版式模式时不可写 */
 const entryReadonly = computed(() => props.readonly !== false || !props.materialLayoutMode)
 
@@ -149,18 +128,6 @@ function patchDocument(partial: Partial<ExamLayoutDocument>): void {
     return
   }
   emit('patch', { ...props.document, ...partial })
-}
-
-function startBlankSheet(): void {
-  if (entryReadonly.value) {
-    return
-  }
-  patchDocument({
-    layoutEntryKind: ExamLayoutEntryKindCode.BLANK_SHEET,
-    layoutName: layoutName.value || '标准答题卡',
-    printSafeMarginMm: printSafeMarginMm.value,
-    paperSpec: paperSpec.value,
-  })
 }
 
 function startSourceFile(): void {
@@ -178,11 +145,14 @@ function buildSourceFileDocument(currentDocument: ExamLayoutDocument | null): Ex
     blocks: [],
     blockOptions: [],
   }
+  const entryKind = isAnswerSheetMode.value
+    ? ExamLayoutEntryKindCode.PAPER_WITH_ANSWER_SHEET
+    : ExamLayoutEntryKindCode.SOURCE_FILE
   return {
     ...nextDocument,
     examId: props.examId,
-    layoutEntryKind: ExamLayoutEntryKindCode.SOURCE_FILE,
-    layoutName: layoutName.value || '整卷试卷源文件',
+    layoutEntryKind: entryKind,
+    layoutName: layoutName.value || (isAnswerSheetMode.value ? '试题卷+答题纸' : '单独试卷源文件'),
     printSafeMarginMm: printSafeMarginMm.value,
     totalPages: Math.max(nextDocument.totalPages ?? 1, 1),
     sourcePdfFileId: sourcePdfFileId.value.trim(),
@@ -196,53 +166,31 @@ function buildSourceFileDocument(currentDocument: ExamLayoutDocument | null): Ex
 
 function handleGenerateSheet(): void {
   if (entryReadonly.value) {
-    showFormValidationMessage('当前制卷设计不可编辑，无法生成答题卡')
+    showFormValidationMessage('当前制卷设计不可编辑，无法生成答题纸')
     return
   }
-  const questions = buildGenerateQuestionsFromDrafts(questionRows.value)
-  if (questions.length === 0) {
-    void message.warning('请至少配置一道题目后再生成答题卡')
+  if (!governedPaperDetected.value) {
+    void message.warning('请先识别命题治理 A 卷并核对题目结构')
     return
   }
-  startBlankSheet()
-  emit('generate-sheet', paperSpec.value, questions)
+  patchDocument({ paperSpec: paperSpec.value })
+  emit('generate-sheet', paperSpec.value)
 }
-function addQuestion(ocrScene: MarkOcrSceneCode): void {
+
+function handleInstitutionAnswerBookletImport(): void {
   if (entryReadonly.value) {
+    showFormValidationMessage('当前制卷设计不可编辑，无法导入学校答题纸')
     return
   }
-  questionRows.value.push(createQuestionDraft(ocrScene, questionRows.value.length + 1))
-}
-
-function removeQuestion(index: number): void {
-  if (entryReadonly.value) {
+  if (!governedPaperDetected.value) {
+    void message.warning('请先识别命题治理 A 卷并核对题目结构')
     return
   }
-  questionRows.value.splice(index, 1)
-  resequenceQuestionNo()
-}
-
-function resequenceQuestionNo(): void {
-  questionRows.value.forEach((row, index) => {
-    row.questionNo = String(index + 1)
-  })
-}
-
-function handleQuestionSceneChange(row: LayoutQuestionDraft): void {
-  if (entryReadonly.value) {
+  if (!answerBookletSourceFileId.value.trim()) {
+    void message.warning('请上传学校统一答题纸')
     return
   }
-  row.questionType = deriveQuestionType(row.ocrScene)
-  row.optionCount = defaultOptionCount(row.ocrScene)
-  row.fullScore = defaultFullScore(row.ocrScene)
-}
-
-function questionTypeLabel(questionType: LayoutQuestionDraft['questionType']): string {
-  return questionType === 'OBJECTIVE' ? '客观' : '主观'
-}
-
-function ocrSceneLabel(ocrScene: string): string {
-  return OCR_SCENE_OPTIONS.find((option) => option.value === ocrScene)?.label ?? ocrScene
+  emit('import-institution-answer-booklet', answerBookletSourceFileId.value.trim())
 }
 
 async function confirmRedetectIfNeeded(): Promise<boolean> {
@@ -310,7 +258,6 @@ async function syncUploadedPageMeta(fileId: string): Promise<void> {
         )
       : [
           {
-            id: createClientSnowflakeId(),
             pageNo: 1,
             backgroundFileId: fileId,
             naturalWidthPx: meta.naturalWidthPx,
@@ -320,7 +267,9 @@ async function syncUploadedPageMeta(fileId: string): Promise<void> {
     emit('patch', {
       ...sourceDocument,
       examId: props.examId,
-      layoutEntryKind: ExamLayoutEntryKindCode.SOURCE_FILE,
+      layoutEntryKind: isAnswerSheetMode.value
+        ? ExamLayoutEntryKindCode.PAPER_WITH_ANSWER_SHEET
+        : ExamLayoutEntryKindCode.SOURCE_FILE,
       sourcePdfFileId: fileId,
       pages,
       totalPages: Math.max(sourceDocument.totalPages ?? 1, pages.length),
@@ -329,7 +278,9 @@ async function syncUploadedPageMeta(fileId: string): Promise<void> {
     emit('patch', {
       ...sourceDocument,
       examId: props.examId,
-      layoutEntryKind: ExamLayoutEntryKindCode.SOURCE_FILE,
+      layoutEntryKind: isAnswerSheetMode.value
+        ? ExamLayoutEntryKindCode.PAPER_WITH_ANSWER_SHEET
+        : ExamLayoutEntryKindCode.SOURCE_FILE,
       sourcePdfFileId: fileId,
       totalPages: Math.max(sourceDocument.totalPages ?? 1, 1),
       pages: sourceDocument.pages ?? [],
@@ -364,7 +315,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
     <UiForm layout="vertical" class="layout-entry-gateway__form">
       <UiTooltip
         v-if="!materialLayoutMode"
-        title="请先回到考试准备页保存答卷页模式或整卷模式，再进入制卷设计。"
+        title="请先回到考试准备页保存单独试卷或试卷+答题页形态，再进入制卷设计。"
       >
         <UiAlertStrip
           tone="warning"
@@ -411,7 +362,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
       </div>
 
       <template v-if="isFullPaperMode">
-        <UiFormItem>
+        <UiFormItem v-if="!usesInstitutionAnswerBooklet">
           <template #label>
             <span class="layout-entry-gateway__label">
               整卷源文件
@@ -435,6 +386,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
           />
         </UiFormItem>
         <UiButton
+          v-if="!usesInstitutionAnswerBooklet"
           size="sm"
           block
           variant="primary"
@@ -447,108 +399,82 @@ function onSourcePdfChange(fileId: string | undefined): void {
       </template>
 
       <template v-if="isAnswerSheetMode">
-        <UiFormItem>
-          <template #label>
-            <span class="layout-entry-gateway__label">
-              纸型
-              <UiTooltip :title="paperSpecTooltip">
-                <QuestionCircleOutlined class="layout-entry-gateway__label-icon" />
-              </UiTooltip>
-            </span>
-          </template>
-          <UiSelect
-            size="sm"
-            v-model="paperSpec"
-            :options="paperSpecOptions"
-            :disabled="entryReadonly"
-          />
-        </UiFormItem>
-        <UiFormItem label="题目结构">
-          <div class="layout-entry-gateway__quick-actions">
-            <button
-              v-for="scene in QUICK_SCENE_OPTIONS"
-              :key="scene.value"
-              class="layout-entry-gateway__quick-button"
-              type="button"
-              :disabled="entryReadonly"
-              @click="addQuestion(scene.value)"
-            >
-              + {{ scene.label }}
-            </button>
-          </div>
-          <div class="layout-entry-gateway__question-list">
-            <div class="layout-entry-gateway__question-head">
-              <span>题号</span>
-              <span>题型</span>
-              <span>主类</span>
-              <span>分值</span>
-              <span>选项</span>
-              <span>操作</span>
-            </div>
-            <div
-              v-for="(row, index) in questionRows"
-              :key="row.id"
-              class="layout-entry-gateway__question-row"
-            >
-              <UiInput
-                v-model="row.questionNo"
-                size="small"
-                :disabled="entryReadonly"
-                aria-label="题号"
-              />
-              <UiSelect
-                v-model="row.ocrScene"
-                size="small"
-                :options="OCR_SCENE_OPTIONS"
-                :disabled="entryReadonly"
-                @change="handleQuestionSceneChange(row)"
-              />
-              <span
-                class="layout-entry-gateway__type-pill"
-                :class="`layout-entry-gateway__type-pill--${row.questionType.toLowerCase()}`"
-              >
-                {{ questionTypeLabel(row.questionType) }}
-              </span>
-              <UiInputNumber
-                v-model="row.fullScore"
-                size="sm"
-                :min="0.5"
-                :max="100"
-                :step="0.5"
-                :disabled="entryReadonly"
-                aria-label="满分"
-              />
-              <UiInputNumber
-                v-model="row.optionCount"
-                size="sm"
-                :min="2"
-                :max="8"
-                :disabled="entryReadonly || row.ocrScene !== MarkOcrSceneCode.CHOICE"
-                :placeholder="row.ocrScene === MarkOcrSceneCode.TRUE_FALSE ? '2' : '-'"
-                aria-label="选项数量"
-              />
-              <button
-                class="layout-entry-gateway__remove-button"
-                type="button"
-                :disabled="entryReadonly || questionRows.length <= 1"
-                :title="`删除第 ${row.questionNo} 题 ${ocrSceneLabel(row.ocrScene)}`"
-                @click="removeQuestion(index)"
-              >
-                删除
-              </button>
-            </div>
-          </div>
-        </UiFormItem>
+        <UiAlertStrip
+          :tone="governedPaperReady ? (governedPaperDetected ? 'success' : 'info') : 'warning'"
+          :title="governedPaperReady
+            ? (governedPaperDetected ? 'A 卷题目与试题页已识别' : '已关联命题治理 A 卷，等待识别')
+            : '命题治理尚未配置 A 卷源文件'"
+          :description="governedPaperReady
+            ? '组合版式只使用当前 A 卷，不接受重复上传；A 卷变化后须重新识别并生成答题纸。'
+            : '请先在命题签审中维护 A 卷、答案、评分标准与逐题结构，再返回制卷设计。'"
+          dense
+          inline
+          :closable="false"
+          class="layout-entry-gateway__alert"
+        />
         <UiButton
           size="sm"
           block
-          variant="primary"
-          :loading="generating === true"
-          :disabled="entryReadonly"
-          @click="handleGenerateSheet"
+          :variant="governedPaperDetected ? 'outline' : 'primary'"
+          :loading="detecting"
+          :disabled="entryReadonly || !governedPaperReady || detecting"
+          @click="handleAutoDetect"
         >
-          生成标准答题卡
+          {{ governedPaperDetected ? '重新识别当前 A 卷' : '识别当前 A 卷' }}
         </UiButton>
+        <template v-if="!usesInstitutionAnswerBooklet">
+          <UiFormItem>
+            <template #label>
+              <span class="layout-entry-gateway__label">
+                纸型
+                <UiTooltip :title="paperSpecTooltip">
+                  <QuestionCircleOutlined class="layout-entry-gateway__label-icon" />
+                </UiTooltip>
+              </span>
+            </template>
+            <UiSelect
+              size="sm"
+              v-model="paperSpec"
+              :options="paperSpecOptions"
+              :disabled="entryReadonly"
+            />
+          </UiFormItem>
+          <UiButton
+            size="sm"
+            block
+            variant="primary"
+            :loading="generating === true"
+            :disabled="entryReadonly || !governedPaperDetected || detecting"
+            @click="handleGenerateSheet"
+          >
+            生成试题卷+答题纸统一页序
+          </UiButton>
+        </template>
+        <template v-else>
+          <UiFormItem label="学校统一答题纸">
+            <UiPlatformFileField
+              v-model:file-node-id="answerBookletSourceFileId"
+              v-model:file-name="answerBookletSourceFileName"
+              :scene-key="FileUploadSceneKey.MARK_EXAM_TEMPLATE"
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg"
+              :disabled="entryReadonly || detecting || generating"
+              variant="dragger"
+              button-text="上传答题纸母版"
+              tip="支持 PDF / Word / PNG / JPG；导入后须校对身份区与逐题作答区"
+            />
+          </UiFormItem>
+          <UiButton
+            size="sm"
+            block
+            variant="primary"
+            :loading="generating === true"
+            :disabled="entryReadonly || !governedPaperDetected || detecting
+              || !answerBookletSourceFileId.trim()"
+            @click="handleInstitutionAnswerBookletImport"
+          >
+            导入并校对学校答题纸
+          </UiButton>
+        </template>
       </template>
     </UiForm>
   </section>
@@ -557,7 +483,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
 <style scoped lang="scss">
 .layout-entry-gateway {
   max-width: 720px;
-  padding: var(--dp-space-3) var(--dp-space-4);
+  padding: var(--dp-space-component) var(--dp-space-block);
 
   &__form {
     display: flex;
@@ -566,13 +492,13 @@ function onSourcePdfChange(fileId: string | undefined): void {
   }
 
   &__alert {
-    margin-bottom: var(--dp-space-2);
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__meta {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 112px;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
     align-items: start;
   }
 
@@ -583,7 +509,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
   &__margin-control {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__unit {
@@ -595,7 +521,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
   &__label {
     display: inline-flex;
     align-items: center;
-    gap: var(--dp-space-1);
+    gap: var(--dp-space-component-xs);
   }
 
   &__label-icon {
@@ -605,11 +531,11 @@ function onSourcePdfChange(fileId: string | undefined): void {
   }
 
   &__form :deep(.ant-form-item) {
-    margin-bottom: 10px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__form :deep(.ant-upload.ant-upload-drag) {
-    padding: 12px 8px;
+    padding: var(--dp-space-component) var(--dp-space-component-tight);
   }
 
   &__form :deep(.ant-upload-drag-icon .anticon) {
@@ -620,93 +546,6 @@ function onSourcePdfChange(fileId: string | undefined): void {
     font-size: var(--dp-font-size-sm) !important;
   }
 
-  &__quick-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--dp-space-2);
-    margin-bottom: var(--dp-space-2);
-  }
-
-  &__quick-button,
-  &__remove-button {
-    height: 26px;
-    padding: 0 var(--dp-space-2);
-    border: 1px solid var(--dp-border-subtle);
-    border-radius: var(--dp-radius-control);
-    background: var(--dp-bg-container);
-    color: var(--dp-text-primary);
-    font-size: var(--dp-font-size-xs);
-    line-height: 24px;
-    cursor: pointer;
-
-    &:disabled {
-      color: var(--dp-text-disabled);
-      cursor: not-allowed;
-      background: var(--dp-fill-muted);
-    }
-  }
-
-  &__quick-button:not(:disabled):hover,
-  &__remove-button:not(:disabled):hover {
-    border-color: var(--dp-color-primary);
-    color: var(--dp-color-primary);
-  }
-
-  &__question-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--dp-space-2);
-    max-height: 360px;
-    overflow: auto;
-    padding-right: 2px;
-  }
-
-  &__question-head,
-  &__question-row {
-    display: grid;
-    grid-template-columns: 48px minmax(112px, 1.2fr) 42px 62px 58px 44px;
-    gap: var(--dp-space-2);
-    align-items: center;
-  }
-
-  &__question-head {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    min-height: 24px;
-    background: var(--dp-bg-container);
-    color: var(--dp-text-secondary);
-    font-size: var(--dp-font-size-xs);
-  }
-
-  &__question-row {
-    min-height: 30px;
-  }
-
-  &__type-pill {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 22px;
-    border-radius: var(--dp-radius-control);
-    font-size: var(--dp-font-size-xs);
-    font-weight: var(--dp-font-weight-emphasis);
-
-    &--objective {
-      background: var(--dp-color-primary-bg);
-      color: var(--dp-color-primary-active);
-    }
-
-    &--subjective {
-      background: var(--dp-purple-50);
-      color: var(--dp-purple-700);
-    }
-  }
-
-  &__remove-button {
-    width: 44px;
-    padding: 0;
-  }
 }
 
 @media (max-width: 640px) {

@@ -89,13 +89,14 @@ const gate = ref<ArchiveVolumeExamGateResponse | null>(null)
 const { gateProgressHint, gateAnomaly, incompleteClasses } = useExamArchiveGateHint(gate)
 
 const closeExamReady = computed(() => {
-  if (props.scoresFullyPublished !== undefined) {
-    return props.scoresFullyPublished === true
-  }
-  return gate.value?.allScoresPublished === true
+  const scoresReady = props.scoresFullyPublished ?? gate.value?.allScoresPublished
+  return scoresReady === true && gate.value?.closeReadiness.closeExamReady === true
 })
 
-const scoresNotFullyPublished = computed(() => closeExamReady.value !== true)
+const scoresNotFullyPublished = computed(() => {
+  const scoresReady = props.scoresFullyPublished ?? gate.value?.allScoresPublished
+  return scoresReady !== true
+})
 
 const bannerTone = computed(() => {
   if (gateAnomaly.value) {
@@ -127,8 +128,11 @@ const bannerTitle = computed(() => {
   if (closeExamReady.value === true && current.examClosed !== true) {
     return '成绩已全部发布'
   }
-  if ((current.unpublishedBoundPaperCount ?? 0) > 0 || scoresNotFullyPublished.value === true) {
+  if (scoresNotFullyPublished.value === true) {
     return '尚有成绩未发布'
+  }
+  if (current.closeReadiness.closeExamReady !== true) {
+    return '关考前仍有待办事项'
   }
   return '归档前置条件'
 })
@@ -139,7 +143,7 @@ const bannerDescription = computed(() => {
     return '—'
   }
   if (closeExamReady.value === true && current.examClosed !== true) {
-    return buildCloseExamReadyContent(current)
+    return buildCloseExamReadyContent(current.closeReadiness)
   }
   if (incompleteClasses.value.length > 0) {
     const classHint = incompleteClasses.value
@@ -214,10 +218,10 @@ defineExpose({
 .exam-archive-gate-banner {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .exam-archive-gate-banner__table {
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
 }
 </style>

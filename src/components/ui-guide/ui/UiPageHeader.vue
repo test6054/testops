@@ -63,12 +63,12 @@ const emit = defineEmits<{
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-4, 16px);
-  padding-bottom: var(--dp-space-2, 8px);
+  gap: var(--dp-space-block);
+  padding-bottom: var(--dp-space-component-tight);
 }
 
 .ui-page-header--divided {
-  padding-bottom: var(--dp-space-4, 16px);
+  padding-bottom: var(--dp-space-block);
   border-bottom: none;
   background-image: linear-gradient(
     90deg,
@@ -84,7 +84,7 @@ const emit = defineEmits<{
 .ui-page-header__main {
   display: flex;
   align-items: flex-start;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   min-width: 0;
   flex: 1;
 }
@@ -98,7 +98,7 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-3, 10px);
+  gap: var(--dp-space-component);
 }
 
 .ui-page-header__title {
@@ -116,11 +116,11 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-3, 10px);
+  gap: var(--dp-space-component);
 }
 
 .ui-page-header__subtitle {
-  margin: var(--dp-space-2, 8px) 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   font-size: var(--dp-font-size-md);
   line-height: 1.7;
   color: var(--dp-text-secondary);

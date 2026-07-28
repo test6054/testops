@@ -8,49 +8,79 @@
       </ContextBar>
     </template>
 
-    <template #signal>
+    <template v-if="canViewSupervision" #signal>
       <SignalBand :metrics="signalMetrics" variant="panel" />
     </template>
 
-    <WorkbenchSurfaceCard flush class="archive-readiness-matrix">
+    <UiSkeletonState v-if="dutyLoading" variant="card" compact />
+    <UiAlertStrip
+      v-else-if="grantsLoadFailed"
+      tone="error"
+      title="督导职责加载失败"
+      description="无法确认当前账号的迎评抽查范围，已停止加载就绪度数据。"
+      :closable="false"
+    />
+    <UiEmpty
+      v-else-if="!canViewSupervision"
+      title="无督导抽查职责"
+      description="迎评就绪度矩阵仅向已授权的督导抽查岗位开放。"
+    />
+    <WorkbenchSurfaceCard v-else flush class="archive-readiness-matrix">
       <template #toolbar>
         <div class="archive-readiness-matrix__filters">
-          <UiSelect
-            size="sm"
-            v-model="filterForm.academicYearStartYear"
-            :options="academicYearStartOptions"
-            placeholder="起始年"
-            style="width: 140px"
-          />
-          <UiInput
-            size="sm"
-            :value="filterForm.academicYearEndYear"
-            disabled
-            style="width: 100px"
-            placeholder="结束年"
-          />
-          <UiSelect
-            size="sm"
-            v-model="filterForm.semester"
-            :options="SemesterOptions"
-            placeholder="学期"
-            style="width: 120px"
-          />
-          <UiSelect
-            size="sm"
-            v-model="filterForm.termCount"
-            :options="termCountOptions"
-            style="width: 120px"
-          />
-          <UiSelect
-            size="sm"
-            v-model="filterForm.campaignId"
-            :loading="campaignOptionLoading"
-            :options="campaignOptions"
-            allow-clear
-            placeholder="迎评批次（可选）"
-            style="width: 280px"
-          />
+          <label class="archive-readiness-matrix__filter-field" for="readiness-start-year">
+            <span>截止学年起始年</span>
+            <UiSelect
+              id="readiness-start-year"
+              size="sm"
+              v-model="filterForm.academicYearStartYear"
+              :options="academicYearStartOptions"
+              style="width: 140px"
+            />
+          </label>
+          <label class="archive-readiness-matrix__filter-field" for="readiness-end-year">
+            <span>截止学年结束年</span>
+            <UiInput
+              id="readiness-end-year"
+              size="sm"
+              :value="filterForm.academicYearEndYear"
+              disabled
+              style="width: 100px"
+            />
+          </label>
+          <label class="archive-readiness-matrix__filter-field" for="readiness-semester">
+            <span>截止学期</span>
+            <UiSelect
+              id="readiness-semester"
+              size="sm"
+              v-model="filterForm.semester"
+              :options="SemesterOptions"
+              style="width: 120px"
+            />
+          </label>
+          <label class="archive-readiness-matrix__filter-field" for="readiness-term-count">
+            <span>回溯范围</span>
+            <UiSelect
+              id="readiness-term-count"
+              size="sm"
+              v-model="filterForm.termCount"
+              :options="termCountOptions"
+              style="width: 120px"
+            />
+          </label>
+          <label class="archive-readiness-matrix__filter-field" for="readiness-campaign">
+            <span>迎评批次</span>
+            <UiSelect
+              id="readiness-campaign"
+              size="sm"
+              v-model="filterForm.campaignId"
+              :loading="campaignOptionLoading"
+              :options="campaignOptions"
+              allow-clear
+              placeholder="全部批次"
+              style="width: 280px"
+            />
+          </label>
           <UiButton size="sm" variant="primary" @click="handleSearch">查询</UiButton>
         </div>
       </template>
@@ -71,9 +101,16 @@
       </div>
 
       <UiSkeletonState v-if="loading && !matrixMeta" variant="card" compact />
+      <UiAlertStrip
+        v-else-if="matrixLoadFailed"
+        tone="error"
+        title="就绪度矩阵加载失败"
+        :closable="false"
+        dense
+      />
       <UiAlertStrip v-else-if="!matrixMeta" tone="info" size="sm" dense inline :show-icon="false">
         <template #default>
-          <span style="display: inline-flex; align-items: center; gap: 8px">
+          <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
             <UiTag tone="blue" size="sm">未选择范围</UiTag>
             <span>请选择截止学年与学期后查询就绪矩阵</span>
           </span>
@@ -88,6 +125,7 @@
         :data-source="tableRows"
         :loading="loading"
         :total="pagination.total"
+        :load-error="matrixLoadFailed"
         flat
         row-key="rowKey"
         size="small"
@@ -146,6 +184,7 @@ import {
   pageSupervisionReadinessMatrix,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -156,11 +195,13 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { DEFAULT_LIST_PAGE_SIZE, EXPORT_PAGE_SIZE } from '@/constants/pagination'
 import { formatAcademicYearSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
+  applyTripleSemesterChange,
   createAcademicYearSemesterTripleDefaults,
   ensureTriplePeriodPair,
   resolveAcademicYearFromTriple,
@@ -175,7 +216,15 @@ import { showUserError } from '@/utils/error-handler'
 defineOptions({ name: 'ArchiveVolumeReadinessMatrix' })
 
 const router = useRouter()
+const {
+  loading: dutyLoading,
+  grantsLoadFailed,
+  canViewSupervision,
+  loadGrants,
+} = useArchiveDutyAccess()
 const loading = ref(false)
+const matrixLoadFailed = ref(false)
+const matrixLoadSeq = ref(0)
 const campaignOptionLoading = ref(false)
 const campaignSelectOptions = ref<ArchiveEvaluationCampaignResponse[]>([])
 const matrixMeta = ref<ArchiveReadinessMatrixMetaResponse | null>(null)
@@ -314,8 +363,15 @@ function buildMatrixRequest() {
 }
 
 async function loadMatrixPage() {
+  const requestSeq = matrixLoadSeq.value + 1
+  matrixLoadSeq.value = requestSeq
+  if (canViewSupervision.value !== true) {
+    loading.value = false
+    return
+  }
   const baseRequest = buildMatrixRequest()
   if (!baseRequest) {
+    loading.value = false
     return
   }
   loading.value = true
@@ -325,30 +381,51 @@ async function loadMatrixPage() {
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize,
     })
+    if (matrixLoadSeq.value !== requestSeq) {
+      return
+    }
     matrixRows.value = page.list
     pagination.total = page.total
     pagination.pageNum = page.pageNum
     pagination.pageSize = page.pageSize
+    matrixLoadFailed.value = false
   } catch (error) {
+    if (matrixLoadSeq.value !== requestSeq) {
+      return
+    }
     matrixRows.value = []
     pagination.total = 0
+    matrixLoadFailed.value = true
     showUserError(error, '加载就绪度矩阵失败')
   } finally {
-    loading.value = false
+    if (matrixLoadSeq.value === requestSeq) {
+      loading.value = false
+    }
   }
 }
 
 async function loadMatrix() {
+  const requestSeq = matrixLoadSeq.value + 1
+  matrixLoadSeq.value = requestSeq
+  if (canViewSupervision.value !== true) {
+    loading.value = false
+    return
+  }
   const baseRequest = buildMatrixRequest()
   if (!baseRequest) {
     matrixMeta.value = null
     matrixRows.value = []
     pagination.total = 0
+    loading.value = false
     return
   }
   loading.value = true
   try {
-    matrixMeta.value = await getSupervisionReadinessMatrixMeta(baseRequest)
+    const nextMeta = await getSupervisionReadinessMatrixMeta(baseRequest)
+    if (matrixLoadSeq.value !== requestSeq) {
+      return
+    }
+    matrixMeta.value = nextMeta
     pagination.pageNum = 1
     pagination.total = matrixMeta.value.rowCount
     const page = await pageSupervisionReadinessMatrix({
@@ -356,17 +433,27 @@ async function loadMatrix() {
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize,
     })
+    if (matrixLoadSeq.value !== requestSeq) {
+      return
+    }
     matrixRows.value = page.list
     pagination.total = page.total
     pagination.pageNum = page.pageNum
     pagination.pageSize = page.pageSize
+    matrixLoadFailed.value = false
   } catch (error) {
+    if (matrixLoadSeq.value !== requestSeq) {
+      return
+    }
     matrixMeta.value = null
     matrixRows.value = []
     pagination.total = 0
+    matrixLoadFailed.value = true
     showUserError(error, '加载就绪度矩阵失败')
   } finally {
-    loading.value = false
+    if (matrixLoadSeq.value === requestSeq) {
+      loading.value = false
+    }
   }
 }
 
@@ -382,7 +469,20 @@ watch(
   },
 )
 
-onMounted(() => {
+watch(
+  () => filterForm.semester,
+  (semester) => {
+    if (semester == null && filterForm.academicYearStartYear != null) {
+      applyTripleSemesterChange(filterForm, undefined)
+    }
+  },
+)
+
+onMounted(async () => {
+  await loadGrants()
+  if (canViewSupervision.value !== true) {
+    return
+  }
   void loadCampaignOptions()
   void loadMatrix()
 })
@@ -394,6 +494,9 @@ async function loadCampaignOptions(): Promise<void> {
     let pageNum = 1
     while (true) {
       const page = await pageSupervisionCampaigns({ pageNum, pageSize: EXPORT_PAGE_SIZE })
+      if (page.list.length === 0 && all.length < page.total) {
+        throw new Error('迎评批次分页合同异常：返回空页但仍有未读取记录')
+      }
       all.push(...page.list)
       if (all.length >= page.total) {
         break
@@ -415,16 +518,24 @@ async function loadCampaignOptions(): Promise<void> {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component) var(--dp-space-block);
+}
+
+.archive-readiness-matrix__filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-component-xs);
+  color: var(--dp-text-secondary);
+  font-size: var(--dp-font-size-xs);
 }
 
 .archive-readiness-matrix__legend {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-4);
-  padding: var(--dp-space-2) var(--dp-space-4);
+  gap: var(--dp-space-block);
+  padding: var(--dp-space-component-tight) var(--dp-space-block);
   background: var(--dp-surface);
   border-bottom: 1px solid var(--dp-border-subtle);
   font-size: var(--dp-font-size-xs);
@@ -434,7 +545,7 @@ async function loadCampaignOptions(): Promise<void> {
 .archive-readiness-matrix__legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   white-space: nowrap;
 }
 
@@ -462,7 +573,7 @@ async function loadCampaignOptions(): Promise<void> {
 }
 
 .archive-readiness-matrix__table {
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
 }
 
 .archive-readiness-matrix__cell {
@@ -478,7 +589,7 @@ async function loadCampaignOptions(): Promise<void> {
   font-size: var(--dp-font-size-lg);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .matrix-cell--good {

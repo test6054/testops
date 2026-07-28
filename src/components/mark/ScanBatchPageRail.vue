@@ -20,12 +20,19 @@
         v-else-if="isStrip"
         ref="stripRef"
         class="scan-batch-page-rail__strip"
+        role="listbox"
+        aria-label="扫描页轨"
+        aria-orientation="horizontal"
         @scroll="onStripScroll"
       >
         <button
           v-for="item in pageItems"
           :key="item.pageKey"
           type="button"
+          role="option"
+          :aria-selected="item.pageKey === selectedPageKey"
+          :aria-current="item.pageKey === selectedPageKey ? 'page' : undefined"
+          :aria-label="railItemAriaLabel(item)"
           class="scan-batch-page-rail__chip"
           :data-page-key="item.pageKey"
           :class="{
@@ -33,6 +40,7 @@
             [`scan-batch-page-rail__chip--${resolveRailTone(item)}`]: true,
           }"
           @click="emit('select', item.pageKey)"
+          @keydown="onRailItemKeydown"
         >
           <span class="scan-batch-page-rail__chip-order">#{{ item.fileOrder }}</span>
           <span class="scan-batch-page-rail__chip-label">{{ rowPrimaryLabel(item) }}</span>
@@ -45,7 +53,7 @@
         </button>
         <div v-if="loadingMore" class="scan-batch-page-rail__loading-more">加载更多…</div>
       </div>
-      <div v-else class="scan-batch-page-rail__scroller">
+      <div v-else class="scan-batch-page-rail__scroller" role="listbox" aria-label="扫描页轨">
         <UiList
           :data-source="pageItems"
           :split="false"
@@ -57,12 +65,17 @@
           <template #renderItem="{ item }">
             <button
               type="button"
+              role="option"
+              :aria-selected="item.pageKey === selectedPageKey"
+              :aria-current="item.pageKey === selectedPageKey ? 'page' : undefined"
+              :aria-label="railItemAriaLabel(item)"
               class="scan-batch-page-rail__row"
               :class="{
                 'scan-batch-page-rail__row--active': item.pageKey === selectedPageKey,
                 [`scan-batch-page-rail__row--${resolveRailTone(item)}`]: true,
               }"
               @click="emit('select', item.pageKey)"
+              @keydown="onRailItemKeydown"
             >
               <span
                 class="scan-batch-page-rail__bar"
@@ -236,6 +249,47 @@ function rowSecondaryLabel(item: ExamScannerBatchWorkbenchPageVO): string {
   return ''
 }
 
+function railItemAriaLabel(item: ExamScannerBatchWorkbenchPageVO): string {
+  const state = strictEnumLabel(
+    ScanBatchWorkbenchRegisterStatusDescription,
+    item.registerStatus,
+    '扫描页登记状态',
+  )
+  const exception = item.hasException
+    ? `，异常 ${Math.max(item.attentionCount ?? 0, 1)} 项`
+    : ''
+  return `第 ${item.fileOrder} 个文件，${rowPrimaryLabel(item)}${rowSecondaryLabel(item) ? `，${rowSecondaryLabel(item)}` : ''}，${state}${exception}`
+}
+
+function onRailItemKeydown(event: KeyboardEvent): void {
+  if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+    return
+  }
+  if (!(event.currentTarget instanceof HTMLElement)) {
+    return
+  }
+  const listbox = event.currentTarget.closest('[role="listbox"]')
+  if (!listbox) {
+    return
+  }
+  const items = Array.from(listbox.querySelectorAll<HTMLElement>('[role="option"]'))
+  const currentIndex = items.indexOf(event.currentTarget)
+  const forward = event.key === 'ArrowDown' || event.key === 'ArrowRight'
+  const nextIndex = event.key === 'Home'
+    ? 0
+    : event.key === 'End'
+      ? items.length - 1
+      : forward
+        ? Math.min(currentIndex + 1, items.length - 1)
+        : Math.max(currentIndex - 1, 0)
+  const next = items[nextIndex]
+  if (!next) {
+    return
+  }
+  event.preventDefault()
+  next.focus()
+}
+
 function onStripScroll(event: Event): void {
   const target = event.target as HTMLElement | null
   if (!target) {
@@ -301,15 +355,15 @@ watch(
 
 .scan-batch-page-rail__header {
   flex-shrink: 0;
-  padding: 8px 12px 0;
+  padding: var(--dp-space-component-tight) var(--dp-space-component) 0;
 }
 
 .scan-batch-page-rail__strip {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: stretch;
   overflow-x: auto;
-  padding: 8px 12px 12px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   scroll-snap-type: x proximity;
 }
 
@@ -320,11 +374,11 @@ watch(
   flex-shrink: 0;
   width: 148px;
   min-height: 72px;
-  padding: 8px 10px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: 6px;
   border-left-width: 4px;
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
   text-align: left;
   cursor: pointer;
   scroll-snap-align: start;
@@ -354,6 +408,14 @@ watch(
     opacity: 0.5;
     border-left-color: var(--dp-text-muted);
   }
+}
+
+.scan-batch-page-rail__chip:focus-visible,
+.scan-batch-page-rail__row:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: none;
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 
 .scan-batch-page-rail__chip-order {
@@ -445,7 +507,7 @@ watch(
   justify-content: center;
   gap: 2px;
   min-width: 0;
-  padding: 10px 12px;
+  padding: var(--dp-space-component);
 }
 
 .scan-batch-page-rail__order {
@@ -474,7 +536,7 @@ watch(
   flex-shrink: 0;
   align-self: flex-start;
   margin-top: 2px;
-  padding: 0 6px;
+  padding: 0 var(--dp-space-component-tight);
   border-radius: 10px;
   background: var(--dp-error-bg);
   color: var(--dp-danger);
@@ -484,14 +546,14 @@ watch(
 
 .scan-batch-page-rail__row .scan-batch-page-rail__badge {
   align-self: center;
-  margin-right: 12px;
+  margin-right: var(--dp-space-component);
   margin-top: 0;
 }
 
 .scan-batch-page-rail__loading-more {
   flex-shrink: 0;
   align-self: center;
-  padding: 8px 12px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   color: var(--dp-text-muted);
   font-size: var(--dp-font-size-xs);
   text-align: center;
@@ -499,6 +561,6 @@ watch(
 }
 
 .scan-batch-page-rail__empty {
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
 }
 </style>

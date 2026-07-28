@@ -60,17 +60,24 @@
         </div>
         <div class="paper-governance-drawer__question-head"><span>逐题摘要</span><UiButton variant="ghost" size="sm" @click="addQuestion(paperIndex)">新增题目</UiButton></div>
         <div v-for="(question, questionIndex) in paperSet.questions" :key="question.key" class="paper-governance-drawer__question-row">
-          <UiInput v-model="question.questionNo" placeholder="题号" :maxlength="32" />
-          <a-select
-            v-model:value="question.questionType"
-            :options="questionTypeOptions"
-            placeholder="题型"
-            allow-clear
-          />
-          <UiInputNumber v-model="question.fullScore" :min="0.5" :max="1000" :step="0.5" />
-          <UiTextarea v-model="question.stemText" :rows="2" placeholder="填写与受控试卷文件一致的完整题干；系统自动核验并生成指纹" :maxlength="3000" />
-          <UiTextarea v-model="question.answerInstruction" :rows="2" placeholder="填写与受控试卷一致的答题要求或特别作答说明" :maxlength="1000" />
-          <UiButton v-if="paperSet.questions.length > 1" variant="ghost" size="sm" @click="removeQuestion(paperIndex, questionIndex)">移除</UiButton>
+          <div class="paper-governance-drawer__question-fields">
+            <UiInput v-model="question.sectionLabel" placeholder="大题序号，如一" :maxlength="32" />
+            <UiInput v-model="question.sectionTitle" placeholder="大题名称，如单项选择题" :maxlength="200" />
+            <UiInputNumber v-model="question.sectionSortNo" :min="1" :max="100" placeholder="大题排序" />
+            <UiInput v-model="question.questionNo" placeholder="小题号" :maxlength="32" />
+            <a-select
+              v-model:value="question.questionType"
+              :options="questionTypeOptions"
+              placeholder="题型"
+              allow-clear
+            />
+            <UiInputNumber v-model="question.fullScore" :min="0.5" :max="1000" :step="0.5" placeholder="分值" />
+          </div>
+          <div class="paper-governance-drawer__question-texts">
+            <UiTextarea v-model="question.stemText" :rows="2" placeholder="填写与受控试卷文件一致的完整题干；系统自动核验并生成指纹" :maxlength="3000" />
+            <UiTextarea v-model="question.answerInstruction" :rows="2" placeholder="填写与受控试卷一致的答题要求或特别作答说明" :maxlength="1000" />
+            <UiButton v-if="paperSet.questions.length > 1" variant="ghost" size="sm" @click="removeQuestion(paperIndex, questionIndex)">移除</UiButton>
+          </div>
         </div>
       </section>
     </UiForm>
@@ -107,6 +114,9 @@ import { showFormValidationMessage } from '@/utils/error-handler'
 
 interface EditableQuestion {
   key: string
+  sectionLabel: string
+  sectionTitle: string
+  sectionSortNo: number | null
   questionNo: string
   questionType: ExamPaperQuestionTypeCode | undefined
   fullScore: number | null
@@ -186,7 +196,17 @@ const questionTypeOptions = [
 const departmentName = computed(() => props.departmentName || '未配置参考院系')
 const nextKey = () => `${Date.now()}-${Math.random()}`
 function emptyQuestion(): EditableQuestion {
-  return { key: nextKey(), questionNo: '', questionType: undefined, fullScore: null, stemText: '', answerInstruction: '' }
+  return {
+    key: nextKey(),
+    sectionLabel: '',
+    sectionTitle: '',
+    sectionSortNo: null,
+    questionNo: '',
+    questionType: undefined,
+    fullScore: null,
+    stemText: '',
+    answerInstruction: '',
+  }
 }
 function emptyPaperSet(code = 'A'): EditablePaperSet {
   return {
@@ -225,6 +245,9 @@ function resetForm(): void {
     scoringRubricFileId: item.scoringRubricFileId,
     questions: (source?.questionsByPaperSetId?.[item.id] ?? []).map((question) => ({
       key: nextKey(),
+      sectionLabel: question.sectionLabel ?? '',
+      sectionTitle: question.sectionTitle ?? '',
+      sectionSortNo: question.sectionSortNo ?? null,
       questionNo: question.questionNo,
       questionType: question.questionType,
       fullScore: question.fullScore,
@@ -260,14 +283,26 @@ function handleSave(): void {
   const paperSets: ExamPaperGovernanceSaveRequest['paperSets'] = []
   for (const item of form.paperSets) {
     const questions: ExamPaperGovernanceSaveRequest['paperSets'][number]['questions'] = []
+    const sectionSignatureBySort = new Map<number, string>()
     for (const question of item.questions) {
       if (!item.paperCode.trim() || !item.paperName.trim() || !item.sourcePdfFileId || !item.answerFileId
-        || !item.scoringRubricFileId || !question.questionNo.trim() || !question.questionType
+        || !item.scoringRubricFileId || !question.sectionLabel.trim() || !question.sectionTitle.trim()
+        || !question.sectionSortNo || !question.questionNo.trim() || !question.questionType
         || !question.fullScore || !question.stemText.trim() || !question.answerInstruction.trim()) {
-        showFormValidationMessage('请完整填写试卷文件、答案、评分标准、题干和答题要求')
+        showFormValidationMessage('请完整填写试卷文件、答案、评分标准、大题结构、题干和答题要求')
         return
       }
+      const sectionSignature = `${question.sectionLabel.trim()}\u0000${question.sectionTitle.trim()}`
+      const existingSection = sectionSignatureBySort.get(question.sectionSortNo)
+      if (existingSection !== undefined && existingSection !== sectionSignature) {
+        showFormValidationMessage(`大题排序 ${question.sectionSortNo} 对应了不同序号或标题`)
+        return
+      }
+      sectionSignatureBySort.set(question.sectionSortNo, sectionSignature)
       questions.push({
+        sectionLabel: question.sectionLabel.trim(),
+        sectionTitle: question.sectionTitle.trim(),
+        sectionSortNo: question.sectionSortNo,
         questionNo: question.questionNo.trim(),
         questionType: question.questionType,
         fullScore: question.fullScore,
@@ -275,6 +310,11 @@ function handleSave(): void {
         answerInstruction: question.answerInstruction.trim(),
         layoutQuestionId: question.layoutQuestionId,
       })
+    }
+    const sectionSorts = [...sectionSignatureBySort.keys()].sort((left, right) => left - right)
+    if (sectionSorts.some((value, index) => value !== index + 1)) {
+      showFormValidationMessage(`${item.paperCode || '当前'}卷大题排序必须从 1 开始连续填写`)
+      return
     }
     paperSets.push({
       paperCode: item.paperCode.trim(),
@@ -314,15 +354,17 @@ function handleSave(): void {
 </script>
 
 <style lang="scss" scoped>
-.paper-governance-drawer__form { margin-top: var(--dp-space-4); }
-.paper-governance-drawer__plan-grid, .paper-governance-drawer__paper-grid, .paper-governance-drawer__file-grid { display: grid; gap: var(--dp-space-3); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.paper-governance-drawer__form { margin-top: var(--dp-space-block); }
+.paper-governance-drawer__plan-grid, .paper-governance-drawer__paper-grid, .paper-governance-drawer__file-grid { display: grid; gap: var(--dp-space-component); grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .paper-governance-drawer__file-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.paper-governance-drawer__section-head, .paper-governance-drawer__paper-head, .paper-governance-drawer__question-head { display: flex; justify-content: space-between; align-items: center; gap: var(--dp-space-3); }
-.paper-governance-drawer__section-head { margin: var(--dp-space-5) 0 var(--dp-space-3); }
+.paper-governance-drawer__section-head, .paper-governance-drawer__paper-head, .paper-governance-drawer__question-head { display: flex; justify-content: space-between; align-items: center; gap: var(--dp-space-component); }
+.paper-governance-drawer__section-head { margin: var(--dp-space-block) 0 var(--dp-space-component); }
 .paper-governance-drawer__section-head h3 { margin: 0; font-size: var(--dp-font-size-md); }
-.paper-governance-drawer__section-head p { margin: var(--dp-space-1) 0 0; color: var(--dp-text-secondary); }
-.paper-governance-drawer__paper-set { padding: var(--dp-space-4); margin-bottom: var(--dp-space-4); border: 1px solid var(--dp-border-subtle); border-radius: var(--dp-radius-panel); }
-.paper-governance-drawer__question-head { margin-top: var(--dp-space-2); }
-.paper-governance-drawer__question-row { display: grid; grid-template-columns: 100px 180px 120px minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--dp-space-2); margin-top: var(--dp-space-2); }
-@media (max-width: 900px) { .paper-governance-drawer__file-grid, .paper-governance-drawer__question-row { grid-template-columns: 1fr; } }
+.paper-governance-drawer__section-head p { margin: var(--dp-space-component-xs) 0 0; color: var(--dp-text-secondary); }
+.paper-governance-drawer__paper-set { padding: var(--dp-space-block); margin-bottom: var(--dp-space-block); border: 1px solid var(--dp-border-subtle); border-radius: var(--dp-radius-panel); }
+.paper-governance-drawer__question-head { margin-top: var(--dp-space-component-tight); }
+.paper-governance-drawer__question-row { display: grid; gap: var(--dp-space-component-tight); margin-top: var(--dp-space-component-tight); padding-top: var(--dp-space-component-tight); border-top: 1px solid var(--dp-border-subtle); }
+.paper-governance-drawer__question-fields { display: grid; grid-template-columns: 90px minmax(160px, 1fr) 110px 100px 180px 110px; gap: var(--dp-space-component-tight); }
+.paper-governance-drawer__question-texts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--dp-space-component-tight); align-items: start; }
+@media (max-width: 900px) { .paper-governance-drawer__file-grid, .paper-governance-drawer__question-fields, .paper-governance-drawer__question-texts { grid-template-columns: 1fr; } }
 </style>

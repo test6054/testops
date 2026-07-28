@@ -66,7 +66,7 @@ const handleShowSizeChange = (page: number, size: number) => {
 .ui-pagination :deep(.ant-pagination) {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-1, 4px);
+  gap: var(--dp-space-component-xs);
   color: var(--dp-text-secondary);
   font-family: var(--dp-font-family);
 }
@@ -79,7 +79,7 @@ const handleShowSizeChange = (page: number, size: number) => {
   border-radius: var(--dp-radius-control);
   border-color: transparent;
   background: transparent;
-  transition: all 0.15s ease;
+  transition: all var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .ui-pagination :deep(.ant-pagination-item:hover),

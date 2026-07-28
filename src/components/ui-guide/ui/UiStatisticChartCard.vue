@@ -175,33 +175,29 @@ const sideStyle = computed(() => ({
 .ui-statistic-chart-card {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   min-width: 0;
-  padding: var(--dp-space-4, 16px);
-  border: 1px solid var(--dp-border);
+  padding: var(--dp-space-block);
+  border: 1px solid var(--dp-panel-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
-  box-shadow:
-    0 1px 2px color-mix(in srgb, var(--dp-text-primary) 4%, transparent),
-    0 2px 8px color-mix(in srgb, var(--dp-text-primary) 5%, transparent);
-  transition: box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--dp-shadow-card);
+  transition: box-shadow var(--dp-duration-normal) var(--dp-ease-default);
 }
 
 .ui-statistic-chart-card:hover {
-  box-shadow:
-    0 2px 4px color-mix(in srgb, var(--dp-text-primary) 5%, transparent),
-    0 4px 16px color-mix(in srgb, var(--dp-text-primary) 7%, transparent);
+  box-shadow: var(--dp-shadow-card-hover);
 }
 
 .ui-statistic-chart-card--compact {
-  gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component);
 }
 
 .ui-statistic-chart-card__content {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   min-width: 0;
 }
 
@@ -211,8 +207,8 @@ const sideStyle = computed(() => ({
 
 .ui-statistic-chart-card__main {
   min-width: 0;
-  padding: var(--dp-space-3, 12px);
-  border: 1px solid var(--dp-border);
+  padding: var(--dp-space-component);
+  border: 1px solid var(--dp-panel-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface-subtle);
   box-shadow: inset 0 1px 3px color-mix(in srgb, var(--dp-text-primary) 3%, transparent);
@@ -221,25 +217,25 @@ const sideStyle = computed(() => ({
 .ui-statistic-chart-card__side {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
 }
 
 .ui-statistic-chart-card__stats {
   display: grid;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
 }
 
 .ui-statistic-chart-card__stat {
   display: grid;
-  gap: var(--dp-space-1, 4px);
-  padding: var(--dp-space-3, 12px);
-  border: 1px solid var(--dp-border);
+  gap: var(--dp-space-component-xs);
+  padding: var(--dp-space-component);
+  border: 1px solid var(--dp-panel-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color var(--dp-duration-fast) var(--dp-ease-default),
+    box-shadow var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .ui-statistic-chart-card__stat:hover {
@@ -250,7 +246,7 @@ const sideStyle = computed(() => ({
 .ui-statistic-chart-card__stat-head {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
 }
 
@@ -308,7 +304,7 @@ const sideStyle = computed(() => ({
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
 }
 
 .ui-statistic-chart-card__stat-value {
@@ -335,7 +331,7 @@ const sideStyle = computed(() => ({
 }
 
 .ui-statistic-chart-card__footer {
-  padding-top: 14px;
+  padding-top: var(--dp-space-block);
   border-top: none;
   background-image: linear-gradient(
     90deg,

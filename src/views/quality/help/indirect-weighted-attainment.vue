@@ -118,11 +118,11 @@ function handleReturn() {
 <style scoped lang="scss">
 .help {
   &__section {
-    padding-top: var(--dp-space-2);
+    padding-top: var(--dp-space-component-tight);
   }
 
   &__title {
-    margin: 0 0 var(--dp-space-3);
+    margin: 0 0 var(--dp-space-component);
     font-size: var(--dp-font-size-lg);
     font-weight: var(--dp-font-weight-title);
     color: var(--dp-text-primary);
@@ -130,7 +130,7 @@ function handleReturn() {
   }
 
   &__p {
-    margin: 0 0 var(--dp-space-3);
+    margin: 0 0 var(--dp-space-component);
     color: var(--dp-text-secondary);
     font-size: var(--dp-font-size-md);
     line-height: 1.6;
@@ -141,8 +141,8 @@ function handleReturn() {
   }
 
   &__formula {
-    margin: 0 0 var(--dp-space-3);
-    padding: var(--dp-space-3) var(--dp-space-4);
+    margin: 0 0 var(--dp-space-component);
+    padding: var(--dp-space-component) var(--dp-space-block);
     background: var(--dp-surface-subtle);
     border-radius: var(--dp-radius-panel);
     font-size: var(--dp-font-size-lg);
@@ -152,7 +152,7 @@ function handleReturn() {
 
   &__list {
     margin: 0;
-    padding-left: 20px;
+    padding-left: var(--dp-space-block);
     color: var(--dp-text-secondary);
     font-size: var(--dp-font-size-md);
     line-height: 1.7;

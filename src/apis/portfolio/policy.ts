@@ -21,6 +21,9 @@ export interface PortfolioPolicyDocumentVO {
   attachmentFileId?: string
   beyondTenYearRemark?: string
   createTime: string
+  updateTime?: string
+  statusVersion: number
+  policyHash?: string
 }
 
 export interface PortfolioPolicyDocumentSearchVO {
@@ -30,6 +33,9 @@ export interface PortfolioPolicyDocumentSearchVO {
   policyLevel: PortfolioPolicyLevelCode
   topicCategory: string
   documentStatus: PortfolioPolicyDocumentStatusCode
+  publishOrg?: string
+  publishDate?: string
+  versionNo?: number
   snippet: string
 }
 
@@ -38,6 +44,23 @@ export interface PortfolioPolicyDocumentDetailVO {
   fullTextContent: string
   versionHistory: PortfolioPolicyDocumentVO[]
   mappings: PortfolioPolicyIndicatorMappingVO[]
+  policyHash?: string
+  mappingHash?: string
+}
+
+export interface PortfolioPolicyDocumentPreviewVO {
+  id: string
+  documentTitle: string
+  documentCode: string
+  policyLevel: PortfolioPolicyLevelCode
+  topicCategory: string
+  publishOrg?: string
+  publishDate?: string
+  versionNo?: number
+  documentStatus: PortfolioPolicyDocumentStatusCode
+  contentDigest?: string
+  fullTextContent: string
+  attachmentFileId?: string
 }
 
 export interface PortfolioPolicyIndicatorMappingVO {
@@ -47,6 +70,26 @@ export interface PortfolioPolicyIndicatorMappingVO {
   clauseTitle: string
   indicatorCode: string
   materialRequirement?: string
+}
+
+export interface PortfolioPolicyMappingSaveResultVO {
+  mappings: PortfolioPolicyIndicatorMappingVO[]
+  mappingHash: string
+  policyHash: string
+  statusVersion: number
+}
+
+export interface PortfolioPolicyPublishDryRunVO {
+  documentId: string
+  statusVersion: number
+  policyHash: string
+  mappingHash: string
+  mappingCount: number
+  indicatorCodes: string[]
+  referencedSceneCodes: string[]
+  demoteEffectiveCount: number
+  canPublish: boolean
+  blockReason?: string
 }
 
 export interface PortfolioPolicyDocumentDownloadVO {
@@ -87,8 +130,11 @@ export const portfolioPolicyApi = {
     fullTextContent: string
     attachmentFileId?: string
     beyondTenYearRemark?: string
+    statusVersion?: number
   }) => http.post<PortfolioPolicyDocumentVO>('/api/portfolio/policy-document/save', data),
-  publish: (data: { id: string }) =>
+  publishDryRun: (data: { id: string }) =>
+    http.post<PortfolioPolicyPublishDryRunVO>('/api/portfolio/policy-document/publish/dry-run', data),
+  publish: (data: { id: string, statusVersion: number }) =>
     http.post<PortfolioPolicyDocumentVO>('/api/portfolio/policy-document/publish', data),
   page: (data: {
     pageNum: number
@@ -114,14 +160,7 @@ export const portfolioPolicyApi = {
       data,
     ),
   preview: (data: { id: string }) =>
-    http.post<{
-      id: string
-      documentTitle: string
-      documentCode: string
-      documentStatus: PortfolioPolicyDocumentStatusCode
-      fullTextContent: string
-      attachmentFileId?: string
-    }>('/api/portfolio/policy-document/preview', data),
+    http.post<PortfolioPolicyDocumentPreviewVO>('/api/portfolio/policy-document/preview', data),
   download: (data: { id: string }) =>
     http.post<PortfolioPolicyDocumentDownloadVO>('/api/portfolio/policy-document/download', data),
   supersede: (data: {
@@ -140,6 +179,7 @@ export const portfolioPolicyApi = {
   }) => http.post<PortfolioPolicyDocumentVO>('/api/portfolio/policy-document/supersede', data),
   saveMapping: (data: {
     policyDocumentId: string
+    statusVersion: number
     mappings: Array<{
       clauseCode: string
       clauseTitle: string
@@ -147,7 +187,7 @@ export const portfolioPolicyApi = {
       materialRequirement?: string
     }>
   }) =>
-    http.post<PortfolioPolicyIndicatorMappingVO[]>(
+    http.post<PortfolioPolicyMappingSaveResultVO>(
       '/api/portfolio/policy-document/mapping/save',
       data,
     ),

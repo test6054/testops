@@ -15,6 +15,7 @@ const TODO_TYPE_TONE: Record<MarkTeacherDashboardTodoTypeCode, UiBarChartItem['t
   GRADE_PENDING: 'purple',
   REVIEW_PENDING: 'purple',
   SCORE_UNPUBLISHED: 'orange',
+  SCORE_PENDING_PUBLISH_REVIEW: 'orange',
   CANDIDATE_UNBOUND: 'red',
   ARBITRATION_PENDING: 'red',
   SPOT_CHECK_PENDING: 'blue',

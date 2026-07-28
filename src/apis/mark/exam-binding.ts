@@ -36,3 +36,33 @@ export interface ExamPaperBindRequest {
 export function bindPaper(request: ExamPaperBindRequest): Promise<boolean> {
   return http.post<boolean>('/api/mark/exams/papers/bind', request)
 }
+
+/** 扫描现场创建或复用学生、补入考试名册并立即绑定当前答卷。 */
+export interface ExamPaperCreateCandidateBindRequest {
+  examId: string
+  scanBatchId: string
+  paperInstanceId: string
+  pageId: string
+  studentNo: string
+  studentName: string
+  classId: string
+  attemptStatus: AttemptStatusCode
+  attemptNo?: string
+}
+
+export interface ExamPaperCreateCandidateBindResponse {
+  candidateRosterId: string
+  studentUserId: string
+  createdStudentUser: boolean
+  createdRosterRow: boolean
+  bound: boolean
+}
+
+export function createCandidateAndBindPaper(
+  request: ExamPaperCreateCandidateBindRequest,
+): Promise<ExamPaperCreateCandidateBindResponse> {
+  return http.post<ExamPaperCreateCandidateBindResponse>(
+    '/api/mark/exams/papers/create-candidate-and-bind',
+    request,
+  )
+}

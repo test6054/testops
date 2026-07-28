@@ -5,8 +5,8 @@ import type {
   PortfolioTargetFieldDefinition,
 } from '@/apis/portfolio/types'
 import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import {
@@ -14,6 +14,7 @@ import {
   PortfolioArchiveRecordStatusDescription,
 } from '@/apis/portfolio/enums'
 import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
+import PortfolioArchiveFieldControl from '@/components/portfolio/PortfolioArchiveFieldControl.vue'
 import PortfolioArchiveVersionComparePanel from '@/components/portfolio/PortfolioArchiveVersionComparePanel.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -28,6 +29,7 @@ import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
@@ -36,6 +38,7 @@ import {
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { validatePortfolioArchiveFields } from '@/utils/portfolio-archive-field-validation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const route = useRoute()
@@ -59,6 +62,34 @@ const fieldDefs = ref<PortfolioTargetFieldDefinition[]>([])
 const fieldValues = reactive<Record<string, string>>({})
 const evidenceRefs = reactive<Record<string, string>>({})
 const scopeRequestToken = ref(0)
+
+/**
+ * 已填内容脏检测：基线为「载入完成」或「保存成功」时的快照。
+ * 未保存内容在离开页面、关闭标签或切换教师 scope 时必须显式确认，禁止静默丢弃。
+ */
+const formBaseline = ref('')
+
+function snapshotFormState(): string {
+  return JSON.stringify({ v: { ...fieldValues }, e: { ...evidenceRefs } })
+}
+
+function captureFormBaseline(): void {
+  formBaseline.value = snapshotFormState()
+}
+
+const isFormDirty = computed(() => snapshotFormState() !== formBaseline.value)
+
+async function confirmDiscardDirtyForm(action: string): Promise<boolean> {
+  if (!isFormDirty.value) {
+    return true
+  }
+  return confirmAsync({
+    title: '放弃未保存的填报内容？',
+    content: `当前分类有未保存的填报内容，${action}后将丢失。建议先保存草稿。`,
+    type: 'warning',
+    okText: '放弃并继续',
+  })
+}
 
 const categoryId = computed(() => {
   const rawCategoryId = route.params.categoryId
@@ -135,6 +166,7 @@ async function applyRecordDetail(id: string, requestToken: number): Promise<bool
     fieldValues[field.fieldCode] = field.fieldValue ?? ''
     evidenceRefs[field.fieldCode] = field.evidenceRef ?? ''
   }
+  captureFormBaseline()
   return true
 }
 
@@ -157,6 +189,7 @@ function resetFormState() {
   for (const key of Object.keys(evidenceRefs)) {
     delete evidenceRefs[key]
   }
+  captureFormBaseline()
 }
 
 function routeSemesterValue(): string {
@@ -335,6 +368,7 @@ async function handleSaveDraft() {
     }
     recordId.value = result.recordId
     recordStatus.value = result.recordStatus
+    captureFormBaseline()
     void message.success('草稿已保存')
   } catch (error) {
     if (scopeRequestToken.value !== requestToken) {
@@ -358,11 +392,9 @@ async function handleSubmit() {
   if (!(await confirmProxyWrite('提交档案审核'))) {
     return
   }
-  const missingRequiredField = editableFields.value.find(
-    (field) => field.required && !fieldValues[field.fieldCode]?.trim(),
-  )
-  if (missingRequiredField) {
-    showFormValidationMessage(`请填写${missingRequiredField.fieldLabel}`)
+  const schemaError = validatePortfolioArchiveFields(editableFields.value, fieldValues)
+  if (schemaError) {
+    showFormValidationMessage(schemaError)
     return
   }
   const requestToken = scopeRequestToken.value
@@ -379,6 +411,7 @@ async function handleSubmit() {
     }
     recordId.value = result.recordId
     recordStatus.value = result.recordStatus
+    captureFormBaseline()
     void message.success('已提交审核')
     returnToArchiveSource()
   } catch (error) {
@@ -403,6 +436,28 @@ usePortfolioScopedLoader(
   },
   () => `${targetTeacherId.value}:${categoryId.value}:${queryRecordId.value}`,
 )
+
+onBeforeRouteUpdate(async (to, from) => {
+  if (to.fullPath === from.fullPath) {
+    return true
+  }
+  return confirmDiscardDirtyForm('切换填报范围')
+})
+
+onBeforeRouteLeave(async () => {
+  return confirmDiscardDirtyForm('离开本页')
+})
+
+function warnOnUnload(event: BeforeUnloadEvent) {
+  if (!isFormDirty.value) {
+    return
+  }
+  event.preventDefault()
+  event.returnValue = ''
+}
+
+onMounted(() => window.addEventListener('beforeunload', warnOnUnload))
+onBeforeUnmount(() => window.removeEventListener('beforeunload', warnOnUnload))
 
 const categoryEditMoreActionItems = computed(() => {
   const items: Array<{ key: string, label: string }> = [{ key: 'back', label: '返回档案' }]
@@ -463,7 +518,7 @@ function onCategoryEditMoreAction(key: string) {
           tone="warning"
           title="档案已封存写禁"
           :description="archiveWriteBlockMessage"
-          class="mb-3"
+          class="dp-mb-component"
         />
       </ContextBar>
     </template>
@@ -488,16 +543,15 @@ function onCategoryEditMoreAction(key: string) {
             :label="field.fieldLabel"
             :required="field.required"
           >
-            <UiInput
-              size="sm"
+            <PortfolioArchiveFieldControl
               v-model="fieldValues[field.fieldCode]"
+              :field="field"
               :disabled="!recordEditable || writeInProgress"
-              :placeholder="field.required ? '必填' : '选填'"
             />
             <UiInput
               size="sm"
               v-model="evidenceRefs[field.fieldCode]"
-              :disabled="!recordEditable || writeInProgress"
+              :disabled="!recordEditable || writeInProgress || field.readonly === true"
               class="archive-category-edit__evidence"
               placeholder="证据引用（可选）"
             />
@@ -519,8 +573,8 @@ function onCategoryEditMoreAction(key: string) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
-  margin: 0 0 var(--dp-space-4);
+  gap: var(--dp-space-component-tight);
+  margin: 0 0 var(--dp-space-block);
 }
 
 .archive-category-edit__status-hint {
@@ -529,10 +583,10 @@ function onCategoryEditMoreAction(key: string) {
 }
 
 .archive-category-edit__evidence {
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .archive-category-edit__hint {
-  padding: var(--dp-space-3, 12px) 0;
+  padding: var(--dp-space-component) 0;
 }
 </style>

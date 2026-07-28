@@ -1,11 +1,11 @@
-/** 教师阅卷概览旅程阶段键 */
+/** 教师阅卷概览旅程阶段键 - 与后端 MarkTeacherDashboardJourneyKeyEnum 逐值对齐 */
 export enum MarkTeacherDashboardJourneyKeyCode {
-  PREP = 'prep',
-  SCAN = 'scan',
-  ASSIGN = 'assign',
-  MARK = 'mark',
-  PUBLISH = 'publish',
-  ARCHIVE = 'archive',
+  PREP = 'PREP',
+  SCAN = 'SCAN',
+  ASSIGN = 'ASSIGN',
+  MARK = 'MARK',
+  PUBLISH = 'PUBLISH',
+  ARCHIVE = 'ARCHIVE',
 }
 
 export const ALL_MARK_TEACHER_DASHBOARD_JOURNEY_KEY_CODES: readonly MarkTeacherDashboardJourneyKeyCode[] = [

@@ -61,13 +61,42 @@
     <ExamSelectGateStrip v-if="!selectedExamId" body="请先选择考试后再查看扫描批次明细" />
     <UiAlertStrip v-else-if="!scanBatchId" tone="info" size="sm" dense inline :show-icon="false">
       <template #default>
-        <span style="display: inline-flex; align-items: center; gap: 8px">
+        <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
           <UiTag tone="blue" size="sm">未选择批次</UiTag>
           <span>缺少扫描批次上下文，请从扫描监控或批次列表进入</span>
         </span>
       </template>
     </UiAlertStrip>
-    <UiSpin v-else :spinning="workbenchLoading">
+    <div v-else-if="workbenchLoadFailed && !workbench" class="scan-batch-detail-workbench__load-fail">
+      <UiAlertStrip
+        tone="error"
+        :closable="false"
+        dense
+        title="批次工作台加载失败"
+        :description="`批次 ID：${scanBatchId}`"
+      >
+        <template #actions>
+          <UiButton size="sm" variant="outline" @click="goBatchList">返回批次列表</UiButton>
+        </template>
+      </UiAlertStrip>
+    </div>
+    <UiSpin v-else-if="workbench || workbenchLoading" :spinning="workbenchLoading && !workbench">
+      <UiAlertStrip
+        v-if="workbenchLoadFailed && workbench"
+        tone="warning"
+        :closable="false"
+        dense
+        title="批次状态刷新失败"
+        class="scan-batch-detail-workbench__signal-alert"
+      />
+      <UiAlertStrip
+        v-if="pagesLoadFailed"
+        tone="warning"
+        :closable="false"
+        dense
+        title="页轨加载失败"
+        class="scan-batch-detail-workbench__signal-alert"
+      />
       <UiAlertStrip
         v-if="workbench?.signalBandMessage"
         :tone="workbenchSignalTone"
@@ -156,7 +185,7 @@
                 @reach-end="loadMorePages"
               />
             </div>
-            <div v-else class="scan-batch-detail-workbench__queue-list">
+            <div v-else class="scan-batch-detail-workbench__queue-list" role="listbox" aria-label="归卷列表">
               <article
                 v-for="item in workbench?.attributionItems ?? []"
                 :key="item.bucketKey"
@@ -169,6 +198,10 @@
                 <button
                   type="button"
                   class="scan-batch-detail-workbench__queue-main"
+                  role="option"
+                  :aria-selected="item.bucketKey === selectedBucketKey"
+                  :aria-current="item.bucketKey === selectedBucketKey ? 'true' : undefined"
+                  :aria-label="`${attributionPrimaryLabel(item)}，${attributionSecondaryLabel(item)}`"
                   @click="selectAttributionItem(item)"
                 >
                   <UiTag
@@ -214,13 +247,23 @@
 
           <section class="scan-batch-detail-workbench__stage">
             <div
+              v-if="pageEvidenceAnchor"
+              class="scan-batch-detail-workbench__evidence-anchor"
+            >
+              {{ pageEvidenceAnchor }}
+            </div>
+            <div
               v-if="selectedBucketPages.length"
               class="scan-batch-detail-workbench__bucket-pages"
+              role="tablist"
+              aria-label="当前归卷页"
             >
               <button
                 v-for="page in selectedBucketPages"
                 :key="page.pageKey"
                 type="button"
+                role="tab"
+                :aria-selected="page.pageKey === selectedPageKey"
                 class="scan-batch-detail-workbench__bucket-chip"
                 :class="{
                   'scan-batch-detail-workbench__bucket-chip--active':
@@ -283,7 +326,7 @@
               :scan-batch-id="scanBatchId"
               :attribution-items="workbench?.attributionItems ?? []"
               :preferred-target-paper-instance-id="preferredTargetPaperInstanceId"
-              :can-manage-owner-writes="canManageOwnerBatchActions"
+              :can-manage-owner-writes="canManageOwnerPageWrites"
               @bound="handleInspectorBound"
               @reassigned="handleInspectorReassigned"
             />
@@ -312,7 +355,7 @@
           @reach-end="loadMorePages"
         />
       </div>
-      <div v-else class="scan-batch-detail-workbench__queue-list">
+      <div v-else class="scan-batch-detail-workbench__queue-list" role="listbox" aria-label="归卷列表">
         <article
           v-for="item in workbench?.attributionItems ?? []"
           :key="item.bucketKey"
@@ -324,6 +367,10 @@
           <button
             type="button"
             class="scan-batch-detail-workbench__queue-main"
+            role="option"
+            :aria-selected="item.bucketKey === selectedBucketKey"
+            :aria-current="item.bucketKey === selectedBucketKey ? 'true' : undefined"
+            :aria-label="`${attributionPrimaryLabel(item)}，${attributionSecondaryLabel(item)}`"
             @click="onDrawerSelectAttribution(item)"
           >
             <UiTag
@@ -363,7 +410,7 @@
         :scan-batch-id="scanBatchId"
         :attribution-items="workbench?.attributionItems ?? []"
         :preferred-target-paper-instance-id="preferredTargetPaperInstanceId"
-        :can-manage-owner-writes="canManageOwnerBatchActions"
+        :can-manage-owner-writes="canManageOwnerPageWrites"
         @bound="handleInspectorBound"
         @reassigned="handleInspectorReassigned"
       />
@@ -481,6 +528,7 @@ import { ScanBatchWorkbenchRegisterStatusCode } from '@/types/enums/scan-batch-w
 import { ScanBatchWorkbenchTopActionCode } from '@/types/enums/scan-batch-workbench-top-action-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
+import mittBus from '@/utils/mitt'
 import {
   batchSealBlockedReason,
   canSealBatch,
@@ -493,7 +541,7 @@ defineOptions({ name: 'TeacherExamWorkspaceScanBatchDetail' })
 
 const route = useRoute()
 const router = useRouter()
-const { selectedExamId } = useWorkspaceExamId()
+const { selectedExamId, refreshSnapshot } = useWorkspaceExamId()
 const { width: viewportWidth } = useWindowSize()
 const { isExamConfidential, examConfidentialLabel, watermarkLines }
   = useWorkspaceConfidentialContext()
@@ -502,11 +550,16 @@ const pageStatusFilter = ref<ScanBatchWorkbenchPageStatusFilterCode>(
   ScanBatchWorkbenchPageStatusFilterCode.ALL,
 )
 const pageKeyword = ref('')
-const pageRailCounts = ref({
-  total: 0,
-  pending: 0,
-  registered: 0,
-  exception: 0,
+const pageRailCounts = ref<{
+  total: number | null
+  pending: number | null
+  registered: number | null
+  exception: number | null
+}>({
+  total: null,
+  pending: null,
+  registered: null,
+  exception: null,
 })
 
 const pageStatusTabItems = computed(() => [
@@ -517,7 +570,7 @@ const pageStatusTabItems = computed(() => [
       ScanBatchWorkbenchPageStatusFilterCode.ALL,
       '页轨状态筛选',
     ),
-    count: pageRailCounts.value.total,
+    count: pageRailCounts.value.total == null ? '—' : pageRailCounts.value.total,
   },
   {
     key: ScanBatchWorkbenchPageStatusFilterCode.PENDING,
@@ -526,7 +579,7 @@ const pageStatusTabItems = computed(() => [
       ScanBatchWorkbenchPageStatusFilterCode.PENDING,
       '页轨状态筛选',
     ),
-    count: pageRailCounts.value.pending,
+    count: pageRailCounts.value.pending == null ? '—' : pageRailCounts.value.pending,
   },
   {
     key: ScanBatchWorkbenchPageStatusFilterCode.REGISTERED,
@@ -535,7 +588,7 @@ const pageStatusTabItems = computed(() => [
       ScanBatchWorkbenchPageStatusFilterCode.REGISTERED,
       '页轨状态筛选',
     ),
-    count: pageRailCounts.value.registered,
+    count: pageRailCounts.value.registered == null ? '—' : pageRailCounts.value.registered,
   },
   {
     key: ScanBatchWorkbenchPageStatusFilterCode.EXCEPTION,
@@ -544,7 +597,7 @@ const pageStatusTabItems = computed(() => [
       ScanBatchWorkbenchPageStatusFilterCode.EXCEPTION,
       '页轨状态筛选',
     ),
-    count: pageRailCounts.value.exception,
+    count: pageRailCounts.value.exception == null ? '—' : pageRailCounts.value.exception,
   },
 ])
 
@@ -568,6 +621,8 @@ const isNarrowViewport = computed(() => viewportWidth.value > 0 && viewportWidth
 
 const workbench = ref<ExamScannerBatchWorkbenchResponse | null>(null)
 const workbenchLoading = ref(false)
+const workbenchLoadFailed = ref(false)
+const pagesLoadFailed = ref(false)
 const pageItems = ref<ExamScannerBatchWorkbenchPageVO[]>([])
 const pagesLoading = ref(false)
 const pagesLoadingMore = ref(false)
@@ -585,6 +640,8 @@ const previewLoading = ref(false)
 const previewLoadFailed = ref(false)
 const previewingOriginal = ref(false)
 let previewRequestSeq = 0
+let workbenchLoadGeneration = 0
+let pageSelectionGeneration = 0
 const actionLoading = ref<ScanBatchWorkbenchTopActionCode | ''>('')
 const discardModalOpen = ref(false)
 const supplementModalOpen = ref(false)
@@ -688,6 +745,26 @@ const canViewOriginalImage = computed(
 const canManageOwnerBatchActions = computed(
   () => workbench.value?.canManageOwnerBatchActions === true,
 )
+
+/** 页轨子请求失败时禁止页级写，保留批次顶栏写能力 */
+const canManageOwnerPageWrites = computed(
+  () => canManageOwnerBatchActions.value && !pagesLoadFailed.value,
+)
+
+const pageEvidenceAnchor = computed(() => {
+  const page = selectedPage.value
+  if (!page) {
+    return ''
+  }
+  const parts: string[] = [`#${page.fileOrder}`]
+  if (page.pageId) {
+    parts.push(`pageId ${page.pageId}`)
+  }
+  if (page.paperInstanceId) {
+    parts.push(`卷 ${page.paperInstanceId}`)
+  }
+  return parts.join(' · ')
+})
 
 const workbenchSignalMetrics = computed((): SignalMetric[] => {
   const data = workbench.value
@@ -964,40 +1041,103 @@ function ensureSelectedPageInRail(pageKey: string): void {
 
 async function syncSelectedPageAfterRefresh(pageKey: string): Promise<void> {
   if (!pageKey) {
-    pageInspector.value = null
+    beginPageSelection('')
     return
   }
-  selectedPageKey.value = pageKey
   if (!pageItems.value.some((item) => item.pageKey === pageKey)) {
     const initialItem = workbench.value?.initialPageItems?.find((item) => item.pageKey === pageKey)
     if (initialItem) {
       pageItems.value = [initialItem, ...pageItems.value]
     } else {
-      await loadInspector(pageKey)
+      beginPageSelection(pageKey)
       ensureSelectedPageInRail(pageKey)
       return
     }
   }
-  await loadInspector(pageKey)
+  beginPageSelection(pageKey)
 }
 
-async function loadWorkbench(): Promise<void> {
-  if (!selectedExamId.value || !scanBatchId.value) {
-    workbench.value = null
+function clearPageSelectionState(): void {
+  selectedPageKey.value = ''
+  selectedBucketKey.value = ''
+  pageInspector.value = null
+  preferredTargetPaperInstanceId.value = undefined
+  previewTab.value = 'page'
+  releasePreviewUrl()
+  previewLoadFailed.value = false
+  previewingOriginal.value = false
+  pageItems.value = []
+  pagesNextCursor.value = undefined
+  pageRailCounts.value = {
+    total: null,
+    pending: null,
+    registered: null,
+    exception: null,
+  }
+  pagesLoadFailed.value = false
+}
+
+/**
+ * 写 API 成功后的统一刷新：工作台 → 扫描列表/账本失效通知 → 阶段快照。
+ * 任一分段失败只提示状态刷新失败，不重复提交写操作。
+ */
+async function afterSuccessfulWriteRefresh(options?: { pageKey?: string }): Promise<void> {
+  const generation = workbenchLoadGeneration
+  const refreshed = await loadWorkbench(generation)
+  if (!refreshed) {
+    void message.warning('操作已成功，状态刷新失败；请切换范围或重新进入本页后核对最新状态')
     return
   }
+  if (options?.pageKey) {
+    await syncSelectedPageAfterRefresh(options.pageKey)
+  }
+  mittBus.emit('scan-workbench:refresh')
+  try {
+    await refreshSnapshot()
+  } catch (error) {
+    void message.warning('操作已成功，状态刷新失败；请切换范围或重新进入本页后核对最新状态')
+    showUserError(error, '阶段快照刷新失败')
+  }
+}
+
+async function loadWorkbench(expectedGeneration = workbenchLoadGeneration): Promise<boolean> {
+  if (!selectedExamId.value || !scanBatchId.value) {
+    workbench.value = null
+    workbenchLoadFailed.value = false
+    return false
+  }
   workbenchLoading.value = true
+  const examId = selectedExamId.value
+  const batchId = scanBatchId.value
+  const hadWorkbench = workbench.value != null
   const preservedPageKey = selectedPageKey.value
   const preservedBucketKey = selectedBucketKey.value
   const preservedFileOrder = parsePendingFileOrder(preservedPageKey)
   try {
-    workbench.value = await getScannerBatchWorkbench({
-      examId: selectedExamId.value,
-      scanBatchId: scanBatchId.value,
+    const next = await getScannerBatchWorkbench({
+      examId,
+      scanBatchId: batchId,
     })
-    pageItems.value = workbench.value.initialPageItems ?? []
+    if (
+      expectedGeneration !== workbenchLoadGeneration
+      || selectedExamId.value !== examId
+      || scanBatchId.value !== batchId
+    ) {
+      return false
+    }
+    workbench.value = next
+    workbenchLoadFailed.value = false
+    pageItems.value = next.initialPageItems ?? []
     pagesNextCursor.value = undefined
-    await refreshPagesWindow()
+    await refreshPagesWindow(expectedGeneration)
+
+    if (
+      expectedGeneration !== workbenchLoadGeneration
+      || selectedExamId.value !== examId
+      || scanBatchId.value !== batchId
+    ) {
+      return false
+    }
 
     const attributionItems = workbench.value.attributionItems ?? []
     let pageKey = resolvePageKeyAfterRefresh(preservedPageKey, pageItems.value)
@@ -1022,11 +1162,29 @@ async function loadWorkbench(): Promise<void> {
     }
     await syncSelectedPageAfterRefresh(pageKey)
     syncBucketKeyForPage(pageKey)
+    return true
   } catch (error) {
-    workbench.value = null
+    if (
+      expectedGeneration !== workbenchLoadGeneration
+      || selectedExamId.value !== examId
+      || scanBatchId.value !== batchId
+    ) {
+      return false
+    }
+    if (!hadWorkbench) {
+      workbench.value = null
+    }
+    workbenchLoadFailed.value = true
     showUserError(error, '批次工作台加载失败')
+    return false
   } finally {
-    workbenchLoading.value = false
+    if (
+      expectedGeneration === workbenchLoadGeneration
+      && selectedExamId.value === examId
+      && scanBatchId.value === batchId
+    ) {
+      workbenchLoading.value = false
+    }
   }
 }
 
@@ -1036,13 +1194,24 @@ function syncPageRailCounts(response: {
   registeredCount?: number
   exceptionCount?: number
 }): void {
-  const pending = response.pendingCount ?? 0
-  const registered = response.registeredCount ?? 0
+  const pending = response.pendingCount
+  const registered = response.registeredCount
+  const exception = response.exceptionCount
+  const total = response.totalCount
+  if (pending === undefined || registered === undefined || exception === undefined) {
+    pageRailCounts.value = {
+      total: total ?? null,
+      pending: pending ?? null,
+      registered: registered ?? null,
+      exception: exception ?? null,
+    }
+    return
+  }
   pageRailCounts.value = {
-    total: response.totalCount ?? pending + registered,
+    total: total ?? pending + registered,
     pending,
     registered,
-    exception: response.exceptionCount ?? 0,
+    exception,
   }
 }
 
@@ -1059,36 +1228,59 @@ function buildPageQuery(cursor?: string) {
 
 async function handlePageStatusFilterChange(): Promise<void> {
   pagesNextCursor.value = undefined
-  selectedPageKey.value = ''
-  pageInspector.value = null
+  beginPageSelection('')
   await refreshPagesWindow()
 }
 
 async function handlePageKeywordSearch(): Promise<void> {
   pagesNextCursor.value = undefined
-  selectedPageKey.value = ''
-  pageInspector.value = null
+  beginPageSelection('')
   await refreshPagesWindow()
 }
 
-async function refreshPagesWindow(): Promise<void> {
+async function refreshPagesWindow(
+  expectedWorkbenchGeneration = workbenchLoadGeneration,
+): Promise<void> {
   if (!selectedExamId.value || !scanBatchId.value) {
     return
   }
+  const examId = selectedExamId.value
+  const batchId = scanBatchId.value
   pagesLoading.value = true
   try {
     const response = await pageScannerBatchWorkbenchPages(buildPageQuery())
+    if (
+      expectedWorkbenchGeneration !== workbenchLoadGeneration
+      || selectedExamId.value !== examId
+      || scanBatchId.value !== batchId
+    ) {
+      return
+    }
     pageItems.value = response.items
     pagesNextCursor.value = response.nextCursor ?? null
     syncPageRailCounts(response)
+    pagesLoadFailed.value = false
     if (!selectedPageKey.value && pageItems.value[0]) {
-      selectedPageKey.value = pageItems.value[0].pageKey
-      await loadInspector(selectedPageKey.value)
+      beginPageSelection(pageItems.value[0].pageKey)
     }
   } catch (error) {
+    if (
+      expectedWorkbenchGeneration !== workbenchLoadGeneration
+      || selectedExamId.value !== examId
+      || scanBatchId.value !== batchId
+    ) {
+      return
+    }
+    pagesLoadFailed.value = true
     showUserError(error, '页轨加载失败')
   } finally {
-    pagesLoading.value = false
+    if (
+      expectedWorkbenchGeneration === workbenchLoadGeneration
+      && selectedExamId.value === examId
+      && scanBatchId.value === batchId
+    ) {
+      pagesLoading.value = false
+    }
   }
 }
 
@@ -1104,18 +1296,42 @@ async function loadMorePages(): Promise<void> {
   if (pagesLoadMoreInFlight.value) {
     return
   }
+  const examId = selectedExamId.value
+  const batchId = scanBatchId.value
+  const expectedWorkbenchGeneration = workbenchLoadGeneration
   pagesLoadMoreInFlight.value = true
   pagesLoadingMore.value = true
   try {
     const response = await pageScannerBatchWorkbenchPages(buildPageQuery(pagesNextCursor.value))
+    if (
+      expectedWorkbenchGeneration !== workbenchLoadGeneration
+      || selectedExamId.value !== examId
+      || scanBatchId.value !== batchId
+    ) {
+      return
+    }
     pageItems.value = [...pageItems.value, ...response.items]
     pagesNextCursor.value = response.nextCursor ?? null
     syncPageRailCounts(response)
   } catch (error) {
+    if (
+      expectedWorkbenchGeneration !== workbenchLoadGeneration
+      || selectedExamId.value !== examId
+      || scanBatchId.value !== batchId
+    ) {
+      return
+    }
+    pagesLoadFailed.value = true
     showUserError(error, '页轨翻页加载失败')
   } finally {
-    pagesLoadingMore.value = false
-    pagesLoadMoreInFlight.value = false
+    if (
+      expectedWorkbenchGeneration === workbenchLoadGeneration
+      && selectedExamId.value === examId
+      && scanBatchId.value === batchId
+    ) {
+      pagesLoadingMore.value = false
+      pagesLoadMoreInFlight.value = false
+    }
   }
 }
 
@@ -1134,43 +1350,84 @@ async function handleInspectorBound(): Promise<void> {
 
 async function handleInspectorReassigned(): Promise<void> {
   const pageKey = selectedPageKey.value
-  try {
-    await loadWorkbench()
-    if (pageKey) {
-      await syncSelectedPageAfterRefresh(pageKey)
-    }
-  } catch (error) {
-    showUserError(error, '工作台刷新失败')
-  }
+  await afterSuccessfulWriteRefresh({ pageKey: pageKey || undefined })
 }
 
-async function loadInspector(pageKey: string): Promise<void> {
-  if (!selectedExamId.value || !scanBatchId.value || !pageKey) {
+function beginPageSelection(pageKey: string): void {
+  const generation = ++pageSelectionGeneration
+  selectedPageKey.value = pageKey
+  preferredTargetPaperInstanceId.value = undefined
+  if (!pageKey) {
     pageInspector.value = null
+    releasePreviewUrl()
+    previewLoadFailed.value = false
+    previewingOriginal.value = false
     return
   }
+  void loadInspector(pageKey, generation)
+}
+
+async function loadInspector(
+  pageKey: string,
+  expectedGeneration = pageSelectionGeneration,
+): Promise<void> {
+  if (!selectedExamId.value || !scanBatchId.value || !pageKey) {
+    if (expectedGeneration === pageSelectionGeneration) {
+      pageInspector.value = null
+    }
+    return
+  }
+  const examId = selectedExamId.value
+  const batchId = scanBatchId.value
   inspectorLoading.value = true
   try {
-    pageInspector.value = await getScannerBatchPageInspector({
-      examId: selectedExamId.value,
-      scanBatchId: scanBatchId.value,
+    const inspector = await getScannerBatchPageInspector({
+      examId,
+      scanBatchId: batchId,
       pageKey,
     })
+    if (
+      expectedGeneration !== pageSelectionGeneration
+      || selectedPageKey.value !== pageKey
+      || selectedExamId.value !== examId
+      || scanBatchId.value !== batchId
+    ) {
+      return
+    }
+    if (inspector.page?.pageKey && inspector.page.pageKey !== pageKey) {
+      return
+    }
+    pageInspector.value = inspector
   } catch (error) {
+    if (
+      expectedGeneration !== pageSelectionGeneration
+      || selectedPageKey.value !== pageKey
+      || selectedExamId.value !== examId
+      || scanBatchId.value !== batchId
+    ) {
+      return
+    }
     pageInspector.value = null
     showUserError(error, '页检视面板加载失败')
   } finally {
-    inspectorLoading.value = false
+    if (
+      expectedGeneration === pageSelectionGeneration
+      && selectedPageKey.value === pageKey
+    ) {
+      inspectorLoading.value = false
+    }
   }
 }
 
 async function loadPreview(): Promise<void> {
   const requestSeq = ++previewRequestSeq
+  const expectedPageGeneration = pageSelectionGeneration
+  const expectedPageKey = selectedPageKey.value
   releasePreviewUrl()
   previewLoadFailed.value = false
   previewingOriginal.value = false
   const page = selectedPage.value
-  if (!page) {
+  if (!page || page.pageKey !== expectedPageKey) {
     return
   }
   if (previewTab.value === 'identity') {
@@ -1180,19 +1437,30 @@ async function loadPreview(): Promise<void> {
     previewLoading.value = true
     try {
       const blobUrl = await fetchStoragePreviewBlobUrl(page.identitySlicePreviewUrl)
-      if (requestSeq !== previewRequestSeq) {
+      if (
+        requestSeq !== previewRequestSeq
+        || expectedPageGeneration !== pageSelectionGeneration
+        || selectedPageKey.value !== expectedPageKey
+      ) {
         URL.revokeObjectURL(blobUrl)
         return
       }
       previewImageUrl.value = blobUrl
     } catch (error) {
-      if (requestSeq !== previewRequestSeq) {
+      if (
+        requestSeq !== previewRequestSeq
+        || expectedPageGeneration !== pageSelectionGeneration
+        || selectedPageKey.value !== expectedPageKey
+      ) {
         return
       }
       previewLoadFailed.value = true
       showUserError(error, '身份切片加载失败')
     } finally {
-      if (requestSeq === previewRequestSeq) {
+      if (
+        requestSeq === previewRequestSeq
+        && expectedPageGeneration === pageSelectionGeneration
+      ) {
         previewLoading.value = false
       }
     }
@@ -1204,34 +1472,52 @@ async function loadPreview(): Promise<void> {
       && canViewOriginalImage.value === true
       && page.pageId
     ) {
-      await loadOriginalPreview(requestSeq)
+      await loadOriginalPreview(requestSeq, expectedPageGeneration, expectedPageKey)
     }
     return
   }
   previewLoading.value = true
   try {
     const blobUrl = await fetchStoragePreviewBlobUrl(page.previewUrl)
-    if (requestSeq !== previewRequestSeq) {
+    if (
+      requestSeq !== previewRequestSeq
+      || expectedPageGeneration !== pageSelectionGeneration
+      || selectedPageKey.value !== expectedPageKey
+    ) {
       URL.revokeObjectURL(blobUrl)
       return
     }
     previewImageUrl.value = blobUrl
   } catch (error) {
-    if (requestSeq !== previewRequestSeq) {
+    if (
+      requestSeq !== previewRequestSeq
+      || expectedPageGeneration !== pageSelectionGeneration
+      || selectedPageKey.value !== expectedPageKey
+    ) {
       return
     }
     previewLoadFailed.value = true
     showUserError(error, '影像预览加载失败')
   } finally {
-    if (requestSeq === previewRequestSeq) {
+    if (
+      requestSeq === previewRequestSeq
+      && expectedPageGeneration === pageSelectionGeneration
+    ) {
       previewLoading.value = false
     }
   }
 }
 
-async function loadOriginalPreview(requestSeq = ++previewRequestSeq): Promise<void> {
+async function loadOriginalPreview(
+  requestSeq = ++previewRequestSeq,
+  expectedPageGeneration = pageSelectionGeneration,
+  expectedPageKey = selectedPageKey.value,
+): Promise<void> {
   const page = selectedPage.value
   if (!page?.pageId || !selectedExamId.value || canViewOriginalImage.value !== true) {
+    return
+  }
+  if (page.pageKey !== expectedPageKey) {
     return
   }
   if (requestSeq === previewRequestSeq) {
@@ -1242,20 +1528,31 @@ async function loadOriginalPreview(requestSeq = ++previewRequestSeq): Promise<vo
   try {
     const previewPath = `/api/mark/exams/scanner-batches/pages/original-image?examId=${selectedExamId.value}&pageId=${page.pageId}`
     const blobUrl = await fetchStoragePreviewBlobUrl(previewPath)
-    if (requestSeq !== previewRequestSeq) {
+    if (
+      requestSeq !== previewRequestSeq
+      || expectedPageGeneration !== pageSelectionGeneration
+      || selectedPageKey.value !== expectedPageKey
+    ) {
       URL.revokeObjectURL(blobUrl)
       return
     }
     previewImageUrl.value = blobUrl
     previewingOriginal.value = true
   } catch (error) {
-    if (requestSeq !== previewRequestSeq) {
+    if (
+      requestSeq !== previewRequestSeq
+      || expectedPageGeneration !== pageSelectionGeneration
+      || selectedPageKey.value !== expectedPageKey
+    ) {
       return
     }
     previewLoadFailed.value = true
     showUserError(error, '原始影像加载失败')
   } finally {
-    if (requestSeq === previewRequestSeq) {
+    if (
+      requestSeq === previewRequestSeq
+      && expectedPageGeneration === pageSelectionGeneration
+    ) {
       previewLoading.value = false
     }
   }
@@ -1279,8 +1576,7 @@ function selectAttributionItem(item: ExamScannerBatchAttributionItemVO): void {
     return
   }
   previewTab.value = 'page'
-  selectedPageKey.value = pageKey
-  void loadInspector(pageKey)
+  beginPageSelection(pageKey)
 }
 
 function onDrawerSelectAttribution(item: ExamScannerBatchAttributionItemVO): void {
@@ -1293,16 +1589,13 @@ function selectBucketPage(pageKey: string): void {
     return
   }
   previewTab.value = 'page'
-  selectedPageKey.value = pageKey
-  void loadInspector(pageKey)
+  beginPageSelection(pageKey)
 }
 
 function handleSelectPage(pageKey: string): void {
-  selectedPageKey.value = pageKey
   syncBucketKeyForPage(pageKey)
-  preferredTargetPaperInstanceId.value = undefined
   previewTab.value = 'page'
-  void loadInspector(pageKey)
+  beginPageSelection(pageKey)
 }
 
 function setPreferredReassignTarget(paperInstanceId: string): void {
@@ -1365,7 +1658,7 @@ async function onDismissCollateAttention(): Promise<void> {
           scanBatchId: batch.scanBatchId,
         })
         void message.success('已忽略余页异常，可继续封存')
-        await loadWorkbench()
+        await afterSuccessfulWriteRefresh()
       } catch (error) {
         showUserError(error, '忽略余页异常失败')
       } finally {
@@ -1380,7 +1673,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
   if (!batch?.scanBatchId || !selectedExamId.value) {
     return
   }
-  if (actionLoading.value === true) {
+  if (actionLoading.value) {
     return
   }
   // MVR-298：顶栏写动作二次拦截；BE resolveTopActions 已对非主考返回空列表，防拆栏/缓存陈旧
@@ -1402,7 +1695,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
       } else {
         void message.success(formatPageRegisterRetryMessage(response))
       }
-      await loadWorkbench()
+      await afterSuccessfulWriteRefresh()
     } catch (error) {
       showUserError(error, '页登记重试失败')
     } finally {
@@ -1418,10 +1711,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
         scanBatchId: batch.scanBatchId,
       })
       void message.success(`已补跑 ${count} 页脱敏处理影像`)
-      await loadWorkbench()
-      if (selectedPageKey.value) {
-        void loadInspector(selectedPageKey.value)
-      }
+      await afterSuccessfulWriteRefresh({ pageKey: selectedPageKey.value || undefined })
     } catch (error) {
       showUserError(error, '补跑脱敏失败')
     } finally {
@@ -1444,7 +1734,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
           void message.warning('仅本场主考可执行批次写操作')
           return false
         }
-        if (actionLoading.value === true) {
+        if (actionLoading.value) {
           return false
         }
         actionLoading.value = action
@@ -1460,7 +1750,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
           } else {
             void message.success(formatPageRegisterRetryMessage(response))
           }
-          await loadWorkbench()
+          await afterSuccessfulWriteRefresh()
         } catch (error) {
           showUserError(error, '物理页重建失败')
           return false
@@ -1468,13 +1758,6 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
           actionLoading.value = ''
         }
       },
-    })
-    return
-  }
-  if (action === ScanBatchWorkbenchTopActionCode.OPEN_PREP) {
-    void router.push({
-      name: 'TeacherExamWorkspaceLayoutDesigner',
-      params: { examId: selectedExamId.value },
     })
     return
   }
@@ -1508,14 +1791,14 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
           void message.warning(batchSealBlockedReason(batch) || '当前批次不满足封存条件')
           return false
         }
-        if (actionLoading.value === true) {
+        if (actionLoading.value) {
           return false
         }
         actionLoading.value = action
         try {
           await sealScanBatchByTeacher({ scanBatchId: batch.scanBatchId })
           void message.success(`扫描批次已封存：${batch.batchNo}`)
-          await loadWorkbench()
+          await afterSuccessfulWriteRefresh()
         } catch (error) {
           showUserError(error, '扫描批次封存失败')
           return false
@@ -1547,7 +1830,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
 
 async function handleSupplementSuccess(): Promise<void> {
   supplementModalOpen.value = false
-  await loadWorkbench()
+  await afterSuccessfulWriteRefresh()
 }
 
 async function confirmDiscardBatch(reason: string): Promise<void> {
@@ -1562,7 +1845,7 @@ async function confirmDiscardBatch(reason: string): Promise<void> {
     discardModalOpen.value = false
     return
   }
-  if (actionLoading.value === true) {
+  if (actionLoading.value) {
     return
   }
   actionLoading.value = ScanBatchWorkbenchTopActionCode.DISCARD
@@ -1570,7 +1853,7 @@ async function confirmDiscardBatch(reason: string): Promise<void> {
     await discardScanBatchByTeacher({ scanBatchId: batch.scanBatchId, discardReason: reason })
     void message.success(`扫描批次已废弃：${batch.batchNo}`)
     discardModalOpen.value = false
-    await loadWorkbench()
+    await afterSuccessfulWriteRefresh()
   } catch (error) {
     showUserError(error, '扫描批次废弃失败')
   } finally {
@@ -1585,10 +1868,25 @@ function goBack(): void {
   })
 }
 
+function goBatchList(): void {
+  void router.push({
+    name: 'TeacherExamWorkspaceScanBatches',
+    params: { examId: selectedExamId.value },
+  })
+}
+
 watch(
-  () => [selectedExamId.value, scanBatchId.value],
-  () => {
-    void loadWorkbench()
+  () => [selectedExamId.value, scanBatchId.value] as const,
+  ([examId, batchId]) => {
+    const generation = ++workbenchLoadGeneration
+    pageSelectionGeneration += 1
+    workbench.value = null
+    workbenchLoadFailed.value = false
+    workbenchLoading.value = Boolean(examId && batchId)
+    clearPageSelectionState()
+    if (examId && batchId) {
+      void loadWorkbench(generation)
+    }
   },
   { immediate: true },
 )
@@ -1607,11 +1905,23 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 .scan-batch-detail-workbench__signal-alert {
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
+}
+
+.scan-batch-detail-workbench__load-fail {
+  padding: var(--dp-space-block) 0;
+}
+
+.scan-batch-detail-workbench__evidence-anchor {
+  flex-shrink: 0;
+  margin-bottom: var(--dp-space-component-xs);
+  color: var(--dp-text-secondary);
+  font-size: var(--dp-font-size-xs);
+  line-height: 1.4;
 }
 
 .scan-batch-detail-workbench__collate-alert {
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .scan-batch-detail-workbench__collate-alert :deep(.ui-alert-strip) {
@@ -1622,7 +1932,7 @@ onUnmounted(() => {
 .scan-batch-detail-workbench__screen {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   height: calc(100vh - 168px);
   min-height: 560px;
 }
@@ -1631,7 +1941,7 @@ onUnmounted(() => {
   display: flex;
   flex-shrink: 0;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
   justify-content: space-between;
 }
@@ -1639,19 +1949,19 @@ onUnmounted(() => {
 .scan-batch-detail-workbench__screen-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
 }
 
 .scan-batch-detail-workbench__attribution-summary {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
   font-size: var(--dp-font-size-xs);
 }
 
 .scan-batch-detail-workbench__immersion {
   display: grid;
   grid-template-columns: minmax(240px, 300px) minmax(0, 1fr) minmax(300px, 380px);
-  gap: 12px;
+  gap: var(--dp-space-component);
   flex: 1;
   min-height: 0;
 
@@ -1666,7 +1976,7 @@ onUnmounted(() => {
   min-height: 0;
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
 }
 
 .scan-batch-detail-workbench__queue {
@@ -1679,19 +1989,19 @@ onUnmounted(() => {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   overflow-y: auto;
-  padding: 8px;
+  padding: var(--dp-space-component-tight);
 }
 
 .scan-batch-detail-workbench__queue-item {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight);
   border: 1px solid var(--dp-border-subtle);
   border-radius: 6px;
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
 
   &--active {
     border-color: var(--dp-color-primary);
@@ -1702,7 +2012,7 @@ onUnmounted(() => {
 .scan-batch-detail-workbench__queue-main {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   width: 100%;
   padding: 0;
   border: none;
@@ -1712,7 +2022,7 @@ onUnmounted(() => {
 }
 
 .scan-batch-detail-workbench__queue-title {
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
@@ -1727,7 +2037,7 @@ onUnmounted(() => {
 }
 
 .scan-batch-detail-workbench__queue-diag {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .scan-batch-detail-workbench__queue-action {
@@ -1738,9 +2048,9 @@ onUnmounted(() => {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   min-height: 0;
-  padding: 8px;
+  padding: var(--dp-space-component-tight);
 }
 
 .scan-batch-detail-workbench__keyword {
@@ -1750,26 +2060,26 @@ onUnmounted(() => {
 .scan-batch-detail-workbench__stage {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   min-width: 0;
-  padding: 8px;
+  padding: var(--dp-space-component-tight);
 }
 
 .scan-batch-detail-workbench__bucket-pages {
   display: flex;
   flex-shrink: 0;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
 }
 
 .scan-batch-detail-workbench__bucket-chip {
   min-height: 32px;
-  padding: 4px 10px;
+  padding: var(--dp-space-component-xs) var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: 6px;
-  background: var(--dp-bg-container);
-  color: var(--dp-text);
+  background: var(--dp-surface);
+  color: var(--dp-text-primary);
   font-size: var(--dp-font-size-sm);
   cursor: pointer;
 
@@ -1780,7 +2090,7 @@ onUnmounted(() => {
 
   &--exception {
     border-color: var(--dp-danger);
-    background: color-mix(in srgb, var(--dp-danger) 6%, var(--dp-bg-container));
+    background: color-mix(in srgb, var(--dp-danger) 6%, var(--dp-surface));
   }
 }
 
@@ -1802,7 +2112,7 @@ onUnmounted(() => {
 }
 
 .scan-batch-detail-workbench__inspector {
-  padding: 12px;
+  padding: var(--dp-space-component);
   overflow-y: auto;
 }
 </style>

@@ -297,7 +297,7 @@ onMounted(() => {
   color: var(--dp-text-secondary);
 }
 .archive-scan-batch-review__error {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   color: var(--dp-error);
 }
 </style>

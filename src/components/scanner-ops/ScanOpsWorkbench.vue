@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import type { Key } from 'ant-design-vue/es/_util/type'
+import type {ScanOpsOverviewResponse} from '@/apis/mark/scan-ops';
 import type { SignalMetric } from '@/types/workbench'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   loadArchiveScanOpsOverview,
-  loadExamScanOpsOverview,
-  loadPortfolioScanOpsOverview,
+  loadExamScanOpsOverview
+  
 } from '@/apis/mark/scan-ops'
 import {
   ALL_SCAN_DISPATCH_TICKET_STATUS_CODES,
   ScanDispatchTicketStatusCode,
   ScanDispatchTicketStatusDescription,
 } from '@/apis/mark/scanner-dispatch'
+import { loadPortfolioScanOpsOverview } from '@/apis/portfolio/scan-ops'
 import ScanDispatchPanel from '@/components/scanner-ops/ScanDispatchPanel.vue'
 import ScanExceptionPanel from '@/components/scanner-ops/ScanExceptionPanel.vue'
 import ScanOperationLogPanel from '@/components/scanner-ops/ScanOperationLogPanel.vue'
@@ -417,7 +419,7 @@ const headerSignalMetrics = computed<SignalMetric[]>(() =>
     value: metricValue(metric.count),
     unit: '条',
     tone: metric.tone,
-    clickable: true,
+    clickable: metric.count != null && metric.count > 0,
     active: metric.active,
     helper: metric.count != null && metric.count > 0 ? metric.helper : '正常',
   })),
@@ -442,12 +444,7 @@ const recommendedDutyAction = computed(() => {
     return null
   }
   if (overviewLoadFailed.value) {
-    return {
-      key: 'reload-overview',
-      tone: 'error' as const,
-      title: '运营概览未加载成功',
-      actionLabel: '重新加载概览',
-    }
+    return null
   }
 
   if (props.domain === 'exam') {
@@ -519,7 +516,7 @@ const recommendedDutyAction = computed(() => {
     }
   }
 
-  if (totalBacklogCount.value === 0 && overviewLoading.value !== true) {
+  if (totalBacklogCount.value === 0 && !overviewLoading.value) {
     const healthyAction = props.domain === 'archive'
       ? { key: 'healthy', actionLabel: '查看运营体检', tab: 'ops' as const }
       : { key: 'healthy', actionLabel: '查看处置日志', tab: 'log' as const }
@@ -564,7 +561,7 @@ async function loadOverview() {
   overviewLoading.value = true
   overviewLoadFailed.value = false
   try {
-    let overview
+    let overview: ScanOpsOverviewResponse | Awaited<ReturnType<typeof loadPortfolioScanOpsOverview>>
     if (props.domain === 'exam') {
       const examId = props.examId?.trim()
       if (!examId) {
@@ -581,12 +578,19 @@ async function loadOverview() {
     }
     failedTicketCount.value = overview.failedTicketCount ?? null
     failedWorkOrderCount.value = overview.failedWorkOrderCount ?? null
-    pageRegisterBlockedCount.value = overview.pageRegisterBlockedCount ?? null
     committingWorkOrderCount.value = overview.committingWorkOrderCount ?? null
-    partialTailPendingCount.value = overview.partialTailPendingCount ?? null
     pendingDispatchCount.value = overview.pendingDispatchCount ?? null
     processingDispatchCount.value = overview.processingDispatchCount ?? null
     suspendedDispatchCount.value = overview.suspendedDispatchCount ?? null
+    if (props.domain === 'exam' || props.domain === 'archive') {
+      const markOverview = overview as ScanOpsOverviewResponse
+      pageRegisterBlockedCount.value = markOverview.pageRegisterBlockedCount ?? null
+      partialTailPendingCount.value = markOverview.partialTailPendingCount ?? null
+    } else {
+      // 档案袋运营合同不含页登记阻塞 / 切卷余页 KPI
+      pageRegisterBlockedCount.value = null
+      partialTailPendingCount.value = null
+    }
   } catch (error) {
     resetOverviewMetrics()
     overviewLoadFailed.value = true
@@ -627,6 +631,10 @@ async function navigateMixedBatchScanReview(): Promise<void> {
 }
 
 function handleHeaderMetricClick(key: string) {
+  const metric = dutyBoardMetrics.value.find((item) => item.key === key)
+  if (!metric || metric.count == null || metric.count <= 0) {
+    return
+  }
   if (key === 'failed-ticket') {
     void router.replace({
       query: {
@@ -665,10 +673,6 @@ function handleHeaderMetricClick(key: string) {
 function handleRecommendedAction() {
   const action = recommendedDutyAction.value
   if (!action) {
-    return
-  }
-  if (action.key === 'reload-overview') {
-    void loadOverview()
     return
   }
   if (action.key === 'healthy' && 'tab' in action && action.tab) {
@@ -711,7 +715,7 @@ function handleOpenLog(payload: OpenLogPayload) {
 }
 
 watch(
-  () => [route.fullPath, props.domain, props.examId],
+  () => [props.domain, props.examId] as const,
   () => {
     void loadOverview()
   },
@@ -789,6 +793,7 @@ watch(
         v-else-if="activeTab === 'log'"
         :ticket-id="logTicketId"
         :volume-id="logVolumeId"
+        :task-kind="dispatchTaskKind"
         :return-dispatch-label="logReturnDispatchLabel"
         @return-dispatch="
           () =>
@@ -809,7 +814,7 @@ watch(
 
 <style scoped>
 .scan-ops__recommend {
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .scan-ops__surface {

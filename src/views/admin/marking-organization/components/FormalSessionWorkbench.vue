@@ -56,6 +56,9 @@
         <template v-else-if="column.key === 'taskProgress'">
           {{ formatFormalSessionTaskProgress(record) }}
         </template>
+        <template v-else-if="column.key === 'trialFormalConsistency'">
+          {{ formatTrialFormalConsistency(record) }}
+        </template>
         <template v-else-if="column.key === 'gradeClosure'">
           {{ formatFormalSessionGradeClosureProgress(record) }}
         </template>
@@ -89,7 +92,7 @@
 // MVR-945：canManage* 控制流仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { FormalSessionResponse } from '@/apis/mark/marking-organization'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
 import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
 import message from 'ant-design-vue/es/message'
@@ -111,17 +114,13 @@ import UiEllipsisText from '@/components/ui-guide/ui/UiEllipsisText.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { WorkflowBlockingItemCode } from '@/components/workbench/workflow-readiness/types'
 import WorkflowPrerequisiteEmpty from '@/components/workbench/workflow-readiness/WorkflowPrerequisiteEmpty.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import {
-  ALL_FORMAL_SESSION_STATUS_CODES,
-  FormalSessionStatusCode,
-} from '@/types/enums/formal-session-status-enum'
+import { FormalSessionStatusCode } from '@/types/enums/formal-session-status-enum'
 import { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
-import { ResultCode } from '@/types/enums/result-code'
 import {
   getUserErrorMessage,
-  readBusinessResultCode,
   showFormValidationMessage,
   showUserError,
 } from '@/utils/error-handler'
@@ -131,7 +130,12 @@ import {
   formatFormalSessionTaskProgress,
 } from '@/utils/formal-session-display'
 import { formatDateTime } from '@/utils/format'
-import { isFormalStartPendingReviewConflict } from '@/utils/marking-workflow-conflict'
+import { resolveMarkingOrganizationTrialSessionsRoute } from '@/utils/marking-organization-navigation'
+import {
+  buildMarkingSessionFilterFields,
+  resolveSessionTableEmptyDescription,
+} from '@/utils/marking-session-list-contract'
+import { readFormalSessionStartBlocking } from '@/utils/marking-workflow-conflict'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import FormalSessionDetailDrawer from './FormalSessionDetailDrawer.vue'
 
@@ -164,16 +168,16 @@ const props = withDefaults(
   canCloseMarkingSessions?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
   createBlocked?: boolean
   prerequisiteEmpty?: WorkflowPrerequisiteEmptyViewModel
+  /** 列表请求失败时禁止把失败伪装成「暂无」空态 */
+  sessionsLoadFailed?: boolean
 }>(),
   {
-  canManage: false,
-  canCloseMarkingSessions: false,
-  
-  createBlocked: false,
-  loading: false,
-},
+    canManage: false,
+    canCloseMarkingSessions: false,
+    createBlocked: false,
+    loading: false,
+  },
 )
-
 const emit = defineEmits<{
   "refresh": []
   "search": [model: Record<string, unknown>]
@@ -181,9 +185,6 @@ const emit = defineEmits<{
   'page-change': [page: { current: number, pageSize: number }]
   'open-lifecycle': [action: 'pauseFormal' | 'closeFormal', sessionId: string]
 }>()
-
-const EXPERIENCE_ASSIST_BASELINE_BLOCKING_PREFIX = '标答评分基线未锁定'
-const EXPERIENCE_ASSIST_BINDING_BLOCKING_PREFIX = '经验辅助评阅定标未完成'
 
 const router = useRouter()
 const draftFilterModel = ref<Record<string, unknown>>({
@@ -205,45 +206,14 @@ const sessionColumns: ColumnType<FormalSessionResponse>[] = [
   { title: '批阅单元', key: 'allocationUnit', width: 100 },
   { title: '题目范围', key: 'questionScope', ellipsis: true },
   { title: '任务进度', key: 'taskProgress', width: 160 },
+  { title: '定标对照', key: 'trialFormalConsistency', width: 120 },
   { title: '成绩闭环', key: 'gradeClosure', width: 120 },
   { title: '创建时间', key: 'createTime', width: 152 },
   { title: '起止时间', key: 'lifecycleTime', width: 200 },
   { title: '操作', key: 'actions', width: 220 },
 ]
 
-const statusFilterOptions = computed(() =>
-  ALL_FORMAL_SESSION_STATUS_CODES.map((status) => ({
-    value: status,
-    label: strictEnumLabel(FormalSessionStatusDescription, status, '正评会话状态'),
-  })),
-)
-
-const filterFields = computed((): FilterField[] => [
-  {
-    key: 'keyword',
-    type: 'input',
-    inputPrefixIcon: 'search',
-    placeholder: '搜索题组、状态、题目范围',
-    width: 260,
-    triggerSearchOnChange: false,
-  },
-  {
-    key: 'status',
-    type: 'select',
-    placeholder: '全部状态',
-    options: statusFilterOptions.value,
-    width: 140,
-    triggerSearchOnChange: false,
-  },
-  {
-    key: 'groupId',
-    type: 'select',
-    placeholder: '全部题组',
-    options: props.groupOptions.map((item) => ({ label: item.label, value: item.value })),
-    width: 160,
-    triggerSearchOnChange: false,
-  },
-])
+const filterFields = computed(() => buildMarkingSessionFilterFields('formal', props.groupOptions))
 
 watch(
   () => props.filterModel,
@@ -257,25 +227,19 @@ watch(
   { immediate: true, deep: true },
 )
 
-const hasActiveFilter = computed(
-  () =>
-    Boolean(props.filterModel.keyword.trim())
-    || Boolean(props.filterModel.status)
-    || Boolean(props.filterModel.groupId),
+const sessionTableEmptyDescription = computed(() =>
+  resolveSessionTableEmptyDescription({
+    phase: 'formal',
+    loadFailed: props.sessionsLoadFailed === true,
+    total: props.pagination.total,
+    filter: props.filterModel,
+    createHint: props.createBlocked === true
+      ? ''
+      : props.canManage === true
+        ? '暂无正评会话。须先完成试评校准，再点击顶部「创建正评」开始阅卷'
+        : '暂无正评会话',
+  }),
 )
-
-const sessionTableEmptyDescription = computed(() => {
-  if (props.pagination.total === 0 && !hasActiveFilter.value) {
-    if (props.createBlocked === true) {
-      return ''
-    }
-    return props.canManage === true ? '暂无正评会话，点击顶部「创建正评」开始阅卷' : '暂无正评会话'
-  }
-  if (props.pagination.total === 0 && hasActiveFilter.value) {
-    return '未找到匹配会话，请调整筛选条件'
-  }
-  return '暂无正评会话'
-})
 
 function emitSearch(model: Record<string, unknown>): void {
   emit('search', model)
@@ -287,6 +251,16 @@ function emitReset(): void {
 
 function emitPageChange(page: { current: number, pageSize: number }): void {
   emit('page-change', page)
+}
+
+function formatTrialFormalConsistency(record: FormalSessionResponse): string {
+  if (record.trialFormalMatchedSampleCount == null) {
+    return '—'
+  }
+  const rate = record.trialFormalConsistencyRate == null
+    ? '—'
+    : `${record.trialFormalConsistencyRate}%`
+  return `${rate}（漂移 ${record.trialFormalDriftedSampleCount ?? 0}/${record.trialFormalMatchedSampleCount}）`
 }
 
 function isGroupStartable(groupId: string | undefined): boolean {
@@ -408,39 +382,32 @@ function guardManageAction(): boolean {
 }
 
 function handleFormalStartError(error: unknown): void {
-  const detail = getUserErrorMessage(error, '')
-  const isConflict = readBusinessResultCode(error) === ResultCode.CONFLICT
-  const isExperienceAssistBlock
-    = isConflict
-      && (detail.includes(EXPERIENCE_ASSIST_BASELINE_BLOCKING_PREFIX)
-        || detail.includes(EXPERIENCE_ASSIST_BINDING_BLOCKING_PREFIX))
-  if (isExperienceAssistBlock && props.examId) {
+  const detail = getUserErrorMessage(error, '无法启动正评会话')
+  const blocking = readFormalSessionStartBlocking(error)
+  if (blocking) {
+    const examId = props.examId
+    if (!examId) {
+      showUserError(error, '无法启动正评：缺少考试上下文，请从考试工作台重新进入')
+      return
+    }
+    if (!props.organizationId) {
+      showUserError(error, '无法启动正评：缺少阅卷组织上下文，请刷新后重试')
+      return
+    }
     void confirmAsync({
       title: '无法启动正评',
       content: detail,
       type: 'warning',
-      okText: '前往经验辅助评阅',
+      okText: blocking.actionLabel,
       cancelText: '关闭',
       onOk: () => {
+        if (blocking.blockingCode === WorkflowBlockingItemCode.TRIAL_CALIBRATION_REQUIRED) {
+          void router.push(resolveMarkingOrganizationTrialSessionsRoute(props.organizationId, examId))
+          return
+        }
         void router.push({
-          name: 'TeacherExamWorkspaceMarkingExperienceAssistPolicy',
-          params: { examId: props.examId },
-        })
-      },
-    })
-    return
-  }
-  if (isFormalStartPendingReviewConflict(error) && props.examId) {
-    void confirmAsync({
-      title: '无法启动正评',
-      content: detail,
-      type: 'warning',
-      okText: '前往识别复核',
-      cancelText: '关闭',
-      onOk: () => {
-        void router.push({
-          name: 'TeacherExamWorkspaceReviewBatchConfirm',
-          params: { examId: props.examId },
+          name: blocking.workspaceRouteName,
+          params: { examId, organizationId: props.organizationId },
         })
       },
     })

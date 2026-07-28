@@ -12,7 +12,7 @@
     <WorkbenchContextGateStrip
       v-if="canManage !== true"
       tag="无权限"
-      body="仅超级管理员或租户管理员可维护租户阅卷策略"
+      body="仅企业管理员可维护租户阅卷策略"
       tone="warning"
       hide-cta
     />
@@ -181,9 +181,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
-import { RoleEnum } from '@/types/enums'
 import {
   ALL_EXAM_KIND_CODES,
   ExamKindCode,
@@ -194,11 +192,8 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminMarkTenantGradingPolicy' })
 
-const authStore = useAuthStore()
 const userStore = useUserStore()
-const canManage = computed(
-  () => authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin,
-)
+const canManage = computed(() => userStore.isEnterpriseTenantAdmin === true)
 
 const loading = ref(false)
 const saving = ref(false)
@@ -335,7 +330,7 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .tenant-policy__card + .tenant-policy__card {
-  margin-top: var(--dp-space-4);
+  margin-top: var(--dp-space-block);
 }
 
 .tenant-policy__title {
@@ -348,11 +343,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .tenant-policy__hint {
-  margin: 0 0 var(--dp-space-4);
+  margin: 0 0 var(--dp-space-block);
   color: var(--dp-gray-600);
   font-size: var(--dp-font-size-sm);
 }
@@ -360,25 +355,25 @@ onMounted(() => {
 .tenant-policy__ops-summary {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-4);
-  margin-bottom: var(--dp-space-3);
+  gap: var(--dp-space-block);
+  margin-bottom: var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-gray-700);
+  color: var(--dp-text-secondary);
 }
 
 .tenant-policy__form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
   max-width: 720px;
 }
 
 .tenant-policy__field {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-gray-700);
+  color: var(--dp-text-secondary);
 
   &--switch {
     flex-direction: row;

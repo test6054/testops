@@ -192,12 +192,8 @@ export interface ExamScannerActivationCodeResponse {
   expireTime: string
 }
 
-/** 扫描设备详情视图 - 对应 ExamScannerDeviceDetailResponse */
-export interface ExamScannerDeviceDetailResponse extends ExamScannerDeviceResponse {
-  pushToken?: string
-  pushUrl?: string
-  authorizationHeader?: string
-}
+/** 扫描设备详情视图 - 对应 ExamScannerDeviceDetailResponse；push_token 仅回掩码 */
+export type ExamScannerDeviceDetailResponse = ExamScannerDeviceResponse
 
 /** 扫描设备激活码交接响应 - 对应 ExamScannerDeviceActivationHandoffResponse */
 export interface ExamScannerDeviceActivationHandoffResponse {
@@ -353,7 +349,7 @@ export function unbindScannerDeviceAgent(id: string): Promise<ExamScannerDeviceA
 }
 
 /**
- * 查询扫描设备详情（HTTP_PUSH 模式包含明文 push_token 与推荐推送 URL）
+ * 查询扫描设备详情（HTTP_PUSH 模式仅回 push_token 掩码，明文仅 Agent 激活下发）
  * POST /api/mark/exams/scan-devices/detail
  */
 export function getScannerDeviceDetail(id: string): Promise<ExamScannerDeviceDetailResponse> {

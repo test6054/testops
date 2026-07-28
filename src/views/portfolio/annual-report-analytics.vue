@@ -15,6 +15,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -27,7 +28,7 @@ import {
   PortfolioAnnualReportTaskStatusDescription,
 } from '@/types/enums/portfolio-annual-report-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import {
   formatPortfolioTeacherDisplay,
   portfolioTeacherSelectOptionsFromSummaries,
@@ -36,6 +37,8 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const POLL_INTERVAL_MS = 3000
+const POLL_MAX_INTERVAL_MS = 30000
+const POLL_FAIL_PAUSE_THRESHOLD = 5
 
 const router = useRouter()
 const route = useRoute()
@@ -53,11 +56,20 @@ const pageSubtitle = computed(() =>
 
 const loading = ref(false)
 const historyLoading = ref(false)
+const historyLoadFailed = ref(false)
+const historyStale = ref(false)
+const historyLastSuccessAt = ref('')
 const teachers = ref<PortfolioTeacherSummaryVO[]>([])
+const teacherSearchToken = ref(0)
 const latestTask = ref<PortfolioAnalysisAnnualReportVO | null>(null)
 const reportHistory = ref<PortfolioAnalysisAnnualReportVO[]>([])
 const historyTotal = ref(0)
-const pollTimer = ref<ReturnType<typeof setInterval> | null>(null)
+const pollTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+const pollConsecutiveFailures = ref(0)
+const pollSyncFailed = ref(false)
+const pollPaused = ref(false)
+const pollLastSuccessAt = ref('')
+const pollBackoffMs = ref(POLL_INTERVAL_MS)
 /** 历史列表请求隔离，防止教师/年度快速切换时旧响应串写 */
 const historyRequestToken = ref(0)
 /** 轮询请求隔离，切换任务后丢弃旧轮询结果 */
@@ -91,21 +103,41 @@ const reportYearFilter = computed(() => {
   return /^\d{4}$/.test(value) ? value : undefined
 })
 
+function markSuccessNow(): string {
+  return new Date().toLocaleString('zh-CN', { hour12: false })
+}
+
 function stopPolling() {
   if (pollTimer.value) {
-    clearInterval(pollTimer.value)
+    clearTimeout(pollTimer.value)
     pollTimer.value = null
   }
 }
 
-function startPollingIfRunning() {
+function resetPollState() {
+  stopPolling()
+  pollConsecutiveFailures.value = 0
+  pollSyncFailed.value = false
+  pollPaused.value = false
+  pollBackoffMs.value = POLL_INTERVAL_MS
+}
+
+function scheduleNextPoll() {
   stopPolling()
   if (latestTask.value?.taskStatus !== PortfolioAnnualReportTaskStatusCode.RUNNING) {
     return
   }
-  pollTimer.value = setInterval(() => {
+  if (pollPaused.value) {
+    return
+  }
+  pollTimer.value = setTimeout(() => {
     void refreshLatestTask()
-  }, POLL_INTERVAL_MS)
+  }, pollBackoffMs.value)
+}
+
+function startPollingIfRunning() {
+  resetPollState()
+  scheduleNextPoll()
 }
 
 async function refreshLatestTask() {
@@ -119,23 +151,60 @@ async function refreshLatestTask() {
     if (currentToken !== pollRequestToken.value || latestTask.value?.id !== taskId) {
       return
     }
+    pollConsecutiveFailures.value = 0
+    pollBackoffMs.value = POLL_INTERVAL_MS
+    pollSyncFailed.value = false
+    pollPaused.value = false
+    pollLastSuccessAt.value = markSuccessNow()
     latestTask.value = row
     if (row.taskStatus !== PortfolioAnnualReportTaskStatusCode.RUNNING) {
       stopPolling()
-      await loadReportHistory()
+      await loadReportHistory({ errorMessage: '任务已结束，历史列表刷新失败' })
+      return
     }
-  } catch {
-    // 轮询失败不打断用户操作；过期 token 静默丢弃
+    scheduleNextPoll()
+  } catch (error) {
+    if (currentToken !== pollRequestToken.value || latestTask.value?.id !== taskId) {
+      return
+    }
+    pollConsecutiveFailures.value += 1
+    pollSyncFailed.value = true
+    pollBackoffMs.value = Math.min(
+      POLL_MAX_INTERVAL_MS,
+      POLL_INTERVAL_MS * 2 ** Math.min(pollConsecutiveFailures.value - 1, 4),
+    )
+    if (pollConsecutiveFailures.value >= POLL_FAIL_PAUSE_THRESHOLD) {
+      pollPaused.value = true
+      stopPolling()
+      showUserError(
+        error,
+        '年度报告状态同步连续失败，已暂停轮询；任务可能仍在运行，可点「刷新状态」继续同步',
+      )
+      return
+    }
+    scheduleNextPoll()
   }
 }
 
-async function loadReportHistory() {
+/** 手动恢复状态同步：不清空当前 RUNNING 任务，也不把网络失败改写成业务失败。 */
+function resumePollSync() {
+  if (!latestTask.value?.id) {
+    return
+  }
+  pollPaused.value = false
+  pollConsecutiveFailures.value = 0
+  pollBackoffMs.value = POLL_INTERVAL_MS
+  void refreshLatestTask()
+}
+
+async function loadReportHistory(options?: { errorMessage?: string }): Promise<boolean> {
   const currentToken = ++historyRequestToken.value
   const requestTeacherId = form.teacherId || undefined
   const requestReportYear = reportYearFilter.value
   const requestPageNum = historyQuery.pageNum
   const requestPageSize = historyQuery.pageSize
   historyLoading.value = true
+  historyLoadFailed.value = false
   try {
     const page = await portfolioAnalysisApi.pageAnnualReports({
       pageNum: requestPageNum,
@@ -143,18 +212,30 @@ async function loadReportHistory() {
       teacherId: requestTeacherId,
       reportYear: requestReportYear,
     })
-    if (currentToken !== historyRequestToken.value) {
-      return
+    if (
+      currentToken !== historyRequestToken.value
+      || (form.teacherId || undefined) !== requestTeacherId
+      || reportYearFilter.value !== requestReportYear
+      || historyQuery.pageNum !== requestPageNum
+      || historyQuery.pageSize !== requestPageSize
+    ) {
+      return false
     }
     reportHistory.value = page.list ?? []
     historyTotal.value = page.total ?? 0
+    historyStale.value = false
+    historyLastSuccessAt.value = markSuccessNow()
+    return true
   } catch (error) {
     if (currentToken !== historyRequestToken.value) {
-      return
+      return false
     }
-    reportHistory.value = []
-    historyTotal.value = 0
-    showUserError(error, '加载报告历史失败')
+    historyLoadFailed.value = true
+    if (reportHistory.value.length > 0) {
+      historyStale.value = true
+    }
+    showUserError(error, options?.errorMessage ?? '加载报告历史失败')
+    return false
   } finally {
     if (currentToken === historyRequestToken.value) {
       historyLoading.value = false
@@ -209,6 +290,18 @@ function formatTaskTeacher(task: PortfolioAnalysisAnnualReportVO): string {
   return formatPortfolioTeacherDisplay(task.teacherName, task.teacherNumber)
 }
 
+function keepSelectedTeacher(rows: PortfolioTeacherSummaryVO[]): PortfolioTeacherSummaryVO[] {
+  const selectedId = form.teacherId
+  if (!selectedId) {
+    return rows
+  }
+  if (rows.some((item) => item.userId === selectedId)) {
+    return rows
+  }
+  const selected = teachers.value.find((item) => item.userId === selectedId)
+  return selected ? [selected, ...rows] : rows
+}
+
 function mergeTeacherOptions(rows: PortfolioTeacherSummaryVO[]) {
   const optionMap = new Map(teachers.value.map((item) => [item.userId, item]))
   for (const row of rows) {
@@ -218,14 +311,26 @@ function mergeTeacherOptions(rows: PortfolioTeacherSummaryVO[]) {
 }
 
 async function loadTeachers(keyword?: string) {
+  const currentToken = ++teacherSearchToken.value
+  const requestKeyword = keyword?.trim() || ''
   try {
     const page = await portfolioTeacherApi.page({
       pageNum: 1,
       pageSize: QUALITY_SELECTOR_PAGE_SIZE,
-      searchText: keyword || undefined,
+      searchText: requestKeyword || undefined,
     })
-    mergeTeacherOptions(page.list)
+    if (currentToken !== teacherSearchToken.value) {
+      return
+    }
+    if (requestKeyword) {
+      teachers.value = keepSelectedTeacher(page.list ?? [])
+    } else {
+      mergeTeacherOptions(page.list ?? [])
+    }
   } catch (error) {
+    if (currentToken !== teacherSearchToken.value) {
+      return
+    }
     showUserError(error, '加载教师名册失败')
   }
 }
@@ -277,29 +382,29 @@ async function generateReport() {
   const requestTeacherId = form.teacherId
   const requestReportYear = reportYearFilter.value
   loading.value = true
-  stopPolling()
   pollRequestToken.value += 1
+  resetPollState()
   try {
     const row = await portfolioAnalysisApi.generateAnnualReport({
       teacherId: requestTeacherId,
       reportYear: requestReportYear,
     })
-    // 生成返回时筛选已变：不覆盖当前上下文，仅刷新历史
     if (form.teacherId !== requestTeacherId || reportYearFilter.value !== requestReportYear) {
-      await loadReportHistory()
+      await loadReportHistory({ errorMessage: '年度报告已提交，历史列表刷新失败' })
       return
     }
     latestTask.value = row
     historyQuery.pageNum = 1
-    await loadReportHistory()
     startPollingIfRunning()
   } catch (error) {
     if (form.teacherId === requestTeacherId && reportYearFilter.value === requestReportYear) {
       showUserError(error, '年度报告生成失败')
     }
+    return
   } finally {
     loading.value = false
   }
+  await loadReportHistory({ errorMessage: '年度报告已提交，历史列表刷新失败' })
 }
 
 onMounted(() => {
@@ -307,7 +412,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  stopPolling()
+  resetPollState()
   if (teacherSearchTimer) {
     clearTimeout(teacherSearchTimer)
     teacherSearchTimer = null
@@ -325,11 +430,13 @@ watch(
     // Scope 变化：作废在途读/轮询，清空旧任务与历史，再按新筛选加载
     historyRequestToken.value += 1
     pollRequestToken.value += 1
-    stopPolling()
+    resetPollState()
     latestTask.value = null
     reportHistory.value = []
     historyTotal.value = 0
     historyLoading.value = false
+    historyLoadFailed.value = false
+    historyStale.value = false
     historyQuery.pageNum = 1
     void loadReportHistory()
   },
@@ -382,6 +489,17 @@ watch(
       </p>
     </UiCard>
     <UiCard v-if="latestTask" title="最近任务" class="annual-report__result">
+      <UiAlertStrip
+        v-if="pollSyncFailed"
+        tone="warning"
+        class="annual-report__stale"
+        :description="pollPaused
+          ? `状态同步已暂停${pollLastSuccessAt ? `（上次成功 ${pollLastSuccessAt}）` : ''}；任务可能仍在运行，请点「刷新状态」继续同步。`
+          : `状态同步失败，正在退避重试${pollLastSuccessAt ? `（上次成功 ${pollLastSuccessAt}）` : ''}。`"
+      />
+      <div v-if="pollSyncFailed" class="annual-report__sync-actions">
+        <UiButton size="sm" variant="outline" @click="resumePollSync">刷新状态</UiButton>
+      </div>
       <dl class="annual-report__meta">
         <div>
           <dt>教师</dt>
@@ -398,7 +516,7 @@ watch(
                   portfolioLifecycleTagTone(latestTask.lifecycleStatus)
                 "
               >
-                {{ latestTask.lifecycleStatusLabel || latestTask.lifecycleStatus }}
+                {{ portfolioLifecycleStatusDisplay(latestTask.lifecycleStatus) }}
               </UiTag>
               <UiTag v-if="latestTask.evaluationHeld" size="sm" tone="orange">参评 hold</UiTag>
               <PortfolioOwnerIdentityLayersCell
@@ -449,11 +567,18 @@ watch(
       </dl>
     </UiCard>
     <UiCard title="历史任务" class="annual-report__result">
+      <UiAlertStrip
+        v-if="historyLoadFailed && historyStale"
+        tone="warning"
+        class="annual-report__stale"
+        title="历史列表同步失败"
+      />
       <UiDataTable
         row-key="id"
         :columns="historyColumns"
         :data-source="reportHistory"
         :loading="historyLoading"
+        :load-error="historyLoadFailed && reportHistory.length === 0"
         :pagination="historyPagination"
         @change="onHistoryTableChange"
       >
@@ -495,7 +620,7 @@ watch(
 .annual-report__form {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
 }
 
@@ -508,13 +633,21 @@ watch(
 }
 
 .annual-report__result {
-  margin-top: 16px;
+  margin-top: var(--dp-space-block);
+}
+
+.annual-report__stale {
+  margin-bottom: var(--dp-space-component);
+}
+
+.annual-report__sync-actions {
+  margin-bottom: var(--dp-space-component);
 }
 
 .annual-report__meta {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--dp-space-component);
   margin: 0;
 }
 
@@ -525,23 +658,23 @@ watch(
 }
 
 .annual-report__meta dd {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
 }
 
 .annual-report__view-btn {
-  margin-left: 8px;
+  margin-left: var(--dp-space-component-tight);
 }
 
 .annual-report__block {
-  margin: 8px 0 0;
-  color: var(--dp-color-danger, #cf1322);
+  margin: var(--dp-space-component-tight) 0 0;
+  color: var(--dp-danger, #cf1322);
   font-size: var(--dp-font-size-sm);
 }
 
 .annual-report__identity {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component-xs);
 }
 </style>

@@ -6,7 +6,7 @@ import type {
   PortfolioTodoSummaryVO,
 } from '@/apis/portfolio/types'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import {
@@ -41,19 +41,28 @@ import { PortfolioTeacherLifecycleApprovalStatusCode } from '@/types/enums/portf
 import { PortfolioTodoTypeCode } from '@/types/enums/portfolio-todo-type-enum'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
+import {
+  portfolioLifecycleApprovalStatusDisplay,
+  portfolioLifecycleChangeTypeDisplay,
+  portfolioLifecycleStatusDisplay,
+} from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
 const router = useRouter()
-const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
+const { targetTeacherId, scopeReady, canPickTeachers, currentUserId } = usePortfolioPageScope()
+
+function optionalCount(value: number | undefined | null): string {
+  return value == null ? '—' : String(value)
+}
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 const {
   archiveWriteForbidden,
   archiveWriteBlockMessage,
   evaluationHeld,
   evaluationHoldBlockMessage,
-  lifecycleStatusLabel,
+  lifecycleStatusDisplay,
   reloadLifecycleState,
   assertArchiveWritable,
 } = usePortfolioArchiveWriteGuard()
@@ -79,9 +88,9 @@ const deepLinkLifecycleAlert = computed(() => {
   if (!event) {
     return null
   }
-  const changeLabel = event.changeTypeLabel || event.changeType || '生命周期变更'
-  const fromLabel = event.fromStatusLabel || event.fromStatus || ''
-  const toLabel = event.toStatusLabel || event.toStatus || ''
+  const changeLabel = portfolioLifecycleChangeTypeDisplay(event.changeType) || '生命周期变更'
+  const fromLabel = event.fromStatus ? portfolioLifecycleStatusDisplay(event.fromStatus) : ''
+  const toLabel = event.toStatus ? portfolioLifecycleStatusDisplay(event.toStatus) : ''
   const statusPath = fromLabel && toLabel ? `${fromLabel} → ${toLabel}` : (toLabel || fromLabel)
   const comment = (event.approvalComment || '').trim()
   if (event.approvalStatus === PortfolioTeacherLifecycleApprovalStatusCode.APPROVED || event.approvalStatus === PortfolioTeacherLifecycleApprovalStatusCode.APPLIED) {
@@ -92,8 +101,8 @@ const deepLinkLifecycleAlert = computed(() => {
         `变更类型：${changeLabel}`,
         statusPath ? `状态：${statusPath}` : '',
         comment ? `审批意见：${comment}` : '',
-        lifecycleStatusLabel.value
-          ? `当前在职状态：${lifecycleStatusLabel.value}`
+        lifecycleStatusDisplay.value
+          ? `当前在职状态：${lifecycleStatusDisplay.value}`
           : '',
         evaluationHeld.value ? evaluationHoldBlockMessage.value : '',
         archiveWriteForbidden.value ? archiveWriteBlockMessage.value : '',
@@ -108,8 +117,8 @@ const deepLinkLifecycleAlert = computed(() => {
         `变更类型：${changeLabel}`,
         comment ? `驳回意见：${comment}` : '驳回意见：（无）',
         '在职状态未变更，可修正说明后重新申报。',
-        lifecycleStatusLabel.value
-          ? `当前在职状态：${lifecycleStatusLabel.value}`
+        lifecycleStatusDisplay.value
+          ? `当前在职状态：${lifecycleStatusDisplay.value}`
           : '',
       ].filter(Boolean).join('；'),
     }
@@ -130,7 +139,7 @@ const deepLinkLifecycleAlert = computed(() => {
     title: '生命周期申报事件',
     description: [
       `变更类型：${changeLabel}`,
-      event.approvalStatusLabel || event.approvalStatus || '',
+      portfolioLifecycleApprovalStatusDisplay(event.approvalStatus),
       statusPath ? `状态：${statusPath}` : '',
     ].filter(Boolean).join('；'),
   }
@@ -235,6 +244,30 @@ const portraitDataInsufficient = computed(() => {
 const canManageOwnPrivacy = computed(() =>
   Boolean(targetTeacherId.value && targetTeacherId.value === currentUserId.value),
 )
+
+/** 读取型首页唯一下一动作：优先待办，其次引导，默认材料采集。 */
+const primaryNextAction = computed(() => {
+  const firstTodo = todos.value[0]
+  if (firstTodo) {
+    return {
+      key: 'todo',
+      label: `处理：${firstTodo.title}`,
+      run: () => openTodo(firstTodo),
+    }
+  }
+  if (showSkipPrompt.value) {
+    return {
+      key: 'onboarding',
+      label: '继续完成首次引导',
+      run: goOnboarding,
+    }
+  }
+  return {
+    key: 'intake',
+    label: '材料采集',
+    run: goIntake,
+  }
+})
 
 /** 教师首页切换目标教师时必须让旧首页请求失效，避免上一位教师画像/待办回填当前首页。 */
 function resetHomeContext() {
@@ -781,7 +814,9 @@ function reloadHomeData() {
   void loadDashboard()
   void loadWorkbenchSummary()
   void loadTodos()
-  cockpitBandRef.value?.reload()
+  void nextTick(() => {
+    cockpitBandRef.value?.reload()
+  })
 }
 
 function handleVisibilityChange() {
@@ -792,11 +827,15 @@ function handleVisibilityChange() {
 
 usePortfolioScopedLoader(
   () => {
-    resetHomeContext()
     reloadHomeData()
   },
   () => targetTeacherId.value,
-  { reloadOnActivated: true },
+  {
+    reloadOnActivated: true,
+    isReady: () => scopeReady.value,
+    // scope 未就绪时也必须作废在途请求，否则上一位教师的响应会回填新 scope
+    invalidate: resetHomeContext,
+  },
 )
 
 watch(
@@ -831,7 +870,7 @@ onUnmounted(() => {
             tone="warning"
             title="档案已封存写禁"
             :description="archiveWriteBlockMessage"
-            class="mb-3"
+            class="dp-mb-component"
           />
         </template>
       </ContextBar>
@@ -885,176 +924,177 @@ onUnmounted(() => {
         </template>
       </UiAlertStrip>
       <div class="teacher-home__grid">
-        <WorkbenchSurfaceCard class="teacher-home__checklist">
+        <WorkbenchSurfaceCard class="teacher-home__focus">
           <template #head>
             <div class="teacher-home__panel-head">
-              <h3 class="teacher-home__panel-title">教学档案清单</h3>
-              <span class="teacher-home__meta">对齐六模块 · 点进已有页面维护</span>
+              <h3 class="teacher-home__panel-title">当前完成度</h3>
+              <span class="teacher-home__meta">读取总览 · 其余入口已下沉</span>
             </div>
           </template>
           <UiSpin :spinning="workbenchSummaryLoading || loading">
-            <div class="teacher-home__status-grid teacher-home__status-grid--inline">
-              <section class="teacher-home__status-block">
-                <template v-if="workbenchSummary">
-                  <div class="teacher-home__completeness-head">
-                    <span class="teacher-home__percent">{{ completenessPercentText }}</span>
-                    <UiTag
-                      v-if="workbenchSummary.completenessLevel"
-                      :tone="
-                        strictEnumTone(
-                          PORTFOLIO_COMPLETENESS_LEVEL_TONE,
-                          workbenchSummary.completenessLevel,
-                          '档案完整度等级',
-                        )
-                      "
-                    >
-                      {{
-                        strictEnumLabel(
-                          PortfolioCompletenessLevelDescription,
-                          workbenchSummary.completenessLevel,
-                          '档案完整度等级',
-                        )
-                      }}
-                    </UiTag>
-                  </div>
-                  <p class="teacher-home__meta">
-                    必填分类 {{ workbenchSummary.requiredCategoryDone ?? 0 }} /
-                    {{ workbenchSummary.requiredCategoryTotal ?? 0 }} · 荣誉
-                    {{ workbenchSummary.honorTotalCount ?? 0 }} · 拓展
-                    {{ workbenchSummary.extensionActivityTotalCount ?? 0 }}
-                  </p>
-                  <PortfolioOwnerIdentityLayersCell
-                    :layers="workbenchSummary.ownerIdentityLayers"
-                    :note="workbenchSummary.ownerMultiIdentityNote"
-                    show-note
-                  />
-                  <p
-                    v-if="(workbenchSummary.courseArchiveTaughtCourseCount ?? 0) > 0"
-                    class="teacher-home__meta teacher-home__meta--link"
-                    @click="goCourseArchiveWithAcademicYear(workbenchSummary?.currentAcademicYear)"
-                  >
-                    本学年讲授 {{ workbenchSummary.courseArchiveTaughtCourseCount }} 门 · 五框架齐备
-                    {{ workbenchSummary.courseArchiveFullyCompleteCount ?? 0 }} 门（{{
-                      workbenchSummary.courseArchiveFrameworkSlotDone ?? 0
-                    }}/{{ workbenchSummary.courseArchiveFrameworkSlotTotal ?? 0 }}）
-                  </p>
-                  <p
-                    v-if="
-                      workbenchSummary.completenessPercent === 0
-                        && (workbenchSummary.requiredCategoryDone ?? 0) === 0
+            <section class="teacher-home__status-block">
+              <template v-if="workbenchSummary">
+                <div class="teacher-home__completeness-head">
+                  <span class="teacher-home__percent">{{ completenessPercentText }}</span>
+                  <UiTag
+                    v-if="workbenchSummary.completenessLevel"
+                    :tone="
+                      strictEnumTone(
+                        PORTFOLIO_COMPLETENESS_LEVEL_TONE,
+                        workbenchSummary.completenessLevel,
+                        '档案完整度等级',
+                      )
                     "
-                    class="teacher-home__onboarding"
                   >
-                    数据不足，请先完成建档
-                  </p>
-                </template>
-                <UiEmpty
-                  size="sm"
-                  v-else-if="!workbenchSummaryLoading"
-                  description="尚未生成档案完整度"
+                    {{
+                      strictEnumLabel(
+                        PortfolioCompletenessLevelDescription,
+                        workbenchSummary.completenessLevel,
+                        '档案完整度等级',
+                      )
+                    }}
+                  </UiTag>
+                </div>
+                <p class="teacher-home__meta">
+                  必填分类 {{ optionalCount(workbenchSummary.requiredCategoryDone) }} /
+                  {{ optionalCount(workbenchSummary.requiredCategoryTotal) }} · 荣誉
+                  {{ optionalCount(workbenchSummary.honorTotalCount) }} · 拓展
+                  {{ optionalCount(workbenchSummary.extensionActivityTotalCount) }}
+                </p>
+                <PortfolioOwnerIdentityLayersCell
+                  :layers="workbenchSummary.ownerIdentityLayers"
+                  :note="workbenchSummary.ownerMultiIdentityNote"
+                  show-note
                 />
-              </section>
-              <section class="teacher-home__status-block">
-                <template v-if="portrait">
-                  <p class="teacher-home__portrait-score">
-                    综合画像 {{ portrait.compositeScore }}
-                    <span class="teacher-home__portrait-unit">分</span>
-                  </p>
-                  <p class="teacher-home__meta">
-                    正式档案 {{ portrait.officialRecordCount }} 条
-                    <template v-if="portrait.computedTime">
-                      · 更新于 {{ portrait.computedTime }}
-                    </template>
-                  </p>
-                  <p v-if="portraitDataInsufficient" class="teacher-home__onboarding">
-                    画像数据不足，请先完成建档
-                  </p>
-                </template>
-                <UiEmpty
-                  v-else-if="portraitAbsent && !loading"
-                  size="sm"
-                  description="尚未生成画像快照"
-                />
-                <UiButton
-                  v-if="portrait || portraitAbsent"
-                  class="teacher-home__portrait-link"
-                  variant="ghost"
-                  size="sm"
-                  @click="goPortrait"
+                <button
+                  v-if="
+                    workbenchSummary.courseArchiveTaughtCourseCount != null
+                      && workbenchSummary.courseArchiveTaughtCourseCount > 0
+                  "
+                  type="button"
+                  class="teacher-home__meta teacher-home__meta--link"
+                  @click="goCourseArchiveWithAcademicYear(workbenchSummary?.currentAcademicYear)"
                 >
-                  查看画像
-                </UiButton>
-              </section>
+                  本学年讲授 {{ workbenchSummary.courseArchiveTaughtCourseCount }} 门 · 五框架齐备
+                  {{ optionalCount(workbenchSummary.courseArchiveFullyCompleteCount) }} 门（{{
+                    optionalCount(workbenchSummary.courseArchiveFrameworkSlotDone)
+                  }}/{{ optionalCount(workbenchSummary.courseArchiveFrameworkSlotTotal) }}）
+                </button>
+                <p
+                  v-if="
+                    workbenchSummary.completenessPercent === 0
+                      && workbenchSummary.requiredCategoryDone === 0
+                  "
+                  class="teacher-home__onboarding"
+                >
+                  数据不足，请先完成建档
+                </p>
+              </template>
+              <UiEmpty
+                size="sm"
+                v-else-if="!workbenchSummaryLoading"
+                description="尚未生成档案完整度"
+              />
+            </section>
+            <p v-if="portrait" class="teacher-home__meta">
+              综合画像 {{ portrait.compositeScore }} 分 · 正式档案
+              {{ portrait.officialRecordCount }} 条
+              <template v-if="portrait.computedTime"> · 更新于 {{ portrait.computedTime }}</template>
+              <template v-if="portraitDataInsufficient"> · 画像数据不足</template>
+            </p>
+            <UiEmpty
+              v-else-if="portraitAbsent && !loading"
+              size="sm"
+              description="尚未生成画像快照"
+            />
+            <div class="teacher-home__next-action">
+              <UiButton size="sm" variant="primary" @click="primaryNextAction.run()">
+                {{ primaryNextAction.label }}
+              </UiButton>
+              <UiButton
+                v-if="portrait || portraitAbsent"
+                size="sm"
+                variant="ghost"
+                @click="goPortrait"
+              >
+                查看画像
+              </UiButton>
+              <UiButton size="sm" variant="outline" @click="goProcessJournal">
+                教学过程记录
+              </UiButton>
             </div>
           </UiSpin>
-          <ul class="teacher-home__checklist-list">
-            <li v-for="item in moduleChecklist" :key="item.key">
-              <div class="teacher-home__check-main">
-                <span class="teacher-home__check-label">{{ item.label }}</span>
-                <span class="teacher-home__meta">{{ item.status }}</span>
-              </div>
-              <UiButton
-                v-if="item.run"
-                size="sm"
-                :variant="item.key === 'process' ? 'outline' : 'ghost'"
-                @click="item.run()"
-              >
-                {{ item.actionLabel }}
-              </UiButton>
-            </li>
-          </ul>
-          <ul class="teacher-home__more-list">
-            <li>
-              <span class="teacher-home__more-label">课程与材料</span>
-              <div class="teacher-home__more-actions">
-                <UiButton size="sm" variant="ghost" @click="goCourseArchive">课程档案</UiButton>
-                <UiButton size="sm" variant="ghost" @click="goMasterpiece">预览代表作</UiButton>
-                <UiButton size="sm" variant="ghost" @click="goCorrection">我的纠错</UiButton>
-              </div>
-            </li>
-            <li>
-              <span class="teacher-home__more-label">发展与认定</span>
-              <div class="teacher-home__more-actions">
-                <UiButton size="sm" variant="ghost" @click="goPromotionScene">职称材料包</UiButton>
-                <UiButton size="sm" variant="ghost" @click="goDualTeacherApply">
-                  资格与认定
-                </UiButton>
-                <UiButton size="sm" variant="ghost" @click="goOneTable">教师一张表</UiButton>
-              </div>
-            </li>
-            <li>
-              <span class="teacher-home__more-label">维护</span>
-              <div class="teacher-home__more-actions">
-                <UiButton size="sm" variant="ghost" :loading="loading" @click="reloadHomeData">
-                  刷新数据
-                </UiButton>
-              </div>
-            </li>
-            <li>
-              <span class="teacher-home__more-label">画像与隐私</span>
-              <div class="teacher-home__more-actions">
-                <UiButton size="sm" variant="ghost" @click="goPortrait">教师画像</UiButton>
+          <details class="teacher-home__more">
+            <summary>六模块与更多入口</summary>
+            <ul class="teacher-home__checklist-list">
+              <li v-for="item in moduleChecklist" :key="item.key">
+                <div class="teacher-home__check-main">
+                  <span class="teacher-home__check-label">{{ item.label }}</span>
+                  <span class="teacher-home__meta">{{ item.status }}</span>
+                </div>
                 <UiButton
-                  v-if="canManageOwnPrivacy"
+                  v-if="item.run"
                   size="sm"
-                  variant="ghost"
-                  @click="goPrivacySettings"
+                  :variant="item.key === 'process' ? 'outline' : 'ghost'"
+                  @click="item.run()"
                 >
-                  隐私设置
+                  {{ item.actionLabel }}
                 </UiButton>
-              </div>
-            </li>
-          </ul>
-          <p class="teacher-home__antipile">
-            材料覆盖完整度反映填报进度，不等于教学代表作质量；出包前请甄选证据。
-            <UiButton size="sm" variant="ghost" @click="goMasterpiece">预览代表作</UiButton>
-          </p>
+              </li>
+            </ul>
+            <ul class="teacher-home__more-list">
+              <li>
+                <span class="teacher-home__more-label">课程与材料</span>
+                <div class="teacher-home__more-actions">
+                  <UiButton size="sm" variant="ghost" @click="goCourseArchive">课程档案</UiButton>
+                  <UiButton size="sm" variant="ghost" @click="goMasterpiece">预览代表作</UiButton>
+                  <UiButton size="sm" variant="ghost" @click="goCorrection">我的纠错</UiButton>
+                </div>
+              </li>
+              <li>
+                <span class="teacher-home__more-label">发展与认定</span>
+                <div class="teacher-home__more-actions">
+                  <UiButton size="sm" variant="ghost" @click="goPromotionScene">职称材料包</UiButton>
+                  <UiButton size="sm" variant="ghost" @click="goDualTeacherApply">
+                    资格与认定
+                  </UiButton>
+                  <UiButton size="sm" variant="ghost" @click="goOneTable">教师一张表</UiButton>
+                </div>
+              </li>
+              <li>
+                <span class="teacher-home__more-label">维护</span>
+                <div class="teacher-home__more-actions">
+                  <UiButton size="sm" variant="ghost" :loading="loading" @click="reloadHomeData">
+                    刷新数据
+                  </UiButton>
+                </div>
+              </li>
+              <li>
+                <span class="teacher-home__more-label">画像与隐私</span>
+                <div class="teacher-home__more-actions">
+                  <UiButton size="sm" variant="ghost" @click="goPortrait">教师画像</UiButton>
+                  <UiButton
+                    v-if="canManageOwnPrivacy"
+                    size="sm"
+                    variant="ghost"
+                    @click="goPrivacySettings"
+                  >
+                    隐私设置
+                  </UiButton>
+                </div>
+              </li>
+            </ul>
+            <p class="teacher-home__antipile">
+              材料覆盖完整度反映填报进度，不等于教学代表作质量；出包前请甄选证据。
+              <UiButton size="sm" variant="ghost" @click="goMasterpiece">预览代表作</UiButton>
+            </p>
+          </details>
         </WorkbenchSurfaceCard>
 
         <WorkbenchSurfaceCard class="teacher-home__todos">
           <template #head>
             <div class="teacher-home__panel-head">
-              <h3 class="teacher-home__panel-title">待办聚合</h3>
+              <h3 class="teacher-home__panel-title">待办 · 按截止时间优先</h3>
               <span v-if="workbenchSummary" class="teacher-home__todo-count">
                 未完成 {{ workbenchSummary.pendingTodoCount }} 项
               </span>
@@ -1066,25 +1106,30 @@ onUnmounted(() => {
                 v-for="item in todos"
                 :key="`${item.todoType}-${item.refId}`"
                 class="teacher-home__todo-item"
-                @click="openTodo(item)"
               >
-                <p class="teacher-home__todo-title">
-                  {{ item.title }}
-                </p>
-                <p v-if="item.summary" class="teacher-home__meta">
-                  {{ item.summary }}
-                </p>
-                <p v-if="todoCourseScopeLabel(item)" class="teacher-home__meta">
-                  课程 {{ todoCourseScopeLabel(item) }}
-                </p>
-                <p
-                  v-if="item.dueTime" class="teacher-home__meta" :class="{
-                    'teacher-home__due--danger': formatTodoDue(item.dueTime).tone === 'danger',
-                    'teacher-home__due--warning': formatTodoDue(item.dueTime).tone === 'warning',
-                  }"
+                <button
+                  type="button"
+                  class="teacher-home__todo-open"
+                  @click="openTodo(item)"
                 >
-                  {{ formatTodoDue(item.dueTime).text }}
-                </p>
+                  <p class="teacher-home__todo-title">
+                    {{ item.title }}
+                  </p>
+                  <p v-if="item.summary" class="teacher-home__meta">
+                    {{ item.summary }}
+                  </p>
+                  <p v-if="todoCourseScopeLabel(item)" class="teacher-home__meta">
+                    课程 {{ todoCourseScopeLabel(item) }}
+                  </p>
+                  <p
+                    v-if="item.dueTime" class="teacher-home__meta" :class="{
+                      'teacher-home__due--danger': formatTodoDue(item.dueTime).tone === 'danger',
+                      'teacher-home__due--warning': formatTodoDue(item.dueTime).tone === 'warning',
+                    }"
+                  >
+                    {{ formatTodoDue(item.dueTime).text }}
+                  </p>
+                </button>
                 <div class="teacher-home__todo-actions">
                   <UiButton
                     v-if="
@@ -1095,17 +1140,17 @@ onUnmounted(() => {
                     variant="soft"
                     :loading="acknowledgingTodoKey === `${item.todoType}:${item.refId}`"
                     :disabled="Boolean(acknowledgingTodoKey)"
-                    @click.stop="acknowledgeRejectedCorrection(item)"
+                    @click="acknowledgeRejectedCorrection(item)"
                   >
                     确认知悉
                   </UiButton>
-                  <UiButton size="sm" variant="ghost" @click.stop="openTodo(item)">去处理</UiButton>
+                  <UiButton size="sm" variant="ghost" @click="openTodo(item)">去处理</UiButton>
                 </div>
               </li>
             </ul>
             <UiEmpty
               size="sm"
-              v-else
+              v-else-if="!todos.length"
               description="当前无未完成待办。若刚提交材料请刷新；缺口与退回会出现在此列表，不会被隐藏。"
             />
           </UiSpin>
@@ -1120,56 +1165,56 @@ onUnmounted(() => {
 .teacher-home__layout {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
   min-width: 0;
 }
 
 .teacher-home__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
   min-width: 0;
 }
 
 .teacher-home__status-grid--inline {
-  margin-bottom: var(--dp-space-3);
-  padding-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
+  padding-bottom: var(--dp-space-component);
   border-bottom: 1px solid var(--dp-border-subtle);
 }
 
 .teacher-home__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
-  padding: var(--dp-space-2) 0;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) 0;
 }
 
 .teacher-home__panel-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   width: 100%;
 }
 
 .teacher-home__panel-title {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--dp-type-panel-title-size);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   color: var(--dp-text-primary);
 }
 
 .teacher-home__status-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .teacher-home__completeness-head {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .teacher-home__percent {
@@ -1177,7 +1222,7 @@ onUnmounted(() => {
   font-weight: 600;
   line-height: 1.15;
   color: var(--dp-text-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1196,11 +1241,18 @@ onUnmounted(() => {
 }
 
 .teacher-home__meta {
-  margin: var(--dp-space-2) 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .teacher-home__meta--link {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
   color: var(--dp-color-primary);
   cursor: pointer;
 }
@@ -1208,10 +1260,36 @@ onUnmounted(() => {
   text-decoration: underline;
 }
 
+.teacher-home__meta--link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
+}
+
 .teacher-home__onboarding {
-  margin: var(--dp-space-2) 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-warning);
+}
+
+.teacher-home__next-action {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component);
+}
+
+.teacher-home__more {
+  margin-top: var(--dp-space-component);
+  padding-top: var(--dp-space-component);
+  border-top: 1px solid var(--dp-border-subtle);
+  color: var(--dp-text-secondary);
+  font-size: var(--dp-font-size-sm);
+}
+
+.teacher-home__more summary {
+  cursor: pointer;
+  color: var(--dp-text-secondary);
+  margin-bottom: var(--dp-space-component);
 }
 
 .teacher-home__todo-count {
@@ -1226,20 +1304,32 @@ onUnmounted(() => {
 }
 
 .teacher-home__todo-item {
-  padding: var(--dp-space-3);
-  margin-bottom: var(--dp-space-2);
+  padding: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component-tight);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control);
-  background: var(--dp-surface-elevated);
-  cursor: pointer;
+  background: var(--dp-surface-chrome);
   transition:
-    border-color var(--dp-duration-normal) ease,
-    background var(--dp-duration-normal) ease;
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    background var(--dp-duration-normal) var(--dp-ease-default);
 }
 
 .teacher-home__todo-item:hover {
   background: var(--dp-surface);
   border-color: var(--dp-color-primary-border);
+}
+
+.teacher-home__todo-open {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
 }
 
 .teacher-home__todo-title {
@@ -1250,22 +1340,22 @@ onUnmounted(() => {
 }
 
 .teacher-home__due--danger {
-  color: var(--dp-danger, #d9363e);
+  color: var(--dp-danger);
 }
 
 .teacher-home__due--warning {
-  color: var(--dp-warning, #d46b08);
+  color: var(--dp-warning);
 }
 
 .teacher-home__todo-actions {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
-  margin-top: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .teacher-home__hint {
-  padding: var(--dp-space-4, 16px) 0;
+  padding: var(--dp-space-block) 0;
 }
 
 @media (max-width: 960px) {
@@ -1280,20 +1370,20 @@ onUnmounted(() => {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 .teacher-home__checklist-list li {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   min-height: 44px;
-  padding: var(--dp-space-2) var(--dp-space-3);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control);
-  background: var(--dp-surface-elevated);
+  background: var(--dp-surface-chrome);
   font-size: var(--dp-font-size-sm);
-  transition: border-color var(--dp-duration-normal) ease;
+  transition: border-color var(--dp-duration-normal) var(--dp-ease-default);
 
   &:hover {
     border-color: var(--dp-color-primary-border);
@@ -1308,32 +1398,32 @@ onUnmounted(() => {
 }
 .teacher-home__check-label {
   color: var(--dp-text-primary);
-  font-weight: var(--dp-font-weight-medium);
+  font-weight: var(--dp-font-weight-emphasis);
 }
 .teacher-home__antipile {
-  margin: var(--dp-space-3) 0 0;
+  margin: var(--dp-space-component) 0 0;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .teacher-home__more-list {
   list-style: none;
-  margin: var(--dp-space-3) 0 0;
-  padding: var(--dp-space-3) 0 0;
+  margin: var(--dp-space-component) 0 0;
+  padding: var(--dp-space-component) 0 0;
   border-top: 1px solid var(--dp-border-subtle);
   display: grid;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .teacher-home__more-list li {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   flex-wrap: wrap;
   min-height: 32px;
 }
@@ -1346,21 +1436,21 @@ onUnmounted(() => {
 .teacher-home__more-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-1);
+  gap: var(--dp-space-component-xs);
 }
 
 .teacher-home__portrait-link {
-  margin-top: var(--dp-space-2);
+  margin-top: var(--dp-space-component-tight);
 }
 
 .teacher-home__skip-prompt {
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .teacher-home__skip-prompt-row {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 </style>

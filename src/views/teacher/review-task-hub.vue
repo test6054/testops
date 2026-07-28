@@ -442,23 +442,23 @@ watch(workbenchRefreshing, (isRefreshing, wasRefreshing) => {
 
 <style lang="scss" scoped>
 .review-task-hub__empty {
-  padding: var(--dp-space-3, 12px) 0;
+  padding: var(--dp-space-component) 0;
 }
 
 .review-task-hub__paper-cell {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--dp-space-component-xs);
   min-width: 0;
 }
 
 .review-task-hub__paper-primary {
   font-weight: 500;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
 }
 
 .review-task-hub__paper-secondary {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 </style>

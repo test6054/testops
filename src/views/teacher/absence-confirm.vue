@@ -4,11 +4,17 @@
       <ContextBar layout="workbench" show-title title="缺考确认">
         <template #status>
           <UiTag tone="blue" size="sm">阶段 缺考确认</UiTag>
-          <UiTag v-if="pendingAbsenceCount > 0" tone="orange" size="sm">
+          <UiTag v-if="(pendingAbsenceCount ?? 0) > 0" tone="orange" size="sm">
             待确认 {{ pendingAbsenceCount }} 条
           </UiTag>
-          <UiTag v-else-if="unreconciledAbsenceCount > 0" tone="orange" size="sm">
+          <UiTag v-else-if="(unresolvedAbsenceScorePolicyCount ?? 0) > 0" tone="red" size="sm">
+            策略未结案 {{ unresolvedAbsenceScorePolicyCount }} 条
+          </UiTag>
+          <UiTag v-else-if="(unreconciledAbsenceCount ?? 0) > 0" tone="orange" size="sm">
             未对账 {{ unreconciledAbsenceCount }} 人
+          </UiTag>
+          <UiTag v-else-if="statsLoadFailed || unreconciledLoadFailed" tone="red" size="sm">
+            缺考统计加载失败
           </UiTag>
           <UiTag v-else-if="reconcileVO" tone="green" size="sm">无缺考阻塞</UiTag>
         </template>
@@ -16,7 +22,7 @@
           <UiButton
             v-if="canManageReviewerWrites === true"
             size="sm"
-            :variant="unreconciledAbsenceCount > 0 ? 'primary' : 'outline'"
+            :variant="(unreconciledAbsenceCount ?? 0) > 0 ? 'primary' : 'outline'"
             :loading="reconciling === true"
             @click="handleReconcile(true)"
           >
@@ -54,7 +60,15 @@
       <ExamWorkspaceJourneySubNav />
 
       <UiAlertStrip
-        v-if="pendingAbsenceCount > 0"
+        v-if="recordsLoadFailed || statsLoadFailed || pendingMakeupLoadFailed || unreconciledLoadFailed"
+        tone="error"
+        title="缺考数据加载失败"
+        dense
+        class="absence-page__alert"
+      />
+
+      <UiAlertStrip
+        v-if="(pendingAbsenceCount ?? 0) > 0"
         tone="warning"
         title="仍有缺考记录待确认"
         :description="`当前还有 ${pendingAbsenceCount} 条待确认缺考，成绩发布前须完成核对。`"
@@ -62,14 +76,29 @@
         class="absence-page__alert"
       >
         <template #actions>
-          <UiButton variant="outline" size="sm" @click="goScorePublish">
+          <UiButton variant="outline" size="sm" @click="goScoreWorkbench">
             前往成绩确认与发布
           </UiButton>
         </template>
       </UiAlertStrip>
 
       <UiAlertStrip
-        v-if="unreconciledAbsenceCount > 0"
+        v-if="(unresolvedAbsenceScorePolicyCount ?? 0) > 0"
+        tone="error"
+        title="已确认缺考仍有成绩策略未结案"
+        :description="`当前有 ${unresolvedAbsenceScorePolicyCount} 条已确认缺考仍使用“待外部确认”占位策略，将阻断成绩确认、发布、关考与归档。请撤销对应缺考记录，再按学校认定结果选择计零分、排除统计或待补考。`"
+        dense
+        class="absence-page__alert"
+      >
+        <template #actions>
+          <UiButton variant="primary" size="sm" @click="focusUnresolvedAbsencePolicies">
+            筛选待处置记录
+          </UiButton>
+        </template>
+      </UiAlertStrip>
+
+      <UiAlertStrip
+        v-if="(unreconciledAbsenceCount ?? 0) > 0"
         tone="warning"
         title="仍有应考学生未完成缺考核对"
         :description="`当前还有 ${unreconciledAbsenceCount} 名应考学生未对账（含无卷或最新卷为废卷 DISCARDED）。到场但未绑定/冲突卷不会出现在此列表，须先在扫描批次处理。请执行「核对并新建待确认记录」后逐条确认。`"
@@ -99,7 +128,7 @@
         class="absence-page__alert"
       >
         <template #default>
-          <span style="display: inline-flex; align-items: center; gap: 8px">
+          <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
             <UiTag tone="blue" size="sm">待核对</UiTag>
             <span>尚未执行出勤核对，无法确认缺考名单</span>
           </span>
@@ -168,7 +197,7 @@
             <p class="absence-page__flow-hint">{{ ABSENCE_STATUS_FLOW_HINT }}</p>
             <UiButton
               size="sm"
-              v-if="canManageOwnerAbsenceMakeup === true && pendingMakeupCount > 0"
+              v-if="canManageOwnerAbsenceMakeup === true && (pendingMakeupCount ?? 0) > 0"
               variant="outline"
               @click="openDeriveMakeupModal"
             >
@@ -176,7 +205,14 @@
             </UiButton>
           </div>
         </template>
+        <UiAlertStrip
+          v-if="recordsLoadFailed"
+          tone="error"
+          title="缺考记录加载失败"
+          dense
+        />
         <UiDataTable
+          v-if="!recordsLoadFailed || records.length > 0"
           pagination-mode="server"
           :columns="recordColumns"
           :data-source="records"
@@ -208,6 +244,17 @@
             </template>
             <template v-else-if="column.key === 'confirmedBy'">
               {{ records[index].confirmedUserId || '—' }}
+            </template>
+            <template v-else-if="column.key === 'makeupExam'">
+              <div v-if="records[index].makeupExamId" class="absence-page__makeup-exam">
+                <span class="absence-page__makeup-exam-name">
+                  {{ records[index].makeupExamName }}
+                </span>
+                <span class="absence-page__makeup-exam-meta">
+                  {{ records[index].makeupExamNo }} · ID {{ records[index].makeupExamId }}
+                </span>
+              </div>
+              <span v-else class="hint-text">—</span>
             </template>
             <template v-else-if="column.key === 'makeupEligible'">
               <UiTag v-if="isPendingMakeupRecord(records[index])" tone="green" size="sm">
@@ -260,14 +307,14 @@
             v-model="confirmForm.scorePolicy"
             placeholder="选择成绩处理策略"
             size="sm"
-            :options="SCORE_POLICY_OPTIONS"
+            :options="ABSENCE_CONFIRM_SCORE_POLICY_OPTIONS"
           />
         </UiFormItem>
         <UiAlertStrip
           v-if="confirmForm.scorePolicy === ScorePolicyCode.SCORE_ZERO"
           tone="info"
           title="计零分将立即写入正式零分"
-          description="确认后卷面分/总分记 0 并同步质量评价样本，可在成绩确认/发布页直接发布；撤销缺考前若已发布须先撤回成绩。"
+          description="确认后卷面分/总分记 0；请在成绩确认与发布页提交发布复核，复核通过正式发布后才会同步质量评价；若误判撤销缺考，系统将自动撤回已发布零分并通知学生。"
           dense
         />
       </UiForm>
@@ -296,6 +343,20 @@
         <UiFormItem label="学生">
           <UiInput size="sm" :value="revokeTargetName" disabled />
         </UiFormItem>
+        <UiAlertStrip
+          v-if="revokeTargetStatus === AbsenceStatusCode.MAKEUP_ARRANGED"
+          tone="warning"
+          title="已安排补考的缺考认定将被撤销"
+          description="确认后将恢复正考名册为有效，并从派生补考名册移除该生；若补考已有答卷或未撤回成绩，系统会拒绝撤销。"
+          dense
+        />
+        <UiAlertStrip
+          v-if="revokeWillAutoWithdrawScore === true"
+          tone="warning"
+          title="将自动撤回该生已发布/待复核的零分成绩"
+          description="撤销缺考时系统会同步撤回零分终分、回收成绩发布通知、作废开放复核申请，并向学生发送撤回说明；无需再去成绩发布页单独操作。"
+          dense
+        />
         <UiFormItem label="撤销原因" required>
           <UiTextarea
             size="sm"
@@ -328,7 +389,11 @@
       <UiSkeletonState v-if="deriveDetailLoading" variant="card" compact />
       <UiForm v-else layout="vertical">
         <UiFormItem label="待补考学生">
-          <UiInput size="sm" :value="`${pendingMakeupCount} 人`" disabled />
+          <UiInput
+            size="sm"
+            :value="deriveFrozenPendingCount == null ? '—' : `${deriveFrozenPendingCount} 人`"
+            disabled
+          />
         </UiFormItem>
         <UiFormItem label="补考学年" required>
           <UiInput size="sm" v-model="deriveForm.academicYear" placeholder="如 2024-2025" />
@@ -391,6 +456,7 @@ import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
+  ABSENCE_CONFIRM_SCORE_POLICY_OPTIONS,
   ABSENCE_REASON_OPTIONS,
   ABSENCE_REASON_TONE,
   ABSENCE_STATUS_FLOW_HINT,
@@ -406,7 +472,6 @@ import {
   reconcileAttendance,
   repairScoreZeroFinalScores,
   revokeAbsence,
-  SCORE_POLICY_OPTIONS,
   ScorePolicyCode,
   ScorePolicyDescription,
 } from '@/apis/mark/absence'
@@ -437,6 +502,7 @@ import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { ExamKindCode } from '@/types/enums/exam-kind-enum'
 import { ExamStatusCode } from '@/types/enums/exam-status-enum'
+import { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -456,13 +522,26 @@ interface AbsentStudentRow {
 
 const reconcileVO = ref<AttendanceReconcileResponse | null>(null)
 const reconciling = ref(false)
-const pendingAbsenceCount = ref(0)
-const confirmedAbsenceCount = ref(0)
-const unreconciledAbsenceCount = ref(0)
+/** null = 未就绪或加载失败，禁止当成 0 */
+const pendingAbsenceCount = ref<number | null>(null)
+const unresolvedAbsenceScorePolicyCount = ref<number | null>(null)
+const confirmedAbsenceCount = ref<number | null>(null)
+const unreconciledAbsenceCount = ref<number | null>(null)
 /** MVR-287：默认拒绝假可写；仅 stats 明确下发 true 后开放写入口 */
 const canManageReviewerWrites = ref(false)
 /** MVR-326：派生补考仅主考；仅 stats.canManageOwnerAbsenceMakeup===true */
 const canManageOwnerAbsenceMakeup = ref(false)
+const recordsLoadFailed = ref(false)
+const statsLoadFailed = ref(false)
+const pendingMakeupLoadFailed = ref(false)
+const unreconciledLoadFailed = ref(false)
+const absentStudentsLoadFailed = ref(false)
+/** 切考试时递增，丢弃过期统计/名单/派生表单响应 */
+let examLoadGeneration = 0
+/** 打开派生弹窗时冻结的源考试，提交不得改读全局选中 */
+const deriveSourceExamId = ref('')
+/** 打开派生抽屉时冻结的待补考人数；禁止绑定实时 pendingMakeupCount（失败/切场会变成 null） */
+const deriveFrozenPendingCount = ref<number | null>(null)
 
 const records = ref<AbsenceRecordResponse[]>([])
 const recordLoading = ref(false)
@@ -506,6 +585,9 @@ const absenceListMetrics = computed((): SignalMetric[] => {
   const attended = reconcileVO.value?.attendedCount ?? 0
   const attendancePercent = expected > 0 ? Math.round((attended / expected) * 100) : 0
   const absentTotal = reconcileVO.value?.absentCount ?? 0
+  const confirmedDisplay
+    = confirmedAbsenceCount.value == null ? '—' : confirmedAbsenceCount.value
+  const makeupDisplay = pendingMakeupCount.value == null ? '—' : pendingMakeupCount.value
   return [
     {
       key: 'attendance',
@@ -524,16 +606,16 @@ const absenceListMetrics = computed((): SignalMetric[] => {
     {
       key: 'confirmed',
       label: '已确认',
-      value: confirmedAbsenceCount.value,
-      unit: '人',
+      value: confirmedDisplay,
+      unit: confirmedAbsenceCount.value == null ? undefined : '人',
       tone: 'green',
     },
     {
       key: 'makeup',
       label: '可补考',
-      value: pendingMakeupCount.value,
-      unit: '人',
-      tone: pendingMakeupCount.value > 0 ? 'blue' : 'gray',
+      value: makeupDisplay,
+      unit: pendingMakeupCount.value == null ? undefined : '人',
+      tone: (pendingMakeupCount.value ?? 0) > 0 ? 'blue' : 'gray',
     },
   ]
 })
@@ -553,7 +635,8 @@ const recordColumns: ColumnType<AbsenceRecordResponse>[] = [
   { title: '已确认', key: 'confirmState', width: 96 },
   { title: '确认人', key: 'confirmedBy', width: 120 },
   { title: '可补考', key: 'makeupEligible', width: 88 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '补考场次', key: 'makeupExam', width: 220 },
+  { title: '操作', key: 'actions', width: 180 },
 ]
 
 function toAbsentStudentRow(student: AbsentStudentSnapshotResponse): AbsentStudentRow {
@@ -613,42 +696,72 @@ function handleAbsentStudentAction(key: string, record: AbsentStudentRow): void 
 
 /** MVR-214/321：与 BE canRevokeAbsence 同源；仅认 ===true，禁止 null 缺省放行。 */
 function canRevokeAbsenceRecord(record: AbsenceRecordResponse): boolean {
-  if (record.absenceStatus !== AbsenceStatusCode.CONFIRMED) {
+  if (record.absenceStatus !== AbsenceStatusCode.CONFIRMED
+    && record.absenceStatus !== AbsenceStatusCode.MAKEUP_ARRANGED) {
     return false
   }
   // 禁止兼容回退本地计零启发式；BE applyAbsenceRevokeCapability 必下发行级 canRevokeAbsence
   return record.canRevokeAbsence === true
 }
 
-function requiresWithdrawBeforeRevoke(record: AbsenceRecordResponse): boolean {
-  return record.absenceStatus === AbsenceStatusCode.CONFIRMED && canRevokeAbsenceRecord(record) !== true
+function requiresMakeupWithdrawBeforeRevoke(record: AbsenceRecordResponse): boolean {
+  return record.absenceStatus === AbsenceStatusCode.MAKEUP_COMPLETED
+}
+
+/** 计零终分已发布/待复核/已更正时，撤销将走自动撤回主链。 */
+function willAutoWithdrawScoreOnRevoke(record: AbsenceRecordResponse): boolean {
+  const status = record.linkedFinalScoreStatus
+  return status === FinalScoreStatusCode.PUBLISHED
+    || status === FinalScoreStatusCode.PENDING_PUBLISH_REVIEW
+    || status === FinalScoreStatusCode.CORRECTED
 }
 
 function buildAbsenceRecordActions(record: AbsenceRecordResponse): UiTableRowActionItem[] {
+  const actions: UiTableRowActionItem[] = []
   if (isPendingMakeupRecord(record)) {
-    return canManageOwnerAbsenceMakeup.value === true
-? [{ key: 'makeup', label: '派生补考', tone: 'primary' }]
-      : []
+    if (canManageOwnerAbsenceMakeup.value === true) {
+      actions.push({ key: 'makeup', label: '派生补考', tone: 'primary' })
+    }
+    return actions
+  }
+  if (record.makeupExamId) {
+    if (requiresMakeupWithdrawBeforeRevoke(record)) {
+      actions.push({ key: 'withdrawMakeupThenRevoke', label: '撤回补考成绩' })
+    }
+    else {
+      actions.push({
+        key: 'openMakeupExam',
+        label: record.absenceStatus === AbsenceStatusCode.REVOKED ? '查看原补考' : '进入补考',
+      })
+    }
   }
   if (canManageReviewerWrites.value !== true) {
-    return []
+    return actions
   }
-  if (requiresWithdrawBeforeRevoke(record)) {
-    return [
-      {
-        key: 'withdrawThenRevoke',
-        label: '先撤回成绩',
-        // 已发布计零：禁止假可写撤销，引导成绩发布页先撤回。
-      },
-    ]
+  if (requiresMakeupWithdrawBeforeRevoke(record)) {
+    return actions
   }
-  if (record.absenceStatus === AbsenceStatusCode.CONFIRMED && canRevokeAbsenceRecord(record) === true) {
-    return [{ key: 'revoke', label: '撤销' }]
+  if ((record.absenceStatus === AbsenceStatusCode.CONFIRMED
+    || record.absenceStatus === AbsenceStatusCode.MAKEUP_ARRANGED)
+  && canRevokeAbsenceRecord(record) === true) {
+    actions.push({ key: 'revoke', label: '撤销' })
   }
   if (record.absenceStatus === AbsenceStatusCode.PENDING) {
-    return [{ key: 'confirm', label: '确认', tone: 'primary' }]
+    actions.push({ key: 'confirm', label: '确认', tone: 'primary' })
   }
-  return []
+  return actions
+}
+
+/** 按缺考记录中的唯一补考锚点进入补考工作台；缺失锚点时显式暴露合同错误。 */
+function goMakeupExam(record: AbsenceRecordResponse, scoreSummary: boolean): void {
+  if (!record.makeupExamId) {
+    void message.error('缺考记录缺少补考考试关联，无法进入补考工作台')
+    return
+  }
+  void router.push({
+    name: scoreSummary ? 'TeacherExamWorkspaceScoreSummary' : 'TeacherExamWorkspaceOverview',
+    params: { examId: record.makeupExamId },
+  })
 }
 
 function handleAbsenceRecordAction(key: string, record: AbsenceRecordResponse): void {
@@ -659,18 +772,17 @@ function handleAbsenceRecordAction(key: string, record: AbsenceRecordResponse): 
     case 'revoke':
       if (canRevokeAbsenceRecord(record) !== true) {
         void message.warning(
-          record.revokeBlockedReason || '缺考零分成绩已发布，请先在成绩发布页撤回后再撤销缺考',
+          record.revokeBlockedReason || '当前缺考记录不可撤销',
         )
-        goScorePublish()
         return
       }
       openRevokeModal(record)
       break
-    case 'withdrawThenRevoke':
-      void message.info(
-        record.revokeBlockedReason || '缺考零分成绩已发布，请先在成绩发布页撤回后再撤销缺考',
-      )
-      goScorePublish()
+    case 'openMakeupExam':
+      goMakeupExam(record, false)
+      break
+    case 'withdrawMakeupThenRevoke':
+      goMakeupExam(record, true)
       break
     case 'confirm':
       openConfirmModal(record.studentUserId, formatStudentSnapshot(record))
@@ -678,41 +790,65 @@ function handleAbsenceRecordAction(key: string, record: AbsenceRecordResponse): 
   }
 }
 
-const pendingMakeupTotal = ref(0)
+const pendingMakeupTotal = ref<number | null>(null)
 
 const pendingMakeupCount = computed(() => pendingMakeupTotal.value)
 
 async function loadPendingMakeupTotal(): Promise<void> {
-  if (!selectedExamId.value) {
-    pendingMakeupTotal.value = 0
+  const examId = selectedExamId.value
+  if (!examId) {
+    pendingMakeupTotal.value = null
+    pendingMakeupLoadFailed.value = false
     return
   }
+  const loadGeneration = examLoadGeneration
   try {
-    const result = await countPendingMakeupAbsences({ examId: selectedExamId.value })
+    const result = await countPendingMakeupAbsences({ examId })
+    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    pendingMakeupLoadFailed.value = false
     pendingMakeupTotal.value = result.pendingMakeupCount
   } catch (error) {
-    pendingMakeupTotal.value = 0
+    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    pendingMakeupLoadFailed.value = true
     showUserError(error, '待补考人数加载失败')
   }
 }
 
 async function loadAbsenceStats(): Promise<void> {
-  if (!selectedExamId.value) {
-    pendingAbsenceCount.value = 0
-    confirmedAbsenceCount.value = 0
+  const examId = selectedExamId.value
+  if (!examId) {
+    pendingAbsenceCount.value = null
+    unresolvedAbsenceScorePolicyCount.value = null
+    confirmedAbsenceCount.value = null
     canManageReviewerWrites.value = false
     canManageOwnerAbsenceMakeup.value = false
+    statsLoadFailed.value = false
     return
   }
+  const loadGeneration = examLoadGeneration
   try {
-    const stats = await getAbsenceExamStats({ examId: selectedExamId.value })
+    const stats = await getAbsenceExamStats({ examId })
+    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    statsLoadFailed.value = false
     pendingAbsenceCount.value = stats.pendingAbsenceCount
+    unresolvedAbsenceScorePolicyCount.value = stats.unresolvedAbsenceScorePolicyCount
     confirmedAbsenceCount.value = stats.confirmedAbsenceCount
     canManageReviewerWrites.value = stats.canManageReviewerWrites === true
     canManageOwnerAbsenceMakeup.value = stats.canManageOwnerAbsenceMakeup === true
   } catch (error) {
-    pendingAbsenceCount.value = 0
-    confirmedAbsenceCount.value = 0
+    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    statsLoadFailed.value = true
+    pendingAbsenceCount.value = null
+    unresolvedAbsenceScorePolicyCount.value = null
+    confirmedAbsenceCount.value = null
     canManageReviewerWrites.value = false
     canManageOwnerAbsenceMakeup.value = false
     showUserError(error, '缺考统计加载失败')
@@ -720,28 +856,39 @@ async function loadAbsenceStats(): Promise<void> {
 }
 
 async function loadAbsentStudents(): Promise<void> {
-  if (!selectedExamId.value || !reconcileVO.value || reconcileVO.value.absentCount <= 0) {
+  const examId = selectedExamId.value
+  if (!examId || !reconcileVO.value || reconcileVO.value.absentCount <= 0) {
     absentStudents.value = []
     absentStudentPagination.total = 0
+    absentStudentsLoadFailed.value = false
     return
   }
+  const loadGeneration = examLoadGeneration
   absentStudentLoading.value = true
   try {
     const page = await pageReconcileAbsentStudents({
-      examId: selectedExamId.value,
+      examId,
       pageNum: absentStudentPagination.pageNum,
       pageSize: absentStudentPagination.pageSize,
     })
+    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    absentStudentsLoadFailed.value = false
     absentStudents.value = page.list.map(toAbsentStudentRow)
     absentStudentPagination.pageNum = page.pageNum
     absentStudentPagination.pageSize = page.pageSize
     absentStudentPagination.total = page.total
   } catch (error) {
-    absentStudents.value = []
-    absentStudentPagination.total = 0
+    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    absentStudentsLoadFailed.value = true
     showUserError(error, '核对缺考学生加载失败')
   } finally {
-    absentStudentLoading.value = false
+    if (loadGeneration === examLoadGeneration) {
+      absentStudentLoading.value = false
+    }
   }
 }
 
@@ -752,22 +899,37 @@ function handleAbsentStudentPageChange(page: { current: number, pageSize: number
 }
 
 async function loadUnreconciledAbsenceCount(): Promise<void> {
-  if (!selectedExamId.value) {
-    unreconciledAbsenceCount.value = 0
-    canManageReviewerWrites.value = false
-    canManageOwnerAbsenceMakeup.value = false
+  const examId = selectedExamId.value
+  if (!examId) {
+    unreconciledAbsenceCount.value = null
+    unreconciledLoadFailed.value = false
     return
   }
+  const loadGeneration = examLoadGeneration
   try {
-    const panel = await getScorePanel(selectedExamId.value)
-    unreconciledAbsenceCount.value = Number(panel.riskOverview?.unreconciledAbsenceCount ?? 0)
+    const panel = await getScorePanel(examId)
+    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    const count = panel.riskOverview?.unreconciledAbsenceCount
+    if (count == null) {
+      unreconciledAbsenceCount.value = null
+      unreconciledLoadFailed.value = true
+      showUserError(new Error('缺考对账数字段缺失'), '缺考对账状态合同不完整')
+      return
+    }
+    unreconciledLoadFailed.value = false
+    unreconciledAbsenceCount.value = Number(count)
   } catch (error) {
-    unreconciledAbsenceCount.value = 0
+    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    unreconciledLoadFailed.value = true
     showUserError(error, '缺考对账状态加载失败')
   }
 }
 
-function goScorePublish(): void {
+function goScoreWorkbench(): void {
   if (!selectedExamId.value) {
     return
   }
@@ -777,20 +939,34 @@ function goScorePublish(): void {
   })
 }
 
+/** 聚焦已确认记录，便于撤销占位策略后重新完成缺考认定。 */
+async function focusUnresolvedAbsencePolicies(): Promise<void> {
+  recordFilterForm.status = AbsenceStatusCode.CONFIRMED
+  recordPagination.pageNum = 1
+  await loadRecords()
+}
+
 async function loadRecords(): Promise<void> {
-  if (!selectedExamId.value) {
+  const examId = selectedExamId.value
+  if (!examId) {
     records.value = []
     recordPagination.total = 0
+    recordsLoadFailed.value = false
     return
   }
+  const loadGeneration = examLoadGeneration
   recordLoading.value = true
   try {
     const page = await pageAbsenceRecords({
-      examId: selectedExamId.value,
+      examId,
       absenceStatus: recordFilterForm.status,
       pageNum: recordPagination.pageNum,
       pageSize: recordPagination.pageSize,
     })
+    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    recordsLoadFailed.value = false
     records.value = page.list
     recordPagination.pageNum = page.pageNum
     recordPagination.pageSize = page.pageSize
@@ -802,9 +978,15 @@ async function loadRecords(): Promise<void> {
       loadAbsentStudents(),
     ])
   } catch (error) {
+    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    recordsLoadFailed.value = true
     showUserError(error, '缺考记录加载失败')
   } finally {
-    recordLoading.value = false
+    if (loadGeneration === examLoadGeneration) {
+      recordLoading.value = false
+    }
   }
 }
 
@@ -820,26 +1002,37 @@ async function handleReconcile(createPending: boolean): Promise<void> {
     void message.warning('仅本场阅卷组织成员、主考或管理员可执行缺考核对')
     return
   }
+  const examId = selectedExamId.value
   reconciling.value = true
   try {
     reconcileVO.value = await reconcileAttendance({
-      examId: selectedExamId.value,
+      examId,
       createPendingAbsence: createPending,
     })
     absentStudentPagination.pageNum = 1
     if (createPending === true && reconcileVO.value.createdPendingCount > 0) {
       void message.success(`已为 ${reconcileVO.value.createdPendingCount} 名缺考学生创建待确认记录`)
     }
-    await loadRecords()
-    try {
-      await refreshSnapshot()
-    } catch (error) {
-      showUserError(error, '考试工作台状态刷新失败')
-    }
   } catch (error) {
     showUserError(error, '出勤核对失败')
+    return
   } finally {
     reconciling.value = false
+  }
+  await refreshAbsencePageAfterWrite()
+}
+
+/** 缺考写入成功后的统一刷新：记录/统计一次 + 快照一次，禁止嵌套二次 loadRecords。 */
+async function refreshAbsencePageAfterWrite(): Promise<void> {
+  try {
+    await loadRecords()
+  } catch (error) {
+    showUserError(error, '缺考记录刷新失败')
+  }
+  try {
+    await refreshSnapshot()
+  } catch (error) {
+    showUserError(error, '考试工作台状态刷新失败')
   }
 }
 
@@ -877,7 +1070,7 @@ const repairingScoreZero = ref(false)
 const absenceMoreActionItems = computed(() => {
   const items: { key: string, label: string, disabled?: boolean }[] = []
   // MVR-326：派生补考仅主考；仅认 BE canManageOwnerAbsenceMakeup===true
-  if (canManageOwnerAbsenceMakeup.value === true && pendingMakeupCount.value > 0) {
+  if (canManageOwnerAbsenceMakeup.value === true && (pendingMakeupCount.value ?? 0) > 0) {
     items.push({ key: 'deriveMakeup', label: `派生补考 ${pendingMakeupCount.value}` })
   }
   // MVR-287/430：补齐计零与 BE requireExamReviewerPermission 对齐；仅认 === true
@@ -915,12 +1108,13 @@ async function handleRepairScoreZero(): Promise<void> {
         ? `已补齐 ${result.repairedCount} 条计零终分`
         : '本场无待补齐的计零缺考',
     )
-    await loadRecords()
   } catch (error) {
     showUserError(error, '补齐计零终分失败')
+    return
   } finally {
     repairingScoreZero.value = false
   }
+  await refreshAbsencePageAfterWrite()
 }
 
 async function handleConfirm(): Promise<void> {
@@ -932,10 +1126,11 @@ async function handleConfirm(): Promise<void> {
   const reason = confirmForm.absenceReason
   const policy = confirmForm.scorePolicy
   if (!reason || !policy) return
+  const examId = selectedExamId.value
   confirming.value = true
   try {
     await confirmAbsence({
-      examId: selectedExamId.value,
+      examId,
       studentUserId: confirmForm.studentUserId,
       absenceReason: reason,
       scorePolicy: policy,
@@ -946,22 +1141,30 @@ async function handleConfirm(): Promise<void> {
         : '已确认缺考',
     )
     confirmModalOpen.value = false
-    await Promise.all([loadRecords(), handleReconcile(false)])
-    try {
-      await refreshSnapshot()
-    } catch (error) {
-      showUserError(error, '考试工作台状态刷新失败')
-    }
   } catch (error) {
     showUserError(error, '缺考确认失败')
+    return
   } finally {
     confirming.value = false
   }
+  // 单一刷新事务：先拉正式对账，再一次 loadRecords + 快照；禁止再调 handleReconcile 造成双载
+  try {
+    reconcileVO.value = await reconcileAttendance({
+      examId,
+      createPendingAbsence: false,
+    })
+    absentStudentPagination.pageNum = 1
+  } catch (error) {
+    showUserError(error, '缺考已确认，但出勤核对刷新失败')
+  }
+  await refreshAbsencePageAfterWrite()
 }
 
 const revokeModalOpen = ref(false)
 const revoking = ref(false)
 const revokeTargetName = ref('')
+const revokeTargetStatus = ref<AbsenceStatusCode | null>(null)
+const revokeWillAutoWithdrawScore = ref(false)
 const revokeForm = reactive<{ studentUserId: string, revokeReason: string }>({
   studentUserId: '',
   revokeReason: '',
@@ -974,14 +1177,15 @@ function openRevokeModal(record: AbsenceRecordResponse): void {
   }
   if (canRevokeAbsenceRecord(record) !== true) {
     void message.warning(
-      record.revokeBlockedReason || '缺考零分成绩已发布，请先在成绩发布页撤回后再撤销缺考',
+      record.revokeBlockedReason || '当前缺考记录不可撤销',
     )
-    goScorePublish()
     return
   }
   revokeForm.studentUserId = record.studentUserId
   revokeForm.revokeReason = ''
   revokeTargetName.value = formatStudentSnapshot(record)
+  revokeTargetStatus.value = record.absenceStatus
+  revokeWillAutoWithdrawScore.value = willAutoWithdrawScoreOnRevoke(record)
   revokeModalOpen.value = true
 }
 
@@ -993,7 +1197,7 @@ async function handleRevoke(): Promise<void> {
     void message.warning(
       canManageReviewerWrites.value !== true
         ? '仅本场阅卷组织成员、主考或管理员可撤销缺考'
-        : target?.revokeBlockedReason || '当前缺考记录不可撤销（状态漂移或须先撤回成绩）',
+        : target?.revokeBlockedReason || '当前缺考记录不可撤销',
     )
     return
   }
@@ -1006,19 +1210,19 @@ async function handleRevoke(): Promise<void> {
       studentUserId: revokeForm.studentUserId,
       revokeReason: reason,
     })
-    void message.success('已撤销缺考')
+    void message.success(
+      revokeWillAutoWithdrawScore.value === true
+        ? '已撤销缺考，并自动撤回该生零分成绩'
+        : '已撤销缺考',
+    )
     revokeModalOpen.value = false
-    await loadRecords()
-    try {
-      await refreshSnapshot()
-    } catch (error) {
-      showUserError(error, '考试工作台状态刷新失败')
-    }
   } catch (error) {
-    showUserError(error, '缺考撤销失败')
+    showUserError(error, '撤销缺考失败')
+    return
   } finally {
     revoking.value = false
   }
+  await refreshAbsencePageAfterWrite()
 }
 
 const deriveModalOpen = ref(false)
@@ -1065,29 +1269,53 @@ async function openDeriveMakeupModal(): Promise<void> {
     void message.warning('仅本场主考可派生补考名单')
     return
   }
-  if (!selectedExamId.value || pendingMakeupCount.value === 0) return
+  const examId = selectedExamId.value
+  const frozenPending = pendingMakeupCount.value
+  if (!examId || frozenPending == null || frozenPending === 0) return
+  const loadGeneration = examLoadGeneration
+  deriveSourceExamId.value = examId
+  deriveFrozenPendingCount.value = frozenPending
   resetDeriveForm()
   deriveModalOpen.value = true
   deriveDetailLoading.value = true
   try {
-    const detail = await getExamDetail(selectedExamId.value)
+    const detail = await getExamDetail(examId)
+    if (
+      loadGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+      || !deriveModalOpen.value
+    ) {
+      return
+    }
     if (detail.examKind && detail.examKind !== ExamKindCode.REGULAR) {
       void message.error('仅可从正考考试派生补考')
       deriveModalOpen.value = false
+      deriveFrozenPendingCount.value = null
       return
     }
     if (detail.status !== ExamStatusCode.CLOSED) {
       void message.error('原考试须已关考后才能派生补考')
       deriveModalOpen.value = false
+      deriveFrozenPendingCount.value = null
       return
     }
     deriveForm.examName = `补考-${detail.examName}`
     deriveForm.examNo = `MK-${detail.examNo}`
   } catch (error) {
+    if (
+      loadGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
+      return
+    }
     deriveModalOpen.value = false
+    deriveSourceExamId.value = ''
+    deriveFrozenPendingCount.value = null
     showUserError(error, '原考试信息加载失败')
   } finally {
-    deriveDetailLoading.value = false
+    if (loadGeneration === examLoadGeneration) {
+      deriveDetailLoading.value = false
+    }
   }
 }
 
@@ -1096,14 +1324,17 @@ async function handleDeriveMakeup(): Promise<void> {
     void message.warning('仅本场主考可派生补考名单')
     return
   }
-  if (!selectedExamId.value || !deriveValid.value || deriving.value) return
+  const sourceExamId = deriveSourceExamId.value
+  if (!sourceExamId || sourceExamId !== selectedExamId.value || !deriveValid.value || deriving.value) {
+    return
+  }
   const [startTime, endTime] = deriveForm.examWindow ?? []
   const semester = deriveForm.semester
   if (!startTime || !endTime || !semester) return
   deriving.value = true
   try {
     const makeupExamId = await deriveMakeupExam({
-      sourceExamId: selectedExamId.value,
+      sourceExamId,
       academicYear: deriveForm.academicYear.trim(),
       semester,
       examName: deriveForm.examName.trim(),
@@ -1113,6 +1344,8 @@ async function handleDeriveMakeup(): Promise<void> {
     })
     void message.success('已派生补考考试')
     deriveModalOpen.value = false
+    deriveSourceExamId.value = ''
+    deriveFrozenPendingCount.value = null
     await loadRecords()
     try {
       await refreshSnapshot()
@@ -1133,12 +1366,25 @@ async function handleDeriveMakeup(): Promise<void> {
 watch(
   selectedExamId,
   async (value) => {
+    examLoadGeneration += 1
     reconcileVO.value = null
     records.value = []
-    pendingMakeupTotal.value = 0
-    pendingAbsenceCount.value = 0
-    confirmedAbsenceCount.value = 0
-    unreconciledAbsenceCount.value = 0
+    pendingMakeupTotal.value = null
+    pendingAbsenceCount.value = null
+    unresolvedAbsenceScorePolicyCount.value = null
+    confirmedAbsenceCount.value = null
+    unreconciledAbsenceCount.value = null
+    recordsLoadFailed.value = false
+    statsLoadFailed.value = false
+    pendingMakeupLoadFailed.value = false
+    unreconciledLoadFailed.value = false
+    absentStudentsLoadFailed.value = false
+    canManageReviewerWrites.value = false
+    canManageOwnerAbsenceMakeup.value = false
+    deriveModalOpen.value = false
+    deriveSourceExamId.value = ''
+    deriveFrozenPendingCount.value = null
+    resetDeriveForm()
     recordPagination.pageNum = 1
     recordPagination.total = 0
     if (value) {
@@ -1173,11 +1419,11 @@ function handleRecordFilterReset() {
   min-width: 0;
 
   &__section {
-    margin-top: var(--dp-space-4);
+    margin-top: var(--dp-space-block);
   }
 
   &__alert {
-    margin-top: var(--dp-space-3);
+    margin-top: var(--dp-space-component);
   }
 
   &__record-toolbar {
@@ -1185,8 +1431,26 @@ function handleRecordFilterReset() {
     flex-wrap: wrap;
     align-items: flex-end;
     justify-content: space-between;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     width: 100%;
+  }
+
+  &__makeup-exam {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__makeup-exam-name {
+    overflow: hidden;
+    color: var(--dp-text-primary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__makeup-exam-meta {
+    color: var(--dp-text-secondary);
+    font-size: var(--dp-font-size-xs);
   }
 
   &__flow-hint {

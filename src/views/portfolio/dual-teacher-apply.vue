@@ -29,7 +29,7 @@ import {
   PortfolioDualTeacherCertLevelCode,
 } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -320,7 +320,19 @@ async function persistDraft() {
   if (!assertArchiveWritable()) {
     return
   }
-  form.id = await portfolioDualTeacherApi.saveDraft(buildDraftPayload())
+  const context = {
+    teacherId: targetTeacherId.value,
+    applicationId: form.id || undefined,
+    epoch: applicationFormEpoch.value,
+  }
+  const draftId = await portfolioDualTeacherApi.saveDraft(buildDraftPayload())
+  if (
+    applicationFormEpoch.value !== context.epoch
+    || targetTeacherId.value !== context.teacherId
+  ) {
+    return
+  }
+  form.id = draftId
 }
 
 async function saveDraft() {
@@ -334,15 +346,35 @@ async function saveDraft() {
   if (!canEdit.value || operationPending.value) {
     return
   }
+  const contextEpoch = applicationFormEpoch.value
+  const contextTeacherId = targetTeacherId.value
   saving.value = true
   try {
     await persistDraft()
+    if (
+      applicationFormEpoch.value !== contextEpoch
+      || targetTeacherId.value !== contextTeacherId
+    ) {
+      return
+    }
     void message.success('草稿已保存')
-    await loadApplication()
+    try {
+      await loadApplication()
+    } catch (error) {
+      showUserError(error, '草稿已保存，申请同步失败')
+    }
   } catch (error) {
+    if (
+      applicationFormEpoch.value !== contextEpoch
+      || targetTeacherId.value !== contextTeacherId
+    ) {
+      return
+    }
     showUserError(error, '保存双师认定草稿失败')
   } finally {
-    saving.value = false
+    if (applicationFormEpoch.value === contextEpoch) {
+      saving.value = false
+    }
   }
 }
 
@@ -366,16 +398,44 @@ async function submitApplication() {
     showFormValidationMessage('认定年度须为 4 位自然年')
     return
   }
+  const contextEpoch = applicationFormEpoch.value
+  const contextTeacherId = targetTeacherId.value
   submitting.value = true
   try {
     await persistDraft()
-    await portfolioDualTeacherApi.submit({ id: form.id })
+    if (
+      applicationFormEpoch.value !== contextEpoch
+      || targetTeacherId.value !== contextTeacherId
+      || !form.id
+    ) {
+      return
+    }
+    const draftId = form.id
+    await portfolioDualTeacherApi.submit({ id: draftId })
+    if (
+      applicationFormEpoch.value !== contextEpoch
+      || targetTeacherId.value !== contextTeacherId
+    ) {
+      return
+    }
     void message.success('已提交审核')
-    await loadApplication()
+    try {
+      await loadApplication()
+    } catch (error) {
+      showUserError(error, '提交已生效，申请同步失败')
+    }
   } catch (error) {
+    if (
+      applicationFormEpoch.value !== contextEpoch
+      || targetTeacherId.value !== contextTeacherId
+    ) {
+      return
+    }
     showUserError(error, '提交双师认定申请失败')
   } finally {
-    submitting.value = false
+    if (applicationFormEpoch.value === contextEpoch) {
+      submitting.value = false
+    }
   }
 }
 
@@ -401,14 +461,14 @@ watch(
         tone="info"
         title="代办模式"
         description="当前正在代目标教师办理双师认定申请；保存与提交将写入该教师档案。"
-        class="mb-3"
+        class="dp-mb-component"
       />
       <UiAlertStrip
         v-if="archiveWriteForbidden"
         tone="warning"
         title="档案已封存写禁"
         :description="archiveWriteBlockMessage"
-        class="mb-3"
+        class="dp-mb-component"
       />
 
       <UiCard>
@@ -421,7 +481,7 @@ watch(
               portfolioLifecycleTagTone(application.lifecycleStatus)
             "
           >
-            {{ application.lifecycleStatusLabel || application.lifecycleStatus }}
+            {{ portfolioLifecycleStatusDisplay(application.lifecycleStatus) }}
           </UiTag>
           <UiTag v-if="application.evaluationHeld" tone="orange">参评 hold</UiTag>
           <PortfolioOwnerIdentityLayersCell
@@ -457,7 +517,7 @@ watch(
             <input
               ref="attachmentInputRef"
               type="file"
-              class="sr-only"
+              class="tw:sr-only"
               accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
               multiple
               @change="onAttachmentPick"
@@ -517,29 +577,29 @@ watch(
 .status-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-3, 12px);
-  margin-bottom: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
   font-size: var(--dp-font-size-md);
 }
 .re-review-hint {
-  color: var(--dp-color-warning);
+  color: var(--dp-warning);
 }
 .form {
   max-width: 480px;
 }
 .actions {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .attachment-list {
-  margin: 8px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   padding: 0;
   list-style: none;
   font-size: var(--dp-font-size-sm);
 }
 .attachment-list li {
   display: flex;
-  gap: 8px;
-  padding: 4px 0;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-xs) 0;
 }
 </style>

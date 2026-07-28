@@ -1,14 +1,23 @@
 <template>
   <StageWorkbenchShell class="roster-page">
-    <template v-if="selectedExamId && showRosterContextBar" #context>
+    <template v-if="selectedExamId" #context>
       <ContextBar layout="workbench" show-title title="考生名册">
         <template #status>
           <UiTag v-if="rosterPanel?.filterScopeApplied" tone="blue" size="sm">筛选范围内</UiTag>
-          <UiTag v-if="rosterLocked === true" tone="orange" size="sm">已有扫描</UiTag>
+          <UiTag v-if="rosterPanelLoadFailed === true" tone="red" size="sm">看板加载失败</UiTag>
+          <UiTag v-if="rosterLockProbeFailed === true" tone="red" size="sm">锁定状态未知</UiTag>
+          <UiTag v-else-if="rosterLocked === true" tone="orange" size="sm">已有扫描</UiTag>
           <UiTag v-else-if="archiveClassScopeRecoveryAllowed === true" tone="orange" size="sm">
             关考后可修正
           </UiTag>
           <UiTag v-else-if="classScopeReadOnly === true" tone="gray" size="sm">只读</UiTag>
+          <UiTag v-else-if="candidateRosterWriteAllowed === true" tone="green" size="sm">可编辑</UiTag>
+        </template>
+        <template v-if="candidateRosterWriteAllowed === true && allowsManualCandidateEdit === true" #actions>
+          <UiButton size="sm" variant="primary" @click="openSingleAddModal">
+            <template #icon><PlusOutlined /></template>
+            添加单个考生
+          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -40,9 +49,12 @@
             <h3 class="exam-scope-card__title">
               <TeamOutlined />
               <span>考试范围</span>
+              <span v-if="classScopeSaveStateLabel" class="exam-scope-card__save-state">
+                {{ classScopeSaveStateLabel }}
+              </span>
             </h3>
             <UiButton
-              v-if="canAddClassScope === true"
+              v-if="canAddClassScope"
               size="sm"
               variant="outline"
               @click="openAddClassModal"
@@ -84,6 +96,14 @@
       </WorkbenchSurfaceCard>
 
       <UiAlertStrip
+        v-if="rosterStudentIdsLoadFailed"
+        tone="error"
+        title="在册考生列表未确认"
+        description="在册考生列表未确认，不能纳入考生。可离开后再进入本页恢复。"
+        dense
+      />
+
+      <UiAlertStrip
         v-if="showInferredClassScopeNotice"
         tone="warning"
         title="参考班级尚未保存"
@@ -95,7 +115,7 @@
             variant="primary"
             size="sm"
             :loading="persistClassScopeSaving"
-            :disabled="classScopeReadOnly === true"
+            :disabled="classScopeReadOnly"
             @click="persistInferredClassScope"
           >
             保存为参考班级
@@ -104,7 +124,7 @@
       </UiAlertStrip>
 
       <UiAlertStrip
-        v-if="archiveClassScopeRecoveryAllowed === true"
+        v-if="archiveClassScopeRecoveryAllowed"
         tone="warning"
         title="自动建卷失败，可修正参考班级"
         description="关考后不可增删考生，仅可修正参考班级。保存后系统将自动重触发建卷。"
@@ -116,8 +136,7 @@
           <div class="roster-page__filter-stack">
             <div
               v-if="allowsManualCandidateEdit"
-              class="roster-page__actions-row dp-space"
-              style="--dp-space-gap: 8px"
+              class="roster-page__actions-row dp-space dp-space--tight"
             >
               <UiButton
                 size="sm"
@@ -132,10 +151,6 @@
                 <template #icon><UploadOutlined /></template>
                 批量导入考生
               </UiButton>
-              <UiButton size="sm" variant="primary" @click="openSingleAddModal">
-                <template #icon><PlusOutlined /></template>
-                添加单个考生
-              </UiButton>
               <UiButton
                 size="sm"
                 variant="outline"
@@ -144,6 +159,20 @@
                 @click="confirmSaveFullScope"
               >
                 全量保存名册
+              </UiButton>
+            </div>
+            <div
+              v-else-if="rosterScopeMode === ExamRosterScopeModeCode.BY_CLASS"
+              class="roster-page__actions-row dp-space dp-space--tight"
+            >
+              <UiButton
+                size="sm"
+                variant="outline"
+                :loading="fullScopeSaving"
+                :disabled="!classIds.length"
+                @click="confirmSaveFullScope"
+              >
+                同步整班名册
               </UiButton>
             </div>
             <UiFilterBar
@@ -155,19 +184,21 @@
               @search="handleRosterSearch"
               @reset="handleRosterReset"
             />
-            <div class="roster-page__filter-chips">
+            <div class="roster-page__filter-chips" role="group" aria-label="扫描进度筛选">
               <button
                 v-for="chip in rosterScanFilterChips"
                 :key="chip.value ?? 'all'"
                 type="button"
                 class="roster-page__filter-chip"
                 :class="{ 'roster-page__filter-chip--active': scanProgressFilter === chip.value }"
+                :aria-pressed="scanProgressFilter === chip.value"
                 @click="toggleScanProgressFilter(chip.value)"
               >
                 {{ chip.label }}
                 <span v-if="chip.count != null" class="roster-page__filter-chip-count">{{
                   chip.count
                 }}</span>
+                <span v-else class="roster-page__filter-chip-count">—</span>
               </button>
             </div>
           </div>
@@ -182,19 +213,21 @@
             @search="handleRosterSearch"
             @reset="handleRosterReset"
           />
-          <div class="roster-page__filter-chips">
+          <div class="roster-page__filter-chips" role="group" aria-label="扫描进度筛选">
             <button
               v-for="chip in rosterScanFilterChips"
               :key="chip.value ?? 'all'"
               type="button"
               class="roster-page__filter-chip"
               :class="{ 'roster-page__filter-chip--active': scanProgressFilter === chip.value }"
+              :aria-pressed="scanProgressFilter === chip.value"
               @click="toggleScanProgressFilter(chip.value)"
             >
               {{ chip.label }}
               <span v-if="chip.count != null" class="roster-page__filter-chip-count">{{
                 chip.count
               }}</span>
+              <span v-else class="roster-page__filter-chip-count">—</span>
             </button>
           </div>
         </template>
@@ -205,7 +238,7 @@
           :items="tableCandidates"
           :loading="tableLoading"
           :total="pagination.total ?? 0"
-          :show-remove-action="allowsManualCandidateEdit === true && candidateRosterWriteAllowed === true"
+          :show-remove-action="allowsManualCandidateEdit && candidateRosterWriteAllowed"
           @page-change="handlePageChange"
           @action="handleWorkbenchAction"
         />
@@ -236,7 +269,7 @@
       :width="520"
       :hide-footer="false"
       ok-text="加入名册"
-      :confirm-loading="singleAddSubmitting === true"
+      :confirm-loading="singleAddSubmitting"
       @ok="handleSingleAddSubmit"
     >
       <UiForm layout="vertical">
@@ -269,7 +302,7 @@
       :width="520"
       :hide-footer="false"
       ok-text="确认新增"
-      :confirm-loading="addClassSubmitting === true"
+      :confirm-loading="addClassSubmitting"
       @ok="handleAddClassSubmit"
     >
       <UiForm layout="vertical">
@@ -301,7 +334,6 @@
 </template>
 
 <script lang="ts" setup>
-// MVR-948：本地 can* 显隐/禁用仅认 === true
 import type { TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { ClassStudentTreeConfirmPayload } from '@/apis/edu/class'
 import type { ExamClassRefVO } from '@/apis/mark/exam'
@@ -319,7 +351,7 @@ import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
 import message from 'ant-design-vue/es/message'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ExamRosterScopeModeDescription, ExamStatusCode, getExamDetail } from '@/apis/mark/exam'
 import { pageCandidateRosterWorkbench } from '@/apis/mark/exam-candidate-roster'
 import { getCandidateRosterPanel } from '@/apis/mark/exam-progress'
@@ -379,6 +411,8 @@ defineOptions({ name: 'TeacherCandidateRoster' })
 const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
 const router = useRouter()
+const route = useRoute()
+let paperImagesDeepLinkSeq = 0
 
 const classIds = ref<string[]>([])
 const classScopePersisted = ref(true)
@@ -389,6 +423,12 @@ const classScopeHydrating = ref(false)
 const lastSavedClassIds = ref<string[]>([])
 const rosterLocked = ref(false)
 const rosterWriteForbidden = ref(false)
+/** 扫描锁探测失败时 fail-closed：禁止编辑，并与「已锁定」展示区分。 */
+const rosterLockProbeFailed = ref(false)
+/** 名册看板加载失败时 fail-closed：禁止把权限/数据失败渲染成可编辑。 */
+const rosterPanelLoadFailed = ref(false)
+/** 在册考生 ID 列表加载失败时 fail-closed：禁止纳入考生。 */
+const rosterStudentIdsLoadFailed = ref(false)
 /** MVR-280：默认拒绝假可写；仅 BE 名册看板 canManageRosterWrites=true 时可写 */
 const canManageRosterWrites = ref(false)
 const rosterScopeMode = ref<ExamRosterScopeModeCode | undefined>(undefined)
@@ -396,6 +436,9 @@ const referenceDepartmentName = ref<string | undefined>(undefined)
 const candidateTotal = ref(0)
 const rosterPanel = ref<ExamWorkbenchCandidateRosterPanelResponse | null>(null)
 let classScopeSaveTimer: ReturnType<typeof setTimeout> | null = null
+type ClassScopeSaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
+const classScopeSaveState = ref<ClassScopeSaveState>('idle')
+let classScopeSavedResetTimer: ReturnType<typeof setTimeout> | null = null
 let loadContextSeq = 0
 let loadTableSeq = 0
 
@@ -495,7 +538,7 @@ const rosterSignalMetrics = computed((): SignalMetric[] => {
     if (panel.attendanceRate != null) {
       metrics.push({
         key: 'attendance',
-        label: '参考率',
+        label: '出勤率',
         value: `${panel.attendanceRate}%`,
         tone: panel.attendanceRate >= 90 ? 'green' : 'orange',
       })
@@ -524,8 +567,22 @@ const rosterSignalMetrics = computed((): SignalMetric[] => {
   fallbackMetrics.push({
     key: 'locked',
     label: '名册状态',
-    value: rosterLocked.value === true ? '已锁定' : '可编辑',
-    tone: rosterLocked.value === true ? 'orange' : 'green',
+    value: rosterLockProbeFailed.value === true
+      ? '状态未知'
+      : rosterPanelLoadFailed.value === true
+        ? '看板加载失败'
+        : canManageRosterWrites.value !== true
+          ? '只读'
+          : rosterLocked.value === true
+            ? '已锁定'
+            : '可编辑',
+    tone: rosterLockProbeFailed.value === true || rosterPanelLoadFailed.value === true
+      ? 'red'
+      : canManageRosterWrites.value !== true
+        ? 'gray'
+        : rosterLocked.value === true
+          ? 'orange'
+          : 'green',
   })
   return fallbackMetrics
 })
@@ -541,30 +598,47 @@ const singleAddStudentUserId = ref<string | null>(null)
 const singleAddStudent = ref<UserDto | null>(null)
 
 const classScopeReadOnly = computed(() => {
+  // 扫描锁探测失败时禁止一切名册/班级写入，避免假可写。
+  if (rosterLockProbeFailed.value === true) {
+    return true
+  }
   // MVR-280：无 BE 名册写能力位时整页只读（含班级范围保存）
   if (canManageRosterWrites.value !== true) {
     return true
   }
-  if (rosterWriteForbidden.value === true) {
+  if (rosterWriteForbidden.value) {
     return true
   }
   if (examStatus.value === ExamStatusCode.CLOSED) {
-    return archiveClassScopeRecoveryAllowed.value !== true
+    return !archiveClassScopeRecoveryAllowed.value
   }
   return false
 })
-
-const showRosterContextBar = computed(
-  () => rosterLocked.value === true || archiveClassScopeRecoveryAllowed.value === true || classScopeReadOnly.value === true,
-)
 
 const candidateRosterWriteAllowed = computed(
   () =>
     canManageRosterWrites.value === true
     && examStatus.value !== ExamStatusCode.CLOSED
     && classScopeReadOnly.value !== true
-    && rosterLocked.value !== true,
+    && rosterLocked.value !== true
+    && rosterLockProbeFailed.value !== true
+    && rosterStudentIdsLoadFailed.value !== true,
 )
+
+const classScopeSaveStateLabel = computed(() => {
+  switch (classScopeSaveState.value) {
+    case 'pending':
+      return '待保存'
+    case 'saving':
+      return '保存中…'
+    case 'saved':
+      return '已保存'
+    case 'error':
+      return '保存失败'
+    default:
+      return ''
+  }
+})
 
 const allowsManualCandidateEdit = computed(
   () => rosterScopeMode.value !== ExamRosterScopeModeCode.BY_CLASS,
@@ -584,7 +658,7 @@ const addableClassOptions = computed(() =>
 )
 
 const showInferredClassScopeNotice = computed(
-  () => classScopeReadOnly.value !== true && classScopePersisted.value !== true && classIds.value.length > 0,
+  () => !classScopeReadOnly.value && !classScopePersisted.value && classIds.value.length > 0,
 )
 
 const scopedClassTags = computed(() =>
@@ -703,12 +777,111 @@ function sameClassIds(left: string[], right: string[]): boolean {
   return sortedLeft.every((value, index) => value === sortedRight[index])
 }
 
-function buildClassScopeSavePayload(classIdList: string[]) {
+function buildClassScopeSavePayload(classIdList: string[], examId?: string) {
   return {
-    examId: selectedExamId.value!,
+    examId: examId ?? selectedExamId.value!,
     classIds: [...classIdList],
     referenceDepartmentId: departmentId.value,
   }
+}
+
+function clearClassScopeSaveTimer(): void {
+  if (classScopeSaveTimer) {
+    clearTimeout(classScopeSaveTimer)
+    classScopeSaveTimer = null
+  }
+}
+
+function scheduleClassScopeSavedReset(): void {
+  if (classScopeSavedResetTimer) {
+    clearTimeout(classScopeSavedResetTimer)
+  }
+  classScopeSavedResetTimer = setTimeout(() => {
+    classScopeSavedResetTimer = null
+    if (classScopeSaveState.value === 'saved') {
+      classScopeSaveState.value = 'idle'
+    }
+  }, 2500)
+}
+
+function syncExamClassRefsFromIds(ids: string[]): void {
+  examClassRefs.value = ids.map((classId) => {
+    const existing = examClassRefs.value.find((item) => item.classId === classId)
+    const option = classSelectOptions.value.find((item) => item.value === classId)
+    return {
+      classId,
+      className: existing?.className ?? option?.label ?? classId,
+    }
+  })
+}
+
+async function persistClassScopeIds(
+  classIdList: string[],
+  examId?: string,
+): Promise<void> {
+  classScopeSaveState.value = 'saving'
+  await saveExamClassScope(buildClassScopeSavePayload(classIdList, examId))
+  lastSavedClassIds.value = [...classIdList]
+  classScopePersisted.value = true
+  syncExamClassRefsFromIds(classIdList)
+  classScopeSaveState.value = 'saved'
+  scheduleClassScopeSavedReset()
+}
+
+async function flushPendingClassScopeSave(
+  examIdOverride?: string,
+  classIdListOverride?: string[],
+  referenceDepartmentIdOverride?: string,
+  savedClassIdsOverride?: string[],
+): Promise<void> {
+  clearClassScopeSaveTimer()
+  const targetExamId = examIdOverride ?? selectedExamId.value
+  const idsToSave = classIdListOverride ?? [...classIds.value]
+  const savedIds = savedClassIdsOverride ?? lastSavedClassIds.value
+  const deptId = referenceDepartmentIdOverride ?? departmentId.value
+  if (!targetExamId) {
+    return
+  }
+  if (!examIdOverride && (classScopeReadOnly.value || canManageRosterWrites.value !== true)) {
+    return
+  }
+  if (sameClassIds(idsToSave, savedIds)) {
+    return
+  }
+  const previous = [...savedIds]
+  try {
+    await persistClassScopeIds(idsToSave, targetExamId)
+    if (examIdOverride) {
+      return
+    }
+    if (archiveClassScopeRecoveryAllowed.value) {
+      void message.success('班级范围已保存，系统正在重新触发自动建卷')
+      void router.push({
+        name: 'TeacherExamWorkspaceArchivePackage',
+        params: { examId: targetExamId },
+        query: { autoCreatePoll: '1' },
+      })
+    }
+    await loadCandidatePage()
+  } catch (error) {
+    classScopeSaveState.value = 'error'
+    if (!examIdOverride) {
+      if (isPermissionError(error)) {
+        rosterWriteForbidden.value = true
+      }
+      classScopeHydrating.value = true
+      classIds.value = [...previous]
+      lastSavedClassIds.value = [...previous]
+      await nextTick()
+      classScopeHydrating.value = false
+    }
+    showUserError(error, '保存班级范围失败')
+    throw error
+  }
+}
+
+function warnRosterStudentIdsUnconfirmed(): void {
+  void message.warning('在册考生列表未确认，不能纳入考生')
 }
 
 async function probeRosterLocked(examId: string): Promise<boolean> {
@@ -724,7 +897,7 @@ async function loadClassOptionsForExam(_examId: string): Promise<void> {
 
 async function openAddClassModal(): Promise<void> {
   // MVR-391：与 canManageRosterWrites / classScopeReadOnly 二次拦截
-  if (canManageRosterWrites.value !== true || classScopeReadOnly.value === true) {
+  if (canManageRosterWrites.value !== true || classScopeReadOnly.value) {
     void message.warning('当前账号或考试状态不可维护班级范围')
     return
   }
@@ -744,12 +917,8 @@ async function openAddClassModal(): Promise<void> {
 }
 
 async function handleAddClassSubmit(): Promise<void> {
-  // MVR-970：新增班级防重入
-  if (addClassSubmitting.value === true) {
-    return
-  }
   // MVR-391：与 canManageRosterWrites / classScopeReadOnly 二次拦截
-  if (canManageRosterWrites.value !== true || classScopeReadOnly.value === true) {
+  if (canManageRosterWrites.value !== true || classScopeReadOnly.value) {
     void message.warning('当前账号或考试状态不可维护班级范围')
     return
   }
@@ -758,9 +927,32 @@ async function handleAddClassSubmit(): Promise<void> {
     return
   }
   addClassSubmitting.value = true
+  const previousClassIds = [...classIds.value]
   try {
-    classIds.value = [...new Set([...classIds.value, ...pendingAddClassIds.value])]
+    clearClassScopeSaveTimer()
+    const nextClassIds = [...new Set([...classIds.value, ...pendingAddClassIds.value])]
+    classScopeHydrating.value = true
+    classIds.value = nextClassIds
+    await nextTick()
+    classScopeHydrating.value = false
+    await persistClassScopeIds(nextClassIds)
+    if (archiveClassScopeRecoveryAllowed.value) {
+      void message.success('班级范围已保存，系统正在重新触发自动建卷')
+      void router.push({
+        name: 'TeacherExamWorkspaceArchivePackage',
+        params: { examId: selectedExamId.value! },
+        query: { autoCreatePoll: '1' },
+      })
+    }
+    await loadCandidatePage()
     addClassModalOpen.value = false
+  } catch (error) {
+    classScopeSaveState.value = 'error'
+    classScopeHydrating.value = true
+    classIds.value = previousClassIds
+    await nextTick()
+    classScopeHydrating.value = false
+    showUserError(error, '保存班级范围失败')
   } finally {
     addClassSubmitting.value = false
   }
@@ -770,8 +962,10 @@ async function loadRosterStudentIds(examId: string): Promise<void> {
   try {
     const response = await listExamCandidateStudentUserIds(examId)
     rosterStudentUserIds.value = response.studentUserIds
+    rosterStudentIdsLoadFailed.value = false
   } catch (error) {
     rosterStudentUserIds.value = []
+    rosterStudentIdsLoadFailed.value = true
     showUserError(error, '考生编号列表加载失败')
   }
 }
@@ -803,6 +997,7 @@ async function loadCandidatePage(): Promise<void> {
     if (result.pageSize != null) {
       pagination.pageSize = result.pageSize
     }
+    await tryOpenPaperImagesFromDeepLink()
   } catch (error) {
     if (seq !== loadTableSeq) {
       return
@@ -813,6 +1008,68 @@ async function loadCandidatePage(): Promise<void> {
       tableLoading.value = false
     }
   }
+}
+
+function readPaperInstanceDeepLink(): string | undefined {
+  return typeof route.query.paperInstanceId === 'string' && route.query.paperInstanceId.trim()
+    ? route.query.paperInstanceId.trim()
+    : undefined
+}
+
+async function clearPaperInstanceDeepLink(): Promise<void> {
+  if (route.query.paperInstanceId == null) {
+    return
+  }
+  const nextQuery = { ...route.query }
+  delete nextQuery.paperInstanceId
+  await router.replace({
+    name: route.name ?? undefined,
+    params: route.params,
+    query: nextQuery,
+  })
+}
+
+/** 消费补录成功深链：定位名册行并打开试卷影像抽屉。 */
+async function tryOpenPaperImagesFromDeepLink(): Promise<void> {
+  const paperInstanceId = readPaperInstanceDeepLink()
+  const examId = selectedExamId.value
+  if (!paperInstanceId || !examId) {
+    return
+  }
+  const seq = ++paperImagesDeepLinkSeq
+  let record = tableCandidates.value.find((item) => item.paperInstanceId === paperInstanceId)
+  if (!record) {
+    try {
+      const result = await pageCandidateRosterWorkbench({
+        examId,
+        paperInstanceId,
+        pageNum: 1,
+        pageSize: 1,
+      })
+      if (seq !== paperImagesDeepLinkSeq || selectedExamId.value !== examId) {
+        return
+      }
+      record = result.list[0]
+    } catch (error) {
+      if (seq !== paperImagesDeepLinkSeq) {
+        return
+      }
+      showUserError(error, '定位补录答卷失败')
+      await clearPaperInstanceDeepLink()
+      return
+    }
+  }
+  if (seq !== paperImagesDeepLinkSeq || selectedExamId.value !== examId) {
+    return
+  }
+  if (!record?.paperInstanceId) {
+    void message.warning('未找到对应答卷，请在名册中手动定位')
+    await clearPaperInstanceDeepLink()
+    return
+  }
+  paperImagesCandidate.value = record
+  paperImagesOpen.value = true
+  await clearPaperInstanceDeepLink()
 }
 
 function buildRosterPanelQuery(examId: string): ExamWorkbenchCandidateRosterPanelQueryRequest {
@@ -843,10 +1100,12 @@ async function loadRosterPanel(examId: string): Promise<void> {
   try {
     const panel = await getCandidateRosterPanel(buildRosterPanelQuery(examId))
     rosterPanel.value = panel
+    rosterPanelLoadFailed.value = false
     // MVR-280：缺省拒绝假可写
     canManageRosterWrites.value = panel.canManageRosterWrites === true
   } catch (error) {
     rosterPanel.value = null
+    rosterPanelLoadFailed.value = true
     canManageRosterWrites.value = false
     showUserError(error, '名册看板加载失败')
   }
@@ -860,18 +1119,26 @@ async function loadExamContext(): Promise<void> {
   const seq = ++loadContextSeq
   contextLoading.value = true
   rosterWriteForbidden.value = false
+  rosterPanelLoadFailed.value = false
+  rosterStudentIdsLoadFailed.value = false
   canManageRosterWrites.value = false
   classScopeHydrating.value = true
   try {
     const detail = await getExamDetail(examId)
     try {
       rosterLocked.value = await probeRosterLocked(examId)
+      if (seq !== loadContextSeq) {
+        return
+      }
+      rosterLockProbeFailed.value = false
     } catch (error) {
       if (seq !== loadContextSeq) {
         return
       }
-      rosterLocked.value = false
-      showUserError(error, '名册锁定状态加载失败')
+      // 探测失败不得解锁名册：按已锁定 fail-closed，并标记状态未知。
+      rosterLocked.value = true
+      rosterLockProbeFailed.value = true
+      showUserError(error, '名册锁定状态加载失败，已禁止编辑')
     }
     await loadRosterPanel(examId)
     if (seq !== loadContextSeq) {
@@ -918,8 +1185,8 @@ async function persistInferredClassScope(): Promise<void> {
   if (
     !selectedExamId.value
     || !classIds.value.length
-    || classScopeReadOnly.value === true
-    || persistClassScopeSaving.value === true
+    || classScopeReadOnly.value
+    || persistClassScopeSaving.value
   ) {
     return
   }
@@ -955,6 +1222,10 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 
 function openSelectDrawer(): void {
   // MVR-316：批量纳入考生与名册写能力位同源
+  if (rosterStudentIdsLoadFailed.value === true) {
+    warnRosterStudentIdsUnconfirmed()
+    return
+  }
   if (candidateRosterWriteAllowed.value !== true) {
     void message.warning('当前账号无考生名册写权限')
     return
@@ -983,6 +1254,10 @@ async function mergeCandidatesWithPreview(
   candidates: ExamCandidateRosterRequest[],
 ): Promise<number> {
   // MVR-318：内部合并入口与 candidateRosterWriteAllowed 同源
+  if (rosterStudentIdsLoadFailed.value === true) {
+    warnRosterStudentIdsUnconfirmed()
+    return 0
+  }
   if (candidateRosterWriteAllowed.value !== true) {
     void message.warning('当前账号无考生名册写权限')
     return 0
@@ -1009,25 +1284,23 @@ async function confirmSaveFullScope(): Promise<void> {
     showFormValidationMessage('请先选择班级范围')
     return
   }
-  if (fullScopeSaving.value === true) {
+  if (rosterScopeMode.value !== ExamRosterScopeModeCode.BY_CLASS && candidateTotal.value === 0) {
+    showFormValidationMessage('请先纳入考生后再全量保存')
     return
   }
+  if (fullScopeSaving.value) {
+    return
+  }
+  const byClass = rosterScopeMode.value === ExamRosterScopeModeCode.BY_CLASS
   const confirmed = await confirmAsync({
-    title: '全量保存考生名册？',
-    content: '将当前班级范围与库内全部考生一次性写入后端，覆盖增量编辑结果。扫描已开始后可能失败。',
+    title: byClass ? '同步整班名册？' : '全量保存考生名册？',
+    content: byClass
+      ? '将按当前参考班级从学生库拉取全部在读学生，覆盖名册增减（已扫描/已有成绩的考生无法移除）。扫描已开始后可能失败。'
+      : '将当前班级范围与库内全部在册考生一次性对齐写入；考生集合以后端库内名册为准，不按本页分页拼装。扫描已开始后可能失败。',
     type: 'warning',
-    okText: '全量保存',
+    okText: byClass ? '同步整班' : '全量保存',
     cancelText: '取消',
     onOk: async () => {
-      // MVR-936：确认后再次认 candidateRosterWriteAllowed
-      if (candidateRosterWriteAllowed.value !== true) {
-        void message.warning('当前账号无考生名册写权限')
-        return false
-      }
-      if (!selectedExamId.value || !classIds.value.length) {
-        showFormValidationMessage('请先选择班级范围')
-        return false
-      }
       fullScopeSaving.value = true
       try {
         await saveCurrentExamScope({
@@ -1035,10 +1308,10 @@ async function confirmSaveFullScope(): Promise<void> {
           classIds: [...classIds.value],
           referenceDepartmentId: departmentId.value,
         })
-        void message.success('已全量保存考生名册')
+        void message.success(byClass ? '已同步整班名册' : '已全量保存考生名册')
         await reloadExamContext()
       } catch (error) {
-        showUserError(error, '全量保存名册失败')
+        showUserError(error, byClass ? '同步整班名册失败' : '全量保存名册失败')
         return false
       } finally {
         fullScopeSaving.value = false
@@ -1050,6 +1323,10 @@ async function confirmSaveFullScope(): Promise<void> {
 
 async function handleStudentsSelected(selection: ClassStudentTreeConfirmPayload): Promise<void> {
   // MVR-316：抽屉确认纳入须二次拦截，避免绕过工具栏可见性
+  if (rosterStudentIdsLoadFailed.value === true) {
+    warnRosterStudentIdsUnconfirmed()
+    return
+  }
   if (candidateRosterWriteAllowed.value !== true) {
     void message.warning('当前账号无考生名册写权限')
     return
@@ -1057,7 +1334,7 @@ async function handleStudentsSelected(selection: ClassStudentTreeConfirmPayload)
   if (!selectedExamId.value) {
     return
   }
-  if (contextLoading.value === true) {
+  if (contextLoading.value) {
     return
   }
   const mergeRequest = buildExamCandidateMergeRequests(
@@ -1081,6 +1358,10 @@ async function handleStudentsSelected(selection: ClassStudentTreeConfirmPayload)
 }
 
 function openSingleAddModal(): void {
+  if (rosterStudentIdsLoadFailed.value === true) {
+    warnRosterStudentIdsUnconfirmed()
+    return
+  }
   if (canManageRosterWrites.value !== true) {
     void message.warning('当前账号无名册维护权限')
     return
@@ -1097,6 +1378,10 @@ function handleSingleStudentChange(_userId: string | null, option?: UserDto): vo
 
 async function handleSingleAddSubmit(): Promise<void> {
   // MVR-316：单人加入名册与 candidateRosterWriteAllowed 同源二次拦截
+  if (rosterStudentIdsLoadFailed.value === true) {
+    warnRosterStudentIdsUnconfirmed()
+    return
+  }
   if (candidateRosterWriteAllowed.value !== true) {
     void message.warning('当前账号无考生名册写权限')
     return
@@ -1104,7 +1389,7 @@ async function handleSingleAddSubmit(): Promise<void> {
   if (!selectedExamId.value) {
     return
   }
-  if (singleAddSubmitting.value === true) {
+  if (singleAddSubmitting.value) {
     return
   }
   if (!singleAddClassId.value) {
@@ -1187,14 +1472,7 @@ function handleWorkbenchAction(
       title: '确认移除该考生？',
       content: '移除后需重新加入名册。',
       type: 'warning',
-      onOk: async () => {
-        // MVR-965：onOk 再认 candidateRosterWriteAllowed，防确认等待期间写权/锁定漂移
-        if (candidateRosterWriteAllowed.value !== true) {
-          void message.warning('当前账号无考生名册写权限或名册已锁定')
-          return
-        }
-        await removeCandidate(record.studentUserId)
-      },
+      onOk: () => removeCandidate(record.studentUserId),
     })
   }
 }
@@ -1227,7 +1505,7 @@ async function removeCandidate(studentUserId: string): Promise<void> {
 }
 
 watch(classIds, (ids) => {
-  if (classScopeHydrating.value === true || !selectedExamId.value || classScopeReadOnly.value === true) {
+  if (classScopeHydrating.value || !selectedExamId.value || classScopeReadOnly.value) {
     return
   }
   // MVR-394：自动保存班级范围与 canManageRosterWrites 二次拦截（classScopeReadOnly 已含，显式默认拒绝）
@@ -1235,18 +1513,18 @@ watch(classIds, (ids) => {
     return
   }
   if (sameClassIds(ids, lastSavedClassIds.value)) {
+    if (classScopeSaveState.value === 'pending') {
+      classScopeSaveState.value = 'idle'
+    }
     return
   }
-  if (classScopeSaveTimer) {
-    clearTimeout(classScopeSaveTimer)
-  }
+  clearClassScopeSaveTimer()
+  classScopeSaveState.value = 'pending'
   const previous = [...lastSavedClassIds.value]
   classScopeSaveTimer = setTimeout(() => {
     classScopeSaveTimer = null
-    void saveExamClassScope(buildClassScopeSavePayload(ids))
+    void persistClassScopeIds(ids)
       .then(async () => {
-        lastSavedClassIds.value = [...ids]
-        classScopePersisted.value = true
         if (archiveClassScopeRecoveryAllowed.value) {
           void message.success('班级范围已保存，系统正在重新触发自动建卷')
           void router.push({
@@ -1255,17 +1533,10 @@ watch(classIds, (ids) => {
             query: { autoCreatePoll: '1' },
           })
         }
-        examClassRefs.value = ids.map((classId) => {
-          const existing = examClassRefs.value.find((item) => item.classId === classId)
-          const option = classSelectOptions.value.find((item) => item.value === classId)
-          return {
-            classId,
-            className: existing?.className ?? option?.label ?? classId,
-          }
-        })
         await loadCandidatePage()
       })
       .catch(async (error) => {
+        classScopeSaveState.value = 'error'
         if (isPermissionError(error)) {
           rosterWriteForbidden.value = true
         }
@@ -1281,13 +1552,35 @@ watch(classIds, (ids) => {
 
 watch(
   selectedExamId,
-  (value) => {
-    if (classScopeSaveTimer) {
-      clearTimeout(classScopeSaveTimer)
-      classScopeSaveTimer = null
+  async (value, oldValue) => {
+    clearClassScopeSaveTimer()
+    if (classScopeSavedResetTimer) {
+      clearTimeout(classScopeSavedResetTimer)
+      classScopeSavedResetTimer = null
     }
-    rosterLocked.value = false
+
+    if (oldValue) {
+      const previousClassIds = [...classIds.value]
+      const previousSavedClassIds = [...lastSavedClassIds.value]
+      const previousDepartmentId = departmentId.value
+      try {
+        await flushPendingClassScopeSave(
+          oldValue,
+          previousClassIds,
+          previousDepartmentId,
+          previousSavedClassIds,
+        )
+      } catch {
+        // flushPendingClassScopeSave 已展示错误
+      }
+    }
+
+    rosterLocked.value = true
+    rosterLockProbeFailed.value = true
+    rosterPanelLoadFailed.value = false
+    rosterStudentIdsLoadFailed.value = false
     rosterWriteForbidden.value = false
+    classScopeSaveState.value = 'idle'
     scanProgressFilter.value = undefined
     rosterFilterForm.keyword = ''
     rosterFilterForm.classId = undefined
@@ -1295,6 +1588,8 @@ watch(
     if (value) {
       void loadExamContext().then(() => loadCandidatePage())
     } else {
+      rosterLocked.value = false
+      rosterLockProbeFailed.value = false
       rosterPanel.value = null
       classIds.value = []
       examClassRefs.value = []
@@ -1310,6 +1605,16 @@ watch(
   },
   { immediate: true },
 )
+
+watch(
+  () => route.query.paperInstanceId,
+  () => {
+    if (!selectedExamId.value || !readPaperInstanceDeepLink()) {
+      return
+    }
+    void tryOpenPaperImagesFromDeepLink()
+  },
+)
 </script>
 
 <style lang="scss" scoped>
@@ -1319,7 +1624,7 @@ watch(
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__table-card {
@@ -1329,7 +1634,7 @@ watch(
   &__filter-stack {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--dp-space-component);
     width: 100%;
   }
 
@@ -1340,21 +1645,27 @@ watch(
   &__filter-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__filter-chip {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 2px 10px;
+    gap: var(--dp-space-component-tight);
+    min-height: 32px;
+    padding: var(--dp-space-component-xs) var(--dp-space-component);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-xs);
-    background: var(--dp-bg-container);
+    background: var(--dp-surface);
     font-size: var(--dp-font-size-xs);
     line-height: 1.5;
     color: var(--dp-text-secondary);
     cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--dp-color-primary);
+      outline-offset: 2px;
+    }
 
     &--active {
       border-color: var(--dp-color-primary);
@@ -1370,8 +1681,8 @@ watch(
 
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
-  padding: 8px 10px;
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
 }
 
 .exam-scope-card {
@@ -1381,32 +1692,38 @@ watch(
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--dp-space-component);
     width: 100%;
   }
 
   &__title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     margin: 0;
     font-size: var(--dp-font-size-lg);
     font-weight: var(--dp-font-weight-title);
     line-height: 1.5;
+  }
+
+  &__save-state {
+    font-size: var(--dp-font-size-xs);
+    font-weight: 400;
+    color: var(--dp-text-secondary);
   }
 }
 
 .exam-scope-meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-3, 12px);
-  padding-bottom: 16px;
+  gap: var(--dp-space-component);
+  padding-bottom: var(--dp-space-block);
   border-bottom: 1px solid var(--dp-border-subtle);
 
   &__item {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--dp-space-component-xs);
     min-width: 0;
   }
 
@@ -1420,24 +1737,24 @@ watch(
     font-size: var(--dp-font-size-md);
     line-height: 1.5;
     font-weight: 500;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
   }
 }
 
 .exam-scope-classes {
-  padding-top: 16px;
+  padding-top: var(--dp-space-block);
 
   &__head {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__title {
     font-size: var(--dp-font-size-md);
     font-weight: 500;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
   }
 
   &__count {
@@ -1448,14 +1765,14 @@ watch(
   &__tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    padding: 12px;
+    gap: var(--dp-space-component-tight);
+    padding: var(--dp-space-component);
     background: var(--dp-fill-quaternary);
     border-radius: 6px;
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 }
 
@@ -1477,7 +1794,7 @@ watch(
 
   &__name {
     font-weight: 500;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
   }
 
   &__no {

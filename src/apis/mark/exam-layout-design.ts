@@ -6,11 +6,20 @@ import type {
 } from '@/apis/mark/exam-standard-answer'
 import type { MarkOcrSceneCode } from '@/apis/mark/ocr-scene'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
+import type { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
+import type { AnswerBookletSourceModeCode } from '@/types/enums/answer-booklet-source-mode-enum'
+import type { EffectiveStatusCode } from '@/types/enums/effective-status-enum'
+import type { ExamLayoutBlockTypeCode } from '@/types/enums/exam-layout-block-type-enum'
 import type { ExamLayoutDetectTaskStatusCode } from '@/types/enums/exam-layout-detect-task-status-enum'
+import type { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
+import type { ExamLayoutPaperSpecCode } from '@/types/enums/exam-layout-paper-spec-enum'
+import type { ExamPaperPageKindCode } from '@/types/enums/exam-paper-page-kind-enum'
+import type { ExamPrintSheetSideCode } from '@/types/enums/exam-print-sheet-side-enum'
+import type { PaperMasterIdentityAreaTypeCode } from '@/types/enums/paper-master-identity-area-type-enum'
 import http from '@/config/axios'
 
-/** 制卷设计主流程 hint：整卷直接上传源文件，答题卡生成识别版式后保存并预览 */
-export const EXAM_LAYOUT_DESIGN_FLOW_HINT = '确定制卷形态 → 整卷上传资料异步识别题单 / 答题卡生成版式 → 核对 ROI 后保存并预览'
+/** 制卷设计主流程 hint：单独试卷上传源文件；组合卷以命题治理 A 卷识别结果生成答题纸 */
+export const EXAM_LAYOUT_DESIGN_FLOW_HINT = '确定制卷形态 → 识别试卷题目与页型 → 核对题号/题型/ROI → 生成答题纸 → 保存统一物理页序并预览'
 
 export interface ExamLayoutRectNorm {
   x: number
@@ -20,21 +29,34 @@ export interface ExamLayoutRectNorm {
 }
 
 export interface ExamLayoutPageDto {
-  /** 页 ID；草稿为雪花临时 ID，保存后为库表主键（后端 Long） */
-  id: string
+  /** 页数据库自增主键；未落库草稿不分配主键。 */
+  id?: string
   pageNo: number
+  pageKind?: ExamPaperPageKindCode
+  artifactPageNo?: number
+  printSheetNo?: number
+  printSide?: ExamPrintSheetSideCode
+  logicalPageFrom?: number
+  logicalPageTo?: number
+  scanRequired?: boolean
   backgroundFileId: string
   naturalWidthPx: number
   naturalHeightPx: number
 }
 
 export interface ExamLayoutQuestionDto {
-  /** 题目 ID；草稿为雪花临时 ID，保存后为库表主键（后端 Long） */
+  /** 题目数据库自增主键；负值仅作为同一草稿内题目与 ROI 的关联序号，不会写入主键列。 */
   id: string
   questionNo: string
   /** 直扫纸面的原始题号；分节重号时与全局题号不同。 */
   printedQuestionNo?: string
   normalizedQuestionNo?: string
+  /** 分节标签（一/二/三）；各大题内小题重号作用域。 */
+  sectionLabel?: string
+  /** 大题标题原文摘要。 */
+  sectionTitle?: string
+  /** 共享材料引用号（如 材1）。 */
+  materialRef?: string
   questionType: QuestionTypeCode
   ocrScene?: MarkOcrSceneCode
   fullScore?: number
@@ -54,28 +76,31 @@ export interface ExamLayoutQuestionAnswerDto {
   numericUnit?: string
   gradingRubric?: string
   aiHint?: string
-  effectiveStatus?: string
+  effectiveStatus?: EffectiveStatusCode
   effectiveNow?: boolean
   declaredOptions?: ExamQuestionDeclaredOptionRequest[]
   choiceOptions?: ExamQuestionStandardAnswerOptionRequest[]
 }
 
 export interface ExamLayoutBlockDto {
-  /** 布局块 ID；草稿为雪花临时 ID，保存后为库表主键（后端 Long） */
+  /** 布局块数据库自增主键；负值仅作为前端草稿交互关联序号，不会写入主键列。 */
   id: string
   pageNo: number
-  blockType: string
+  blockType: ExamLayoutBlockTypeCode
   layer?: number
   /** 关联题目 ID；与 ExamLayoutQuestionDto.id 同源 */
   layoutQuestionId?: string
-  identityAreaType?: string
+  identityAreaType?: PaperMasterIdentityAreaTypeCode
   rectNorm: ExamLayoutRectNorm
   blockPropsJson?: string
+  /** 新建矩阵的填涂格，保存时由后端在块主键回填后落库。 */
+  options?: ExamLayoutBlockOptionDto[]
 }
 
 export interface ExamLayoutBlockOptionDto {
-  /** 填涂格 ID；草稿为雪花临时 ID，保存后为库表主键（后端 Long） */
-  id: string
+  /** 填涂格数据库自增主键；未落库草稿不分配主键。 */
+  id?: string
+  /** 所属块数据库主键或同一草稿内的负关联序号。 */
   blockId: string
   layoutQuestionId: string
   optionLabel: string
@@ -90,12 +115,13 @@ export interface ExamLayoutDocument {
   layoutName?: string
   /** 制卷状态 - 对应 ExamLayoutDocument.status */
   status?: ExamLayoutStatusCode
-  layoutEntryKind?: string
+  layoutEntryKind?: ExamLayoutEntryKindCode
   totalPages?: number
-  paperSpec?: string
-  identityNumberMode?: string
-  subjectiveAnonymityMode?: string
+  paperSpec?: ExamLayoutPaperSpecCode
+  subjectiveAnonymityMode?: AnonymityModeCode
   sourcePdfFileId?: string
+  answerBookletSourceMode?: AnswerBookletSourceModeCode
+  answerBookletSourceFileId?: string
   previewPdfFileId?: string
   watermarkText?: string
   renderDpi?: number
@@ -145,18 +171,12 @@ export interface ExamLayoutPreviewResponse {
 
 export interface ExamLayoutGenerateSheetRequest {
   examId: string
-  paperSpec?: string
-  identityNumberMode?: string
-  questions?: ExamLayoutGenerateQuestionRequest[]
+  paperSpec: ExamLayoutPaperSpecCode
 }
 
-export interface ExamLayoutGenerateQuestionRequest {
-  questionNo: string
-  questionType: 'OBJECTIVE' | 'SUBJECTIVE'
-  ocrScene: string
-  fullScore: number
-  sortNo: number
-  optionCount?: number
+export interface ExamInstitutionAnswerBookletImportRequest {
+  examId: string
+  answerBookletSourceFileId: string
 }
 
 export type { ExamLayoutDetectTaskStatusCode } from '@/types/enums/exam-layout-detect-task-status-enum'
@@ -244,6 +264,13 @@ export function previewExamLayoutDesign(data: ExamLayoutDesignPreviewRequest) {
 
 export function generateExamLayoutSheet(data: ExamLayoutGenerateSheetRequest) {
   return http.post<ExamLayoutDocument>('/api/mark/exams/layout-design/generate-sheet', data)
+}
+
+export function importInstitutionAnswerBooklet(data: ExamInstitutionAnswerBookletImportRequest) {
+  return http.post<ExamLayoutDocument>(
+    '/api/mark/exams/layout-design/import-institution-answer-booklet',
+    data,
+  )
 }
 
 export function autoDetectExamLayout(data: ExamLayoutAutoDetectRequest) {

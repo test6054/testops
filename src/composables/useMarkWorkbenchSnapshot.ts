@@ -22,7 +22,6 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
     orderedStages,
     suggestedStageKey,
     prepAdvisoryReasons,
-    prepBlockingReasons,
     selectedExamLabel,
   } = storeToRefs(markStageStore)
   const refreshing = ref(false)
@@ -102,9 +101,7 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
       }
       pollIntervalMs.value = SNAPSHOT_POLL_BASE_MS
       syncPollingRef?.()
-      if (!quiet) {
-        throw err
-      }
+      // 错误面由本函数与 store.error 承接；禁止再 throw 给 void/Promise.all 调用方形成未处理 rejection
     } finally {
       if (!quiet) {
         markStageStore.setLoading(false)
@@ -157,7 +154,6 @@ export function useMarkWorkbenchSnapshot(examId: () => string) {
     orderedStages,
     suggestedStageKey,
     prepAdvisoryReasons,
-    prepBlockingReasons,
     selectedExamLabel,
     refreshSnapshot,
     syncSnapshotPolling: polling.syncPolling,

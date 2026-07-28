@@ -8,7 +8,7 @@ import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
  *   ScoreBatchStatusUpdateRequest / ScoreImportPreviewVO / ScoreImportRowDiagnostic。
  *
  * Excel 导入主链：platform stage(QUALITY_SCORE_IMPORT) → platform excel-import(QUALITY_SCORE_BATCH)
- * → Handler 内 create + enqueueParse → 状态 PARSING → PREVIEW_READY → validate → confirm。
+ * → Handler 内 create + enqueueParse → 事务提交后立即抢占入解析池 → 状态 PARSING → PREVIEW_READY → validate → confirm。
  * 列表页 preview/validate/confirm/enqueueParse 仍走本模块 REST。
  */
 import type { PageResult, QueryDto } from '@/types'

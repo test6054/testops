@@ -87,12 +87,12 @@ function handleNavigate(path: string) {
   height: 100%;
 
   .breadcrumb-icon {
-    margin-right: 4px;
+    margin-right: var(--dp-space-component-xs);
     font-size: var(--dp-font-size-md);
   }
 
   .breadcrumb-current {
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
     font-weight: 500;
   }
 
@@ -100,12 +100,12 @@ function handleNavigate(path: string) {
     display: flex;
     align-items: center;
     font-size: var(--dp-font-size-md);
-    color: var(--dp-text-tertiary);
+    color: var(--dp-text-muted);
 
     a,
     .breadcrumb-link {
-      color: var(--dp-text-tertiary);
-      transition: color 0.3s ease;
+      color: var(--dp-text-muted);
+      transition: color var(--dp-duration-slow) var(--dp-ease-default);
       cursor: pointer;
 
       &:hover {
@@ -115,7 +115,7 @@ function handleNavigate(path: string) {
   }
 
   :deep(.ant-breadcrumb-separator) {
-    margin: 0 8px;
+    margin: 0 var(--dp-space-component-tight);
     color: var(--dp-text-quaternary);
   }
 }

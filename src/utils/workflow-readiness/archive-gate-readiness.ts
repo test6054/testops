@@ -23,7 +23,6 @@ export function resolveArchiveGateWorkflowSteps(
   const steps = blockingItemsToWorkflowSteps(gate.blockingItems, {
     routeParams,
     routeQuery,
-    actionLabelPrefix: '前往',
   })
   if (steps.length === 0) {
     throw new Error('归档双门禁契约异常：gateOpen=false 但 blockingItems 为空')

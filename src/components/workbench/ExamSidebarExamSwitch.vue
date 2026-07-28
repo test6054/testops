@@ -4,10 +4,12 @@
       <h3 class="exam-sidebar-exam-switch__name">{{ displayName }}</h3>
       <span
         v-if="examStatusLabel"
-        class="exam-sidebar-exam-switch__status-dot"
+        class="exam-sidebar-exam-switch__status"
         :class="statusDotClass"
-        :title="examStatusLabel"
-      />
+      >
+        <span class="exam-sidebar-exam-switch__status-dot" aria-hidden="true" />
+        <span class="exam-sidebar-exam-switch__status-text">{{ examStatusLabel }}</span>
+      </span>
     </div>
     <p v-if="displayNo" class="exam-sidebar-exam-switch__no">编号 {{ displayNo }}</p>
     <p v-if="examContextLine" class="exam-sidebar-exam-switch__context">{{ examContextLine }}</p>
@@ -41,9 +43,9 @@ const displayNo = computed(() => props.examDisplayNo?.trim() ?? '')
 
 const statusDotClass = computed(() => {
   const tone = props.examStatusTone
-  if (tone === 'green') return 'exam-sidebar-exam-switch__status-dot--active'
-  if (tone === 'gray') return 'exam-sidebar-exam-switch__status-dot--closed'
-  return 'exam-sidebar-exam-switch__status-dot--default'
+  if (tone === 'green') return 'exam-sidebar-exam-switch__status--active'
+  if (tone === 'gray') return 'exam-sidebar-exam-switch__status--closed'
+  return 'exam-sidebar-exam-switch__status--default'
 })
 </script>
 
@@ -52,8 +54,8 @@ const statusDotClass = computed(() => {
   &__title-row {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2, 8px);
-    margin-bottom: var(--dp-space-1, 4px);
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component-xs);
   }
 
   &__name {
@@ -61,8 +63,15 @@ const statusDotClass = computed(() => {
     font-size: var(--dp-font-size-lg);
     font-weight: 600;
     line-height: 1.5;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
     word-break: break-word;
+  }
+
+  &__status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--dp-space-component-xs);
+    flex-shrink: 0;
   }
 
   &__status-dot {
@@ -70,31 +79,43 @@ const statusDotClass = computed(() => {
     width: 6px;
     height: 6px;
     border-radius: 50%;
+    background: var(--dp-color-primary);
+  }
 
-    &--active {
-      background: var(--dp-success);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--dp-success) 18%, transparent);
-    }
+  &__status--active &__status-dot {
+    background: var(--dp-success);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--dp-success) 18%, transparent);
+  }
 
-    &--closed {
-      background: var(--dp-text-quaternary);
-    }
+  &__status--closed &__status-dot {
+    background: var(--dp-text-quaternary);
+  }
 
-    &--default {
-      background: var(--dp-color-primary);
-    }
+  &__status-text {
+    font-size: var(--dp-font-size-xs);
+    line-height: 1.4;
+    color: var(--dp-text-secondary);
+    white-space: nowrap;
+  }
+
+  &__status--active &__status-text {
+    color: var(--dp-success);
+  }
+
+  &__status--closed &__status-text {
+    color: var(--dp-text-muted);
   }
 
   &__no {
-    margin: 0 0 4px;
+    margin: 0 0 var(--dp-space-component-xs);
     font-size: var(--dp-font-size-xs);
     line-height: 1.4;
-    color: var(--dp-text-tertiary);
+    color: var(--dp-text-muted);
     word-break: break-all;
   }
 
   &__context {
-    margin: 0 0 8px;
+    margin: 0 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
     line-height: 1.4;
     color: var(--dp-text-secondary);

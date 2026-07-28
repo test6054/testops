@@ -6,10 +6,12 @@
 import type { ArchiveVO } from '@/apis/quality/archive'
 import type { ArchiveBusinessTypeCode } from '@/apis/quality/types'
 import type { UiOptionValue, UiSelectOption } from '@/components/ui-guide/ui/types'
+import type { ExpertPackageTypeCode } from '@/types/enums/expert-package-type-enum'
 import { computed, onMounted, ref, watch } from 'vue'
 import { archiveApi } from '@/apis/quality/archive'
 import { ArchiveBusinessTypeDescription } from '@/apis/quality/types'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import { QualityArchiveDestructionStatusCode } from '@/types/enums/quality-archive-destruction-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { loadSelectorFirstPage, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS } from './page-contract'
@@ -17,9 +19,14 @@ import { loadSelectorFirstPage, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS } from './pa
 interface Props {
   value?: string | null
   businessType?: ArchiveBusinessTypeCode | null
+  businessId?: string | null
+  expertPackageType?: ExpertPackageTypeCode | null
+  accreditationCycleId?: string | null
   archiveCategory?: string | null
   /** 仅返回已被档案室确认的归�? */
   onlyConfirmed?: boolean
+  /** 仅返回仍可作为正式证据的未销毁归档，并要求存在文件真源。 */
+  onlyUsable?: boolean
   placeholder?: string
   allowClear?: boolean
   disabled?: boolean
@@ -32,6 +39,7 @@ const props = withDefaults(defineProps<Props>(), {
   disabled: false,
   width: '100%',
   onlyConfirmed: false,
+  onlyUsable: false,
 })
 
 const emit = defineEmits<{
@@ -52,23 +60,36 @@ watch(
 )
 
 watch(
-  () => [props.businessType, props.archiveCategory, props.onlyConfirmed],
+  () => [
+    props.businessType,
+    props.businessId,
+    props.expertPackageType,
+    props.accreditationCycleId,
+    props.archiveCategory,
+    props.onlyConfirmed,
+    props.onlyUsable,
+  ],
   () => loadOptions(),
 )
 
 async function loadOptions(keyword?: string) {
   loading.value = true
   try {
-    options.value = await loadSelectorFirstPage(
+    const rows = await loadSelectorFirstPage(
       (pageNum, pageSize) =>
         archiveApi.page({
           pageNum,
           pageSize,
           businessType: props.businessType || undefined,
+          businessId: props.businessId || undefined,
+          expertPackageType: props.expertPackageType || undefined,
+          accreditationCycleId: props.accreditationCycleId || undefined,
           archiveCategory: props.archiveCategory || undefined,
           archiveOfficeConfirmed: props.onlyConfirmed ? true : undefined,
+          destructionStatus: props.onlyUsable ? QualityArchiveDestructionStatusCode.NONE : undefined,
           keyword: (keyword ?? searchText.value)?.trim() || undefined,
         }))
+    options.value = props.onlyUsable ? rows.filter((row) => !!row.fileId) : rows
   } catch (e) {
     showUserError(e, '质量档案列表加载失败')
   } finally {
@@ -150,18 +171,18 @@ defineExpose({ reload: loadOptions })
 }
 
 .text-gray-500 {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .text-gray-400 {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .mr-1 {
-  margin-right: 4px;
+  margin-right: var(--dp-space-component-xs);
 }
 
 .ml-1 {
-  margin-left: 4px;
+  margin-left: var(--dp-space-component-xs);
 }
 </style>

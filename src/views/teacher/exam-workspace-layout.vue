@@ -14,10 +14,14 @@
       <div v-if="examId" class="exam-detail-layout__header-toolbar">
         <UiButton
           v-if="!isImmersiveWorkspace"
+          ref="mobileNavToggleRef"
           class="exam-detail-layout__menu-toggle"
           variant="outline"
           size="sm"
-          @click="mobileNavOpen = true"
+          :aria-label="mobileNavOpen ? '关闭考试导航' : '打开考试导航'"
+          :aria-expanded="mobileNavOpen"
+          aria-controls="exam-workspace-mobile-nav"
+          @click="toggleMobileNav"
         >
           <template #icon><MenuOutlined /></template>
           <span class="exam-detail-layout__menu-toggle-text">{{ mobileNavLabel }}</span>
@@ -40,10 +44,11 @@
       <div
         v-if="examId && mobileNavOpen && !isImmersiveWorkspace"
         class="exam-detail-layout__backdrop"
-        @click="mobileNavOpen = false"
+        @click="closeMobileNav"
       />
       <ExamSubSidebar
         v-if="examId && !isImmersiveWorkspace"
+        id="exam-workspace-mobile-nav"
         :exam-status-label="examStatusLabel"
         :exam-status-tone="examStatusTone"
         :exam-display-name="snapshot?.examName"
@@ -66,7 +71,10 @@
       <main class="exam-detail-layout__main">
         <div
           class="exam-detail-layout__content"
-          :class="{ 'exam-detail-layout__content--wide': isLayoutWide }"
+          :class="{
+            'exam-detail-layout__content--wide': isLayoutWide,
+            'exam-detail-layout__content--immersive': isImmersiveWorkspace,
+          }"
         >
           <ExamSelectGateStrip
             v-if="!examId"
@@ -82,24 +90,18 @@
             class="exam-detail-layout__empty"
           />
 
-          <template v-else>
-            <UiAlertStrip
-              v-if="workspaceBlockingVisible"
-              :tone="workspaceBlockingTone"
-              :title="workspaceBlockingTitle"
-              :description="workspaceBlockingDescription"
-              dense
-              inline
-              class="exam-detail-layout__workspace-blocking"
-            >
-              <template #actions>
-                <UiButton size="sm" variant="primary" @click="goPrepBlockingAction">
-                  去处理
-                </UiButton>
-              </template>
-            </UiAlertStrip>
+          <UiEmpty
+            v-else-if="snapshotFailed"
+            size="sm"
+            :description="snapshotErrorMessage"
+            class="exam-detail-layout__empty"
+          >
+            <UiButton size="sm" variant="primary" @click="goExamList">返回考试列表</UiButton>
+          </UiEmpty>
+
+          <template v-else-if="snapshotReady">
             <ConfidentialStatusBar
-              v-if="isExamConfidential && !isImmersiveWorkspace"
+              v-if="showConfidentialStrip"
               class="exam-detail-layout__confidential-strip"
             />
             <ExamWorkflowTaskDock
@@ -175,13 +177,12 @@ import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import { useBreakpoints } from '@vueuse/core'
-import { computed, provide, ref, watch } from 'vue'
+import { computed, nextTick, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { EXAM_STATUS_TONE, ExamStatusDescription } from '@/apis/mark/exam'
 import ConfidentialStatusBar from '@/components/mark/ConfidentialStatusBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamSubSidebar from '@/components/workbench/ExamSubSidebar.vue'
@@ -208,6 +209,8 @@ import {
 import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
 import { useAppStore } from '@/stores/modules/app'
 import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
+import { showUserError } from '@/utils/error-handler'
+import { navigateExamWorkspaceRoute } from '@/utils/exam-workspace-navigation'
 import { formatMarkExamOptionLabel } from '@/utils/mark-exam-option'
 import { navigateToJourneyStep } from '@/utils/mark-stage-navigation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -263,15 +266,66 @@ const appStore = useAppStore()
 const appTitle = computed(() => appStore.getTitle())
 const sidebarCollapsed = ref(false)
 const mobileNavOpen = ref(false)
+const mobileNavToggleRef = ref<{ $el?: HTMLElement } | HTMLElement | null>(null)
+
+function resolveMobileNavToggleEl(): HTMLElement | null {
+  const target = mobileNavToggleRef.value
+  if (!target) {
+    return null
+  }
+  if (target instanceof HTMLElement) {
+    return target
+  }
+  return target.$el instanceof HTMLElement ? target.$el : null
+}
+
+function openMobileNav(): void {
+  mobileNavOpen.value = true
+}
+
+function closeMobileNav(): void {
+  if (!mobileNavOpen.value) {
+    return
+  }
+  mobileNavOpen.value = false
+  void nextTick(() => {
+    resolveMobileNavToggleEl()?.focus()
+  })
+}
+
+function toggleMobileNav(): void {
+  if (mobileNavOpen.value) {
+    closeMobileNav()
+    return
+  }
+  openMobileNav()
+}
+
+watch(mobileNavOpen, (open, _previous, onCleanup) => {
+  if (!open) {
+    return
+  }
+  const onKeydown = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      closeMobileNav()
+    }
+  }
+  window.addEventListener('keydown', onKeydown)
+  onCleanup(() => {
+    window.removeEventListener('keydown', onKeydown)
+  })
+})
 
 const examId = computed(() => String(route.params.examId ?? ''))
 /**
- * 批阅 / 复核沉浸页：隐藏旅程轨与侧栏，主内容全宽。
- * 当前每个 layoutWide 路由都是沉浸页，故沉浸判定与宽内容样式共用同一来源；
- * 若未来出现「宽内容但保留导航」的页面，再拆分为两个独立标志。
+ * 批阅 / 复核 Trust 沉浸页：隐藏旅程轨与侧栏，主内容全宽无内边距。
+ * 列表/表格页用 layoutWide（上限 1800）；概览/表单默认 1400 居中。
  */
-const isImmersiveWorkspace = computed(() => route.meta.layoutWide === true)
-const isLayoutWide = isImmersiveWorkspace
+const isImmersiveWorkspace = computed(() => route.meta.layoutImmersive === true)
+const isLayoutWide = computed(
+  () => route.meta.layoutWide === true && route.meta.layoutImmersive !== true,
+)
 
 const showWorkspaceChrome = computed(
   () =>
@@ -302,27 +356,33 @@ const {
   snapshot,
   loading,
   refreshing,
+  error: snapshotError,
   orderedStages,
   suggestedStageKey,
-  prepBlockingReasons,
   refreshSnapshot,
 } = useMarkWorkbenchSnapshot(() => examId.value)
 
+const snapshotFailed = computed(
+  () => Boolean(snapshotError.value) && !snapshot.value && !loading.value,
+)
+const snapshotReady = computed(() => Boolean(snapshot.value) && !snapshotFailed.value)
+const snapshotErrorMessage = computed(
+  () => snapshotError.value ?? '工作台阶段快照加载失败',
+)
 const { isExamConfidential } = useWorkspaceConfidentialContext()
 
-const { journeyStages, activeJourneyKey } = useExamJourneySteps(orderedStages)
-
-/** 准备旅程子页自带 ContextBar / 步骤卡，layout 不再重复硬阻断条 */
-const isPrepSelfManagedPage = computed(
-  () => activeJourneyKey.value === 'prep' && route.meta.hasWorkbenchShell === true,
+/** 快照失败时涉密状态不可确认，fail-closed 展示涉密条并阻断子页 */
+const showConfidentialStrip = computed(
+  () => !isImmersiveWorkspace.value && (isExamConfidential.value || snapshotFailed.value),
 )
+
+const { journeyStages, activeJourneyKey } = useExamJourneySteps(orderedStages)
 
 const workspaceChrome = useExamWorkspaceChrome({
   examId,
   snapshot,
   journeyStages,
   activeJourneyKey,
-  suggestedStageKey,
   refreshSnapshot,
 })
 const { sidebarContextLine } = workspaceChrome
@@ -335,8 +395,10 @@ provideMarkWorkbenchContext({
   loading,
   refreshing,
   refreshSnapshot,
+  snapshotError,
   examDetail: workspaceChrome.examDetail,
   examDetailLoading: workspaceChrome.detailLoading,
+  detailError: workspaceChrome.detailError,
   markingProgress: workspaceChrome.markingProgress,
   refreshChrome: workspaceChrome.refreshChrome,
 })
@@ -367,12 +429,11 @@ const { activeTask, showTaskDock, dismissActiveTask, runActiveTaskAction }
     route,
     isImmersiveWorkspace,
     nextActions,
-    prepBlockingReasons,
+    workspaceRouteName: computed(() => snapshot.value?.workspaceRouteName),
+    enterActionLabel: computed(() => snapshot.value?.enterActionLabel),
     suggestedStageKey,
     activeMarkStageKey,
     stageSuggestionDescription,
-    suggestedStageActionLabel: computed(() => workspaceChrome.suggestedStageActionLabel.value),
-    goSuggestedStageByKey: workspaceChrome.goSuggestedStageByKey,
   })
 
 const mobileNavLabel = computed(() => {
@@ -398,39 +459,6 @@ const examStatusTone = computed(() => {
   }
   return strictEnumTone(EXAM_STATUS_TONE, status, 'examStatus')
 })
-
-/** 工作台顶栏阻断：单行 inline，禁止大框占屏；非沉浸态统一展示 */
-const workspaceBlockingVisible = computed(() => {
-  if (isImmersiveWorkspace.value) {
-    return false
-  }
-  if (isPrepSelfManagedPage.value) {
-    return false
-  }
-  return prepBlockingReasons.value.length > 0
-})
-
-const workspaceBlockingTone = computed(() => 'error' as const)
-
-const workspaceBlockingTitle = computed(() => {
-  if (activeJourneyKey.value === 'prep') {
-    return '准备硬阻断'
-  }
-  return '主链阻断'
-})
-
-const workspaceBlockingDescription = computed(() => prepBlockingReasons.value.join('；'))
-
-/** 阻断条主行动：优先回准备工作台处理硬门禁 */
-function goPrepBlockingAction(): void {
-  if (!examId.value) {
-    return
-  }
-  void router.push({
-    name: 'TeacherExamWorkspacePrep',
-    params: { examId: examId.value },
-  })
-}
 
 function toExamSwitcherOption(exam: {
   examId: string
@@ -482,11 +510,9 @@ function onExamSwitch(value: SelectValue): void {
   if (!nextExamId || nextExamId === examId.value) {
     return
   }
-  const nextJourney = activeJourneyKey.value === 'overview' ? 'prep' : activeJourneyKey.value
+  const nextJourney = activeJourneyKey.value === 'overview' ? MarkTeacherDashboardJourneyKeyCode.PREP : activeJourneyKey.value
   if (isImmersiveWorkspace.value || hasObjectIdParam(route)) {
-    navigateToJourneyStep(router, nextJourney as ExamJourneyKey, nextExamId, {
-      scanAttentionCount: snapshot.value?.markingProgress?.scanAttentionCount,
-    })
+    navigateToJourneyStep(router, nextJourney as ExamJourneyKey, nextExamId)
     return
   }
   void router.push({
@@ -496,32 +522,36 @@ function onExamSwitch(value: SelectValue): void {
 }
 
 function onMenuClick(menuKey: string): void {
-  const item = findExamWorkspaceMenuItem(menuKey)
-  if (!item || !examId.value) {
+  if (!examId.value) {
     return
   }
-  mobileNavOpen.value = false
-  void router.push({
-    name: item.routeName,
-    params: { examId: examId.value },
-  })
+  const item = findExamWorkspaceMenuItem(menuKey)
+  if (!item) {
+    showUserError(null, `考试工作台菜单合同无效：${menuKey}`)
+    return
+  }
+  closeMobileNav()
+  navigateExamWorkspaceRoute(
+    router,
+    item.routeName,
+    { examId: examId.value },
+    '考试工作台菜单入口',
+  )
 }
 
 function onJourneySelect(journeyKey: ExamJourneyKey): void {
   if (!examId.value) {
     return
   }
-  mobileNavOpen.value = false
-  navigateToJourneyStep(router, journeyKey, examId.value, {
-    scanAttentionCount: snapshot.value?.markingProgress?.scanAttentionCount,
-  })
+  closeMobileNav()
+  workspaceChrome.onJourneySelect(journeyKey)
 }
 
 function onOverviewSelect(): void {
   if (!examId.value) {
     return
   }
-  mobileNavOpen.value = false
+  closeMobileNav()
   void router.push({
     name: 'TeacherExamWorkspaceOverview',
     params: { examId: examId.value },
@@ -542,9 +572,7 @@ function exitImmersiveWorkspace(): void {
     })
     return
   }
-  navigateToJourneyStep(router, MarkTeacherDashboardJourneyKeyCode.MARK, examId.value, {
-    scanAttentionCount: snapshot.value?.markingProgress?.scanAttentionCount,
-  })
+  navigateToJourneyStep(router, MarkTeacherDashboardJourneyKeyCode.MARK, examId.value)
 }
 
 function shouldCacheWorkspaceRoute(childRoute: RouteLocationNormalized): boolean {
@@ -591,18 +619,18 @@ watch(isImmersiveWorkspace, (immersive) => {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  background: var(--dp-bg-layout);
+  background: var(--dp-surface);
 
   &__header {
     --sidebar-width: 260px;
     display: grid;
     grid-template-columns: var(--sidebar-width) auto minmax(0, 1fr) auto;
-    column-gap: 16px;
+    column-gap: var(--dp-space-block);
     align-items: center;
-    height: 56px;
-    padding: 0 24px 0 0;
-    background: var(--dp-bg-container);
-    border-bottom: 1px solid var(--dp-border-subtle);
+    height: var(--dp-shell-header-height);
+    padding: 0 var(--dp-space-page) 0 0;
+    background: var(--dp-surface);
+    border-bottom: 1px solid var(--dp-border);
     flex-shrink: 0;
     overflow: visible;
 
@@ -620,8 +648,8 @@ watch(isImmersiveWorkspace, (immersive) => {
 
       .exam-detail-layout__logo {
         width: auto;
-        padding-left: 16px;
-        padding-right: 4px;
+        padding-left: var(--dp-space-block);
+        padding-right: var(--dp-space-component-xs);
       }
     }
   }
@@ -630,10 +658,10 @@ watch(isImmersiveWorkspace, (immersive) => {
     grid-column: 1;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     width: var(--sidebar-width);
     flex-shrink: 0;
-    padding-left: 24px;
+    padding-left: var(--dp-space-page);
     cursor: pointer;
     min-width: 0;
   }
@@ -647,7 +675,7 @@ watch(isImmersiveWorkspace, (immersive) => {
   &__logo-title {
     font-size: var(--dp-font-size-lg);
     font-weight: 600;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -658,7 +686,7 @@ watch(isImmersiveWorkspace, (immersive) => {
     min-width: 0;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--dp-space-component);
   }
 
   &__header-switcher {
@@ -684,7 +712,7 @@ watch(isImmersiveWorkspace, (immersive) => {
 
   &__header-right {
     grid-column: 4;
-    margin-left: 16px;
+    margin-left: var(--dp-space-block);
     flex-shrink: 0;
     min-width: 0;
   }
@@ -700,33 +728,73 @@ watch(isImmersiveWorkspace, (immersive) => {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    background: var(--dp-bg-layout);
+    background: var(--dp-surface);
   }
 
   &__content {
     flex: 1;
+    min-height: 0;
     overflow: auto;
-    padding: var(--dp-space-3);
-    /* 与全局 Main canvas 一致：灰底 + 白 Surface；沉浸宽页仍可局部覆盖 */
-    background: var(--dp-bg-layout);
+    padding: var(--dp-space-component);
+    /* 纯白壳画布：与 LayoutDefault Main 对齐 */
+    background: var(--dp-surface);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 
-    &--wide {
-      padding: 8px;
+    :deep(> *) {
+      width: 100%;
+      max-width: var(--dp-content-max-width);
+      box-sizing: border-box;
+    }
+
+    /* 列表表体填满：禁止外层滚动，改由 UiDataTable 表体滚动；告警/条带不得被 flex 撑高 */
+    &:has(.ui-data-table--fill-remaining) {
+      overflow: hidden;
+      align-items: stretch;
 
       :deep(> *) {
-        max-width: min(100%, 1680px);
-        margin: 0 auto;
+        flex: 0 0 auto;
+        width: 100%;
+        max-width: min(100%, var(--dp-content-max-width-wide));
+        margin-inline: auto;
+      }
+
+      :deep(> *:has(.ui-data-table--fill-remaining)) {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+    }
+
+    /* 列表/表格：宽模式 */
+    &--wide {
+      padding: var(--dp-space-component);
+
+      :deep(> *) {
+        max-width: min(100%, var(--dp-content-max-width-wide));
+      }
+    }
+
+    /* Trust 沉浸：全宽、零内边距 */
+    &--immersive {
+      padding: 0;
+      align-items: stretch;
+
+      :deep(> *) {
+        max-width: 100%;
       }
     }
   }
 
-  &__prep-blocking,
-  &__confidential-strip {
-    margin-bottom: 16px;
-  }
-
+  &__confidential-strip,
   &__task-dock {
-    margin-bottom: 16px;
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 0;
+    margin-bottom: var(--dp-space-block);
   }
 
   &__menu-toggle-text {
@@ -737,13 +805,13 @@ watch(isImmersiveWorkspace, (immersive) => {
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   @media (max-width: bp.$layout-mobile-max) {
     &__header {
       grid-template-columns: auto minmax(0, 1fr) auto;
-      padding: 0 16px;
+      padding: 0 var(--dp-space-block);
     }
 
     &__logo {
@@ -773,7 +841,7 @@ watch(isImmersiveWorkspace, (immersive) => {
 
     &__header-right {
       grid-column: 3;
-      margin-left: 8px;
+      margin-left: var(--dp-space-component-tight);
     }
 
     &__menu-toggle {
@@ -783,7 +851,7 @@ watch(isImmersiveWorkspace, (immersive) => {
     &__backdrop {
       display: block;
       position: fixed;
-      inset: 56px 0 0;
+      inset: var(--dp-shell-header-height) 0 0;
       z-index: 190;
       background: color-mix(in srgb, var(--dp-text-primary) 35%, transparent);
     }

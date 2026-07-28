@@ -173,7 +173,7 @@ const descColumn = { xs: 1, sm: 1, md: 2 }
 .exam-prep-info-panels {
   &__status {
     border-bottom: 1px solid var(--dp-border);
-    background: var(--dp-surface-elevated);
+    background: var(--dp-surface-chrome);
   }
 
   &__status--warning {
@@ -200,7 +200,7 @@ const descColumn = { xs: 1, sm: 1, md: 2 }
 
   &__section {
     min-width: 0;
-    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px) var(--dp-space-1, 4px);
+    padding: var(--dp-space-component-tight) var(--dp-space-component) var(--dp-space-component-xs);
 
     &:first-child {
       border-right: 1px solid var(--dp-border);
@@ -208,7 +208,7 @@ const descColumn = { xs: 1, sm: 1, md: 2 }
   }
 
   &__title {
-    margin: 0 0 6px;
+    margin: 0 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-sm);
     font-weight: 600;
     line-height: 1.35;
@@ -218,7 +218,7 @@ const descColumn = { xs: 1, sm: 1, md: 2 }
 
   &__desc :deep(.ant-descriptions-item-label),
   &__desc :deep(.ant-descriptions-item-content) {
-    padding-bottom: 6px !important;
+    padding-bottom: var(--dp-space-component-tight) !important;
     font-size: var(--dp-font-size-xs);
     line-height: 1.4;
   }
@@ -245,7 +245,7 @@ const descColumn = { xs: 1, sm: 1, md: 2 }
     &__section:first-child {
       border-right: none;
       border-bottom: 1px solid var(--dp-border);
-      padding-bottom: var(--dp-space-2, 8px);
+      padding-bottom: var(--dp-space-component-tight);
     }
   }
 }

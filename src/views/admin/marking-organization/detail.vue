@@ -81,11 +81,18 @@
     <template v-else-if="organization">
       <template v-if="isExamWorkspaceRoute">
         <UiAlertStrip
-          v-if="layoutRoiGap > 0"
+          v-if="layoutRoiGap != null && layoutRoiGap > 0"
           tone="warning"
           class="org-detail__readonly-banner"
           :title="`制卷识别区域未就绪（${layoutRoiGap} 道题）`"
           description="未配置 ROI 的题目无法分配题组、按题导出或生成按题学情，请先在制卷工作台补全识别区域。"
+        />
+        <UiAlertStrip
+          v-else-if="layoutRoiGap == null && layoutSummary"
+          tone="warning"
+          class="org-detail__readonly-banner"
+          title="制卷 ROI 指标尚未形成"
+          description="制卷题目统计字段缺失，无法判断识别区域就绪状态。"
         />
         <UiAlertStrip
           v-if="canManageExamOwner !== true"
@@ -109,12 +116,14 @@
             :groups="groups"
             :group-progress-by-id="groupProgressById"
             :can-manage="canManageExamOwner"
+            :progress-load-failed="groupProgressLoadFailed"
             @edit-group="openGroupEditById"
           />
           <MarkingOrgStrategySummaryCard
             :allocation-policy="orgDefaultAllocationPolicy"
             :recycle-policy="orgDefaultRecyclePolicy"
             :can-manage="canManageExamOwner"
+            :policies-load-failed="policiesLoadFailed"
             @edit-policy="openPolicyDrawer"
           />
         </div>
@@ -349,6 +358,45 @@
                     抽样题池来自当前题组题目范围；正评启动后会固化本次随机抽题结果，后续可在正评会话列表审计复盘。
                   </div>
                 </UiFormItem>
+                <UiFormItem label="试评样本量" required>
+                  <UiInputNumber
+                    size="sm"
+                    v-model="policyForm.trialSampleSize"
+                    :min="1"
+                    :max="100"
+                    style="width: 100%"
+                    :disabled="canManageExamOwner !== true"
+                  />
+                  <div class="policy-hint">
+                    启动试评交叉定标时抽样上限；整卷按答卷份数，按题按作答切片条数。实际抽样不超过可评阅总量。
+                  </div>
+                </UiFormItem>
+                <UiFormItem label="启用双评">
+                  <UiSwitch
+                    size="sm"
+                    v-model="policyForm.dualMarkEnabled"
+                    :disabled="canManageExamOwner !== true"
+                    @update:model-value="(checked: boolean) => { if (!checked) policyForm.dualMarkScoreDiffThreshold = null }"
+                  />
+                  <div class="policy-hint">
+                    开启后正评同一作答由两位在岗教师独立给分；分差超过阈值进入仲裁，阈值留空表示须完全一致。题组须至少 2 名在岗教师。
+                  </div>
+                </UiFormItem>
+                <UiFormItem v-if="policyForm.dualMarkEnabled" label="双评分差阈值">
+                  <UiInputNumber
+                    size="sm"
+                    v-model="policyForm.dualMarkScoreDiffThreshold"
+                    :min="0"
+                    :max="999"
+                    :step="0.5"
+                    style="width: 100%"
+                    :disabled="canManageExamOwner !== true"
+                    placeholder="留空表示须完全一致"
+                  />
+                  <div class="policy-hint">
+                    单位为绝对分。例如 2 表示主副评分差 ≤ 2 分时自动取平均写入正式分。
+                  </div>
+                </UiFormItem>
                 <UiFormItem label="每批分配任务数">
                   <UiInputNumber
                     size="sm"
@@ -467,6 +515,19 @@
                   label="随机题目抽样数量"
                 >
                   {{ policyForm.randomQuestionSampleSize ?? '—' }}
+                </UiDescriptionsItem>
+                <UiDescriptionsItem label="试评样本量">
+                  {{ policyForm.trialSampleSize }}
+                </UiDescriptionsItem>
+                <UiDescriptionsItem label="双评">
+                  {{ policyForm.dualMarkEnabled ? '已启用' : '未启用' }}
+                </UiDescriptionsItem>
+                <UiDescriptionsItem v-if="policyForm.dualMarkEnabled" label="双评分差阈值">
+                  {{
+                    policyForm.dualMarkScoreDiffThreshold == null
+                      ? '须完全一致'
+                      : `${policyForm.dualMarkScoreDiffThreshold} 分`
+                  }}
                 </UiDescriptionsItem>
                 <UiDescriptionsItem label="每批分配任务数">
                   {{ policyForm.batchSize }}
@@ -683,6 +744,39 @@
                   style="width: 100%"
                 />
               </UiFormItem>
+              <UiFormItem label="试评样本量" required>
+                <UiInputNumber
+                  size="sm"
+                  v-model="policyForm.trialSampleSize"
+                  :min="1"
+                  :max="100"
+                  style="width: 100%"
+                />
+                <div class="policy-hint">
+                  启动试评交叉定标时抽样上限；整卷按答卷份数，按题按作答切片条数。实际抽样不超过可评阅总量。
+                </div>
+              </UiFormItem>
+              <UiFormItem label="启用双评">
+                <UiSwitch
+                  size="sm"
+                  v-model="policyForm.dualMarkEnabled"
+                  @update:model-value="(checked: boolean) => { if (!checked) policyForm.dualMarkScoreDiffThreshold = null }"
+                />
+                <div class="policy-hint">
+                  开启后正评同一作答由两位在岗教师独立给分；分差超过阈值进入仲裁，阈值留空表示须完全一致。
+                </div>
+              </UiFormItem>
+              <UiFormItem v-if="policyForm.dualMarkEnabled" label="双评分差阈值">
+                <UiInputNumber
+                  size="sm"
+                  v-model="policyForm.dualMarkScoreDiffThreshold"
+                  :min="0"
+                  :max="999"
+                  :step="0.5"
+                  style="width: 100%"
+                  placeholder="留空表示须完全一致"
+                />
+              </UiFormItem>
               <UiFormItem label="每批分配任务数">
                 <UiInputNumber
                   size="sm"
@@ -794,7 +888,7 @@ import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { adminGetUserPage } from '@/apis/edu/admin-user'
 import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
@@ -922,10 +1016,14 @@ interface GroupProgressSnapshot {
   finalized: number
 }
 
-const reviewerCount = computed(() => organization.value?.uniqueReviewerCount ?? 0)
+const reviewerCount = computed(() => {
+  const count = organization.value?.uniqueReviewerCount
+  return typeof count === 'number' ? count : null
+})
 
 const groups = computed<QuestionMarkingGroupResponse[]>(() => organization.value?.groups ?? [])
 const groupSearchKeyword = ref('')
+const groupProgressLoadFailed = ref(false)
 const normalizedGroupSearchKeyword = computed(() => groupSearchKeyword.value.trim().toLowerCase())
 
 /** 题组列表前端筛选：匹配名称、组长、阅卷教师、题号与题型 */
@@ -1020,8 +1118,8 @@ const orgSignalMetrics = computed((): SignalMetric[] => {
     {
       key: 'reviewers',
       label: '教师数',
-      value: reviewerCount.value,
-      unit: '人',
+      value: reviewerCount.value == null ? '—' : reviewerCount.value,
+      unit: reviewerCount.value == null ? undefined : '人',
       tone: 'blue',
     },
     {
@@ -1068,10 +1166,16 @@ const orgDefaultRecyclePolicy = computed(() =>
 
 const groupProgressById = computed((): Record<string, GroupProgressSnapshot> => {
   const map: Record<string, GroupProgressSnapshot> = {}
+  if (groupProgressLoadFailed.value) {
+    return map
+  }
   for (const item of formalSessionsForGroupProgress.value) {
+    if (typeof item.totalTaskCount !== 'number' || typeof item.finalizedTaskCount !== 'number') {
+      continue
+    }
     map[item.groupId] = {
-      total: item.totalTaskCount ?? 0,
-      finalized: item.finalizedTaskCount ?? 0,
+      total: item.totalTaskCount,
+      finalized: item.finalizedTaskCount,
     }
   }
   return map
@@ -1099,6 +1203,7 @@ async function loadWorkbenchPanels(): Promise<void> {
   if (!isExamWorkspaceRoute.value || !activeExamId.value || !organizationId.value) {
     markingProgressPanel.value = null
     formalSessionsForGroupProgress.value = []
+    groupProgressLoadFailed.value = false
     reviewerMetrics.value = []
     return
   }
@@ -1126,8 +1231,9 @@ async function loadWorkbenchPanels(): Promise<void> {
       formalSessionsForGroupProgress.value = await listOrganizationGroupTaskProgress({
         organizationId: organizationId.value,
       })
+      groupProgressLoadFailed.value = false
     } catch (error) {
-      formalSessionsForGroupProgress.value = []
+      groupProgressLoadFailed.value = true
       showUserError(error, '题组任务进度加载失败')
     }
   } finally {
@@ -1219,6 +1325,8 @@ const editRules: Record<string, Rule[]> = {
 function resetPolicyState(): void {
   allocationPolicies.value = []
   recyclePolicies.value = []
+  policiesLoadFailed.value = false
+  policiesLoaded.value = false
   applyAllocationPolicyToForm()
   applyRecyclePolicyToForm()
 }
@@ -1286,6 +1394,11 @@ const teacherList = ref<UserListItemDto[]>([])
 const teacherOptions = ref<Array<{ value: string, label: string }>>([])
 const teacherLoading = ref(false)
 let teacherSearchTimer: ReturnType<typeof setTimeout> | undefined
+let teacherLoadGeneration = 0
+let layoutQuestionLoadGeneration = 0
+const layoutQuestionsLoadFailed = ref(false)
+const policiesLoadFailed = ref(false)
+const policiesLoaded = ref(false)
 
 function buildTeacherOption(item: UserListItemDto): { value: string, label: string } {
   return {
@@ -1326,29 +1439,42 @@ async function pinTeacherById(teacherId: string): Promise<void> {
 }
 
 async function loadTeachers(keyword?: string): Promise<void> {
+  const generation = ++teacherLoadGeneration
+  const expectedKeyword = keyword?.trim() || undefined
   teacherLoading.value = true
   try {
     const result = await adminGetUserPage({
       pageNum: 1,
       pageSize: MARKING_TEACHER_OPTION_PAGE_SIZE,
       roleKey: 'SCH_TECH',
-      keyword: keyword?.trim() || undefined,
+      keyword: expectedKeyword,
     })
+    if (generation !== teacherLoadGeneration) {
+      return
+    }
     cacheTeachers(result.list)
     teacherOptions.value = result.list.map((item) => buildTeacherOption(item))
     const pinnedIds = [groupForm.leaderUserId, ...groupForm.reviewerUserIds].filter(
       (teacherId): teacherId is string => Boolean(teacherId),
     )
     for (const teacherId of pinnedIds) {
+      if (generation !== teacherLoadGeneration) {
+        return
+      }
       if (!teacherOptions.value.some((item) => item.value === teacherId)) {
         await pinTeacherById(teacherId)
       }
     }
   } catch (error) {
+    if (generation !== teacherLoadGeneration) {
+      return
+    }
     teacherOptions.value = []
     showUserError(error, '阅卷教师列表加载失败')
   } finally {
-    teacherLoading.value = false
+    if (generation === teacherLoadGeneration) {
+      teacherLoading.value = false
+    }
   }
 }
 
@@ -1361,6 +1487,15 @@ function onTeacherSearch(keyword: string): void {
   }, TEACHER_SEARCH_DEBOUNCE_MS)
 }
 
+onBeforeUnmount(() => {
+  if (teacherSearchTimer) {
+    clearTimeout(teacherSearchTimer)
+    teacherSearchTimer = undefined
+  }
+  teacherLoadGeneration += 1
+  layoutQuestionLoadGeneration += 1
+})
+
 interface QuestionOption {
   value: string
   label: string
@@ -1372,10 +1507,13 @@ const questionOptions = ref<QuestionOption[]>([])
 const layoutSummary = ref<ExamTemplateResponse | null>(null)
 const layoutRoiGap = computed(() => {
   if (!layoutSummary.value?.configured) {
-    return 0
+    return null
   }
-  const total = layoutSummary.value.totalQuestionCount ?? 0
-  const ready = layoutSummary.value.roiReadyQuestionCount ?? 0
+  const total = layoutSummary.value.totalQuestionCount
+  const ready = layoutSummary.value.roiReadyQuestionCount
+  if (typeof total !== 'number' || typeof ready !== 'number') {
+    return null
+  }
   return Math.max(0, total - ready)
 })
 const loadedLayoutQuestionExamId = ref<string | null>(null)
@@ -1384,10 +1522,26 @@ const templateLoading = ref(false)
 async function loadLayoutQuestions(): Promise<void> {
   const currentExamId = examId.value
   if (!currentExamId) return
-  if (loadedLayoutQuestionExamId.value === currentExamId && questionOptions.value.length > 0) return
+  if (
+    loadedLayoutQuestionExamId.value === currentExamId
+    && questionOptions.value.length > 0
+    && !layoutQuestionsLoadFailed.value
+  ) {
+    return
+  }
+  const generation = ++layoutQuestionLoadGeneration
+  if (loadedLayoutQuestionExamId.value !== currentExamId) {
+    questionOptions.value = []
+    layoutSummary.value = null
+    loadedLayoutQuestionExamId.value = null
+  }
   templateLoading.value = true
+  layoutQuestionsLoadFailed.value = false
   try {
     const tpl = await getExamLayoutQuestionSummary(currentExamId)
+    if (generation !== layoutQuestionLoadGeneration || examId.value !== currentExamId) {
+      return
+    }
     layoutSummary.value = tpl
     if (!tpl.configured) {
       questionOptions.value = []
@@ -1396,10 +1550,19 @@ async function loadLayoutQuestions(): Promise<void> {
     }
     questionOptions.value = buildExamLayoutQuestionOptions(tpl.questions)
     loadedLayoutQuestionExamId.value = currentExamId
+    layoutQuestionsLoadFailed.value = false
   } catch (error) {
+    if (generation !== layoutQuestionLoadGeneration || examId.value !== currentExamId) {
+      return
+    }
+    layoutQuestionsLoadFailed.value = true
+    questionOptions.value = []
+    loadedLayoutQuestionExamId.value = null
     showUserError(error, '考试制卷题目加载失败')
   } finally {
-    templateLoading.value = false
+    if (generation === layoutQuestionLoadGeneration) {
+      templateLoading.value = false
+    }
   }
 }
 
@@ -1500,12 +1663,16 @@ function openGroupEdit(record: QuestionMarkingGroupResponse): void {
     showFormValidationMessage('当前题组不可编辑（已关闭或已有试评/正评/任务）')
     return
   }
+  if (typeof record.wholePaperGroup !== 'boolean') {
+    showFormValidationMessage('题组缺少整卷合同字段，不能编辑')
+    return
+  }
   groupForm.groupId = record.id
   groupForm.groupName = record.groupName
   groupForm.leaderUserId = record.leaderUserId
   groupForm.layoutQuestionIds = record.questions.map((question) => question.layoutQuestionId)
   groupForm.reviewerUserIds = record.reviewers.map((reviewer) => reviewer.reviewerUserId)
-  groupForm.wholePaperGroup = record.questions.length === 0 && record.groupName.includes('整卷')
+  groupForm.wholePaperGroup = record.wholePaperGroup
   groupModalOpen.value = true
   void loadTeachers()
   void loadLayoutQuestions()
@@ -1522,6 +1689,14 @@ function openGroupEditById(groupId: string): void {
 
 function openPolicyDrawer(): void {
   if (!guardExamOwnerAction()) return
+  if (policiesLoadFailed.value) {
+    showFormValidationMessage('分配策略尚未成功加载，不能编辑')
+    return
+  }
+  if (!policiesLoaded.value) {
+    showFormValidationMessage('分配策略仍在加载，请稍后再试')
+    return
+  }
   policyForm.allocationGroupId = undefined
   policyForm.recycleGroupId = undefined
   applyAllocationPolicyToForm()
@@ -1543,6 +1718,10 @@ async function submitGroup(): Promise<void> {
     }
   }
   if (!organizationId.value || !groupFormRef.value) return
+  if (layoutQuestionsLoadFailed.value && !groupForm.wholePaperGroup) {
+    showFormValidationMessage('制卷题目加载失败，不能保存题目级题组范围')
+    return
+  }
   try {
     await groupFormRef.value.validate()
   } catch {
@@ -1562,8 +1741,16 @@ async function submitGroup(): Promise<void> {
     await saveQuestionGroup(request)
     void message.success(groupForm.groupId ? '题组已更新' : '题组已创建')
     groupModalOpen.value = false
-    await loadOrganization()
-    await refreshSnapshot()
+    try {
+      await loadOrganization()
+    } catch (error) {
+      showUserError(error, groupForm.groupId ? '题组已更新，但组织详情刷新失败' : '题组已创建，但组织详情刷新失败')
+    }
+    try {
+      await refreshSnapshot()
+    } catch (error) {
+      showUserError(error, groupForm.groupId ? '题组已更新，但阶段快照刷新失败' : '题组已创建，但阶段快照刷新失败')
+    }
   } catch (error) {
     const fallback = groupForm.groupId ? '更新题组失败' : '创建题组失败'
     showUserError(error, fallback)
@@ -1633,8 +1820,16 @@ async function submitGroupDelete(record: QuestionMarkingGroupResponse): Promise<
   try {
     await deleteQuestionGroup({ groupId: record.id })
     void message.success('题组已删除')
-    await loadOrganization()
-    await refreshSnapshot()
+    try {
+      await loadOrganization()
+    } catch (error) {
+      showUserError(error, '题组已删除，但组织详情刷新失败')
+    }
+    try {
+      await refreshSnapshot()
+    } catch (error) {
+      showUserError(error, '题组已删除，但阶段快照刷新失败')
+    }
   } catch (error) {
     showUserError(error, '题组删除失败')
   } finally {
@@ -1656,8 +1851,16 @@ async function submitGroupClose(record: QuestionMarkingGroupResponse): Promise<v
   try {
     await closeQuestionGroup({ groupId: record.id })
     void message.success('题组已关闭')
-    await loadOrganization()
-    await refreshSnapshot()
+    try {
+      await loadOrganization()
+    } catch (error) {
+      showUserError(error, '题组已关闭，但组织详情刷新失败')
+    }
+    try {
+      await refreshSnapshot()
+    } catch (error) {
+      showUserError(error, '题组已关闭，但阶段快照刷新失败')
+    }
   } catch (error) {
     showUserError(error, '题组关闭失败')
   } finally {
@@ -1705,7 +1908,11 @@ async function submitUpdate(): Promise<void> {
     organization.value = await updateOrganization(request)
     void message.success('阅卷组织已更新')
     editDrawerOpen.value = false
-    await refreshSnapshot()
+    try {
+      await refreshSnapshot()
+    } catch (error) {
+      showUserError(error, '阅卷组织已更新，但阶段快照刷新失败')
+    }
   } catch (error) {
     showUserError(error, '阅卷组织更新失败')
   } finally {
@@ -1762,8 +1969,13 @@ async function submitDelete(): Promise<void> {
   deleting.value = true
   try {
     await deleteOrganization({ organizationId: requireMarkingOrganizationId(organization.value) })
-    await refreshSnapshot()
     void message.success('阅卷组织已删除')
+    organization.value = null
+    try {
+      await refreshSnapshot()
+    } catch (error) {
+      showUserError(error, '阅卷组织已删除，但阶段快照刷新失败')
+    }
     await router.push(resolveMarkingOrganizationIndexRoute(activeExamId.value || undefined))
   } catch (error) {
     showUserError(error, '阅卷组织删除失败')
@@ -1778,6 +1990,9 @@ interface PolicyForm {
   allocationUnit: AllocationUnitCode
   anonymityMode: AnonymityModeCode
   randomQuestionSampleSize?: number
+  trialSampleSize: number
+  dualMarkEnabled: boolean
+  dualMarkScoreDiffThreshold: number | null
   batchSize: number
   loadLimit: number
   anonymousTokenPolicy: AnonymousTokenPolicyCode
@@ -1793,6 +2008,9 @@ const policyForm = reactive<PolicyForm>({
   allocationUnit: AllocationUnitCode.SELECTED_QUESTIONS,
   anonymityMode: AnonymityModeCode.ANONYMOUS,
   randomQuestionSampleSize: undefined,
+  trialSampleSize: 5,
+  dualMarkEnabled: false,
+  dualMarkScoreDiffThreshold: null as number | null,
   batchSize: 20,
   loadLimit: 50,
   anonymousTokenPolicy: AnonymousTokenPolicyCode.PER_EXAM,
@@ -1818,6 +2036,9 @@ const DEFAULT_ALLOCATION_POLICY_FIELDS = {
   allocationUnit: AllocationUnitCode.SELECTED_QUESTIONS,
   anonymityMode: AnonymityModeCode.ANONYMOUS,
   randomQuestionSampleSize: undefined,
+  trialSampleSize: 5,
+  dualMarkEnabled: false,
+  dualMarkScoreDiffThreshold: null as number | null,
   batchSize: 20,
   loadLimit: 50,
   anonymousTokenPolicy: AnonymousTokenPolicyCode.PER_EXAM,
@@ -1846,6 +2067,10 @@ function applyAllocationPolicyToForm(): void {
     policyForm.allocationUnit = saved.allocationUnit
     policyForm.anonymityMode = effectiveAnonymityMode.value
     policyForm.randomQuestionSampleSize = saved.randomQuestionSampleSize
+    policyForm.trialSampleSize = saved.trialSampleSize
+    policyForm.dualMarkEnabled = saved.dualMarkEnabled === true
+    policyForm.dualMarkScoreDiffThreshold
+      = saved.dualMarkScoreDiffThreshold == null ? null : Number(saved.dualMarkScoreDiffThreshold)
     policyForm.batchSize = saved.batchSize
     policyForm.loadLimit = saved.loadLimit
     policyForm.anonymousTokenPolicy = saved.anonymousTokenPolicy
@@ -1868,21 +2093,23 @@ function applyRecyclePolicyToForm(): void {
 
 async function loadMarkingPolicies(): Promise<void> {
   if (!organizationId.value) {
-    allocationPolicies.value = []
-    recyclePolicies.value = []
-    applyAllocationPolicyToForm()
-    applyRecyclePolicyToForm()
+    resetPolicyState()
     return
   }
   try {
     const response = await listMarkingPolicies({ organizationId: organizationId.value })
     allocationPolicies.value = response.allocationPolicies ?? []
     recyclePolicies.value = response.recyclePolicies ?? []
+    policiesLoadFailed.value = false
+    policiesLoaded.value = true
     applyAllocationPolicyToForm()
     applyRecyclePolicyToForm()
   } catch (error) {
+    policiesLoadFailed.value = true
+    policiesLoaded.value = false
+    allocationPolicies.value = []
+    recyclePolicies.value = []
     showUserError(error, '阅卷任务策略加载失败')
-    resetPolicyState()
   }
 }
 
@@ -1952,6 +2179,10 @@ async function submitAllocation(): Promise<void> {
     return
   }
   if (!guardExamOwnerAction()) return
+  if (policiesLoadFailed.value || !policiesLoaded.value) {
+    showFormValidationMessage('分配策略尚未成功加载，不能保存')
+    return
+  }
   if (!organizationId.value) return
   // MVR-403：题组级分配策略禁 CLOSED（与 BE validateAllocationPolicySave 同源）
   // MVR-956：策略题组可写仅认 isPolicyGroupWritable===true
@@ -1968,6 +2199,11 @@ async function submitAllocation(): Promise<void> {
       allocationUnit: policyForm.allocationUnit,
       anonymityMode: effectiveAnonymityMode.value,
       randomQuestionSampleSize: policyForm.randomQuestionSampleSize,
+      trialSampleSize: policyForm.trialSampleSize,
+      dualMarkEnabled: policyForm.dualMarkEnabled === true,
+      dualMarkScoreDiffThreshold: policyForm.dualMarkEnabled
+        ? policyForm.dualMarkScoreDiffThreshold
+        : null,
       batchSize: policyForm.batchSize,
       loadLimit: policyForm.loadLimit,
       anonymousTokenPolicy: policyForm.anonymousTokenPolicy,
@@ -1975,8 +2211,16 @@ async function submitAllocation(): Promise<void> {
     await saveAllocationPolicy(request)
     void message.success('分配策略已保存')
     policyDrawerOpen.value = false
-    await loadMarkingPolicies()
-    await refreshSnapshot()
+    try {
+      await loadMarkingPolicies()
+    } catch (error) {
+      showUserError(error, '分配策略已保存，但策略列表刷新失败')
+    }
+    try {
+      await refreshSnapshot()
+    } catch (error) {
+      showUserError(error, '分配策略已保存，但阶段快照刷新失败')
+    }
   } catch (error) {
     showUserError(error, '阅卷任务分配策略保存失败')
   } finally {
@@ -1990,6 +2234,10 @@ async function submitRecycle(): Promise<void> {
     return
   }
   if (!guardExamOwnerAction()) return
+  if (policiesLoadFailed.value || !policiesLoaded.value) {
+    showFormValidationMessage('回收策略尚未成功加载，不能保存')
+    return
+  }
   if (!organizationId.value) return
   // MVR-403：题组级回收策略禁 CLOSED（与 BE assertGroupWritableForPolicySave 同源）
   // MVR-956：策略题组可写仅认 isPolicyGroupWritable===true
@@ -2009,8 +2257,16 @@ async function submitRecycle(): Promise<void> {
     await saveRecyclePolicy(request)
     void message.success('回收策略已保存')
     policyDrawerOpen.value = false
-    await loadMarkingPolicies()
-    await refreshSnapshot()
+    try {
+      await loadMarkingPolicies()
+    } catch (error) {
+      showUserError(error, '回收策略已保存，但策略列表刷新失败')
+    }
+    try {
+      await refreshSnapshot()
+    } catch (error) {
+      showUserError(error, '回收策略已保存，但阶段快照刷新失败')
+    }
   } catch (error) {
     showUserError(error, '阅卷任务回收策略保存失败')
   } finally {
@@ -2068,26 +2324,26 @@ watch(
 <style lang="scss" scoped>
 .org-detail {
   &__readonly-banner {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__secondary {
-    margin-top: var(--dp-space-3);
+    margin-top: var(--dp-space-component);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__switch-hint {
-    margin-left: 8px;
+    margin-left: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
@@ -2095,16 +2351,16 @@ watch(
 
 .detail-tabs {
   :deep(.ant-tabs-nav) {
-    margin-bottom: var(--dp-space-3, 12px);
+    margin-bottom: var(--dp-space-component);
   }
 }
 
 .org-detail__info {
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-block);
 }
 
 .org-detail__info-title {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-md);
   font-weight: 500;
   color: var(--dp-text-primary);
@@ -2112,9 +2368,9 @@ watch(
 
 .org-detail__remark {
   display: flex;
-  gap: 12px;
-  margin-top: 12px;
-  padding: 12px 16px;
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
@@ -2136,7 +2392,7 @@ watch(
 }
 
 .org-detail__group-table {
-  margin-top: 16px;
+  margin-top: var(--dp-space-block);
 }
 
 .org-detail__group-search {
@@ -2147,7 +2403,7 @@ watch(
   &__stack {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--dp-space-component-xs);
   }
 
   &__item {
@@ -2164,14 +2420,14 @@ watch(
 
 .policy-form {
   .subsection-title {
-    margin: 0 0 12px;
+    margin: 0 0 var(--dp-space-component);
     font-size: var(--dp-font-size-md);
     font-weight: 500;
     color: var(--dp-text-primary);
   }
 
   .policy-hint {
-    margin-top: 6px;
+    margin-top: var(--dp-space-component-tight);
     color: var(--dp-text-muted);
     font-size: var(--dp-font-size-xs);
     line-height: 1.5;
@@ -2189,8 +2445,8 @@ watch(
 .org-workbench__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--dp-space-3);
-  margin-top: var(--dp-space-3);
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-component);
 
   @media (max-width: 960px) {
     grid-template-columns: 1fr;
@@ -2198,6 +2454,6 @@ watch(
 }
 
 :deep(.org-roster) {
-  margin-top: var(--dp-space-3);
+  margin-top: var(--dp-space-component);
 }
 </style>

@@ -1,17 +1,10 @@
 <template>
   <span
-    v-if="windowCell"
+    v-if="windowText"
     class="exam-list-page__exam-window"
-    :title="windowCell.full"
+    :title="windowText.full"
   >
-    <span class="exam-list-page__exam-window-range">{{ windowCell.compact }}</span>
-    <span
-      v-if="windowCell.phase"
-      class="exam-list-page__exam-window-phase"
-      :class="windowCell.phase.modifier"
-    >
-      {{ windowCell.phase.label }}
-    </span>
+    {{ windowText.compact }}
   </span>
   <span v-else class="exam-list-page__exam-window-empty">未设置</span>
 </template>
@@ -22,8 +15,6 @@ import { computed } from 'vue'
 import {
   formatExamWindowCompactRange,
   formatExamWindowFullRange,
-  formatExamWindowPhaseLabel,
-  resolveExamWindowPhase,
 } from '@/utils/format'
 
 defineOptions({ name: 'ExamListExamWindowCell' })
@@ -32,67 +23,32 @@ const props = defineProps<{
   exam: ExamWorkbenchSummaryResponse
 }>()
 
-/** 列表考试时间窗单元格：紧凑区间 + 相对阶段 + hover 完整时间。 */
-const windowCell = computed(() => {
+/** 列表考试时间窗：单元格内纯文本；完整时间仅作原生 title，无浮层组件。 */
+const windowText = computed(() => {
   const exam = props.exam
   if (!exam.examStartTime && !exam.examEndTime) {
     return null
   }
-  const phase = resolveExamWindowPhase(exam.examStartTime, exam.examEndTime)
   return {
     compact: formatExamWindowCompactRange(exam.examStartTime, exam.examEndTime),
     full: formatExamWindowFullRange(exam.examStartTime, exam.examEndTime),
-    phase: phase
-      ? {
-          modifier: `exam-list-page__exam-window-phase--${phase}`,
-          label: formatExamWindowPhaseLabel(exam.examStartTime, exam.examEndTime),
-        }
-      : null,
   }
 })
 </script>
 
 <style lang="scss" scoped>
 .exam-list-page__exam-window {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  line-height: 1.4;
-}
-
-.exam-list-page__exam-window-range {
-  font-size: var(--dp-font-size-sm);
-  white-space: nowrap;
-}
-
-.exam-list-page__exam-window-phase {
-  font-size: var(--dp-font-size-xs);
-  line-height: 18px;
-  color: var(--dp-text-tertiary);
-}
-
-.exam-list-page__exam-window-phase--upcoming {
-  color: var(--dp-warning);
-}
-
-.exam-list-page__exam-window-phase--ongoing {
-  color: var(--dp-success);
-}
-
-.exam-list-page__exam-window-phase--ended {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
+  display: inline-block;
   max-width: 100%;
-  padding: 0 6px;
-  border: 1px solid var(--dp-border-subtle);
-  border-radius: var(--dp-radius-xs);
-  background: var(--dp-surface-sunken);
-  color: var(--dp-text-secondary);
-  font-weight: 500;
+  font-size: var(--dp-font-size-sm);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: inherit;
 }
 
 .exam-list-page__exam-window-empty {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 </style>

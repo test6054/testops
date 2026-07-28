@@ -3,7 +3,11 @@
     <template v-if="selectedExamId" #context>
       <ContextBar layout="workbench" show-title title="仲裁复核">
         <template #status>
-          <UiTag :tone="actionableCount > 0 ? 'orange' : 'green'" size="sm">
+          <UiTag
+            v-if="actionableCount != null"
+            :tone="actionableCount > 0 ? 'orange' : 'green'"
+            size="sm"
+          >
             {{ actionableCount > 0 ? `待处理 ${actionableCount}` : '暂无待办' }}
           </UiTag>
         </template>
@@ -23,6 +27,21 @@
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
+
+      <UiAlertStrip
+        v-if="summaryLoadFailed"
+        tone="error"
+        title="仲裁汇总加载失败"
+        dense
+        class="arbitration-page__alert"
+      />
+      <UiAlertStrip
+        v-if="listLoadFailed"
+        tone="error"
+        title="仲裁任务列表加载失败"
+        dense
+        class="arbitration-page__alert"
+      />
 
       <WorkbenchSurfaceCard flush>
         <template #head>
@@ -62,7 +81,11 @@
           size="middle"
           :expanded-row-keys="expandedRowKeys"
           empty-kind="first-run"
-          empty-description="当前筛选下暂无仲裁任务"
+          :empty-description="
+            listLoadFailed
+              ? '仲裁任务列表加载失败；已禁止把失败显示为「暂无任务」'
+              : '当前筛选下暂无仲裁任务'
+          "
           class="arbitration-table"
           @expand="handleExpandChange"
           @page-change="handlePageChange"
@@ -106,7 +129,7 @@
                 <strong class="arbitration-table__num">{{ record.aiScore }}</strong>
                 <UiTag
                   v-if="getSuggestedRatio(record) !== null"
-                  :tone="getSuggestedRatioTone(record)"
+                  tone="gray"
                   size="sm"
                   class="arbitration-table__ratio-tag"
                 >
@@ -197,6 +220,7 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -228,14 +252,16 @@ const { refreshSnapshot } = useWorkspaceExamId()
 const currentUserId = computed(() => userStore.userInfo.userId || '')
 const taskRows = ref<ReviewTaskItemResponse[]>([])
 const loading = ref(false)
+const listLoadFailed = ref(false)
 const pageNum = ref(1)
 const pageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const pageTotal = ref(0)
 const summaryLoading = ref(false)
-const totalCount = ref(0)
-const pendingCount = ref(0)
-const inProgressMineCount = ref(0)
-const completedCount = ref(0)
+const summaryLoadFailed = ref(false)
+const totalCount = ref<number | null>(null)
+const pendingCount = ref<number | null>(null)
+const inProgressMineCount = ref<number | null>(null)
+const completedCount = ref<number | null>(null)
 const avgAiRatioPercent = ref<number | null>(null)
 const statusTab = ref<StatusTabKey>('pending')
 const filterQuestion = ref('')
@@ -244,61 +270,95 @@ const expandedRowKeys = ref<string[]>([])
 const questionOptions = ref<Array<{ label: string, value: string }>>([])
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 
-const actionableCount = computed(() => pendingCount.value + inProgressMineCount.value)
+let summaryLoadGeneration = 0
+let listLoadGeneration = 0
+let questionOptionsLoadGeneration = 0
+const skipFirstActivatedReload = ref(true)
+
+const actionableCount = computed(() => {
+  if (summaryLoadFailed.value || pendingCount.value == null || inProgressMineCount.value == null) {
+    return null
+  }
+  return pendingCount.value + inProgressMineCount.value
+})
 
 const avgAiRatio = computed(() => {
+  if (summaryLoadFailed.value) {
+    return '—'
+  }
   if (avgAiRatioPercent.value == null) {
     return '—'
   }
   return `${avgAiRatioPercent.value}%`
 })
 
+function metricValue(count: number | null): string | number {
+  if (summaryLoadFailed.value || count == null) {
+    return '—'
+  }
+  return count
+}
+
 const signalMetrics = computed((): SignalMetric[] => [
   {
     key: 'total',
     label: '仲裁总数',
-    value: totalCount.value,
+    value: metricValue(totalCount.value),
     tone: 'blue',
   },
   {
     key: 'pending',
     label: '待处理',
-    value: pendingCount.value,
-    tone: pendingCount.value > 0 ? 'orange' : 'green',
-    clickable: pendingCount.value > 0,
+    value: metricValue(pendingCount.value),
+    tone: !summaryLoadFailed.value && (pendingCount.value ?? 0) > 0 ? 'orange' : 'gray',
+    clickable: !summaryLoadFailed.value && (pendingCount.value ?? 0) > 0,
   },
   {
     key: 'in-progress',
     label: '我的复核中',
-    value: inProgressMineCount.value,
-    tone: inProgressMineCount.value > 0 ? 'blue' : 'gray',
-    clickable: inProgressMineCount.value > 0,
+    value: metricValue(inProgressMineCount.value),
+    tone: !summaryLoadFailed.value && (inProgressMineCount.value ?? 0) > 0 ? 'blue' : 'gray',
+    clickable: !summaryLoadFailed.value && (inProgressMineCount.value ?? 0) > 0,
   },
   {
     key: 'completed',
     label: '已结案',
-    value: completedCount.value,
-    tone: 'green',
-    clickable: completedCount.value > 0,
+    value: metricValue(completedCount.value),
+    tone: 'gray',
+    clickable: !summaryLoadFailed.value && (completedCount.value ?? 0) > 0,
   },
   {
     key: 'avg-ratio',
     label: '平均 AI 占比',
     value: avgAiRatio.value,
-    tone: 'red',
+    tone: 'gray',
   },
 ])
 
 const statusTabItems = computed<UiSectionTabItem[]>(() => [
-  { key: 'all', label: '全部', count: totalCount.value },
-  { key: 'pending', label: '待处理', count: pendingCount.value, badgeTone: 'orange' },
+  {
+    key: 'all',
+    label: '全部',
+    count: summaryLoadFailed.value ? undefined : (totalCount.value ?? undefined),
+  },
+  {
+    key: 'pending',
+    label: '待处理',
+    count: summaryLoadFailed.value ? undefined : (pendingCount.value ?? undefined),
+    badgeTone: 'orange',
+  },
   {
     key: 'in-progress',
     label: '复核中',
-    count: inProgressMineCount.value,
+    count: summaryLoadFailed.value ? undefined : (inProgressMineCount.value ?? undefined),
     badgeTone: 'blue',
   },
-  { key: 'completed', label: '已结案', count: completedCount.value, badgeTone: 'green' },
+  {
+    key: 'completed',
+    label: '已结案',
+    count: summaryLoadFailed.value ? undefined : (completedCount.value ?? undefined),
+    badgeTone: 'green',
+  },
 ])
 
 const filterFields = computed((): FilterField[] => [
@@ -333,6 +393,7 @@ const filterModel = computed({
   set: (value: Record<string, unknown>) => {
     filterQuestion.value = String(value.questionNo ?? '')
     filterTeacherUserId.value = String(value.teacherUserId ?? '')
+    pageNum.value = 1
   },
 })
 
@@ -363,20 +424,6 @@ function getSuggestedRatio(record: ReviewTaskItemResponse): number | null {
     return null
   }
   return Math.round((sug / full) * 100)
-}
-
-function getSuggestedRatioTone(record: ReviewTaskItemResponse): BadgeTone {
-  const ratio = getSuggestedRatio(record)
-  if (ratio == null) {
-    return 'gray'
-  }
-  if (ratio < 60) {
-    return 'orange'
-  }
-  if (ratio >= 80) {
-    return 'green'
-  }
-  return 'blue'
 }
 
 function getAiScoreBarWidth(record: ReviewTaskItemResponse): number {
@@ -436,36 +483,40 @@ function isActionableTask(record: ReviewTaskItemResponse): boolean {
 }
 
 function handleSignalClick(key: string): void {
-  if (key === 'pending' && pendingCount.value > 0) {
+  if (summaryLoadFailed.value) {
+    return
+  }
+  if (key === 'pending' && (pendingCount.value ?? 0) > 0) {
     statusTab.value = 'pending'
+    pageNum.value = 1
     return
   }
-  if (key === 'in-progress' && inProgressMineCount.value > 0) {
+  if (key === 'in-progress' && (inProgressMineCount.value ?? 0) > 0) {
     statusTab.value = 'in-progress'
+    pageNum.value = 1
     return
   }
-  if (key === 'completed' && completedCount.value > 0) {
+  if (key === 'completed' && (completedCount.value ?? 0) > 0) {
     statusTab.value = 'completed'
+    pageNum.value = 1
   }
 }
 
+/** Tab/筛选/分页只改状态，由 fingerprint watcher 统一加载。 */
 function handleStatusTabChange(): void {
   expandedRowKeys.value = []
   pageNum.value = 1
-  void loadTasks()
 }
 
 function resetFilters(): void {
   filterQuestion.value = ''
   filterTeacherUserId.value = ''
   pageNum.value = 1
-  void loadTasks()
 }
 
 function handlePageChange(event: { current: number, pageSize: number }): void {
   pageNum.value = event.current
   pageSize.value = event.pageSize
-  void loadTasks()
 }
 
 function buildListQuery() {
@@ -494,59 +545,71 @@ function buildListQuery() {
   return query
 }
 
-async function loadSummary(): Promise<void> {
-  if (!selectedExamId.value) {
-    totalCount.value = 0
-    pendingCount.value = 0
-    inProgressMineCount.value = 0
-    completedCount.value = 0
-    avgAiRatioPercent.value = null
-    return
-  }
+function clearSummaryState(): void {
+  totalCount.value = null
+  pendingCount.value = null
+  inProgressMineCount.value = null
+  completedCount.value = null
+  avgAiRatioPercent.value = null
+}
+
+async function loadSummary(expectedExamId: string, generation: number): Promise<void> {
   summaryLoading.value = true
   try {
-    const summary = await getReviewArbitrationSummary({ examId: selectedExamId.value })
+    const summary = await getReviewArbitrationSummary({ examId: expectedExamId })
+    if (generation !== summaryLoadGeneration || selectedExamId.value !== expectedExamId) {
+      return
+    }
     totalCount.value = Number(summary.totalCount)
     pendingCount.value = Number(summary.pendingCount)
     inProgressMineCount.value = Number(summary.inProgressMineCount)
     completedCount.value = Number(summary.completedCount)
     avgAiRatioPercent.value = summary.avgAiRatioPercent ?? null
+    summaryLoadFailed.value = false
   } catch (error) {
+    if (generation !== summaryLoadGeneration || selectedExamId.value !== expectedExamId) {
+      return
+    }
+    summaryLoadFailed.value = true
+    clearSummaryState()
     showUserError(error, '仲裁汇总加载失败')
   } finally {
-    summaryLoading.value = false
+    if (generation === summaryLoadGeneration) {
+      summaryLoading.value = false
+    }
   }
 }
 
-async function loadQuestionOptions(): Promise<void> {
-  if (!selectedExamId.value) {
-    questionOptions.value = []
-    return
-  }
+async function loadQuestionOptions(expectedExamId: string, generation: number): Promise<void> {
   try {
-    const questionSummary = await getReviewQuestionProgressSummary(selectedExamId.value)
+    const questionSummary = await getReviewQuestionProgressSummary(expectedExamId)
+    if (generation !== questionOptionsLoadGeneration || selectedExamId.value !== expectedExamId) {
+      return
+    }
     questionOptions.value = questionSummary.items
       .map((item: ReviewQuestionProgressItemResponse) => item.questionNo)
       .filter((questionNo): questionNo is string => questionNo.trim().length > 0)
       .sort((a, b) => a.localeCompare(b, 'zh-CN', { numeric: true }))
       .map((questionNo) => ({ label: `第 ${questionNo} 题`, value: questionNo }))
   } catch (error) {
+    if (generation !== questionOptionsLoadGeneration || selectedExamId.value !== expectedExamId) {
+      return
+    }
     questionOptions.value = []
     showUserError(error, '题号筛选项加载失败')
   }
 }
 
-async function loadTasks(): Promise<void> {
-  if (!selectedExamId.value) {
-    taskRows.value = []
-    pageTotal.value = 0
-    return
-  }
+async function loadTasks(expectedExamId: string, generation: number): Promise<void> {
   loading.value = true
   try {
     const page = await listReviewTasks(buildListQuery())
+    if (generation !== listLoadGeneration || selectedExamId.value !== expectedExamId) {
+      return
+    }
     taskRows.value = page.list
     pageTotal.value = page.total
+    listLoadFailed.value = false
     if (page.pageNum != null) {
       pageNum.value = page.pageNum
     }
@@ -554,16 +617,27 @@ async function loadTasks(): Promise<void> {
       pageSize.value = page.pageSize
     }
   } catch (error) {
-    taskRows.value = []
-    pageTotal.value = 0
+    if (generation !== listLoadGeneration || selectedExamId.value !== expectedExamId) {
+      return
+    }
+    listLoadFailed.value = true
     showUserError(error, '题目复核仲裁任务加载失败')
   } finally {
-    loading.value = false
+    if (generation === listLoadGeneration) {
+      loading.value = false
+    }
   }
 }
 
-async function reloadAll(): Promise<void> {
-  await Promise.all([loadSummary(), loadQuestionOptions(), loadTasks()])
+async function reloadExamScoped(expectedExamId: string): Promise<void> {
+  const summaryGeneration = ++summaryLoadGeneration
+  const questionGeneration = ++questionOptionsLoadGeneration
+  const listGeneration = ++listLoadGeneration
+  await Promise.all([
+    loadSummary(expectedExamId, summaryGeneration),
+    loadQuestionOptions(expectedExamId, questionGeneration),
+    loadTasks(expectedExamId, listGeneration),
+  ])
 }
 
 function handleExpandChange(expanded: boolean, record: ReviewTaskItemResponse): void {
@@ -574,33 +648,67 @@ function handleExpandChange(expanded: boolean, record: ReviewTaskItemResponse): 
   expandedRowKeys.value = []
 }
 
+/** 考试切换：清空并加载汇总/题号/列表。 */
 watch(
   selectedExamId,
   (value) => {
+    summaryLoadGeneration += 1
+    questionOptionsLoadGeneration += 1
+    listLoadGeneration += 1
+    summaryLoadFailed.value = false
+    listLoadFailed.value = false
+    clearSummaryState()
+    questionOptions.value = []
+    taskRows.value = []
+    pageTotal.value = 0
+    pageNum.value = 1
+    expandedRowKeys.value = []
     if (value) {
-      pageNum.value = 1
-      void reloadAll()
-    } else {
-      taskRows.value = []
-      pageTotal.value = 0
+      void reloadExamScoped(value)
     }
   },
   { immediate: true },
 )
 
-watch([filterQuestion, filterTeacherUserId], () => {
-  if (!selectedExamId.value) {
-    return
-  }
-  pageNum.value = 1
-  void loadTasks()
-})
+/** 列表筛选指纹：仅驱动任务列表，不重复拉汇总。 */
+watch(
+  () =>
+    [
+      selectedExamId.value,
+      statusTab.value,
+      filterQuestion.value,
+      filterTeacherUserId.value,
+      pageNum.value,
+      pageSize.value,
+    ] as const,
+  ([examId], [previousExamId]) => {
+    if (!examId) {
+      return
+    }
+    // 考试切换已由 selectedExamId watcher 拉全量，避免同轮重复 list
+    if (examId !== previousExamId) {
+      return
+    }
+    const generation = ++listLoadGeneration
+    void loadTasks(examId, generation)
+  },
+)
 
 onActivated(() => {
-  if (selectedExamId.value) {
-    void reloadAll()
-    void refreshSnapshot()
+  if (skipFirstActivatedReload.value) {
+    skipFirstActivatedReload.value = false
+    return
   }
+  const examId = selectedExamId.value
+  if (!examId) {
+    return
+  }
+  if (summaryLoadFailed.value || listLoadFailed.value) {
+    void reloadExamScoped(examId)
+  }
+  void refreshSnapshot().catch((error) => {
+    showUserError(error, '考试工作台状态刷新失败')
+  })
 })
 
 function goReviewWorkspace(record: ReviewTaskItemResponse): void {
@@ -638,7 +746,11 @@ function goReviewDetail(record: ReviewTaskItemResponse): void {
 <style lang="scss" scoped>
 .arbitration-page {
   &__empty {
-    padding: 20px 0;
+    padding: var(--dp-space-block) 0;
+  }
+
+  &__alert {
+    margin-bottom: var(--dp-space-component);
   }
 }
 
@@ -668,11 +780,11 @@ function goReviewDetail(record: ReviewTaskItemResponse): void {
   }
 
   &__ratio-tag {
-    margin-left: var(--dp-space-2);
+    margin-left: var(--dp-space-component-tight);
   }
 
   &__muted {
-    color: var(--dp-text-tertiary);
+    color: var(--dp-text-muted);
   }
 }
 </style>

@@ -50,15 +50,15 @@ const onClick = (event: MouseEvent) => {
 .ui-text-action {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 0;
+  gap: var(--dp-space-component-xs);
+  padding: var(--dp-space-component-xs) 0;
   border: 0;
   background: transparent;
   font: inherit;
   font-weight: 500;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: color var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .ui-text-action--md {
@@ -70,11 +70,11 @@ const onClick = (event: MouseEvent) => {
 }
 
 .ui-text-action--table {
-  padding: 2px 8px;
+  padding: 2px var(--dp-space-component-tight);
   border-radius: var(--dp-radius-xs);
   font-size: var(--dp-font-size-sm);
   font-weight: 400;
-  transition: background 0.1s ease, color 0.15s ease;
+  transition: background var(--dp-duration-fast) var(--dp-ease-default), color var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .ui-text-action--default:hover:not(:disabled) {
@@ -118,7 +118,7 @@ const onClick = (event: MouseEvent) => {
 }
 
 .ui-text-action--danger:hover:not(:disabled) {
-  color: color-mix(in srgb, var(--dp-error) 82%, var(--dp-text));
+  color: color-mix(in srgb, var(--dp-error) 82%, var(--dp-text-primary));
 }
 
 .ui-text-action.is-disabled,

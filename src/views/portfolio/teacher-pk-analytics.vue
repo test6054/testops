@@ -8,9 +8,10 @@ import type {
 import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
-import { PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS } from '@/apis/portfolio/enums'
+import { PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS, PortfolioPortraitDimensionDescription } from '@/apis/portfolio/enums'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   QUALITY_SELECTOR_PAGE_SIZE,
@@ -21,28 +22,32 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import {
   formatPortfolioTeacherPkDisplay,
   portfolioTeacherSelectOptionsFromSummaries,
 } from '@/utils/portfolio-teacher-display'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 const isDepartmentScoped = computed(
   () => route.path.includes('/department/') || !userStore.isTenantAdmin,
@@ -50,12 +55,18 @@ const isDepartmentScoped = computed(
 const pageTitle = computed(() => (isDepartmentScoped.value ? '院系教师对比' : '教师对比'))
 const pageSubtitle = computed(() =>
   isDepartmentScoped.value
-    ? '本院系多维画像与正式档案材料横向对比（仅本院系教师）'
-    : '多维画像与正式档案材料横向对比',
+    ? '本院系多维画像横向对比；导出须审批；禁止用于未授权人事排名'
+    : '多维画像横向对比；导出须审批；禁止用于未授权人事排名',
 )
 
 const operation = ref<'preview' | 'create' | 'detail' | 'export' | null>(null)
+const exportApplyOpen = ref(false)
+const exportPurpose = ref('')
+const pendingExportSession = ref<PortfolioTeacherPkSessionVO | null>(null)
 const historyLoading = ref(false)
+const historyLoadFailed = ref(false)
+const historyLastSuccessAt = ref<string | null>(null)
+const historyRefreshError = ref<string | null>(null)
 const teachers = ref<PortfolioTeacherSummaryVO[]>([])
 const selectedTeacherIds = ref<string[]>([])
 const sessionPurpose = ref('')
@@ -70,6 +81,7 @@ const query = reactive({
 let teacherSearchTimer: ReturnType<typeof setTimeout> | null = null
 let historyRequestToken = 0
 let detailRequestToken = 0
+let restoreSessionId: string | null = null
 
 const teacherOptions = computed(() => portfolioTeacherSelectOptionsFromSummaries(teachers.value))
 const operationPending = computed(() => operation.value !== null)
@@ -158,26 +170,63 @@ async function createPkSession() {
     return
   }
   operation.value = 'create'
+  historyRefreshError.value = null
   try {
-    pkResult.value = await portfolioAnalysisApi.createPkSession({
+    const compare = await portfolioAnalysisApi.createPkSession({
       teacherUserIds: selectedTeacherIds.value,
       dimensionCodes: PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS,
       sessionPurpose: purpose,
       maskMode: maskMode.value,
     })
+    pkResult.value = compare
     void message.success('对比会话已保存')
     query.pageNum = 1
-    await loadSessionPage()
+    if (compare.sessionId) {
+      prependCreatedSession(compare, purpose)
+    }
   } catch (error) {
     showUserError(error, '保存教师对比会话失败')
+    return
   } finally {
     operation.value = null
+  }
+  try {
+    await loadSessionPage()
+    if (historyLoadFailed.value) {
+      historyRefreshError.value
+        = '对比会话已保存，但历史列表刷新失败；下方可能为陈旧数据。'
+    }
+  } catch (error) {
+    historyRefreshError.value
+      = '对比会话已保存，但历史列表刷新失败；下方可能为陈旧数据。'
+    showUserError(error, '刷新对比会话历史失败')
+  }
+}
+
+function prependCreatedSession(compare: PortfolioTeacherPkCompareVO, purpose: string) {
+  const sessionId = compare.sessionId
+  if (!sessionId) {
+    return
+  }
+  const row: PortfolioTeacherPkSessionVO = {
+    id: String(sessionId),
+    sessionPurpose: compare.sessionPurpose || purpose,
+    teacherCount: compare.teachers?.length ?? selectedTeacherIds.value.length,
+    maskMode: Boolean(compare.maskMode),
+    createUser: String(userStore.userInfo?.userId ?? ''),
+    createTime: compare.comparedTime || new Date().toISOString(),
+  }
+  const existed = sessionRows.value.some(item => item.id === row.id)
+  sessionRows.value = [row, ...sessionRows.value.filter(item => item.id !== row.id)]
+  if (!existed) {
+    sessionTotal.value += 1
   }
 }
 
 async function loadSessionPage() {
   const token = ++historyRequestToken
   historyLoading.value = true
+  historyLoadFailed.value = false
   try {
     const page = await portfolioAnalysisApi.pagePkSessions({
       pageNum: query.pageNum,
@@ -189,10 +238,11 @@ async function loadSessionPage() {
     }
     sessionRows.value = page.list ?? []
     sessionTotal.value = page.total ?? 0
+    historyLastSuccessAt.value = new Date().toISOString()
+    historyRefreshError.value = null
   } catch (error) {
     if (token === historyRequestToken) {
-      sessionRows.value = []
-      sessionTotal.value = 0
+      historyLoadFailed.value = true
       showUserError(error, '加载对比会话历史失败')
     }
   } finally {
@@ -214,40 +264,70 @@ async function restoreSession(row: PortfolioTeacherPkSessionVO) {
     return
   }
   const token = ++detailRequestToken
+  restoreSessionId = row.id
   operation.value = 'detail'
   try {
     const detail = await portfolioAnalysisApi.getPkSession({ id: row.id })
-    if (token !== detailRequestToken) {
+    if (token !== detailRequestToken || restoreSessionId !== row.id) {
       return
     }
     pkResult.value = detail
     sessionPurpose.value = detail.sessionPurpose ?? row.sessionPurpose
     maskMode.value = detail.maskMode ?? row.maskMode
   } catch (error) {
-    if (token === detailRequestToken) {
+    if (token === detailRequestToken && restoreSessionId === row.id) {
       showUserError(error, '恢复对比会话失败')
     }
   } finally {
     if (token === detailRequestToken) {
       operation.value = null
+      if (restoreSessionId === row.id) {
+        restoreSessionId = null
+      }
     }
   }
 }
 
-async function exportSession(row: PortfolioTeacherPkSessionVO) {
+function openPkExportApply(row: PortfolioTeacherPkSessionVO) {
   if (operationPending.value) {
     return
   }
+  pendingExportSession.value = row
+  exportPurpose.value = ''
+  exportApplyOpen.value = true
+}
+
+async function submitPkExportApply() {
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return Promise.reject(new Error('导出用途为空'))
+  }
+  const row = pendingExportSession.value
+  if (!row?.id) {
+    showFormValidationMessage('缺少对比会话')
+    return Promise.reject(new Error('缺少会话'))
+  }
+  if (operationPending.value) {
+    return Promise.reject(new Error('导出申请进行中'))
+  }
   operation.value = 'export'
   try {
-    const result = await portfolioAnalysisApi.exportPkSession({
-      sessionId: row.id,
-      maskMode: row.maskMode,
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.TEACHER_PK_COMPARE,
+      businessRef: {
+        teacherPkSessionId: row.id,
+        maskMode: row.maskMode,
+      },
+      exportPurpose: purpose,
     })
-    await downloadPortfolioExcelExport(result)
-    void message.success('已开始下载教师对比报告')
+    exportApplyOpen.value = false
+    pendingExportSession.value = null
+    void message.success('已提交多教师对比分析导出审批，请在导出审批中心下载')
+    await router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出教师对比报告失败')
+    showUserError(error, '提交多教师对比分析导出审批失败')
+    return Promise.reject(error)
   } finally {
     operation.value = null
   }
@@ -259,7 +339,7 @@ function handleSessionAction(action: string, row: PortfolioTeacherPkSessionVO) {
     return
   }
   if (action === 'export') {
-    void exportSession(row)
+    openPkExportApply(row)
   }
 }
 
@@ -289,6 +369,12 @@ onUnmounted(() => {
     </template>
 
     <div class="teacher-pk__stack">
+      <UiAlertStrip
+        dense
+        tone="info"
+        title="敏感导出须审批"
+        description="多教师对比含横向画像，不可直连下载；申请通过后在导出审批中心按 ticket 取回，并受用途、脱敏与有效期约束。"
+      />
       <UiCard title="新建对比会话">
         <div class="teacher-pk__form">
           <label class="teacher-pk__field teacher-pk__field--teachers">
@@ -361,7 +447,7 @@ onUnmounted(() => {
       >
         <UiAlertStrip v-if="!pkResult" tone="info" size="sm" dense inline :show-icon="false">
           <template #default>
-            <span style="display: inline-flex; align-items: center; gap: 8px">
+            <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
               <UiTag tone="blue" size="sm">待生成</UiTag>
               <span>请选择 2–5 名教师后预览或保存对比结果</span>
             </span>
@@ -396,7 +482,7 @@ onUnmounted(() => {
                   :tone="portfolioLifecycleTagTone(teacher.lifecycleStatus)"
                   size="sm"
                 >
-                  {{ teacher.lifecycleStatusLabel || teacher.lifecycleStatus }}
+                  {{ portfolioLifecycleStatusDisplay(teacher.lifecycleStatus) }}
                 </UiTag>
                 <UiTag v-if="teacher.evaluationHeld" tone="orange" size="sm">参评 hold</UiTag>
                 <UiTag v-if="teacher.archiveWriteForbidden" tone="red" size="sm">写禁</UiTag>
@@ -421,7 +507,15 @@ onUnmounted(() => {
                 </thead>
                 <tbody>
                   <tr v-for="dimension in teacher.dimensionRows" :key="dimension.dimensionCode">
-                    <td>{{ dimension.dimensionLabel }}</td>
+                    <td>
+                      {{
+                        strictEnumLabel(
+                          PortfolioPortraitDimensionDescription,
+                          dimension.dimensionCode,
+                          '画像维度',
+                        )
+                      }}
+                    </td>
                     <td>{{ dimension.dimensionScore }}</td>
                     <td>{{ dimension.evidenceSummary || '—' }}</td>
                   </tr>
@@ -441,11 +535,24 @@ onUnmounted(() => {
       </UiSpin>
 
       <UiCard title="我的对比会话">
+        <UiAlertStrip
+          v-if="historyRefreshError"
+          tone="warning"
+          :message="historyRefreshError"
+          class="dp-mb-component"
+        />
+        <UiAlertStrip
+          v-if="historyLoadFailed"
+          tone="error"
+          class="dp-mb-component"
+          title="对比会话历史加载失败"
+        />
         <UiDataTable
           row-key="id"
           :columns="historyColumns"
           :data-source="sessionRows"
           :loading="historyLoading"
+          :load-error="historyLoadFailed && sessionRows.length === 0"
           :pagination="historyPagination"
           @change="handleHistoryTableChange"
         >
@@ -459,7 +566,7 @@ onUnmounted(() => {
               <UiTableActions
                 :items="[
                   { key: 'restore', label: '查看', disabled: operationPending },
-                  { key: 'export', label: '导出', disabled: operationPending },
+                  { key: 'export', label: '申请导出', disabled: operationPending },
                 ]"
                 @action="(action) => handleSessionAction(action, record)"
               />
@@ -471,25 +578,47 @@ onUnmounted(() => {
         </UiDataTable>
       </UiCard>
     </div>
+    <UiDialog
+      v-model:open="exportApplyOpen"
+      title="申请导出多教师对比分析"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="operation === 'export'"
+      @ok="submitPkExportApply"
+    >
+      <UiAlertStrip
+        dense
+        tone="warning"
+        title="导出范围说明"
+        description="将导出本会话内 2–5 名教师的已选维度对比结果；须填写真实用途，审批通过后方可下载。"
+        class="dp-mb-component"
+      />
+      <UiTextarea
+        size="sm"
+        v-model="exportPurpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
 <style scoped>
 .teacher-pk__stack {
   display: grid;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .teacher-pk__form {
   display: grid;
   grid-template-columns: minmax(320px, 1.4fr) minmax(260px, 1fr) auto auto;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   align-items: end;
 }
 
 .teacher-pk__field {
   display: grid;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   min-width: 0;
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-sm);
@@ -498,32 +627,32 @@ onUnmounted(() => {
 .teacher-pk__mask {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   min-height: 32px;
   white-space: nowrap;
 }
 
 .teacher-pk__actions {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   justify-content: flex-end;
 }
 
 .teacher-pk__result {
   display: grid;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 .teacher-pk__result-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .teacher-pk__result-head > div {
   display: grid;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
 }
 
 .teacher-pk__result-head span {
@@ -534,19 +663,19 @@ onUnmounted(() => {
 .teacher-pk__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 .teacher-pk__identity-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 
 .teacher-pk__archive-count {
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-sm);
 }
@@ -560,7 +689,7 @@ onUnmounted(() => {
 
 .teacher-pk__table th,
 .teacher-pk__table td {
-  padding: 8px;
+  padding: var(--dp-space-component-tight);
   border-bottom: 1px solid var(--dp-border);
   text-align: left;
   vertical-align: top;
@@ -577,8 +706,8 @@ onUnmounted(() => {
 
 .teacher-pk__materials {
   display: grid;
-  gap: 6px;
-  margin-top: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component);
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-xs);
 }
@@ -586,7 +715,7 @@ onUnmounted(() => {
 .teacher-pk__materials ul {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 14px;
+  gap: var(--dp-space-component-tight) var(--dp-space-block);
   padding: 0;
   margin: 0;
   list-style: none;

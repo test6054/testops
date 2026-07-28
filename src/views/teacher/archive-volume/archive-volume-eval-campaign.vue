@@ -130,7 +130,7 @@
           class="archive-eval-campaign__gate"
         >
           <template #default>
-            <span style="display: inline-flex; align-items: center; gap: 8px">
+            <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
               <UiTag tone="blue" size="sm">未选批次</UiTag>
               <span>请选择迎评批次后查询归档任务就绪度</span>
             </span>
@@ -390,6 +390,7 @@ import {
   ArchiveEvaluationDimensionReadyTone,
 } from '@/types/enums/archive-evaluation-dimension-ready-enum'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import { ensureAcademicYearSemesterPair } from '@/utils/academic-year-semester-query'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -901,12 +902,16 @@ function handleTabChange(key: string | number): void {
 async function loadMixedBatches(): Promise<void> {
   mixedLoading.value = true
   try {
+    if (!ensureAcademicYearSemesterPair(mixedFilterForm.academicYear, mixedFilterForm.semester)) {
+      return
+    }
+    const academicYear = mixedFilterForm.academicYear?.trim() || undefined
     const result = await pageSuspectedMixedScanBatches({
       pageNum: mixedPagination.pageNum,
       pageSize: mixedPagination.pageSize,
       departmentId: mixedFilterForm.departmentId,
-      academicYear: mixedFilterForm.academicYear?.trim() || undefined,
-      semester: mixedFilterForm.semester,
+      academicYear,
+      semester: academicYear ? mixedFilterForm.semester : undefined,
     })
     mixedRows.value = result.list
     mixedPagination.total = result.total
@@ -1063,7 +1068,7 @@ watch(
   &__pane {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
   }
 
   &__readiness-title {
@@ -1084,14 +1089,14 @@ watch(
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__mixed-toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__mixed-hint {
@@ -1102,7 +1107,7 @@ watch(
 
   &__mono {
     font-variant-numeric: tabular-nums;
-    font-family: var(--dp-font-mono);
+    font-family: var(--dp-font-family-code);
 
     &--strong {
       font-weight: 600;
@@ -1110,7 +1115,7 @@ watch(
   }
 
   &__pick-hint {
-    margin: 0 0 var(--dp-space-2);
+    margin: 0 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
@@ -1118,7 +1123,7 @@ watch(
   &__pick-group {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__pick-item {

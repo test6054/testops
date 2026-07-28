@@ -13,14 +13,18 @@ import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
 import {
@@ -37,8 +41,8 @@ import {
   PortfolioComplianceScopeTypeCode,
   PortfolioComplianceScopeTypeDescription,
 } from '@/types/enums/portfolio-compliance-scope-type-enum'
-import { showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -64,8 +68,22 @@ const pageSubtitle = computed(() =>
 const portraitLoading = ref(false)
 const complianceLoading = ref(false)
 const actionId = ref('')
+const dispositionOpen = ref(false)
+const dispositionSubmitting = ref(false)
+const dispositionKind = ref<'portrait' | 'compliance'>('portrait')
+const dispositionStatus = ref<PortfolioAlertStatusCode>(PortfolioAlertStatusCode.ACKNOWLEDGED)
+const dispositionRemark = ref('')
+const dispositionAssigneeUserId = ref('')
+const dispositionEvidenceText = ref('')
+const dispositionPortrait = ref<PortfolioAnalysisAlertVO | null>(null)
+const dispositionCompliance = ref<PortfolioAnalysisComplianceAlertVO | null>(null)
+const { teacherOptions: assigneeOptions, searchTeachers: searchAssignees } = usePortfolioTeacherSearch()
 const portraitLoadFailed = ref(false)
 const complianceLoadFailed = ref(false)
+const portraitStale = ref(false)
+const complianceStale = ref(false)
+const portraitLastSuccessAt = ref('')
+const complianceLastSuccessAt = ref('')
 const portraitRequestToken = ref(0)
 const complianceRequestToken = ref(0)
 const portraitAlerts = ref<PortfolioAnalysisAlertVO[]>([])
@@ -119,6 +137,20 @@ const visibleScopeTypeOptions = computed(() =>
     ? scopeTypeOptions.filter((item) => item.value === PortfolioComplianceScopeTypeCode.DEPARTMENT)
     : scopeTypeOptions,
 )
+
+const portraitEmptyDescription = computed(() => {
+  if (portraitLoadFailed.value && portraitAlerts.value.length === 0) {
+    return '画像预警加载失败'
+  }
+  return '暂无画像预警'
+})
+
+const complianceEmptyDescription = computed(() => {
+  if (complianceLoadFailed.value && complianceAlerts.value.length === 0) {
+    return '合规预警加载失败'
+  }
+  return '暂无合规预警'
+})
 
 const portraitColumns: ColumnsType = [
   { title: '教师', key: 'teacher', width: 220 },
@@ -184,32 +216,49 @@ function scopeTypeLabel(code: string): string {
   )
 }
 
-async function loadPortraitAlerts() {
+function markSuccessNow(): string {
+  return new Date().toLocaleString('zh-CN', { hour12: false })
+}
+
+async function loadPortraitAlerts(options?: { errorMessage?: string }): Promise<boolean> {
   const currentToken = ++portraitRequestToken.value
+  const requestedPage = portraitFilter.pageNum
+  const requestedSize = portraitFilter.pageSize
+  const requestedType = portraitFilter.alertType
+  const requestedStatus = portraitFilter.alertStatus
   portraitLoading.value = true
   portraitLoadFailed.value = false
-  portraitAlerts.value = []
-  portraitTotal.value = 0
   try {
     const result = await portfolioAnalysisApi.pageAlerts({
-      pageNum: portraitFilter.pageNum,
-      pageSize: portraitFilter.pageSize,
-      alertType: portraitFilter.alertType,
-      alertStatus: portraitFilter.alertStatus,
+      pageNum: requestedPage,
+      pageSize: requestedSize,
+      alertType: requestedType,
+      alertStatus: requestedStatus,
     })
-    if (currentToken !== portraitRequestToken.value) {
-      return
+    if (
+      currentToken !== portraitRequestToken.value
+      || portraitFilter.pageNum !== requestedPage
+      || portraitFilter.pageSize !== requestedSize
+      || portraitFilter.alertType !== requestedType
+      || portraitFilter.alertStatus !== requestedStatus
+    ) {
+      return false
     }
     portraitAlerts.value = result.list
     portraitTotal.value = result.total
+    portraitStale.value = false
+    portraitLastSuccessAt.value = markSuccessNow()
+    return true
   } catch (error) {
     if (currentToken !== portraitRequestToken.value) {
-      return
+      return false
     }
-    portraitAlerts.value = []
-    portraitTotal.value = 0
     portraitLoadFailed.value = true
-    showUserError(error, '加载画像预警失败')
+    if (portraitAlerts.value.length > 0) {
+      portraitStale.value = true
+    }
+    showUserError(error, options?.errorMessage ?? '加载画像预警失败')
+    return false
   } finally {
     if (currentToken === portraitRequestToken.value) {
       portraitLoading.value = false
@@ -217,35 +266,48 @@ async function loadPortraitAlerts() {
   }
 }
 
-async function loadComplianceAlerts() {
+async function loadComplianceAlerts(options?: { errorMessage?: string }): Promise<boolean> {
   const currentToken = ++complianceRequestToken.value
+  const requestedPage = complianceFilter.pageNum
+  const requestedSize = complianceFilter.pageSize
+  const requestedScope = complianceFilter.scopeType
+  const requestedStatus = complianceFilter.alertStatus
   complianceLoading.value = true
   complianceLoadFailed.value = false
-  complianceAlerts.value = []
-  complianceTotal.value = 0
   try {
     const scopeType = isDepartmentScoped.value
       ? PortfolioComplianceScopeTypeCode.DEPARTMENT
-      : complianceFilter.scopeType
+      : requestedScope
     const result = await portfolioAnalysisApi.pageComplianceAlerts({
-      pageNum: complianceFilter.pageNum,
-      pageSize: complianceFilter.pageSize,
+      pageNum: requestedPage,
+      pageSize: requestedSize,
       scopeType,
-      alertStatus: complianceFilter.alertStatus,
+      alertStatus: requestedStatus,
     })
-    if (currentToken !== complianceRequestToken.value) {
-      return
+    if (
+      currentToken !== complianceRequestToken.value
+      || complianceFilter.pageNum !== requestedPage
+      || complianceFilter.pageSize !== requestedSize
+      || complianceFilter.scopeType !== requestedScope
+      || complianceFilter.alertStatus !== requestedStatus
+    ) {
+      return false
     }
     complianceAlerts.value = result.list
     complianceTotal.value = result.total
+    complianceStale.value = false
+    complianceLastSuccessAt.value = markSuccessNow()
+    return true
   } catch (error) {
     if (currentToken !== complianceRequestToken.value) {
-      return
+      return false
     }
-    complianceAlerts.value = []
-    complianceTotal.value = 0
     complianceLoadFailed.value = true
-    showUserError(error, '加载合规预警失败')
+    if (complianceAlerts.value.length > 0) {
+      complianceStale.value = true
+    }
+    showUserError(error, options?.errorMessage ?? '加载合规预警失败')
+    return false
   } finally {
     if (currentToken === complianceRequestToken.value) {
       complianceLoading.value = false
@@ -299,74 +361,155 @@ async function resolvePortraitAlert(
   row: PortfolioAnalysisAlertVO,
   alertStatus: PortfolioAlertStatusCode,
 ) {
-  if (actionId.value) {
+  if (actionId.value || dispositionOpen.value) {
     return
   }
-  if (alertStatus === PortfolioAlertStatusCode.RESOLVED) {
-    const confirmed = await confirmAsync({
-      title: '确认关闭画像预警',
-      content: `确认关闭“${row.alertTitle}”？关闭表示该预警已完成处置。`,
-      type: 'warning',
-      okText: '确认关闭',
-    })
-    if (!confirmed || actionId.value) {
-      return
-    }
+  if (!row.updateTime) {
+    showFormValidationMessage('预警缺少更新时间，无法处置；请刷新列表')
+    return
   }
-  actionId.value = row.id
-  try {
-    await portfolioAnalysisApi.resolvePortraitAlert({
-      alertId: row.id,
-      alertStatus,
-      resolveRemark:
-        alertStatus === PortfolioAlertStatusCode.RESOLVED ? '管理端关闭预警' : '管理端已知晓',
-    })
-    void message.success('画像预警已处置')
-    await loadPortraitAlerts()
-  } catch (error) {
-    showUserError(error, '画像预警处置失败')
-  } finally {
-    if (actionId.value === row.id) {
-      actionId.value = ''
-    }
-  }
+  dispositionKind.value = 'portrait'
+  dispositionPortrait.value = row
+  dispositionCompliance.value = null
+  dispositionStatus.value = alertStatus
+  dispositionRemark.value
+    = alertStatus === PortfolioAlertStatusCode.ACKNOWLEDGED ? '管理端已知晓' : ''
+  dispositionAssigneeUserId.value = ''
+  dispositionEvidenceText.value = ''
+  dispositionOpen.value = true
 }
 
 async function resolveComplianceAlert(
   row: PortfolioAnalysisComplianceAlertVO,
   alertStatus: PortfolioAlertStatusCode,
 ) {
-  if (actionId.value) {
+  if (actionId.value || dispositionOpen.value) {
     return
   }
-  if (alertStatus === PortfolioAlertStatusCode.RESOLVED) {
-    const confirmed = await confirmAsync({
-      title: '确认关闭合规预警',
-      content: `确认关闭“${row.alertSummary}”？关闭表示该预警已完成处置。`,
-      type: 'warning',
-      okText: '确认关闭',
-    })
-    if (!confirmed || actionId.value) {
+  if (!row.updateTime) {
+    showFormValidationMessage('预警缺少更新时间，无法处置；请刷新列表')
+    return
+  }
+  dispositionKind.value = 'compliance'
+  dispositionCompliance.value = row
+  dispositionPortrait.value = null
+  dispositionStatus.value = alertStatus
+  dispositionRemark.value
+    = alertStatus === PortfolioAlertStatusCode.ACKNOWLEDGED ? '管理端已知晓' : ''
+  dispositionAssigneeUserId.value = ''
+  dispositionEvidenceText.value = ''
+  dispositionOpen.value = true
+}
+
+const dispositionTitle = computed(() => {
+  if (dispositionStatus.value === PortfolioAlertStatusCode.RESOLVED) {
+    return dispositionKind.value === 'portrait' ? '关闭画像预警' : '关闭合规预警'
+  }
+  return dispositionKind.value === 'portrait' ? '标记画像预警已知晓' : '标记合规预警已知晓'
+})
+
+const dispositionSummary = computed(() => {
+  if (dispositionKind.value === 'portrait' && dispositionPortrait.value) {
+    const row = dispositionPortrait.value
+    return `${row.alertTitle} · ${row.alertSummary || '—'} · 计算时间 ${row.portraitComputedTime || '—'}`
+  }
+  if (dispositionKind.value === 'compliance' && dispositionCompliance.value) {
+    const row = dispositionCompliance.value
+    return `${row.alertSummary} · 当前值 ${row.currentValue ?? '—'} / 阈值 ${row.thresholdValue ?? '—'} · 计算时间 ${row.computedTime || '—'}`
+  }
+  return ''
+})
+
+async function submitDisposition() {
+  if (dispositionSubmitting.value) {
+    return
+  }
+  const remark = dispositionRemark.value.trim()
+  const assigneeUserId = dispositionAssigneeUserId.value.trim()
+  const resolveEvidenceText = dispositionEvidenceText.value.trim()
+  if (dispositionStatus.value === PortfolioAlertStatusCode.RESOLVED && !remark) {
+    showFormValidationMessage('关闭预警须填写处置意见')
+    return
+  }
+  if (dispositionStatus.value === PortfolioAlertStatusCode.RESOLVED && !assigneeUserId) {
+    showFormValidationMessage('关闭预警须指定处置责任人')
+    return
+  }
+  if (dispositionStatus.value === PortfolioAlertStatusCode.RESOLVED && !resolveEvidenceText) {
+    showFormValidationMessage('关闭预警须填写修复证据或关联工单')
+    return
+  }
+  if (dispositionKind.value === 'portrait') {
+    const row = dispositionPortrait.value
+    if (row?.statusVersion == null) {
+      showFormValidationMessage('预警缺少状态版本，无法处置')
       return
     }
+    dispositionSubmitting.value = true
+    actionId.value = row.id
+    try {
+      await portfolioAnalysisApi.resolvePortraitAlert({
+        alertId: row.id,
+        alertStatus: dispositionStatus.value,
+        expectedFromStatus: row.alertStatus,
+        expectedStatusVersion: row.statusVersion,
+        resolveRemark: remark || undefined,
+        assigneeUserId:
+          dispositionStatus.value === PortfolioAlertStatusCode.RESOLVED
+            ? assigneeUserId
+            : undefined,
+        resolveEvidenceText:
+          dispositionStatus.value === PortfolioAlertStatusCode.RESOLVED
+            ? resolveEvidenceText
+            : undefined,
+      })
+      void message.success('画像预警已处置')
+      dispositionOpen.value = false
+    } catch (error) {
+      showUserError(error, '画像预警处置失败')
+      return
+    } finally {
+      dispositionSubmitting.value = false
+      if (actionId.value === row.id) {
+        actionId.value = ''
+      }
+    }
+    await loadPortraitAlerts({ errorMessage: '画像预警已处置，列表刷新失败' })
+    return
   }
+  const row = dispositionCompliance.value
+  if (row?.statusVersion == null) {
+    showFormValidationMessage('预警缺少状态版本，无法处置')
+    return
+  }
+  dispositionSubmitting.value = true
   actionId.value = row.id
   try {
     await portfolioAnalysisApi.resolveComplianceAlert({
       alertId: row.id,
-      alertStatus,
-      resolveRemark:
-        alertStatus === PortfolioAlertStatusCode.RESOLVED ? '管理端关闭预警' : '管理端已知晓',
+      alertStatus: dispositionStatus.value,
+      expectedFromStatus: row.alertStatus,
+      expectedStatusVersion: row.statusVersion,
+      resolveRemark: remark || undefined,
+      assigneeUserId:
+        dispositionStatus.value === PortfolioAlertStatusCode.RESOLVED ? assigneeUserId : undefined,
+      resolveEvidenceText:
+        dispositionStatus.value === PortfolioAlertStatusCode.RESOLVED
+          ? resolveEvidenceText
+          : undefined,
     })
     void message.success('合规预警已处置')
-    await loadComplianceAlerts()
+    dispositionOpen.value = false
   } catch (error) {
     showUserError(error, '合规预警处置失败')
+    return
   } finally {
+    dispositionSubmitting.value = false
     if (actionId.value === row.id) {
       actionId.value = ''
     }
   }
+  await loadComplianceAlerts({ errorMessage: '合规预警已处置，列表刷新失败' })
 }
 
 onMounted(() => {
@@ -405,9 +548,15 @@ onMounted(() => {
             :options="alertStatusOptions"
             class="alert-center__field"
           />
-          <UiButton size="sm" variant="primary" @click="loadPortraitAlerts">查询</UiButton>
+          <UiButton size="sm" variant="primary" @click="() => void loadPortraitAlerts()">查询</UiButton>
           <UiButton size="sm" variant="ghost" @click="resetPortraitFilter">重置</UiButton>
         </div>
+        <UiAlertStrip
+          v-if="portraitLoadFailed && portraitStale"
+          tone="warning"
+          class="alert-center__stale"
+          title="画像预警同步失败"
+        />
         <UiDataTable
           v-model:current="portraitFilter.pageNum"
           v-model:page-size="portraitFilter.pageSize"
@@ -416,7 +565,7 @@ onMounted(() => {
           :data-source="portraitAlerts"
           pagination-mode="server"
           :total="portraitTotal"
-          :load-error="portraitLoadFailed"
+          :load-error="portraitLoadFailed && portraitAlerts.length === 0"
           @page-change="onPortraitPageChange"
         >
           <template #bodyCell="{ column, record }">
@@ -439,7 +588,7 @@ onMounted(() => {
                       portfolioLifecycleTagTone(record.lifecycleStatus)
                     "
                   >
-                    {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+                    {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
                   </UiTag>
                   <UiTag v-if="record.evaluationHeld" size="sm" tone="orange">参评 hold</UiTag>
                   <PortfolioOwnerIdentityLayersCell
@@ -485,7 +634,7 @@ onMounted(() => {
           <template #emptyText>
             <UiEmpty
               size="sm"
-              :description="portraitLoadFailed ? '画像预警加载失败' : '暂无画像预警'"
+              :description="portraitEmptyDescription"
             />
           </template>
         </UiDataTable>
@@ -509,9 +658,15 @@ onMounted(() => {
             :options="alertStatusOptions"
             class="alert-center__field"
           />
-          <UiButton size="sm" variant="primary" @click="loadComplianceAlerts">查询</UiButton>
+          <UiButton size="sm" variant="primary" @click="() => void loadComplianceAlerts()">查询</UiButton>
           <UiButton size="sm" variant="ghost" @click="resetComplianceFilter">重置</UiButton>
         </div>
+        <UiAlertStrip
+          v-if="complianceLoadFailed && complianceStale"
+          tone="warning"
+          class="alert-center__stale"
+          title="合规预警同步失败"
+        />
         <UiDataTable
           v-model:current="complianceFilter.pageNum"
           v-model:page-size="complianceFilter.pageSize"
@@ -520,7 +675,7 @@ onMounted(() => {
           :data-source="complianceAlerts"
           pagination-mode="server"
           :total="complianceTotal"
-          :load-error="complianceLoadFailed"
+          :load-error="complianceLoadFailed && complianceAlerts.length === 0"
           @page-change="onCompliancePageChange"
         >
           <template #bodyCell="{ column, record }">
@@ -567,12 +722,53 @@ onMounted(() => {
           <template #emptyText>
             <UiEmpty
               size="sm"
-              :description="complianceLoadFailed ? '合规预警加载失败' : '暂无合规预警'"
+              :description="complianceEmptyDescription"
             />
           </template>
         </UiDataTable>
       </UiCard>
     </UiSpin>
+    <UiDialog
+      v-model:open="dispositionOpen"
+      :title="dispositionTitle"
+      :confirm-loading="dispositionSubmitting"
+      :closable="!dispositionSubmitting"
+      :mask-closable="!dispositionSubmitting"
+      @ok="submitDisposition"
+    >
+      <p class="alert-center__disposition-summary">{{ dispositionSummary }}</p>
+      <UiSelect
+        v-if="dispositionStatus === PortfolioAlertStatusCode.RESOLVED"
+        v-model="dispositionAssigneeUserId"
+        size="sm"
+        allow-search
+        allow-clear
+        placeholder="处置责任人（姓名/工号）"
+        style="width: 100%; margin-bottom: var(--dp-space-component-tight)"
+        :filter-option="false"
+        :options="assigneeOptions"
+        :disabled="dispositionSubmitting"
+        @search="searchAssignees"
+      />
+      <UiInput
+        v-if="dispositionStatus === PortfolioAlertStatusCode.RESOLVED"
+        v-model="dispositionEvidenceText"
+        size="sm"
+        placeholder="修复证据或关联工单"
+        style="margin-bottom: var(--dp-space-component-tight)"
+        :disabled="dispositionSubmitting"
+      />
+      <UiTextarea
+        v-model="dispositionRemark"
+        :rows="4"
+        :placeholder="
+          dispositionStatus === PortfolioAlertStatusCode.RESOLVED
+            ? '请填写处置意见'
+            : '可选：已知晓说明'
+        "
+        :disabled="dispositionSubmitting"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -580,12 +776,23 @@ onMounted(() => {
 .alert-center__filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-block);
+}
+
+.alert-center__stale {
+  margin-bottom: var(--dp-space-component);
 }
 
 .alert-center__field {
   width: 160px;
+}
+
+.alert-center__disposition-summary {
+  margin: 0 0 var(--dp-space-component);
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+  line-height: 1.5;
 }
 
 .alert-center__teacher {
@@ -602,7 +809,7 @@ onMounted(() => {
 .alert-center__identity {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   margin-top: 2px;
 }
 </style>

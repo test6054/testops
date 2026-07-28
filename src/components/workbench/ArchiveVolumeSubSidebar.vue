@@ -281,7 +281,7 @@ function onMenuClick(info: MenuInfo): void {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: var(--dp-surface, var(--dp-bg-container));
+  background: var(--dp-surface, var(--dp-surface));
   border-right: 1px solid var(--dp-border, var(--dp-border-subtle));
   min-height: 0;
 
@@ -290,7 +290,7 @@ function onMenuClick(info: MenuInfo): void {
   }
 
   &__exam-switch {
-    padding: var(--dp-space-3, 12px) var(--dp-space-3, 12px) var(--dp-space-2, 8px);
+    padding: var(--dp-space-component) var(--dp-space-component-tight);
     flex-shrink: 0;
   }
 
@@ -310,7 +310,7 @@ function onMenuClick(info: MenuInfo): void {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 0 var(--dp-space-2, 8px) var(--dp-space-2, 8px);
+    padding: 0 var(--dp-space-component-tight);
     flex-shrink: 0;
   }
 
@@ -318,7 +318,7 @@ function onMenuClick(info: MenuInfo): void {
     display: flex;
     align-items: center;
     width: 100%;
-    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     border: none;
     border-radius: var(--dp-radius-panel);
     background: transparent;
@@ -327,8 +327,8 @@ function onMenuClick(info: MenuInfo): void {
     text-align: left;
     cursor: pointer;
     transition:
-      background 0.2s,
-      color 0.2s;
+      background var(--dp-duration-normal),
+      color var(--dp-duration-normal);
 
     &:hover {
       background: var(--dp-fill-tertiary);
@@ -347,7 +347,7 @@ function onMenuClick(info: MenuInfo): void {
 
   &__footer {
     margin-top: auto;
-    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     border-top: 1px solid var(--dp-border, var(--dp-border-subtle));
     display: flex;
     justify-content: end;
@@ -363,12 +363,12 @@ function onMenuClick(info: MenuInfo): void {
     border: none;
     border-radius: var(--dp-radius-panel);
     background: transparent;
-    color: var(--dp-text-muted, var(--dp-text-tertiary));
+    color: var(--dp-text-muted, var(--dp-text-muted));
     cursor: pointer;
 
     &:hover {
       background: var(--dp-gray-100, var(--dp-fill-tertiary));
-      color: var(--dp-text-primary, var(--dp-text));
+      color: var(--dp-text-primary, var(--dp-text-primary));
     }
   }
 
@@ -380,7 +380,7 @@ function onMenuClick(info: MenuInfo): void {
     height: calc(100vh - 56px);
     width: 260px;
     transform: translateX(-100%);
-    transition: transform 0.2s ease;
+    transition: transform var(--dp-duration-normal) var(--dp-ease-default);
     box-shadow: var(--dp-shadow-md);
 
     &--mobile-open {
@@ -395,7 +395,7 @@ function onMenuClick(info: MenuInfo): void {
 
 .exam-journey-sidebar-nav {
   flex-shrink: 0;
-  padding: 8px;
+  padding: var(--dp-space-component-tight);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -404,16 +404,16 @@ function onMenuClick(info: MenuInfo): void {
 
   &--collapsed {
     align-items: center;
-    padding: 8px 4px;
+    padding: var(--dp-space-component-tight) var(--dp-space-component-xs);
   }
 
   &__skeleton {
-    padding: 4px 8px;
+    padding: var(--dp-space-component-xs) var(--dp-space-component-tight);
   }
 
   &__section-label {
-    margin: 8px 8px 4px;
-    font-size: var(--dp-font-size-xxs);
+    margin: var(--dp-space-component-tight) var(--dp-space-component-xs);
+    font-size: var(--dp-font-size-xs);
     font-weight: 600;
     letter-spacing: 0.02em;
     color: var(--dp-text-muted);
@@ -422,16 +422,16 @@ function onMenuClick(info: MenuInfo): void {
   &__item {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--dp-space-component);
     width: 100%;
-    padding: 8px 10px;
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     border: none;
     border-radius: var(--dp-radius-panel);
     background: transparent;
     cursor: pointer;
     text-align: left;
     color: var(--dp-text-primary);
-    transition: background 0.2s ease;
+    transition: background var(--dp-duration-normal) var(--dp-ease-default);
 
     &:hover {
       background: var(--dp-fill-tertiary);
@@ -448,7 +448,7 @@ function onMenuClick(info: MenuInfo): void {
   }
 
   &__check {
-    font-size: var(--dp-font-size-xxs);
+    font-size: var(--dp-font-size-xs);
   }
 
   &__index {
@@ -502,7 +502,7 @@ function onMenuClick(info: MenuInfo): void {
   &--collapsed &__item {
     width: 40px;
     justify-content: center;
-    padding: 8px 0;
+    padding: var(--dp-space-component-tight) 0;
   }
 
   &--collapsed &__index {
@@ -522,7 +522,7 @@ function onMenuClick(info: MenuInfo): void {
 .exam-sub-sidebar-nav {
   flex: 1;
   overflow: auto;
-  padding: 8px;
+  padding: var(--dp-space-component-tight);
 
   :deep(.ant-menu-item) {
     border-radius: var(--dp-radius-panel);
@@ -540,17 +540,17 @@ function onMenuClick(info: MenuInfo): void {
   }
 
   :deep(.ant-menu-inline-collapsed > .ant-menu-item) {
-    padding-inline: calc(50% - 14px);
+    padding-inline: calc(50% - var(--dp-space-block));
   }
 
   &__badge {
     margin-left: auto;
     min-width: 18px;
-    padding: 0 6px;
+    padding: 0 var(--dp-space-component-tight);
     border-radius: 9px;
     background: var(--dp-warning-bg);
     color: var(--dp-warning);
-    font-size: var(--dp-font-size-xxs);
+    font-size: var(--dp-font-size-xs);
     font-weight: 600;
     line-height: 18px;
     text-align: center;

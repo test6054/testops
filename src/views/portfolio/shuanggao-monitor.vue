@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import type { PortfolioDoubleHighMonitorVO } from '@/apis/portfolio/double-high'
+import type {
+  PortfolioDoubleHighDimensionScoreVO,
+  PortfolioDoubleHighMonitorVO,
+} from '@/apis/portfolio/double-high'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -16,7 +20,17 @@ import {
   usePortfolioOrgTree,
 } from '@/composables/usePortfolioOrgTree'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
+import {
+  PortfolioDoubleHighConstructionDimensionDescription,
+} from '@/types/enums/portfolio-double-high-construction-dimension-enum'
+import { PortfolioDoubleHighStatisticScopeDescription } from '@/types/enums/portfolio-double-high-statistic-scope-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { formatPortfolioNullableCount } from '@/utils/portfolio-nullable-count'
+import { strictEnumLabel } from '@/utils/strict-enum'
+
+interface DimensionScoreRow extends PortfolioDoubleHighDimensionScoreVO {
+  dimensionLabel: string
+}
 
 interface MonitorFilterModel extends Record<string, unknown> {
   departmentId?: string
@@ -34,6 +48,7 @@ const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const filterForm = reactive<MonitorFilterModel>({})
 const monitor = ref<PortfolioDoubleHighMonitorVO | null>(null)
 const signals = ref<SignalMetric[]>([])
+const lastSuccessAt = ref<string | null>(null)
 const syncingFromRoute = ref(false)
 const requestToken = ref(0)
 
@@ -93,11 +108,25 @@ const pageTitle = computed(() => {
 })
 
 const dimensionColumns = [
-  { title: '维度', dataIndex: 'dimensionName', key: 'dimensionName' },
+  { title: '维度', dataIndex: 'dimensionLabel', key: 'dimensionLabel' },
   { title: '权重%', dataIndex: 'weightPercent', key: 'weightPercent', width: 100 },
   { title: '得分', dataIndex: 'dimensionScore', key: 'dimensionScore', width: 100 },
   { title: '加权分', dataIndex: 'weightedScore', key: 'weightedScore', width: 100 },
 ]
+
+const dimensionRows = computed<DimensionScoreRow[]>(() => {
+  if (!monitor.value) {
+    return []
+  }
+  return monitor.value.dimensionScores.map((item) => ({
+    ...item,
+    dimensionLabel: strictEnumLabel(
+      PortfolioDoubleHighConstructionDimensionDescription,
+      item.dimensionCode,
+      '双高建设贡献维度',
+    ),
+  }))
+})
 
 function readRouteQueryString(key: string): string {
   const value = route.query[key]
@@ -156,7 +185,9 @@ function buildSignals(data: PortfolioDoubleHighMonitorVO) {
     {
       key: 'index',
       label: '建设指数',
-      value: data.constructionIndex ?? '0',
+      value: data.constructionIndex == null || data.constructionIndex === ''
+        ? '—'
+        : data.constructionIndex,
       tone: 'blue',
       clickable: true,
       helper: '定位七维贡献',
@@ -164,7 +195,7 @@ function buildSignals(data: PortfolioDoubleHighMonitorVO) {
     {
       key: 'taskTotal',
       label: '任务总数',
-      value: data.taskTotalCount ?? 0,
+      value: formatPortfolioNullableCount(data.taskTotalCount),
       tone: 'green',
       clickable: true,
       helper: '进入双高任务台账',
@@ -172,7 +203,7 @@ function buildSignals(data: PortfolioDoubleHighMonitorVO) {
     {
       key: 'taskDone',
       label: '验收/归档',
-      value: data.taskTerminalCount ?? 0,
+      value: formatPortfolioNullableCount(data.taskTerminalCount),
       tone: 'blue',
       clickable: true,
       helper: '进入双高任务台账',
@@ -180,14 +211,18 @@ function buildSignals(data: PortfolioDoubleHighMonitorVO) {
     {
       key: 'taskRate',
       label: '完成率',
-      value: data.taskCompletionRatePercent ?? '0',
-      unit: '%',
+      value: data.taskCompletionRatePercent == null || data.taskCompletionRatePercent === ''
+        ? '—'
+        : data.taskCompletionRatePercent,
+      unit: data.taskCompletionRatePercent == null || data.taskCompletionRatePercent === ''
+        ? undefined
+        : '%',
       tone: 'orange',
       clickable: true,
       helper: '进入双高任务台账',
     },
   ]
-  if (data.baselineConstructionIndex != null) {
+  if (data.baselineConstructionIndex != null && data.baselineConstructionIndex !== '') {
     items.push({
       key: 'baseline',
       label: '基线指数',
@@ -197,7 +232,7 @@ function buildSignals(data: PortfolioDoubleHighMonitorVO) {
       helper: '定位建设指数概览',
     })
   }
-  if (data.periodValueAdded != null) {
+  if (data.periodValueAdded != null && data.periodValueAdded !== '') {
     items.push({
       key: 'valueAdded',
       label: '周期增值',
@@ -244,8 +279,6 @@ async function loadMonitor() {
   const baselinePeriodLabel = filterForm.baselinePeriodLabel?.trim() || ''
   if (baselinePeriodLabel && !constructionPeriodLabel) {
     loading.value = false
-    monitor.value = null
-    signals.value = []
     showFormValidationMessage('填写基线周期时必须同时指定建设周期')
     return
   }
@@ -264,17 +297,18 @@ async function loadMonitor() {
     monitor.value = nextMonitor
     if (!nextMonitor) {
       signals.value = []
+      lastSuccessAt.value = new Date().toISOString()
+      okLoad()
       return
     }
     signals.value = buildSignals(nextMonitor)
+    lastSuccessAt.value = new Date().toISOString()
     okLoad()
   } catch (error) {
     if (requestToken.value !== currentToken) {
       return
     }
     failLoad()
-    monitor.value = null
-    signals.value = []
     showUserError(error, '加载双高监测失败')
   } finally {
     if (requestToken.value === currentToken) {
@@ -323,6 +357,12 @@ watch(
         :subtitle="monitor?.dataSourceNote"
       />
     </template>
+    <UiAlertStrip
+      v-if="loadError"
+      tone="error"
+      title="监测加载失败"
+      class="dp-mb-component"
+    />
     <SignalBand
       v-if="signals.length"
       :metrics="signals"
@@ -334,11 +374,16 @@ watch(
       <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
     </UiCard>
     <UiCard v-if="loading" title="加载中" />
+    <UiEmpty
+      size="sm"
+      v-else-if="loadError && !monitor"
+      description="监测加载失败"
+    />
     <UiEmpty size="sm" v-else-if="!monitor" description="暂无监测数据" />
     <template v-else>
       <UiCard title="建设指数概览">
         <p class="shuanggao-monitor__meta">
-          统计口径：{{ monitor.statisticScopeLabel }} · 建设周期：{{
+          统计口径：{{ strictEnumLabel(PortfolioDoubleHighStatisticScopeDescription, monitor.statisticScope, '统计口径') }} · 建设周期：{{
             monitor.constructionPeriodLabel || '未指定（全量任务）'
           }}
         </p>
@@ -355,7 +400,7 @@ watch(
           :load-error="loadError"
           row-key="dimensionCode"
           :columns="dimensionColumns"
-          :data-source="monitor.dimensionScores"
+          :data-source="dimensionRows"
           :pagination="false"
         />
       </UiCard>
@@ -365,7 +410,7 @@ watch(
 
 <style scoped lang="scss">
 .shuanggao-monitor__meta {
-  margin: 0 0 var(--dp-space-2);
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);

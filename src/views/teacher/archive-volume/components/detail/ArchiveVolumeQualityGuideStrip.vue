@@ -43,9 +43,9 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
   min-height: 44px;
-  padding: 8px 12px;
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border: 1px solid color-mix(in srgb, var(--ant-color-primary) 28%, var(--dp-border-subtle));
   border-radius: var(--dp-radius-panel);
   background: color-mix(in srgb, var(--ant-color-primary) 6%, var(--dp-surface));

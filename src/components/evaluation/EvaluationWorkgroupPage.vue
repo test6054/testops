@@ -57,6 +57,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -181,6 +182,7 @@ function createEmptyMember(): WorkgroupMember {
 }
 
 async function loadList() {
+  const scope = isPortfolioDomain.value ? null : beginQualityScopeRequest()
   const currentToken = requestToken.value + 1
   requestToken.value = currentToken
   const request = { ...query }
@@ -188,7 +190,7 @@ async function loadList() {
   loadError.value = false
   try {
     const page = await evaluationWorkgroupApi.page(request)
-    if (requestToken.value !== currentToken) return
+    if (requestToken.value !== currentToken || scope?.isStale()) return
     list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
@@ -198,13 +200,13 @@ async function loadList() {
       await loadList()
     }
   } catch (error) {
-    if (requestToken.value !== currentToken) return
+    if (requestToken.value !== currentToken || scope?.isStale()) return
     list.value = []
     total.value = 0
     loadError.value = true
     showUserError(error, '加载评价工作组失败')
   } finally {
-    if (requestToken.value === currentToken) loading.value = false
+    if (requestToken.value === currentToken && !scope?.isStale()) loading.value = false
   }
 }
 
@@ -526,10 +528,10 @@ const signals = computed<SignalMetric[]>(() => {
   return [
     { key: 'page', label: '当前页记录', value: list.value.length, tone: 'blue' },
     { key: 'all-total', label: '工作组总数', value: total.value, tone: 'blue' },
-    { key: 'university', label: '学校级', value: byLevel.UNIVERSITY || 0, tone: 'blue' },
-    { key: 'college', label: '学院级', value: byLevel.COLLEGE || 0, tone: 'blue' },
-    { key: 'program', label: '专业级', value: byLevel.PROGRAM || 0, tone: 'blue' },
-    { key: 'industry', label: '行业企业专家组', value: byLevel.INDUSTRY || 0, tone: 'blue' },
+    { key: 'university', label: '当前页·学校级', value: byLevel.UNIVERSITY || 0, tone: 'blue' },
+    { key: 'college', label: '当前页·学院级', value: byLevel.COLLEGE || 0, tone: 'blue' },
+    { key: 'program', label: '当前页·专业级', value: byLevel.PROGRAM || 0, tone: 'blue' },
+    { key: 'industry', label: '当前页·行业专家组', value: byLevel.INDUSTRY || 0, tone: 'blue' },
   ]
 })
 
@@ -542,11 +544,18 @@ if (!isPortfolioDomain.value) {
   )
 }
 
+/** keep-alive 首次会同时触发 mounted 与 activated；只允许一个 bootstrap owner。 */
+const listBootstrapped = ref(false)
+
 onMounted(async () => {
   await loadList()
+  listBootstrapped.value = true
 })
 
 onActivated(() => {
+  if (!listBootstrapped.value) {
+    return
+  }
   void loadList()
 })
 </script>
@@ -819,9 +828,9 @@ onActivated(() => {
 <style scoped lang="scss">
 .ewg {
   &__signals {
-    margin-bottom: var(--dp-space-3, 12px);
-    padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
-    background: var(--dp-surface-elevated);
+    margin-bottom: var(--dp-space-component);
+    padding: var(--dp-space-component) var(--dp-space-block);
+    background: var(--dp-surface-chrome);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
   }
@@ -830,21 +839,21 @@ onActivated(() => {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-2, 8px);
-    margin-bottom: var(--dp-space-2, 8px);
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
   &__panel-title {
     margin: 0;
-    font-size: 15px;
+    font-size: var(--dp-type-panel-title-size);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -852,7 +861,7 @@ onActivated(() => {
   &__panel-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
@@ -863,18 +872,18 @@ onActivated(() => {
   &__member-editor {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 12px;
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-component);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    background: var(--dp-surface-elevated);
+    background: var(--dp-surface-chrome);
   }
 
   &__member-editor-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
@@ -885,7 +894,7 @@ onActivated(() => {
   }
 
   &__member-row {
-    padding: 12px;
+    padding: var(--dp-space-component);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
     background: var(--dp-surface);

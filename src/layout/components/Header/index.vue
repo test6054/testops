@@ -4,8 +4,8 @@
       <MenuFoldBtn></MenuFoldBtn>
     </section>
     <UiFlex align="center" class="h-full header-right">
-      <div class="header-breadcrumb">
-        <Breadcrumb></Breadcrumb>
+      <div class="header-brand" aria-hidden="true">
+        <!-- 页标题由 ContextBar 承载；顶栏仅保留右侧通知/用户操作，避免与侧栏重复面包屑 -->
       </div>
       <div class="header-right-bar-wrapper">
         <HeaderRightBar></HeaderRightBar>
@@ -18,7 +18,6 @@
 import UiFlex from '@/components/ui-guide/ui/UiFlex.vue'
 import UiLayoutHeader from '@/components/ui-guide/ui/UiLayoutHeader.vue'
 import { useDevice } from '@/hooks'
-import Breadcrumb from '../Breadcrumb/index.vue'
 import HeaderRightBar from '../HeaderRightBar/index.vue'
 import MenuFoldBtn from '../MenuFoldBtn.vue'
 
@@ -35,13 +34,12 @@ const { isMobile } = useDevice()
   .header-right {
     flex: 1;
     overflow: hidden;
-    margin-left: var(--dp-space-4);
+    margin-left: var(--dp-space-block);
   }
 
-  .header-breadcrumb {
+  .header-brand {
     flex: 1;
     min-width: 0;
-    overflow: hidden;
   }
 
   .header-right-bar-wrapper {
@@ -53,18 +51,18 @@ const { isMobile } = useDevice()
 }
 
 .ant-layout-header {
-  padding: 0 var(--dp-space-5);
-  height: 60px;
-  background: color-mix(in srgb, var(--dp-surface) 92%, transparent);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--dp-border-subtle);
+  padding: 0 var(--dp-space-block);
+  height: var(--dp-shell-header-height);
+  line-height: var(--dp-shell-header-height);
+  background: var(--dp-surface);
+  border-bottom: 1px solid var(--dp-border);
   box-shadow: none;
 
   // 移动端适配
   @media (max-width: bp.$layout-mobile-max) {
-    padding: 0 12px;
-    height: 48px;
-    backdrop-filter: none;
+    padding: 0 var(--dp-space-component);
+    height: var(--dp-shell-header-height);
+    line-height: var(--dp-shell-header-height);
     background: var(--dp-surface);
 
     .fold-btn-wrapper {
@@ -72,7 +70,7 @@ const { isMobile } = useDevice()
     }
 
     .header-right {
-      margin-left: 8px;
+      margin-left: var(--dp-space-component-tight);
     }
   }
 }

@@ -72,9 +72,26 @@
       />
 
       <UiAlertStrip
-        v-if="classScopeWarning"
-        tone="warning"
-        :title="classScopeWarning"
+        v-if="examDetailLoadFailed"
+        tone="error"
+        title="考试详情加载失败"
+        description="班级范围合同暂不可用；不得按「未维护班级」解释。"
+        dense
+        class="scan-manual-entry__alert"
+      />
+
+      <UiAlertStrip
+        v-if="candidatesLoadFailed && activeTab === 'candidates'"
+        tone="error"
+        title="待补名单加载失败"
+        dense
+        class="scan-manual-entry__alert"
+      />
+
+      <UiAlertStrip
+        v-if="recordsLoadFailed && activeTab === 'records'"
+        tone="error"
+        title="补录记录加载失败"
         dense
         class="scan-manual-entry__alert"
       />
@@ -128,7 +145,7 @@
             row-key="recordKey"
             flat
             empty-kind="first-run"
-            empty-description="暂无补录记录"
+            :empty-description="recordEmptyDescription"
             @page-change="handleRecordPageChange"
           >
             <template #bodyCell="{ column, record }">
@@ -173,7 +190,8 @@ import type {
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getExamDetail } from '@/apis/mark/exam'
 import {
@@ -227,7 +245,10 @@ const canManageOwnerSupplementWrites = computed(
   () => workbench.value?.canManageOwnerSupplementWrites === true,
 )
 const workbenchLoadFailed = ref(false)
-const declaredClassIds = ref<string[]>([])
+const examDetailLoadFailed = ref(false)
+const candidatesLoadFailed = ref(false)
+const recordsLoadFailed = ref(false)
+let examLoadGeneration = 0
 const classOptions = ref<Array<{ value: string, label: string }>>([])
 
 const candidateFilterModel = reactive({
@@ -252,11 +273,10 @@ const wizardOpen = ref(false)
 const wizardContext = ref<ManualSupplementWizardContext | null>(null)
 const pendingDeepLink = ref(false)
 
-const classScopeWarning = computed(() =>
-  declaredClassIds.value.length === 0 ? '请先在考生名册维护考试班级范围' : '',
-)
-
 const candidateEmptyDescription = computed(() => {
+  if (candidatesLoadFailed.value) {
+    return '待补名单加载失败'
+  }
   if (workbench.value?.missingPageCandidateCount == null) {
     return '整卷线下试卷尚未形成单卷页数真源，暂不能判定缺页；可查看已扫描卷面并替换污损页'
   }
@@ -264,6 +284,13 @@ const candidateEmptyDescription = computed(() => {
     return '当前无缺页考生，可前往影像账本核对'
   }
   return '暂无待补考生'
+})
+
+const recordEmptyDescription = computed(() => {
+  if (recordsLoadFailed.value) {
+    return '补录记录加载失败'
+  }
+  return '暂无补录记录'
 })
 
 const candidateFilterFields = computed((): FilterField[] => [
@@ -406,87 +433,137 @@ function handleTabChange(tab: Key): void {
   }
 }
 
-async function loadExamContext(): Promise<void> {
-  if (!selectedExamId.value) {
-    declaredClassIds.value = []
+async function loadExamContext(expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) {
     classOptions.value = []
+    examDetailLoadFailed.value = false
     return
   }
   try {
-    const detail = await getExamDetail(selectedExamId.value)
-    declaredClassIds.value = (detail.classRefs ?? []).map((item) => item.classId)
+    const detail = await getExamDetail(examId)
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
     classOptions.value = (detail.classRefs ?? []).map((item) => ({
       value: item.classId,
       label: item.className || item.classId,
     }))
+    examDetailLoadFailed.value = false
   } catch (error) {
-    declaredClassIds.value = []
-    classOptions.value = []
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    examDetailLoadFailed.value = true
     showUserError(error, '考试详情加载失败')
   }
 }
 
-async function loadWorkbench(): Promise<void> {
-  if (!selectedExamId.value) {
+async function loadWorkbench(expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) {
     workbench.value = null
+    workbenchLoadFailed.value = false
     return
   }
-  workbenchLoadFailed.value = false
+  const hadWorkbench = workbench.value != null
   try {
-    workbench.value = await getManualSupplementWorkbench(selectedExamId.value)
+    const next = await getManualSupplementWorkbench(examId)
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    workbench.value = next
+    workbenchLoadFailed.value = false
   } catch (error) {
-    workbench.value = null
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    if (!hadWorkbench) {
+      workbench.value = null
+    }
     workbenchLoadFailed.value = true
     showUserError(error, '补录工作台加载失败')
   }
 }
 
-async function loadCandidates(): Promise<void> {
-  if (!selectedExamId.value) {
+async function loadCandidates(expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) {
     candidates.value = []
+    candidatesLoadFailed.value = false
     return
   }
+  const hadCandidates = candidates.value.length > 0
   candidatesLoading.value = true
   try {
     const result = await pageManualSupplementCandidates({
-      examId: selectedExamId.value,
+      examId,
       pageNum: candidateQuery.pageNum,
       pageSize: candidateQuery.pageSize,
       classId: candidateQuery.classId,
       keyword: candidateQuery.keyword,
     })
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
     candidates.value = result.list
     candidateQuery.total = result.total
+    candidatesLoadFailed.value = false
   } catch (error) {
-    candidates.value = []
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    if (!hadCandidates) {
+      candidates.value = []
+      candidateQuery.total = 0
+    }
+    candidatesLoadFailed.value = true
     showUserError(error, '待补名单加载失败')
   } finally {
-    candidatesLoading.value = false
+    if (expectedGeneration === examLoadGeneration && selectedExamId.value === examId) {
+      candidatesLoading.value = false
+    }
   }
 }
 
-async function loadRecords(): Promise<void> {
-  if (!selectedExamId.value) {
+async function loadRecords(expectedGeneration = examLoadGeneration): Promise<void> {
+  const examId = selectedExamId.value
+  if (!examId) {
     records.value = []
+    recordsLoadFailed.value = false
     return
   }
+  const hadRecords = records.value.length > 0
   recordsLoading.value = true
   try {
     const result = await pageManualSupplementRecords({
-      examId: selectedExamId.value,
+      examId,
       pageNum: recordPagination.current,
       pageSize: recordPagination.pageSize,
     })
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
     records.value = result.list.map((item, index) => ({
       ...item,
       recordKey: `${item.scanBatchId}-${item.createTime ?? index}`,
     }))
     recordPagination.total = result.total
+    recordsLoadFailed.value = false
   } catch (error) {
-    records.value = []
+    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    if (!hadRecords) {
+      records.value = []
+      recordPagination.total = 0
+    }
+    recordsLoadFailed.value = true
     showUserError(error, '补录记录加载失败')
   } finally {
-    recordsLoading.value = false
+    if (expectedGeneration === examLoadGeneration && selectedExamId.value === examId) {
+      recordsLoading.value = false
+    }
   }
 }
 
@@ -494,7 +571,7 @@ function reloadCandidatesFromFirstPage(): void {
   candidateQuery.pageNum = 1
   candidateQuery.classId = candidateFilterModel.classId
   candidateQuery.keyword = candidateFilterModel.keyword.trim() || undefined
-  void loadCandidates()
+  void loadCandidates(examLoadGeneration)
 }
 
 function resetCandidateFilter(): void {
@@ -587,10 +664,102 @@ function handleWizardSuccess(): void {
   }
 }
 
-function handleContinueNext(): void {
+/**
+ * 继续补下一页：同一答卷剩余缺页优先，否则下一待补考生；文件补入仅返回名单。
+ */
+async function handleContinueNext(): Promise<void> {
+  const previous = wizardContext.value
+  const scenario = previous?.scenario
   wizardOpen.value = false
   activeTab.value = 'candidates'
-  void loadCandidates()
+
+  if (!previous || scenario === 'file-import') {
+    void loadCandidates()
+    return
+  }
+
+  const generation = examLoadGeneration
+  await loadCandidates(generation)
+  if (generation !== examLoadGeneration) {
+    return
+  }
+
+  const nextTarget = resolveNextSupplementTarget(previous)
+  if (!nextTarget) {
+    void message.info('待补名单已无下一项，请从列表继续')
+    return
+  }
+  if (nextTarget.kind === 'missing-page') {
+    openMissingPageWizard(nextTarget.record, nextTarget.targetPageNo)
+    return
+  }
+  openReplaceWizard(nextTarget.record)
+}
+
+type NextSupplementTarget
+  = | {
+    kind: 'missing-page'
+    record: ExamManualSupplementCandidateItemResponse
+    targetPageNo: number
+  }
+  | {
+    kind: 'replace'
+    record: ExamManualSupplementCandidateItemResponse
+  }
+
+function resolveNextSupplementTarget(
+  previous: ManualSupplementWizardContext,
+): NextSupplementTarget | null {
+  const list = candidates.value
+  if (previous.scenario === 'missing-page') {
+    const samePaper = list.find(
+      (item) =>
+        item.paperInstanceId
+        && item.paperInstanceId === previous.paperInstanceId
+        && item.supplementEligible
+        && item.missingTemplatePageNos.length > 0,
+    )
+    if (samePaper) {
+      const remaining = samePaper.missingTemplatePageNos.filter(
+        (pageNo) => pageNo !== previous.targetPageNo,
+      )
+      const targetPageNo = remaining[0] ?? samePaper.missingTemplatePageNos[0]
+      return { kind: 'missing-page', record: samePaper, targetPageNo }
+    }
+    const nextCandidate = list.find(
+      (item) =>
+        item.candidateRosterId !== previous.candidateRosterId
+        && item.supplementEligible
+        && item.missingTemplatePageNos.length > 0,
+    )
+    if (!nextCandidate) {
+      return null
+    }
+    return {
+      kind: 'missing-page',
+      record: nextCandidate,
+      targetPageNo: nextCandidate.missingTemplatePageNos[0],
+    }
+  }
+
+  if (previous.scenario === 'replace') {
+    const samePaper = list.find(
+      (item) =>
+        item.paperInstanceId
+        && item.paperInstanceId === previous.paperInstanceId
+        && item.replaceEligible,
+    )
+    if (samePaper) {
+      return { kind: 'replace', record: samePaper }
+    }
+    const nextCandidate = list.find(
+      (item) =>
+        item.candidateRosterId !== previous.candidateRosterId && item.replaceEligible,
+    )
+    return nextCandidate ? { kind: 'replace', record: nextCandidate } : null
+  }
+
+  return null
 }
 
 function parseScenario(value: unknown): ManualSupplementScenario | null {
@@ -629,15 +798,47 @@ function applyRouteDeepLink(): void {
   pendingDeepLink.value = false
 }
 
-async function loadAll(): Promise<void> {
-  await loadExamContext()
-  await loadWorkbench()
-  await loadCandidates()
+async function loadAll(expectedGeneration = examLoadGeneration): Promise<void> {
+  await loadExamContext(expectedGeneration)
+  if (expectedGeneration !== examLoadGeneration) {
+    return
+  }
+  await loadWorkbench(expectedGeneration)
+  if (expectedGeneration !== examLoadGeneration) {
+    return
+  }
+  await loadCandidates(expectedGeneration)
+  if (expectedGeneration !== examLoadGeneration) {
+    return
+  }
+  if (activeTab.value === 'records') {
+    await loadRecords(expectedGeneration)
+  }
 }
 
-watch(selectedExamId, () => {
-  void loadAll()
-})
+watch(
+  selectedExamId,
+  (examId) => {
+    const generation = ++examLoadGeneration
+    workbenchLoadFailed.value = false
+    examDetailLoadFailed.value = false
+    candidatesLoadFailed.value = false
+    recordsLoadFailed.value = false
+    workbench.value = null
+    candidates.value = []
+    records.value = []
+    classOptions.value = []
+    if (!examId) {
+      return
+    }
+    void loadAll(generation).then(() => {
+      if (generation === examLoadGeneration) {
+        applyRouteDeepLink()
+      }
+    })
+  },
+  { immediate: true },
+)
 
 watch(
   () => route.query,
@@ -647,16 +848,12 @@ watch(
     }
   },
 )
-
-onMounted(() => {
-  void loadAll().then(() => applyRouteDeepLink())
-})
 </script>
 
 <style lang="scss" scoped>
 .scan-manual-entry__empty,
 .scan-manual-entry__alert {
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-block);
 }
 
 .scan-manual-entry__surface {
@@ -666,11 +863,11 @@ onMounted(() => {
 .scan-manual-entry__table-shell {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 .scan-manual-entry__tabs {
-  padding: 0 16px;
+  padding: 0 var(--dp-space-block);
 }
 
 .scan-manual-entry__muted {

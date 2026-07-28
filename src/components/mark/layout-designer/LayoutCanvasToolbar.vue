@@ -122,14 +122,14 @@ function onSnapChange(value: SelectValue, _option?: DefaultOptionType | DefaultO
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component-tight);
   flex-wrap: wrap;
 
   &__group {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__zoom {

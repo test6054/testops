@@ -46,6 +46,11 @@ const canConfirmBind = computed(
     && !workflow.bindExamCandidateLoadIssue.value,
 )
 
+function goHub() {
+  if (binding.value) return
+  void router.push('/scanner-kiosk')
+}
+
 async function submitBind() {
   const targetExamId = selectedExamId.value?.trim()
   if (!targetExamId || binding.value === true || canConfirmBind.value !== true) return
@@ -121,7 +126,16 @@ onMounted(() => {
         <span>{{ statusLabel }}</span>
       </div>
 
-      <div class="exam-gate__bar-action" aria-hidden="true" />
+      <div class="exam-gate__bar-action">
+        <button
+          type="button"
+          class="exam-gate__ghost-btn"
+          :disabled="binding"
+          @click="goHub"
+        >
+          返回
+        </button>
+      </div>
     </header>
 
     <main class="exam-gate__main">
@@ -193,6 +207,11 @@ onMounted(() => {
 }
 
 .exam-gate__confirm-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.exam-gate__ghost-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }

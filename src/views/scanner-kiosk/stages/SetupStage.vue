@@ -10,12 +10,10 @@ import {
   StopOutlined,
 } from '@ant-design/icons-vue'
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ExamMaterialLayoutModeCode } from '@/types/enums/exam-material-layout-mode-enum'
-import { ScannerKioskBlockReasonCode } from '@/types/enums/scanner-kiosk-block-reason-enum'
 import { ScannerKioskResumeActionCode } from '@/types/enums/scanner-kiosk-resume-action-enum'
 import { formatExamSubMeta, formatExamTimeRange } from '@/utils/exam-display-meta'
 import KioskScanProfilePanel from '../components/KioskScanProfilePanel.vue'
@@ -26,7 +24,6 @@ import { useKioskCtx } from '../composables/kioskInjection'
 const CALIBRATION_ACK_PREFIX = 'kiosk-sheet-calibration-ack:'
 
 const { workflow, mutex, stage } = useKioskCtx()
-const router = useRouter()
 
 const contract = computed(() => workflow.kioskContext.value?.taskContract)
 const exam = computed(() => workflow.kioskContext.value?.exam)
@@ -89,13 +86,10 @@ const materialKindLabel = computed(() => workflow.materialKindLabel.value)
 const templateReviewLinkText = computed(() => {
   const mode = contract.value?.materialLayoutMode
   if (mode === ExamMaterialLayoutModeCode.FULL_PAPER) return '试卷核对 →'
-  if (mode === ExamMaterialLayoutModeCode.ANSWER_SHEET) return '答卷页校验 →'
+  if (mode === ExamMaterialLayoutModeCode.ANSWER_SHEET) return '组合页序校验 →'
   return '制卷核对 →'
 })
 
-const prepHardBlockingReasons = computed(
-  () => workflow.kioskContext.value?.prepHardBlockingReasons ?? [],
-)
 const prepAdvisoryReasons = computed(() => workflow.kioskContext.value?.prepAdvisoryReasons ?? [])
 const declaredClassChips = computed(() => workflow.declaredClassChips.value)
 const examSubMeta = computed(() =>
@@ -117,7 +111,6 @@ const latestBatchRegisterState = computed(
 const showRegisterStateSkeleton = computed(
   () => workflow.kioskContext.value?.latestBatch != null && latestBatchRegisterState.value === null,
 )
-const blockReasonCode = computed(() => workflow.kioskContext.value?.blockReasonCode ?? null)
 const latestBatchPageCount = computed(
   () => workflow.kioskContext.value?.latestBatch?.pageCount ?? 0,
 )
@@ -133,16 +126,6 @@ const primaryCtaDisabled = computed(
       && workflow.canStartDirectScan.value !== true),
 )
 const scanStats = computed(() => workflow.kioskMetrics.value)
-
-function openLayoutDesigner() {
-  const id = workflow.examId.value
-  if (!id) return
-  const target = router.resolve({
-    name: 'TeacherExamWorkspaceLayoutDesigner',
-    params: { examId: id },
-  })
-  window.open(target.href, '_blank')
-}
 
 const calibrationExamKey = computed(() => {
   const id = workflow.examId.value
@@ -176,9 +159,9 @@ function buildFirstScanCalibrationDialog() {
   const paperStyle = contract.value?.paperStyleText || '未配置'
   if (mode === ExamMaterialLayoutModeCode.FULL_PAPER) {
     return {
-      title: '试卷首次扫描核对',
+      title: '单独试卷首次扫描核对',
       content:
-        `当前考试为整卷作答，纸型 ${paperStyle}。`
+        `当前考试为单独试卷，纸型 ${paperStyle}。`
         + '首张送纸后请在「扫描中」预览整卷切分与页序是否正常；'
         + '若偏差，请暂停并在 Web 端调整制卷设计后再继续批量扫描。',
       okText: '已了解，开始扫描',
@@ -187,11 +170,11 @@ function buildFirstScanCalibrationDialog() {
   }
   if (mode === ExamMaterialLayoutModeCode.ANSWER_SHEET) {
     return {
-      title: '答卷页首次扫描核对',
+      title: '试卷+答题页首次扫描核对',
       content:
-        `当前考试为独立答卷页，纸型 ${paperStyle}。`
-        + '首张送纸后请在「扫描中」预览定位框与考号区是否正常；'
-        + '若偏差，请暂停并在 Web 端调整答卷页模板后再继续批量扫描。',
+        `当前考试为试卷+答题页，纸型 ${paperStyle}。`
+        + '请按印刷包页序将试题卷与答题纸整袋进扫；预览试题页/答题页分类与答题纸首页身份区是否正确；'
+        + '若偏差，请暂停并在 Web 端调整组合制卷模板后再继续批量扫描。',
       okText: '已了解，开始扫描',
       cancelText: '先查看制卷摘要',
     }
@@ -381,21 +364,6 @@ onMounted(() => {
           <p class="setup-signal__hint">登记状态计算中…</p>
         </div>
         <UiAlertStrip
-          v-else-if="blockReasonCode === ScannerKioskBlockReasonCode.E_KOS_004"
-          tone="info"
-          dense
-          :closable="false"
-          title="答题卡模式尚未完成制卷"
-          description="请先在 Web 端完成答卷页 layout 设计后再开始扫描。"
-          class="setup-signal"
-        >
-          <template #actions>
-            <button type="button" class="setup-signal__link" @click="openLayoutDesigner">
-              去制卷 →
-            </button>
-          </template>
-        </UiAlertStrip>
-        <UiAlertStrip
           v-else-if="resumeAction === ScannerKioskResumeActionCode.RETRY_PAGE_REGISTER"
           tone="warning"
           dense
@@ -538,9 +506,6 @@ onMounted(() => {
         </div>
         <div v-if="prepAdvisoryReasons.length" class="scan-control__advisory">
           <p v-for="reason in prepAdvisoryReasons" :key="reason">{{ reason }}</p>
-        </div>
-        <div v-if="prepHardBlockingReasons.length" class="scan-control__hard-block">
-          <p v-for="reason in prepHardBlockingReasons" :key="reason">{{ reason }}</p>
         </div>
       </div>
     </div>
@@ -931,27 +896,9 @@ onMounted(() => {
   margin-top: var(--kiosk-space-2);
 }
 
-.scan-control__hard-block {
-  padding: var(--kiosk-space-3) var(--kiosk-space-4);
-  border-radius: var(--kiosk-radius-md);
-  background: var(--kiosk-danger-soft);
-  border: 1px solid var(--kiosk-danger);
-}
-
-.scan-control__hard-block p {
-  margin: 0;
-  font-size: var(--kiosk-fz-label);
-  color: var(--kiosk-danger);
-  line-height: var(--kiosk-lh-base);
-}
-
-.scan-control__hard-block p + p {
-  margin-top: var(--kiosk-space-2);
-}
-
 .scan-control__guide--first-scan {
   color: var(--kiosk-ink-tertiary);
-  margin-top: -4px;
+  margin-top: calc(-1 * var(--dp-space-component-xs));
 }
 
 .setup-signal--warning :deep(.ui-alert-strip) {
@@ -981,24 +928,13 @@ onMounted(() => {
   color: var(--kiosk-ink-tertiary);
 }
 
-.setup-signal__link {
-  padding: 0;
-  border: none;
-  background: none;
-  font-family: inherit;
-  font-size: var(--kiosk-fz-label);
-  font-weight: var(--kiosk-fw-semibold);
-  color: var(--kiosk-primary);
-  cursor: pointer;
-}
-
 .setup-signal__pulse {
   display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--kiosk-danger);
-  animation: setup-signal-pulse 300ms ease-in-out infinite;
+  animation: setup-signal-pulse var(--dp-duration-slow) ease-in-out infinite;
 }
 
 @keyframes setup-signal-pulse {

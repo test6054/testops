@@ -18,8 +18,7 @@
     <UiSpin :spinning="loading">
       <div class="notif-list">
         <div v-if="loadError" class="notif-empty notif-empty--error">
-          <span>加载失败，</span>
-          <button type="button" class="notif-retry" @click="getMessageData">重新加载</button>
+          <span>加载失败；关闭通知面板再打开后将再次拉取</span>
         </div>
 
         <div v-else-if="!messageList.length" class="notif-empty">暂无未读消息</div>
@@ -332,8 +331,8 @@ onMounted(() => {
 .notif-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 20px;
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
   border-bottom: 1px solid var(--dp-border-subtle);
 }
 
@@ -351,7 +350,7 @@ onMounted(() => {
   border: none;
   background: transparent;
   padding: 0;
-  font-size: var(--dp-font-size-xxs);
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-color-primary);
   cursor: pointer;
 
@@ -370,7 +369,7 @@ onMounted(() => {
   flex: 1;
   max-height: 360px;
   overflow-y: auto;
-  padding: 4px;
+  padding: var(--dp-space-component-xs);
 
   &::-webkit-scrollbar {
     width: 4px;
@@ -383,7 +382,7 @@ onMounted(() => {
 }
 
 .notif-empty {
-  padding: var(--dp-space-4) var(--dp-space-3);
+  padding: var(--dp-space-block) var(--dp-space-component);
   text-align: center;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
@@ -408,11 +407,11 @@ onMounted(() => {
 
 .notif-item {
   display: flex;
-  gap: 12px;
-  padding: 8px 12px;
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background var(--dp-duration-fast) var(--dp-ease-default);
 
   &:hover {
     background: var(--dp-surface-subtle);
@@ -479,7 +478,7 @@ onMounted(() => {
 }
 
 .notif-desc {
-  font-size: var(--dp-font-size-xxs);
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
   margin-top: 1px;
   overflow: hidden;
@@ -499,11 +498,11 @@ onMounted(() => {
   border-radius: 50%;
   background: var(--dp-color-primary);
   flex-shrink: 0;
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
 }
 
 .notif-foot {
-  padding: 8px 20px 12px;
+  padding: var(--dp-space-component-tight) var(--dp-space-block) var(--dp-space-component);
   border-top: 1px solid var(--dp-border-subtle);
   text-align: center;
 }

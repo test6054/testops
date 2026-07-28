@@ -136,7 +136,7 @@ const ERROR_TYPE_TITLES: Record<ErrorType, string> = {
  */
 const ERROR_TYPE_ICONS: Record<ErrorType, ReturnType<typeof h>> = {
   [ErrorType.NETWORK]: h(CloudOutlined, { style: 'color: #f59e0b' }),
-  [ErrorType.AUTH]: h(LockOutlined, { style: 'color: #1677ff' }),
+  [ErrorType.AUTH]: h(LockOutlined, { style: 'color: var(--dp-color-primary)' }),
   [ErrorType.PERMISSION]: h(StopOutlined, { style: 'color: #ef4444' }),
   [ErrorType.VALIDATION]: h(WarningOutlined, { style: 'color: #f59e0b' }),
   [ErrorType.BUSINESS]: h(CloseCircleOutlined, { style: 'color: #ef4444' }),
@@ -339,6 +339,29 @@ export function readBusinessResultCode(error: unknown): number | undefined {
     }
   }
   return undefined
+}
+
+/**
+ * 读取后端 ResultInfo.data（业务载荷）。
+ * 用于 CONFLICT 等场景携带 blockingCode / 结构化诊断。
+ */
+export function readBusinessResultData(error: unknown): unknown {
+  if (error == null || typeof error !== 'object') {
+    return undefined
+  }
+  const directData = readProperty(error, 'data')
+  if (directData !== undefined) {
+    return directData
+  }
+  const response = readProperty(error, 'response')
+  if (response == null || typeof response !== 'object') {
+    return undefined
+  }
+  const resultInfo = readProperty(response, 'data')
+  if (resultInfo == null || typeof resultInfo !== 'object') {
+    return undefined
+  }
+  return readProperty(resultInfo, 'data')
 }
 
 /**

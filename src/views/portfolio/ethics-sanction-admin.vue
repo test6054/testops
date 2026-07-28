@@ -8,23 +8,27 @@ import type {
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioEthicsSanctionApi } from '@/apis/portfolio/ethics-sanction'
+import PortfolioArchiveWriteGuardStrip from '@/components/portfolio/PortfolioArchiveWriteGuardStrip.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiRangePicker from '@/components/ui-guide/ui/RangePicker.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
-import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
-import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
+import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
+import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
@@ -48,7 +52,7 @@ import {
   PortfolioEthicsSanctionStatusDescription,
 } from '@/types/enums/portfolio-ethics-sanction-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -59,28 +63,30 @@ const deepLinkHint = ref('')
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const saving = ref(false)
 const reviewing = ref(false)
+const earlyReviewing = ref(false)
+const uploadingDecisionFile = ref(false)
 const rows = ref<PortfolioEthicsSanctionVO[]>([])
 const total = ref(0)
 const editorOpen = ref(false)
 const reviewOpen = ref(false)
 const detailOpen = ref(false)
-const editingId = ref<string | undefined>()
 const reviewTarget = ref<PortfolioEthicsSanctionVO | null>(null)
 const detailRow = ref<PortfolioEthicsSanctionVO | null>(null)
 const constraintStatus = ref<PortfolioEthicsConstraintStatusVO | null>(null)
 const reviewLogs = ref<PortfolioEthicsReviewLogVO[]>([])
 const requestToken = ref(0)
 const detailRequestToken = ref(0)
+const { teacherOptions, searchTeachers, rememberTeacherSelectLabel } = usePortfolioTeacherSearch()
 
 const query = reactive({
   pageNum: 1,
   pageSize: DEFAULT_LIST_PAGE_SIZE,
-  teacherId: '',
+  teacherId: undefined as string | undefined,
   sanctionStatus: undefined as PortfolioEthicsSanctionStatusCode | undefined,
 })
 
 const form = reactive({
-  teacherId: '',
+  teacherId: undefined as string | undefined,
   eventType: PortfolioEthicsEventTypeCode.TEACHER_ETHICS_VIOLATION,
   handlingBasis: '',
   dateRange: undefined as [string, string] | undefined,
@@ -89,13 +95,20 @@ const form = reactive({
   reviewDepartment: '',
   publicSummary: '',
   detailDescription: '',
+  decisionDocNo: '',
+  decisionFileId: '',
+  decisionFileName: '',
+  decisionIssuingOrg: '',
+  decisionDate: undefined as string | undefined,
 })
 
 const formTeacherId = computed(() => form.teacherId || undefined)
 const {
   archiveWriteForbidden,
+  archiveWriteCapabilityUnknown,
   archiveWriteBlockMessage,
   assertArchiveWritable,
+  loading: archiveWriteGuardLoading,
   reloadLifecycleState,
 } = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
 
@@ -116,10 +129,10 @@ const columns: ColumnsType = [
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
-  { title: '操作', key: 'actions', width: 200 },
+  { title: '操作', key: 'actions', width: 240 },
 ]
 
-const writing = computed(() => saving.value || reviewing.value)
+const writing = computed(() => saving.value || reviewing.value || earlyReviewing.value)
 
 const statusFilterOptions = ALL_PORTFOLIO_ETHICS_SANCTION_STATUS_CODES.map((code) => ({
   value: code,
@@ -164,7 +177,7 @@ function statusTone(code: PortfolioEthicsSanctionStatusCode) {
 }
 
 function resetForm() {
-  form.teacherId = ''
+  form.teacherId = undefined
   form.eventType = PortfolioEthicsEventTypeCode.TEACHER_ETHICS_VIOLATION
   form.handlingBasis = ''
   form.dateRange = undefined
@@ -173,31 +186,16 @@ function resetForm() {
   form.reviewDepartment = ''
   form.publicSummary = ''
   form.detailDescription = ''
+  form.decisionDocNo = ''
+  form.decisionFileId = ''
+  form.decisionFileName = ''
+  form.decisionIssuingOrg = ''
+  form.decisionDate = undefined
 }
 
 function openCreate() {
   if (writing.value) return
-  editingId.value = undefined
   resetForm()
-  editorOpen.value = true
-}
-
-function openEdit(row: PortfolioEthicsSanctionVO) {
-  if (writing.value) return
-  if (row.sanctionStatus !== PortfolioEthicsSanctionStatusCode.IN_EFFECT) {
-    showFormValidationMessage('仅处分期内记录可编辑')
-    return
-  }
-  editingId.value = row.id
-  form.teacherId = row.teacherId
-  form.eventType = row.eventType
-  form.handlingBasis = row.handlingBasis
-  form.dateRange = [row.sanctionStartDate, row.sanctionEndDate]
-  form.impactScope = row.impactScope
-  form.releaseCondition = row.releaseCondition
-  form.reviewDepartment = row.reviewDepartment
-  form.publicSummary = row.publicSummary
-  form.detailDescription = row.detailDescription ?? ''
   editorOpen.value = true
 }
 
@@ -212,6 +210,51 @@ function openReview(row: PortfolioEthicsSanctionVO) {
   reviewForm.reviewOpinion = ''
   reviewForm.newSanctionEndDate = undefined
   reviewOpen.value = true
+}
+
+async function requestEarlyReview(row: PortfolioEthicsSanctionVO) {
+  if (writing.value) return
+  if (row.sanctionStatus !== PortfolioEthicsSanctionStatusCode.IN_EFFECT) {
+    showFormValidationMessage('仅处分期内记录可提前进入待复核')
+    return
+  }
+  form.teacherId = row.teacherId
+  await reloadLifecycleState()
+  if (!assertArchiveWritable('提前进入待复核')) {
+    return
+  }
+  earlyReviewing.value = true
+  try {
+    await portfolioEthicsSanctionApi.requestEarlyReview({
+      sanctionId: row.id,
+      statusVersion: row.statusVersion,
+    })
+    void message.success('已进入待复核，请提交解除/延长/维持结论')
+    await loadPage()
+  } catch (error) {
+    showUserError(error, '提前进入待复核失败')
+  } finally {
+    earlyReviewing.value = false
+  }
+}
+
+async function onDecisionFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file || uploadingDecisionFile.value) {
+    return
+  }
+  uploadingDecisionFile.value = true
+  try {
+    const uploaded = await stageBusinessFile(FileUploadSceneKey.PORTFOLIO_MATERIAL, file)
+    form.decisionFileId = uploaded.id
+    form.decisionFileName = uploaded.nodeName
+  } catch (error) {
+    showUserError(error, '上传决定文件失败')
+  } finally {
+    uploadingDecisionFile.value = false
+  }
 }
 
 
@@ -266,7 +309,7 @@ async function loadPage() {
   const request = {
     pageNum: query.pageNum,
     pageSize: query.pageSize,
-    teacherId: query.teacherId.trim() || undefined,
+    teacherId: query.teacherId || undefined,
     sanctionStatus: query.sanctionStatus,
   }
   beginLoad()
@@ -278,7 +321,14 @@ async function loadPage() {
     }
     rows.value = result.list ?? []
     total.value = result.total ?? 0
-
+    for (const row of rows.value) {
+      if (row.teacherName && row.teacherNumber) {
+        rememberTeacherSelectLabel(
+          row.teacherId,
+          formatPortfolioTeacherDisplay(row.teacherName, row.teacherNumber),
+        )
+      }
+    }
     okLoad()
   } catch (error) {
     if (requestToken.value !== currentToken) {
@@ -300,8 +350,8 @@ async function saveSanction() {
     return
   }
   if (writing.value) return
-  if (!form.teacherId.trim()) {
-    showFormValidationMessage('请填写教师用户编号')
+  if (!form.teacherId) {
+    showFormValidationMessage('请选择教师')
     return
   }
   if (!form.dateRange?.[0] || !form.dateRange?.[1]) {
@@ -313,15 +363,18 @@ async function saveSanction() {
     || !form.releaseCondition.trim()
     || !form.reviewDepartment.trim()
     || !form.publicSummary.trim()
+    || !form.decisionDocNo.trim()
+    || !form.decisionFileId
+    || !form.decisionIssuingOrg.trim()
+    || !form.decisionDate
   ) {
-    void message.error('请填写处理依据、解除条件、复核部门和公开摘要')
+    void message.error('请填写处理依据、解除条件、复核部门、公开摘要与决定文号/文件/签发组织/决定日期')
     return
   }
   saving.value = true
   try {
     await portfolioEthicsSanctionApi.save({
-      id: editingId.value,
-      teacherId: form.teacherId.trim(),
+      teacherId: form.teacherId,
       eventType: form.eventType,
       handlingBasis: form.handlingBasis.trim(),
       sanctionStartDate: form.dateRange[0],
@@ -331,8 +384,12 @@ async function saveSanction() {
       reviewDepartment: form.reviewDepartment.trim(),
       publicSummary: form.publicSummary.trim(),
       detailDescription: form.detailDescription.trim() || undefined,
+      decisionDocNo: form.decisionDocNo.trim(),
+      decisionFileId: form.decisionFileId,
+      decisionIssuingOrg: form.decisionIssuingOrg.trim(),
+      decisionDate: form.decisionDate,
     })
-    void message.success(editingId.value ? '处分已更新' : '处分已登记并进入约束')
+    void message.success('处分已登记并进入约束')
     editorOpen.value = false
     await loadPage()
   } catch (error) {
@@ -344,7 +401,7 @@ async function saveSanction() {
 
 async function submitReview() {
   if (reviewTarget.value?.teacherId) {
-    form.teacherId = String(reviewTarget.value.teacherId)
+    form.teacherId = reviewTarget.value.teacherId
     await reloadLifecycleState()
   }
   if (!assertArchiveWritable('师德处分复核')) {
@@ -370,6 +427,7 @@ async function submitReview() {
       reviewConclusion: reviewForm.reviewConclusion,
       reviewOpinion: reviewForm.reviewOpinion.trim() || undefined,
       newSanctionEndDate: reviewForm.newSanctionEndDate,
+      statusVersion: reviewTarget.value.statusVersion,
     })
     void message.success('复核结论已提交')
     reviewOpen.value = false
@@ -430,26 +488,28 @@ onMounted(async () => {
         subtitle="登记处分、期满复核；约束结果按有效状态实时生效"
       >
         <template #actions>
-          <UiButton size="sm" variant="primary" @click="openCreate"> 登记处分 </UiButton>
+          <UiButton size="sm" variant="primary" :disabled="writing || archiveWriteGuardLoading" @click="openCreate"> 登记处分 </UiButton>
         </template>
       </ContextBar>
     </template>
-    <UiAlertStrip
-      v-if="archiveWriteForbidden"
-      tone="warning"
-      title="档案已封存写禁"
-      :description="archiveWriteBlockMessage"
-      class="mb-3"
+    <PortfolioArchiveWriteGuardStrip
+      :blocked="archiveWriteForbidden"
+      :capability-unknown="archiveWriteCapabilityUnknown"
+      :message="archiveWriteBlockMessage"
+      :loading="archiveWriteGuardLoading"
+      @confirm="() => void reloadLifecycleState()"
     />
     <UiCard>
       <div class="ethics-admin__filters">
-        <UiInput
+        <UiSelect
           v-model="query.teacherId"
           size="sm"
-          clearable
-          placeholder="教师用户编号"
-          style="width: 180px"
-          @enter="search"
+          allow-search
+          allow-clear
+          placeholder="搜索教师姓名或工号"
+          style="width: 220px"
+          :options="teacherOptions"
+          @search="searchTeachers"
         />
         <UiSelect
           v-model="query.sanctionStatus"
@@ -466,7 +526,7 @@ onMounted(async () => {
           v-if="deepLinkHint"
           type="info"
           show-icon
-          class="mb-3"
+          class="dp-mb-component"
           :description="deepLinkHint"
         />
         <WorkbenchContextGateStrip
@@ -513,7 +573,7 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'lifecycleStatus'">
               <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+                {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
               </UiTag>
 
               <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -542,15 +602,18 @@ onMounted(async () => {
                 v-if="record.sanctionStatus === PortfolioEthicsSanctionStatusCode.IN_EFFECT"
                 size="sm"
                 variant="soft"
-                @click="openEdit(record)"
+                :loading="earlyReviewing"
+                @click="requestEarlyReview(record)"
+                :disabled="writing || archiveWriteForbidden || archiveWriteCapabilityUnknown"
               >
-                编辑
+                提前复核
               </UiButton>
               <UiButton
                 v-if="record.sanctionStatus === PortfolioEthicsSanctionStatusCode.PENDING_REVIEW"
                 size="sm"
                 variant="primary"
                 @click="openReview(record)"
+                :disabled="writing || archiveWriteForbidden || archiveWriteCapabilityUnknown"
               >
                 复核
               </UiButton>
@@ -562,21 +625,35 @@ onMounted(async () => {
 
     <UiDrawer
       v-model:open="editorOpen"
-      :title="editingId ? '编辑师德处分' : '新建师德处分'"
+      title="新建师德处分"
       width="520"
     >
       <div class="ethics-admin__form">
-        <label>教师用户编号</label>
-        <UiInput
+        <label>教师</label>
+        <UiSelect
           v-model="form.teacherId"
           size="sm"
-          :disabled="!!editingId"
-          placeholder="教师用户编号"
+          allow-search
+          allow-clear
+          placeholder="搜索教师姓名或工号"
+          :options="teacherOptions"
+          @search="searchTeachers"
         />
         <label>事件类型</label>
         <UiSelect v-model="form.eventType" size="sm" :options="eventOptions" />
         <label>处理依据</label>
         <UiInput v-model="form.handlingBasis" size="sm" placeholder="决定文件/制度条款" />
+        <label>决定文号</label>
+        <UiInput v-model="form.decisionDocNo" size="sm" placeholder="正式决定文号" />
+        <label>签发组织</label>
+        <UiInput v-model="form.decisionIssuingOrg" size="sm" placeholder="签发组织" />
+        <label>决定日期</label>
+        <UiDatePicker v-model="form.decisionDate" size="sm" />
+        <label>决定文件</label>
+        <div class="ethics-admin__file">
+          <input type="file" :disabled="uploadingDecisionFile" @change="onDecisionFileChange" />
+          <span>{{ form.decisionFileName || (form.decisionFileId ? `文件 #${form.decisionFileId}` : '未上传') }}</span>
+        </div>
         <label>处分起止</label>
         <UiRangePicker v-model="form.dateRange" size="sm" />
         <label>影响范围</label>
@@ -592,8 +669,8 @@ onMounted(async () => {
       </div>
       <template #footer>
         <UiButton size="sm" variant="soft" @click="editorOpen = false"> 取消 </UiButton>
-        <UiButton size="sm" variant="primary" :loading="saving" @click="saveSanction">
-          保存
+        <UiButton size="sm" variant="primary" :loading="saving" :disabled="writing || archiveWriteForbidden || archiveWriteCapabilityUnknown" @click="saveSanction">
+          登记
         </UiButton>
       </template>
     </UiDrawer>
@@ -631,7 +708,7 @@ onMounted(async () => {
       </div>
       <template #footer>
         <UiButton size="sm" variant="soft" @click="reviewOpen = false"> 取消 </UiButton>
-        <UiButton size="sm" variant="primary" :loading="reviewing" @click="submitReview">
+        <UiButton size="sm" variant="primary" :loading="reviewing" :disabled="writing || archiveWriteForbidden || archiveWriteCapabilityUnknown" @click="submitReview">
           提交结论
         </UiButton>
       </template>
@@ -653,9 +730,14 @@ onMounted(async () => {
           />
           <p v-if="constraintStatus.publicSummary">{{ constraintStatus.publicSummary }}</p>
         </section>
-        <p>状态：{{ statusLabel(detailRow.sanctionStatus) }}</p>
+        <p>状态：{{ statusLabel(detailRow.sanctionStatus) }} · 版本 {{ detailRow.statusVersion }}</p>
         <p>事件：{{ eventLabel(detailRow.eventType) }}</p>
         <p>依据：{{ detailRow.handlingBasis }}</p>
+        <p>决定文号：{{ detailRow.decisionDocNo || '—' }}</p>
+        <p>签发组织：{{ detailRow.decisionIssuingOrg || '—' }}</p>
+        <p>决定日期：{{ detailRow.decisionDate || '—' }}</p>
+        <p>决定文件：{{ detailRow.decisionFileId || '—' }}</p>
+        <p>证据指纹：{{ detailRow.evidenceFingerprint || '—' }}</p>
         <p>起止：{{ detailRow.sanctionStartDate }} ~ {{ detailRow.sanctionEndDate }}</p>
         <p>影响：{{ impactLabel(detailRow.impactScope) }}</p>
         <p>解除条件：{{ detailRow.releaseCondition }}</p>
@@ -683,14 +765,14 @@ onMounted(async () => {
 <style scoped>
 .ethics-admin__filters {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-block);
   align-items: center;
 }
 .ethics-admin__form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .ethics-admin__form label {
   font-size: var(--dp-font-size-sm);
@@ -700,8 +782,8 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
-  padding-bottom: 12px;
+  gap: var(--dp-space-component-tight) var(--dp-space-component);
+  padding-bottom: var(--dp-space-component);
   border-bottom: 1px solid var(--dp-border-subtle);
 }
 .ethics-admin__constraint p {
@@ -709,9 +791,16 @@ onMounted(async () => {
   margin: 0;
   color: var(--dp-text-secondary);
 }
+.ethics-admin__file {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-component-tight);
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+}
 .ethics-admin__logs {
   margin: 0;
-  padding-left: 16px;
+  padding-left: var(--dp-space-block);
   font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }

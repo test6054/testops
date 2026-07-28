@@ -1,0 +1,184 @@
+.integration-dashboard__panel {
+  margin-top: var(--dp-space-block);
+}
+.integration-dashboard__panel-title {
+  margin: 0;
+  /* 字号/字重继承 WorkbenchSurfaceCard__head */
+}
+.integration-dashboard__form {
+  display: grid;
+  grid-template-columns: 80px 1fr 80px 1fr 80px 1fr;
+  gap: var(--dp-space-component-tight) var(--dp-space-component);
+  align-items: center;
+  max-width: none;
+  margin-bottom: var(--dp-space-component);
+}
+.integration-dashboard__message-enqueue {
+  grid-template-columns: 100px 1fr;
+  max-width: 720px;
+  padding: var(--dp-space-component);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-xs);
+}
+.integration-dashboard__message-enqueue .ant-input,
+.integration-dashboard__message-enqueue .ant-select,
+.integration-dashboard__message-enqueue .integration-dashboard__payload-editor {
+  grid-column: 2;
+}
+.integration-dashboard__payload-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-component-tight);
+}
+.integration-dashboard__input--wide {
+  min-width: 280px;
+  grid-column: span 3;
+}
+.integration-dashboard__config-panel {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: var(--dp-space-component-tight) var(--dp-space-component);
+  align-items: start;
+  margin-bottom: var(--dp-space-component);
+  padding: var(--dp-space-component);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-xs);
+}
+.integration-dashboard__config-panel .integration-dashboard__input--wide,
+.integration-dashboard__config-panel .integration-dashboard__textarea {
+  grid-column: 2;
+}
+.integration-dashboard__textarea {
+  min-height: 96px;
+  padding: var(--dp-space-component-tight);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-xs);
+  font-family: inherit;
+  resize: vertical;
+}
+.integration-dashboard__inline-check {
+  display: inline-flex;
+  gap: var(--dp-space-component-tight);
+  align-items: center;
+  font-size: var(--dp-font-size-sm);
+}
+.integration-dashboard__form-actions {
+  display: flex;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-tight);
+}
+.integration-dashboard__row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-component-tight);
+}
+.integration-dashboard__inbound-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--dp-space-component-xs);
+}
+.integration-dashboard__inbound-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr auto;
+  gap: var(--dp-space-component-tight);
+  align-items: center;
+}
+.integration-dashboard__preset-bar {
+  display: flex;
+  gap: var(--dp-space-component-tight);
+  align-items: center;
+  margin-bottom: var(--dp-space-component);
+}
+.integration-dashboard__preset-label {
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+}
+.integration-dashboard__form--mapping {
+  grid-template-columns: 64px 1fr 80px 1fr 64px 1fr 64px 1fr auto;
+  max-width: none;
+}
+.integration-dashboard__mapping-bar {
+  display: flex;
+  gap: var(--dp-space-component-tight);
+  align-items: center;
+  margin-bottom: var(--dp-space-component);
+}
+.integration-dashboard__filter-bar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 280px)) auto;
+  gap: var(--dp-space-component);
+  align-items: center;
+  margin-bottom: var(--dp-space-block);
+}
+.integration-dashboard__config-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: var(--dp-space-component);
+  align-items: center;
+  margin-bottom: var(--dp-space-block);
+  padding-bottom: var(--dp-space-block);
+  border-bottom: 1px solid var(--dp-border);
+}
+.integration-dashboard__failed-message-editor {
+  display: grid;
+  gap: var(--dp-space-component);
+  color: var(--dp-text-secondary);
+}
+.integration-dashboard__failed-message-editor strong,
+.integration-dashboard__failed-message-editor label {
+  color: var(--dp-text-primary);
+}
+.integration-dashboard__payload-field {
+  display: grid;
+  grid-template-columns: minmax(140px, 180px) 1fr auto;
+  gap: var(--dp-space-component-tight);
+  align-items: center;
+}
+.integration-dashboard__failed-message-editor .integration-dashboard__payload-field {
+  grid-template-columns: 160px 1fr;
+}
+.integration-dashboard__input,
+.integration-dashboard__select {
+  height: 32px;
+  padding: 0 var(--dp-space-component-tight);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-xs);
+}
+.integration-dashboard__select {
+  min-width: 240px;
+}
+.integration-dashboard__teacher-select {
+  min-width: 220px;
+  margin-right: var(--dp-space-component-tight);
+}
+.integration-dashboard__hint {
+  margin: 0 0 var(--dp-space-component);
+  color: var(--dp-text-secondary);
+  font-size: var(--dp-font-size-sm);
+}
+.integration-dashboard__sub-title {
+  margin: var(--dp-space-block) 0 var(--dp-space-component-tight);
+  font-size: var(--dp-font-size-md);
+  font-weight: 600;
+}
+.integration-dashboard__health-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.integration-dashboard__health-list li {
+  display: flex;
+  gap: var(--dp-space-component-tight);
+  align-items: center;
+  padding: var(--dp-space-component-tight) 0;
+  border-bottom: 1px solid var(--dp-border);
+}
+@media (max-width: 960px) {
+  .integration-dashboard__filter-bar,
+  .integration-dashboard__config-grid {
+    grid-template-columns: 1fr;
+  }
+}

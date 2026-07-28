@@ -12,12 +12,38 @@
         tone="warning"
         :title="`有 ${manualFillPendingCount} 个字段含脱敏占位符，请补全真实值后再确认`"
       />
+      <UiAlertStrip
+        v-if="batchProgress"
+        :tone="batchProgress.failedIds.length ? 'warning' : 'info'"
+        :title="`批量确认进度 ${batchProgress.done}/${batchProgress.total}`"
+        :description="
+          batchProgress.failedIds.length
+            ? `失败 ${batchProgress.failedIds.length} 项，可仅重试失败项`
+            : undefined
+        "
+      />
       <div
         v-if="taskStatus === AiTaskStatusCode.COMPLETED && !readonly"
         class="portfolio-ai-candidate-panel__actions"
       >
-        <UiButton variant="primary" size="sm" :loading="confirming" @click="confirmAllEligible">
+        <UiButton
+          variant="primary"
+          size="sm"
+          :loading="confirming"
+          :disabled="confirming"
+          @click="confirmAllEligible"
+        >
           确认全部可自动通过项
+        </UiButton>
+        <UiButton
+          v-if="batchProgress?.failedIds.length"
+          size="sm"
+          variant="outline"
+          :loading="confirming"
+          :disabled="confirming"
+          @click="retryFailedBatch"
+        >
+          仅重试失败项（{{ batchProgress.failedIds.length }}）
         </UiButton>
       </div>
       <UiDataTable
@@ -149,6 +175,11 @@ const correctedValues = reactive<Record<string, string>>({})
 const taskStatus = ref<AiTaskStatusCode>()
 const candidateRequestToken = ref(0)
 const candidateContextToken = ref(0)
+const batchProgress = ref<{
+  total: number
+  done: number
+  failedIds: string[]
+} | null>(null)
 
 const manualFillPendingCount = computed(
   () =>
@@ -172,6 +203,7 @@ function resetCandidateContext() {
   candidateRequestToken.value += 1
   loading.value = false
   confirming.value = false
+  batchProgress.value = null
   candidateRows.value = []
   taskStatus.value = undefined
   for (const key of Object.keys(correctedValues)) {
@@ -353,53 +385,89 @@ function handleCandidateRowAction(key: string, row: PortfolioCandidateFieldVO) {
   else if (key === 'reject') void rejectCandidate(row)
 }
 
-async function confirmAllEligible() {
-  if (confirming.value || props.readonly) {
-    return
-  }
-  const eligible = candidateRows.value.filter(canConfirmRow)
-  if (eligible.length === 0) {
-    void message.info('没有可自动确认的字段')
+async function confirmCandidateBatch(rows: PortfolioCandidateFieldVO[]) {
+  if (confirming.value || props.readonly || rows.length === 0) {
     return
   }
   const contextToken = candidateContextToken.value
-  let confirmedCount = 0
+  const failedIds: string[] = []
+  let done = 0
+  batchProgress.value = { total: rows.length, done: 0, failedIds: [] }
   confirming.value = true
   try {
-    for (const row of eligible) {
-      await portfolioAiJobApi.confirm({
-        candidateFieldId: row.id,
-        aiTaskId: row.aiTaskId,
-        confirmStatus: PortfolioCandidateConfirmStatusCode.CONFIRMED,
-        correctedCandidateValue: rowNeedsManualFill(row)
-          ? correctedValueFor(row).trim()
-          : undefined,
-      })
+    for (const row of rows) {
+      try {
+        await portfolioAiJobApi.confirm({
+          candidateFieldId: row.id,
+          aiTaskId: row.aiTaskId,
+          confirmStatus: PortfolioCandidateConfirmStatusCode.CONFIRMED,
+          correctedCandidateValue: rowNeedsManualFill(row)
+            ? correctedValueFor(row).trim()
+            : undefined,
+        })
+        if (candidateContextToken.value !== contextToken) {
+          return
+        }
+        done += 1
+        batchProgress.value = {
+          total: rows.length,
+          done,
+          failedIds: [...failedIds],
+        }
+      } catch {
+        if (candidateContextToken.value !== contextToken) {
+          return
+        }
+        failedIds.push(row.id)
+        batchProgress.value = {
+          total: rows.length,
+          done,
+          failedIds: [...failedIds],
+        }
+      }
+    }
+    if (failedIds.length === 0) {
+      void message.success(`已确认 ${rows.length} 个字段`)
+      batchProgress.value = null
+      await loadCandidates()
       if (candidateContextToken.value !== contextToken) {
         return
       }
-      confirmedCount += 1
-    }
-    void message.success(`已确认 ${eligible.length} 个字段`)
-    await loadCandidates()
-    if (candidateContextToken.value !== contextToken) {
+      emit('confirmed')
       return
     }
-    emit('confirmed')
-  } catch (error) {
-    if (candidateContextToken.value !== contextToken) {
-      return
-    }
-    if (confirmedCount > 0) {
-      void message.warning(`已确认 ${confirmedCount} 个字段，其余字段未完成`)
-    }
-    showUserError(error, confirmedCount > 0 ? '部分候选字段确认失败' : '批量确认候选字段失败')
+    void message.warning(`已确认 ${done} 个字段，失败 ${failedIds.length} 个`)
     await loadCandidates()
   } finally {
     if (candidateContextToken.value === contextToken) {
       confirming.value = false
     }
   }
+}
+
+async function confirmAllEligible() {
+  const eligible = candidateRows.value.filter(canConfirmRow)
+  if (eligible.length === 0) {
+    void message.info('没有可自动确认的字段')
+    return
+  }
+  await confirmCandidateBatch(eligible)
+}
+
+async function retryFailedBatch() {
+  const failedIds = new Set(batchProgress.value?.failedIds ?? [])
+  if (failedIds.size === 0) {
+    return
+  }
+  const retryRows = candidateRows.value.filter(
+    (row) => failedIds.has(row.id) && canConfirmRow(row),
+  )
+  if (retryRows.length === 0) {
+    void message.info('失败项已不可再确认，请刷新候选列表')
+    batchProgress.value = null
+    return
+  }
+  await confirmCandidateBatch(retryRows)
 }
 
 usePolling(
@@ -428,7 +496,7 @@ watch(
 
 <style scoped lang="scss">
 .portfolio-ai-candidate-panel__actions {
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .portfolio-ai-candidate-panel__field-code {
@@ -437,7 +505,7 @@ watch(
 }
 
 .portfolio-ai-candidate-panel__placeholder-hint {
-  margin-top: var(--dp-space-1);
+  margin-top: var(--dp-space-component-xs);
   color: var(--dp-text-muted);
   font-size: var(--dp-font-size-xs);
 }

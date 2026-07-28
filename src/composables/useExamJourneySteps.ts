@@ -29,20 +29,34 @@ const STATUS_PRIORITY: Record<WorkbenchStageStatus, number> = {
 }
 
 /**
- * 聚合子阶段状态为旅程状态：error/blocked > warning > active > completed > pending。
+ * 聚合子阶段状态为旅程状态。
+ * 仅当全部子段 completed 才升格为整步 completed；
+ * 否则在未完成子段中取最高注意力态：error/blocked > warning > active > pending。
+ * completed + pending（无更高态）升为 active，禁止误判「整步完成」或「未开始」。
  */
 function aggregateStatus(subStages: WorkbenchStage[]): WorkbenchStageStatus {
   if (subStages.length === 0) {
     return 'pending'
   }
+  if (subStages.every((stage) => stage.status === 'completed')) {
+    return 'completed'
+  }
   let best: WorkbenchStageStatus = 'pending'
   let bestPriority = 0
+  let hasCompleted = false
   for (const stage of subStages) {
+    if (stage.status === 'completed') {
+      hasCompleted = true
+      continue
+    }
     const priority = STATUS_PRIORITY[stage.status] ?? 0
     if (priority > bestPriority) {
       bestPriority = priority
       best = stage.status
     }
+  }
+  if (best === 'pending' && hasCompleted) {
+    return 'active'
   }
   return best
 }
@@ -72,7 +86,9 @@ function buildJourneyStatusText(subStages: WorkbenchStage[], aggregatedStatus: W
     })
     .filter((text): text is string => !!text)
   if (texts.length === 0) {
-    return aggregatedStatus === 'pending' ? '待开始' : ''
+    if (aggregatedStatus === 'pending') return '待开始'
+    if (aggregatedStatus === 'active') return '进行中'
+    return ''
   }
   return texts.slice(0, 2).join('；')
 }

@@ -2,6 +2,7 @@
 import type { ArchiveVolumeExamArchivePackageTimelineStepVO } from '@/apis/mark/archive-volume'
 import { computed } from 'vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import { ArchiveVolumeExamArchivePackageTimelineStepStatusCode as TimelineStepStatus } from '@/types/enums/archive-volume-exam-archive-package-timeline-step-status-enum'
 import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'ArchivePackageTimeline' })
@@ -22,13 +23,13 @@ function formatEventTime(value?: string): string {
 }
 
 function dotClass(status: ArchiveVolumeExamArchivePackageTimelineStepVO['stepStatus']): string {
-  if (status === 'done') {
+  if (status === TimelineStepStatus.DONE) {
     return 'archive-package-timeline__dot archive-package-timeline__dot--done'
   }
-  if (status === 'active') {
+  if (status === TimelineStepStatus.ACTIVE) {
     return 'archive-package-timeline__dot archive-package-timeline__dot--active'
   }
-  if (status === 'failed') {
+  if (status === TimelineStepStatus.FAILED) {
     return 'archive-package-timeline__dot archive-package-timeline__dot--failed'
   }
   return 'archive-package-timeline__dot archive-package-timeline__dot--pending'
@@ -60,12 +61,12 @@ function dotClass(status: ArchiveVolumeExamArchivePackageTimelineStepVO['stepSta
 .archive-package-timeline {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .archive-package-timeline__item {
   display: flex;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .archive-package-timeline__rail {
@@ -79,7 +80,7 @@ function dotClass(status: ArchiveVolumeExamArchivePackageTimelineStepVO['stepSta
 .archive-package-timeline__dot {
   width: 8px;
   height: 8px;
-  margin-top: 6px;
+  margin-top: var(--dp-space-component-tight);
   border-radius: var(--dp-radius-full);
 }
 
@@ -103,8 +104,8 @@ function dotClass(status: ArchiveVolumeExamArchivePackageTimelineStepVO['stepSta
   flex: 1;
   width: 1.5px;
   min-height: 24px;
-  margin-top: 4px;
-  background: var(--dp-border-light);
+  margin-top: var(--dp-space-component-xs);
+  background: var(--dp-border-subtle);
 }
 
 .archive-package-timeline__title {
@@ -122,8 +123,8 @@ function dotClass(status: ArchiveVolumeExamArchivePackageTimelineStepVO['stepSta
 
 .archive-package-timeline__time {
   margin-top: 2px;
-  font-size: var(--dp-font-size-xxs);
-  font-family: var(--dp-font-mono);
-  color: var(--dp-text-tertiary);
+  font-size: var(--dp-font-size-xs);
+  font-family: var(--dp-font-family-code);
+  color: var(--dp-text-muted);
 }
 </style>

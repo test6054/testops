@@ -35,6 +35,7 @@ import {
   ExternalPullAuditEventDescription,
   ExternalPullConfirmationStatusCode,
   ExternalPullConfirmationStatusDescription,
+  ExternalPullFailurePhaseDescription,
   ExternalPullTaskStatusCode,
   ExternalPullTaskStatusDescription,
   ExternalSourceTypeCode,
@@ -61,6 +62,7 @@ import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
 import PasswordInput from '@/components/ui-guide/ui/PasswordInput.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
@@ -82,6 +84,8 @@ import { usePolling } from '@/composables/usePolling'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
+import { useAuthStore } from '@/stores/modules/auth'
 import {
   ALL_BUSINESS_ANCHOR_CODES,
   BUSINESS_ANCHOR_OPTIONS,
@@ -157,16 +161,21 @@ interface ExternalPullTaskFormState {
   queryTimeoutSeconds?: number
 }
 
-const sourceColumns: ColumnsType = [
-  { title: '编码', dataIndex: 'sourceCode', key: 'sourceCode', width: 160, fixed: 'left' },
-  { title: '名称', dataIndex: 'sourceName', key: 'sourceName' },
-  { title: '数据库类型', dataIndex: 'sourceType', key: 'sourceType', width: 120 },
-  { title: '驱动类', dataIndex: 'driverClass', key: 'driverClass', width: 200 },
-  { title: '最大行数', dataIndex: 'maxRowCount', key: 'maxRowCount', width: 100 },
-  { title: '超时（秒）', dataIndex: 'queryTimeoutSeconds', key: 'queryTimeoutSeconds', width: 100 },
-  { title: '状态', dataIndex: 'enabled', key: 'enabled', width: 100 },
-  { title: '操作', key: 'actions', width: 220 },
-]
+const sourceColumns = computed<ColumnsType>(() => {
+  const columns: ColumnsType = [
+    { title: '编码', dataIndex: 'sourceCode', key: 'sourceCode', width: 160, fixed: 'left' },
+    { title: '名称', dataIndex: 'sourceName', key: 'sourceName' },
+    { title: '数据库类型', dataIndex: 'sourceType', key: 'sourceType', width: 120 },
+    { title: '驱动类', dataIndex: 'driverClass', key: 'driverClass', width: 200 },
+    { title: '最大行数', dataIndex: 'maxRowCount', key: 'maxRowCount', width: 100 },
+    { title: '超时（秒）', dataIndex: 'queryTimeoutSeconds', key: 'queryTimeoutSeconds', width: 100 },
+    { title: '状态', dataIndex: 'enabled', key: 'enabled', width: 100 },
+  ]
+  if (canManageExternalSource.value === true) {
+    columns.push({ title: '操作', key: 'actions', width: 220 })
+  }
+  return columns
+})
 
 const taskColumns: ColumnsType = [
   { title: '任务编码', dataIndex: 'taskCode', key: 'taskCode', width: 160, fixed: 'left' },
@@ -177,6 +186,8 @@ const taskColumns: ColumnsType = [
   { title: '返回行数', dataIndex: 'returnRows', key: 'returnRows', width: 100 },
   { title: '耗时（ms）', dataIndex: 'elapsedMs', key: 'elapsedMs', width: 110 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
+  { title: '失败阶段', key: 'failurePhase', width: 140 },
+  { title: '开始 / 结束', key: 'taskTimeline', width: 200 },
   { title: '操作', key: 'actions', width: 220 },
 ]
 
@@ -193,10 +204,33 @@ const sources = ref<ExternalDataSourceVO[]>([])
 const sourceTotal = ref(0)
 const sourceLoading = ref(false)
 const sourceQuery = reactive({ pageNum: 1, pageSize: 10 })
+const {
+  loadError: sourceLoadError,
+  beginLoad: beginSourceLoad,
+  failLoad: failSourceLoad,
+  okLoad: okSourceLoad,
+} = useUiTableLoadError()
+
+/** 与 BE ExternalDataSourceController @PreAuthorize 对齐 */
+const authStore = useAuthStore()
+const canViewExternalSource = computed(
+  () =>
+    authStore.hasPermission('quality:external-source:view')
+    || authStore.hasPermission('quality:external-source:manage'),
+)
+const canManageExternalSource = computed(() =>
+  authStore.hasPermission('quality:external-source:manage'),
+)
 
 const tasks = ref<ExternalPullTaskVO[]>([])
 const taskTotal = ref(0)
 const taskLoading = ref(false)
+const {
+  loadError: taskLoadError,
+  beginLoad: beginTaskLoad,
+  failLoad: failTaskLoad,
+  okLoad: okTaskLoad,
+} = useUiTableLoadError()
 const taskQuery = reactive<ExternalPullTaskQueryRequest>({
   pageNum: 1,
   pageSize: 10,
@@ -334,6 +368,56 @@ const taskFieldOptions = computed<SelectOption[]>(() => {
     }))
 })
 
+const distributionExpanded = ref(false)
+const signalLastSuccessAt = ref<string | null>(null)
+
+function markSignalSuccessAt(): void {
+  signalLastSuccessAt.value = new Date().toISOString().replace('T', ' ').slice(0, 19)
+}
+
+const configStatusStrip = computed(() => {
+  const summary = signalSummary.value
+  if (!summary) {
+    return null
+  }
+  const enabledSources = summary.sourceEnabledCount ?? 0
+  const failedTasks = summary.taskFailedCount ?? 0
+  const runningTasks = summary.taskRunningCount ?? 0
+  if ((summary.sourceTotalCount ?? 0) === 0) {
+    return {
+      tone: 'warning' as const,
+      tag: '未配置',
+      description: '尚未创建外部只读数据源，请先新建并启用数据源',
+    }
+  }
+  if (enabledSources === 0) {
+    return {
+      tone: 'warning' as const,
+      tag: '下一动作',
+      description: '已有数据源但均未启用，请启用至少一个数据源后再创建拉取任务',
+    }
+  }
+  if (failedTasks > 0) {
+    return {
+      tone: 'error' as const,
+      tag: '失败待处置',
+      description: `有 ${failedTasks} 个拉取任务失败，请查看待关注任务与失败阶段`,
+    }
+  }
+  if (runningTasks > 0) {
+    return {
+      tone: 'info' as const,
+      tag: '运行中',
+      description: `有 ${runningTasks} 个任务正在拉取，完成后请核对结果并确认/驳回`,
+    }
+  }
+  return {
+    tone: 'success' as const,
+    tag: '配置就绪',
+    description: '已启用数据源且无失败任务；可创建拉取任务或核对历史结果',
+  }
+})
+
 const signals = computed<SignalMetric[]>(() => {
   const summary = signalSummary.value
   if (!summary) {
@@ -342,33 +426,42 @@ const signals = computed<SignalMetric[]>(() => {
   const enabledSources = summary.sourceEnabledCount ?? 0
   const runningTasks = summary.taskRunningCount ?? 0
   const failedTasks = summary.taskFailedCount ?? 0
-  const succeededTasks = summary.taskSucceededCount ?? 0
   return [
-    { key: 'src-total', label: '数据源总数', value: summary.sourceTotalCount ?? 0, tone: 'blue' },
     {
       key: 'src-enabled',
       label: '已启用数据源',
       value: enabledSources,
-      tone: enabledSources > 0 ? 'green' : 'gray',
-    },
-    { key: 'task-total', label: '任务总数', value: summary.taskTotalCount ?? 0, tone: 'blue' },
-    {
-      key: 'task-running',
-      label: '运行中',
-      value: runningTasks,
-      tone: runningTasks > 0 ? 'orange' : 'gray',
-    },
-    {
-      key: 'task-success',
-      label: '已成功',
-      value: succeededTasks,
-      tone: succeededTasks > 0 ? 'green' : 'gray',
+      tone: enabledSources > 0 ? 'green' : 'orange',
     },
     {
       key: 'task-failed',
       label: '失败',
       value: failedTasks,
       tone: failedTasks > 0 ? 'red' : 'gray',
+    },
+    {
+      key: 'task-running',
+      label: '运行中',
+      value: runningTasks,
+      tone: runningTasks > 0 ? 'orange' : 'gray',
+    },
+  ]
+})
+
+const distributionSignals = computed<SignalMetric[]>(() => {
+  const summary = signalSummary.value
+  if (!summary) {
+    return []
+  }
+  const succeededTasks = summary.taskSucceededCount ?? 0
+  return [
+    { key: 'src-total', label: '数据源总数', value: summary.sourceTotalCount ?? 0, tone: 'blue' },
+    { key: 'task-total', label: '任务总数', value: summary.taskTotalCount ?? 0, tone: 'blue' },
+    {
+      key: 'task-success',
+      label: '已成功',
+      value: succeededTasks,
+      tone: succeededTasks > 0 ? 'green' : 'gray',
     },
   ]
 })
@@ -423,23 +516,41 @@ const pullResultItems = computed<TaskResultItem[]>(() => {
         || t.status === ExternalPullTaskStatusCode.RUNNING,
     )
     .slice(0, 5)
-    .map((t) => ({
-      id: t.id,
-      title: `${t.taskCode} - ${t.taskName}`,
-      statusLabel: taskStatusLabel(t.status),
-      statusTone: t.status === ExternalPullTaskStatusCode.FAILED ? 'red' : 'blue',
-      description:
+    .map((t) => {
+      const phase = failurePhaseLabel(t.failurePhase)
+      const failedDesc = [
+        phase ? `失败阶段：${phase}` : '',
         getUserProcessFailureMessage(
           t.failureReason,
           '外部成绩数据接入失败，请检查数据源配置、授权状态和返回字段设置',
-        ) || (t.status === ExternalPullTaskStatusCode.RUNNING ? '任务执行中' : undefined),
-      time: t.startedTime || undefined,
-      actions: [{ key: 'detail', label: '详情' }],
-    }))
+        ) || '',
+      ]
+        .filter(Boolean)
+        .join('；')
+      return {
+        id: t.id,
+        title: `${t.taskCode} - ${t.taskName}`,
+        statusLabel: taskStatusLabel(t.status),
+        statusTone: t.status === ExternalPullTaskStatusCode.FAILED ? 'red' : 'blue',
+        description:
+          t.status === ExternalPullTaskStatusCode.FAILED
+            ? failedDesc || undefined
+            : '任务执行中',
+        time: t.finishedTime || t.startedTime || undefined,
+        actions: [{ key: 'detail', label: '详情' }],
+      }
+    })
 })
 
 function taskStatusLabel(value: ExternalPullTaskVO['status']): string {
   return strictEnumLabel(ExternalPullTaskStatusDescription, value, '外部拔取任务状态')
+}
+
+function failurePhaseLabel(value: ExternalPullTaskVO['failurePhase']): string {
+  if (!value) {
+    return ''
+  }
+  return strictEnumLabel(ExternalPullFailurePhaseDescription, value, '外部拔取失败阶段')
 }
 
 function taskStatusColor(value: ExternalPullTaskVO['status']): BadgeTone {
@@ -616,6 +727,7 @@ async function loadSignalSummary() {
     signalSummary.value = await workbenchApi.externalPullSignalSummary(
       buildExternalPullSignalRequest(),
     )
+    markSignalSuccessAt()
   } catch (error) {
     signalSummary.value = null
     showUserError(error, '外部拉取指标加载失败')
@@ -625,8 +737,16 @@ async function loadSignalSummary() {
 useQualityScopedLoader(reloadAll, { watchScope: true, immediate: false })
 
 async function loadSources() {
+  if (canViewExternalSource.value !== true) {
+    sources.value = []
+    sourceTotal.value = 0
+    sourceLoading.value = false
+    okSourceLoad()
+    return
+  }
   const scope = beginQualityScopeRequest()
   sourceLoading.value = true
+  beginSourceLoad()
   try {
     const page = await externalDataSourceApi.page({
       pageNum: sourceQuery.pageNum,
@@ -642,12 +762,15 @@ async function loadSources() {
     if (sources.value.length === 0 && sourceTotal.value > 0 && sourceQuery.pageNum > 1) {
       sourceQuery.pageNum -= 1
       await loadSources()
+      return
     }
+    okSourceLoad()
   } catch (error) {
     if (!scope.isStale()) {
       showUserError(error, '外部数据源加载失败')
       sources.value = []
       sourceTotal.value = 0
+      failSourceLoad()
     }
   } finally {
     if (!scope.isStale()) {
@@ -665,6 +788,7 @@ function handleSourcePageChange(event: { current: number, pageSize: number }): v
 async function loadTasks() {
   const scope = beginQualityScopeRequest()
   taskLoading.value = true
+  beginTaskLoad()
   try {
     const page = await externalPullTaskApi.page({
       ...taskQuery,
@@ -684,11 +808,14 @@ async function loadTasks() {
       await loadTasks()
       return
     }
+    markListSyncOk()
+    okTaskLoad()
     taskPolling.syncPolling()
   } catch (error) {
     if (!scope.isStale()) {
       tasks.value = []
       taskTotal.value = 0
+      failTaskLoad()
       showUserError(error, '外部拉取任务加载失败')
     }
   } finally {
@@ -698,14 +825,43 @@ async function loadTasks() {
   }
 }
 
+const LIST_POLL_INTERVALS_MS = [3000, 6000, 12000, 30000] as const
+const LIST_POLL_MAX_FAILURES = 5
+const listSyncAt = ref<string | null>(null)
+const listSyncFailed = ref(false)
+const listPollFailCount = ref(0)
+const listPollStopped = ref(false)
+
+function markListSyncOk(): void {
+  listSyncFailed.value = false
+  listPollFailCount.value = 0
+  listPollStopped.value = false
+  listSyncAt.value = new Date().toISOString().replace('T', ' ').slice(0, 19)
+}
+
+function markListSyncFailed(): void {
+  listSyncFailed.value = true
+  listPollFailCount.value += 1
+  if (listPollFailCount.value >= LIST_POLL_MAX_FAILURES) {
+    listPollStopped.value = true
+  }
+}
+
+function currentListPollIntervalMs(): number {
+  const idx = Math.min(listPollFailCount.value, LIST_POLL_INTERVALS_MS.length - 1)
+  return LIST_POLL_INTERVALS_MS[idx]
+}
+
 const taskPolling = usePolling(() => loadTasksQuietly(), {
   getOptions: () => ({
-    intervalMs: 3000,
-    when: tasks.value.some(
-      (task) =>
-        task.status === ExternalPullTaskStatusCode.PENDING
-        || task.status === ExternalPullTaskStatusCode.RUNNING,
-    ),
+    intervalMs: currentListPollIntervalMs(),
+    when:
+      !listPollStopped.value
+      && tasks.value.some(
+        (task) =>
+          task.status === ExternalPullTaskStatusCode.PENDING
+          || task.status === ExternalPullTaskStatusCode.RUNNING,
+      ),
   }),
   pauseWhenDocumentHidden: true,
 })
@@ -732,13 +888,22 @@ async function loadTasksQuietly(): Promise<void> {
     taskQuery.pageNum = page.pageNum
     taskQuery.pageSize = page.pageSize
     taskTotal.value = page.total
+    markListSyncOk()
     taskPolling.syncPolling()
   } catch {
-    // 轮询刷新失败时不打断当前页面操作
+    if (scope.isStale()) {
+      return
+    }
+    markListSyncFailed()
+    taskPolling.syncPolling()
   }
 }
 
 function openSourceCreate() {
+  if (canManageExternalSource.value !== true) {
+    void message.warning('当前账号无外部数据源维护权限')
+    return
+  }
   sourceEditorMode.value = 'create'
   sourceEditingId.value = undefined
   sourceFieldScopes.value = [createSourceFieldScopeRow()]
@@ -758,6 +923,10 @@ function openSourceCreate() {
 }
 
 async function openSourceEdit(record: ExternalDataSourceVO) {
+  if (canManageExternalSource.value !== true) {
+    void message.warning('当前账号无外部数据源维护权限')
+    return
+  }
   sourceEditorMode.value = 'edit'
   sourceEditingId.value = record.id
   const detail = await externalDataSourceApi.detail(record.id)
@@ -780,6 +949,10 @@ async function openSourceEdit(record: ExternalDataSourceVO) {
 }
 
 async function submitSource() {
+  if (canManageExternalSource.value !== true) {
+    void message.warning('当前账号无外部数据源维护权限')
+    return
+  }
   if (
     !sourceForm.sourceCode.trim()
     || !sourceForm.sourceName.trim()
@@ -857,16 +1030,28 @@ async function submitSource() {
 }
 
 async function toggleSourceEnabled(record: ExternalDataSourceVO) {
+  if (canManageExternalSource.value !== true) {
+    void message.warning('当前账号无外部数据源维护权限')
+    return
+  }
   await externalDataSourceApi.toggleEnabled({ id: record.id, enabled: !record.enabled })
   void message.success('已切换状态')
   await loadSources()
 }
 
 async function deleteSource(record: ExternalDataSourceVO) {
+  if (canManageExternalSource.value !== true) {
+    void message.warning('当前账号无外部数据源维护权限')
+    return
+  }
   void confirmAsync({
     title: `删除数据源 ${record.sourceCode}？`,
     type: 'error',
     onOk: async () => {
+      if (canManageExternalSource.value !== true) {
+        void message.warning('当前账号无外部数据源维护权限')
+        return false
+      }
       await externalDataSourceApi.delete(record.id)
       void message.success('已删除')
       await loadSources()
@@ -1129,6 +1314,9 @@ function handlePullResultAction(actionEvent: { item: TaskResultItem, action: { k
 }
 
 function buildExternalSourceActions(_record: ExternalDataSourceVO): UiTableRowActionItem[] {
+  if (canManageExternalSource.value !== true) {
+    return []
+  }
   return [
     { key: 'edit', label: '编辑' },
     { key: 'toggle-enabled', label: _record.enabled ? '停用' : '启用' },
@@ -1202,7 +1390,55 @@ onMounted(async () => {
       <QualityPageContextBar show-title title="外部成绩拉取" />
     </template>
 
+    <UiAlertStrip
+      v-if="configStatusStrip"
+      :tone="configStatusStrip.tone"
+      dense
+      inline
+      :show-icon="false"
+      class="external-pull__config-status"
+    >
+      <template #default>
+        <span class="external-pull__gate-row">
+          <UiTag
+            :tone="
+              configStatusStrip.tone === 'error'
+                ? 'red'
+                : configStatusStrip.tone === 'warning'
+                  ? 'orange'
+                  : configStatusStrip.tone === 'success'
+                    ? 'green'
+                    : 'blue'
+            "
+            size="sm"
+          >
+            {{ configStatusStrip.tag }}
+          </UiTag>
+          <span>{{ configStatusStrip.description }}</span>
+        </span>
+      </template>
+    </UiAlertStrip>
     <SignalBand :metrics="signals" variant="panel" compact class="external-pull__signals" />
+    <p v-if="signalLastSuccessAt" class="external-pull__sync-hint">
+      指标最近同步：{{ signalLastSuccessAt }}
+    </p>
+    <div v-if="distributionSignals.length" class="external-pull__charts-fold">
+      <UiButton
+        variant="ghost"
+        size="sm"
+        class="external-pull__charts-toggle"
+        @click="distributionExpanded = !distributionExpanded"
+      >
+        {{ distributionExpanded ? '收起接入统计' : '展开接入统计' }}
+      </UiButton>
+      <SignalBand
+        v-if="distributionExpanded"
+        :metrics="distributionSignals"
+        variant="panel"
+        compact
+        class="external-pull__signals-secondary"
+      />
+    </div>
 
     <TaskResultPanel
       v-if="pullResultItems.length > 0"
@@ -1212,33 +1448,68 @@ onMounted(async () => {
       @action="handlePullResultAction"
     />
 
+    <UiEmpty
+      v-if="listSyncFailed"
+      size="sm"
+      :title="listPollStopped ? '任务列表同步已暂停' : '任务列表同步失败'"
+      :description="
+        listPollStopped
+          ? `连续失败 ${listPollFailCount} 次已停止轮询；最近成功 ${listSyncAt || '尚无'}。使用「刷新」后将再次拉取`
+          : `最近成功 ${listSyncAt || '尚无'}；已退避重试中，使用「刷新」恢复`
+      "
+      class="external-pull__list-sync"
+    />
+
     <UiCard class="detail-table-card external-pull__source-card">
       <template #title>
         外部只读数据源
         <span class="external-pull__panel-meta">{{ sourceTotal }} 个</span>
       </template>
       <template #extra>
-        <div class="dp-space" style="--dp-space-gap: 8px">
+        <div class="dp-space dp-space--tight">
           <UiTextAction @click="reloadAll">刷新</UiTextAction>
-          <UiButton variant="outline" size="sm" @click="openSourceCreate">新建数据源</UiButton>
+          <UiButton
+            v-if="canManageExternalSource"
+            variant="outline"
+            size="sm"
+            @click="openSourceCreate"
+          >
+            新建数据源
+          </UiButton>
         </div>
       </template>
 
       <WorkbenchContextGateStrip
-        v-if="!sources.length && !sourceLoading"
+        v-if="canViewExternalSource !== true"
+        tag="无权限"
+        body="当前账号无权查看外部数据源；请联系管理员授予「查看外部数据源」或「维护外部数据源凭据」权限"
+        hide-cta
+        tone="warning"
+      />
+      <WorkbenchContextGateStrip
+        v-else-if="!sourceLoadError && !sources.length && !sourceLoading"
         tag="未配置"
-        body="暂无数据源，请先创建并执行外部拉取任务"
-        cta-label="新建数据源"
+        body="暂无数据源，请先创建并启用外部只读数据源"
+        :hide-cta="canManageExternalSource !== true"
+        :cta-label="canManageExternalSource ? '新建数据源' : undefined"
         @cta="openSourceCreate"
       />
+      <UiEmpty
+        v-else-if="sourceLoadError"
+        size="sm"
+        title="数据源加载失败"
+      />
       <UiDataTable
+        v-else
         v-model:current="sourceQuery.pageNum"
         v-model:page-size="sourceQuery.pageSize"
         pagination-mode="server"
-        v-else
         :columns="sourceColumns"
         :data-source="sources"
         :loading="sourceLoading"
+        :load-error="sourceLoadError"
+        empty-title="暂无外部数据源"
+        empty-description="请新建并启用数据源后再创建拉取任务"
         :total="sourceTotal"
         row-key="id"
         size="small"
@@ -1292,11 +1563,16 @@ onMounted(async () => {
       />
 
       <WorkbenchContextGateStrip
-        v-if="!tasks.length && !taskLoading"
+        v-if="!taskLoadError && !tasks.length && !taskLoading"
         tag="未配置"
-        body="暂无外部拉取任务"
+        body="暂无外部拉取任务，请新建任务并执行接入"
         cta-label="新建拔取任务"
         @cta="openTaskCreate"
+      />
+      <UiEmpty
+        v-else-if="taskLoadError"
+        size="sm"
+        title="拉取任务加载失败"
       />
       <UiDataTable
         v-else
@@ -1305,6 +1581,9 @@ onMounted(async () => {
         :columns="taskColumns"
         :data-source="tasks"
         :loading="taskLoading"
+        :load-error="taskLoadError"
+        empty-title="暂无外部拉取任务"
+        empty-description="请新建拔取任务并执行接入"
         row-key="id"
         size="middle"
         :total="taskTotal"
@@ -1349,6 +1628,21 @@ onMounted(async () => {
             <UiTag :tone="taskStatusColor(record.status)" size="sm">
               {{ taskStatusLabel(record.status) }}
             </UiTag>
+          </template>
+          <template v-else-if="column.key === 'failurePhase'">
+            <template v-if="record.status === ExternalPullTaskStatusCode.FAILED">
+              <div>{{ failurePhaseLabel(record.failurePhase) || '-' }}</div>
+              <div v-if="record.failureReason" class="external-pull__sub-text">
+                {{ record.failureReason }}
+              </div>
+            </template>
+            <span v-else class="external-pull__sub-text">-</span>
+          </template>
+          <template v-else-if="column.key === 'taskTimeline'">
+            <div>{{ record.startedTime || '尚未开始' }}</div>
+            <div class="external-pull__sub-text">
+              {{ record.finishedTime || (record.status === ExternalPullTaskStatusCode.RUNNING ? '执行中' : '-') }}
+            </div>
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
@@ -1811,6 +2105,9 @@ onMounted(async () => {
                     : '缺失结束时间')
             }}
           </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="detailRecord.failurePhase" label="失败阶段">
+            {{ failurePhaseLabel(detailRecord.failurePhase) || '-' }}
+          </UiDescriptionsItem>
           <UiDescriptionsItem v-if="detailRecord.failureReason" label="处理说明" :span="2">
             <span class="external-pull__error-text">
               {{
@@ -1977,34 +2274,62 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .external-pull {
+  &__config-status {
+    margin-bottom: var(--dp-space-component);
+  }
+
+  &__gate-row {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--dp-space-component-tight);
+  }
+
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component-xs);
+  }
+
+  &__signals-secondary {
+    margin-top: var(--dp-space-component-tight);
+  }
+
+  &__sync-hint {
+    margin: 0 0 var(--dp-space-component-tight);
+    color: var(--dp-text-secondary, #666);
+    font-size: var(--dp-font-size-sm, 12px);
+  }
+
+  &__charts-fold {
+    margin-bottom: var(--dp-space-component-tight);
+  }
+
+  &__charts-toggle {
+    padding-inline: 0;
   }
 
   &__result-panel {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
-    margin-bottom: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
   &__panel-title {
     margin: 0;
-    font-size: 15px;
+    font-size: var(--dp-type-panel-title-size);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -2017,24 +2342,24 @@ onMounted(async () => {
   &__panel-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
   &__entry-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--dp-space-component);
   }
 
   &__entry-card {
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: 12px;
+    padding: var(--dp-space-component);
     background: var(--dp-surface-subtle);
 
     &--compact {
-      padding: 10px 12px;
+      padding: var(--dp-space-component);
     }
   }
 
@@ -2046,8 +2371,8 @@ onMounted(async () => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__entry-title {
@@ -2057,15 +2382,15 @@ onMounted(async () => {
   }
 
   &__inline-action {
-    margin-top: 12px;
+    margin-top: var(--dp-space-component);
   }
 
   &__detail-desc {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   &__section-title {
-    margin: 16px 0 8px;
+    margin: var(--dp-space-block) 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
@@ -2079,14 +2404,14 @@ onMounted(async () => {
   &__detail-grid {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__detail-line {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 8px 10px;
+    gap: var(--dp-space-component-xs);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     background: var(--dp-surface-subtle);
     border-radius: 6px;
     color: var(--dp-text-primary);
@@ -2095,7 +2420,7 @@ onMounted(async () => {
   }
 
   &__audit-event {
-    margin: 0 0 4px;
+    margin: 0 0 var(--dp-space-component-xs);
     color: var(--dp-text-primary);
   }
 
@@ -2106,19 +2431,19 @@ onMounted(async () => {
   }
 
   &__audit-detail {
-    margin: 4px 0;
+    margin: var(--dp-space-component-xs) 0;
     color: var(--dp-text-secondary);
     font-size: var(--dp-font-size-sm);
   }
 
   &__sub-text {
-    margin: 4px 0 0;
+    margin: var(--dp-space-component-xs) 0 0;
     color: var(--dp-text-muted);
     font-size: var(--dp-font-size-xs);
   }
 
   &__audit-pager {
-    margin-top: 12px;
+    margin-top: var(--dp-space-component);
     text-align: right;
   }
 }

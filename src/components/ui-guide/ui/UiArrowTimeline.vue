@@ -166,16 +166,16 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 .ui-arrow-timeline {
   position: relative;
   width: 100%;
-  padding: var(--dp-space-4, 16px) var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+  padding: var(--dp-space-block) var(--dp-space-component-tight) var(--dp-space-component);
   overflow-x: auto;
 }
 
 /* ===== 轨道线 ===== */
 .ui-arrow-timeline__track {
   position: absolute;
-  top: calc(var(--dp-space-4, 16px) + 13px);
-  left: calc(100% / var(--node-count, 6) / 2 + var(--dp-space-2, 8px));
-  right: calc(100% / var(--node-count, 6) / 2 + var(--dp-space-2, 8px));
+  top: calc(var(--dp-space-block) + 13px);
+  left: calc(100% / var(--node-count, 6) / 2 + var(--dp-space-component-tight));
+  right: calc(100% / var(--node-count, 6) / 2 + var(--dp-space-component-tight));
   height: 3px;
   background: var(--dp-gray-200, #e2e8f0);
   border-radius: 2px;
@@ -184,9 +184,9 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 
 .ui-arrow-timeline__track-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--dp-green-500, #10b981), var(--dp-blue-500, #2563eb));
+  background: linear-gradient(90deg, var(--dp-green-500), var(--dp-blue-500));
   border-radius: 2px;
-  transition: width var(--dp-duration-slow, 0.4s) cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width var(--dp-duration-emphasis) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ===== 节点容器 ===== */
@@ -202,27 +202,27 @@ function handleStageClick(stage: UiArrowTimelineStage) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   min-width: 72px;
   max-width: 130px;
   flex: 1;
-  padding: 0 var(--dp-space-1, 4px);
+  padding: 0 var(--dp-space-component-xs);
   border: none;
   background: transparent;
   font: inherit;
   text-align: center;
   cursor: pointer;
-  transition: transform var(--dp-duration-fast, 0.15s) ease;
+  transition: transform var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .ui-arrow-timeline__node:focus-visible {
   outline: none;
   border-radius: var(--dp-radius-control, 6px);
-  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(37, 99, 235, 0.3));
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 
 .ui-arrow-timeline__node:hover:not(.ui-arrow-timeline__node--disabled) {
-  transform: translateY(-1px);
+  transform: var(--dp-lift-sm);
 }
 
 .ui-arrow-timeline__node--disabled {
@@ -246,14 +246,14 @@ function handleStageClick(stage: UiArrowTimelineStage) {
   font-weight: 600;
   flex-shrink: 0;
   transition:
-    background var(--dp-duration-fast, 0.15s) ease,
-    border-color var(--dp-duration-fast, 0.15s) ease,
-    box-shadow var(--dp-duration-fast, 0.15s) ease,
-    transform var(--dp-duration-fast, 0.15s) ease;
+    background var(--dp-duration-fast) var(--dp-ease-default),
+    border-color var(--dp-duration-fast) var(--dp-ease-default),
+    box-shadow var(--dp-duration-fast) var(--dp-ease-default),
+    transform var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .ui-arrow-timeline__dot-num {
-  font-size: var(--dp-font-size-xxs);
+  font-size: var(--dp-font-size-xs);
   font-weight: 700;
   line-height: 1;
 }
@@ -268,19 +268,19 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 /* ===== 状态：已完成 ===== */
 .ui-arrow-timeline__node--completed .ui-arrow-timeline__dot,
 .ui-arrow-timeline__node--done .ui-arrow-timeline__dot {
-  background: var(--dp-green-500, #10b981);
-  border-color: var(--dp-green-500, #10b981);
+  background: var(--dp-green-500);
+  border-color: var(--dp-green-500);
   color: var(--dp-text-inverse, #fff);
 }
 
 /* ===== 状态：进行中 / 活跃 ===== */
 .ui-arrow-timeline__node--running .ui-arrow-timeline__dot,
 .ui-arrow-timeline__node--active .ui-arrow-timeline__dot {
-  background: var(--dp-blue-500, #2563eb);
-  border-color: var(--dp-blue-500, #2563eb);
+  background: var(--dp-blue-500);
+  border-color: var(--dp-blue-500);
   color: var(--dp-text-inverse, #fff);
   transform: scale(1.15);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dp-blue-500, #2563eb) 18%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dp-blue-500) 18%, transparent);
 }
 
 /* ===== 状态：警告 ===== */
@@ -308,12 +308,12 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 
 /* ===== 选中标记 ===== */
 .ui-arrow-timeline__node--selected .ui-arrow-timeline__dot {
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dp-blue-500, #2563eb) 22%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dp-blue-500) 22%, transparent);
 }
 
 .ui-arrow-timeline__node--selected.ui-arrow-timeline__node--pending .ui-arrow-timeline__dot {
-  border-color: var(--dp-blue-400, #60a5fa);
-  color: var(--dp-blue-500, #2563eb);
+  border-color: var(--dp-blue-500, #60a5fa);
+  color: var(--dp-blue-500);
 }
 
 /* ===== 标签区 ===== */
@@ -334,7 +334,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
-  transition: color var(--dp-duration-fast, 0.15s) ease;
+  transition: color var(--dp-duration-fast) var(--dp-ease-default);
 }
 
 .ui-arrow-timeline__node--pending .ui-arrow-timeline__title {
@@ -356,7 +356,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 }
 
 .ui-arrow-timeline__sub {
-  font-size: var(--dp-font-size-xxs);
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted, #94a3b8);
   line-height: 1.3;
   white-space: nowrap;
@@ -368,13 +368,13 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 .ui-arrow-timeline__sub--progress {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--dp-blue-600, #2563eb);
+  color: var(--dp-blue-600);
 }
 
 /* ===== 指标区 ===== */
 .ui-arrow-timeline__metrics {
   display: flex;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
   margin-top: 2px;
 }
 
@@ -400,11 +400,11 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 
 /* ===== 紧凑模式 ===== */
 .ui-arrow-timeline--compact {
-  padding: var(--dp-space-3, 12px) var(--dp-space-2, 8px) var(--dp-space-2, 8px);
+  padding: var(--dp-space-component) var(--dp-space-component-tight);
 }
 
 .ui-arrow-timeline--compact .ui-arrow-timeline__track {
-  top: calc(var(--dp-space-3, 12px) + 11px);
+  top: calc(var(--dp-space-component) + 11px);
 }
 
 .ui-arrow-timeline--compact .ui-arrow-timeline__dot {
@@ -424,12 +424,12 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 }
 
 .ui-arrow-timeline--compact .ui-arrow-timeline__node {
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   min-width: 60px;
 }
 
 .ui-arrow-timeline--compact .ui-arrow-timeline__title {
-  font-size: var(--dp-font-size-xxs);
+  font-size: var(--dp-font-size-xs);
 }
 
 .ui-arrow-timeline--compact .ui-arrow-timeline__sub {
@@ -444,10 +444,10 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 @keyframes node-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--dp-blue-500, #2563eb) 18%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--dp-blue-500) 18%, transparent);
   }
   50% {
-    box-shadow: 0 0 0 7px color-mix(in srgb, var(--dp-blue-500, #2563eb) 8%, transparent);
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--dp-blue-500) 8%, transparent);
   }
 }
 
@@ -459,14 +459,14 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 /* ===== 响应式：移动端转垂直 ===== */
 @media (max-width: bp.$layout-mobile-max) {
   .ui-arrow-timeline {
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
     overflow-x: visible;
   }
 
   .ui-arrow-timeline__track {
-    left: calc(var(--dp-space-3, 12px) + 11px);
+    left: calc(var(--dp-space-component) + 11px);
     right: auto;
-    top: calc(var(--dp-space-3, 12px) + 24px);
+    top: calc(var(--dp-space-component) + 24px);
     width: 3px;
     height: calc(100% - 48px);
   }
@@ -478,17 +478,17 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 
   .ui-arrow-timeline__nodes {
     flex-direction: column;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
   }
 
   .ui-arrow-timeline__node {
     flex-direction: row;
     align-items: center;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
     min-width: auto;
     max-width: none;
     text-align: left;
-    padding: var(--dp-space-1, 4px) 0;
+    padding: var(--dp-space-component-xs) 0;
   }
 
   .ui-arrow-timeline__label {

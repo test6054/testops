@@ -5,8 +5,7 @@
         重新加载
       </UiButton>
     </template>
-  </UiAlertStrip>
-  <UiSkeletonState v-if="loading && !detail" variant="card" compact />
+  </UiAlertStrip>  <UiSkeletonState v-if="loading && !detail" variant="card" compact />
   <template v-else-if="detail">
     <div class="archive-ocr-detail__meta">
       <span>任务状态：{{ taskStatusLabel(detail.taskStatus) }}</span>
@@ -56,7 +55,6 @@ import {
   DocumentOcrTaskStatusDescription,
   getArchiveMaterialDocumentOcrDetail,
 } from '@/apis/mark/archive-volume'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
@@ -172,21 +170,21 @@ function pageStatusTone(code?: DocumentOcrPageResultStatusCode): BadgeTone {
 .archive-ocr-detail__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-3, 12px);
-  margin-bottom: 12px;
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .archive-ocr-detail__diagnostic,
 .archive-ocr-detail__page-diagnostic {
-  margin: 8px 0;
+  margin: var(--dp-space-component-tight) 0;
   color: var(--dp-danger);
   font-size: var(--dp-font-size-sm);
 }
 .archive-ocr-detail__text {
-  margin-top: 12px;
-  padding: 12px;
-  background: var(--dp-bg-subtle);
+  margin-top: var(--dp-space-component);
+  padding: var(--dp-space-component);
+  background: var(--dp-surface-subtle);
   border-radius: var(--dp-radius-xs);
   white-space: pre-wrap;
   word-break: break-word;
@@ -196,7 +194,7 @@ function pageStatusTone(code?: DocumentOcrPageResultStatusCode): BadgeTone {
   line-height: 1.6;
 }
 .archive-ocr-detail__empty {
-  margin: 16px 0;
+  margin: var(--dp-space-block) 0;
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-sm);
 }

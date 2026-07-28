@@ -33,7 +33,7 @@ defineProps<{
 <style lang="scss" scoped>
 .iwb-panel {
   &__empty {
-    padding: 12px 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__card {

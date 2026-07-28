@@ -49,7 +49,7 @@
     />
 
     <template #footer>
-      <div class="dp-space" style="--dp-space-gap: 8px">
+      <div class="dp-space dp-space--tight">
         <UiButton
           size="sm"
           variant="outline"
@@ -195,6 +195,14 @@ async function handleSubmit(): Promise<void> {
   if (!props.examId || !props.groupId || selectedTaskIds.value.length === 0) return
   if (score.value === undefined) {
     void message.warning('请填写给分')
+    return
+  }
+  if (score.value < 0 || score.value > props.fullScore) {
+    void message.warning(
+      score.value < 0
+        ? `给分不能为负，须在 0 到满分 ${props.fullScore} 之间`
+        : `给分不能超过满分 ${props.fullScore}`,
+    )
     return
   }
   const confirmed = await confirmExtremeScore()

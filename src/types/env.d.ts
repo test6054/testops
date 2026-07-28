@@ -69,8 +69,13 @@ declare module 'vue-router' {
     noCache?: boolean
     /** SEO 配置 */
     seo?: SeoMeta
-    /** 是否需要租户管理员权限 */
+    /** 是否需要租户管理员权限（含平台 SUPER_ADMIN 路由投影） */
     requireTenantAdmin?: boolean
+    /**
+     * 是否需要本租户企业管理员（edu-user TenantAdmin）。
+     * 平台 SUPER_ADMIN 不得放行；用于租户阅卷策略等租户业务配置。
+     */
+    requireEnterpriseTenantAdmin?: boolean
     /** 是否需要档案审核台权限（院系负责人/租户管理员） */
     requirePortfolioReviewer?: boolean
     /** 教学档案袋侧栏所属工作壳；只控制服务端授权后的菜单投影，不替代 API 权限。 */
@@ -94,8 +99,10 @@ declare module 'vue-router' {
      * 未声明视为 primary。
      */
     menuTier?: 'primary' | 'secondary'
-    /** 批阅页宽布局：Main 容器放宽至全宽（上限 1680px） */
+    /** 列表/表格宽布局：Main 上限 1800px，利用横向空间 */
     layoutWide?: boolean
+    /** Trust 沉浸布局：Main 全宽且无内边距（阅卷/复核工作台） */
+    layoutImmersive?: boolean
     /** 创建页全屏表单：取消 Main 内边距与宽度限制，使用 CreateFormPageShell */
     layoutCreatePage?: boolean
     /** 考试 / 归档卷详情工作台布局标识 */
@@ -105,11 +112,17 @@ declare module 'vue-router' {
     /** StageRail 当前页高亮阶段键 */
     markStageKey?: string
     /** 考试工作台六步旅程键 */
-    journeyKey?: 'overview' | 'prep' | 'scan' | 'assign' | 'mark' | 'publish' | 'archive'
+    journeyKey?: 'overview' | 'PREP' | 'SCAN' | 'ASSIGN' | 'MARK' | 'PUBLISH' | 'ARCHIVE'
     /** 工作台侧栏分组 */
     workspacePhase?: string
     /** 质量评价 scope 维度（路由 meta.scopeProfile） */
     scopeProfile?: import('@/constants/quality-scope-profile').QualityScopeProfile
+    /**
+     * 隐藏档案袋「当前教师」Scope 头。
+     * 用于多教师队列 / 租户级配置页：这些页不消费教师 scope，
+     * 渲染惰性选择器会让用户误以为队列已按该教师过滤。
+     */
+    hidePortfolioScope?: boolean
     /** Publish 门控：培养方案已确认 */
     qualityGate?: import('@/constants/quality-scope-profile').QualityGate
     /** 培养方案门控阻断：可点击跳转工作台，非 RBAC */

@@ -1,5 +1,6 @@
 import type { Ref } from 'vue'
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
+import type { ExamCloseReadinessResponse } from '@/apis/mark/exam'
 import { computed } from 'vue'
 
 export function useExamArchiveGateHint(gate: Ref<ArchiveVolumeExamGateResponse | null>) {
@@ -21,13 +22,17 @@ function resolveGateProgressHint(gate: ArchiveVolumeExamGateResponse | null): st
   if (gate.gateOpen === true) {
     return '已完成'
   }
+  if (gate.examClosed === true && gate.closeReadiness.closePrerequisitesSatisfied !== true) {
+    return `考试已关闭但业务前置条件异常：${gate.closeReadiness.blockingItems[0]?.message ?? '请联系管理员处理'}`
+  }
   if (gate.examClosed === true && gate.allScoresPublished !== true) {
     return '考试状态异常，请联系管理员'
   }
+  if (gate.examClosed !== true && gate.closeReadiness.closeExamReady !== true) {
+    return gate.closeReadiness.blockingItems[0]?.message ?? '关考前置条件尚未完成'
+  }
   if (gate.allScoresPublished === true && gate.examClosed !== true) {
-    return (gate.gradablePaperCount ?? 0) <= 0
-      ? '无可评阅试卷，关考后将自动创建归档卷'
-      : '成绩已全部发布，可进行关考'
+    return '关考前置条件已完成，可进行关考'
   }
   if (gate.examClosed !== true) {
     return (gate.unpublishedBoundPaperCount ?? 0) > 0
@@ -46,7 +51,8 @@ function resolveGateProgressHint(gate: ArchiveVolumeExamGateResponse | null): st
 }
 
 function resolveGateAnomaly(gate: ArchiveVolumeExamGateResponse | null): boolean {
-  return gate?.examClosed === true && gate.allScoresPublished !== true
+  return gate?.examClosed === true
+    && (gate.allScoresPublished !== true || gate.closeReadiness.closePrerequisitesSatisfied !== true)
 }
 
 function resolveIncompleteClasses(gate: ArchiveVolumeExamGateResponse | null) {
@@ -60,33 +66,35 @@ function resolveIncompleteClasses(gate: ArchiveVolumeExamGateResponse | null) {
     }))
 }
 
-export function buildCloseExamBlockedContent(gate: ArchiveVolumeExamGateResponse): string {
-  const unpublished = gate.unpublishedBoundPaperCount ?? 0
-  const incomplete = resolveIncompleteClasses(gate)
-  const lines = [`尚有 ${unpublished} 份试卷未发布最终成绩，请先完成成绩发布再关考。`]
-  for (const item of incomplete.slice(0, 3)) {
-    lines.push(`${item.className}：尚有 ${item.unpublishedBoundPaperCount} 份未发布`)
+export function buildCloseExamBlockedContent(readiness: ExamCloseReadinessResponse): string {
+  if (readiness.blockingItems.length === 0) {
+    return readiness.examStatus === 'CLOSED'
+      ? '考试已关闭，无需重复关考。'
+      : '考试当前状态不可关考，请刷新列表后重试。'
   }
-  if (incomplete.length > 3) {
-    lines.push(`另有 ${incomplete.length - 3} 个班级未完成发布`)
-  }
-  return lines.join('\n')
+  return readiness.blockingItems.map(item => item.message).join('\n')
 }
 
-export function buildCloseExamReadyContent(gate: ArchiveVolumeExamGateResponse): string {
-  if ((gate.gradablePaperCount ?? 0) <= 0) {
-    return '本场考试无可评阅试卷。关考后系统将自动创建归档卷，关闭后不可再编辑考试主信息。'
-  }
-  return '成绩已全部发布。关考后将自动创建归档卷，关闭后不可再编辑考试主信息。'
+export function buildCloseExamReadyContent(readiness: ExamCloseReadinessResponse): string {
+  const scoreSummary = readiness.gradablePaperCount <= 0
+    ? '本场考试应考名册已通过缺考政策完成闭合。'
+    : `本场 ${readiness.gradablePaperCount} 份可评阅试卷成绩已全部发布。`
+  return `${scoreSummary}复核窗口与申请均已结案，关考后将自动创建归档卷且不可再编辑考试主信息。`
 }
 
 /** 归档双门禁：关考条件说明（禁止暴露 API 路径） */
 export function buildExamClosedGateHint(gate: ArchiveVolumeExamGateResponse): string {
+  if (gate.examClosed === true && gate.closeReadiness.closePrerequisitesSatisfied !== true) {
+    return gate.closeReadiness.blockingItems[0]?.message ?? '考试已关闭但关考前置条件异常'
+  }
   if (gate.examClosed === true) {
     return '已在考试列表完成关考'
   }
-  if (gate.allScoresPublished === true) {
+  if (gate.closeReadiness.closeExamReady === true) {
     return '成绩已全部发布，请前往考试列表执行关考'
+  }
+  if (gate.closeReadiness.blockingItems.length) {
+    return gate.closeReadiness.blockingItems[0].message
   }
   if ((gate.unpublishedBoundPaperCount ?? 0) > 0) {
     return '请先完成全部成绩发布，再在考试列表执行关考'

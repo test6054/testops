@@ -6,6 +6,7 @@ import type {
   PortfolioTeacherPortraitTrendPointVO,
   PortfolioTeacherPortraitVO,
 } from '@/apis/portfolio/types'
+import { PortfolioPortraitDimensionDescription } from '@/apis/portfolio/enums'
 import { PortfolioPortraitCohortDisplayModeCode } from '@/apis/portfolio/types'
 import {
   buildTrendLineChartOption,
@@ -15,6 +16,7 @@ import {
   MARK_ECHARTS_PALETTE,
   resolveThemeColor,
 } from '@/utils/mark-echarts-options'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const PORTRAIT_SCORE_MAX = 100
 
@@ -36,7 +38,11 @@ export function buildPortraitRadarChartOption(
     return emptyChartOption('暂无维度数据')
   }
   const indicators = dimensions.map((item) => ({
-    name: item.dimensionLabel,
+    name: strictEnumLabel(
+      PortfolioPortraitDimensionDescription,
+      item.dimensionCode,
+      '画像维度',
+    ),
     max: PORTRAIT_SCORE_MAX,
   }))
   const personalValues = dimensions.map((item) => Number(item.score))
@@ -111,7 +117,9 @@ export function buildPortraitCohortRangeChartOption(
   if (rows.length === 0) {
     return emptyChartOption('暂无群体分布数据')
   }
-  const categories = rows.map((item) => item.dimensionLabel)
+  const categories = rows.map((item) =>
+    strictEnumLabel(PortfolioPortraitDimensionDescription, item.dimensionCode, '画像维度'),
+  )
   const lowValues = rows.map((item) => Number(item.cohortPercentileLow))
   const bandValues = rows.map(
     (item) => Number(item.cohortPercentileHigh) - Number(item.cohortPercentileLow),
@@ -169,14 +177,22 @@ export function buildPortraitCohortRangeChartOption(
         }
         if (limited) {
           return [
-            row.dimensionLabel,
+            strictEnumLabel(
+              PortfolioPortraitDimensionDescription,
+              row.dimensionCode,
+              '画像维度',
+            ),
             `个人 ${row.personalScore}`,
             `区间 ${row.cohortPercentileLow} – ${row.cohortPercentileHigh}`,
             '样本量有限，仅供参考',
           ].join('<br/>')
         }
         return [
-          row.dimensionLabel,
+          strictEnumLabel(
+            PortfolioPortraitDimensionDescription,
+            row.dimensionCode,
+            '画像维度',
+          ),
           `个人 ${row.personalScore}`,
           `P25 ${row.cohortPercentileLow}`,
           `中位 ${row.cohortMedian ?? '-'}`,

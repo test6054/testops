@@ -1,4 +1,4 @@
-/** 最终成绩风险原因编码 - 与后端 FinalScoreRiskReason 逐值对齐 */
+/** 最终成绩风险/就绪项编码 - 与后端 FinalScoreRiskReason 逐值对齐 */
 export enum FinalScoreRiskReasonCode {
   ABNORMAL_PAPER = 'ABNORMAL_PAPER',
   UNRECONCILED_ABSENCE = 'UNRECONCILED_ABSENCE',
@@ -8,6 +8,13 @@ export enum FinalScoreRiskReasonCode {
   BLOCKING_INCIDENT = 'BLOCKING_INCIDENT',
   PENDING_DUPLICATE_IMAGE = 'PENDING_DUPLICATE_IMAGE',
   SAFE_CONFIRMABLE = 'SAFE_CONFIRMABLE',
+  PENDING_ABSENCE = 'PENDING_ABSENCE',
+  UNRESOLVED_ABSENCE_SCORE_POLICY = 'UNRESOLVED_ABSENCE_SCORE_POLICY',
+  CORRECTED_REPUBLISH = 'CORRECTED_REPUBLISH',
+  PENDING_PUBLISH_REVIEW = 'PENDING_PUBLISH_REVIEW',
+  PENDING_MY_PUBLISH_REVIEW = 'PENDING_MY_PUBLISH_REVIEW',
+  DELAYED_AUTO_CONFIRM_PENDING = 'DELAYED_AUTO_CONFIRM_PENDING',
+  DELAYED_AUTO_CONFIRM_BLOCKED = 'DELAYED_AUTO_CONFIRM_BLOCKED',
 }
 
 export const ALL_FINAL_SCORE_RISK_REASON_CODES: readonly FinalScoreRiskReasonCode[] = [
@@ -19,6 +26,13 @@ export const ALL_FINAL_SCORE_RISK_REASON_CODES: readonly FinalScoreRiskReasonCod
   FinalScoreRiskReasonCode.BLOCKING_INCIDENT,
   FinalScoreRiskReasonCode.PENDING_DUPLICATE_IMAGE,
   FinalScoreRiskReasonCode.SAFE_CONFIRMABLE,
+  FinalScoreRiskReasonCode.PENDING_ABSENCE,
+  FinalScoreRiskReasonCode.UNRESOLVED_ABSENCE_SCORE_POLICY,
+  FinalScoreRiskReasonCode.CORRECTED_REPUBLISH,
+  FinalScoreRiskReasonCode.PENDING_PUBLISH_REVIEW,
+  FinalScoreRiskReasonCode.PENDING_MY_PUBLISH_REVIEW,
+  FinalScoreRiskReasonCode.DELAYED_AUTO_CONFIRM_PENDING,
+  FinalScoreRiskReasonCode.DELAYED_AUTO_CONFIRM_BLOCKED,
 ]
 
 export const FinalScoreRiskReasonDescription: Record<FinalScoreRiskReasonCode, string> = {
@@ -31,4 +45,11 @@ export const FinalScoreRiskReasonDescription: Record<FinalScoreRiskReasonCode, s
   [FinalScoreRiskReasonCode.BLOCKING_INCIDENT]: '存在未解决阻塞事件',
   [FinalScoreRiskReasonCode.PENDING_DUPLICATE_IMAGE]: '存在未处置重复影像',
   [FinalScoreRiskReasonCode.SAFE_CONFIRMABLE]: '存在可批量确认成绩',
+  [FinalScoreRiskReasonCode.PENDING_ABSENCE]: '仍有待确认缺考记录须完成核对',
+  [FinalScoreRiskReasonCode.UNRESOLVED_ABSENCE_SCORE_POLICY]: '已确认缺考的最终成绩策略尚未结案',
+  [FinalScoreRiskReasonCode.CORRECTED_REPUBLISH]: '已更正成绩待重新提交发布复核',
+  [FinalScoreRiskReasonCode.PENDING_PUBLISH_REVIEW]: '成绩待发布复核签审',
+  [FinalScoreRiskReasonCode.PENDING_MY_PUBLISH_REVIEW]: '待我签审的发布复核',
+  [FinalScoreRiskReasonCode.DELAYED_AUTO_CONFIRM_PENDING]: '延迟自动确认进行中',
+  [FinalScoreRiskReasonCode.DELAYED_AUTO_CONFIRM_BLOCKED]: '延迟自动确认已失败',
 }

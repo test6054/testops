@@ -3,8 +3,11 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { TreeProps } from 'ant-design-vue/es/tree'
 import type {
+  PortfolioArchiveAuditFlowOptionVO,
   PortfolioArchiveCategorySaveRequest,
   PortfolioArchiveCategoryTreeNodeVO,
+  PortfolioArchiveEnumOptionSaveRequest,
+  PortfolioArchiveEnumOptionVO,
   PortfolioArchiveFieldDefSaveRequest,
   PortfolioArchiveFieldDefVO,
   PortfolioArchiveTeacherReadinessVO,
@@ -97,6 +100,24 @@ function archiveFieldRecord(record: unknown): PortfolioArchiveFieldDefVO {
   return record
 }
 
+function isArchiveEnumOptionRecord(record: unknown): record is PortfolioArchiveEnumOptionVO {
+  return (
+    typeof record === 'object'
+    && record !== null
+    && 'id' in record
+    && 'enumCode' in record
+    && 'optionValue' in record
+    && 'optionLabel' in record
+  )
+}
+
+function archiveEnumOptionRecord(record: unknown): PortfolioArchiveEnumOptionVO {
+  if (!isArchiveEnumOptionRecord(record)) {
+    throw new Error('档案枚举选项行契约异常')
+  }
+  return record
+}
+
 function isArchiveTemplateVersionRecord(
   record: unknown,
 ): record is PortfolioArchiveTemplateVersionVO {
@@ -126,11 +147,13 @@ const fieldColumns: ColumnsType = [
   { title: '字段编码', dataIndex: 'fieldCode', key: 'fieldCode', width: 140 },
   { title: '字段名称', dataIndex: 'fieldLabel', key: 'fieldLabel' },
   { title: '类型', dataIndex: 'fieldType', key: 'fieldType', width: 72 },
+  { title: '单位', dataIndex: 'unit', key: 'unit', width: 72 },
+  { title: '枚举', dataIndex: 'enumRef', key: 'enumRef', width: 100 },
   { title: '必填', dataIndex: 'required', key: 'required', width: 56 },
   { title: '只读', dataIndex: 'readonly', key: 'readonly', width: 56 },
   { title: '来源', dataIndex: 'sourceType', key: 'sourceType', width: 88 },
   { title: '排序', dataIndex: 'sortOrder', key: 'sortOrder', width: 56 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '操作', key: 'actions', width: 160 },
 ]
 
 const historyColumns: ColumnsType = [
@@ -167,16 +190,36 @@ const historyVisible = ref(false)
 const auditFlowCode = ref('')
 const auditFlowState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
 const auditFlowLoadedCategoryId = ref('')
+const auditFlowOptions = ref<PortfolioArchiveAuditFlowOptionVO[]>([])
+const auditFlowOptionsLoadFailed = ref(false)
+const auditFlowOptionsToken = ref(0)
 const categoryVisible = ref(false)
 const fieldVisible = ref(false)
 const publishVisible = ref(false)
+const enumOptionVisible = ref(false)
+const enumOptionLoading = ref(false)
+const enumOptionLoadError = ref('')
+const enumOptionRequestToken = ref(0)
+const enumOptions = ref<PortfolioArchiveEnumOptionVO[]>([])
+const enumOptionEditor = reactive<PortfolioArchiveEnumOptionSaveRequest>({
+  enumCode: '',
+  optionValue: '',
+  optionLabel: '',
+  sortOrder: 0,
+  enabled: true,
+})
 const fieldEditing = ref(false)
 const categoryEditing = ref(false)
 const publishSummary = ref('')
 const scopeFilter = ref<PortfolioArchiveCategorySaveRequest['scope'] | undefined>(undefined)
 const teacherReadiness = ref<PortfolioArchiveTeacherReadinessVO | null>(null)
 const interactionLocked = computed(
-  () => writing.value || categoryVisible.value || fieldVisible.value || publishVisible.value,
+  () =>
+    writing.value
+    || categoryVisible.value
+    || fieldVisible.value
+    || publishVisible.value
+    || enumOptionVisible.value,
 )
 
 /** 模板治理状态写必须串行，避免分类、字段和版本状态被并发推进。 */
@@ -215,8 +258,20 @@ const fieldEditor = reactive<PortfolioArchiveFieldDefSaveRequest>({
   required: false,
   readonly: false,
   sourceType: PortfolioArchiveFieldSourceTypeCode.MANUAL,
+  unit: undefined,
+  formatPattern: undefined,
+  minValue: undefined,
+  maxValue: undefined,
   sortOrder: 0,
 })
+
+const enumOptionColumns: ColumnsType = [
+  { title: '选项值', dataIndex: 'optionValue', key: 'optionValue', width: 120 },
+  { title: '显示名', dataIndex: 'optionLabel', key: 'optionLabel' },
+  { title: '排序', dataIndex: 'sortOrder', key: 'sortOrder', width: 64 },
+  { title: '启用', dataIndex: 'enabled', key: 'enabled', width: 64 },
+  { title: '操作', key: 'actions', width: 120 },
+]
 
 const selectedCategory = computed(() => selectedNode.value?.raw ?? null)
 const versionStatusLabel = computed(() => {
@@ -312,7 +367,7 @@ function mapTree(nodes: PortfolioArchiveCategoryTreeNodeVO[]): TreeNode[] {
   }))
 }
 
-async function loadTree() {
+async function loadTree(): Promise<boolean> {
   const currentToken = treeRequestToken.value + 1
   treeRequestToken.value = currentToken
   const request = scopeFilter.value ? { scope: scopeFilter.value } : undefined
@@ -320,7 +375,7 @@ async function loadTree() {
   treeLoadError.value = ''
   try {
     const res = await portfolioArchiveTemplateApi.listCategoryTree(request)
-    if (treeRequestToken.value !== currentToken) return
+    if (treeRequestToken.value !== currentToken) return false
     treeData.value = mapTree(res ?? [])
     if (selectedNode.value) {
       const refreshed = findTreeNode(treeData.value, selectedNode.value.key)
@@ -339,23 +394,36 @@ async function loadTree() {
         auditFlowState.value = 'idle'
       }
     }
+    return true
   } catch (error) {
-    if (treeRequestToken.value !== currentToken) return
-    treeData.value = []
-    categoryRequestToken.value += 1
-    fieldRequestToken.value += 1
-    selectedNode.value = null
-    activeVersionId.value = null
-    fields.value = []
-    versionHistory.value = []
-    changeLogs.value = []
-    auditFlowCode.value = ''
-    auditFlowLoadedCategoryId.value = ''
-    auditFlowState.value = 'idle'
-    treeLoadError.value = '档案分类加载失败，请重试'
+    if (treeRequestToken.value !== currentToken) return false
+    treeLoadError.value = '档案分类加载失败；已保留上次成功树（若有）'
     showUserError(error, '加载档案分类失败')
+    return false
   } finally {
     if (treeRequestToken.value === currentToken) treeLoading.value = false
+  }
+}
+
+/** 写入已成功后刷新树/历史/字段；刷新失败不得否定写入。 */
+async function refreshTemplateAfterWrite(
+  writeSettledLabel: string,
+  options: { reselectCategory?: boolean, reloadHistory?: boolean, reloadFields?: boolean } = {},
+): Promise<void> {
+  const treeOk = await loadTree()
+  if (!treeOk) {
+    showUserError(null, `${writeSettledLabel}已生效，分类树刷新失败`)
+    return
+  }
+  if (options.reselectCategory && selectedNode.value) {
+    await selectCategory(selectedNode.value)
+    return
+  }
+  if (options.reloadHistory) {
+    await loadHistory()
+  }
+  if (options.reloadFields) {
+    await loadFields()
   }
 }
 
@@ -450,12 +518,13 @@ async function bindAuditFlow() {
       auditFlowCode: auditFlowCodeValue,
     })
     void message.success('审核流已绑定')
-    await loadAuditFlowBinding()
   } catch (error) {
     showUserError(error, '绑定审核流失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await loadAuditFlowBinding()
 }
 
 async function switchVersion(versionId: PortfolioArchiveTemplateVersionVO['id']) {
@@ -479,28 +548,28 @@ function selectVersionFromHistory(record: PortfolioArchiveTemplateVersionVO) {
   historyVisible.value = false
 }
 
-async function loadFields() {
+async function loadFields(): Promise<boolean> {
   const currentToken = ++fieldRequestToken.value
   if (!activeVersionId.value) {
     fields.value = []
     fieldLoadError.value = ''
-    return
+    return true
   }
   const versionId = activeVersionId.value
-  fields.value = []
   fieldLoading.value = true
   fieldLoadError.value = ''
   try {
     const nextFields = await portfolioArchiveTemplateApi.listFieldDefs({
       templateVersionId: versionId,
     })
-    if (currentToken !== fieldRequestToken.value || activeVersionId.value !== versionId) return
+    if (currentToken !== fieldRequestToken.value || activeVersionId.value !== versionId) return false
     fields.value = nextFields ?? []
+    return true
   } catch (error) {
-    if (currentToken !== fieldRequestToken.value || activeVersionId.value !== versionId) return
-    fields.value = []
-    fieldLoadError.value = '模板字段加载失败，请重试'
+    if (currentToken !== fieldRequestToken.value || activeVersionId.value !== versionId) return false
+    fieldLoadError.value = '模板字段加载失败；已保留上次成功字段（若有）'
     showUserError(error, '加载字段失败')
+    return false
   } finally {
     if (currentToken === fieldRequestToken.value) fieldLoading.value = false
   }
@@ -643,13 +712,13 @@ async function deactivateCategory() {
       sortOrder: category.sortOrder,
     })
     void message.success('分类已停用')
-    await loadTree()
-    if (selectedNode.value) await selectCategory(selectedNode.value)
   } catch (error) {
     showUserError(error, '停用分类失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshTemplateAfterWrite('分类停用', { reselectCategory: true })
 }
 
 async function deleteCategory() {
@@ -677,12 +746,13 @@ async function deleteCategory() {
     versionHistory.value = []
     changeLogs.value = []
     activeVersionId.value = null
-    await loadTree()
   } catch (error) {
     showUserError(error, '删除分类失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshTemplateAfterWrite('分类删除')
 }
 
 async function onScopeFilterChange() {
@@ -719,12 +789,13 @@ async function submitCategory() {
     await portfolioArchiveTemplateApi.saveCategory(request)
     void message.success('分类已保存')
     categoryVisible.value = false
-    await loadTree()
   } catch (error) {
     showUserError(error, '保存分类失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshTemplateAfterWrite('分类保存')
 }
 
 async function runSeedDefaults() {
@@ -743,12 +814,13 @@ async function runSeedDefaults() {
     const created = result?.createdCategoryCodes?.length ?? 0
     const skipped = result?.skippedCategoryCodes?.length ?? 0
     void message.success(`初始化完成：新建 ${created}，跳过 ${skipped}`)
-    await loadTree()
   } catch (error) {
     showUserError(error, '初始化默认模板失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshTemplateAfterWrite('默认模板初始化')
 }
 
 async function ensureDraftVersion() {
@@ -759,17 +831,15 @@ async function ensureDraftVersion() {
   try {
     const versionId = await portfolioArchiveTemplateApi.saveDraftVersion({ categoryId })
     activeVersionId.value = versionId
-    await loadTree()
     if (selectedNode.value?.key === categoryId) selectedNode.value.raw.draftVersionId = versionId
-    await loadHistory()
-    await loadFields()
-    return versionId
   } catch (error) {
     showUserError(error, '创建草稿版本失败')
     return null
   } finally {
     endOperation(operation)
   }
+  await refreshTemplateAfterWrite('草稿创建', { reloadHistory: true, reloadFields: true })
+  return activeVersionId.value
 }
 
 function openCreateField() {
@@ -788,11 +858,15 @@ function openCreateField() {
     templateVersionId: activeVersionId.value,
     fieldCode: '',
     fieldLabel: '',
-    fieldType: 'TEXT',
+    fieldType: PortfolioArchiveFieldTypeCode.TEXT,
     required: false,
     readonly: false,
     enumRef: undefined,
-    sourceType: 'MANUAL',
+    sourceType: PortfolioArchiveFieldSourceTypeCode.MANUAL,
+    unit: undefined,
+    formatPattern: undefined,
+    minValue: undefined,
+    maxValue: undefined,
     sortOrder: fields.value.length,
   })
   fieldVisible.value = true
@@ -815,6 +889,10 @@ function openEditField(record: PortfolioArchiveFieldDefVO) {
     readonly: record.readonly ?? false,
     sourceType: record.sourceType,
     enumRef: record.enumRef,
+    unit: record.unit,
+    formatPattern: record.formatPattern,
+    minValue: record.minValue,
+    maxValue: record.maxValue,
     sortOrder: record.sortOrder ?? 0,
   })
   fieldVisible.value = true
@@ -841,17 +919,157 @@ async function removeField(record: PortfolioArchiveFieldDefVO) {
       templateVersionId,
     })
     void message.success('字段已删除')
-    await loadFields()
   } catch (error) {
     showUserError(error, '删除字段失败')
+    return
   } finally {
     endOperation(operation)
+  }
+  const fieldsOk = await loadFields()
+  if (!fieldsOk) {
+    showUserError(null, '字段已删除，字段列表刷新失败')
   }
 }
 
 function handleArchiveFieldAction(key: string, record: PortfolioArchiveFieldDefVO) {
   if (key === 'edit') openEditField(record)
   else if (key === 'delete') void removeField(record)
+  else if (key === 'enum-options') void openEnumOptions(record)
+}
+
+async function loadEnumOptions(enumCode: string) {
+  const requestToken = ++enumOptionRequestToken.value
+  enumOptionLoading.value = true
+  enumOptionLoadError.value = ''
+  try {
+    const rows = await portfolioArchiveTemplateApi.listEnumOptions({ enumCode })
+    if (enumOptionRequestToken.value !== requestToken) {
+      return
+    }
+    enumOptions.value = rows
+  } catch (error) {
+    if (enumOptionRequestToken.value !== requestToken) {
+      return
+    }
+    enumOptions.value = []
+    enumOptionLoadError.value = '枚举选项加载失败'
+    showUserError(error, '加载枚举选项失败')
+  } finally {
+    if (enumOptionRequestToken.value === requestToken) {
+      enumOptionLoading.value = false
+    }
+  }
+}
+
+async function openEnumOptions(record: PortfolioArchiveFieldDefVO) {
+  if (interactionLocked.value) return
+  const enumCode = record.enumRef?.trim()
+  if (record.fieldType !== PortfolioArchiveFieldTypeCode.ENUM || !enumCode) {
+    showFormValidationMessage('请先将字段类型设为枚举并填写字典编码')
+    return
+  }
+  Object.assign(enumOptionEditor, {
+    id: undefined,
+    enumCode,
+    optionValue: '',
+    optionLabel: '',
+    sortOrder: 0,
+    enabled: true,
+  })
+  enumOptionVisible.value = true
+  await loadEnumOptions(enumCode)
+}
+
+function resetEnumOptionEditor() {
+  Object.assign(enumOptionEditor, {
+    id: undefined,
+    optionValue: '',
+    optionLabel: '',
+    sortOrder: enumOptions.value.length,
+    enabled: true,
+  })
+}
+
+function openEditEnumOption(record: PortfolioArchiveEnumOptionVO) {
+  Object.assign(enumOptionEditor, {
+    id: record.id,
+    enumCode: record.enumCode,
+    optionValue: record.optionValue,
+    optionLabel: record.optionLabel,
+    sortOrder: record.sortOrder ?? 0,
+    enabled: record.enabled !== false,
+  })
+}
+
+async function submitEnumOption() {
+  const enumCode = enumOptionEditor.enumCode.trim()
+  const optionValue = enumOptionEditor.optionValue.trim()
+  const optionLabel = enumOptionEditor.optionLabel.trim()
+  if (!enumCode || !optionValue || !optionLabel) {
+    showFormValidationMessage('请填写选项值和显示名')
+    return
+  }
+  const targetId = enumOptionEditor.id || 'new'
+  const operation = `enum-option:save:${targetId}`
+  if (!beginOperation(operation)) return
+  try {
+    await portfolioArchiveTemplateApi.saveEnumOption({
+      id: enumOptionEditor.id,
+      enumCode,
+      optionValue,
+      optionLabel,
+      sortOrder: enumOptionEditor.sortOrder,
+      enabled: enumOptionEditor.enabled,
+    })
+    void message.success('枚举选项已保存')
+    resetEnumOptionEditor()
+  } catch (error) {
+    showUserError(error, '保存枚举选项失败')
+    return
+  } finally {
+    endOperation(operation)
+  }
+  await loadEnumOptions(enumCode)
+}
+
+async function removeEnumOption(record: PortfolioArchiveEnumOptionVO) {
+  const operation = `enum-option:delete:${record.id}`
+  if (!beginOperation(operation)) return
+  if (
+    !(await confirmAsync({
+      content: `确认删除选项「${record.optionLabel}」？`,
+      type: 'error',
+    }))
+  ) {
+    endOperation(operation)
+    return
+  }
+  try {
+    await portfolioArchiveTemplateApi.deleteEnumOption({ id: record.id })
+    void message.success('枚举选项已删除')
+  } catch (error) {
+    showUserError(error, '删除枚举选项失败')
+    return
+  } finally {
+    endOperation(operation)
+  }
+  await loadEnumOptions(record.enumCode)
+}
+
+function handleEnumOptionAction(key: string, record: PortfolioArchiveEnumOptionVO) {
+  if (key === 'edit') openEditEnumOption(record)
+  else if (key === 'delete') void removeEnumOption(record)
+}
+
+function archiveFieldActionItems(record: PortfolioArchiveFieldDefVO) {
+  const items: Array<{ key: string, label: string, tone?: 'danger', disabled?: boolean }> = [
+    { key: 'edit', label: '编辑', disabled: writing.value },
+  ]
+  if (record.fieldType === PortfolioArchiveFieldTypeCode.ENUM && record.enumRef?.trim()) {
+    items.push({ key: 'enum-options', label: '选项', disabled: writing.value })
+  }
+  items.push({ key: 'delete', label: '删除', tone: 'danger', disabled: writing.value })
+  return items
 }
 
 async function submitField() {
@@ -859,6 +1077,10 @@ async function submitField() {
   const fieldCode = fieldEditor.fieldCode.trim()
   const fieldLabel = fieldEditor.fieldLabel.trim()
   const enumRef = fieldEditor.enumRef?.trim() || undefined
+  const unit = fieldEditor.unit?.trim() || undefined
+  const formatPattern = fieldEditor.formatPattern?.trim() || undefined
+  const minValue = fieldEditor.minValue?.trim() || undefined
+  const maxValue = fieldEditor.maxValue?.trim() || undefined
   if (!templateVersionId || !fieldCode || !fieldLabel) {
     showFormValidationMessage('请填写字段编码和字段名称，并确认当前草稿版本')
     return
@@ -880,17 +1102,25 @@ async function submitField() {
     readonly: fieldEditor.readonly,
     enumRef,
     sourceType: fieldEditor.sourceType,
+    unit,
+    formatPattern,
+    minValue,
+    maxValue,
     sortOrder: fieldEditor.sortOrder,
   }
   try {
     await portfolioArchiveTemplateApi.saveFieldDef(request)
     void message.success('字段已保存')
     fieldVisible.value = false
-    await loadFields()
   } catch (error) {
     showUserError(error, '保存字段失败')
+    return
   } finally {
     endOperation(operation)
+  }
+  const fieldsOk = await loadFields()
+  if (!fieldsOk) {
+    showUserError(null, '字段已保存，字段列表刷新失败')
   }
 }
 
@@ -906,13 +1136,13 @@ async function runTrial() {
       templateVersionId,
     })
     void message.success('试算通过')
-    await loadHistory()
-    await loadFields()
   } catch (error) {
     showUserError(error, '试算失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshTemplateAfterWrite('试算', { reloadHistory: true, reloadFields: true })
 }
 
 function openPublishModal() {
@@ -941,13 +1171,13 @@ async function submitPublish() {
     })
     void message.success('发布成功')
     publishVisible.value = false
-    await loadTree()
-    if (selectedNode.value) await selectCategory(selectedNode.value)
   } catch (error) {
     showUserError(error, '发布失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshTemplateAfterWrite('发布', { reselectCategory: true })
 }
 
 async function runDeprecate() {
@@ -970,13 +1200,13 @@ async function runDeprecate() {
       templateVersionId,
     })
     void message.success('版本已停用')
-    await loadTree()
-    if (selectedNode.value) await selectCategory(selectedNode.value)
   } catch (error) {
     showUserError(error, '停用版本失败')
+    return
   } finally {
     endOperation(operation)
   }
+  await refreshTemplateAfterWrite('版本停用', { reselectCategory: true })
 }
 
 const onTreeSelect: TreeProps['onSelect'] = (_keys, info) => {
@@ -988,6 +1218,35 @@ const onTreeSelect: TreeProps['onSelect'] = (_keys, info) => {
     throw new Error('档案模板分类树节点契约异常')
   }
   selectCategory(info.node)
+}
+
+const selectedAuditFlowOption = computed(() =>
+  auditFlowOptions.value.find((item) => item.auditFlowCode === auditFlowCode.value),
+)
+
+const auditFlowSelectOptions = computed(() =>
+  auditFlowOptions.value.map((item) => ({
+    value: item.auditFlowCode,
+    label: item.sensitive ? `${item.flowName}（敏感）` : item.flowName,
+  })),
+)
+
+async function loadAuditFlowOptions() {
+  const currentToken = ++auditFlowOptionsToken.value
+  try {
+    const rows = await portfolioArchiveTemplateApi.listAuditFlowOptions()
+    if (auditFlowOptionsToken.value !== currentToken) {
+      return
+    }
+    auditFlowOptions.value = rows ?? []
+    auditFlowOptionsLoadFailed.value = false
+  } catch (error) {
+    if (auditFlowOptionsToken.value !== currentToken) {
+      return
+    }
+    auditFlowOptionsLoadFailed.value = true
+    showUserError(error, '加载审核流选项失败')
+  }
 }
 
 async function loadTeacherReadiness() {
@@ -1007,8 +1266,7 @@ async function loadTeacherReadiness() {
 }
 
 onMounted(async () => {
-  await loadTree()
-  await loadTeacherReadiness()
+  await Promise.all([loadTree(), loadTeacherReadiness(), loadAuditFlowOptions()])
 })
 </script>
 
@@ -1113,7 +1371,7 @@ onMounted(async () => {
           :description="treeLoadError"
         />
         <UiTree
-          v-if="!treeLoadError && treeData.length"
+          v-if="treeData.length"
           :tree-data="treeData"
           block-node
           default-expand-all
@@ -1161,42 +1419,60 @@ onMounted(async () => {
           </p>
           <div v-if="canManageTenant" class="audit-flow-row">
             <span class="audit-flow-label">审核流</span>
-            <UiInput
+            <UiSelect
               size="sm"
               v-model="auditFlowCode"
-              placeholder="审核流编码"
-              style="width: 220px"
-              :disabled="writing || auditFlowState !== 'ready'"
+              placeholder="选择审核流"
+              style="width: 260px"
+              :options="auditFlowSelectOptions"
+              :disabled="
+                writing
+                  || auditFlowState !== 'ready'
+                  || auditFlowOptionsLoadFailed
+                  || auditFlowOptions.length === 0
+              "
             />
             <UiButton
               variant="primary"
               size="sm"
               :loading="operationKey.startsWith('audit-flow:bind:')"
-              :disabled="writing || auditFlowState !== 'ready'"
+              :disabled="
+                writing
+                  || auditFlowState !== 'ready'
+                  || auditFlowOptionsLoadFailed
+                  || !auditFlowCode
+              "
               @click="bindAuditFlow"
             >
               绑定
             </UiButton>
             <UiButton
               size="sm"
-              :disabled="writing || auditFlowState !== 'ready'"
+              :disabled="writing || auditFlowState !== 'ready' || auditFlowOptions.length === 0"
               @click="auditFlowCode = PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE"
             >
               使用默认
             </UiButton>
           </div>
+          <p
+            v-if="canManageTenant && selectedAuditFlowOption"
+            class="audit-flow-summary"
+          >
+            {{ selectedAuditFlowOption.nodeSummary }}
+          </p>
+          <UiAlertStrip
+            v-if="canManageTenant && auditFlowOptionsLoadFailed"
+            dense
+            tone="error"
+            title="审核流选项加载失败，已禁止绑定；刷新页面后将再次拉取"
+            class="dp-mb-tight"
+          />
           <UiAlertStrip
             v-if="canManageTenant && auditFlowState === 'error'"
             dense
             tone="error"
             title="当前分类审核流加载失败，已禁止绑定"
-          >
-            <template #actions>
-              <UiButton size="sm" variant="outline" @click="loadAuditFlowBinding()">
-                重新加载
-              </UiButton>
-            </template>
-          </UiAlertStrip>
+          />
           <div v-if="canManageTenant" class="toolbar">
             <UiButton
               v-if="canViewPublished"
@@ -1292,10 +1568,7 @@ onMounted(async () => {
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
                   v-if="canManageTenant && canEditFields"
-                  :items="[
-                    { key: 'edit', label: '编辑', disabled: writing },
-                    { key: 'delete', label: '删除', tone: 'danger', disabled: writing },
-                  ]"
+                  :items="archiveFieldActionItems(archiveFieldRecord(record))"
                   split
                   @action="(key) => handleArchiveFieldAction(key, archiveFieldRecord(record))"
                 />
@@ -1305,7 +1578,7 @@ onMounted(async () => {
         </template>
         <UiAlertStrip v-else tone="info" size="sm" dense inline :show-icon="false">
           <template #default>
-            <span style="display: inline-flex; align-items: center; gap: 8px">
+            <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
               <UiTag tone="blue" size="sm">未选择分类</UiTag>
               <span>请在左侧选择档案分类后再维护模板</span>
             </span>
@@ -1416,6 +1689,43 @@ onMounted(async () => {
             :disabled="writing"
           />
         </UiFormItem>
+        <UiFormItem
+          v-if="
+            fieldEditor.fieldType === PortfolioArchiveFieldTypeCode.NUMBER
+              || fieldEditor.fieldType === PortfolioArchiveFieldTypeCode.TEXT
+          "
+          label="单位"
+        >
+          <UiInput
+            size="sm"
+            v-model="fieldEditor.unit"
+            placeholder="如学分、学时"
+            :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem
+          v-if="fieldEditor.fieldType === PortfolioArchiveFieldTypeCode.DATE"
+          label="日期格式"
+        >
+          <UiInput
+            size="sm"
+            v-model="fieldEditor.formatPattern"
+            placeholder="默认 yyyy-MM-dd"
+            :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem
+          v-if="fieldEditor.fieldType === PortfolioArchiveFieldTypeCode.NUMBER"
+          label="最小值"
+        >
+          <UiInput size="sm" v-model="fieldEditor.minValue" :disabled="writing" />
+        </UiFormItem>
+        <UiFormItem
+          v-if="fieldEditor.fieldType === PortfolioArchiveFieldTypeCode.NUMBER"
+          label="最大值"
+        >
+          <UiInput size="sm" v-model="fieldEditor.maxValue" :disabled="writing" />
+        </UiFormItem>
         <UiFormItem label="排序">
           <UiInputNumber
             size="sm"
@@ -1433,6 +1743,82 @@ onMounted(async () => {
         </UiFormItem>
       </UiForm>
     </UiDialog>
+
+    <UiDrawer
+      v-model:open="enumOptionVisible"
+      :title="`枚举选项 · ${enumOptionEditor.enumCode || '-'}`"
+      :width="640"
+      :closable="!writing"
+      :mask-closable="!writing"
+    >
+      <UiForm layout="vertical" class="enum-option-form">
+        <UiFormItem label="选项值" required>
+          <UiInput
+            size="sm"
+            v-model="enumOptionEditor.optionValue"
+            :disabled="!!enumOptionEditor.id || writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="显示名" required>
+          <UiInput size="sm" v-model="enumOptionEditor.optionLabel" :disabled="writing" />
+        </UiFormItem>
+        <UiFormItem label="排序">
+          <UiInputNumber
+            size="sm"
+            v-model="enumOptionEditor.sortOrder"
+            :min="0"
+            style="width: 100%"
+            :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="启用">
+          <UiSwitch size="sm" v-model="enumOptionEditor.enabled" :disabled="writing" />
+        </UiFormItem>
+        <div class="toolbar">
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="operationKey.startsWith('enum-option:save:')"
+            :disabled="writing"
+            @click="submitEnumOption"
+          >
+            {{ enumOptionEditor.id ? '更新选项' : '新增选项' }}
+          </UiButton>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="writing || !enumOptionEditor.id"
+            @click="resetEnumOptionEditor"
+          >
+            清空编辑
+          </UiButton>
+        </div>
+      </UiForm>
+      <UiDataTable
+        :columns="enumOptionColumns"
+        :data-source="enumOptions"
+        row-key="id"
+        :loading="enumOptionLoading"
+        :load-error="Boolean(enumOptionLoadError)"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'enabled'">
+            {{ archiveEnumOptionRecord(record).enabled === false ? '否' : '是' }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <UiTableActions
+              v-if="canManageTenant"
+              :items="[
+                { key: 'edit', label: '编辑', disabled: writing },
+                { key: 'delete', label: '删除', tone: 'danger', disabled: writing },
+              ]"
+              split
+              @action="(key) => handleEnumOptionAction(key, archiveEnumOptionRecord(record))"
+            />
+          </template>
+        </template>
+      </UiDataTable>
+    </UiDrawer>
 
     <UiDialog
       v-model:open="publishVisible"
@@ -1529,13 +1915,13 @@ onMounted(async () => {
 .template-layout {
   display: grid;
   grid-template-columns: 280px 1fr;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 .toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 .scope-filter {
   align-items: center;
@@ -1547,8 +1933,8 @@ onMounted(async () => {
 .audit-flow-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 
 .audit-flow-label {
@@ -1556,32 +1942,43 @@ onMounted(async () => {
   font-size: var(--dp-font-size-md);
 }
 
+.audit-flow-summary {
+  margin: 0 0 var(--dp-space-component);
+  color: var(--dp-text-secondary);
+  font-size: var(--dp-font-size-sm);
+  line-height: 1.45;
+}
+
+.enum-option-form {
+  margin-bottom: var(--dp-space-component);
+}
+
 .meta-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 .readonly-hint {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 .change-log {
-  margin-top: 16px;
+  margin-top: var(--dp-space-block);
 }
 .change-log h4 {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .change-log-item {
-  padding: 12px 0;
+  padding: var(--dp-space-component) 0;
   border-bottom: 1px solid var(--dp-border-subtle);
 }
 .change-log-meta {
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
@@ -1589,8 +1986,8 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-tight);
 }
 .diff-label {
   min-width: 32px;

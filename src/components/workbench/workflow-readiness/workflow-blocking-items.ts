@@ -7,11 +7,11 @@ import { assertKnownWorkflowBlockingCode } from '@/components/workbench/workflow
 export interface BlockingItemsToStepsOptions {
   routeParams?: Record<string, string>
   routeQuery?: Record<string, string>
-  actionLabelPrefix?: string
 }
 
 /**
- * 将后端 blockingItems 转为 WorkflowReadinessStep；直接使用 API message 与 targetRouteName。
+ * 将后端 blockingItems 转为 WorkflowReadinessStep。
+ * message / targetRouteName / actionLabel 均采信 API，禁止前端拼接「去」前缀平行造文案。
  */
 export function blockingItemsToWorkflowSteps(
   items: WorkflowBlockingItem[] | null | undefined,
@@ -27,15 +27,16 @@ export function blockingItemsToWorkflowSteps(
     if (seenCodes.has(item.code)) {
       continue
     }
+    if (!item.actionLabel?.trim()) {
+      throw new Error(`工作流阻断项缺少 actionLabel：${item.code}`)
+    }
     seenCodes.add(item.code)
     steps.push({
       code: item.code,
       label: item.message,
       status: 'pending',
       description: item.message,
-      actionLabel: options.actionLabelPrefix
-        ? `${options.actionLabelPrefix}${item.message}`
-        : `前往${item.message}`,
+      actionLabel: item.actionLabel,
       routeName: item.targetRouteName,
       routeParams: options.routeParams,
       routeQuery: options.routeQuery,

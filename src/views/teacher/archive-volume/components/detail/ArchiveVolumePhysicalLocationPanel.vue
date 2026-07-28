@@ -274,7 +274,6 @@ onMounted(() => {
       <UiSkeletonState v-if="historyLoading" variant="card" compact />
       <div v-else-if="historyLoadFailed" class="archive-volume-physical-location__history-error">
         <p>位置变更历史加载失败</p>
-        <UiButton size="sm" variant="outline" @click="loadLocationHistory">重试</UiButton>
       </div>
       <div
         v-else-if="locationHistory.length > 0"
@@ -299,7 +298,7 @@ onMounted(() => {
 .archive-volume-physical-location__head {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
 }
 
 .archive-volume-physical-location__title {
@@ -317,17 +316,17 @@ onMounted(() => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-4);
-  padding: var(--dp-space-3);
-  margin-bottom: var(--dp-space-4);
-  background: var(--dp-surface-sunken);
+  gap: var(--dp-space-block);
+  padding: var(--dp-space-component);
+  margin-bottom: var(--dp-space-block);
+  background: var(--dp-bg-muted);
   border-radius: var(--dp-radius-control);
 }
 .archive-volume-physical-location__location-text {
   font-size: var(--dp-font-size-xl);
   font-weight: 700;
-  font-family: var(--dp-font-mono), monospace;
-  color: var(--dp-primary);
+  font-family: var(--dp-font-family-code), monospace;
+  color: var(--dp-color-primary);
   font-variant-numeric: tabular-nums;
 }
 .archive-volume-physical-location__hero-meta {
@@ -343,19 +342,19 @@ onMounted(() => {
   color: var(--dp-text-secondary);
 }
 .archive-volume-physical-location__timeline {
-  margin-top: var(--dp-space-4, 16px);
+  margin-top: var(--dp-space-block);
   max-width: 640px;
 }
 .archive-volume-physical-location__audit {
   padding-top: 0;
 }
 .archive-volume-physical-location__field--filled :deep(.ant-form-item-label > label) {
-  color: var(--dp-primary);
+  color: var(--dp-color-primary);
   font-weight: 600;
 }
 .archive-volume-physical-location__timeline-title {
-  margin: 0 0 12px;
-  font-size: 15px;
+  margin: 0 0 var(--dp-space-component);
+  font-size: var(--dp-type-panel-title-size);
   font-weight: 600;
 }
 .archive-volume-physical-location__empty {
@@ -368,7 +367,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 
 .archive-volume-physical-location__history-error p {

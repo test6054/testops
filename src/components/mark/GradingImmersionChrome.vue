@@ -63,8 +63,8 @@ const emit = defineEmits<{
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-2) var(--dp-space-3);
-  padding: var(--dp-space-3) var(--dp-space-4);
+  gap: var(--dp-space-component-tight) var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
   background: var(--dp-surface);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
@@ -73,7 +73,7 @@ const emit = defineEmits<{
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--dp-space-2) var(--dp-space-3);
+    gap: var(--dp-space-component-tight) var(--dp-space-component);
     min-width: 0;
     flex: 1 1 200px;
   }
@@ -85,7 +85,7 @@ const emit = defineEmits<{
   &__titles {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-1);
+    gap: var(--dp-space-component-xs);
     min-width: 0;
   }
 
@@ -112,7 +112,7 @@ const emit = defineEmits<{
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     min-width: 0;
   }
 
@@ -120,7 +120,7 @@ const emit = defineEmits<{
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     flex-shrink: 0;
   }
 }

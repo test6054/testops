@@ -45,11 +45,11 @@ import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
-const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
   = usePortfolioArchiveWriteGuard()
@@ -126,7 +126,32 @@ const courseForm = reactive<CourseEditorForm>({
   studentCount: undefined,
 })
 
-const readonlyProfile = computed(() => canPickTeachers.value && !!targetTeacherId.value)
+const readonlyProfile = computed(() => {
+  if (!targetTeacherId.value) {
+    return true
+  }
+  if (canPickTeachers.value) {
+    return true
+  }
+  return Boolean(currentUserId.value && targetTeacherId.value !== currentUserId.value)
+})
+const profileModeBanner = computed(() => {
+  if (!targetTeacherId.value) {
+    return null
+  }
+  if (readonlyProfile.value) {
+    return {
+      tone: 'info' as const,
+      title: '代看只读',
+      description: '当前为他人档案资料页，仅可查看人事主数据与履历，不可保存修改。',
+    }
+  }
+  return {
+    tone: 'info' as const,
+    title: '本人维护',
+    description: '当前维护本人人事主数据、履历与讲授课程；保存后立即写入档案袋。',
+  }
+})
 const courseWriteBusy = computed(() => courseSaving.value || Boolean(courseDeletingId.value))
 const cvWriteBusy = computed(() => cvSaving.value || Boolean(cvDeletingKey.value))
 const cvModalTitle = computed(() => {
@@ -714,15 +739,23 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
       tone="warning"
       title="档案已封存写禁"
       :description="archiveWriteBlockMessage"
-      class="mb-3"
+      class="dp-mb-component"
+    />
+    <UiAlertStrip
+      v-if="profileModeBanner"
+      :tone="profileModeBanner.tone"
+      :title="profileModeBanner.title"
+      :description="profileModeBanner.description"
+      class="dp-mb-component"
     />
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
     <UiCard v-else-if="loadFailed" title="加载失败">
-      <UiEmpty size="sm" description="个人资料加载失败">
-        <UiButton size="sm" variant="primary" @click="loadProfile">重试</UiButton>
-      </UiEmpty>
+      <UiEmpty
+        size="sm"
+        description="个人资料加载失败"
+      />
     </UiCard>
 
     <template v-else>
@@ -733,7 +766,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
           role="status"
         >
           <UiTag v-if="profile?.lifecycleStatus" :tone="portfolioLifecycleTagTone(profile.lifecycleStatus)">
-            {{ profile.lifecycleStatusLabel || profile.lifecycleStatus }}
+            {{ portfolioLifecycleStatusDisplay(profile.lifecycleStatus) }}
           </UiTag>
           <UiTag v-if="profile?.evaluationHeld" tone="orange">参评 hold</UiTag>
           <UiTag v-if="profile?.countsInCurrentFacultyStructure === false" tone="gray">
@@ -753,7 +786,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
         </div>
       </UiCard>
 
-      <UiCard v-if="readonlyProfile" title="画像对标主数据" class="mt-16">
+      <UiCard v-if="readonlyProfile" title="画像对标主数据" class="dp-mt-section">
         <UiForm layout="vertical">
           <UiFormItem label="岗位等级" compact>
             <UiInput v-model="cohortProfileForm.jobLevel" size="sm" placeholder="例如：专技十级" />
@@ -783,7 +816,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
         </UiForm>
       </UiCard>
 
-      <UiCard title="可补充资料" class="mt-16">
+      <UiCard title="可补充资料" class="dp-mt-section">
         <UiForm layout="vertical">
           <UiFormItem label="研究方向" compact>
             <UiInput
@@ -813,7 +846,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
         </UiForm>
       </UiCard>
 
-      <UiCard title="讲授课程" class="mt-16">
+      <UiCard title="讲授课程" class="dp-mt-section">
         <template #extra>
           <UiButton size="sm" v-if="!readonlyProfile" @click="openCourseModal()">
             手工补充
@@ -860,7 +893,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
         </UiDataTable>
       </UiCard>
 
-      <UiCard title="学历与学术履历" class="mt-16">
+      <UiCard title="学历与学术履历" class="dp-mt-section">
         <UiSectionTabs v-model="profileActiveTab" :items="profileTabItems" compact divided />
         <template v-if="profileActiveTab === 'education'">
           <div v-if="!readonlyProfile" class="cv-actions">
@@ -1070,15 +1103,12 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
 .profile-readonly-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 .label {
   display: block;
   color: var(--dp-text-secondary);
-  margin-bottom: 4px;
-}
-.mt-16 {
-  margin-top: 16px;
+  margin-bottom: var(--dp-space-component-xs);
 }
 .w-full {
   width: 100%;
@@ -1086,12 +1116,12 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
 .cv-actions {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .cv-period-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 @media (max-width: 640px) {
   .profile-readonly-grid,

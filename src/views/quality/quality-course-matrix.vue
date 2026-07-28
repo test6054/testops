@@ -51,7 +51,8 @@ import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { assessmentGoalWeightApi } from '@/apis/quality/assessment-goal-weight'
 import { assessmentItemApi } from '@/apis/quality/assessment-item'
@@ -87,7 +88,6 @@ import { loadBoundedPlanAggregate } from '@/components/quality/selectors/page-co
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -110,11 +110,12 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
 import { ALL_SEMESTER_CODES, formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import { isWeightSumHealthy } from '@/utils/weight-sum-health'
+import { isWeightSumHealthy, validateOptionalDirectIndirectWeights } from '@/utils/weight-sum-health'
 
 const itemColumns: ColumnsType = [
   { title: '编码', dataIndex: 'itemCode', key: 'itemCode', width: 100, fixed: 'left' },
@@ -122,7 +123,6 @@ const itemColumns: ColumnsType = [
   { title: '类型', key: 'itemType', width: 120 },
   { title: '满分', dataIndex: 'fullScore', key: 'fullScore', width: 80 },
   { title: '过程性', dataIndex: 'isProcessOriented', key: 'isProcessOriented', width: 80 },
-  { title: '权重和', key: 'weightSum', width: 100 },
   { title: 'Rubric 数', key: 'rubricCount', width: 100 },
   { title: '操作', key: 'actions', width: 280 },
 ]
@@ -132,9 +132,8 @@ const goalColumns: ColumnsType = [
   { title: '名称', dataIndex: 'goalName', key: 'goalName' },
   { title: '阈值', dataIndex: 'thresholdValue', key: 'thresholdValue', width: 80 },
   { title: '聚合', dataIndex: 'aggregation', key: 'aggregation', width: 120 },
-  { title: '支撑数', key: 'supportCount', width: 80 },
   { title: '标记', key: 'flags', width: 180 },
-  { title: '操作', key: 'actions', width: 220 },
+  { title: '操作', key: 'actions', width: 180 },
 ]
 
 const rubricColumns: ColumnsType = [
@@ -205,14 +204,28 @@ const goalPageNum = ref(1)
 const goalPageSize = ref(10)
 const goalTableTotal = ref(0)
 const goalTableLoading = ref(false)
+const {
+  loadError: courseGoalsAggLoadError,
+  beginLoad: beginCourseGoalsAggLoad,
+  failLoad: failCourseGoalsAggLoad,
+  okLoad: okCourseGoalsAggLoad,
+} = useUiTableLoadError()
+const {
+  loadError: goalTableLoadError,
+  beginLoad: beginGoalTableLoad,
+  failLoad: failGoalTableLoad,
+  okLoad: okGoalTableLoad,
+} = useUiTableLoadError()
 
 async function loadCourseGoalsAggregate() {
   const scope = beginQualityScopeRequest()
   if (!qualityStore.currentQualityCourseId) {
     courseGoals.value = []
+    courseGoalsAggLoadError.value = false
     return
   }
   courseGoalsLoading.value = true
+  beginCourseGoalsAggLoad()
   try {
     const goals = await loadBoundedPlanAggregate(
       (pageNum, pageSize) =>
@@ -227,9 +240,13 @@ async function loadCourseGoalsAggregate() {
       return
     }
     courseGoals.value = goals
+    okCourseGoalsAggLoad()
   } catch (e) {
-    showUserError(e, '课程目标加载失败')
-    courseGoals.value = []
+    if (!scope.isStale()) {
+      showUserError(e, '课程目标加载失败')
+      courseGoals.value = []
+      failCourseGoalsAggLoad()
+    }
   } finally {
     if (!scope.isStale()) {
       courseGoalsLoading.value = false
@@ -242,9 +259,11 @@ async function loadGoalTable() {
   if (!qualityStore.currentQualityCourseId) {
     goalTableRows.value = []
     goalTableTotal.value = 0
+    goalTableLoadError.value = false
     return
   }
   goalTableLoading.value = true
+  beginGoalTableLoad()
   try {
     const page = await courseGoalApi.page({
       pageNum: goalPageNum.value,
@@ -256,10 +275,12 @@ async function loadGoalTable() {
     }
     goalTableRows.value = page.list
     goalTableTotal.value = page.total
+    okGoalTableLoad()
   } catch (error) {
     if (!scope.isStale()) {
       goalTableRows.value = []
       goalTableTotal.value = 0
+      failGoalTableLoad()
       showUserError(error, '课程目标列表加载失败')
     }
   } finally {
@@ -283,14 +304,22 @@ async function loadCourseGoals() {
 
 const courseGoalSupports = ref<Map<string, CourseGoalRequirementVO[]>>(new Map())
 const supportsLoading = ref(false)
+const {
+  loadError: supportsLoadError,
+  beginLoad: beginSupportsLoad,
+  failLoad: failSupportsLoad,
+  okLoad: okSupportsLoad,
+} = useUiTableLoadError()
 
 async function loadAllSupports() {
   const scope = beginQualityScopeRequest()
   if (!qualityStore.currentQualityCourseId) {
     courseGoalSupports.value = new Map()
+    supportsLoadError.value = false
     return
   }
   supportsLoading.value = true
+  beginSupportsLoad()
   try {
     const list = await loadBoundedPlanAggregate(
       (pageNum, pageSize) =>
@@ -311,9 +340,13 @@ async function loadAllSupports() {
       map.set(item.courseGoalId, bucket)
     }
     courseGoalSupports.value = map
+    okSupportsLoad()
   } catch (e) {
-    showUserError(e, '课程目标支撑映射加载失败')
-    courseGoalSupports.value = new Map()
+    if (!scope.isStale()) {
+      showUserError(e, '课程目标支撑映射加载失败')
+      courseGoalSupports.value = new Map()
+      failSupportsLoad()
+    }
   } finally {
     if (!scope.isStale()) {
       supportsLoading.value = false
@@ -344,14 +377,28 @@ const itemPageNum = ref(1)
 const itemPageSize = ref(10)
 const itemTableTotal = ref(0)
 const itemTableLoading = ref(false)
+const {
+  loadError: assessmentItemsAggLoadError,
+  beginLoad: beginAssessmentItemsAggLoad,
+  failLoad: failAssessmentItemsAggLoad,
+  okLoad: okAssessmentItemsAggLoad,
+} = useUiTableLoadError()
+const {
+  loadError: itemTableLoadError,
+  beginLoad: beginItemTableLoad,
+  failLoad: failItemTableLoad,
+  okLoad: okItemTableLoad,
+} = useUiTableLoadError()
 
 async function loadAssessmentItemsAggregate() {
   const scope = beginQualityScopeRequest()
   if (!qualityStore.currentQualityCourseId) {
     assessmentItems.value = []
+    assessmentItemsAggLoadError.value = false
     return
   }
   assessmentItemsLoading.value = true
+  beginAssessmentItemsAggLoad()
   try {
     const items = await loadBoundedPlanAggregate(
       (pageNum, pageSize) =>
@@ -366,9 +413,13 @@ async function loadAssessmentItemsAggregate() {
       return
     }
     assessmentItems.value = items
+    okAssessmentItemsAggLoad()
   } catch (e) {
-    showUserError(e, '考核环节加载失败')
-    assessmentItems.value = []
+    if (!scope.isStale()) {
+      showUserError(e, '考核环节加载失败')
+      assessmentItems.value = []
+      failAssessmentItemsAggLoad()
+    }
   } finally {
     if (!scope.isStale()) {
       assessmentItemsLoading.value = false
@@ -381,9 +432,11 @@ async function loadItemTable() {
   if (!qualityStore.currentQualityCourseId) {
     itemTableRows.value = []
     itemTableTotal.value = 0
+    itemTableLoadError.value = false
     return
   }
   itemTableLoading.value = true
+  beginItemTableLoad()
   try {
     const page = await assessmentItemApi.page({
       pageNum: itemPageNum.value,
@@ -395,10 +448,12 @@ async function loadItemTable() {
     }
     itemTableRows.value = page.list
     itemTableTotal.value = page.total
+    okItemTableLoad()
   } catch (error) {
     if (!scope.isStale()) {
       itemTableRows.value = []
       itemTableTotal.value = 0
+      failItemTableLoad()
       showUserError(error, '考核环节列表加载失败')
     }
   } finally {
@@ -423,18 +478,27 @@ async function loadAssessmentItems() {
 const assessmentGoalWeights = ref<Map<string, AssessmentGoalWeightVO[]>>(new Map())
 const rubricsByItem = ref<Map<string, RubricItemVO[]>>(new Map())
 const itemMetaLoading = ref(false)
+const {
+  loadError: assessWeightsLoadError,
+  beginLoad: beginAssessWeightsLoad,
+  failLoad: failAssessWeightsLoad,
+  okLoad: okAssessWeightsLoad,
+} = useUiTableLoadError()
 
 async function loadAllItemMeta() {
   const scope = beginQualityScopeRequest()
   if (!qualityStore.currentQualityCourseId) {
     assessmentGoalWeights.value = new Map()
     rubricsByItem.value = new Map()
+    assessWeightsLoadError.value = false
     return
   }
   itemMetaLoading.value = true
+  beginAssessWeightsLoad()
   try {
     let weightList: AssessmentGoalWeightVO[] = []
     let rubricList: RubricItemVO[] = []
+    let weightsFailed = false
     try {
       weightList = await loadBoundedPlanAggregate(
         (pageNum, pageSize) =>
@@ -447,6 +511,8 @@ async function loadAllItemMeta() {
       )
     } catch (error) {
       if (!scope.isStale()) {
+        weightsFailed = true
+        failAssessWeightsLoad()
         showUserError(error, '考核环节课程目标权重加载失败')
       }
     }
@@ -482,9 +548,13 @@ async function loadAllItemMeta() {
     }
     assessmentGoalWeights.value = wMap
     rubricsByItem.value = rMap
+    if (!weightsFailed) {
+      okAssessWeightsLoad()
+    }
   } catch (error) {
     assessmentGoalWeights.value = new Map()
     rubricsByItem.value = new Map()
+    failAssessWeightsLoad()
     showUserError(error, '考核权重与评分标准加载失败')
   } finally {
     if (!scope.isStale()) {
@@ -495,6 +565,113 @@ async function loadAllItemMeta() {
 
 function weightsOfItem(itemId: string): AssessmentGoalWeightVO[] {
   return assessmentGoalWeights.value.get(itemId) || []
+}
+
+interface PendingWeightPatch {
+  assessmentItemId: string
+  courseGoalId: string
+  weight: number
+  fullScore: number
+  id?: string
+  deleted?: boolean
+}
+
+interface EffectiveWeightCell {
+  assessmentItemId: string
+  courseGoalId: string
+  weight: number
+  fullScore: number
+  id?: string
+  dirty: boolean
+}
+
+const pendingWeightPatches = ref<Map<string, PendingWeightPatch>>(new Map())
+const assessEntityExpanded = ref(false)
+const weightFlushing = ref(false)
+
+function weightPatchKey(assessmentItemId: string, courseGoalId: string): string {
+  return `${assessmentItemId}::${courseGoalId}`
+}
+
+const weightMatrixDirtyCount = computed(() => pendingWeightPatches.value.size)
+
+function clearPendingWeightPatches(): void {
+  pendingWeightPatches.value = new Map()
+}
+
+function effectiveWeightsOfItem(itemId: string): EffectiveWeightCell[] {
+  const map = new Map<string, EffectiveWeightCell>()
+  for (const weight of weightsOfItem(itemId)) {
+    map.set(weight.courseGoalId, {
+      assessmentItemId: weight.assessmentItemId,
+      courseGoalId: weight.courseGoalId,
+      weight: Number(weight.weight) || 0,
+      fullScore: Number(weight.fullScore) || 0,
+      id: weight.id,
+      dirty: false,
+    })
+  }
+  for (const patch of pendingWeightPatches.value.values()) {
+    if (patch.assessmentItemId !== itemId) {
+      continue
+    }
+    if (patch.deleted) {
+      map.delete(patch.courseGoalId)
+      continue
+    }
+    map.set(patch.courseGoalId, {
+      assessmentItemId: patch.assessmentItemId,
+      courseGoalId: patch.courseGoalId,
+      weight: patch.weight,
+      fullScore: patch.fullScore,
+      id: patch.id,
+      dirty: true,
+    })
+  }
+  return [...map.values()]
+}
+
+function effectiveItemWeightSum(itemId: string): number {
+  return effectiveWeightsOfItem(itemId).reduce((acc, w) => acc + w.weight, 0)
+}
+
+function effectiveGoalWeightSum(goalId: string): number {
+  let sum = 0
+  for (const item of assessmentItems.value) {
+    const matched = effectiveWeightsOfItem(item.id).find((w) => w.courseGoalId === goalId)
+    if (matched) {
+      sum += matched.weight
+    }
+  }
+  return sum
+}
+
+function effectiveGoalHasWeights(goalId: string): boolean {
+  return assessmentItems.value.some((item) =>
+    effectiveWeightsOfItem(item.id).some((w) => w.courseGoalId === goalId),
+  )
+}
+
+function stageWeightPatch(patch: PendingWeightPatch): void {
+  const next = new Map(pendingWeightPatches.value)
+  next.set(weightPatchKey(patch.assessmentItemId, patch.courseGoalId), patch)
+  pendingWeightPatches.value = next
+}
+
+async function confirmLeaveWeightDirty(): Promise<boolean> {
+  if (weightMatrixDirtyCount.value === 0) {
+    return true
+  }
+  const ok = await confirmAsync({
+    title: '有未提交的权重编辑',
+    content: `当前有 ${weightMatrixDirtyCount.value} 处未保存的考核×目标权重修改，离开将丢失。`,
+    type: 'warning',
+    okText: '丢弃并离开',
+  })
+  if (ok) {
+    clearPendingWeightPatches()
+  }
+  return ok
 }
 
 function goalWeightSum(goalId: string): number {
@@ -527,6 +704,12 @@ function itemWeightSum(itemId: string): number {
 const requirements = ref<GraduationRequirementVO[]>([])
 const indicators = ref<RequirementIndicatorVO[]>([])
 const referenceLoading = ref(false)
+const {
+  loadError: referenceLoadError,
+  beginLoad: beginReferenceLoad,
+  failLoad: failReferenceLoad,
+  okLoad: okReferenceLoad,
+} = useUiTableLoadError()
 
 async function loadReferenceData() {
   const scope = beginQualityScopeRequest()
@@ -534,9 +717,11 @@ async function loadReferenceData() {
   if (!planId) {
     requirements.value = []
     indicators.value = []
+    referenceLoadError.value = false
     return
   }
   referenceLoading.value = true
+  beginReferenceLoad()
   try {
     requirements.value = await loadBoundedPlanAggregate(
       (pageNum, pageSize) =>
@@ -551,10 +736,12 @@ async function loadReferenceData() {
         requirementIndicatorApi.page({ pageNum, pageSize, trainingPlanId: planId }),
       '毕业要求观测点',
     )
+    okReferenceLoad()
   } catch (error) {
     if (!scope.isStale()) {
       requirements.value = []
       indicators.value = []
+      failReferenceLoad()
       showUserError(error, '毕业要求参考数据加载失败')
     }
   } finally {
@@ -563,6 +750,20 @@ async function loadReferenceData() {
     }
   }
 }
+
+const supportMatrixLoadError = computed(
+  () =>
+    courseGoalsAggLoadError.value
+    || supportsLoadError.value
+    || referenceLoadError.value,
+)
+
+const assessMatrixLoadError = computed(
+  () =>
+    assessmentItemsAggLoadError.value
+    || assessWeightsLoadError.value
+    || courseGoalsAggLoadError.value,
+)
 
 const indicatorsByReqId = computed(() => {
   const map = new Map<string, RequirementIndicatorVO[]>()
@@ -613,61 +814,159 @@ const requirementsCoveredCount = computed(() => {
 })
 
 const signalSummary = ref<QualityCourseMatrixSignalSummaryVO | null>(null)
+const signalLastSuccessAt = ref<string | null>(null)
+const distributionExpanded = ref(false)
 const activeTab = ref<'support' | 'assess' | 'goals'>('support')
+
+function markSignalSuccessAt(): void {
+  signalLastSuccessAt.value = new Date().toISOString().replace('T', ' ').slice(0, 19)
+}
 
 async function loadSignalSummary() {
   if (!qualityStore.currentQualityCourseId) {
     signalSummary.value = null
+    signalLastSuccessAt.value = null
     return
   }
   try {
     signalSummary.value = await workbenchApi.qualityCourseMatrixSignalSummary({
       qualityCourseId: qualityStore.currentQualityCourseId,
     })
+    markSignalSuccessAt()
   } catch (error) {
     signalSummary.value = null
     showUserError(error, '课程矩阵指标加载失败')
   }
 }
 
+const configStatusStrip = computed(() => {
+  const summary = signalSummary.value
+  if (!summary || !qualityStore.currentQualityCourseId) {
+    return null
+  }
+  const courseGoalTotal = summary.courseGoalTotal ?? 0
+  const courseGoalCoveredCount = summary.courseGoalCoveredCount ?? 0
+  const assessmentItemWeightedCount = summary.assessmentItemWeightedCount ?? itemsWeighted.value
+  const assessmentItemHealthyCount = summary.assessmentItemHealthyCount ?? 0
+  const courseGoalWeightedCount = summary.courseGoalWeightedCount ?? goalsWeighted.value
+  const courseGoalHealthyCount = summary.courseGoalHealthyCount ?? goalsHealthy.value
+  if (courseGoalTotal === 0) {
+    return {
+      tone: 'warning' as const,
+      tag: '未配置',
+      description: '当前课程尚无课程目标，请先在「课程目标」中新建',
+      actionKey: 'goals' as const,
+    }
+  }
+  if (courseGoalCoveredCount < courseGoalTotal) {
+    return {
+      tone: 'warning' as const,
+      tag: '下一动作',
+      description: `还有 ${courseGoalTotal - courseGoalCoveredCount} 个课程目标未挂支撑，请补全支撑矩阵`,
+      actionKey: 'support' as const,
+    }
+  }
+  if (assessmentItemWeightedCount > 0 && assessmentItemHealthyCount < assessmentItemWeightedCount) {
+    return {
+      tone: 'warning' as const,
+      tag: '下一动作',
+      description: '考核行权重未配平，请在「考核环节」修正权重',
+      actionKey: 'assess' as const,
+    }
+  }
+  if (courseGoalWeightedCount > 0 && courseGoalHealthyCount < courseGoalWeightedCount) {
+    return {
+      tone: 'warning' as const,
+      tag: '下一动作',
+      description: '目标列权重未配平，请在「课程目标」核对列合计',
+      actionKey: 'goals' as const,
+    }
+  }
+  return {
+    tone: 'success' as const,
+    tag: '配置就绪',
+    description: '支撑覆盖与权重健康已满足；可继续维护量规或进入成绩接入',
+    actionKey: null,
+  }
+})
+
 const signals = computed<SignalMetric[]>(() => {
   const summary = signalSummary.value
   if (!summary) {
     return []
   }
-  const courseGoalTotal = summary.courseGoalTotal ?? 0
-  const courseGoalCoveredCount = summary.courseGoalCoveredCount ?? 0
-  const requirementTotal = summary.requirementTotal ?? 0
-  const requirementCoveredCount = summary.requirementCoveredCount ?? 0
-  const indicatorTotal = summary.indicatorTotal ?? 0
-  const indicatorCoveredCount = summary.indicatorCoveredCount ?? 0
-  const assessmentItemTotal = summary.assessmentItemTotal ?? 0
+  const courseGoalTotal = summary.courseGoalTotal
+  const courseGoalCoveredCount = summary.courseGoalCoveredCount
+  const assessmentItemTotal = summary.assessmentItemTotal
   const assessmentItemWeightedCount = summary.assessmentItemWeightedCount ?? itemsWeighted.value
-  const assessmentItemHealthyCount = summary.assessmentItemHealthyCount ?? 0
+  const assessmentItemHealthyCount = summary.assessmentItemHealthyCount
   const courseGoalWeightedCount = summary.courseGoalWeightedCount ?? goalsWeighted.value
   const courseGoalHealthyCount = summary.courseGoalHealthyCount ?? goalsHealthy.value
-  const goalsCoverageOk = courseGoalTotal === 0 || courseGoalCoveredCount === courseGoalTotal
-  const itemsHealthOk
-    = assessmentItemWeightedCount === 0 || assessmentItemHealthyCount === assessmentItemWeightedCount
+  const goalsConfigured = courseGoalTotal > 0
+  const goalsCoverageOk = goalsConfigured && courseGoalCoveredCount === courseGoalTotal
+  const itemsConfigured = assessmentItemWeightedCount > 0
+  const itemsHealthOk = itemsConfigured && assessmentItemHealthyCount === assessmentItemWeightedCount
+  const goalsWeightConfigured = courseGoalWeightedCount > 0
   const goalsWeightHealthOk
-    = courseGoalWeightedCount === 0 || courseGoalHealthyCount === courseGoalWeightedCount
+    = goalsWeightConfigured && courseGoalHealthyCount === courseGoalWeightedCount
   return [
+    {
+      key: 'goalsCovered',
+      label: '已挂支撑目标',
+      value: goalsConfigured ? `${courseGoalCoveredCount}/${courseGoalTotal}` : '未配置',
+      tone: !goalsConfigured ? 'orange' : goalsCoverageOk ? 'green' : 'red',
+      clickable: goalsConfigured && !goalsCoverageOk,
+      active: activeTab.value === 'support' && goalsConfigured && !goalsCoverageOk,
+    },
+    {
+      key: 'itemsHealth',
+      label: '考核行权重健康',
+      value: itemsConfigured
+        ? `${assessmentItemHealthyCount}/${assessmentItemWeightedCount}`
+        : '未配置',
+      tone: !itemsConfigured ? 'orange' : itemsHealthOk ? 'green' : 'red',
+      clickable: itemsConfigured && !itemsHealthOk,
+      active: activeTab.value === 'assess' && itemsConfigured && !itemsHealthOk,
+    },
+    {
+      key: 'goalsWeightHealth',
+      label: '目标列权重健康',
+      value: goalsWeightConfigured
+        ? `${courseGoalHealthyCount}/${courseGoalWeightedCount}`
+        : '未配置',
+      tone: !goalsWeightConfigured ? 'orange' : goalsWeightHealthOk ? 'green' : 'red',
+      clickable: goalsWeightConfigured && !goalsWeightHealthOk,
+      active: activeTab.value === 'goals' && goalsWeightConfigured && !goalsWeightHealthOk,
+    },
     {
       key: 'goals',
       label: '课程目标数',
       value: courseGoalTotal,
-      tone: courseGoalTotal === 0 ? 'gray' : 'blue',
-      clickable: courseGoalTotal > 0,
+      tone: goalsConfigured ? 'blue' : 'orange',
+      clickable: true,
       active: activeTab.value === 'goals',
     },
     {
-      key: 'goalsCovered',
-      label: '已挂支撑目标',
-      value: `${courseGoalCoveredCount}/${courseGoalTotal}`,
-      tone: goalsCoverageOk ? 'green' : 'red',
-      clickable: !goalsCoverageOk,
-      active: activeTab.value === 'support' && !goalsCoverageOk,
+      key: 'items',
+      label: '考核环节数',
+      value: assessmentItemTotal,
+      tone: assessmentItemTotal > 0 ? 'blue' : 'orange',
+      clickable: true,
+      active: activeTab.value === 'assess',
     },
+  ]
+})
+
+const distributionSignals = computed<SignalMetric[]>(() => {
+  const summary = signalSummary.value
+  if (!summary) {
+    return []
+  }
+  const requirementTotal = summary.requirementTotal ?? 0
+  const requirementCoveredCount = summary.requirementCoveredCount ?? 0
+  const indicatorTotal = summary.indicatorTotal ?? 0
+  const indicatorCoveredCount = summary.indicatorCoveredCount ?? 0
+  return [
     {
       key: 'reqCovered',
       label: '覆盖毕业要求',
@@ -680,61 +979,35 @@ const signals = computed<SignalMetric[]>(() => {
       value: `${indicatorCoveredCount}/${indicatorTotal}`,
       tone: 'gray',
     },
-    {
-      key: 'items',
-      label: '考核环节数',
-      value: assessmentItemTotal,
-      tone: assessmentItemTotal === 0 ? 'gray' : 'blue',
-      clickable: assessmentItemTotal > 0,
-      active: activeTab.value === 'assess',
-    },
-    {
-      key: 'itemsHealth',
-      label: '考核行权重健康',
-      value:
-        assessmentItemWeightedCount > 0
-          ? `${assessmentItemHealthyCount}/${assessmentItemWeightedCount}`
-          : '0/0',
-      tone:
-        assessmentItemWeightedCount > 0
-        && assessmentItemHealthyCount === assessmentItemWeightedCount
-          ? 'green'
-          : assessmentItemWeightedCount > 0
-            ? 'red'
-            : 'gray',
-      clickable: !itemsHealthOk,
-      active: activeTab.value === 'assess' && !itemsHealthOk,
-    },
-    {
-      key: 'goalsWeightHealth',
-      label: '目标列权重健康',
-      value:
-        courseGoalWeightedCount > 0
-          ? `${courseGoalHealthyCount}/${courseGoalWeightedCount}`
-          : '0/0',
-      tone:
-        courseGoalWeightedCount > 0 && courseGoalHealthyCount === courseGoalWeightedCount
-          ? 'green'
-          : courseGoalWeightedCount > 0
-            ? 'red'
-            : 'gray',
-      clickable: !goalsWeightHealthOk,
-      active: activeTab.value === 'goals' && !goalsWeightHealthOk,
-    },
   ]
 })
 
 function handleSignalMetricClick(key: string): void {
   if (key === 'goals' || key === 'goalsWeightHealth') {
-    activeTab.value = 'goals'
+    void switchMatrixTab('goals')
     return
   }
   if (key === 'items' || key === 'itemsHealth') {
-    activeTab.value = 'assess'
+    void switchMatrixTab('assess')
     return
   }
   if (key === 'goalsCovered') {
-    activeTab.value = 'support'
+    void switchMatrixTab('support')
+  }
+}
+
+function runConfigStatusAction(): void {
+  const actionKey = configStatusStrip.value?.actionKey
+  if (actionKey === 'goals') {
+    void switchMatrixTab('goals')
+    return
+  }
+  if (actionKey === 'assess') {
+    void switchMatrixTab('assess')
+    return
+  }
+  if (actionKey === 'support') {
+    void switchMatrixTab('support')
   }
 }
 
@@ -826,8 +1099,8 @@ const supportMatrixCells = computed<MatrixCell[]>(() => {
 
 const assessMatrixRows = computed<MatrixRow[]>(() =>
   assessmentItems.value.map((it) => {
-    const sum = itemWeightSum(it.id)
-    const weighted = weightsOfItem(it.id).length > 0
+    const sum = effectiveItemWeightSum(it.id)
+    const weighted = effectiveWeightsOfItem(it.id).length > 0
     const healthy = weighted && isWeightSumHealthy(sum)
     return {
       key: it.id,
@@ -842,8 +1115,8 @@ const assessMatrixRows = computed<MatrixRow[]>(() =>
 
 const assessMatrixCols = computed<MatrixCol[]>(() =>
   courseGoals.value.map((g) => {
-    const sum = goalWeightSum(g.id)
-    const weighted = goalHasWeights(g.id)
+    const sum = effectiveGoalWeightSum(g.id)
+    const weighted = effectiveGoalHasWeights(g.id)
     const healthy = weighted && isWeightSumHealthy(sum)
     return {
       key: g.id,
@@ -859,18 +1132,45 @@ const assessMatrixCols = computed<MatrixCol[]>(() =>
 const assessMatrixCells = computed<MatrixCell[]>(() => {
   const cells: MatrixCell[] = []
   for (const item of assessmentItems.value) {
-    for (const w of weightsOfItem(item.id)) {
+    for (const w of effectiveWeightsOfItem(item.id)) {
       cells.push({
         rowKey: item.id,
         colKey: w.courseGoalId,
         primary: `w=${w.weight.toFixed(2)}`,
-        secondary: `满分 ${w.fullScore.toFixed(0)}`,
-        tone: 'green',
+        secondary: w.dirty ? `满分 ${w.fullScore.toFixed(0)} · 未保存` : `满分 ${w.fullScore.toFixed(0)}`,
+        tone: w.dirty ? 'orange' : 'green',
+        dirty: w.dirty,
       })
     }
   }
   return cells
 })
+
+function assessRowSummary(row: MatrixRow): string {
+  return effectiveItemWeightSum(row.key).toFixed(3)
+}
+
+function assessRowSummaryHint(row: MatrixRow): string {
+  const sum = effectiveItemWeightSum(row.key)
+  const weighted = effectiveWeightsOfItem(row.key).length > 0
+  if (!weighted) {
+    return '未配平'
+  }
+  return isWeightSumHealthy(sum) ? '行配平' : '行未配平'
+}
+
+function assessColSummary(col: MatrixCol): string {
+  return effectiveGoalWeightSum(col.key).toFixed(3)
+}
+
+function assessColSummaryHint(col: MatrixCol): string {
+  const sum = effectiveGoalWeightSum(col.key)
+  const weighted = effectiveGoalHasWeights(col.key)
+  if (!weighted) {
+    return '未配平'
+  }
+  return isWeightSumHealthy(sum) ? '列配平' : '列未配平'
+}
 
 /* ========== 编辑器：课程 ========== */
 
@@ -1138,6 +1438,15 @@ async function submitGoal() {
   if (!guardCourseMatrixEditable('保存课程目标')) return
   if (!goalEditor.goalCode.trim() || !goalEditor.goalName.trim()) {
     void message.error('请填写编码与名称')
+    return
+  }
+  const weightError = validateOptionalDirectIndirectWeights(
+    goalEditor.directWeight,
+    goalEditor.indirectWeight,
+    '课程目标直接 / 间接评价权重',
+  )
+  if (weightError) {
+    void message.error(weightError)
     return
   }
   goalSubmitting.value = true
@@ -1465,7 +1774,7 @@ function openWeightCreate(itemId: string, goalId: string) {
     void message.error('课程目标数据异常，请返回后重新打开矩阵页')
     return
   }
-  const sumNow = itemWeightSum(itemId)
+  const sumNow = effectiveItemWeightSum(itemId)
   const remain = Math.max(0, 1 - sumNow)
   Object.assign(weightEditor, {
     id: undefined,
@@ -1481,9 +1790,11 @@ function openWeightCreate(itemId: string, goalId: string) {
   weightEditorVisible.value = true
 }
 
-function openWeightEdit(record: AssessmentGoalWeightVO) {
+function openWeightEdit(record: AssessmentGoalWeightVO | EffectiveWeightCell) {
   if (!guardCourseMatrixEditable('编辑考核权重')) return
   weightEditorMode.value = 'edit'
+  const item = assessmentItems.value.find((i) => i.id === record.assessmentItemId)
+  const courseGoal = courseGoals.value.find((g) => g.id === record.courseGoalId)
   Object.assign(weightEditor, {
     id: record.id,
     assessmentItemId: record.assessmentItemId,
@@ -1492,13 +1803,17 @@ function openWeightEdit(record: AssessmentGoalWeightVO) {
     fullScore: Number(record.fullScore) || 0,
   })
   Object.assign(weightEditorDisplay, {
-    assessmentItemName: `${record.assessmentItemCode} ${record.assessmentItemName}`,
-    courseGoalName: `${record.courseGoalCode} ${record.courseGoalName}`,
+    assessmentItemName: item
+      ? `${item.itemCode} ${item.itemName}`
+      : record.assessmentItemId,
+    courseGoalName: courseGoal
+      ? `${courseGoal.goalCode} ${courseGoal.goalName}`
+      : record.courseGoalId,
   })
   weightEditorVisible.value = true
 }
 
-async function submitWeight() {
+function submitWeight() {
   if (!guardCourseMatrixEditable('保存考核权重')) return
   if (weightEditor.weight == null || weightEditor.weight < 0 || weightEditor.weight > 1) {
     void message.error('权重必须在 [0, 1] 之间')
@@ -1508,36 +1823,104 @@ async function submitWeight() {
     void message.error('满分必须 > 0')
     return
   }
+  stageWeightPatch({
+    assessmentItemId: weightEditor.assessmentItemId,
+    courseGoalId: weightEditor.courseGoalId,
+    weight: weightEditor.weight,
+    fullScore: weightEditor.fullScore,
+    id: weightEditor.id,
+    deleted: false,
+  })
+  weightEditorVisible.value = false
+  void message.success('已记入未提交编辑，请点击「提交权重并校验」写入服务端')
+}
+
+async function flushPendingWeights(): Promise<void> {
+  if (!guardCourseMatrixEditable('提交考核权重')) return
+  if (weightMatrixDirtyCount.value === 0) {
+    void message.warning('没有未提交的权重编辑')
+    return
+  }
+  if (!qualityStore.currentQualityCourseId) {
+    showFormValidationMessage('请先选择质量评价课程')
+    return
+  }
+  weightFlushing.value = true
   try {
-    if (weightEditorMode.value === 'create') await assessmentGoalWeightApi.create(weightEditor)
-    else await assessmentGoalWeightApi.update(weightEditor)
-    await assessmentGoalWeightApi.validateWeights(weightEditor.assessmentItemId)
-    await assessmentGoalWeightApi.validateWeightsByCourseGoal(weightEditor.courseGoalId)
-    void message.success('权重已保存且行列校验通过')
-    weightEditorVisible.value = false
+    const patches = [...pendingWeightPatches.value.values()]
+    for (const patch of patches) {
+      if (patch.deleted) {
+        if (patch.id) {
+          await assessmentGoalWeightApi.delete(patch.id)
+        }
+        continue
+      }
+      const payload: AssessmentGoalWeightSaveRequest = {
+        id: patch.id,
+        assessmentItemId: patch.assessmentItemId,
+        courseGoalId: patch.courseGoalId,
+        weight: patch.weight,
+        fullScore: patch.fullScore,
+      }
+      if (patch.id) {
+        await assessmentGoalWeightApi.update(payload)
+      } else {
+        await assessmentGoalWeightApi.create(payload)
+      }
+    }
+    clearPendingWeightPatches()
     await loadAllItemMeta()
+    await assessmentGoalWeightApi.validateMatrixWeights(qualityStore.currentQualityCourseId)
+    void message.success('权重已提交且矩阵配平校验通过')
   } catch (error) {
-    showUserError(error, '考核权重保存或校验失败')
+    showUserError(error, '权重提交或矩阵校验失败')
+    await loadAllItemMeta()
+  } finally {
+    weightFlushing.value = false
   }
 }
 
-async function deleteWeight(record: AssessmentGoalWeightVO) {
+function discardPendingWeights(): void {
+  if (weightMatrixDirtyCount.value === 0) {
+    return
+  }
+  void confirmAsync({
+    title: '放弃未提交权重？',
+    content: `将丢弃 ${weightMatrixDirtyCount.value} 处本地编辑，矩阵恢复为服务端已保存值。`,
+    type: 'warning',
+    onOk: () => {
+      clearPendingWeightPatches()
+      void message.success('已放弃未提交权重')
+    },
+  })
+}
+
+async function deleteWeight(record: AssessmentGoalWeightVO | EffectiveWeightCell) {
   if (!guardCourseMatrixEditable('删除考核权重')) return
   void confirmAsync({
     title: '删除该考核-目标权重？',
     type: 'error',
     onOk: async () => {
-      await assessmentGoalWeightApi.delete(record.id)
-      void message.success('已删除')
-      await loadAllItemMeta()
+      stageWeightPatch({
+        assessmentItemId: record.assessmentItemId,
+        courseGoalId: record.courseGoalId,
+        weight: Number(record.weight) || 0,
+        fullScore: Number(record.fullScore) || 0,
+        id: record.id,
+        deleted: true,
+      })
+      void message.success('已标记删除，请点击「提交权重并校验」写入服务端')
     },
   })
 }
 
 function handleDeleteWeightClick() {
-  if (weightEditor.id) {
-    const w = weightsOfItem(weightEditor.assessmentItemId).find((w) => w.id === weightEditor.id)
-    if (w) deleteWeight(w)
+  const matched = effectiveWeightsOfItem(weightEditor.assessmentItemId).find(
+    (w) => w.courseGoalId === weightEditor.courseGoalId,
+  )
+  if (matched) {
+    void deleteWeight(matched)
+    weightEditorVisible.value = false
   }
 }
 
@@ -1547,7 +1930,9 @@ function handleAssessCellClick(cellEvent: {
   cell: MatrixCell | undefined
 }) {
   if (!guardCourseMatrixEditable('维护考核权重')) return
-  const matched = weightsOfItem(cellEvent.row.key).find((w) => w.courseGoalId === cellEvent.col.key)
+  const matched = effectiveWeightsOfItem(cellEvent.row.key).find(
+    (w) => w.courseGoalId === cellEvent.col.key,
+  )
   if (matched) openWeightEdit(matched)
   else openWeightCreate(cellEvent.row.key, cellEvent.col.key)
 }
@@ -1713,7 +2098,6 @@ function buildCourseGoalActions(_record: CourseGoalVO): UiTableRowActionItem[] {
   return [
     { key: 'edit', label: '编辑' },
     { key: 'rule', label: '计算规则' },
-    { key: 'validate-weights', label: '校验列权重' },
     { key: 'delete', label: '删除', tone: 'danger' },
   ]
 }
@@ -1725,9 +2109,6 @@ function handleCourseGoalAction(key: string, record: CourseGoalVO): void {
       break
     case 'rule':
       openRuleEditor(record)
-      break
-    case 'validate-weights':
-      void validateGoalWeights(record)
       break
     case 'delete':
       void deleteGoal(record)
@@ -1812,6 +2193,15 @@ async function submitRule() {
     void message.error('请填写阈值')
     return
   }
+  const weightError = validateOptionalDirectIndirectWeights(
+    ruleEditor.directWeight,
+    ruleEditor.indirectWeight,
+    '计算规则直接 / 间接评价权重',
+  )
+  if (weightError) {
+    void message.error(weightError)
+    return
+  }
   if (ruleEditorMode.value === 'create') await courseGoalAssessmentRuleApi.create(ruleEditor)
   else await courseGoalAssessmentRuleApi.update(ruleEditor)
   void message.success('计算规则已保存')
@@ -1831,6 +2221,8 @@ const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
 })
 
 async function handleScopeChange(): Promise<void> {
+  clearPendingWeightPatches()
+  assessEntityExpanded.value = false
   if (!qualityStore.currentQualityCourseId && qualityStore.currentTrainingPlanId) {
     await qualityStore.loadQualityCourseOptions()
     if (qualityStore.qualityCourseOptions.length) {
@@ -1852,13 +2244,24 @@ function handleCourseChange(courseId: string | null) {
   qualityStore.setQualityCourse(courseId || '')
 }
 
-onMounted(async () => {
-  if (!qualityStore.currentQualityCourseId && qualityStore.currentTrainingPlanId) {
-    await qualityStore.loadQualityCourseOptions()
-    if (qualityStore.qualityCourseOptions.length) {
-      qualityStore.setQualityCourse(qualityStore.qualityCourseOptions[0].id)
+async function switchMatrixTab(next: 'support' | 'assess' | 'goals'): Promise<void> {
+  if (next === activeTab.value) {
+    return
+  }
+  if (activeTab.value === 'assess' && weightMatrixDirtyCount.value > 0) {
+    const ok = await confirmLeaveWeightDirty()
+    if (!ok) {
+      return
     }
   }
+  activeTab.value = next
+}
+
+onBeforeRouteLeave(async () => {
+  if (weightMatrixDirtyCount.value === 0) {
+    return true
+  }
+  return await confirmLeaveWeightDirty()
 })
 
 /* ========== 字典 ========== */
@@ -1932,12 +2335,46 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
       <template #default>
         <span class="qcm__gate-row">
           <UiTag tone="blue" size="sm">未选择课程</UiTag>
-          <span>请在上方选择质量评价课程后再维护支撑矩阵</span>
+          <span>请在上方选择质量评价课程后再维护支撑矩阵（上下文未就绪）</span>
         </span>
       </template>
     </UiAlertStrip>
 
     <template v-else>
+      <UiAlertStrip
+        v-if="configStatusStrip"
+        :tone="configStatusStrip.tone"
+        dense
+        inline
+        :show-icon="false"
+        class="qcm__config-status"
+      >
+        <template #default>
+          <span class="qcm__gate-row">
+            <UiTag
+              :tone="
+                configStatusStrip.tone === 'warning'
+                  ? 'orange'
+                  : configStatusStrip.tone === 'success'
+                    ? 'green'
+                    : 'blue'
+              "
+              size="sm"
+            >
+              {{ configStatusStrip.tag }}
+            </UiTag>
+            <span>{{ configStatusStrip.description }}</span>
+            <UiButton
+              v-if="configStatusStrip.actionKey"
+              variant="ghost"
+              size="sm"
+              @click="runConfigStatusAction"
+            >
+              去处理
+            </UiButton>
+          </span>
+        </template>
+      </UiAlertStrip>
       <SignalBand
         :metrics="signals"
         variant="panel"
@@ -1945,28 +2382,48 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
         class="qcm__signals"
         @metric-click="handleSignalMetricClick"
       />
+      <p v-if="signalLastSuccessAt" class="qcm__sync-hint">
+        指标最近同步：{{ signalLastSuccessAt }}
+      </p>
+      <div v-if="distributionSignals.length" class="qcm__charts-fold">
+        <UiButton
+          variant="ghost"
+          size="sm"
+          class="qcm__charts-toggle"
+          @click="distributionExpanded = !distributionExpanded"
+        >
+          {{ distributionExpanded ? '收起覆盖统计' : '展开覆盖统计' }}
+        </UiButton>
+        <SignalBand
+          v-if="distributionExpanded"
+          :metrics="distributionSignals"
+          variant="panel"
+          compact
+          class="qcm__signals-secondary"
+        />
+      </div>
 
       <div class="qcm__tabs">
         <UiButton
           :variant="activeTab === 'support' ? 'primary' : 'ghost'"
           size="sm"
-          @click="activeTab = 'support'"
+          @click="switchMatrixTab('support')"
         >
           ① 课程目标 → 毕业要求/观测点 支撑矩阵
         </UiButton>
         <UiButton
           :variant="activeTab === 'assess' ? 'primary' : 'ghost'"
           size="sm"
-          @click="activeTab = 'assess'"
+          @click="switchMatrixTab('assess')"
         >
           ② 考核环节 → 课程目标 权重矩阵
         </UiButton>
         <UiButton
           :variant="activeTab === 'goals' ? 'primary' : 'ghost'"
           size="sm"
-          @click="activeTab = 'goals'"
+          @click="switchMatrixTab('goals')"
         >
-          ③ 课程目标列表 / 计算规则
+          ③ 课程目标实体 / 计算规则
         </UiButton>
       </div>
 
@@ -1987,6 +2444,8 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
           :cols="supportMatrixCols"
           :cells="supportMatrixCells"
           :loading="courseGoalsLoading || supportsLoading || referenceLoading"
+          :load-error="supportMatrixLoadError"
+          empty-error-title="支撑矩阵加载失败"
           empty-text="尚未创建课程目标或未挂接毕业要求"
           :default-col-width="110"
           @cell-click="handleSupportCellClick"
@@ -1997,132 +2456,173 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
       <div v-else-if="activeTab === 'assess'" class="qcm__tab-content">
         <div class="qcm__matrix-toolbar">
           <UiButton variant="primary" size="sm" @click="openItemCreate"> 新建考核环节 </UiButton>
+          <UiButton
+            variant="primary"
+            size="sm"
+            :loading="weightFlushing"
+            :disabled="weightMatrixDirtyCount === 0"
+            @click="flushPendingWeights"
+          >
+            提交权重并校验
+            <template v-if="weightMatrixDirtyCount > 0">（{{ weightMatrixDirtyCount }}）</template>
+          </UiButton>
+          <UiButton
+            variant="outline"
+            size="sm"
+            :disabled="weightMatrixDirtyCount === 0"
+            @click="discardPendingWeights"
+          >
+            放弃未提交
+          </UiButton>
           <UiButton variant="outline" size="sm" @click="validateMatrixWeights">
-            校验矩阵权重
+            校验已保存矩阵
           </UiButton>
           <span class="qcm__hint">
-            点击单元格维护权重；全部考核行与全部目标列须非空且权重和 = 1，保存后自动校验
+            单元格编辑先进入本地 dirty；行/列 Σw 须 = 1。提交后才会写入服务端并跑矩阵配平校验。
           </span>
         </div>
+        <UiAlertStrip
+          v-if="weightMatrixDirtyCount > 0"
+          tone="warning"
+          dense
+          inline
+          :show-icon="false"
+          class="qcm__dirty-strip"
+        >
+          有 {{ weightMatrixDirtyCount }} 处未提交权重（橙色描边）；切换页签或离开前请提交或放弃。
+        </UiAlertStrip>
         <MatrixWorkbench
           title="考核环节 × 课程目标 权重矩阵"
-          subtitle="行徽标 = 考核环节对课程目标权重和；列徽标 = 课程目标下考核权重和（均须 = 1）"
+          subtitle="行/列徽标与底部合计均为配平口径（含未提交 dirty）"
           row-header-label="考核环节"
           col-header-label="课程目标"
           :rows="assessMatrixRows"
           :cols="assessMatrixCols"
           :cells="assessMatrixCells"
           :loading="assessmentItemsLoading || itemMetaLoading || courseGoalsLoading"
+          :load-error="assessMatrixLoadError"
+          empty-error-title="权重矩阵加载失败"
           empty-text="尚未创建考核环节或课程目标"
           :default-col-width="130"
+          :show-row-summary="true"
+          row-summary-label="行Σw"
+          :row-summary="assessRowSummary"
+          :row-summary-hint="assessRowSummaryHint"
+          :show-col-summary="true"
+          col-summary-label="列Σw"
+          :col-summary="assessColSummary"
+          :col-summary-hint="assessColSummaryHint"
           @cell-click="handleAssessCellClick"
         />
 
-        <UiCard class="qcm__card">
-          <template #title>
-            <span>考核环节列表</span>
-          </template>
-          <UiDataTable
-            pagination-mode="server"
-            v-model:current="itemPageNum"
-            v-model:page-size="itemPageSize"
-            :columns="itemColumns"
-            :data-source="itemTableRows"
-            :loading="itemTableLoading"
-            row-key="id"
-            size="middle"
-            flat
-            :total="itemTableTotal"
-            @page-change="handleItemPageChange"
+        <div class="qcm__entity-fold">
+          <UiButton
+            variant="ghost"
+            size="sm"
+            class="qcm__entity-toggle"
+            @click="assessEntityExpanded = !assessEntityExpanded"
           >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'itemType'">
-                {{ assessmentItemTypeLabel(record.itemType) }}
+            {{ assessEntityExpanded ? '收起考核实体维护' : '维护考核实体（列表 / Rubric）' }}
+          </UiButton>
+          <div v-if="assessEntityExpanded" class="qcm__entity-panel">
+            <UiDataTable
+              pagination-mode="server"
+              v-model:current="itemPageNum"
+              v-model:page-size="itemPageSize"
+              :columns="itemColumns"
+              :data-source="itemTableRows"
+              :loading="itemTableLoading"
+              :load-error="itemTableLoadError"
+              empty-title="暂无考核环节"
+              empty-description="请新建考核环节并配置权重"
+              row-key="id"
+              size="middle"
+              flat
+              :total="itemTableTotal"
+              @page-change="handleItemPageChange"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'itemType'">
+                  {{ assessmentItemTypeLabel(record.itemType) }}
+                </template>
+                <template v-else-if="column.key === 'fullScore'">
+                  {{ record.fullScore.toFixed(0) }}
+                </template>
+                <template v-else-if="column.key === 'isProcessOriented'">
+                  <UiTag v-if="record.isProcessOriented" tone="purple"> 过程 </UiTag>
+                  <span v-else class="qcm__muted">-</span>
+                </template>
+                <template v-else-if="column.key === 'rubricCount'">
+                  {{ rubricsOfItem(record.id).length }}
+                </template>
+                <template v-else-if="column.key === 'actions'">
+                  <UiTableActions
+                    :items="buildAssessmentItemActions(record)"
+                    split
+                    @action="(key) => handleAssessmentItemAction(key, record)"
+                  />
+                </template>
               </template>
-              <template v-else-if="column.key === 'fullScore'">
-                {{ record.fullScore.toFixed(0) }}
-              </template>
-              <template v-else-if="column.key === 'isProcessOriented'">
-                <UiTag v-if="record.isProcessOriented" tone="purple"> 过程 </UiTag>
-                <span v-else class="qcm__muted">-</span>
-              </template>
-              <template v-else-if="column.key === 'weightSum'">
-                <UiTag :tone="isWeightSumHealthy(itemWeightSum(record.id)) ? 'green' : 'red'">
-                  Σ={{ itemWeightSum(record.id).toFixed(3) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'rubricCount'">
-                {{ rubricsOfItem(record.id).length }}
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="buildAssessmentItemActions(record)"
-                  split
-                  @action="(key) => handleAssessmentItemAction(key, record)"
-                />
-              </template>
-            </template>
-          </UiDataTable>
-        </UiCard>
+            </UiDataTable>
+          </div>
+        </div>
       </div>
 
-      <!-- Tab 3: 课程目标列表 -->
+      <!-- Tab 3: 课程目标实体 -->
       <div v-else class="qcm__tab-content">
-        <UiCard class="qcm__card">
-          <template #title>
-            <span>课程目标列表</span>
-          </template>
-          <template #extra>
-            <UiButton variant="primary" size="sm" @click="openGoalCreate"> 新建课程目标 </UiButton>
-          </template>
-          <UiDataTable
-            pagination-mode="server"
-            v-model:current="goalPageNum"
-            v-model:page-size="goalPageSize"
-            :columns="goalColumns"
-            :data-source="goalTableRows"
-            :loading="goalTableLoading"
-            row-key="id"
-            size="middle"
-            flat
-            :total="goalTableTotal"
-            @page-change="handleGoalPageChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'thresholdValue'">
-                {{ record.thresholdValue == null ? '-' : record.thresholdValue.toFixed(2) }}
-              </template>
-              <template v-else-if="column.key === 'aggregation'">
-                {{ aggregationFunctionLabel(record.aggregation) }}
-              </template>
-              <template v-else-if="column.key === 'supportCount'">
-                {{ supportsOfGoal(record.id).length }}
-              </template>
-              <template v-else-if="column.key === 'flags'">
-                <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
-                  <UiTag v-if="record.civicObjectiveFlag" tone="purple"> 思政 </UiTag>
-                  <UiTag v-if="record.aiLiteracyFlag" tone="blue"> AI 素养 </UiTag>
-                  <UiTag v-if="record.complexEngineeringFlag" tone="orange"> 复杂工程 </UiTag>
-                  <span
-                    v-if="
-                      !record.civicObjectiveFlag
-                        && !record.aiLiteracyFlag
-                        && !record.complexEngineeringFlag
-                    "
-                    class="qcm__muted"
-                  >-</span>
-                </div>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="buildCourseGoalActions(record)"
-                  split
-                  @action="(key) => handleCourseGoalAction(key, record)"
-                />
-              </template>
+        <div class="qcm__matrix-toolbar">
+          <UiButton variant="primary" size="sm" @click="openGoalCreate"> 新建课程目标 </UiButton>
+          <span class="qcm__hint">
+            本页仅维护课程目标实体与计算规则；支撑映射与权重配平请回到矩阵页签。
+          </span>
+        </div>
+        <UiDataTable
+          pagination-mode="server"
+          v-model:current="goalPageNum"
+          v-model:page-size="goalPageSize"
+          :columns="goalColumns"
+          :data-source="goalTableRows"
+          :loading="goalTableLoading"
+          :load-error="goalTableLoadError"
+          empty-title="暂无课程目标"
+          empty-description="请新建课程目标后再维护支撑与权重"
+          row-key="id"
+          size="middle"
+          flat
+          :total="goalTableTotal"
+          @page-change="handleGoalPageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'thresholdValue'">
+              {{ record.thresholdValue == null ? '-' : record.thresholdValue.toFixed(2) }}
             </template>
-          </UiDataTable>
-        </UiCard>
+            <template v-else-if="column.key === 'aggregation'">
+              {{ aggregationFunctionLabel(record.aggregation) }}
+            </template>
+            <template v-else-if="column.key === 'flags'">
+              <div class="dp-space dp-space--wrap dp-space--tight">
+                <UiTag v-if="record.civicObjectiveFlag" tone="purple"> 思政 </UiTag>
+                <UiTag v-if="record.aiLiteracyFlag" tone="blue"> AI 素养 </UiTag>
+                <UiTag v-if="record.complexEngineeringFlag" tone="orange"> 复杂工程 </UiTag>
+                <span
+                  v-if="
+                    !record.civicObjectiveFlag
+                      && !record.aiLiteracyFlag
+                      && !record.complexEngineeringFlag
+                  "
+                  class="qcm__muted"
+                >-</span>
+              </div>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="buildCourseGoalActions(record)"
+                split
+                @action="(key) => handleCourseGoalAction(key, record)"
+              />
+            </template>
+          </template>
+        </UiDataTable>
       </div>
     </template>
 
@@ -2412,7 +2912,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
         </UiRow>
       </UiForm>
       <template #footer>
-        <div class="dp-space" style="--dp-space-gap: 8px">
+        <div class="dp-space dp-space--tight">
           <UiButton
             v-if="supportEditorMode === 'edit'"
             size="sm"
@@ -2548,7 +3048,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
         </UiRow>
       </UiForm>
       <template #footer>
-        <div class="dp-space" style="--dp-space-gap: 8px">
+        <div class="dp-space dp-space--tight">
           <UiButton
             v-if="weightEditorMode === 'edit'"
             size="sm"
@@ -2779,32 +3279,54 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
   }
 
   &__empty {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-component);
+  }
+
+  &__config-status {
+    margin-bottom: var(--dp-space-component);
   }
 
   &__signals {
-    margin-bottom: var(--dp-space-3);
+    margin-bottom: var(--dp-space-component-xs);
+  }
+
+  &__signals-secondary {
+    margin-top: var(--dp-space-component-tight);
+  }
+
+  &__sync-hint {
+    margin: 0 0 var(--dp-space-component-tight);
+    color: var(--dp-text-secondary, #666);
+    font-size: var(--dp-font-size-sm, 12px);
+  }
+
+  &__charts-fold {
+    margin-bottom: var(--dp-space-component-tight);
+  }
+
+  &__charts-toggle {
+    padding-inline: 0;
   }
 
   &__tabs {
     display: flex;
-    gap: var(--dp-space-2);
-    margin-bottom: var(--dp-space-3);
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
   &__tab-content {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-3);
+    gap: var(--dp-space-component);
   }
 
   &__matrix-toolbar,
   &__rubric-toolbar {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-3);
-    padding: var(--dp-space-2) 0;
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-component-tight) 0;
   }
 
   &__hint {
@@ -2812,9 +3334,22 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
     color: var(--dp-text-muted);
   }
 
-  &__card {
-    background: var(--dp-surface);
-    border-radius: var(--dp-radius-panel);
+  &__dirty-strip {
+    margin-bottom: var(--dp-space-component-xs);
+  }
+
+  &__entity-fold {
+    margin-top: var(--dp-space-component-xs);
+  }
+
+  &__entity-toggle {
+    padding-inline: 0;
+  }
+
+  &__entity-panel {
+    margin-top: var(--dp-space-component-tight);
+    padding-top: var(--dp-space-component-tight);
+    border-top: 1px solid var(--dp-border);
   }
 
   &__muted {
@@ -2822,7 +3357,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
   }
 
   &__file-name {
-    margin-top: var(--dp-space-2);
+    margin-top: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
@@ -2830,7 +3365,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
   &__gate-row {
     display: inline-flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     min-width: 0;
     font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
@@ -2842,10 +3377,10 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
 }
 
 .text-gray-500 {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .mr-1 {
-  margin-right: 4px;
+  margin-right: var(--dp-space-component-xs);
 }
 </style>

@@ -13,7 +13,7 @@ import type {
   WorkbenchSignalRefreshHandler,
 } from '@/composables/quality/improvement'
 import message from 'ant-design-vue/es/message'
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { auditIssueApi } from '@/apis/quality/audit-issue'
 import { auditRectificationApi } from '@/apis/quality/audit-rectification'
 import {
@@ -22,6 +22,7 @@ import {
   AuditRectificationStatusDescription,
 } from '@/apis/quality/types'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
+import QualityFormDraftStatusStrip from '@/components/quality/QualityFormDraftStatusStrip.vue'
 import {
   ArchiveSelector,
   AuditIssueSelector,
@@ -46,11 +47,17 @@ import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import {
+  buildQualityLongFormDraftKey,
+  clearQualityLongFormDraft,
+} from '@/composables/useQualityLongFormDraftPersist'
+import { useQualityLongFormDraftSession } from '@/composables/useQualityLongFormDraftSession'
+import {
   assertQualityScopeFresh,
   beginQualityScopeRequest,
   isQualityScopeStaleError,
 } from '@/composables/useScopeRequestGuard'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
+import { useUserStore } from '@/stores/modules/user'
 import {
   ALL_AUDIT_EVIDENCE_TYPE_CODES,
   AuditEvidenceTypeCode,
@@ -179,7 +186,193 @@ const rectEditor = reactive<AuditRectificationSaveRequest>({
   dueDate: '',
 })
 const rectEditorSubmitting = ref(false)
+const rectDraftSaving = ref(false)
+const rectCreateSessionKey = ref('')
+let rectDraftHydrating = false
+const userStore = useUserStore()
 const rectEvidenceEditorVisible = ref(false)
+
+interface AuditRectificationDraftSnapshot {
+  id?: string
+  auditIssueId: string
+  rectificationCode: string
+  rectificationTitle: string
+  rectificationAction: string
+  ownerUserId: string
+  ownerRole?: string
+  dueDate: string
+}
+
+function snapshotRectEditor(): AuditRectificationDraftSnapshot {
+  return {
+    id: rectEditor.id,
+    auditIssueId: rectEditor.auditIssueId || '',
+    rectificationCode: rectEditor.rectificationCode || '',
+    rectificationTitle: rectEditor.rectificationTitle || '',
+    rectificationAction: rectEditor.rectificationAction || '',
+    ownerUserId: rectEditor.ownerUserId || '',
+    ownerRole: rectEditor.ownerRole || undefined,
+    dueDate: rectEditor.dueDate || '',
+  }
+}
+
+function applyRectEditorDraft(snapshot: AuditRectificationDraftSnapshot): void {
+  rectDraftHydrating = true
+  try {
+    Object.assign(rectEditor, {
+      id: snapshot.id,
+      auditIssueId: snapshot.auditIssueId || '',
+      rectificationCode: snapshot.rectificationCode || '',
+      rectificationTitle: snapshot.rectificationTitle || '',
+      rectificationAction: snapshot.rectificationAction || '',
+      ownerUserId: snapshot.ownerUserId || '',
+      ownerRole: snapshot.ownerRole || '',
+      dueDate: snapshot.dueDate || '',
+    })
+    if (snapshot.id) {
+      rectCreateSessionKey.value = ''
+    }
+  } finally {
+    rectDraftHydrating = false
+  }
+}
+
+function canServerAutosaveRect(snapshot: AuditRectificationDraftSnapshot): boolean {
+  return Boolean(
+    snapshot.auditIssueId
+    && snapshot.rectificationCode?.trim()
+    && snapshot.rectificationTitle?.trim()
+    && snapshot.rectificationAction?.trim()
+    && snapshot.ownerUserId
+    && snapshot.dueDate,
+  )
+}
+
+function buildRectSaveRequest(snapshot: AuditRectificationDraftSnapshot): AuditRectificationSaveRequest {
+  return {
+    id: snapshot.id,
+    auditIssueId: snapshot.auditIssueId,
+    rectificationCode: snapshot.rectificationCode.trim(),
+    rectificationTitle: snapshot.rectificationTitle.trim(),
+    rectificationAction: snapshot.rectificationAction.trim(),
+    ownerUserId: snapshot.ownerUserId,
+    ownerRole: snapshot.ownerRole || undefined,
+    dueDate: snapshot.dueDate,
+  }
+}
+
+const rectDraft = useQualityLongFormDraftSession<AuditRectificationDraftSnapshot>({
+  kind: 'audit-rectification',
+  kindLabel: '审核整改措施',
+  getTenantId: () => String(userStore.userInfo.tenantId || ''),
+  getEntityKey: () => {
+    if (rectEditor.id) return 'rect:' + rectEditor.id
+    if (rectCreateSessionKey.value) return rectCreateSessionKey.value
+    return null
+  },
+  getSnapshot: snapshotRectEditor,
+  isEditable: () => {
+    if (!rectEditorVisible.value) return false
+    if (rectEditorMode.value === 'create') return true
+    if (!rectEditor.id) return false
+    const current = rectList.value.find((item) => item.id === rectEditor.id)
+    if (current) return canEditAuditRectification(current.status)
+    return true
+  },
+  canServerAutosave: canServerAutosaveRect,
+  serverAutosave: async (snapshot) => {
+    const request = buildRectSaveRequest(snapshot)
+    if (snapshot.id) {
+      await auditRectificationApi.update(request)
+      return
+    }
+    const tenantId = String(userStore.userInfo.tenantId || '')
+    const oldKey = rectCreateSessionKey.value
+      ? buildQualityLongFormDraftKey(tenantId, 'audit-rectification', rectCreateSessionKey.value)
+      : null
+    const createdId = await auditRectificationApi.create(request)
+    rectDraftHydrating = true
+    try {
+      rectEditor.id = String(createdId)
+      rectCreateSessionKey.value = ''
+    } finally {
+      rectDraftHydrating = false
+    }
+    if (oldKey) {
+      await clearQualityLongFormDraft(oldKey)
+    }
+  },
+})
+
+const rectDraftStatus = rectDraft.status
+const rectDraftStatusVisible = rectDraft.statusVisible
+const rectDraftLocalSavedAt = rectDraft.localSavedAt
+const rectDraftServerSavedAt = rectDraft.serverSavedAt
+const rectDraftErrorMessage = rectDraft.errorMessage
+
+async function startRectDraftSession(): Promise<void> {
+  const baseline = snapshotRectEditor()
+  const result = await rectDraft.beginSession(baseline)
+  if (result.restored && result.draft?.payloadJson) {
+    applyRectEditorDraft(JSON.parse(result.draft.payloadJson) as AuditRectificationDraftSnapshot)
+  }
+}
+
+async function handleRectDraftSaveNow(): Promise<void> {
+  rectDraftSaving.value = true
+  try {
+    const ok = await rectDraft.saveNow()
+    if (ok) {
+      void message.success('整改措施草稿已保存到服务端')
+      await loadList({ refreshSignals: true, settleAfterMutation: true })
+    } else if (rectDraft.status.value === 'local_saved') {
+      void message.warning(
+        rectDraft.errorMessage.value
+        || '仅本机暂存，请补齐关联问题/编码/标题/措施/责任人/截止日期后同步服务端',
+      )
+    }
+  } finally {
+    rectDraftSaving.value = false
+  }
+}
+
+async function handleRectEditorOpenChange(open: boolean): Promise<void> {
+  if (open) {
+    rectEditorVisible.value = true
+    return
+  }
+  if (rectDraft.needsLeaveConfirm()) {
+    const ok = await confirmAsync({
+      title: '关闭整改任务编辑？',
+      content: '未确认同步到服务端的内容已暂存在本机，下次打开可断点续填。关闭不会丢弃本机草稿。',
+      type: 'warning',
+      okText: '关闭并保留草稿',
+      cancelText: '继续编辑',
+    })
+    if (!ok) return
+    await rectDraft.endSession({ discardLocal: false })
+  } else {
+    await rectDraft.endSession()
+  }
+  rectEditorVisible.value = false
+}
+
+watch(
+  () => [
+    rectEditor.id,
+    rectEditor.auditIssueId,
+    rectEditor.rectificationCode,
+    rectEditor.rectificationTitle,
+    rectEditor.rectificationAction,
+    rectEditor.ownerUserId,
+    rectEditor.ownerRole,
+    rectEditor.dueDate,
+  ],
+  () => {
+    if (rectDraftHydrating || !rectEditorVisible.value) return
+    rectDraft.notifyChanged()
+  },
+)
 const rectEvidenceEditorSubmitting = ref(false)
 const rectEvidenceEditorRecord = ref<AuditRectificationVO | null>(null)
 const rectEvidenceEditor = reactive<{
@@ -195,7 +388,10 @@ const auditEvidenceTypeOptions = ALL_AUDIT_EVIDENCE_TYPE_CODES.map((value) => ({
   label: AuditEvidenceTypeDescription[value],
 }))
 
-async function loadList(options?: { refreshSignals?: boolean }) {
+async function loadList(options?: {
+  refreshSignals?: boolean
+  settleAfterMutation?: boolean
+}): Promise<'applied' | 'failed' | 'stale'> {
   const scope = beginQualityScopeRequest()
   rectLoading.value = true
   beginLoad()
@@ -211,8 +407,7 @@ async function loadList(options?: { refreshSignals?: boolean }) {
     rectTotal.value = page.total
     if (rectList.value.length === 0 && rectTotal.value > 0 && rectQuery.pageNum > 1) {
       rectQuery.pageNum -= 1
-      await loadList(options)
-      return
+      return await loadList(options)
     }
     const issueIds = Array.from(new Set(rectList.value.map((r) => r.auditIssueId).filter(Boolean)))
     for (const id of issueIds) {
@@ -222,22 +417,30 @@ async function loadList(options?: { refreshSignals?: boolean }) {
       rectIssuesCache.value.set(id, issue)
     }
     if (options?.refreshSignals) {
-      await refreshWorkbenchSignalsAfterMutation(
+      const signalOutcome = await refreshWorkbenchSignalsAfterMutation(
         scope,
         props.onWorkbenchRefresh,
         props.onLoadError,
         '工作台指标加载失败',
       )
+      if (signalOutcome !== 'applied') {
+        okLoad()
+        return signalOutcome
+      }
     }
     okLoad()
+    return 'applied'
   } catch (error) {
     if (isQualityScopeStaleError(error) || scope.isStale()) {
-      return
+      return 'stale'
     }
     failLoad()
     const err = toUserError(error, '整改任务加载失败')
     props.onLoadError?.(err)
     showUserError(error, '整改任务加载失败')
+    if (options?.settleAfterMutation) {
+      return 'failed'
+    }
     throw err
   } finally {
     rectLoading.value = false
@@ -263,38 +466,52 @@ function resetRectQuery() {
   loadList()
 }
 
-function openRectCreate() {
+async function openRectCreate() {
   rectEditorMode.value = 'create'
-  Object.assign(rectEditor, {
-    id: undefined,
-    auditIssueId: '',
-    rectificationCode: '',
-    rectificationTitle: '',
-    rectificationAction: '',
-    ownerUserId: '',
-    ownerRole: '',
-    dueDate: '',
-  })
+  rectCreateSessionKey.value = 'create-active:' + (userStore.userInfo.userId || 'anon')
+  rectDraftHydrating = true
+  try {
+    Object.assign(rectEditor, {
+      id: undefined,
+      auditIssueId: '',
+      rectificationCode: '',
+      rectificationTitle: '',
+      rectificationAction: '',
+      ownerUserId: '',
+      ownerRole: '',
+      dueDate: '',
+    })
+  } finally {
+    rectDraftHydrating = false
+  }
   rectEditorVisible.value = true
+  await startRectDraftSession()
 }
 
-function openRectEdit(record: AuditRectificationVO) {
+async function openRectEdit(record: AuditRectificationVO) {
   if (!canEditAuditRectification(record.status)) {
     void message.error('当前状态不允许编辑整改任务')
     return
   }
   rectEditorMode.value = 'edit'
-  Object.assign(rectEditor, {
-    id: record.id,
-    auditIssueId: record.auditIssueId,
-    rectificationCode: record.rectificationCode,
-    rectificationTitle: record.rectificationTitle,
-    rectificationAction: record.rectificationAction,
-    ownerUserId: record.ownerUserId,
-    ownerRole: record.ownerRole || '',
-    dueDate: record.dueDate,
-  })
+  rectCreateSessionKey.value = ''
+  rectDraftHydrating = true
+  try {
+    Object.assign(rectEditor, {
+      id: record.id,
+      auditIssueId: record.auditIssueId,
+      rectificationCode: record.rectificationCode,
+      rectificationTitle: record.rectificationTitle,
+      rectificationAction: record.rectificationAction,
+      ownerUserId: record.ownerUserId,
+      ownerRole: record.ownerRole || '',
+      dueDate: record.dueDate,
+    })
+  } finally {
+    rectDraftHydrating = false
+  }
   rectEditorVisible.value = true
+  await startRectDraftSession()
 }
 
 async function submitRectEditor() {
@@ -309,12 +526,14 @@ async function submitRectEditor() {
     !rectEditor.auditIssueId
     || !rectEditor.rectificationCode.trim()
     || !rectEditor.rectificationTitle.trim()
+    || !rectEditor.rectificationAction.trim()
     || !rectEditor.ownerUserId
     || !rectEditor.dueDate
   ) {
-    void message.error('请填写关联问题、编码、标题、责任人、截止日期')
+    void message.error('请填写关联问题、编码、标题、整改措施、责任人、截止日期')
     return
   }
+  await rectDraft.pauseForSubmit()
   rectEditorSubmitting.value = true
   try {
     const request: AuditRectificationSaveRequest = {
@@ -323,15 +542,18 @@ async function submitRectEditor() {
       rectificationTitle: rectEditor.rectificationTitle.trim(),
       ownerRole: rectEditor.ownerRole || undefined,
     }
-    if (rectEditorMode.value === 'create') {
-      await auditRectificationApi.create(request)
+    if (rectEditorMode.value === 'create' && !rectEditor.id) {
+      const createdId = await auditRectificationApi.create(request)
+      rectEditor.id = String(createdId)
       void message.success('已创建')
     } else {
-      await auditRectificationApi.update(request)
+      await auditRectificationApi.update({ ...request, id: rectEditor.id || request.id })
       void message.success('已保存')
     }
+    await rectDraft.markCleanAfterServerSuccess()
+    await rectDraft.endSession()
     rectEditorVisible.value = false
-    await loadList({ refreshSignals: true })
+    await loadList({ refreshSignals: true, settleAfterMutation: true })
   } finally {
     rectEditorSubmitting.value = false
   }
@@ -344,7 +566,7 @@ async function handleRectDelete(record: AuditRectificationVO) {
     onOk: async () => {
       await auditRectificationApi.delete(record.id)
       void message.success('已删除')
-      await loadList({ refreshSignals: true })
+      await loadList({ refreshSignals: true, settleAfterMutation: true })
     },
   })
 }
@@ -409,7 +631,7 @@ async function submitRectEvidenceEditor() {
     void message.success('已提交复核')
     rectEvidenceEditorVisible.value = false
     rectEvidenceEditorRecord.value = null
-    await loadList({ refreshSignals: true })
+    await loadList({ refreshSignals: true, settleAfterMutation: true })
   } finally {
     rectEvidenceEditorSubmitting.value = false
   }
@@ -446,7 +668,7 @@ async function advanceRectProgress(
     progressRemark: remark ?? undefined,
   })
   void message.success('已更新')
-  await loadList({ refreshSignals: true })
+  await loadList({ refreshSignals: true, settleAfterMutation: true })
 }
 
 async function verifyRect(
@@ -467,7 +689,7 @@ async function verifyRect(
     remark: remark ?? undefined,
   })
   void message.success('已复核')
-  await loadList({ refreshSignals: true })
+  await loadList({ refreshSignals: true, settleAfterMutation: true })
 }
 
 async function closeRect(record: AuditRectificationVO) {
@@ -478,7 +700,7 @@ async function closeRect(record: AuditRectificationVO) {
     onOk: async () => {
       await auditRectificationApi.close(record.id)
       void message.success('已闭环')
-      await loadList({ refreshSignals: true })
+      await loadList({ refreshSignals: true, settleAfterMutation: true })
     },
   })
 }
@@ -644,12 +866,22 @@ defineExpose({
   </ImprovementWorkbenchPanel>
 
   <UiDialog
-    v-model:open="rectEditorVisible"
+    :open="rectEditorVisible"
     :title="rectEditorMode === 'create' ? '新建整改任务' : '编辑整改任务'"
     :confirm-loading="rectEditorSubmitting"
     width="760px"
+    @update:open="handleRectEditorOpenChange"
     @ok="submitRectEditor"
   >
+    <QualityFormDraftStatusStrip
+      :status="rectDraftStatus"
+      :visible="rectDraftStatusVisible"
+      :local-saved-at="rectDraftLocalSavedAt"
+      :server-saved-at="rectDraftServerSavedAt"
+      :error-message="rectDraftErrorMessage"
+      :saving="rectDraftSaving"
+      @save-now="handleRectDraftSaveNow"
+    />
     <UiForm layout="vertical" :model="rectEditor">
       <UiRow :gutter="12">
         <UiCol :span="8">
@@ -670,8 +902,16 @@ defineExpose({
       <UiFormItem label="标题" required>
         <UiInput size="sm" v-model="rectEditor.rectificationTitle" />
       </UiFormItem>
-      <UiFormItem label="整改措施" required>
-        <UiTextarea size="sm" v-model="rectEditor.rectificationAction" :rows="4" />
+      <UiFormItem label="整改措施（支持断点续填）" required>
+        <p class="iwb-tab__draft-hint">
+          长文填写支持本机暂存与服务端自动保存草稿；刷新或误关后可续填。
+        </p>
+        <UiTextarea
+          size="sm"
+          v-model="rectEditor.rectificationAction"
+          :rows="6"
+          placeholder="写清整改动作、责任边界、完成标准与证据计划。输入后约 2.5 秒自动保存草稿。"
+        />
       </UiFormItem>
       <UiRow :gutter="12">
         <UiCol :span="12">
@@ -772,8 +1012,15 @@ defineExpose({
 
 <style scoped lang="scss">
 .iwb-tab {
+  &__draft-hint {
+    margin: 0 0 var(--dp-space-component-tight);
+    color: var(--dp-text-secondary);
+    font-size: var(--dp-font-size-sm);
+    line-height: 1.5;
+  }
+
   &__sub-desc {
-    margin-top: 4px;
+    margin-top: var(--dp-space-component-xs);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
@@ -781,12 +1028,12 @@ defineExpose({
   &__detail-toolbar {
     display: flex;
     justify-content: flex-end;
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__detail-row {
-    padding: 12px;
-    margin-bottom: 12px;
+    padding: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     background: var(--dp-surface-subtle);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
@@ -796,8 +1043,8 @@ defineExpose({
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
   }
 
   &__detail-row-title {

@@ -62,27 +62,26 @@ const { isDesktop } = useDevice()
 
 .asider {
   z-index: 1000;
-  width: 240px;
+  width: var(--dp-shell-sidebar-width);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   position: relative;
-  border-right: 1px solid var(--dp-border-subtle);
+  border-right: 1px solid var(--dp-border);
   box-sizing: border-box;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
   background-color: var(--dp-surface);
-  box-shadow: var(--dp-shadow-xs);
 
   &.collapsed {
-    width: 72px;
+    width: var(--dp-shell-sidebar-collapsed-width);
   }
 
   :deep(.ant-menu) {
     background: transparent;
     border-inline-end: none !important;
-    padding: var(--dp-space-2) var(--dp-space-2) 0;
+    padding: var(--dp-space-component-tight) 0;
   }
 
   :deep(.ant-menu-item),
@@ -91,14 +90,14 @@ const { isDesktop } = useDevice()
     margin-inline: 0;
     width: 100%;
     transition:
-      background var(--dp-duration-fast, 150ms) ease,
-      color var(--dp-duration-fast, 150ms) ease,
-      box-shadow var(--dp-duration-fast, 150ms) ease;
+      background var(--dp-duration-fast) var(--dp-ease-default),
+      color var(--dp-duration-fast) var(--dp-ease-default),
+      box-shadow var(--dp-duration-fast) var(--dp-ease-default);
   }
 
   :deep(.ant-menu-item-selected) {
-    background: var(--dp-blue-50) !important;
-    color: var(--dp-color-primary);
+    background: var(--dp-color-primary-bg) !important;
+    color: var(--dp-color-primary) !important;
     font-weight: var(--dp-type-sidebar-weight-active);
     box-shadow: inset 2px 0 0 var(--dp-color-primary);
   }
@@ -140,7 +139,7 @@ const { isDesktop } = useDevice()
     justify-content: center;
     align-items: center;
     height: 52px;
-    border-top: 1px solid var(--dp-border-subtle);
+    border-top: 1px solid var(--dp-border);
     background-color: var(--dp-surface);
   }
 }

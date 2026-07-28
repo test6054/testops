@@ -173,7 +173,7 @@ function handleNavigate(path: string) {
     }
 
     .tab-bar-label {
-      font-size: var(--dp-font-size-xxs);
+      font-size: var(--dp-font-size-xs);
       color: var(--dp-text-tertiary);
       transition: color 0.3s ease;
       white-space: nowrap;

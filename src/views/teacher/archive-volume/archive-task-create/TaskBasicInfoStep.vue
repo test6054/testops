@@ -71,28 +71,20 @@
       <UiRow :gutter="24" class="create-form__split-row">
         <UiCol :span="12">
           <UiFormItem
-            label="学年起始年"
-            name="academicYearStartYear"
+            label="学年"
+            name="academicYear"
             required
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <UiSelect
+            <UiInput
               size="sm"
-              v-model="basicForm.academicYearStartYear"
-              :options="academicYearStartOptions"
-              placeholder="请选择起始年"
+              v-model="basicForm.academicYear"
+              placeholder="2024-2025"
+              :maxlength="9"
             />
           </UiFormItem>
         </UiCol>
-        <UiCol :span="12">
-          <UiFormItem label="学年结束年" :label-col="labelCol" :wrapper-col="wrapperCol">
-            <UiInput size="sm" :value="academicYearEndYear" disabled />
-          </UiFormItem>
-        </UiCol>
-      </UiRow>
-
-      <UiRow :gutter="24" class="create-form__split-row">
         <UiCol :span="12">
           <UiFormItem
             label="学期"
@@ -109,6 +101,9 @@
             />
           </UiFormItem>
         </UiCol>
+      </UiRow>
+
+      <UiRow :gutter="24" class="create-form__split-row">
         <UiCol :span="12">
           <UiFormItem label="档案编号" :label-col="labelCol" :wrapper-col="wrapperCol">
             <UiInput
@@ -163,7 +158,6 @@ import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { ArchiveTaskProvenanceCode } from '@/types/enums/archive-task-provenance-enum'
 import { SemesterOptions } from '@/types/enums/semester-enum'
-import { composeAcademicYear, generateAcademicYearStartOptions } from '@/utils/academic-year'
 import { showUserError } from '@/utils/error-handler'
 import {
   useInjectedArchiveTaskCreateBasicForm,
@@ -217,19 +211,12 @@ const relatedExamOptions = ref<Array<{ value: string, label: string }>>([])
 /** 无关键字查询时该课程/学年/学期下是否存在可选考试 */
 const relatedExamAvailable = ref(false)
 
-const academicYearStartOptions = generateAcademicYearStartOptions().map((year) => ({
-  value: year,
-  label: `${year} 年`,
-}))
-
-const academicYearEndYear = computed(() => String(basicForm.academicYearStartYear + 1))
-
-const resolvedAcademicYear = computed(() => composeAcademicYear(basicForm.academicYearStartYear))
-
 const RELATED_EXAM_PAGE_SIZE = 50
 let relatedExamSearchTimer: ReturnType<typeof setTimeout> | undefined
 
-const canLoadRelatedExams = computed(() => Boolean(basicForm.courseId && basicForm.semester))
+const canLoadRelatedExams = computed(
+  () => Boolean(basicForm.courseId && basicForm.academicYear.trim() && basicForm.semester),
+)
 
 /** 选课且该条件有考试数据时才展示；默认展开，无折叠 */
 const showRelatedExamField = computed(
@@ -287,7 +274,7 @@ async function loadRelatedExamOptions(keyword?: string): Promise<void> {
       pageNum: 1,
       pageSize: RELATED_EXAM_PAGE_SIZE,
       courseId: basicForm.courseId ?? undefined,
-      academicYear: resolvedAcademicYear.value,
+      academicYear: basicForm.academicYear.trim(),
       semester: basicForm.semester,
       keyword: keyword?.trim() || undefined,
     })
@@ -365,7 +352,7 @@ watch(
 )
 
 watch(
-  () => [basicForm.academicYearStartYear, basicForm.semester],
+  () => [basicForm.academicYear, basicForm.semester],
   () => {
     resetRelatedExamOptions()
     void loadRelatedExamOptions()

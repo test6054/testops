@@ -6,6 +6,7 @@ import type { QuestionTypeCode } from './question-type'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { ExperienceRecommendationCode } from '@/types/enums/experience-recommendation-enum'
+import type { GradingExperienceItemTypeCode } from '@/types/enums/grading-experience-item-type-enum'
 import http from '@/config/axios'
 import {
   ExperienceCaseStatusCode,
@@ -108,7 +109,7 @@ export interface QuestionSignatureResponse {
 
 /** 批改经验单项 */
 export interface ExperienceItemResponse {
-  experienceType?: string
+  experienceType?: GradingExperienceItemTypeCode
   description?: string
   frequency?: number
   scoringPattern?: string

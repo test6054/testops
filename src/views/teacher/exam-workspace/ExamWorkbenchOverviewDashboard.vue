@@ -12,11 +12,12 @@
     <UiEmpty
       v-else-if="loadFailed || !overview"
       size="sm"
-      description="考试总览加载失败，请刷新后重试"
+      description="考试总览加载失败，可离开后再进入或使用页面刷新"
     />
 
     <template v-else>
       <SignalBand
+        v-if="kpiMetrics.length"
         compact
         variant="panel"
         :metrics="kpiMetrics"
@@ -24,46 +25,34 @@
         @metric-click="handleKpiClick"
       />
 
-      <ExamJourneyMiniStrip
-        :stages="journeyStages"
-        @stage-click="handleJourneyClick"
-      />
-
-      <div class="exam-overview-dash__merged">
-        <ExamWorkbenchPrepChecklist
-          v-if="overview.prepSteps.length"
-          :steps="overview.prepSteps"
-          @step-navigate="emit('prep-step-navigate', $event)"
-        />
-        <ExamQuestionTypeChart
-          v-if="overview.questionTypeStats"
-          :data="overview.questionTypeStats"
-          :loading="false"
-        />
-      </div>
-
       <div class="exam-overview-dash__layout">
         <div class="exam-overview-dash__main">
           <WorkbenchSurfaceCard flush class="exam-overview-dash__status-card">
-            <article class="exam-status-card">
+            <article class="exam-status-card exam-status-card--flush">
               <header class="exam-status-card__head">
                 <div class="exam-status-card__head-main">
                   <p v-if="examMeta" class="exam-status-card__meta exam-status-card__meta--lead">
                     {{ examMeta }}
                   </p>
                 </div>
-                <UiTag v-if="activeJourneyLabel" tone="blue" size="sm">{{ activeJourneyLabel }}</UiTag>
+                <UiTag
+                  v-if="activeJourneyTag"
+                  :tone="activeJourneyTag.tone"
+                  size="sm"
+                >
+                  {{ activeJourneyTag.label }}
+                </UiTag>
               </header>
               <div class="exam-status-card__progress">
                 <div class="exam-status-card__progress-label">
                   <span>批阅进度</span>
-                  <span>{{ markingPercent }}%</span>
+                  <span>{{ markingPercentLabel }}</span>
                 </div>
                 <div class="exam-status-card__progress-track">
                   <div
                     class="exam-status-card__progress-fill"
                     :style="{
-                      transform: `scaleX(${Math.max(0, Math.min(1, markingPercent / 100))})`,
+                      transform: `scaleX(${markingProgressFraction})`,
                     }"
                   />
                 </div>
@@ -96,18 +85,40 @@
                 {{ overview.publishRisk.summaryLabel }}
               </p>
               <footer class="exam-status-card__foot">
-                <UiButton size="sm" variant="primary" @click="emit('primary-action')">
+                <UiButton
+                  v-if="recommendedPrimaryLabel"
+                  size="sm"
+                  variant="primary"
+                  @click="emit('primary-action')"
+                >
                   {{ recommendedPrimaryLabel }}
                 </UiButton>
-                <UiButton size="sm" variant="outline" @click="emit('secondary-action')">
+                <UiButton
+                  v-if="recommendedSecondaryVisible"
+                  size="sm"
+                  variant="outline"
+                  @click="emit('secondary-action')"
+                >
                   {{ recommendedSecondaryLabel }}
                 </UiButton>
               </footer>
             </article>
           </WorkbenchSurfaceCard>
 
+          <ExamWorkbenchPrepChecklist
+            v-if="overview.prepSteps.length"
+            :steps="overview.prepSteps"
+            @step-navigate="emit('prep-step-navigate', $event)"
+          />
+
+          <ExamQuestionTypeChart
+            v-if="hasQuestionTypeStats"
+            :data="overview.questionTypeStats ?? null"
+            :loading="false"
+          />
+
           <WorkbenchSurfaceCard
-            v-if="qualityItems.length || qualityRadarHasData"
+            v-if="qualityAttentionItems.length || qualityItems.length"
             class="exam-overview-dash__quality"
           >
             <template #head>
@@ -118,16 +129,12 @@
                 </UiButton>
               </div>
             </template>
-            <MarkChart
-              v-if="qualityRadarHasData"
-              :option="qualityRadarOption"
-              height="180px"
-              aria-label="考试质量雷达图"
-              class="exam-overview-dash__radar"
-            />
-            <ul v-if="qualityItems.length > 0" class="exam-overview-dash__quality-list">
+            <p v-if="qualityAttentionSummary" class="exam-overview-dash__quality-summary">
+              {{ qualityAttentionSummary }}
+            </p>
+            <ul v-if="qualityDisplayItems.length > 0" class="exam-overview-dash__quality-list">
               <li
-                v-for="item in qualityItems"
+                v-for="item in qualityDisplayItems"
                 :key="item.reviewerUserId"
                 class="exam-overview-dash__quality-row"
               >
@@ -188,23 +195,19 @@ import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getWorkbenchLifecycleOverview } from '@/apis/mark/exam-progress'
-import MarkChart from '@/components/chart/MarkChart.vue'
 import PendingTodoFeed from '@/components/mark/dashboard/PendingTodoFeed.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
-import ExamJourneyMiniStrip from '@/components/workbench/ExamJourneyMiniStrip.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
-import { useChartOption } from '@/hooks/modules/useChartOption'
 import { WorkbenchStageStatusDescription } from '@/types/enums/exam-workbench-stage-status-enum'
 import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
-import { buildExamQualityRadarChartOption } from '@/utils/exam-quality-charts'
 import { formatDateTime } from '@/utils/format'
 import { countUrgentTodos } from '@/utils/mark-dashboard-todo'
 import { navigateToJourneyStep } from '@/utils/mark-stage-navigation'
@@ -219,6 +222,7 @@ const props = defineProps<{
   detail?: ExamDetailResponse | null
   recommendedPrimaryLabel?: string
   recommendedSecondaryLabel?: string
+  recommendedSecondaryVisible?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -235,25 +239,39 @@ const loading = ref(false)
 const loadFailed = ref(false)
 const overview = ref<ExamWorkbenchLifecycleOverviewResponse | null>(null)
 
-const recommendedPrimaryLabel = computed(() => props.recommendedPrimaryLabel?.trim() || '进入阅卷')
-const recommendedSecondaryLabel = computed(
-  () => props.recommendedSecondaryLabel?.trim() || '扫描运营',
+const recommendedPrimaryLabel = computed(() => props.recommendedPrimaryLabel?.trim() || '')
+const recommendedSecondaryLabel = computed(() => props.recommendedSecondaryLabel?.trim() || '')
+const recommendedSecondaryVisible = computed(
+  () => props.recommendedSecondaryVisible === true && Boolean(recommendedSecondaryLabel.value),
 )
 
 const dashboardPanel = computed(() => overview.value?.dashboardPanel ?? null)
+const hasQuestionTypeStats = computed(
+  () => Boolean(overview.value?.questionTypeStats && overview.value.questionTypeStats.items.length > 0),
+)
 const taskSummary = computed(() => dashboardPanel.value?.markingTaskSummary ?? null)
 const quickStats = computed(() => dashboardPanel.value?.quickStats ?? null)
 const pendingTodos = computed(() => dashboardPanel.value?.pendingTodos ?? [])
 const qualityItems = computed(() => dashboardPanel.value?.qualityOverviewItems ?? [])
-const qualityDimensionItems = computed(() => dashboardPanel.value?.qualityDimensionItems ?? [])
-
-const qualityRadarHasData = computed(() =>
-  qualityDimensionItems.value.some((item) => item.score != null),
+const QUALITY_ATTENTION_THRESHOLD = 85
+const qualityAttentionItems = computed(() =>
+  qualityItems.value
+    .filter((item) => item.consistencyRate < QUALITY_ATTENTION_THRESHOLD)
+    .slice()
+    .sort((a, b) => a.consistencyRate - b.consistencyRate),
 )
-
-const { chartOption: qualityRadarOption } = useChartOption(() =>
-  buildExamQualityRadarChartOption(qualityDimensionItems.value),
-)
+const qualityDisplayItems = computed(() => {
+  if (qualityAttentionItems.value.length > 0) {
+    return qualityAttentionItems.value
+  }
+  return qualityItems.value.slice(0, 5)
+})
+const qualityAttentionSummary = computed(() => {
+  if (qualityAttentionItems.value.length === 0) {
+    return ''
+  }
+  return `一致性低于 ${QUALITY_ATTENTION_THRESHOLD}% 的阅卷教师 ${qualityAttentionItems.value.length} 人，优先关注`
+})
 
 const examConsistencyRate = computed(
   () => dashboardPanel.value?.qualitySummary?.examConsistencyRate ?? null,
@@ -273,9 +291,23 @@ const journeyStages = computed<WorkbenchStage[]>(() => {
   }))
 })
 
-const activeJourneyLabel = computed(() => {
-  const active = journeyStages.value.find((stage) => stage.status === 'active' || stage.status === 'warning')
-  return active?.title ?? ''
+const activeJourneyTag = computed(() => {
+  const active = journeyStages.value.find(
+    (stage) => stage.status === 'active'
+      || stage.status === 'warning'
+      || stage.status === 'error'
+      || stage.status === 'blocked',
+  )
+  if (!active) {
+    return null
+  }
+  if (active.status === 'error' || active.status === 'blocked') {
+    return { label: active.title, tone: 'red' as const }
+  }
+  if (active.status === 'warning') {
+    return { label: active.title, tone: 'orange' as const }
+  }
+  return { label: active.title, tone: 'blue' as const }
 })
 
 const kpiMetrics = computed<SignalMetric[]>(() => {
@@ -293,12 +325,24 @@ const kpiMetrics = computed<SignalMetric[]>(() => {
   }))
 })
 
-const markingPercent = computed(() => {
+/** 无应批题目时进度尚未形成，禁止显示成真实 0% */
+const markingPercent = computed((): number | null => {
   const progress = overview.value?.markingProgress
   if (!progress || progress.totalQuestionGradeCount <= 0) {
-    return 0
+    return null
   }
   return Math.round((progress.confirmedQuestionGradeCount / progress.totalQuestionGradeCount) * 100)
+})
+
+const markingPercentLabel = computed(() =>
+  markingPercent.value == null ? '—' : `${markingPercent.value}%`,
+)
+
+const markingProgressFraction = computed(() => {
+  if (markingPercent.value == null) {
+    return 0
+  }
+  return Math.max(0, Math.min(1, markingPercent.value / 100))
 })
 
 const examMeta = computed(() => {
@@ -390,7 +434,6 @@ function handleJourneyClick(journeyKey: string): void {
     router,
     journeyKey as MarkTeacherDashboardJourneyKeyCode,
     props.examId,
-    { scanAttentionCount: overview.value?.scanAttentionCount },
   )
 }
 
@@ -444,25 +487,43 @@ watch(
   { immediate: true },
 )
 
-defineExpose({ reload: loadOverview })
+defineExpose({
+  reload: loadOverview,
+})
 </script>
 
 <style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
+
 .exam-overview-dash {
   &__security,
   &__kpi {
-    margin-bottom: var(--dp-space-4);
+    margin-bottom: var(--dp-space-block);
   }
 
-  &__merged {
+  &__layout {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--dp-space-4);
-    margin-bottom: var(--dp-space-4);
+    grid-template-columns: minmax(0, 1fr) var(--dp-workbench-aside-width);
+    gap: var(--dp-space-block);
+    align-items: start;
+
+    @media (max-width: #{bp.$ant-grid-lg - 1px}) {
+      grid-template-columns: 1fr;
+    }
   }
 
-  &__status-card {
-    margin-bottom: var(--dp-space-4);
+  &__main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dp-space-block);
+    min-width: 0;
+  }
+
+  &__side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dp-space-block);
+    min-width: 0;
   }
 
   :deep(.exam-status-card__meta--lead) {
@@ -474,29 +535,41 @@ defineExpose({ reload: loadOverview })
   }
 
   :deep(.exam-status-card__risk) {
-    margin: var(--dp-space-2) 0 0;
+    margin: var(--dp-space-component-tight) 0 0;
     font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 
-  &__quality {
-    margin-bottom: var(--dp-space-4);
+  :deep(.exam-status-card--flush) {
+    padding: var(--dp-space-block);
   }
 
-  &__radar {
-    margin-bottom: var(--dp-space-3);
+  :deep(.exam-status-card__stats) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--dp-space-block) var(--dp-space-section-loose);
+  }
+
+  :deep(.exam-status-card__foot) {
+    margin-top: var(--dp-space-component);
+    padding-top: var(--dp-space-block);
+    border-top: 1px solid var(--dp-border-subtle);
+  }
+
+  &__quality-summary {
+    margin: 0 0 var(--dp-space-component);
+    font-size: var(--dp-font-size-sm);
+    line-height: 1.5;
+    color: var(--dp-text-secondary);
   }
 
   &__quality-head,
   &__panel-title {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     margin: 0;
-    font-size: 15px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    color: var(--dp-text-primary);
+    /* 字号/字重继承 WorkbenchSurfaceCard__head */
   }
 
   &__quality-list {
@@ -508,13 +581,13 @@ defineExpose({ reload: loadOverview })
   &__quality-row {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-3);
-    padding: var(--dp-space-2) var(--dp-space-1);
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-component-tight) var(--dp-space-component-xs);
     border-radius: var(--dp-radius-control);
-    transition: background var(--dp-duration-fast) ease;
+    transition: background var(--dp-duration-fast) var(--dp-ease-default);
 
     &:hover {
-      background: var(--dp-surface-elevated);
+      background: var(--dp-surface-chrome);
     }
   }
 
@@ -532,7 +605,7 @@ defineExpose({ reload: loadOverview })
     flex: 1;
     height: 6px;
     border-radius: var(--dp-radius-full);
-    background: var(--dp-gray-100);
+    background: var(--dp-fill-quaternary);
     overflow: hidden;
   }
 
@@ -542,7 +615,7 @@ defineExpose({ reload: loadOverview })
     background: var(--dp-color-primary);
     border-radius: inherit;
     transform-origin: left center;
-    transition: transform var(--dp-duration-normal) ease;
+    transition: transform var(--dp-duration-normal) var(--dp-ease-default);
 
     &--green {
       background: var(--dp-green-500);
@@ -560,21 +633,17 @@ defineExpose({ reload: loadOverview })
     font-variant-numeric: tabular-nums;
   }
 
-  &__panel {
-    margin-bottom: var(--dp-space-4);
-  }
-
   &__todo-count {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     min-width: 18px;
     height: 18px;
-    padding: 0 5px;
+    padding: 0 var(--dp-space-component-xs);
     border-radius: var(--dp-radius-full);
     background: var(--dp-red-500);
     color: var(--dp-text-inverse);
-    font-size: var(--dp-font-size-xxs);
+    font-size: var(--dp-font-size-xs);
     font-weight: 600;
   }
 
@@ -586,7 +655,7 @@ defineExpose({ reload: loadOverview })
     li {
       display: flex;
       justify-content: space-between;
-      padding: var(--dp-space-2) 0;
+      padding: var(--dp-space-component-tight) 0;
       font-size: var(--dp-font-size-sm);
       border-bottom: 1px solid var(--dp-border);
 

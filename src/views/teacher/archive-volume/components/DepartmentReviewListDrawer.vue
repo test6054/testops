@@ -4,9 +4,11 @@
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   approveArchiveVolumeDepartmentReview,
   getArchiveVolumeDetail,
+  previewArchiveVolumeSubmitChecklist,
   rejectArchiveVolumeDepartmentReview,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -16,8 +18,10 @@ import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import { resolveSubmitChecklistNavigation } from '@/composables/useArchiveSubmitChecklistRouter'
 import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { navigateExamWorkspaceRoute } from '@/utils/exam-workspace-navigation'
 import DepartmentReviewMaterialSummary from '@/views/teacher/archive-volume/components/DepartmentReviewMaterialSummary.vue'
 
 const props = defineProps<{
@@ -30,6 +34,8 @@ const emit = defineEmits<{
   "completed": []
   'open-detail': [volumeId: string, tabKey?: string]
 }>()
+
+const router = useRouter()
 
 const loading = ref(false)
 const loadFailed = ref(false)
@@ -112,6 +118,7 @@ async function handleApprove() {
     closeDrawer()
   } catch (error) {
     showUserError(error, '院系审核通过失败')
+    await navigateFirstApprovalBlocker()
   } finally {
     approving.value = false
   }
@@ -149,6 +156,30 @@ function openDetail(tabKey?: string) {
   emit('open-detail', props.volumeId, tabKey)
   closeDrawer()
 }
+
+/** 审批写入失败后按后端提交清单跳转首个真实业务阻断项。 */
+async function navigateFirstApprovalBlocker() {
+  if (!props.volumeId || !detail.value) return
+  try {
+    const preview = await previewArchiveVolumeSubmitChecklist(props.volumeId)
+    const blocker = preview.blockingItems?.find((item) => item.passed !== true)
+    if (!blocker) return
+    const navigation = resolveSubmitChecklistNavigation(blocker, detail.value.volume.examId)
+    if (navigation.kind === 'examWorkspace') {
+      navigateExamWorkspaceRoute(
+        router,
+        navigation.routeName,
+        { examId: navigation.examId },
+        '归档院系审核抽屉阻塞项考试门禁入口',
+      )
+      closeDrawer()
+      return
+    }
+    openDetail(navigation.target.detailTabKey)
+  } catch (error) {
+    showUserError(error, '加载院系审核阻断项失败')
+  }
+}
 </script>
 
 <template>
@@ -165,9 +196,7 @@ function openDetail(tabKey?: string) {
       size="sm"
       v-else-if="loadFailed"
       title="院系审核材料加载失败"
-      description="无法读取最新材料摘要与审核权限。"
-      action-label="重新加载"
-      @action="volumeId && loadDetail(volumeId)"
+      description="无法读取最新材料摘要与审核权限；关闭后重新打开将再次拉取。"
     />
     <template v-else-if="detail">
       <div class="dept-review-list-drawer__meta">
@@ -240,14 +269,14 @@ function openDetail(tabKey?: string) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
 .dept-review-list-drawer__denied {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
@@ -255,26 +284,26 @@ function openDetail(tabKey?: string) {
 .dept-review-list-drawer__links {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 12px;
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-component);
 }
 
 .dept-review-list-drawer__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--dp-border-light);
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-block);
+  padding-top: var(--dp-space-component);
+  border-top: 1px solid var(--dp-border-subtle);
 }
 
 .dept-review-list-drawer__reject {
-  margin-top: 12px;
+  margin-top: var(--dp-space-component);
 }
 
 .dept-review-list-drawer__reject-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--dp-space-component-tight);
+  margin-top: var(--dp-space-component-tight);
 }
 </style>

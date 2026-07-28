@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { AccreditationCycleVO } from '@/apis/quality/accreditation'
 import type {
   QualityStatusCountsResponse,
   ReportEditorForm,
@@ -14,7 +15,7 @@ import type {
  * 1. AI 任务（COURSE_REPORT_GENERATE / PROGRAM_REPORT_GENERATE）生成草稿
  * 2. 状态机 DRAFT -> SUBMITTED -> CONFIRMED / RETURNED -> ARCHIVED（transitStatus 仅接受 id + targetStatus）
  * 3. SUBMITTED / CONFIRMED / ARCHIVED 状态可触发 Word / PDF / Excel 异步三格式导出
- * 4. 导出 exportStatus IDLE -> PENDING -> PROCESSING -> COMPLETED / FAILED，前端轮询 5s/次。
+ * 4. 导出以 exportTaskId 锚定 IDLE -> PENDING -> PROCESSING -> COMPLETED / FAILED，前端轮询 5s/次。
  */
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type {
@@ -26,8 +27,9 @@ import type {
 } from '@/types/workbench'
 import { LoadingOutlined } from '@ant-design/icons-vue'
 import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import { reportApi } from '@/apis/quality/report'
 import {
   ALL_REPORT_STATUS_CODES,
@@ -41,6 +43,7 @@ import {
   ReportTypeCode,
   ReportTypeDescription,
 } from '@/apis/quality/types'
+import QualityFormDraftStatusStrip from '@/components/quality/QualityFormDraftStatusStrip.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import {
@@ -49,6 +52,7 @@ import {
   ProgramSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
+import { loadSelectorFirstPage } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -66,18 +70,29 @@ import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import {
+  buildQualityLongFormDraftKey,
+  clearQualityLongFormDraft,
+} from '@/composables/useQualityLongFormDraftPersist'
+import { useQualityLongFormDraftSession } from '@/composables/useQualityLongFormDraftSession'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
+import { useUserStore } from '@/stores/modules/user'
 import { ConfirmationStatusCode } from '@/types/enums/confirmation-status-enum'
 import { ALL_SEMESTER_CODES, formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
+import {
+  getUserErrorMessage,
+  getUserProcessFailureMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
@@ -127,6 +142,7 @@ const query = reactive<ReportQueryRequest & Record<string, unknown>>({
   pageNum: 1,
   pageSize: 10,
   trainingPlanId: qualityStore.currentTrainingPlanId,
+  accreditationCycleId: '',
   reportType: undefined,
   qualityCourseId: '',
   schoolYear: '',
@@ -141,6 +157,7 @@ const editor = reactive<ReportEditorForm>({
   reportType: ReportTypeCode.COURSE_ACHIEVEMENT,
   programId: '',
   trainingPlanId: '',
+  accreditationCycleId: '',
   qualityCourseId: '',
   achievementResultId: '',
   title: '',
@@ -149,18 +166,238 @@ const editor = reactive<ReportEditorForm>({
   bodyContent: '',
 })
 const submitting = ref(false)
+const draftSaving = ref(false)
+const reportCycles = ref<AccreditationCycleVO[]>([])
+const cycleLoading = ref(false)
+const editorCycleOptions = ref<Array<{ value: string, label: string }>>([])
+/** 新建报告本地草稿会话键（尚无服务端 id 时） */
+const editorCreateSessionKey = ref('')
+let reportDraftHydrating = false
+const userStore = useUserStore()
+
+interface ReportEditorDraftSnapshot {
+  id?: string
+  reportType: ReportTypeCode
+  programId: string
+  trainingPlanId?: string
+  accreditationCycleId?: string
+  qualityCourseId?: string
+  achievementResultId?: string
+  title: string
+  schoolYear: string
+  semester?: ReportEditorForm['semester']
+  bodyContent?: string
+}
+
+function snapshotReportEditor(): ReportEditorDraftSnapshot {
+  return {
+    id: editor.id,
+    reportType: editor.reportType,
+    programId: editor.programId,
+    trainingPlanId: editor.trainingPlanId || undefined,
+    accreditationCycleId: editor.accreditationCycleId || undefined,
+    qualityCourseId: editor.qualityCourseId || undefined,
+    achievementResultId: editor.achievementResultId || undefined,
+    title: editor.title,
+    schoolYear: editor.schoolYear,
+    semester: editor.semester,
+    bodyContent: editor.bodyContent || '',
+  }
+}
+
+function applyReportEditorDraft(snapshot: ReportEditorDraftSnapshot): void {
+  reportDraftHydrating = true
+  try {
+    Object.assign(editor, {
+      id: snapshot.id,
+      reportType: snapshot.reportType,
+      programId: snapshot.programId || '',
+      trainingPlanId: snapshot.trainingPlanId || '',
+      accreditationCycleId: snapshot.accreditationCycleId || '',
+      qualityCourseId: snapshot.qualityCourseId || '',
+      achievementResultId: snapshot.achievementResultId || '',
+      title: snapshot.title || '',
+      schoolYear: snapshot.schoolYear || '',
+      semester: snapshot.semester,
+      bodyContent: snapshot.bodyContent || '',
+    })
+    if (snapshot.id) {
+      editorMode.value = 'edit'
+      editorCreateSessionKey.value = ''
+    }
+  } finally {
+    reportDraftHydrating = false
+  }
+}
+
+function buildReportSaveRequestFromSnapshot(snapshot: ReportEditorDraftSnapshot): ReportSaveRequest {
+  const semester = snapshot.semester
+  const selectedSemester = ALL_SEMESTER_CODES.find((code) => code === semester)
+  if (!selectedSemester) {
+    throw new Error('请填写学年与学期')
+  }
+  return {
+    id: snapshot.id,
+    reportType: snapshot.reportType,
+    programId: snapshot.programId,
+    trainingPlanId: snapshot.trainingPlanId || undefined,
+    accreditationCycleId: snapshot.accreditationCycleId || undefined,
+    qualityCourseId: snapshot.qualityCourseId || undefined,
+    achievementResultId: snapshot.achievementResultId || undefined,
+    title: snapshot.title.trim(),
+    schoolYear: snapshot.schoolYear,
+    semester: selectedSemester,
+    bodyContent: snapshot.bodyContent,
+  }
+}
+
+function canServerAutosaveReport(snapshot: ReportEditorDraftSnapshot): boolean {
+  if (!snapshot.title?.trim() || !snapshot.programId || !snapshot.schoolYear || !snapshot.semester) {
+    return false
+  }
+  if (snapshot.reportType === ReportTypeCode.COURSE_ACHIEVEMENT && !snapshot.qualityCourseId) {
+    return false
+  }
+  if (snapshot.reportType === ReportTypeCode.PROGRAM_QUALITY) {
+    if (!snapshot.trainingPlanId || !snapshot.accreditationCycleId || snapshot.qualityCourseId) {
+      return false
+    }
+  }
+  return true
+}
+
+const reportDraft = useQualityLongFormDraftSession<ReportEditorDraftSnapshot>({
+  kind: 'report',
+  kindLabel: '达成度分析报告',
+  getTenantId: () => String(userStore.userInfo.tenantId || ''),
+  getEntityKey: () => {
+    if (editor.id) return 'report:' + editor.id
+    if (editorCreateSessionKey.value) return editorCreateSessionKey.value
+    return null
+  },
+  getSnapshot: snapshotReportEditor,
+  isEditable: () => {
+    if (!editorVisible.value) return false
+    if (editorMode.value === 'create') return true
+    if (!editor.id) return false
+    const current = list.value.find((item) => item.id === editor.id)
+    if (current) return canEditReport(current.status)
+    return true
+  },
+  canServerAutosave: canServerAutosaveReport,
+  serverAutosave: async (snapshot) => {
+    const request = buildReportSaveRequestFromSnapshot(snapshot)
+    if (snapshot.id) {
+      await reportApi.update(request)
+      return
+    }
+    const tenantId = String(userStore.userInfo.tenantId || '')
+    const oldKey = editorCreateSessionKey.value
+      ? buildQualityLongFormDraftKey(tenantId, 'report', editorCreateSessionKey.value)
+      : null
+    const createdId = await reportApi.create(request)
+    reportDraftHydrating = true
+    try {
+      editor.id = String(createdId)
+      editorMode.value = 'edit'
+      editorCreateSessionKey.value = ''
+    } finally {
+      reportDraftHydrating = false
+    }
+    if (oldKey) {
+      await clearQualityLongFormDraft(oldKey)
+    }
+  },
+})
+
+const reportDraftStatus = reportDraft.status
+const reportDraftStatusVisible = reportDraft.statusVisible
+const reportDraftLocalSavedAt = reportDraft.localSavedAt
+const reportDraftServerSavedAt = reportDraft.serverSavedAt
+const reportDraftErrorMessage = reportDraft.errorMessage
+
+async function startReportDraftSession(): Promise<void> {
+  const baseline = snapshotReportEditor()
+  const result = await reportDraft.beginSession(baseline)
+  if (result.restored && result.draft?.payloadJson) {
+    applyReportEditorDraft(JSON.parse(result.draft.payloadJson) as ReportEditorDraftSnapshot)
+  }
+}
+
+async function handleReportDraftSaveNow(): Promise<void> {
+  draftSaving.value = true
+  try {
+    const ok = await reportDraft.saveNow()
+    if (ok) {
+      void message.success('草稿已保存到服务端')
+      await loadList()
+    } else if (reportDraft.status.value === 'local_saved') {
+      void message.warning(reportDraft.errorMessage.value || '仅本机暂存，请补齐必填项后再同步服务端')
+    }
+  } finally {
+    draftSaving.value = false
+  }
+}
+
+async function handleEditorOpenChange(open: boolean): Promise<void> {
+  if (open) {
+    editorVisible.value = true
+    return
+  }
+  if (reportDraft.needsLeaveConfirm()) {
+    const ok = await confirmAsync({
+      title: '关闭报告编辑？',
+      content:
+        '未确认同步到服务端的内容已暂存在本机，下次打开同一报告可断点续填。关闭不会丢弃本机草稿。',
+      type: 'warning',
+      okText: '关闭并保留草稿',
+      cancelText: '继续编辑',
+    })
+    if (!ok) return
+    await reportDraft.endSession({ discardLocal: false })
+  } else {
+    await reportDraft.endSession()
+  }
+  editorVisible.value = false
+}
+
+watch(
+  () => [
+    editor.id,
+    editor.reportType,
+    editor.programId,
+    editor.trainingPlanId,
+    editor.accreditationCycleId,
+    editor.qualityCourseId,
+    editor.achievementResultId,
+    editor.title,
+    editor.schoolYear,
+    editor.semester,
+    editor.bodyContent,
+  ],
+  () => {
+    if (reportDraftHydrating || !editorVisible.value) return
+    reportDraft.notifyChanged()
+  },
+)
 
 function handleEditorProgramChange(value: string | null): void {
   editor.programId = value ?? ''
   editor.trainingPlanId = ''
+  editor.accreditationCycleId = ''
+  editorCycleOptions.value = []
   editor.qualityCourseId = ''
   editor.achievementResultId = ''
 }
 
 function handleEditorTrainingPlanChange(value: string | null): void {
   editor.trainingPlanId = value ?? ''
+  editor.accreditationCycleId = ''
   editor.qualityCourseId = ''
   editor.achievementResultId = ''
+  if (editor.reportType === ReportTypeCode.PROGRAM_QUALITY) {
+    void loadEditorApplicationCycle(editor.trainingPlanId || '')
+  }
 }
 
 function handleEditorQualityCourseChange(value: string | null): void {
@@ -170,6 +407,77 @@ function handleEditorQualityCourseChange(value: string | null): void {
 
 function handleQueryQualityCourseChange(value: string | null): void {
   query.qualityCourseId = value ?? ''
+}
+
+function handleQueryCycleChange(value: string | null): void {
+  if (query.reportType === ReportTypeCode.COURSE_ACHIEVEMENT && value) {
+    void message.error('认证周期筛选仅适用于专业质量分析报告')
+    query.accreditationCycleId = ''
+    return
+  }
+  query.accreditationCycleId = value ?? ''
+}
+
+async function loadReportCycles(): Promise<void> {
+  const trainingPlanId = qualityStore.currentTrainingPlanId || ''
+  if (!trainingPlanId) {
+    reportCycles.value = []
+    query.accreditationCycleId = ''
+    return
+  }
+  cycleLoading.value = true
+  try {
+    reportCycles.value = await loadSelectorFirstPage((pageNum, pageSize) => accreditationApi.cyclePage({
+      trainingPlanId,
+      pageNum,
+      pageSize,
+    }))
+    if (!reportCycles.value.some(cycle => cycle.id === query.accreditationCycleId)) {
+      query.accreditationCycleId = ''
+    }
+  } catch (error) {
+    reportCycles.value = []
+    query.accreditationCycleId = ''
+    showUserError(error, '认证周期列表加载失败')
+  } finally {
+    cycleLoading.value = false
+  }
+}
+
+/** 专业质量分析报告只能显式绑定培养方案当前在办申请周期。 */
+async function loadEditorApplicationCycle(trainingPlanId: string): Promise<void> {
+  editorCycleOptions.value = []
+  editor.accreditationCycleId = ''
+  if (!trainingPlanId.trim()) return
+  cycleLoading.value = true
+  try {
+    const cockpit = await accreditationApi.cockpit({ trainingPlanId: trainingPlanId.trim() })
+    const applicationCycle = cockpit.applicationCycle
+    if (!applicationCycle) {
+      void message.error('当前培养方案没有在办认证申请周期，不能创建专业质量分析报告')
+      return
+    }
+    editorCycleOptions.value = [{
+      value: applicationCycle.id,
+      label: `在办申请 · ${applicationCycle.cycleName}`,
+    }]
+    editor.accreditationCycleId = applicationCycle.id
+  } catch (error) {
+    showUserError(error, '在办认证申请周期加载失败')
+  } finally {
+    cycleLoading.value = false
+  }
+}
+
+function handleEditorReportTypeChange(): void {
+  if (editor.reportType === ReportTypeCode.PROGRAM_QUALITY) {
+    editor.qualityCourseId = ''
+    editor.achievementResultId = ''
+    void loadEditorApplicationCycle(editor.trainingPlanId || '')
+    return
+  }
+  editor.accreditationCycleId = ''
+  editorCycleOptions.value = []
 }
 
 function handleEditorAchievementResultChange(value: string | null): void {
@@ -190,6 +498,10 @@ const statusOptions: Array<{ value: ReportStatusCode, label: string }>
     value,
     label: strictEnumLabel(ReportStatusDescription, value, '报告状态'),
   }))
+const cycleOptions = computed(() => reportCycles.value.map(cycle => ({
+  value: cycle.id,
+  label: cycle.cycleName,
+})))
 
 const filterModel = computed<Record<string, unknown>>({
   get: () => query,
@@ -207,6 +519,12 @@ const filterFields: FilterField[] = [
     allowClear: true,
     width: 140,
     options: reportTypeOptions,
+  },
+  {
+    key: 'accreditationCycleId',
+    type: 'custom',
+    label: '认证周期',
+    width: 180,
   },
   {
     key: 'qualityCourseId',
@@ -246,6 +564,15 @@ const filterFields: FilterField[] = [
   },
 ]
 
+watch(
+  () => query.reportType,
+  (reportType) => {
+    if (reportType === ReportTypeCode.COURSE_ACHIEVEMENT) {
+      query.accreditationCycleId = ''
+    }
+  },
+)
+
 function handleSearch() {
   loadList()
 }
@@ -266,6 +593,7 @@ function buildReportListQuery(): ReportQueryRequest {
   return {
     ...query,
     trainingPlanId: qualityStore.currentTrainingPlanId || undefined,
+    accreditationCycleId: query.accreditationCycleId || undefined,
     qualityCourseId: query.qualityCourseId || undefined,
     schoolYear: query.schoolYear || undefined,
     semester: query.semester || undefined,
@@ -276,12 +604,18 @@ function buildReportListQuery(): ReportQueryRequest {
 }
 
 const reportStatusCounts = ref<QualityStatusCountsResponse | null>(null)
+const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 
 async function loadList() {
+  const scope = beginQualityScopeRequest()
   loading.value = true
+  beginLoad()
   try {
     const listQuery = buildReportListQuery()
     const page = await reportApi.page(listQuery)
+    if (scope.isStale()) {
+      return
+    }
     list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
@@ -293,22 +627,41 @@ async function loadList() {
     }
     try {
       reportStatusCounts.value = await reportApi.statusCounts(listQuery)
+      if (scope.isStale()) {
+        return
+      }
     } catch (error) {
+      if (scope.isStale()) {
+        return
+      }
       reportStatusCounts.value = null
       showUserError(error, '质量报告状态统计加载失败')
     }
+    exportPollFailCountById.value = new Map()
+    exportPollSyncFailed.value = false
+    exportPollStopped.value = false
+    exportPollLastError.value = null
+    markExportPollOk()
+    okLoad()
     resumeExportPollingForList()
   } catch (error) {
+    if (scope.isStale()) {
+      return
+    }
     list.value = []
     total.value = 0
     reportStatusCounts.value = null
+    failLoad()
     showUserError(error, '质量报告加载失败')
   } finally {
-    loading.value = false
+    if (!scope.isStale()) {
+      loading.value = false
+    }
   }
 }
 
 async function handleScopeChange(): Promise<void> {
+  await loadReportCycles()
   await loadList()
 }
 
@@ -327,6 +680,7 @@ function handlePageChange(page: { current: number, pageSize: number }) {
 const columns: ColumnsType = [
   { title: '标题', dataIndex: 'title', key: 'title', fixed: 'left' },
   { title: '类型', dataIndex: 'reportType', key: 'reportType', width: 120 },
+  { title: '认证周期', key: 'accreditationCycle', width: 180 },
   { title: '关联课程', key: 'qualityCourseRef', width: 120 },
   { title: '达成结果', key: 'achievementResultRef', width: 140 },
   { title: '学年 / 学期', key: 'period', width: 120 },
@@ -339,6 +693,7 @@ function resetQuery() {
   query.pageNum = 1
   Object.assign(query, {
     reportType: undefined,
+    accreditationCycleId: '',
     qualityCourseId: '',
     schoolYear: '',
     semester: undefined,
@@ -348,21 +703,30 @@ function resetQuery() {
   loadList()
 }
 
-function openCreate() {
+async function openCreate() {
   editorMode.value = 'create'
-  Object.assign(editor, {
-    id: undefined,
-    reportType: ReportTypeCode.COURSE_ACHIEVEMENT,
-    programId: qualityStore.currentProgramId || '',
-    trainingPlanId: qualityStore.currentTrainingPlanId || '',
-    qualityCourseId: '',
-    achievementResultId: '',
-    title: '',
-    schoolYear: qualityStore.currentSchoolYear || '',
-    semester: qualityStore.currentSemester,
-    bodyContent: '',
-  })
+  editorCreateSessionKey.value = 'create-active:' + (userStore.userInfo.userId || 'anon')
+  reportDraftHydrating = true
+  editorCycleOptions.value = []
+  try {
+    Object.assign(editor, {
+      id: undefined,
+      reportType: ReportTypeCode.COURSE_ACHIEVEMENT,
+      programId: qualityStore.currentProgramId || '',
+      trainingPlanId: qualityStore.currentTrainingPlanId || '',
+      accreditationCycleId: '',
+      qualityCourseId: '',
+      achievementResultId: '',
+      title: '',
+      schoolYear: qualityStore.currentSchoolYear || '',
+      semester: qualityStore.currentSemester,
+      bodyContent: '',
+    })
+  } finally {
+    reportDraftHydrating = false
+  }
   editorVisible.value = true
+  await startReportDraftSession()
 }
 
 async function openEdit(record: ReportVO) {
@@ -371,22 +735,36 @@ async function openEdit(record: ReportVO) {
     return
   }
   editorMode.value = 'edit'
+  editorCreateSessionKey.value = ''
   detailLoading.value = true
   try {
     const detail = await reportApi.detail(record.id)
-    Object.assign(editor, {
-      id: detail.id,
-      reportType: detail.reportType,
-      programId: detail.programId || '',
-      trainingPlanId: detail.trainingPlanId || '',
-      qualityCourseId: detail.qualityCourseId || '',
-      achievementResultId: detail.achievementResultId || '',
-      title: detail.title,
-      schoolYear: detail.schoolYear || '',
-      semester: detail.semester,
-      bodyContent: detail.bodyContent || '',
-    })
+    reportDraftHydrating = true
+    try {
+      Object.assign(editor, {
+        id: detail.id,
+        reportType: detail.reportType,
+        programId: detail.programId || '',
+        trainingPlanId: detail.trainingPlanId || '',
+        accreditationCycleId: detail.accreditationCycleId || '',
+        qualityCourseId: detail.qualityCourseId || '',
+        achievementResultId: detail.achievementResultId || '',
+        title: detail.title,
+        schoolYear: detail.schoolYear || '',
+        semester: detail.semester,
+        bodyContent: detail.bodyContent || '',
+      })
+      editorCycleOptions.value = detail.accreditationCycleId
+        ? [{
+            value: detail.accreditationCycleId,
+            label: detail.accreditationCycleName || detail.accreditationCycleId,
+          }]
+        : []
+    } finally {
+      reportDraftHydrating = false
+    }
     editorVisible.value = true
+    await startReportDraftSession()
   } finally {
     detailLoading.value = false
   }
@@ -421,6 +799,10 @@ async function submitEditor() {
       void message.error('专业质量分析报告不能关联单门质量评价课程')
       return
     }
+    if (!editor.accreditationCycleId) {
+      void message.error('专业质量分析报告必须绑定当前在办认证申请周期')
+      return
+    }
   }
   const semester = editor.semester
   const selectedSemester = ALL_SEMESTER_CODES.find((code) => code === semester)
@@ -428,6 +810,7 @@ async function submitEditor() {
     void message.error('请填写学年与学期')
     return
   }
+  await reportDraft.pauseForSubmit()
   submitting.value = true
   try {
     const request: ReportSaveRequest = {
@@ -435,6 +818,7 @@ async function submitEditor() {
       reportType: editor.reportType,
       programId: editor.programId,
       trainingPlanId: editor.trainingPlanId || undefined,
+      accreditationCycleId: editor.accreditationCycleId || undefined,
       qualityCourseId: editor.qualityCourseId || undefined,
       achievementResultId: editor.achievementResultId || undefined,
       title: editor.title.trim(),
@@ -442,13 +826,16 @@ async function submitEditor() {
       semester: selectedSemester,
       bodyContent: editor.bodyContent,
     }
-    if (editorMode.value === 'create') {
-      await reportApi.create(request)
+    if (editorMode.value === 'create' && !editor.id) {
+      const createdId = await reportApi.create(request)
+      editor.id = String(createdId)
       void message.success('已创建报告草稿')
     } else {
-      await reportApi.update(request)
+      await reportApi.update({ ...request, id: editor.id || request.id })
       void message.success('已保存修改')
     }
+    await reportDraft.markCleanAfterServerSuccess()
+    await reportDraft.endSession()
     editorVisible.value = false
     await loadList()
   } finally {
@@ -464,11 +851,25 @@ function canEditReport(status: ReportStatusCode): boolean {
   return status === ReportStatusCode.DRAFT || status === ReportStatusCode.RETURNED
 }
 
+function hasReportBody(record: ReportVO): boolean {
+  return Boolean(record.bodyContent?.trim())
+}
+
+function targetRequiresReportBody(status: ReportStatusCode): boolean {
+  return status === ReportStatusCode.SUBMITTED
+    || status === ReportStatusCode.CONFIRMED
+    || status === ReportStatusCode.ARCHIVED
+}
+
 /**
  * 后端 ReportStatusTransitRequest 仅接受 id + targetStatus，不接受备注。
  * 如需记录驳回原因，请使用外层 ImprovementTask / AuditTrail 能力。
  */
 async function handleTransit(record: ReportVO, to: ReportStatusCode) {
+  if (targetRequiresReportBody(to) && !hasReportBody(record)) {
+    void message.error('报告正文为空，不能进入正式状态')
+    return
+  }
   if (to === ReportStatusCode.RETURNED) {
     const ok = await confirmAsync({
       title: `${reportStatusLabel(record.status)} → ${reportStatusLabel(to)}`,
@@ -487,16 +888,56 @@ const pollingExportIds = ref<Set<string>>(new Set())
 /** 轮询代次：组件卸载时递增以中止在途 pollExportStatus 循环。 */
 let exportPollGeneration = 0
 const exportPollTokens = new Map<string, number>()
+const EXPORT_POLL_MAX_FAILURES = 5
+const exportPollFailCountById = ref<Map<string, number>>(new Map())
+const exportPollSyncFailed = ref(false)
+const exportPollStopped = ref(false)
+const exportPollLastOkAt = ref<string | null>(null)
+const exportPollLastError = ref<string | null>(null)
 
 const EXPORT_POLL_INTERVAL_MS = 5000
 /** 最大轮询时长 30 分钟：超出后停止轮询但不影响后端实际执行，用户可手工刷新列表。 */
 const EXPORT_POLL_MAX_ATTEMPTS = 360
 
+function markExportPollOk(): void {
+  exportPollSyncFailed.value = false
+  exportPollStopped.value = false
+  exportPollLastError.value = null
+  exportPollLastOkAt.value = new Date().toISOString().replace('T', ' ').slice(0, 19)
+}
+
+function markExportPollFailed(id: string, messageText: string): number {
+  exportPollSyncFailed.value = true
+  exportPollLastError.value = messageText
+  const next = (exportPollFailCountById.value.get(id) || 0) + 1
+  const map = new Map(exportPollFailCountById.value)
+  map.set(id, next)
+  exportPollFailCountById.value = map
+  if (next >= EXPORT_POLL_MAX_FAILURES) {
+    exportPollStopped.value = true
+  }
+  return next
+}
+
+function clearExportPollFailure(id: string): void {
+  if (!exportPollFailCountById.value.has(id)) {
+    return
+  }
+  const map = new Map(exportPollFailCountById.value)
+  map.delete(id)
+  exportPollFailCountById.value = map
+  if (map.size === 0) {
+    exportPollSyncFailed.value = false
+    exportPollStopped.value = false
+    exportPollLastError.value = null
+  }
+}
+
 /**
- * 轮询异步导出状态：调用 detail 拿最新 exportStatus，直到到达终态 COMPLETED / FAILED，
- * 或达到最大尝试次数（30 分钟）。非终态（IDLE / PENDING / PROCESSING）持续轮询。
+ * 轮询指定异步导出任务：任务到达终态、被退回取消或被后续任务替换时结束，
+ * 仅同一 exportTaskId 的 PENDING / PROCESSING 持续轮询，最长 30 分钟。
  */
-async function pollExportStatus(id: string) {
+async function pollExportStatus(id: string, expectedTaskId: string) {
   const token = ++exportPollGeneration
   exportPollTokens.set(id, token)
   pollingExportIds.value.add(id)
@@ -509,11 +950,35 @@ async function pollExportStatus(id: string) {
       if (exportPollTokens.get(id) !== token) {
         return
       }
-      const detail = await reportApi.detail(id)
+      let detail: ReportVO
+      try {
+        detail = await reportApi.detail(id)
+      } catch (error) {
+        const failCount = markExportPollFailed(
+          id,
+          getUserErrorMessage(error, '导出状态同步失败'),
+        )
+        if (failCount >= EXPORT_POLL_MAX_FAILURES) {
+          return
+        }
+        continue
+      }
+      clearExportPollFailure(id)
+      markExportPollOk()
       const idx = list.value.findIndex((item) => item.id === id)
       if (idx >= 0) list.value[idx] = detail
       const title = reportTitle(detail)
       const exportStatus = detail.exportStatus
+      if (detail.exportTaskId !== expectedTaskId) {
+        const reason = exportStatus === ReportExportStatusCode.IDLE
+          ? '报告已退回或修订，本次导出已取消'
+          : '报告已启动新的导出任务，本次轮询已结束'
+        void message.info(`${title}：${reason}`)
+        if (detail.exportTaskId && isExportInFlight(exportStatus)) {
+          void pollExportStatus(id, detail.exportTaskId)
+        }
+        return
+      }
       if (exportStatus === ReportExportStatusCode.COMPLETED) {
         void message.success(`${title} 三格式导出完成`)
         return
@@ -530,14 +995,14 @@ async function pollExportStatus(id: string) {
         return
       }
     }
-    void message.warning(
-      `报告导出已超过 ${(EXPORT_POLL_INTERVAL_MS * EXPORT_POLL_MAX_ATTEMPTS) / 60_000} 分钟未完成，已停止轮询；请手工刷新列表查看最新状态。`,
-    )
+    exportPollSyncFailed.value = true
+    exportPollStopped.value = true
+    exportPollLastError.value = `报告导出已超过 ${(EXPORT_POLL_INTERVAL_MS * EXPORT_POLL_MAX_ATTEMPTS) / 60_000} 分钟未完成，已停止轮询`
   } finally {
     if (exportPollTokens.get(id) === token) {
       exportPollTokens.delete(id)
+      pollingExportIds.value.delete(id)
     }
-    pollingExportIds.value.delete(id)
   }
 }
 
@@ -546,6 +1011,10 @@ function reportTitle(record: ReportVO): string {
 }
 
 async function handleExport(record: ReportVO) {
+  if (!hasReportBody(record)) {
+    void message.error('报告正文为空，不能生成正式导出文件')
+    return
+  }
   const currentExport = record.exportStatus
   if (
     currentExport === ReportExportStatusCode.PENDING
@@ -554,7 +1023,13 @@ async function handleExport(record: ReportVO) {
     void message.info(
       `${reportTitle(record)}当前处于「${exportStatusLabel(currentExport)}」，请等待完成`,
     )
-    if (!pollingExportIds.value.has(record.id)) void pollExportStatus(record.id)
+    if (!record.exportTaskId) {
+      void message.error('导出任务缺少任务标识，请刷新页面后重试')
+      return
+    }
+    if (!pollingExportIds.value.has(record.id)) {
+      void pollExportStatus(record.id, record.exportTaskId)
+    }
     return
   }
   void confirmAsync({
@@ -562,7 +1037,10 @@ async function handleExport(record: ReportVO) {
     content: '系统会生成 Word / PDF / Excel 三种报告文件，完成后可在附件列查看。',
     type: 'info',
     onOk: async () => {
-      await reportApi.export(record.id)
+      const exportTaskId = await reportApi.export(record.id)
+      if (!exportTaskId?.trim()) {
+        throw new Error('导出接口未返回任务标识')
+      }
       void message.success('已触发异步导出，后台生成中')
       // 立即把本行标为 PENDING，UI 先展示「待导出」徽标，避免等 5s 才感知
       const idx = list.value.findIndex((item) => item.id === record.id)
@@ -570,10 +1048,11 @@ async function handleExport(record: ReportVO) {
         list.value[idx] = {
           ...list.value[idx],
           exportStatus: ReportExportStatusCode.PENDING,
+          exportTaskId,
           exportErrorMessage: undefined,
         }
       }
-      void pollExportStatus(record.id)
+      void pollExportStatus(record.id, exportTaskId)
     },
   })
 }
@@ -585,12 +1064,22 @@ function isExportInFlight(status: ReportExportStatusCode | undefined) {
 function resumeExportPollingForList() {
   for (const record of list.value) {
     if (isExportInFlight(record.exportStatus) && !pollingExportIds.value.has(record.id)) {
-      void pollExportStatus(record.id)
+      if (!record.exportTaskId) {
+        exportPollSyncFailed.value = true
+        exportPollStopped.value = true
+        exportPollLastError.value = `${reportTitle(record)}缺少导出任务标识，无法同步进度`
+        continue
+      }
+      void pollExportStatus(record.id, record.exportTaskId)
     }
   }
 }
 
 async function downloadReportExportFile(record: ReportVO, kind: 'word' | 'pdf' | 'excel') {
+  if (record.exportStatus !== ReportExportStatusCode.COMPLETED) {
+    void message.warning('当前报告没有与正文一致的有效导出文件')
+    return
+  }
   const fileId
     = kind === 'word' ? record.wordFileId : kind === 'pdf' ? record.pdfFileId : record.excelFileId
   if (!fileId) {
@@ -829,33 +1318,41 @@ function handleReportResultAction(actionEvent: { item: TaskResultItem, action: {
 }
 
 function buildReportActions(record: ReportVO): UiTableRowActionItem[] {
+  const unboundProgramReport = record.reportType === ReportTypeCode.PROGRAM_QUALITY
+    && !record.accreditationCycleId
   const actions: UiTableRowActionItem[] = [
     { key: 'detail', label: '详情' },
     {
       key: 'edit',
       label: '编辑',
-      disabled: !canEditReport(record.status),
+      disabled: unboundProgramReport || !canEditReport(record.status),
     },
   ]
-  for (const to of nextStatuses(record.status)) {
-    actions.push({
-      key: to,
-      label: `→ ${reportStatusLabel(to)}`,
-      tone: to === ReportStatusCode.RETURNED ? 'danger' : 'primary',
-    })
+  if (!unboundProgramReport) {
+    for (const to of nextStatuses(record.status)) {
+      actions.push({
+        key: to,
+        label: `→ ${reportStatusLabel(to)}`,
+        tone: to === ReportStatusCode.RETURNED ? 'danger' : 'primary',
+        disabled: targetRequiresReportBody(to) && !hasReportBody(record),
+      })
+    }
   }
   if (
-    record.status === ReportStatusCode.SUBMITTED
-    || record.status === ReportStatusCode.CONFIRMED
-    || record.status === ReportStatusCode.ARCHIVED
+    !unboundProgramReport
+    && (record.status === ReportStatusCode.SUBMITTED
+      || record.status === ReportStatusCode.CONFIRMED
+      || record.status === ReportStatusCode.ARCHIVED)
   ) {
     actions.push({
       key: 'export',
       label: '导出三格式',
-      disabled: isExportInFlight(record.exportStatus) || pollingExportIds.value.has(record.id),
+      disabled: !hasReportBody(record)
+        || isExportInFlight(record.exportStatus)
+        || pollingExportIds.value.has(record.id),
     })
   }
-  if (record.status === ReportStatusCode.DRAFT) {
+  if (record.status === ReportStatusCode.DRAFT && !unboundProgramReport) {
     actions.push({ key: 'delete', label: '删除', tone: 'danger' })
   }
   actions.push({ key: 'audit', label: '审计' })
@@ -888,11 +1385,11 @@ function handleReportAction(key: string, record: ReportVO): void {
   }
 }
 
-onMounted(loadList)
+onMounted(handleScopeChange)
 
 onActivated(() => {
   if (qualityStore.currentTrainingPlanId) {
-    void loadList()
+    void handleScopeChange()
   }
 })
 
@@ -935,6 +1432,18 @@ onBeforeUnmount(() => {
         @action="handleReportResultAction"
       />
 
+      <UiEmpty
+        v-if="exportPollSyncFailed"
+        size="sm"
+        :title="exportPollStopped ? '导出状态同步已暂停' : '导出状态同步失败'"
+        :description="
+          exportPollStopped
+            ? `${exportPollLastError || '轮询已停止'}；最近成功 ${exportPollLastOkAt || '尚无'}`
+            : `${exportPollLastError || '导出状态拉取失败'}；最近成功 ${exportPollLastOkAt || '尚无'}，已继续退避轮询`
+        "
+        class="report__export-sync"
+      />
+
       <UiCard class="detail-table-card report__table-card">
         <template #title>报告列表</template>
         <template #extra>
@@ -958,6 +1467,17 @@ onBeforeUnmount(() => {
               @change="handleQueryQualityCourseChange"
             />
           </template>
+          <template #field-accreditationCycleId>
+            <UiSelect
+              :model-value="query.accreditationCycleId || undefined"
+              :options="cycleOptions"
+              :loading="cycleLoading"
+              :disabled="query.reportType === ReportTypeCode.COURSE_ACHIEVEMENT"
+              allow-clear
+              placeholder="认证周期"
+              @update:model-value="value => handleQueryCycleChange(typeof value === 'string' ? value : null)"
+            />
+          </template>
         </UiFilterBar>
 
         <UiDataTable
@@ -966,6 +1486,9 @@ onBeforeUnmount(() => {
           :columns="columns"
           :data-source="list"
           :loading="loading"
+          :load-error="loadError"
+          empty-title="暂无质量报告"
+          empty-description="可新建报告或等待 AI 生成草稿后在此确认导出"
           row-key="id"
           size="middle"
           :total="total"
@@ -981,6 +1504,9 @@ onBeforeUnmount(() => {
                 {{ record.qualityCourseCode }} {{ record.qualityCourseName }}
               </span>
             </template>
+            <template v-else-if="column.key === 'accreditationCycle'">
+              <span v-if="record.accreditationCycleId">{{ record.accreditationCycleName }}</span>
+            </template>
             <template v-else-if="column.key === 'achievementResultRef'">
               {{ record.achievementResultLabel }}
             </template>
@@ -992,23 +1518,26 @@ onBeforeUnmount(() => {
               <UiTag :tone="reportStatusColor(record.status)" size="sm">
                 {{ reportStatusLabel(record.status) }}
               </UiTag>
+              <UiTag v-if="!hasReportBody(record)" tone="red" size="sm">
+                正文缺失
+              </UiTag>
             </template>
             <template v-else-if="column.key === 'exports'">
-              <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
+              <div class="dp-space dp-space--wrap dp-space--tight">
                 <UiTextAction
-                  v-if="record.wordFileId"
+                  v-if="record.exportStatus === ReportExportStatusCode.COMPLETED && record.wordFileId"
                   @click="downloadReportExportFile(record, 'word')"
                 >
                   Word
                 </UiTextAction>
                 <UiTextAction
-                  v-if="record.pdfFileId"
+                  v-if="record.exportStatus === ReportExportStatusCode.COMPLETED && record.pdfFileId"
                   @click="downloadReportExportFile(record, 'pdf')"
                 >
                   PDF
                 </UiTextAction>
                 <UiTextAction
-                  v-if="record.excelFileId"
+                  v-if="record.exportStatus === ReportExportStatusCode.COMPLETED && record.excelFileId"
                   @click="downloadReportExportFile(record, 'excel')"
                 >
                   Excel
@@ -1023,13 +1552,22 @@ onBeforeUnmount(() => {
                   <LoadingOutlined v-if="isExportInFlight(record.exportStatus)" />
                   {{ exportStatusLabel(record.exportStatus) }}
                 </UiTag>
-                <UiTooltip
-                  v-if="record.exportStatus === ReportExportStatusCode.FAILED"
-                  :title="reportExportFailureMessage(record.exportErrorMessage)"
-                  popup-mount="body"
+                <span
+                  v-if="record.exportStartedTime || record.exportFinishedTime"
+                  class="report__export-time"
                 >
-                  <UiTag tone="red" size="sm"> 错误详情 </UiTag>
-                </UiTooltip>
+                  {{
+                    record.exportFinishedTime
+                      ? `完成 ${record.exportFinishedTime}`
+                      : `开始 ${record.exportStartedTime}`
+                  }}
+                </span>
+                <span
+                  v-if="record.exportStatus === ReportExportStatusCode.FAILED"
+                  class="report__export-error"
+                >
+                  {{ reportExportFailureMessage(record.exportErrorMessage) }}
+                </span>
               </div>
             </template>
             <template v-else-if="column.key === 'actions'">
@@ -1044,14 +1582,24 @@ onBeforeUnmount(() => {
       </UiCard>
 
       <UiDrawer
-        v-model:open="editorVisible"
+        :open="editorVisible"
         :title="editorMode === 'create' ? '新建质量评价报告' : '编辑质量评价报告'"
         :width="800"
         :confirm-loading="submitting"
         :hide-footer="false"
         ok-text="保存"
+        @update:open="handleEditorOpenChange"
         @ok="submitEditor"
       >
+        <QualityFormDraftStatusStrip
+          :status="reportDraftStatus"
+          :visible="reportDraftStatusVisible"
+          :local-saved-at="reportDraftLocalSavedAt"
+          :server-saved-at="reportDraftServerSavedAt"
+          :error-message="reportDraftErrorMessage"
+          :saving="draftSaving"
+          @save-now="handleReportDraftSaveNow"
+        />
         <UiForm layout="vertical" :model="editor">
           <UiRow :gutter="12">
             <UiCol :span="16">
@@ -1070,14 +1618,20 @@ onBeforeUnmount(() => {
                   v-model="editor.reportType"
                   :options="reportTypeOptions"
                   :disabled="editorMode === 'edit'"
-                  @change="
-                    () => {
-                      if (editor.reportType === ReportTypeCode.PROGRAM_QUALITY) {
-                        editor.qualityCourseId = ''
-                        editor.achievementResultId = ''
-                      }
-                    }
-                  "
+                  @change="handleEditorReportTypeChange"
+                />
+              </UiFormItem>
+            </UiCol>
+          </UiRow>
+          <UiRow v-if="editor.reportType === ReportTypeCode.PROGRAM_QUALITY" :gutter="12">
+            <UiCol :span="24">
+              <UiFormItem label="认证申请周期" required>
+                <UiSelect
+                  v-model="editor.accreditationCycleId"
+                  :options="editorCycleOptions"
+                  :loading="cycleLoading"
+                  disabled
+                  placeholder="请选择存在在办申请的培养方案"
                 />
               </UiFormItem>
             </UiCol>
@@ -1151,12 +1705,15 @@ onBeforeUnmount(() => {
               </UiFormItem>
             </UiCol>
           </UiRow>
-          <UiFormItem label="报告正文">
+          <UiFormItem label="报告正文（达成度分析）">
+            <p class="report__body-hint">
+              长文填写支持本机暂存与服务端自动保存草稿；刷新或误关后可断点续填。
+            </p>
             <UiTextarea
               size="sm"
               v-model="editor.bodyContent"
               :rows="12"
-              placeholder="填写报告正文；AI 任务生成后会自动回填"
+              placeholder="填写达成度分析报告正文；AI 任务生成后会自动回填。输入后约 2.5 秒自动保存草稿。"
               class="report__body-editor"
             />
           </UiFormItem>
@@ -1185,6 +1742,9 @@ onBeforeUnmount(() => {
               {{ detailRecord.trainingPlanCode }} {{ detailRecord.trainingPlanName }}
             </span>
           </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="detailRecord.accreditationCycleId" label="认证周期">
+            {{ detailRecord.accreditationCycleName }}
+          </UiDescriptionsItem>
           <UiDescriptionsItem label="关联课程">
             <span v-if="detailRecord.qualityCourseId">
               {{ detailRecord.qualityCourseCode }} {{ detailRecord.qualityCourseName }}
@@ -1197,7 +1757,7 @@ onBeforeUnmount(() => {
           </UiDescriptionsItem>
           <UiDescriptionsItem label="Word 文件">
             <UiTextAction
-              v-if="detailRecord.wordFileId"
+              v-if="detailRecord.exportStatus === ReportExportStatusCode.COMPLETED && detailRecord.wordFileId"
               @click="downloadReportExportFile(detailRecord, 'word')"
             >
               下载 Word
@@ -1206,7 +1766,7 @@ onBeforeUnmount(() => {
           </UiDescriptionsItem>
           <UiDescriptionsItem label="PDF 文件">
             <UiTextAction
-              v-if="detailRecord.pdfFileId"
+              v-if="detailRecord.exportStatus === ReportExportStatusCode.COMPLETED && detailRecord.pdfFileId"
               @click="downloadReportExportFile(detailRecord, 'pdf')"
             >
               下载 PDF
@@ -1215,7 +1775,7 @@ onBeforeUnmount(() => {
           </UiDescriptionsItem>
           <UiDescriptionsItem label="Excel 文件">
             <UiTextAction
-              v-if="detailRecord.excelFileId"
+              v-if="detailRecord.exportStatus === ReportExportStatusCode.COMPLETED && detailRecord.excelFileId"
               @click="downloadReportExportFile(detailRecord, 'excel')"
             >
               下载 Excel
@@ -1252,7 +1812,7 @@ onBeforeUnmount(() => {
         <div v-if="detailRecord?.bodyContent" class="report__body-preview">
           {{ detailRecord.bodyContent }}
         </div>
-        <UiEmpty v-else description="暂无报告正文" size="sm" />
+        <UiEmpty v-else description="正文缺失，仅保留审计，不能提交、确认、归档或导出" size="sm" />
       </UiDrawer>
     </template>
 
@@ -1269,36 +1829,54 @@ onBeforeUnmount(() => {
 <style scoped lang="scss">
 .report {
   &__stages {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
   }
 
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__result-panel {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
+  }
+
+  &__export-sync {
+    margin-bottom: var(--dp-space-component);
+  }
+
+  &__export-time {
+    display: block;
+    margin-top: var(--dp-space-component-xs);
+    color: var(--dp-text-secondary, #666);
+    font-size: var(--dp-font-size-sm, 12px);
+  }
+
+  &__export-error {
+    display: block;
+    margin-top: var(--dp-space-component-xs);
+    color: var(--dp-danger, #cf1322);
+    font-size: var(--dp-font-size-sm, 12px);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
   &__panel-title {
     margin: 0;
-    font-size: 15px;
+    font-size: var(--dp-type-panel-title-size);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -1306,7 +1884,7 @@ onBeforeUnmount(() => {
   &__panel-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
@@ -1323,7 +1901,7 @@ onBeforeUnmount(() => {
   }
 
   &__section-title {
-    margin: 16px 0 8px;
+    margin: var(--dp-space-block) 0 var(--dp-space-component-tight);
     font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
@@ -1335,7 +1913,7 @@ onBeforeUnmount(() => {
 
   &__body-preview {
     margin: 0;
-    padding: 12px;
+    padding: var(--dp-space-component);
     white-space: pre-wrap;
     word-break: break-word;
     font-size: var(--dp-font-size-sm);
@@ -1352,6 +1930,13 @@ onBeforeUnmount(() => {
     white-space: pre-wrap;
     word-break: break-word;
     color: var(--dp-error);
+  }
+
+  &__body-hint {
+    margin: 0 0 var(--dp-space-component-tight);
+    color: var(--dp-text-secondary);
+    font-size: var(--dp-font-size-sm);
+    line-height: 1.5;
   }
 
   &__body-editor {

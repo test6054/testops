@@ -171,20 +171,20 @@ async function handleRecover(): Promise<void> {
 
 <style lang="scss" scoped>
 .scan-orphan-recovery__failure {
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
 }
 
 .scan-orphan-recovery__failure-summary {
-  margin: 0 0 4px;
+  margin: 0 0 var(--dp-space-component-xs);
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-sm);
   line-height: 1.5;
 }
 
 .scan-orphan-recovery__failure-list {
-  margin: 8px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   padding-left: 18px;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
   font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }

@@ -37,8 +37,8 @@ defineProps<{
 
 <style lang="scss" scoped>
 .score-analytics-status-flow {
-  margin-top: var(--dp-space-4);
-  padding-top: var(--dp-space-3);
+  margin-top: var(--dp-space-block);
+  padding-top: var(--dp-space-component);
   border-top: 1px solid var(--dp-border);
 
   &--standalone {
@@ -49,7 +49,7 @@ defineProps<{
 
   &__label {
     display: block;
-    margin-bottom: var(--dp-space-2);
+    margin-bottom: var(--dp-space-component-tight);
     font-size: var(--dp-type-hint-size);
     color: var(--dp-text-muted);
   }
@@ -58,7 +58,7 @@ defineProps<{
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--dp-space-1, 4px);
+    gap: var(--dp-space-component-xs);
   }
 
   &__arrow {
@@ -67,7 +67,7 @@ defineProps<{
   }
 
   &__count {
-    margin-left: var(--dp-space-1, 4px);
+    margin-left: var(--dp-space-component-xs);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
   }

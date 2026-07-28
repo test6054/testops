@@ -61,11 +61,11 @@ const props = withDefaults(defineProps<{
 .ui-panel-header {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 10px);
+  gap: var(--dp-space-component);
 }
 
 .ui-panel-header--divided {
-  padding-bottom: var(--dp-space-3, 10px);
+  padding-bottom: var(--dp-space-component);
   border-bottom: none;
   background-image: linear-gradient(
     90deg,
@@ -79,15 +79,15 @@ const props = withDefaults(defineProps<{
 }
 
 .ui-panel-header--compact {
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
 }
 
 .ui-panel-header__eyebrow {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   margin: 0;
-  font-size: var(--dp-font-size-xxs);
+  font-size: var(--dp-font-size-xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -107,7 +107,7 @@ const props = withDefaults(defineProps<{
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-3, 10px);
+  gap: var(--dp-space-component);
 }
 
 .ui-panel-header__title-wrap {
@@ -119,7 +119,7 @@ const props = withDefaults(defineProps<{
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-3, 10px);
+  gap: var(--dp-space-component);
 }
 
 .ui-panel-header__title {
@@ -135,11 +135,11 @@ const props = withDefaults(defineProps<{
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
 }
 
 .ui-panel-header__description {
-  margin: var(--dp-space-2, 8px) 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   font-size: var(--dp-font-size-sm);
   line-height: 1.7;
   color: var(--dp-text-secondary);
@@ -150,7 +150,7 @@ const props = withDefaults(defineProps<{
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   flex-shrink: 0;
 }
 

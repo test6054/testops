@@ -13,8 +13,8 @@
   .animated-fade-up-#{$i} {
     opacity: 0;
     animation-name: fade-up;
-    animation-duration: 0.5s;
+    animation-duration: var(--dp-duration-emphasis);
     animation-fill-mode: forwards;
-    animation-delay: calc($i/10) + s;
+    animation-delay: #{$i * 100}ms;
   }
 }

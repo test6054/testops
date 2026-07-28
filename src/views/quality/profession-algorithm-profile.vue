@@ -62,8 +62,10 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import { validateRequiredDirectIndirectWeights } from '@/utils/weight-sum-health'
 
 const columns: ColumnsType = [
   { title: '编码', dataIndex: 'profileCode', key: 'profileCode', width: 140, fixed: 'left' },
@@ -210,17 +212,27 @@ function buildProfileListQuery(): ProfessionAlgorithmProfileQueryRequest {
 const signalSummary = ref<ProfessionAlgorithmProfileSignalSummaryVO | null>(null)
 
 async function loadList() {
+  const scope = beginQualityScopeRequest()
   loading.value = true
   try {
     const listQuery = buildProfileListQuery()
     const page = await professionAlgorithmProfileApi.page(listQuery)
+    if (scope.isStale()) {
+      return
+    }
     list.value = page.list
     query.pageNum = page.pageNum
     query.pageSize = page.pageSize
     total.value = page.total
     try {
       signalSummary.value = await professionAlgorithmProfileApi.signalSummary(listQuery)
+      if (scope.isStale()) {
+        return
+      }
     } catch (error) {
+      if (scope.isStale()) {
+        return
+      }
       signalSummary.value = null
       showUserError(error, '算法实例状态统计加载失败')
     }
@@ -229,10 +241,15 @@ async function loadList() {
       await loadList()
     }
   } catch (error) {
+    if (scope.isStale()) {
+      return
+    }
     signalSummary.value = null
     showUserError(error, '专业算法实例加载失败')
   } finally {
-    loading.value = false
+    if (!scope.isStale()) {
+      loading.value = false
+    }
   }
 }
 
@@ -405,6 +422,15 @@ async function submitEditor() {
       || editor.overrideThresholdStrategy
   if (hasOverride && !editor.overrideReason?.trim()) {
     void message.error('存在模板策略调整时必须填写覆盖原因')
+    return
+  }
+  const weightError = validateRequiredDirectIndirectWeights(
+    editor.directWeight,
+    editor.indirectWeight,
+    '专业算法实例直接 / 间接评价权重',
+  )
+  if (weightError) {
+    void message.error(weightError)
     return
   }
   submitting.value = true
@@ -926,7 +952,7 @@ onActivated(() => {
         <UiRow :gutter="12">
           <UiCol :span="12">
             <UiFormItem label="继承模板策略">
-              <div class="dp-space dp-space--vertical" style="--dp-space-gap: 8px">
+              <div class="dp-space dp-space--vertical dp-space--tight">
                 <UiCheckbox v-model="editor.inheritAggregationStrategy"> 聚合策略 </UiCheckbox>
                 <UiCheckbox v-model="editor.inheritWeightStrategy"> 权重策略 </UiCheckbox>
                 <UiCheckbox v-model="editor.inheritThresholdStrategy"> 阈值策略 </UiCheckbox>
@@ -935,7 +961,7 @@ onActivated(() => {
           </UiCol>
           <UiCol :span="12">
             <UiFormItem label="本专业调整项">
-              <div class="dp-space dp-space--vertical" style="--dp-space-gap: 8px">
+              <div class="dp-space dp-space--vertical dp-space--tight">
                 <UiCheckbox v-model="editor.overrideAggregationStrategy"> 调整聚合策略 </UiCheckbox>
                 <UiCheckbox v-model="editor.overrideWeightStrategy"> 调整权重策略 </UiCheckbox>
                 <UiCheckbox v-model="editor.overrideThresholdStrategy"> 调整阈值策略 </UiCheckbox>
@@ -960,22 +986,22 @@ onActivated(() => {
 <style scoped lang="scss">
 .pap {
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-3, 12px);
+    padding: var(--dp-space-component);
   }
 
   &__panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component);
     flex-wrap: wrap;
   }
 
@@ -989,7 +1015,7 @@ onActivated(() => {
   &__panel-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 }

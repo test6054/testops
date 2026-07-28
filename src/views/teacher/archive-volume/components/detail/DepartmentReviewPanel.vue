@@ -4,8 +4,10 @@
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
 import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   approveArchiveVolumeDepartmentReview,
+  previewArchiveVolumeSubmitChecklist,
   rejectArchiveVolumeDepartmentReview,
   requestArchiveVolumeDepartmentReview,
   withdrawArchiveVolumeDepartmentReview,
@@ -17,9 +19,12 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { resolveSubmitChecklistNavigation } from '@/composables/useArchiveSubmitChecklistRouter'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
+import { isArchiveDueOverdue } from '@/utils/archive-volume-list-ui'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { navigateExamWorkspaceRoute } from '@/utils/exam-workspace-navigation'
 import DepartmentReviewMaterialSummary from '@/views/teacher/archive-volume/components/DepartmentReviewMaterialSummary.vue'
 
 const props = defineProps<{
@@ -31,6 +36,8 @@ const emit = defineEmits<{
   "refreshed": []
   'navigate-tab': [tabKey: string]
 }>()
+
+const router = useRouter()
 
 const requesting = ref(false)
 const approving = ref(false)
@@ -47,6 +54,13 @@ const actionBusy = computed(
 
 const volumeStatus = computed(() => props.detail.volume.volumeStatus)
 const capabilities = computed(() => props.detail.capabilities)
+
+const hardDueBlocked = computed(() => {
+  const volume = props.detail.volume
+  if (volume.overdueSubmitBlocked !== true) return false
+  if (!volume.archiveDueTime || !isArchiveDueOverdue(volume.archiveDueTime)) return false
+  return true
+})
 
 const showMaterialSummary = computed(
   () => capabilities.value?.canReviewDepartmentMaterials === true,
@@ -71,6 +85,8 @@ const showPanel = computed(() => {
     return (
       capabilities.value?.canRequestDepartmentReview === true
       || capabilities.value?.canApproveDepartmentReview === true
+      || hardDueBlocked.value === true
+      || capabilities.value?.canManageCollaborators === true
     )
   }
   return false
@@ -79,7 +95,8 @@ const showPanel = computed(() => {
 const canRequest = computed(
   () =>
     volumeStatus.value === ArchiveVolumeStatusCode.COLLECTING
-    && capabilities.value?.canRequestDepartmentReview === true,
+    && capabilities.value?.canRequestDepartmentReview === true
+    && hardDueBlocked.value !== true,
 )
 
 const canApprove = computed(
@@ -95,12 +112,18 @@ const canWithdraw = computed(
 )
 
 const statusTone = computed(() => {
+  if (hardDueBlocked.value === true && volumeStatus.value === ArchiveVolumeStatusCode.COLLECTING) {
+    return 'red'
+  }
   if (volumeStatus.value === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING) return 'orange'
   if (volumeStatus.value === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED) return 'green'
   return 'blue'
 })
 
 const statusLabel = computed(() => {
+  if (hardDueBlocked.value === true && volumeStatus.value === ArchiveVolumeStatusCode.COLLECTING) {
+    return '硬截止已逾期'
+  }
   if (volumeStatus.value === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING) return '待院系审核'
   if (volumeStatus.value === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED) return '院系已审'
   return '可发起院系审核'
@@ -108,6 +131,10 @@ const statusLabel = computed(() => {
 
 async function handleRequest() {
   if (actionBusy.value === true) return
+  if (hardDueBlocked.value === true) {
+    void message.warning('归档已逾期且启用硬截止，禁止发起院系审核；请先展期归档截止时刻')
+    return
+  }
   // MVR-300：与 canRequest 同源二次拦截
   if (canRequest.value !== true) {
     void message.warning('当前账号无发起院系审核权限')
@@ -138,6 +165,7 @@ async function handleRequest() {
     emit('refreshed')
   } catch (error) {
     showUserError(error, '发起院系审核失败')
+    await navigateFirstChecklistBlocker()
   } finally {
     requesting.value = false
   }
@@ -157,6 +185,7 @@ async function handleApprove() {
     emit('refreshed')
   } catch (error) {
     showUserError(error, '院系审核通过失败')
+    await navigateFirstChecklistBlocker()
   } finally {
     approving.value = false
   }
@@ -226,6 +255,28 @@ async function handleWithdraw() {
 function navigateTab(tabKey: string) {
   emit('navigate-tab', tabKey)
 }
+
+/** 院系审核写入失败后按后端提交清单跳转首个真实业务阻断项。 */
+async function navigateFirstChecklistBlocker() {
+  try {
+    const preview = await previewArchiveVolumeSubmitChecklist(props.volumeId)
+    const blocker = preview.blockingItems?.find((item) => item.passed !== true)
+    if (!blocker) return
+    const navigation = resolveSubmitChecklistNavigation(blocker, props.detail.volume.examId)
+    if (navigation.kind === 'examWorkspace') {
+      navigateExamWorkspaceRoute(
+        router,
+        navigation.routeName,
+        { examId: navigation.examId },
+        '归档院系审核阻塞项考试门禁入口',
+      )
+      return
+    }
+    emit('navigate-tab', navigation.target.detailTabKey)
+  } catch (error) {
+    showUserError(error, '加载院系审核阻断项失败')
+  }
+}
 </script>
 
 <template>
@@ -284,6 +335,9 @@ function navigateTab(tabKey: string) {
         show-navigate-actions
         @navigate="navigateTab"
       />
+      <p v-if="hardDueBlocked === true" class="dept-review-panel__hint dept-review-panel__hint--danger">
+        归档已逾期且本租户/院系启用硬截止，禁止发起院系审核；请由责任人在「任务设置」展期归档截止时刻后再操作。
+      </p>
       <p v-if="detail.volume.departmentReviewRejectReason" class="dept-review-panel__reject">
         驳回原因：{{ detail.volume.departmentReviewRejectReason }}
       </p>
@@ -329,21 +383,21 @@ function navigateTab(tabKey: string) {
 
 <style scoped lang="scss">
 .dept-review-panel {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .dept-review-panel__body {
-  padding: 12px 16px 16px;
+  padding: var(--dp-space-component) var(--dp-space-block);
 }
 
 .dept-review-panel__summary {
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .dept-review-panel__reject {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
-  color: var(--dp-color-error);
+  color: var(--dp-error);
 }
 
 .dept-review-panel__input {
@@ -354,5 +408,10 @@ function navigateTab(tabKey: string) {
   margin: 0;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
+}
+
+.dept-review-panel__hint--danger {
+  margin-bottom: var(--dp-space-component-tight);
+  color: var(--dp-error);
 }
 </style>

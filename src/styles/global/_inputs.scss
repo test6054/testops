@@ -6,16 +6,18 @@
 .ant-select-selector,
 .ant-picker {
   border-radius: var(--dp-radius-control-inner) !important;
-  border-color: var(--dp-border-strong) !important;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
-  
+  border-color: var(--dp-border) !important;
+  transition:
+    border-color var(--dp-duration-fast) var(--dp-ease-default),
+    box-shadow var(--dp-duration-fast) var(--dp-ease-default) !important;
+
   &:hover {
     border-color: var(--dp-border-hover) !important;
   }
-  
+
   &:focus,
   &-focused {
-    border-color: var(--dp-blue-600) !important;
+    border-color: var(--dp-color-primary) !important;
     box-shadow: 0 0 0 3px var(--dp-focus-ring) !important;
     outline: none !important;
   }

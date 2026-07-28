@@ -8,15 +8,15 @@ $create-form-page-max-width: 1400px;
   height: 100%;
   min-height: 0;
   box-sizing: border-box;
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
 
   &__header {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: var(--dp-space-3, 12px);
-    padding: 10px 16px;
-    background: var(--dp-bg-container);
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-component) var(--dp-space-block);
+    background: var(--dp-surface);
     border-bottom: 1px solid var(--dp-border);
     flex-shrink: 0;
   }
@@ -28,20 +28,20 @@ $create-form-page-max-width: 1400px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--dp-space-component);
   }
 
   &__header-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     min-width: 0;
   }
 
   &__header-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-shrink: 0;
   }
 
@@ -57,7 +57,7 @@ $create-form-page-max-width: 1400px;
   }
 
   &__subtitle {
-    margin: 4px 0 0;
+    margin: var(--dp-space-component-xs) 0 0;
     font-size: var(--dp-font-size-sm);
     line-height: 1.5;
     color: var(--dp-text-secondary);
@@ -85,7 +85,7 @@ $create-form-page-max-width: 1400px;
     min-height: 0;
     display: flex;
     justify-content: center;
-    padding: 0 16px;
+    padding: 0 var(--dp-space-block);
     box-sizing: border-box;
   }
 
@@ -93,9 +93,9 @@ $create-form-page-max-width: 1400px;
     flex-shrink: 0;
     display: flex;
     justify-content: center;
-    padding: 10px 16px;
+    padding: var(--dp-space-component) var(--dp-space-block);
     border-top: 1px solid var(--dp-border);
-    background: var(--dp-bg-container);
+    background: var(--dp-surface);
     box-shadow: var(--dp-shadow-xs);
   }
 
@@ -105,7 +105,7 @@ $create-form-page-max-width: 1400px;
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     min-width: 0;
   }
 
@@ -115,15 +115,15 @@ $create-form-page-max-width: 1400px;
     max-width: $create-form-page-max-width;
     display: grid;
     grid-template-columns: 148px minmax(0, 1fr);
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
     align-items: stretch;
     // 末段内容须滚出页脚遮挡；CreatePageLayout 为 overflow:hidden
-    padding: 12px 0 72px;
+    padding: var(--dp-space-component) 0 72px;
 
     &__aside {
       position: relative;
       border-right: 1px solid var(--dp-border);
-      padding-right: 12px;
+      padding-right: var(--dp-space-component);
     }
 
     &__aside-sticky {
@@ -135,23 +135,23 @@ $create-form-page-max-width: 1400px;
       min-width: 0;
       width: 100%;
       max-width: none;
-      padding: 0 8px 0 0;
+      padding: 0 var(--dp-space-component-tight) 0 0;
       background: transparent;
     }
 
     &__submit-error {
-      margin-bottom: 12px;
+      margin-bottom: var(--dp-space-component);
     }
   }
 
   .form-section {
-    padding: 24px 0 20px;
+    padding: var(--dp-space-page) 0 var(--dp-space-block);
     border-bottom: 1px solid var(--dp-border);
-    scroll-margin-top: 12px;
+    scroll-margin-top: var(--dp-space-component);
 
     &:last-child {
       border-bottom: none;
-      padding-bottom: 24px;
+      padding-bottom: var(--dp-space-page);
     }
   }
 
@@ -159,8 +159,8 @@ $create-form-page-max-width: 1400px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 6px;
-    margin-bottom: 8px;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   .section-header:has(+ .section-desc) {
@@ -168,14 +168,14 @@ $create-form-page-max-width: 1400px;
   }
 
   .section-desc {
-    margin: 0 0 12px;
+    margin: 0 0 var(--dp-space-component);
     font-size: var(--dp-font-size-sm);
     line-height: 1.5;
     color: var(--dp-text-secondary);
   }
 
   .section-header:not(:has(+ .section-desc)) {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
   }
 
   .section-title {
@@ -185,7 +185,7 @@ $create-form-page-max-width: 1400px;
     color: var(--dp-text-primary);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
 
     &::before {
       content: '';
@@ -201,7 +201,7 @@ $create-form-page-max-width: 1400px;
   .section-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     flex-shrink: 0;
   }
 
@@ -211,7 +211,7 @@ $create-form-page-max-width: 1400px;
   }
 
   .create-form .ant-form-item {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-block);
     width: 100%;
   }
 
@@ -236,7 +236,7 @@ $create-form-page-max-width: 1400px;
   .create-form .ant-form-item-label > label {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--dp-space-component-xs);
     margin: 0;
     height: var(--dp-control-height-sm, 32px);
     line-height: var(--dp-control-height-sm, 32px);
@@ -292,6 +292,12 @@ $create-form-page-max-width: 1400px;
     display: inline-flex;
   }
 
+  .create-form .retention-field .ant-input-number {
+    width: auto !important;
+    max-width: 140px;
+    display: inline-flex;
+  }
+
   .create-form__control-wide {
     display: block;
     width: 100% !important;
@@ -301,7 +307,7 @@ $create-form-page-max-width: 1400px;
 
   .create-form .ant-form-item-extra,
   .create-form .create-form__field-hint {
-    margin-top: 4px;
+    margin-top: var(--dp-space-component-xs);
     font-size: var(--dp-font-size-xs);
     line-height: 1.5;
     color: var(--dp-text-secondary);
@@ -309,7 +315,7 @@ $create-form-page-max-width: 1400px;
 
   .create-form__split-row {
     > .ant-col > .ant-form-item {
-      margin-bottom: 16px;
+      margin-bottom: var(--dp-space-block);
 
       .ant-form-item-row {
         align-items: flex-start;
@@ -325,7 +331,7 @@ $create-form-page-max-width: 1400px;
 
   .create-form__related-exam {
     display: grid;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     width: 100%;
     min-width: 0;
   }
@@ -337,7 +343,7 @@ $create-form-page-max-width: 1400px;
   .create-form__switch-row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--dp-space-component);
     min-height: 32px;
   }
 
@@ -347,7 +353,7 @@ $create-form-page-max-width: 1400px;
   }
 
   .create-form__preview-error {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-component);
     max-width: 880px;
   }
 
@@ -355,15 +361,15 @@ $create-form-page-max-width: 1400px;
   .archive-create-summary {
     margin: 0;
     display: grid;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
     max-width: 880px;
   }
 
   .create-form-summary__group,
   .archive-create-summary__group {
     display: grid;
-    gap: 12px;
-    padding: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-component);
     background: var(--dp-surface-subtle);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
@@ -381,14 +387,14 @@ $create-form-page-max-width: 1400px;
   .archive-create-summary__rows {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px 24px;
+    gap: var(--dp-space-component) var(--dp-space-page);
   }
 
   .create-form-summary__row,
   .archive-create-summary__row {
     display: grid;
     grid-template-columns: 88px minmax(0, 1fr);
-    gap: 12px;
+    gap: var(--dp-space-component);
     align-items: baseline;
     font-size: var(--dp-font-size-md);
     line-height: 1.5;
@@ -412,14 +418,14 @@ $create-form-page-max-width: 1400px;
     display: flex;
     justify-content: flex-start;
     max-width: 880px;
-    margin-top: 16px;
+    margin-top: var(--dp-space-block);
   }
 
   .retention-field {
     display: flex;
     align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
+    gap: var(--dp-space-component);
+    flex-wrap: nowrap;
     min-height: 32px;
   }
 
@@ -435,21 +441,32 @@ $create-form-page-max-width: 1400px;
     color: var(--dp-text-secondary);
   }
 
-  .score-proof-field {
+  .score-source-field {
     display: flex;
     align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
+    gap: var(--dp-space-component);
+    flex-wrap: nowrap;
     min-height: 32px;
+    width: 100%;
   }
 
-  .score-proof-field__id {
+  .create-form .score-source-field .score-source-field__select,
+  .create-form .score-source-field .ui-select,
+  .create-form .score-source-field .ant-select {
+    width: auto !important;
+    max-width: 240px;
+    flex: 0 1 240px;
+    min-width: 160px;
+  }
+
+  .score-source-field__id {
     font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
+    flex: 0 0 auto;
   }
 
   .candidate-preview-table {
-    margin-top: 16px;
+    margin-top: var(--dp-space-block);
     max-width: 880px;
   }
 
@@ -461,20 +478,20 @@ $create-form-page-max-width: 1400px;
     }
 
     .ui-sidebar-nav__list {
-      padding: 4px 0;
+      padding: var(--dp-space-component-xs) 0;
       gap: 0;
     }
 
     .ui-sidebar-nav__item {
       border: none;
       border-radius: 6px;
-      padding: 10px 14px;
+      padding: var(--dp-space-component) var(--dp-space-block);
       font-size: var(--dp-font-size-md);
       font-weight: 500;
       color: var(--dp-text-primary);
       position: relative;
       overflow: hidden;
-      transition: background 0.15s ease, color 0.15s ease;
+      transition: background var(--dp-duration-fast) var(--dp-ease-default), color var(--dp-duration-fast) var(--dp-ease-default);
 
       &:hover:not(:disabled) {
         background: var(--dp-fill-tertiary);
@@ -518,11 +535,11 @@ $create-form-page-max-width: 1400px;
 
   @media (max-width: #{bp.$ant-grid-md - 1px}) {
     &__header {
-      padding: 12px 16px;
+      padding: var(--dp-space-component) var(--dp-space-block);
     }
 
     &__footer {
-      padding: 10px 16px;
+      padding: var(--dp-space-component) var(--dp-space-block);
     }
 
     .create-layout {
@@ -540,7 +557,7 @@ $create-form-page-max-width: 1400px;
     }
 
     &__body {
-      padding: 0 16px;
+      padding: 0 var(--dp-space-block);
     }
 
     .create-form-summary__rows,

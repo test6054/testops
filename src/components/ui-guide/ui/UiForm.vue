@@ -121,7 +121,7 @@ defineExpose({
 <style scoped>
 .ui-form {
   --ui-form-label-width: 120px;
-  --ui-form-gap: var(--dp-space-3, 12px);
+  --ui-form-gap: var(--dp-space-component);
 }
 
 .ui-form :deep(.ant-form-item) {
@@ -129,7 +129,7 @@ defineExpose({
 }
 
 .ui-form--bordered {
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
@@ -153,7 +153,7 @@ defineExpose({
 .ui-form--inline {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 var(--dp-space-3, 12px);
+  gap: 0 var(--dp-space-component);
 }
 
 .ui-form--inline :deep(.ant-form-item) {

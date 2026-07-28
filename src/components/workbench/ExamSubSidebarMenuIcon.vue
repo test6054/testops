@@ -1,7 +1,7 @@
 <template>
   <UiTooltip v-if="collapsed" :title="label" placement="right">
-    <span class="exam-sub-sidebar-menu-icon">
-      <component :is="resolvedIcon" />
+    <span class="exam-sub-sidebar-menu-icon" :aria-label="label">
+      <component :is="resolvedIcon" aria-hidden="true" />
     </span>
   </UiTooltip>
   <component v-else :is="resolvedIcon" />

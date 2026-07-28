@@ -10,7 +10,7 @@
   <div v-else-if="snapshot" class="exam-workspace-chrome">
     <ContextBar layout="workbench">
       <template #actions>
-        <UiButton v-if="showPrimaryAction" variant="primary" size="sm" @click="goSuggestedStage">
+        <UiButton v-if="showPrimaryAction" variant="primary" size="sm" @click="goPrimaryEntryAction">
           {{ primaryActionLabel }}
         </UiButton>
         <UiButton variant="outline" size="sm" :loading="refreshing" @click="handleRefresh">
@@ -31,6 +31,7 @@
       v-if="showSignalBand && examSignalMetrics.length > 0"
       :metrics="examSignalMetrics"
       compact
+      variant="panel"
       class="exam-workspace-chrome__signal"
       @metric-click="navigateMetric"
     />
@@ -51,6 +52,7 @@ import {
   useMarkWorkbenchContext,
 } from '@/composables/useMarkWorkbenchContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
+import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'ExamWorkspaceChrome' })
 
@@ -79,14 +81,16 @@ const {
   primaryActionLabel,
   showPrimaryAction,
   examSignalMetrics,
-  goSuggestedStage,
+  goPrimaryEntryAction,
   onJourneySelect,
   navigateMetric,
   refreshChrome,
 } = useExamWorkspaceChromeContext()
 
 function handleRefresh(): void {
-  void refreshChrome()
+  void refreshChrome().catch((error) => {
+    showUserError(error, '工作台刷新失败')
+  })
 }
 </script>
 
@@ -95,29 +99,31 @@ function handleRefresh(): void {
   display: flex;
   flex-direction: column;
   gap: 0;
-  margin-bottom: var(--dp-space-4);
-  background: var(--dp-bg-container);
-  border: 1px solid var(--dp-border-subtle);
-  border-radius: var(--dp-radius-panel);
+  margin-bottom: var(--dp-space-block);
+  background: var(--dp-surface);
+  border: none;
+  border-bottom: 1px solid var(--dp-border);
+  border-radius: 0;
+  box-shadow: none;
   overflow: hidden;
 
   :deep(.context-bar--workbench) {
     margin-bottom: 0;
-    padding: var(--dp-space-4);
-    border-bottom: 1px solid var(--dp-border-subtle);
+    padding: var(--dp-space-block);
+    border-bottom: 1px solid var(--dp-border);
   }
 
   :deep(.exam-journey-rail) {
-    border-bottom: 1px solid var(--dp-border-subtle);
+    border-bottom: 1px solid var(--dp-border);
   }
 
   &__signal {
-    padding: var(--dp-space-3) var(--dp-space-4);
+    padding: 0;
   }
 
   &--loading {
-    padding: var(--dp-space-4);
-    gap: var(--dp-space-3);
+    padding: var(--dp-space-block);
+    gap: var(--dp-space-component);
   }
 
   &__rail-skeleton {

@@ -4,7 +4,8 @@
  */
 
 import type { RouteRecordRaw } from 'vue-router'
-import { readPortfolioReviewAccessFlag } from '@/composables/usePortfolioReviewAccess'
+import type { PortfolioWorkShellCode } from '@/apis/portfolio/types'
+import { readPortfolioReviewAccessFlag, readPortfolioWorkShellCode } from '@/composables/usePortfolioReviewAccess'
 import { archiveVolumeWorkspaceRoutes } from '@/router/routes/archive-volume-workspace'
 import { commonRoutes, errorRoutes } from '@/router/routes/common'
 import { constantRoutes } from '@/router/routes/constant'
@@ -133,7 +134,9 @@ function findRouteByPath(path: string): RouteRecordRaw | undefined {
 export function getRoutePermission(path: string): {
   roles: RoleEnum[]
   requireTenantAdmin?: boolean
+  requireEnterpriseTenantAdmin?: boolean
   requirePortfolioReviewer?: boolean
+  portfolioWorkShells?: PortfolioWorkShellCode[]
 } | undefined {
     const route = findRouteByPath(path)
 
@@ -144,12 +147,22 @@ export function getRoutePermission(path: string): {
     return {
         roles: route.meta.roles || [],
         requireTenantAdmin: route.meta.requireTenantAdmin,
+        requireEnterpriseTenantAdmin: route.meta.requireEnterpriseTenantAdmin,
         requirePortfolioReviewer: route.meta.requirePortfolioReviewer,
+        portfolioWorkShells: route.meta.portfolioWorkShells,
     }
 }
 
 function passesTenantAdminRouteGate(userRole: RoleEnum, isTenantAdmin: boolean): boolean {
     return userRole === RoleEnum.SUPER_ADMIN || isTenantAdmin
+}
+
+/** 本租户企业管理员闸：平台 SUPER_ADMIN 一律拒绝。 */
+function passesEnterpriseTenantAdminRouteGate(userRole: RoleEnum, isEnterpriseTenantAdmin: boolean): boolean {
+    if (userRole === RoleEnum.SUPER_ADMIN) {
+        return false
+    }
+    return isEnterpriseTenantAdmin
 }
 
 export function passesPortfolioReviewerGate(userRole: RoleEnum, isTenantAdmin: boolean): boolean {
@@ -162,13 +175,34 @@ export function passesPortfolioReviewerGate(userRole: RoleEnum, isTenantAdmin: b
   return false
 }
 
+/** 路由守卫读取当前档案袋工作壳；非法编码视为未选择。 */
+function resolveCurrentPortfolioWorkShell(): PortfolioWorkShellCode | '' {
+  try {
+    return readPortfolioWorkShellCode()
+  } catch {
+    return ''
+  }
+}
+
+function passesPortfolioWorkShellGate(allowed?: PortfolioWorkShellCode[]): boolean {
+  if (!allowed?.length) {
+    return true
+  }
+  const currentWorkShell = resolveCurrentPortfolioWorkShell()
+  return Boolean(currentWorkShell && allowed.includes(currentWorkShell))
+}
+
 /**
  * 检查用户是否有权限访问指定路由
+ *
+ * @param isTenantAdmin 含超管投影的系统管理闸（requireTenantAdmin）
+ * @param isEnterpriseTenantAdmin edu-user TenantAdmin 真值，不含超管投影（requireEnterpriseTenantAdmin）
  */
 export function hasRoutePermission(
     path: string,
     userRole: string,
-    isTenantAdmin: boolean = false
+    isTenantAdmin: boolean = false,
+    isEnterpriseTenantAdmin: boolean = false,
 ): boolean {
     const permission = getRoutePermission(path)
 
@@ -182,10 +216,17 @@ export function hasRoutePermission(
     }
 
     if (userRole === RoleEnum.SUPER_ADMIN) {
-        if (permission.requireTenantAdmin) {
-            return passesTenantAdminRouteGate(userRole, isTenantAdmin)
+        if (permission.requireEnterpriseTenantAdmin) {
+            return false
         }
-        return true
+        // 未显式纳入 SUPER_ADMIN / requireTenantAdmin 的租户考试业务页不得因超管旁路进入
+        if (!permission.roles.includes(RoleEnum.SUPER_ADMIN) && !permission.requireTenantAdmin) {
+            return false
+        }
+        if (permission.requireTenantAdmin && !passesTenantAdminRouteGate(userRole, isTenantAdmin)) {
+            return false
+        }
+        return passesPortfolioWorkShellGate(permission.portfolioWorkShells)
     }
 
     // 检查角色权限
@@ -193,10 +234,17 @@ export function hasRoutePermission(
     if (!hasRolePermission) {
         return false
     }
+    if (permission.requireEnterpriseTenantAdmin
+      && !passesEnterpriseTenantAdminRouteGate(userRole, isEnterpriseTenantAdmin)) {
+        return false
+    }
     if (permission.requireTenantAdmin && !passesTenantAdminRouteGate(userRole, isTenantAdmin)) {
         return false
     }
-    return !(permission.requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin));
+    if (permission.requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin)) {
+        return false
+    }
+    return passesPortfolioWorkShellGate(permission.portfolioWorkShells)
 }
 
 /**
@@ -208,7 +256,8 @@ export function hasRoutePermission(
 export function hasRouteNamePermission(
     name: string,
     userRole: string,
-    isTenantAdmin: boolean = false
+    isTenantAdmin: boolean = false,
+    isEnterpriseTenantAdmin: boolean = false,
 ): boolean {
     const route = findRouteByName(name)
     if (!route?.meta) {
@@ -217,23 +266,37 @@ export function hasRouteNamePermission(
 
     const roles = route.meta.roles ?? []
     const requireTenantAdmin = route.meta.requireTenantAdmin
+    const requireEnterpriseTenantAdmin = route.meta.requireEnterpriseTenantAdmin
     if (!isValidRole(userRole)) {
         return false
     }
     if (userRole === RoleEnum.SUPER_ADMIN) {
-        if (requireTenantAdmin) {
-            return passesTenantAdminRouteGate(userRole, isTenantAdmin)
+        if (requireEnterpriseTenantAdmin) {
+            return false
         }
-        return true
+        if (!roles.includes(RoleEnum.SUPER_ADMIN) && !requireTenantAdmin) {
+            return false
+        }
+        if (requireTenantAdmin && !passesTenantAdminRouteGate(userRole, isTenantAdmin)) {
+            return false
+        }
+        return passesPortfolioWorkShellGate(route.meta.portfolioWorkShells)
     }
     if (!roles.includes(userRole)) {
+        return false
+    }
+    if (requireEnterpriseTenantAdmin
+      && !passesEnterpriseTenantAdminRouteGate(userRole, isEnterpriseTenantAdmin)) {
         return false
     }
     if (requireTenantAdmin && !passesTenantAdminRouteGate(userRole, isTenantAdmin)) {
         return false
     }
     const requirePortfolioReviewer = route.meta.requirePortfolioReviewer
-    return !(requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin));
+    if (requirePortfolioReviewer && !passesPortfolioReviewerGate(userRole, isTenantAdmin)) {
+        return false
+    }
+    return passesPortfolioWorkShellGate(route.meta.portfolioWorkShells)
 }
 
 /**

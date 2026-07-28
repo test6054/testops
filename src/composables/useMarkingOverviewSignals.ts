@@ -22,6 +22,7 @@ export interface UseMarkingOverviewSignalsOptions {
 /**
  * 阅卷概览 SignalBand：固定核心 KPI，避免仅剩 1～2 个大空格；
  * 仲裁/抽检仅在有积压时追加，总数截断到 6。
+ * 业务告警只走 tone（数值色）；iconTone 仅蓝/绿/灰/紫分区装饰。
  */
 
 /** 阅卷进度 spark：仅使用确认题日序列 */
@@ -29,7 +30,7 @@ function resolveProgressSpark(
   trend: MarkTeacherDashboardDailyTrendItemVO[] | undefined,
 ): number[] | undefined {
   if (!trend?.length) return undefined
-  const values = trend.map((point) => point.confirmedGradeCount ?? 0)
+  const values = trend.map((point) => point.confirmedGradeCount)
   if (!values.some((value) => value > 0)) return undefined
   return values
 }
@@ -94,7 +95,7 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         value: pendingTodoRowCount,
         unit: '项',
         tone: pendingTodoRowCount > 0 ? 'red' : 'gray',
-        iconTone: pendingTodoRowCount > 0 ? 'red' : 'gray',
+        iconTone: 'gray',
         helper: pendingTodoRowCount > 0 ? '优先推进阻塞项' : '暂无待办',
         trendPolarity: 'negative',
         clickable: pendingTodoRowCount > 0,
@@ -105,7 +106,7 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         value: unpublishedCount,
         unit: '份',
         tone: unpublishedCount > 0 ? 'orange' : 'gray',
-        iconTone: unpublishedCount > 0 ? 'orange' : 'gray',
+        iconTone: 'gray',
         helper: unpublishedCount > 0 ? '成绩已确认待发布' : '暂无待发布',
         trendPolarity: 'negative',
         clickable: unpublishedCount > 0,
@@ -116,7 +117,7 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         value: scanAttentionCount,
         unit: '项',
         tone: scanAttentionCount > 0 ? 'orange' : 'gray',
-        iconTone: scanAttentionCount > 0 ? 'orange' : 'gray',
+        iconTone: 'gray',
         helper: scanAttentionCount > 0 ? '扫描异常待处理' : '扫描状态正常',
         trendPolarity: 'negative',
         clickable: scanAttentionCount > 0,
@@ -130,7 +131,7 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         value: arbitrationCount,
         unit: '项',
         tone: 'red',
-        iconTone: 'red',
+        iconTone: 'gray',
         helper: '需仲裁确认',
         trendPolarity: 'negative',
         clickable: true,
@@ -144,7 +145,7 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         value: spotCheckCount,
         unit: '项',
         tone: 'orange',
-        iconTone: 'orange',
+        iconTone: 'gray',
         helper: '抽检队列待处理',
         trendPolarity: 'negative',
         clickable: true,

@@ -26,16 +26,16 @@ defineProps<{
   display: flex;
   align-items: center;
   height: 48px;
-  padding: 0 16px;
+  padding: 0 var(--dp-space-block);
   border-bottom: 1px solid var(--dp-border-subtle);
   border-right: 1px solid var(--dp-border-subtle);
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
 }
 
 .ui-info-grid-item__label {
   font-size: var(--dp-font-size-md);
   font-weight: 600;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
   min-width: 70px;
   flex-shrink: 0;
 }
@@ -43,7 +43,7 @@ defineProps<{
 .ui-info-grid-item__value {
   font-size: var(--dp-font-size-md);
   font-weight: 500;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
 
   :deep(strong) {
     font-size: var(--dp-font-size-lg);

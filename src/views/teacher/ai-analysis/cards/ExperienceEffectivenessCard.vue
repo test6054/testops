@@ -107,7 +107,7 @@
         <div v-if="record.analysisStatus === AiAnalysisStatusCode.SUCCESS" class="ai-evidence">
           <div class="ai-evidence__header">
             <strong>评估脱敏样本</strong>
-            <span class="text-muted">共 {{ evidenceRows.length }} 条，供复核 AI 一致性依据</span>
+            <span class="dp-text-muted">共 {{ evidenceRows.length }} 条，供复核 AI 一致性依据</span>
           </div>
           <UiDataTable
             v-if="evidenceRows.length"
@@ -665,12 +665,12 @@ watch(
 .ai-record {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 .ai-record__charts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 .ai-summary {
   margin: 0;
@@ -678,15 +678,12 @@ watch(
 .ai-evidence {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .ai-evidence__header {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-}
-.text-muted {
-  color: var(--dp-text-tertiary);
+  gap: var(--dp-space-component-tight);
 }
 .experience-effectiveness-filter {
   width: 100%;
@@ -695,7 +692,7 @@ watch(
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: end;
-    gap: 12px;
+    gap: var(--dp-space-component);
     width: 100%;
   }
 

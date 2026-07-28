@@ -271,7 +271,6 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
           v-if="fieldReadonly !== true"
           size="sm"
           :model-value="focusedQuestion.questionNo"
-          :disabled="fieldReadonly === true"
           @update:model-value="
             (value) =>
               patchQuestion({
@@ -289,7 +288,6 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
           v-if="fieldReadonly !== true"
           size="sm"
           :model-value="focusedQuestion.printedQuestionNo"
-          :disabled="fieldReadonly === true"
           placeholder="未识别时由教师补录"
           @update:model-value="
             (value) =>
@@ -301,6 +299,16 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
         <template v-else>
           <UiInput v-model="maintainedPrintedQuestionNo" size="sm" placeholder="未识别时由教师补录" />
         </template>
+      </UiFormItem>
+      <UiFormItem v-if="focusedQuestion.sectionLabel || focusedQuestion.sectionTitle" label="所属大题">
+        <div class="text-sm text-[var(--dp-text-secondary)]">
+          <span v-if="focusedQuestion.sectionLabel">{{ focusedQuestion.sectionLabel }}</span>
+          <span v-if="focusedQuestion.sectionLabel && focusedQuestion.sectionTitle"> · </span>
+          <span v-if="focusedQuestion.sectionTitle">{{ focusedQuestion.sectionTitle }}</span>
+        </div>
+      </UiFormItem>
+      <UiFormItem v-if="focusedQuestion.materialRef" label="共享材料">
+        <div class="text-sm text-[var(--dp-text-secondary)]">{{ focusedQuestion.materialRef }}</div>
       </UiFormItem>
       <UiFormItem v-if="fieldReadonly === true" label="题号维护">
         <UiButton
@@ -503,14 +511,14 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
 <style scoped lang="scss">
 .layout-question-property {
   height: 100%;
-  padding: 12px;
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
   overflow: auto;
 
   &__title {
-    margin: 0 0 12px;
+    margin: 0 0 var(--dp-space-component);
     font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);

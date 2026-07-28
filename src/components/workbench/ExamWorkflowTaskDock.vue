@@ -52,12 +52,12 @@ const emit = defineEmits<{
   z-index: var(--dp-z-sticky);
   display: flex;
   align-items: center;
-  gap: var(--dp-space-3);
-  padding: var(--dp-space-3) var(--dp-space-4);
-  border: 1px solid var(--dp-border);
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
+  border: 1px solid var(--dp-panel-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
-  box-shadow: var(--dp-shadow-xs);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .exam-workflow-task-dock__dot {
@@ -77,7 +77,7 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .exam-workflow-task-dock__title {
@@ -103,7 +103,7 @@ const emit = defineEmits<{
 }
 
 .exam-workflow-task-dock__overflow {
-  margin-left: var(--dp-space-1);
+  margin-left: var(--dp-space-component-xs);
   color: var(--dp-text-muted);
 }
 
@@ -111,7 +111,7 @@ const emit = defineEmits<{
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 @media (max-width: bp.$layout-mobile-max) {

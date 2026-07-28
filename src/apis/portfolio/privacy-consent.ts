@@ -18,7 +18,6 @@ export interface PortfolioPrivacyConsentVO {
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
-  lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -42,10 +41,10 @@ export const portfolioPrivacyConsentApi = {
     http.post<PortfolioPrivacyConsentNoticeVO>('/api/portfolio/privacy-consent/notice/get', {}),
   getCurrent: (data?: { teacherId?: string }) =>
     http.post<PortfolioPrivacyConsentVO>('/api/portfolio/privacy-consent/current/get', data || {}),
-  grant: (data?: { teacherId?: string }) =>
-    http.post<PortfolioPrivacyConsentVO>('/api/portfolio/privacy-consent/grant', data || {}),
-  decline: (data?: { teacherId?: string }) =>
-    http.post<PortfolioPrivacyConsentVO>('/api/portfolio/privacy-consent/decline', data || {}),
-  withdraw: (data?: { teacherId?: string }) =>
-    http.post<PortfolioPrivacyConsentVO>('/api/portfolio/privacy-consent/withdraw', data || {}),
+  grant: (data: { teacherId?: string, policyVersion: string }) =>
+    http.post<PortfolioPrivacyConsentVO>('/api/portfolio/privacy-consent/grant', data),
+  decline: (data: { teacherId?: string, policyVersion: string }) =>
+    http.post<PortfolioPrivacyConsentVO>('/api/portfolio/privacy-consent/decline', data),
+  withdraw: (data: { teacherId?: string, policyVersion: string }) =>
+    http.post<PortfolioPrivacyConsentVO>('/api/portfolio/privacy-consent/withdraw', data),
 }

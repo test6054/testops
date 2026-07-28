@@ -15,6 +15,7 @@ import type { BindingStatusCode } from '@/types/enums/binding-status-enum'
 import type { ExamScanBatchWorkbenchSignalBandToneCode } from '@/types/enums/exam-scan-batch-workbench-signal-band-tone-enum'
 import type { IncidentSourceTypeCode } from '@/types/enums/incident-source-type-enum'
 import type { PageRegisterStateCode } from '@/types/enums/page-register-state-enum'
+import type { ScanAttentionPrimaryActionCode } from '@/types/enums/scan-attention-primary-action-enum'
 import type { ScanAttentionQueryGroupCode } from '@/types/enums/scan-attention-query-group-enum'
 import type { ScanBatchAttributionReviewStatusCode } from '@/types/enums/scan-batch-attribution-review-status-enum'
 import type { ScanBatchOrderAuditCode } from '@/types/enums/scan-batch-order-audit-enum'
@@ -176,6 +177,14 @@ export interface ScanAttentionItemResponse {
   duplicateResolutionStatus: DuplicateResolutionStatusCode
   gradeStatus: GradeStatusCode
   diagnostic?: string
+  /** 主操作编码 - ScanAttentionPrimaryActionCode */
+  primaryActionCode: ScanAttentionPrimaryActionCode
+  /** 主操作文案 */
+  primaryActionLabel: string
+  /** 主操作工作台路由 name；本地动作可空 */
+  workspaceRouteName?: string
+  /** 主操作不可用或仅可查看时的说明 */
+  actionDisabledReason?: string
   updateTime?: string
 }
 
@@ -294,7 +303,7 @@ export interface ExamScannerBatchWorkbenchSummaryResponse {
   scanDerivedTemplateActive?: boolean
   activePaperTemplateName?: string
   activePaperTemplateTotalPages?: number
-  /** 整卷作答且尚无 ACTIVE 模板 */
+  /** 单独试卷且尚无 ACTIVE 模板 */
   fullPaperFirstScanTemplatePending?: boolean
   /** 是否可执行主考批次写动作（页登记重试等；与 isExamOwner 对齐） */
   canManageOwnerBatchActions?: boolean

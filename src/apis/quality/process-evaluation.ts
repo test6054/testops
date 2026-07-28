@@ -26,6 +26,8 @@ export interface ProcessEvaluationNodeVO {
   coverageRequired?: number
   description?: string
   confirmationStatus: ConfirmationStatusCode
+  confirmedRecordCount?: number
+  pendingRecordCount?: number
   createTime?: string
   updateTime?: string
 }

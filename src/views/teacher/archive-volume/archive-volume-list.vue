@@ -36,7 +36,6 @@
         :readiness="archiveSetupReadiness"
         :loading="archiveSetupReadinessLoading === true"
         :load-failed="archiveSetupReadinessLoadFailed"
-        @retry="loadArchiveSetupReadiness"
       />
 
       <UiAlertStrip
@@ -64,7 +63,7 @@
             考试列表
           </UiButton>
           <UiButton
-            v-if="s1AttentionLoadFailed"
+            v-if="s1AttentionLoadFailed === true"
             size="sm"
             variant="outline"
             :loading="s1AttentionLoading === true"
@@ -159,11 +158,10 @@
           v-model:page-size="pagination.pageSize"
           pagination-mode="server"
           :columns="tableColumns"
-          :data-source="listLoadFailed ? [] : volumes"
+          :data-source="listLoadFailed === true ? [] : volumes"
           :loading="loading === true"
           :total="pagination.total"
           :row-selection="rowSelection"
-          :row-class-name="volumeRowClassName"
           flat
           row-key="volumeId"
           size="middle"
@@ -177,40 +175,6 @@
               <button type="button" class="link-cell" @click="goDetail(record.volumeId)">
                 {{ record.archiveNo }}
               </button>
-              <UiTag
-                v-if="isArchiveDueOverdue(record.archiveDueTime)"
-                tone="red"
-                size="sm"
-                class="archive-volume-list__urgent-tag"
-              >
-                已逾期
-              </UiTag>
-              <UiTag
-                v-else-if="
-                  isArchiveDueSoon(record.archiveDueTime, record.archiveDueReminderLeadDays)
-                "
-                tone="orange"
-                size="sm"
-                class="archive-volume-list__urgent-tag"
-              >
-                临期
-              </UiTag>
-              <UiTag
-                v-else-if="isArchiveVolumeListUrgent(record)"
-                :tone="
-                  record.appraisalStatus === ArchiveAppraisalStatusCode.REMINDER_SENT
-                    ? 'red'
-                    : 'orange'
-                "
-                size="sm"
-                class="archive-volume-list__urgent-tag"
-              >
-                {{
-                  record.appraisalStatus === ArchiveAppraisalStatusCode.REMINDER_SENT
-                    ? '待鉴定'
-                    : '待处理'
-                }}
-              </UiTag>
             </template>
             <template v-else-if="column.key === 'archiveTitle'">
               <span class="archive-volume-list__title">{{ record.archiveTitle }}</span>
@@ -328,7 +292,7 @@ import type { ArchiveVolumeScenarioKey } from '@/composables/useArchiveVolumeFil
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_VOLUME_SOURCE_TYPE_OPTIONS,
@@ -370,7 +334,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { useArchiveS1AutoCreateAttention } from '@/composables/useArchiveS1AutoCreateAttention'
-import { resolveSubmitChecklistRoute } from '@/composables/useArchiveSubmitChecklistRouter'
+import { resolveSubmitChecklistNavigation } from '@/composables/useArchiveSubmitChecklistRouter'
 import { useArchiveTenantSetupReadiness } from '@/composables/useArchiveTenantSetupReadiness'
 import { useArchiveVolumeFilterPresets } from '@/composables/useArchiveVolumeFilterPresets'
 import { canSubmitArchiveVolumeRow } from '@/composables/useArchiveVolumeSubmitGate'
@@ -388,25 +352,35 @@ import {
   buildOptionalAcademicYearSemesterQuery,
   ensureAcademicYearSemesterPair,
 } from '@/utils/academic-year-semester-query'
+import {
+  applyAcademicYearStartYearChange,
+  applyTripleSemesterChange,
+} from '@/utils/academic-year-semester-triple-filter'
 import { buildArchiveVolumeDimPills } from '@/utils/archive-dimension-pill'
 import { isSecurityRemediationDiagnostic } from '@/utils/archive-remediation-diagnostic'
 import { fetchArchiveSuspectedMixedPendingTotal } from '@/utils/archive-suspected-mixed-navigation'
 import {
-  archiveVolumeListRowClassName,
   isArchiveDueOverdue,
   isArchiveDueSoon,
-  isArchiveVolumeListUrgent,
 } from '@/utils/archive-volume-list-ui'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { navigateExamWorkspaceRoute } from '@/utils/exam-workspace-navigation'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import ArchiveVolumeRemediationPanel from '@/views/teacher/archive-volume/archive-volume-remediation-panel.vue'
-import ArchiveVolumeSupervisionPanel from '@/views/teacher/archive-volume/archive-volume-supervision-panel.vue'
 import ArchiveSetupGuideBanner from '@/views/teacher/archive-volume/components/ArchiveSetupGuideBanner.vue'
 import ArchiveVolumeMineRemediationBanner from '@/views/teacher/archive-volume/components/ArchiveVolumeMineRemediationBanner.vue'
-import DepartmentReviewListDrawer from '@/views/teacher/archive-volume/components/DepartmentReviewListDrawer.vue'
 
 defineOptions({ name: 'TeacherArchiveVolumeList' })
+
+const ArchiveVolumeRemediationPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/archive-volume-remediation-panel.vue'),
+)
+const ArchiveVolumeSupervisionPanel = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/archive-volume-supervision-panel.vue'),
+)
+const DepartmentReviewListDrawer = defineAsyncComponent(
+  () => import('@/views/teacher/archive-volume/components/DepartmentReviewListDrawer.vue'),
+)
 
 type ListTabKey = 'mine' | 'college' | 'archive' | 'supervision' | 'remediation'
 type ArchiveListQuickFilter = 'pending-transfer' | 'due-appraisal' | 'overdue'
@@ -621,7 +595,6 @@ const suspectedMixedScanButtonLabel = computed(() => {
 })
 
 async function loadSuspectedMixedPendingTotal(): Promise<void> {
-  await loadGrants()
   if (canViewArchiveDepartmentQueue.value !== true) {
     suspectedMixedPendingTotal.value = null
     return
@@ -751,16 +724,15 @@ function buildListOverviewMetric(
 ): SignalMetric {
   const failed = listOverviewKpisFailed.value
   const isActive = activeArchiveSignalKey.value === key
+  /* iconTone 仅分区装饰；红/橙告警只走 tone（数值色） */
   const iconTone
     = tone === 'green'
       ? 'green'
-      : tone === 'red'
-        ? 'red'
-        : tone === 'orange'
-          ? 'orange'
-          : tone === 'blue'
-            ? 'blue'
-            : 'gray'
+      : tone === 'blue'
+        ? 'blue'
+        : tone === 'purple'
+          ? 'purple'
+          : 'gray'
   return {
     key,
     label,
@@ -768,7 +740,7 @@ function buildListOverviewMetric(
     unit: '卷',
     tone,
     iconTone,
-    helper: failed ? '计数暂不可用' : isActive ? '当前筛选' : '点击筛选',
+    helper: failed ? undefined : isActive ? '当前筛选' : '点击筛选',
     clickable:
       !failed && (countForClick > 0 || isActive || (key === 'total' && hasActiveListFilters.value)),
     active: isActive,
@@ -855,13 +827,13 @@ const listOverviewSignalMetrics = computed<SignalMetric[]>(() => {
     value: s1Failed ? '—' : s1Count,
     unit: '场',
     tone: s1Failed || s1HasAttention ? 'orange' : 'gray',
-    iconTone: s1Failed || s1HasAttention ? 'orange' : 'gray',
+    iconTone: 'gray',
     helper: s1Failed
-      ? '计数暂不可用，点击重试'
+      ? undefined
       : s1HasAttention
         ? '点击前往处理'
         : '暂无待建袋考试',
-    clickable: s1Failed || s1HasAttention,
+    clickable: s1HasAttention,
     active: false,
   })
 
@@ -933,7 +905,7 @@ const filterFields = computed<FilterField[]>(() => [
     key: 'academicYearStartYear',
     label: '学年',
     type: 'select',
-    placeholder: '全部学年',
+    placeholder: '全部（不限）',
     options: academicYearStartOptions.value,
     allowClear: true,
   },
@@ -941,7 +913,7 @@ const filterFields = computed<FilterField[]>(() => [
     key: 'semester',
     label: '学期',
     type: 'select',
-    placeholder: '全部学期',
+    placeholder: '全部（不限）',
     options: semesterOptions.value,
     allowClear: true,
   },
@@ -968,15 +940,11 @@ const tableColumns = computed<ColumnsType<ArchiveVolumeResponse>>(() => [
   { title: '学年', key: 'academicYear', width: 100 },
   { title: '学期', key: 'semester', width: 88 },
   { title: '来源', key: 'sourceType', width: 100 },
-  { title: '五维状态', key: 'statusGroup', width: 320 },
+  { title: '关键状态', key: 'statusGroup', width: 280 },
   { title: '保管期限', key: 'retentionYears', width: 90 },
   { title: '到期日', key: 'archiveDueTime', width: 160 },
   { title: '操作', key: 'actions', width: 180 },
 ])
-
-function volumeRowClassName(record: ArchiveVolumeResponse): string {
-  return archiveVolumeListRowClassName(record)
-}
 
 function sourceTypeTone(code: ArchiveVolumeSourceTypeCode): BadgeTone {
   return strictEnumTone(ARCHIVE_VOLUME_SOURCE_TYPE_TONE, code, 'sourceType')
@@ -1251,7 +1219,11 @@ async function loadListOverviewKpis(): Promise<void> {
 
 async function loadRemediationTabCount(): Promise<void> {
   try {
-    const stats = await getOpenRemediationStats()
+    const periodFilter = resolvePeriodFilter()
+    const stats = await getOpenRemediationStats({
+      departmentId: filterForm.departmentId,
+      ...periodFilter,
+    })
     remediationTabCount.value = stats.openTaskCount
     // MVR-339：Tab 显隐与创建能力改由 BE stats 下发
     canViewRemediationTabFromStats.value = stats.canViewRemediationTab === true
@@ -1339,10 +1311,72 @@ function buildVolumeFilterRequest(): ArchiveVolumePageRequest {
   return request
 }
 
-async function loadVolumes() {
-  if (!showVolumeFilter.value) return
+
+interface ArchiveListFilterSnapshot {
+  keyword: string
+  courseId: string | undefined
+  departmentId: string | undefined
+  academicYearStartYear: number | undefined
+  academicYearEndYear: number | undefined
+  semester: typeof filterForm.semester
+  sourceType: typeof filterForm.sourceType
+  volumeStatus: typeof filterForm.volumeStatus
+  integrityStatus: typeof filterForm.integrityStatus
+  transferStatus: typeof filterForm.transferStatus
+  appraisalStatus: typeof filterForm.appraisalStatus
+  integrityFailedOnly: boolean
+  archiveOverdueOnly: boolean
+  collectingPhaseOnly: boolean
+  archiveListQuickFilter: ArchiveListQuickFilter | null
+}
+
+let lastSuccessfulArchiveFilter: ArchiveListFilterSnapshot | null = null
+
+function snapshotArchiveListFilter(): ArchiveListFilterSnapshot {
+  return {
+    keyword: filterForm.keyword,
+    courseId: filterForm.courseId,
+    departmentId: filterForm.departmentId,
+    academicYearStartYear: filterForm.academicYearStartYear,
+    academicYearEndYear: filterForm.academicYearEndYear,
+    semester: filterForm.semester,
+    sourceType: filterForm.sourceType,
+    volumeStatus: filterForm.volumeStatus,
+    integrityStatus: filterForm.integrityStatus,
+    transferStatus: filterForm.transferStatus,
+    appraisalStatus: filterForm.appraisalStatus,
+    integrityFailedOnly: filterExtras.integrityFailedOnly,
+    archiveOverdueOnly: filterExtras.archiveOverdueOnly,
+    collectingPhaseOnly: filterExtras.collectingPhaseOnly,
+    archiveListQuickFilter: archiveListQuickFilter.value,
+  }
+}
+
+function restoreArchiveListFilter(snapshot: ArchiveListFilterSnapshot): void {
+  filterForm.keyword = snapshot.keyword
+  filterForm.courseId = snapshot.courseId
+  filterForm.departmentId = snapshot.departmentId
+  filterForm.academicYearStartYear = snapshot.academicYearStartYear
+  filterForm.academicYearEndYear = snapshot.academicYearEndYear
+  filterForm.semester = snapshot.semester
+  filterForm.sourceType = snapshot.sourceType
+  filterForm.volumeStatus = snapshot.volumeStatus
+  filterForm.integrityStatus = snapshot.integrityStatus
+  filterForm.transferStatus = snapshot.transferStatus
+  filterForm.appraisalStatus = snapshot.appraisalStatus
+  filterExtras.integrityFailedOnly = snapshot.integrityFailedOnly
+  filterExtras.archiveOverdueOnly = snapshot.archiveOverdueOnly
+  filterExtras.collectingPhaseOnly = snapshot.collectingPhaseOnly
+  archiveListQuickFilter.value = snapshot.archiveListQuickFilter
+}
+
+function rememberArchiveListFilter(): void {
+  lastSuccessfulArchiveFilter = snapshotArchiveListFilter()
+}
+async function loadVolumes(): Promise<boolean> {
+  if (!showVolumeFilter.value) return false
   if (!ensurePeriodFilterPair()) {
-    return
+    return false
   }
   loading.value = true
   try {
@@ -1381,14 +1415,17 @@ async function loadVolumes() {
     pagination.pageNum = result.pageNum
     pagination.pageSize = result.pageSize
     listLoadFailed.value = false
+    rememberArchiveListFilter()
     if (showVolumeListPanel.value) {
       void loadListOverviewKpis()
       void loadS1AutoCreateAttention()
     }
+    return true
   } catch (error) {
     showUserError(error, '加载课程考核袋列表失败')
     listLoadFailed.value = true
     selectedVolumeIds.value = []
+    return false
   } finally {
     loading.value = false
   }
@@ -1413,7 +1450,18 @@ function handleSearch() {
     return
   }
   pagination.pageNum = 1
-  void loadVolumes()
+  const previous = lastSuccessfulArchiveFilter ?? snapshotArchiveListFilter()
+  void loadVolumes().then((ok) => {
+    if (!ok) {
+      restoreArchiveListFilter(previous)
+    } else {
+      rememberArchiveListFilter()
+      void loadRemediationTabCount()
+      if (listTab.value === 'mine' && volumeScope.value === 'mine') {
+        void loadOpenRemediationTasks()
+      }
+    }
+  })
 }
 
 function clearArchiveQuickFilter() {
@@ -1444,7 +1492,18 @@ function handleReset() {
   filterExtras.collectingPhaseOnly = false
   pagination.pageNum = 1
   selectedVolumeIds.value = []
-  void loadVolumes()
+  const previous = lastSuccessfulArchiveFilter ?? snapshotArchiveListFilter()
+  void loadVolumes().then((ok) => {
+    if (!ok) {
+      restoreArchiveListFilter(previous)
+    } else {
+      rememberArchiveListFilter()
+      void loadRemediationTabCount()
+      if (listTab.value === 'mine' && volumeScope.value === 'mine') {
+        void loadOpenRemediationTasks()
+      }
+    }
+  })
 }
 
 function openBatchReject() {
@@ -1641,25 +1700,34 @@ async function requestDepartmentReviewFromList(record: ArchiveVolumeResponse) {
     await loadVolumes()
   } catch (error) {
     showUserError(error, '发起院系审核失败')
-    await goDetailForSubmitBlocker(record.volumeId)
+    await goDetailForSubmitBlocker(record)
   } finally {
     requestingDepartmentReviewVolumeId.value = null
   }
 }
 
-async function goDetailForSubmitBlocker(volumeId: string) {
+async function goDetailForSubmitBlocker(record: ArchiveVolumeResponse) {
   try {
-    const preview = await previewArchiveVolumeSubmitChecklist(volumeId)
+    const preview = await previewArchiveVolumeSubmitChecklist(record.volumeId)
     const blocker = preview.blockingItems?.find((item) => !item.passed)
     if (blocker) {
-      const routeTarget = resolveSubmitChecklistRoute(blocker)
-      goDetailWithTab(volumeId, routeTarget.detailTabKey)
+      const navigation = resolveSubmitChecklistNavigation(blocker, record.examId)
+      if (navigation.kind === 'examWorkspace') {
+        navigateExamWorkspaceRoute(
+          router,
+          navigation.routeName,
+          { examId: navigation.examId },
+          '归档院系审核阻塞项考试门禁入口',
+        )
+        return
+      }
+      goDetailWithTab(record.volumeId, navigation.target.detailTabKey)
       return
     }
   } catch (error) {
     showUserError(error, '加载提交清单失败，已进入详情')
   }
-  goDetail(volumeId)
+  goDetail(record.volumeId)
 }
 
 async function withdrawDepartmentReviewFromList(record: ArchiveVolumeResponse) {
@@ -1727,6 +1795,8 @@ async function loadOpenRemediationTasks() {
     const page = await pageOpenRemediationTasks({
       pageNum: 1,
       pageSize: DEFAULT_LIST_PAGE_SIZE,
+      departmentId: filterForm.departmentId,
+      ...resolvePeriodFilter(),
     })
     openRemediationTasks.value = page.list
     openRemediationTaskTotal.value = page.total
@@ -1812,11 +1882,7 @@ function reloadArchiveListAfterSignalFilter() {
 
 function handleSignalMetricClick(key: string) {
   if (key === 's1AutoCreate') {
-    if (s1AttentionLoadFailed.value) {
-      void loadS1AutoCreateAttention()
-      return
-    }
-    if (s1AttentionExamCount.value <= 0) {
+    if (s1AttentionLoadFailed.value || s1AttentionExamCount.value <= 0) {
       return
     }
     goS1PrimaryAction()
@@ -1922,9 +1988,15 @@ function handleSignalMetricClick(key: string) {
 watch(
   () => filterForm.academicYearStartYear,
   (startYear) => {
-    filterForm.academicYearEndYear = startYear != null ? startYear + 1 : undefined
-    if (startYear == null) {
-      filterForm.semester = undefined
+    applyAcademicYearStartYearChange(filterForm, startYear)
+  },
+)
+
+watch(
+  () => filterForm.semester,
+  (semester) => {
+    if (semester == null && filterForm.academicYearStartYear != null) {
+      applyTripleSemesterChange(filterForm, undefined)
     }
   },
 )
@@ -1976,18 +2048,16 @@ watch(visibleListTabs, (tabs) => {
 })
 
 onMounted(async () => {
-  await initPage()
-  void loadArchiveSetupReadiness()
-  // loadSuspectedMixedPendingTotal 内会 loadGrants，避免与 initPage 并行重复弹错
-  void loadSuspectedMixedPendingTotal()
+  await Promise.all([initPage(), loadGrants(), loadRemediationTabCount()])
   applyRouteQuery()
+  void loadArchiveSetupReadiness()
+  void loadSuspectedMixedPendingTotal()
   if (listTab.value === 'mine' && volumeScope.value === 'mine') {
     await loadOpenRemediationTasks()
   }
   if (showVolumeListPanel.value) {
     await loadVolumes()
     await Promise.all([loadListOverviewKpis(), loadS1AutoCreateAttention()])
-    await loadRemediationTabCount()
   } else {
     void loadS1AutoCreateAttention()
   }
@@ -1998,13 +2068,13 @@ onMounted(async () => {
 .archive-volume-list__root {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-volume-list__scenario-row {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-list__role-tabs :deep(.ui-section-tabs__content) {
@@ -2014,11 +2084,11 @@ onMounted(async () => {
 .archive-volume-list__panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-block);
 }
 
 .archive-volume-list__batch {
-  margin-bottom: var(--dp-space-2);
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .archive-volume-list__filter {
@@ -2028,7 +2098,7 @@ onMounted(async () => {
 .archive-volume-list__quick-filter {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-volume-list__scope-bar {
@@ -2041,32 +2111,13 @@ onMounted(async () => {
   font-size: var(--dp-font-size-sm);
 }
 
-.archive-volume-list__urgent-tag {
-  margin-left: 4px;
-  vertical-align: middle;
-}
-
 .archive-volume-list__due--danger {
-  color: var(--dp-color-error);
+  color: var(--dp-error);
   font-weight: 600;
 }
 
 .archive-volume-list__due--warn {
-  color: var(--dp-color-warning);
+  color: var(--dp-warning);
   font-weight: 600;
-}
-
-:deep(.archive-volume-list__table) {
-  .ant-table-tbody > tr.archive-volume-list__row--error > td {
-    background: color-mix(in srgb, var(--dp-color-error) 7%, transparent);
-  }
-
-  .ant-table-tbody > tr.archive-volume-list__row--warning > td {
-    background: color-mix(in srgb, var(--dp-color-warning) 8%, transparent);
-  }
-
-  .ant-table-tbody > tr.archive-volume-list__row--info > td {
-    background: color-mix(in srgb, var(--dp-blue-400) 8%, transparent);
-  }
 }
 </style>

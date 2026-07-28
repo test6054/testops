@@ -75,8 +75,10 @@
         <span v-if="props.tip" class="ui-platform-file-field__tip">{{ props.tip }}</span>
         <input
           ref="inputRef"
+          :id="props.inputId"
           type="file"
-          class="sr-only"
+          class="tw:sr-only"
+          :aria-label="props.inputLabel"
           :accept="props.accept"
           @change="onFileChange"
         />
@@ -108,6 +110,8 @@ const fileSize = defineModel<number | undefined>('fileSize')
 const props = withDefaults(
   defineProps<{
     sceneKey: FileUploadSceneKey
+    inputId?: string
+    inputLabel?: string
     accept?: string
     buttonText?: string
     tip?: string
@@ -118,6 +122,8 @@ const props = withDefaults(
   }>(),
   {
     accept: '',
+    inputId: undefined,
+    inputLabel: '选择上传文件',
     buttonText: '选择文件',
     tip: '',
     variant: 'button',
@@ -210,15 +216,15 @@ function remove() {
   &__empty {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
   }
 
   &__file--after-drag {
-    margin-top: var(--dp-space-3);
-    padding: var(--dp-space-2) var(--dp-space-3);
+    margin-top: var(--dp-space-component);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-control);
-    background: var(--dp-bg-container);
+    background: var(--dp-surface);
   }
 
   &__name {
@@ -251,7 +257,7 @@ function remove() {
   }
 
   &--dragger :deep(.ant-upload-text) {
-    margin: 0 0 var(--dp-space-1);
+    margin: 0 0 var(--dp-space-component-xs);
     color: var(--dp-text-primary);
     font-size: var(--dp-font-size-md);
   }

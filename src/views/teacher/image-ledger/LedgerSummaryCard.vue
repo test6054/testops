@@ -1,6 +1,22 @@
 <template>
   <UiSkeletonState v-if="loading" variant="card" :card-count="3" compact />
   <UiAlertStrip
+    v-else-if="loadFailed && !ledger"
+    tone="error"
+    size="sm"
+    dense
+    inline
+    :show-icon="false"
+    class="ledger-summary__gate"
+  >
+    <template #default>
+      <span class="ledger-summary__gate-row">
+        <UiTag tone="red" size="sm">账本加载失败</UiTag>
+        <span>影像账本请求失败。不可将失败当作「待建立」。</span>
+      </span>
+    </template>
+  </UiAlertStrip>
+  <UiAlertStrip
     v-else-if="!ledger"
     tone="info"
     size="sm"
@@ -102,6 +118,8 @@ const props = withDefaults(
   ledger: ImageLedgerDetailResponse | null
   loading: boolean
   balancing: boolean
+  /** 父页请求失败；不得与「未建立账本」混用 */
+  loadFailed?: boolean
   /** MVR-264：主考写能力；非主考隐藏对账按钮 */
   canManageOwnerLedgerWrites?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
 }>(),
@@ -286,15 +304,15 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
 .ledger-summary {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .ledger-summary__hero {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
   background: var(--dp-surface-subtle);
   border-radius: var(--dp-radius-panel);
 }
@@ -302,7 +320,7 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
 .ledger-summary__hero-left {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
   flex: 1;
   min-width: 0;
 }
@@ -310,7 +328,7 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
 .ledger-summary__hero-meta {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
   flex: 1;
   min-width: 0;
 }
@@ -318,7 +336,7 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
 .ledger-summary__hero-status {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
 }
 
 .ledger-summary__hero-time {
@@ -333,7 +351,7 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
 .ledger-summary__diagnostic {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
@@ -343,17 +361,17 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
 }
 
 .ledger-summary__group-title {
-  margin: 0 0 8px;
+  margin: 0 0 var(--dp-space-component-tight);
   font-size: var(--dp-type-table-head-size);
   font-weight: var(--dp-type-table-head-weight);
   color: var(--dp-text-primary);
 }
 
-.ledger-summary__gate { margin: var(--dp-space-2) 0; }
+.ledger-summary__gate { margin: var(--dp-space-component-tight) 0; }
 .ledger-summary__gate-row {
   display: inline-flex;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
   min-width: 0;
 }
 </style>

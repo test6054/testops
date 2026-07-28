@@ -5,6 +5,9 @@
       'exam-sub-sidebar--collapsed': collapsed && !mobileOpen,
       'exam-sub-sidebar--mobile-open': mobileOpen,
     }"
+    :role="mobileOpen ? 'dialog' : undefined"
+    :aria-modal="mobileOpen ? true : undefined"
+    :aria-label="mobileOpen ? '考试导航' : undefined"
   >
     <div v-if="!collapsed" class="exam-sub-sidebar__exam-switch">
       <ExamSidebarExamSwitch
@@ -62,7 +65,13 @@
     </template>
 
     <div class="exam-sub-sidebar__footer">
-      <button type="button" class="exam-sub-sidebar__collapse-btn" @click="emit('toggle-collapse')">
+      <button
+        type="button"
+        class="exam-sub-sidebar__collapse-btn"
+        :aria-label="collapsed ? '展开考试导航' : '收起考试导航'"
+        :aria-expanded="!collapsed"
+        @click="emit('toggle-collapse')"
+      >
         <MenuFoldOutlined v-if="!collapsed" />
         <MenuUnfoldOutlined v-else />
       </button>
@@ -148,8 +157,8 @@ const journeyProgressLabel = computed(() => {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: var(--dp-surface, var(--dp-bg-container));
-  border-right: 1px solid var(--dp-border, var(--dp-border-subtle));
+  background: var(--dp-surface, var(--dp-surface));
+  border-right: 1px solid var(--dp-border);
   min-height: 0;
 
   &--collapsed {
@@ -157,7 +166,7 @@ const journeyProgressLabel = computed(() => {
   }
 
   &__exam-switch {
-    padding: var(--dp-space-3, 12px) var(--dp-space-3, 12px) var(--dp-space-2, 8px);
+    padding: var(--dp-space-component) var(--dp-space-component-tight);
     flex-shrink: 0;
   }
 
@@ -175,7 +184,7 @@ const journeyProgressLabel = computed(() => {
 
   &__footer {
     margin-top: auto;
-    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     border-top: 1px solid var(--dp-border, var(--dp-border-subtle));
     display: flex;
     justify-content: flex-end;
@@ -191,12 +200,12 @@ const journeyProgressLabel = computed(() => {
     border: none;
     border-radius: var(--dp-radius-panel);
     background: transparent;
-    color: var(--dp-text-muted, var(--dp-text-tertiary));
+    color: var(--dp-text-muted, var(--dp-text-muted));
     cursor: pointer;
 
     &:hover {
       background: var(--dp-gray-100, var(--dp-fill-tertiary));
-      color: var(--dp-text-primary, var(--dp-text));
+      color: var(--dp-text-primary, var(--dp-text-primary));
     }
   }
 
@@ -208,7 +217,7 @@ const journeyProgressLabel = computed(() => {
     height: calc(100vh - 56px);
     width: 260px;
     transform: translateX(-100%);
-    transition: transform 0.2s ease;
+    transition: transform var(--dp-duration-normal) var(--dp-ease-default);
     box-shadow: var(--dp-shadow-md);
 
     &--mobile-open {

@@ -141,7 +141,7 @@ export const ArchiveMaterialTypeDescription: Record<ArchiveMaterialTypeCode, str
   [ArchiveMaterialTypeCode.TRAINING_OBJECTIVE_REPORT]: '培养目标达成评价报告',
   [ArchiveMaterialTypeCode.PROCESS_ASSESSMENT]: '过程性考核材料',
   [ArchiveMaterialTypeCode.STUDENT_EXAM_PAPER]: '学生试卷',
-  [ArchiveMaterialTypeCode.ANSWER_SHEET]: '答题卡',
+  [ArchiveMaterialTypeCode.ANSWER_SHEET]: '答题页',
   [ArchiveMaterialTypeCode.OPTICAL_DISC]: '光盘',
   [ArchiveMaterialTypeCode.PAPERLESS_EXAM_RESULT]: '无纸化考试结果',
   [ArchiveMaterialTypeCode.AUDIO_VIDEO]: '音视频',
@@ -162,3 +162,17 @@ export const ArchiveMaterialTypeDescription: Record<ArchiveMaterialTypeCode, str
   [ArchiveMaterialTypeCode.STUDENT_STATUS_CARD]: '学籍卡',
   [ArchiveMaterialTypeCode.GRADUATION_MATERIAL_LIST]: '毕业材料清单',
 }
+
+/** 成绩主证据：成绩单 / 分项成绩（与后端 ArchiveMaterialType.isPrimaryScoreEvidenceMaterial 对齐） */
+export const PRIMARY_ARCHIVE_SCORE_EVIDENCE_MATERIAL_TYPES: readonly ArchiveMaterialTypeCode[] = [
+  ArchiveMaterialTypeCode.TRANSCRIPT,
+  ArchiveMaterialTypeCode.ITEMIZED_SCORE,
+] as const
+
+export function isPrimaryArchiveScoreEvidenceMaterial(
+  code: ArchiveMaterialTypeCode | null | undefined,
+): boolean {
+  return code === ArchiveMaterialTypeCode.TRANSCRIPT
+    || code === ArchiveMaterialTypeCode.ITEMIZED_SCORE
+}
+

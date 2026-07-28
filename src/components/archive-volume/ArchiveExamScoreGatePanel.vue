@@ -154,16 +154,16 @@ defineExpose({
 .archive-exam-score-gate-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-exam-score-gate-panel__row {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2);
-  padding: var(--dp-space-3);
-  border-radius: var(--dp-radius-md);
-  background: var(--dp-surface-sunken);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component);
+  border-radius: var(--dp-radius-control);
+  background: var(--dp-bg-muted);
 }
 
 .archive-exam-score-gate-panel__check {
@@ -174,7 +174,7 @@ defineExpose({
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: var(--dp-font-size-xxs);
+  font-size: var(--dp-font-size-xs);
 
   &--pass {
     color: var(--dp-text-inverse);
@@ -203,7 +203,7 @@ defineExpose({
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-exam-score-gate-panel__title {
@@ -213,7 +213,7 @@ defineExpose({
 }
 
 .archive-exam-score-gate-panel__hint {
-  margin: 4px 0 0;
+  margin: var(--dp-space-component-xs) 0 0;
   font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-secondary);
@@ -223,12 +223,12 @@ defineExpose({
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-3);
-  margin-top: var(--dp-space-1);
-  padding: 4px 10px;
+  gap: var(--dp-space-component);
+  margin-top: var(--dp-space-component-xs);
+  padding: var(--dp-space-component-xs) var(--dp-space-component);
   min-height: 32px;
   max-width: 100%;
-  border: 1px solid var(--dp-border-light);
+  border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control, 4px);
   background: var(--dp-surface-subtle, var(--dp-surface));
 }
@@ -236,7 +236,7 @@ defineExpose({
 .archive-exam-score-gate-panel__stat {
   display: inline-flex;
   align-items: baseline;
-  gap: 6px;
+  gap: var(--dp-space-component-tight);
   min-width: 0;
 }
 
@@ -263,11 +263,11 @@ defineExpose({
 
 .archive-exam-score-gate-panel__empty-papers {
   margin: 0;
-  padding: var(--dp-space-3);
+  padding: var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   line-height: 1.5;
   color: var(--dp-text-secondary);
-  border-radius: var(--dp-radius-md);
-  background: var(--dp-surface-sunken);
+  border-radius: var(--dp-radius-control);
+  background: var(--dp-bg-muted);
 }
 </style>

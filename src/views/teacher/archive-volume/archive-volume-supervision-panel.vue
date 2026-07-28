@@ -9,23 +9,7 @@
       v-if="summaryStatsLoadFailed"
       tone="warning"
       title="督导概览计数加载失败"
-      description="列表与矩阵仍可分别查询。"
-    >
-      <template #actions>
-        <UiButton
-          size="sm"
-          variant="outline"
-          @click="
-            () => {
-              void loadRemediationStats()
-              void loadSupervisionVolumeStats()
-            }
-          "
-        >
-          重新加载
-        </UiButton>
-      </template>
-    </UiAlertStrip>
+    />
 
     <UiSectionTabs v-model="activeTab" :items="supervisionTabItems" compact />
 
@@ -141,9 +125,11 @@
           </div>
         </template>
         <UiSkeletonState v-if="statsLoading" variant="card" compact />
-        <UiEmpty size="sm" v-else-if="statsLoadFailed" description="就绪矩阵加载失败">
-          <UiButton size="sm" variant="outline" @click="loadReadinessPreview">重新加载</UiButton>
-        </UiEmpty>
+        <UiEmpty
+          size="sm"
+          v-else-if="statsLoadFailed"
+          description="就绪矩阵加载失败"
+        />
         <template v-else>
           <SignalBand
             v-if="matrixPreviewRows.length"
@@ -197,7 +183,7 @@
           />
           <UiAlertStrip v-else tone="info" size="sm" dense inline :show-icon="false">
             <template #default>
-              <span style="display: inline-flex; align-items: center; gap: 8px">
+              <span style="display: inline-flex; align-items: center; gap: var(--dp-space-component-tight)">
                 <UiTag tone="blue" size="sm">未选择学期</UiTag>
                 <span>请选择学年学期后查询就绪度</span>
               </span>
@@ -480,6 +466,7 @@ import { SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
+  applyTripleSemesterChange,
   buildAcademicYearSemesterTripleFilterFields,
   buildTriplePeriodQuery,
   createAcademicYearSemesterTripleDefaults,
@@ -947,7 +934,8 @@ function queryReadinessPreview() {
 
 async function loadRemediationStats(): Promise<void> {
   try {
-    const stats = await getSupervisionRemediationStats()
+    const termQuery = buildTriplePeriodQuery(volumeFilterForm)
+    const stats = await getSupervisionRemediationStats(termQuery ?? {})
     remediationOpenCount.value = stats.openTaskCount
     remediationStatsLoadFailed.value = false
   } catch {
@@ -968,9 +956,11 @@ async function loadSupervisionVolumeStats(): Promise<void> {
 async function loadRemediation() {
   remediationLoading.value = true
   try {
+    const termQuery = buildTriplePeriodQuery(volumeFilterForm)
     const page = await pageSupervisionRemediationTasks({
       pageNum: remediationPagination.pageNum,
       pageSize: remediationPagination.pageSize,
+      ...(termQuery ?? {}),
     })
     remediationTasks.value = page.list
     remediationPagination.total = page.total
@@ -1131,9 +1121,27 @@ watch(
 )
 
 watch(
+  () => volumeFilterForm.semester,
+  (semester) => {
+    if (semester == null && volumeFilterForm.academicYearStartYear != null) {
+      applyTripleSemesterChange(volumeFilterForm, undefined)
+    }
+  },
+)
+
+watch(
   () => statsFilter.academicYearStartYear,
   (startYear) => {
     applyAcademicYearStartYearChange(statsFilter, startYear)
+  },
+)
+
+watch(
+  () => statsFilter.semester,
+  (semester) => {
+    if (semester == null && statsFilter.academicYearStartYear != null) {
+      applyTripleSemesterChange(statsFilter, undefined)
+    }
   },
 )
 
@@ -1153,21 +1161,21 @@ onMounted(() => {
 
 <style scoped>
 .archive-supervision-panel__top-signal {
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: var(--dp-space-component);
 }
 
 .archive-supervision-panel__section {
-  margin-top: var(--dp-space-4);
+  margin-top: var(--dp-space-block);
 }
 
 .archive-supervision-panel__remediation-tag {
-  margin-left: var(--dp-space-1);
+  margin-left: var(--dp-space-component-xs);
 }
 
 .archive-supervision-panel__volume-actions {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
   width: 100%;
 }
 
@@ -1176,23 +1184,23 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   width: 100%;
 }
 
 .archive-supervision-panel__export-hint {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
   line-height: 1.5;
 }
 
 .archive-supervision-panel__signal {
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-block);
 }
 
 .archive-supervision-panel__table {
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
 }
 
 .detail-head__title {
@@ -1202,17 +1210,17 @@ onMounted(() => {
 
 .detail-head__sub {
   color: var(--dp-text-muted);
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .section-title {
-  margin: 16px 0 8px;
+  margin: var(--dp-space-block) 0 var(--dp-space-component-tight);
   font-size: var(--dp-font-size-md);
 }
 
 .archive-supervision-panel__problem-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 </style>

@@ -34,6 +34,7 @@ import type { PortfolioAlertTypeCode } from '@/types/enums/portfolio-alert-type-
 import type { PortfolioAnnualReportTaskStatusCode } from '@/types/enums/portfolio-annual-report-task-status-enum'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import type { PortfolioComplianceScopeTypeCode } from '@/types/enums/portfolio-compliance-scope-type-enum'
+import type { PortfolioCreditCategoryCode } from '@/types/enums/portfolio-credit-category-enum'
 import type { PortfolioEthicsImpactScopeCode } from '@/types/enums/portfolio-ethics-impact-scope-enum'
 import type { PortfolioEvaluationSceneCode } from '@/types/enums/portfolio-evaluation-scene-enum'
 import type { PortfolioSuggestionPriorityCode } from '@/types/enums/portfolio-suggestion-priority-enum'
@@ -54,11 +55,19 @@ export interface PortfolioAnalysisAlertVO {
   alertSummary?: string
   ruleSnapshotId?: string
   portraitComputedTime?: string
+  /** 状态版本；处置时回传 expectedStatusVersion */
+  statusVersion: number
+  assigneeUserId?: string
+  resolveEvidenceText?: string
+  resolveRemark?: string
+  acknowledgedUserId?: string
+  acknowledgedTime?: string
+  resolvedTime?: string
+  updateTime: string
 
   /** 归属教师生命周期状态编码（台账可见不默认过滤；结构态仅标注） */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 归属教师生命周期状态标签 */
-  lifecycleStatusLabel?: string
   /** 档案写禁 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -83,7 +92,6 @@ export interface PortfolioAnalysisSuggestionVO {
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
-  lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -110,7 +118,6 @@ export interface PortfolioAnalysisTrainingRecommendVO {
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
-  lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -136,13 +143,12 @@ export interface PortfolioPortraitCreditCurveVO {
   dataSource: string
   totalCredits: string
   points: PortfolioPortraitCreditCurvePointVO[]
-  creditCategory?: string
-  availableCategories?: string[]
+  creditCategory?: PortfolioCreditCategoryCode
+  availableCategories?: PortfolioCreditCategoryCode[]
   trendNote?: string | null
   officialFactCount?: number
   dedupDroppedCount?: number
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -164,6 +170,15 @@ export interface PortfolioAnalysisComplianceAlertVO {
   thresholdValue?: string
   alertSummary: string
   computedTime: string
+  /** 状态版本；处置时回传 expectedStatusVersion */
+  statusVersion: number
+  assigneeUserId?: string
+  resolveEvidenceText?: string
+  resolveRemark?: string
+  acknowledgedUserId?: string
+  acknowledgedTime?: string
+  resolvedTime?: string
+  updateTime: string
 }
 
 export interface PortfolioSchoolPortraitCockpitVO {
@@ -198,7 +213,6 @@ export interface PortfolioAnalysisAnnualReportVO {
   errorSummary?: string
   createTime: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
@@ -256,8 +270,7 @@ export interface PortfolioAppointmentPeriodRiskItemVO {
 export interface PortfolioAppointmentPeriodEvaluationVO {
   formulaLabel?: string
   teacherId?: string
-  cycleSceneCode?: PortfolioEvaluationSceneCode
-  cycleSceneLabel?: string
+  cycleSceneCode: PortfolioEvaluationSceneCode
   annualSourceSceneCode?: PortfolioEvaluationSceneCode
   periodStart?: string
   periodEnd?: string
@@ -275,7 +288,6 @@ export interface PortfolioAppointmentPeriodEvaluationVO {
   /** 贡献教师多身份口径说明 */
   ownerMultiIdentityNote?: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
-  lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
@@ -379,7 +391,7 @@ export const portfolioAnalysisApi = {
     ),
   dismissTrainingRecommendation: (data: { recommendationId: string }) =>
     http.post<void>('/api/portfolio/analysis/recommend/training/dismiss', data),
-  getCreditCurve: (data: { teacherId: string, creditCategory?: string }) =>
+  getCreditCurve: (data: { teacherId: string, creditCategory?: PortfolioCreditCategoryCode }) =>
     http.post<PortfolioPortraitCreditCurveVO>('/api/portfolio/portrait/teacher/credit-curve', data),
   getDepartmentPortrait: (data: { departmentId: string }) =>
     http.post<PortfolioDepartmentPortraitVO>('/api/portfolio/portrait/department/get', data),
@@ -428,11 +440,19 @@ export const portfolioAnalysisApi = {
   resolvePortraitAlert: (data: {
     alertId: string
     alertStatus: PortfolioAlertStatusCode
+    expectedFromStatus: PortfolioAlertStatusCode
+    expectedStatusVersion: number
     resolveRemark?: string
+    assigneeUserId?: string
+    resolveEvidenceText?: string
   }) => http.post<void>('/api/portfolio/analysis/alert/resolve', data),
   resolveComplianceAlert: (data: {
     alertId: string
     alertStatus: PortfolioAlertStatusCode
+    expectedFromStatus: PortfolioAlertStatusCode
+    expectedStatusVersion: number
     resolveRemark?: string
+    assigneeUserId?: string
+    resolveEvidenceText?: string
   }) => http.post<void>('/api/portfolio/analysis/compliance/resolve', data),
 }

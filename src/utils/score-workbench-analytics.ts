@@ -38,6 +38,7 @@ const STATUS_FLOW_ORDER: FinalScoreStatusCode[] = [
   FinalScoreStatusCode.CALCULATED,
   FinalScoreStatusCode.CONFIRMED,
   FinalScoreStatusCode.CORRECTED,
+  FinalScoreStatusCode.PENDING_PUBLISH_REVIEW,
   FinalScoreStatusCode.PUBLISHED,
   FinalScoreStatusCode.WITHDRAWN,
 ]
@@ -73,6 +74,8 @@ function statusCount(overview: FinalScoreRiskOverviewResponse, code: FinalScoreS
       return overview.confirmedCount
     case FinalScoreStatusCode.CORRECTED:
       return overview.correctedCount
+    case FinalScoreStatusCode.PENDING_PUBLISH_REVIEW:
+      return overview.pendingPublishReviewCount
     case FinalScoreStatusCode.PUBLISHED:
       return overview.publishedCount
     case FinalScoreStatusCode.WITHDRAWN:
@@ -98,7 +101,10 @@ function resolveFlowEmphasis(
       && overview.calculatedCount === 0
     )
   }
-  // 发布态：可发布优先高亮 CONFIRMED；若有已更正待重发，高亮 CORRECTED，避免误以为已闭环。
+  // 发布态：可提交复核优先高亮 CONFIRMED；待发布复核或已更正待重发单独强调。
+  if (code === FinalScoreStatusCode.PENDING_PUBLISH_REVIEW && overview.pendingPublishReviewCount > 0) {
+    return true
+  }
   if (code === FinalScoreStatusCode.CORRECTED && overview.correctedCount > 0) {
     return true
   }
@@ -122,9 +128,15 @@ export function buildScoreDistributionStatItems(
       ? [
           {
             key: 'publishable',
-            label: '可发布',
+            label: '可提交复核',
             value: formatCount(publishableCount, ' 人'),
             valClass: publishableCount > 0 ? 'stat-card__val--warn' : undefined,
+          },
+          {
+            key: 'pendingReview',
+            label: '待发布复核',
+            value: formatCount(overview.pendingPublishReviewCount, ' 人'),
+            valClass: overview.pendingPublishReviewCount > 0 ? 'stat-card__val--warn' : undefined,
           },
           {
             key: 'published',
@@ -245,9 +257,21 @@ export function buildScoreBulkPublishModalStatItems(
     },
     {
       key: 'publishable',
-      label: '可发布',
+      label: '可提交复核',
       value: formatCount(publishableCount, ' 人'),
       valClass: publishableCount > 0 ? 'stat-card__val--warn' : undefined,
+    },
+    {
+      key: 'pendingReview',
+      label: '待发布复核',
+      value: formatCount(overview.pendingPublishReviewCount, ' 人'),
+      valClass: overview.pendingPublishReviewCount > 0 ? 'stat-card__val--warn' : undefined,
+    },
+    {
+      key: 'pendingMyReview',
+      label: '待我复核',
+      value: formatCount(overview.pendingMyPublishReviewCount ?? 0, ' 人'),
+      valClass: (overview.pendingMyPublishReviewCount ?? 0) > 0 ? 'stat-card__val--warn' : undefined,
     },
     {
       key: 'published',

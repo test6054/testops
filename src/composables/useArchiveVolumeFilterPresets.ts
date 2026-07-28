@@ -56,6 +56,7 @@ const ARCHIVE_VOLUME_FILTER_PRESETS: ArchiveVolumeFilterPreset[] = [
     label: '可提交',
     tone: 'green',
     tabs: ['mine', 'college'],
+    // 合同：canSubmitOnly = 协作可提交权 ∧ submitReady（齐套），非仅能力位
     buildRequest: () => ({
       canSubmitOnly: true,
     }),

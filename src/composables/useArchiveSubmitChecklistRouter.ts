@@ -6,11 +6,17 @@ import {
   ARCHIVE_VOLUME_DETAIL_TAB_KEYS,
   ArchiveVolumeDetailTabKey,
 } from '@/constants/archive-volume-detail-tabs'
+import { ArchiveVolumeSubmitChecklistActionTypeCode } from '@/types/enums/archive-volume-submit-checklist-action-type-enum'
 
 export interface ArchiveSubmitChecklistRouteTarget {
   detailTabKey: ArchiveVolumeDetailTabKey
   checklistPhaseKey: ArchiveVolumeSubmitChecklistPhaseKey
 }
+
+/** 提交清单导航：详情 Tab，或跳转考试工作台成绩确认页。 */
+export type ArchiveSubmitChecklistNavigation
+  = | { kind: 'detailTab', target: ArchiveSubmitChecklistRouteTarget }
+    | { kind: 'examWorkspace', examId: string, routeName: 'TeacherExamWorkspaceScoreSummary' }
 
 /** 将提交清单阻塞项映射到详情 Tab 与清单阶段键。 */
 export function resolveSubmitChecklistRoute(
@@ -29,6 +35,30 @@ export function resolveSubmitChecklistRoute(
   }
 }
 
+/**
+ * 解析提交清单阻塞项最终导航目标。
+ * OPEN_EXAM_WORKSPACE 必须离开归档卷详情，进入考试工作台成绩确认主链。
+ */
+export function resolveSubmitChecklistNavigation(
+  item: ArchiveVolumeSubmitChecklistItemVO,
+  examId: string | undefined,
+): ArchiveSubmitChecklistNavigation {
+  if (item.actionType === ArchiveVolumeSubmitChecklistActionTypeCode.OPEN_EXAM_WORKSPACE) {
+    if (!examId) {
+      throw new Error('归档卷缺少 examId，无法跳转考试工作台处理门禁')
+    }
+    return {
+      kind: 'examWorkspace',
+      examId,
+      routeName: 'TeacherExamWorkspaceScoreSummary',
+    }
+  }
+  return {
+    kind: 'detailTab',
+    target: resolveSubmitChecklistRoute(item),
+  }
+}
+
 /** 阻塞项操作按钮文案。 */
 export function submitChecklistActionLabel(
   item: ArchiveVolumeSubmitChecklistItemVO,
@@ -36,6 +66,9 @@ export function submitChecklistActionLabel(
 ): string {
   if (item.actionLabel?.trim()) {
     return item.actionLabel.trim()
+  }
+  if (item.actionType === ArchiveVolumeSubmitChecklistActionTypeCode.OPEN_EXAM_WORKSPACE) {
+    return '处理考试门禁'
   }
   const routeTarget = target ?? resolveSubmitChecklistRoute(item)
   if (routeTarget.detailTabKey === ArchiveVolumeDetailTabKey.FOUR_PROPERTY) {

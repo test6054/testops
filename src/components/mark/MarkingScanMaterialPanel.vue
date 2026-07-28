@@ -240,7 +240,7 @@ onBeforeUnmount(releaseImages)
 .marking-scan-material {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 .marking-scan-material__tabs {
@@ -256,13 +256,13 @@ onBeforeUnmount(releaseImages)
 .marking-scan-material__viewer {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 
 .marking-scan-material__source-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
 }
 </style>

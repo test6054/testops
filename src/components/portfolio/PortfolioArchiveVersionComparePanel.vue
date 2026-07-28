@@ -10,12 +10,12 @@ import { computed, ref, watch } from 'vue'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { PortfolioArchiveRecordStatusDescription } from '@/apis/portfolio/enums'
 import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiButton from '@/components/ui-guide/ui/UiButton.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
-import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import {
   PORTFOLIO_ARCHIVE_FIELD_DIFF_CHANGE_TYPE_TONE,
   PortfolioArchiveFieldDiffChangeTypeCode,
@@ -221,16 +221,16 @@ function changeTypeTone(code: string): BadgeTone {
 .version-compare__toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 
 .version-compare__select {
   min-width: 220px;
   max-width: 320px;
   height: 32px;
-  padding: 0 8px;
+  padding: 0 var(--dp-space-component-tight);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-xs);
   background: var(--dp-surface);
@@ -242,22 +242,22 @@ function changeTypeTone(code: string): BadgeTone {
 
 .version-compare__filter {
   display: inline-flex;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   align-items: center;
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
 .version-compare__summary {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
 .version-compare__evidence {
   display: block;
-  margin-top: 4px;
+  margin-top: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 </style>

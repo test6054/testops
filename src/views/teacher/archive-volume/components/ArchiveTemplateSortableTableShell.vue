@@ -70,6 +70,6 @@ watch(
 }
 
 .archive-template-sortable-table :deep(.ant-table-row) {
-  transition: background-color 0.15s ease;
+  transition: background-color var(--dp-duration-fast) var(--dp-ease-default);
 }
 </style>

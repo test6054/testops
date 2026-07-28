@@ -1,50 +1,50 @@
 
-:global(.stats-row .stat-card),
-:global(.overview-stat-card),
-:global(.stat-card.dp-statcard) {
-  border: 1px solid var(--dp-border) !important;
-  border-radius: var(--dp-radius-panel) !important;
-  background: var(--dp-bg-container) !important;
+.stats-row .stat-card,
+.overview-stat-card,
+.stat-card.dp-statcard {
+  border: 1px solid var(--dp-panel-border, var(--dp-border-subtle));
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
   box-shadow: var(--dp-shadow-card);
-  transition: border-color var(--dp-duration-fast) ease;
-  padding: var(--dp-space-3) var(--dp-space-4);
+  transition: box-shadow var(--dp-duration-fast) var(--dp-ease-default);
+  padding: var(--dp-space-component) var(--dp-space-block);
 }
 
-:global(.stats-row .stat-card:hover),
-:global(.overview-stat-card:hover),
-:global(.stat-card.dp-statcard:hover) {
-  border-color: var(--dp-border-strong) !important;
+.stats-row .stat-card:hover,
+.overview-stat-card:hover,
+.stat-card.dp-statcard:hover {
+  box-shadow: var(--dp-shadow-card-hover);
 }
 
-:global(.stats-row .stat-card .stat-icon),
-:global(.overview-stat-card__icon) {
+.stats-row .stat-card .stat-icon,
+.overview-stat-card__icon {
   font-size: var(--dp-font-size-2xl);
 }
 
-:global(.stats-row .stat-card .stat-icon-wrapper) {
+.stats-row .stat-card .stat-icon-wrapper {
   width: 40px;
   height: 40px;
   border-radius: var(--dp-radius-panel);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--dp-color-primary-bg);
-  color: var(--dp-color-primary);
+  background: var(--dp-gray-100);
+  color: var(--dp-text-secondary);
 }
 
-:global(.stats-row .stat-card.success .stat-icon-wrapper) {
+.stats-row .stat-card.success .stat-icon-wrapper {
   background: var(--dp-success-bg);
   color: var(--dp-success);
 }
 
-:global(.stats-row .stat-card.warning .stat-icon-wrapper) {
+.stats-row .stat-card.warning .stat-icon-wrapper {
   background: var(--dp-warning-bg);
   color: var(--dp-warning);
 }
 
-:global(.stats-row .stat-card.info .stat-icon-wrapper) {
-  background: var(--dp-color-primary-bg-hover);
-  color: var(--dp-color-primary-hover);
+.stats-row .stat-card.info .stat-icon-wrapper {
+  background: var(--dp-gray-100);
+  color: var(--dp-text-secondary);
 }
 
 // 通用卡片
@@ -53,12 +53,12 @@
 
   & > .ant-card-head {
     height: auto;
-    padding: var(--dp-space-4);
+    padding: var(--dp-space-block);
     border: none;
   }
 
   & > .ant-card-body {
-    padding: 0 var(--dp-space-4) var(--dp-space-4) var(--dp-space-4);
+    padding: 0 var(--dp-space-block);
   }
 }
 
@@ -75,7 +75,7 @@
   .item {
     align-items: center;
     display: flex;
-    margin-bottom: var(--dp-space-5);
+    margin-bottom: var(--dp-space-block);
 
     .icon-wrapper {
       align-items: center;
@@ -89,15 +89,15 @@
 
     .info {
       flex: 1 1;
-      margin: 0 var(--dp-space-4);
+      margin: 0 var(--dp-space-block);
 
       &-top {
-        margin-bottom: var(--dp-space-1);
+        margin-bottom: var(--dp-space-component-xs);
 
         .label {
           font-weight: 500;
           line-height: 22px;
-          margin-right: var(--dp-space-3);
+          margin-right: var(--dp-space-component);
         }
 
         .bind {
@@ -108,7 +108,7 @@
       }
 
       &-desc {
-        color: var(--dp-text-tertiary);
+        color: var(--dp-text-muted);
         font-size: var(--dp-font-size-xs);
         font-weight: 400;
         line-height: 20px;
@@ -139,18 +139,18 @@
     display: flex;
     font-size: var(--dp-font-size-xs);
     justify-content: flex-start;
-    margin: calc(-1 * var(--dp-space-1) + 1px) 0 0 var(--dp-space-16);
+    margin: calc(-1 * var(--dp-space-component-xs) + 1px) 0 0 var(--dp-space-section-loose);
 
     .sub-text-wrapper {
       width: 100%;
       border-left: 2px solid var(--dp-fill);
-      padding-left: var(--dp-space-3);
+      padding-left: var(--dp-space-component);
 
       .sub-text {
         color: var(--dp-text-secondary);
         font-weight: 400;
         line-height: 20px;
-        margin-bottom: var(--dp-space-2);
+        margin-bottom: var(--dp-space-component-tight);
 
         &-value {
           background: var(--dp-fill-quaternary);
@@ -173,7 +173,7 @@
   position: relative;
 
   .ant-descriptions-title {
-    padding-left: 10px;
+    padding-left: var(--dp-space-component);
   }
 
   .ant-descriptions-title::before {
@@ -182,7 +182,7 @@
     height: 22px;
     position: absolute;
     left: 0;
-    background-color: var(--dp-color-primary-hover);
+    background-color: var(--dp-text-muted);
     border-radius: 0 var(--dp-radius-xs) var(--dp-radius-xs) 0;
   }
 }

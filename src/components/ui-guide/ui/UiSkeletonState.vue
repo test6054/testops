@@ -107,29 +107,29 @@ const hasHeader = computed(() => {
 .ui-skeleton-state {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4, 16px);
-  padding: var(--dp-space-4, 16px);
+  gap: var(--dp-space-block);
+  padding: var(--dp-space-block);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
 }
 
 .ui-skeleton-state--compact {
-  gap: var(--dp-space-3, 12px);
-  padding: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component);
 }
 
 .ui-skeleton-state__list,
 .ui-skeleton-state__cards {
   display: grid;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
 }
 
 .ui-skeleton-state__item,
 .ui-skeleton-state__card {
   display: flex;
-  gap: var(--dp-space-3, 12px);
-  padding: var(--dp-space-3, 12px);
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control-inner);
   background: var(--dp-gray-50);
@@ -141,7 +141,7 @@ const hasHeader = computed(() => {
 
 .ui-skeleton-state__content {
   display: grid;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
   flex: 1;
 }
 
@@ -187,13 +187,13 @@ const hasHeader = computed(() => {
 
 .ui-skeleton-state__table {
   display: grid;
-  gap: 10px;
+  gap: var(--dp-space-component);
 }
 
 .ui-skeleton-state__table-row {
   display: grid;
   grid-template-columns: repeat(var(--ui-skeleton-columns, 4), minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 
 .ui-skeleton-state__table-row--head .ui-skeleton-state__bar {

@@ -8,6 +8,30 @@
       <UiTag v-if="task" :tone="taskStatusTone(task.taskStatus)" size="sm">
         {{ taskStatusLabel(task.taskStatus) }}
       </UiTag>
+      <UiTag v-if="task?.dualMarkRole" tone="blue" size="sm">
+        双评·{{ dualMarkRoleLabel(task.dualMarkRole) }}
+      </UiTag>
+      <UiTag
+        v-if="task?.dualMarkRole && task.taskStatus === MarkingTaskStatusCode.FINALIZED && !task.dualMarkFormalGradeStatus"
+        tone="orange"
+        size="sm"
+      >
+        等待对端
+      </UiTag>
+      <UiTag
+        v-else-if="task?.dualMarkFormalGradeStatus === GradeStatusCode.NEED_REVIEW"
+        tone="orange"
+        size="sm"
+      >
+        已进仲裁
+      </UiTag>
+      <UiTag
+        v-else-if="task?.dualMarkFormalGradeStatus === GradeStatusCode.CONFIRMED"
+        tone="green"
+        size="sm"
+      >
+        双评已合成
+      </UiTag>
       <template v-if="task?.anonymousToken && !revealedIdentity">
         <UiTooltip
           v-if="canManageOwnerIdentityReveal !== true"
@@ -38,6 +62,14 @@
             <div class="marking-task-toolbar__summary-item">
               <dt>批阅单元</dt>
               <dd>{{ allocationUnitLabel(task.taskUnit) }}</dd>
+            </div>
+            <div v-if="task.dualMarkRole" class="marking-task-toolbar__summary-item">
+              <dt>双评角色</dt>
+              <dd>{{ dualMarkRoleLabel(task.dualMarkRole) }}</dd>
+            </div>
+            <div v-if="task.dualMarkPeerTaskStatus" class="marking-task-toolbar__summary-item">
+              <dt>对端状态</dt>
+              <dd>{{ taskStatusLabel(task.dualMarkPeerTaskStatus) }}</dd>
             </div>
             <div class="marking-task-toolbar__summary-item">
               <dt>答卷</dt>
@@ -137,8 +169,12 @@ import type {
   AllocationUnitCode,
   AnonymousRevealResponse,
   MarkingTaskResponse,
+} from '@/apis/mark/marking-organization'
+import {
   MarkingTaskStatusCode,
 } from '@/apis/mark/marking-organization'
+import { dualMarkRoleLabel } from '@/apis/mark/dual-mark-role'
+import { GradeStatusCode } from '@/types/enums/grade-status-enum'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { MarkingRecentSubmitEntry } from '@/composables/useMarkingRecentSubmit'
 import type { useMarkingTaskNavigation } from '@/composables/useMarkingTaskNavigation'

@@ -72,16 +72,16 @@ const statusTone = computed((): BadgeTone => {
 .mark-score-triple {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  padding: 8px 10px;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
-  border-radius: var(--dp-radius-control, 4px);
-  background: var(--dp-bg-container);
+  border-radius: var(--dp-radius-control);
+  background: var(--dp-surface);
 }
 
 .mark-score-triple--compact {
-  padding: 6px 8px;
-  gap: 6px;
+  padding: var(--dp-space-component-tight);
+  gap: var(--dp-space-component-tight);
 }
 
 .mark-score-triple__cell {
@@ -92,16 +92,16 @@ const statusTone = computed((): BadgeTone => {
 }
 
 .mark-score-triple__label {
-  font-size: var(--dp-font-size-xxs);
+  font-size: var(--dp-font-size-xs);
   line-height: 16px;
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .mark-score-triple__value {
   font-size: var(--dp-font-size-lg);
   font-weight: 600;
   line-height: 22px;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
   font-variant-numeric: tabular-nums;
 }
 

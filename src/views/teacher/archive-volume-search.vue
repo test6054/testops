@@ -29,7 +29,7 @@
                 v-model="selectedProfileId"
                 allow-clear
                 class="archive-search-toolbar__profile-select"
-                :loading="profilesLoading"
+                :loading="profilesLoading === true"
                 placeholder="已保存检索"
                 :options="profileOptions"
               />
@@ -453,6 +453,7 @@ import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
+  applyTripleSemesterChange,
   buildTriplePeriodQuery,
   createAcademicYearSemesterTripleDefaults,
   ensureTriplePeriodPair,
@@ -1140,6 +1141,15 @@ watch(
   },
 )
 
+watch(
+  () => filterForm.semester,
+  (semester) => {
+    if (semester == null && filterForm.academicYearStartYear != null) {
+      applyTripleSemesterChange(filterForm, undefined)
+    }
+  },
+)
+
 onMounted(async () => {
   void loadDepartments()
   void loadCourses()
@@ -1168,33 +1178,29 @@ onMounted(async () => {
 .archive-search-toolbar {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-component);
 }
 .archive-search-toolbar__profiles {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 .archive-search-toolbar__profile-select {
   min-width: 220px;
-}
-.archive-search-toolbar__profile-error {
-  color: var(--dp-text-secondary);
-  font-size: var(--dp-font-size-sm);
 }
 
 .archive-search-primary {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-search-primary__field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   min-width: 0;
 }
 
@@ -1218,14 +1224,14 @@ onMounted(async () => {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-search-scope-hint {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 
 .archive-search-advanced-toggle {
@@ -1237,15 +1243,15 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--dp-space-2);
-  padding-top: var(--dp-space-1);
+  gap: var(--dp-space-component-tight);
+  padding-top: var(--dp-space-component-xs);
   border-top: 1px solid var(--dp-border-subtle);
 }
 
 .archive-search-advanced__field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   min-width: 140px;
 }
 
@@ -1271,7 +1277,7 @@ onMounted(async () => {
 }
 
 .archive-search-result-meta {
-  margin: 0 0 var(--dp-space-3);
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
@@ -1280,7 +1286,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: var(--dp-space-1);
+  gap: var(--dp-space-component-xs);
   min-width: 0;
 }
 
@@ -1292,17 +1298,17 @@ onMounted(async () => {
 .archive-search-page-no {
   font-size: 10px;
   font-weight: 600;
-  font-family: var(--dp-font-mono);
+  font-family: var(--dp-font-family-code);
   color: var(--dp-text-muted);
 }
 .archive-search-ocr-panel {
-  margin-top: var(--dp-space-3);
+  margin-top: var(--dp-space-component);
 }
 .archive-search-ocr-panel__head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--dp-space-2);
+  gap: var(--dp-space-component-tight);
 }
 .archive-search-ocr-panel__title {
   font-weight: 600;

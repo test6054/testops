@@ -98,7 +98,7 @@
                 <strong>{{ question.aiScore }}</strong>
                 <span>/ {{ question.fullScore }}</span>
               </div>
-              <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
+              <div class="dp-space dp-space--wrap dp-space--tight">
                 <UiButton
                   size="sm"
                   variant="outline"
@@ -182,7 +182,7 @@
           </UiCollapsePanel>
         </UiCollapse>
         <p class="marking-score-panel__keyboard-hint">
-          Enter 确认本题并展开下一题 · AI 分须手动填入 · 0-9 快捷 · PageUp/Down 翻页 · J/K 切换
+          Enter 确认本题并展开下一题 · AI 分须手动填入 · 0-9 快捷 · PageUp/Down 翻页 · Space/←/→ 切换（J/K 别名）
         </p>
       </template>
 
@@ -208,7 +208,7 @@
           />
           <span class="marking-score-panel__step-hint">步长 0.5 · 满分 {{ questionView?.fullScore ?? '—' }}</span>
         </div>
-        <div class="marking-score-panel__quick-actions dp-space" style="--dp-space-gap: 8px">
+        <div class="marking-score-panel__quick-actions dp-space dp-space--tight">
           <UiButton
             size="sm"
             variant="outline"
@@ -304,7 +304,7 @@
           </UiButton>
         </div>
         <p class="marking-score-panel__keyboard-hint">
-          Enter 提交并进入下一未阅 · AI 分须点「填入」或「采纳并提交」· J/K 切换 · 0-9 快捷
+          Enter 提交并进入下一未阅 · AI 分须点「填入」或「采纳并提交」· Space/←/→ 切换（J/K 别名）· 0-9 快捷
         </p>
       </UiFormItem>
 
@@ -461,26 +461,26 @@ function quickDigitScores(fullScore: number): number[] {
 
 <style lang="scss" scoped>
 .marking-score-panel {
-  margin-bottom: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-component);
 
   &__score-input {
     width: 100%;
-    margin-bottom: 8px;
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__quick-actions {
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
   }
 
   &__quick-digits {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 8px;
+    gap: var(--dp-space-component-tight);
+    margin-top: var(--dp-space-component-tight);
   }
 
   &__keyboard-hint {
-    margin: 8px 0 0;
+    margin: var(--dp-space-component-tight) 0 0;
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
@@ -501,25 +501,25 @@ function quickDigitScores(fullScore: number): number[] {
 
     :deep(.ant-collapse-header) {
       align-items: flex-start !important;
-      padding: 12px 16px !important;
+      padding: var(--dp-space-component) var(--dp-space-block) !important;
     }
 
     :deep(.ant-collapse-content-box) {
-      padding: 0 16px 16px !important;
+      padding: 0 var(--dp-space-block) !important;
     }
   }
 
   &__question-header {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     align-items: center;
     width: 100%;
   }
 
   &__question-stem {
-    margin: 0 0 8px;
-    padding: 8px 10px;
+    margin: 0 0 var(--dp-space-component-tight);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-panel);
     color: var(--dp-text-primary);
@@ -527,20 +527,20 @@ function quickDigitScores(fullScore: number): number[] {
   }
 
   &__recognized-answer {
-    margin-bottom: 8px;
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__recognized-answer--empty {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__ai {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin: 0 0 8px;
-    padding: 8px;
+    gap: var(--dp-space-component-tight);
+    margin: 0 0 var(--dp-space-component-tight);
+    padding: var(--dp-space-component-tight);
     border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-panel);
     background: var(--dp-surface-subtle);
@@ -549,7 +549,7 @@ function quickDigitScores(fullScore: number): number[] {
   &__ai-text {
     display: flex;
     align-items: baseline;
-    gap: 4px;
+    gap: var(--dp-space-component-xs);
     font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
 
@@ -566,7 +566,7 @@ function quickDigitScores(fullScore: number): number[] {
   }
 
   &__ai-pending {
-    margin-bottom: 8px;
+    margin-bottom: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-sm);
   }
 
@@ -578,6 +578,6 @@ function quickDigitScores(fullScore: number): number[] {
 }
 
 .marking-score-panel__score-triple {
-  margin-bottom: 10px;
+  margin-bottom: var(--dp-space-component);
 }
 </style>

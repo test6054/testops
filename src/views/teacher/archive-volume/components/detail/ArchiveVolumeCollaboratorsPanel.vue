@@ -154,7 +154,7 @@ const signalMetrics = computed((): SignalMetric[] => {
   return [
     { key: 'total', label: '合计', value: stats.total, tone: 'blue', iconTone: 'blue' },
     { key: 'organizers', label: '责任人', value: stats.organizers, tone: 'blue', iconTone: 'blue' },
-    { key: 'scanners', label: '扫描', value: stats.scanners, tone: 'orange', iconTone: 'orange' },
+    { key: 'scanners', label: '扫描', value: stats.scanners, tone: 'orange', iconTone: 'purple' },
     { key: 'catalog', label: '编目', value: stats.catalog, tone: 'purple', iconTone: 'purple' },
     { key: 'submitters', label: '提交', value: stats.submitters, tone: 'green', iconTone: 'green' },
     { key: 'viewers', label: '只读', value: stats.viewers, tone: 'gray', iconTone: 'gray' },
@@ -389,7 +389,7 @@ async function handleRemove(row: CollaboratorMemberRow) {
     okText: '移除',
     cancelText: '取消',
   })
-  if (!confirmed || submitting.value === true) return
+  if (!confirmed || submitting.value) return
   // MVR-944：确认后再次认 canManageCollaborators ∧ removable，防对话框期间权限/行态漂移
   if (props.canManageCollaborators !== true) {
     void message.warning('当前账号无协作老师管理权限')
@@ -538,8 +538,8 @@ async function handleRemove(row: CollaboratorMemberRow) {
 .av-collab {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-4);
-  padding: var(--dp-space-4);
+  gap: var(--dp-space-block);
+  padding: var(--dp-space-block);
   max-width: 1100px;
 }
 
@@ -558,7 +558,7 @@ async function handleRemove(row: CollaboratorMemberRow) {
 .av-collab__role-node {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   min-width: 0;
 }
 
@@ -591,7 +591,7 @@ async function handleRemove(row: CollaboratorMemberRow) {
 .av-collab__actions {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   flex-wrap: wrap;
 }
 

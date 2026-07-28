@@ -10,6 +10,7 @@ import type {
 import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   PORTFOLIO_EVALUATION_MODE_OPTIONS,
   PORTFOLIO_EVALUATION_NOTICE_MATERIAL_OPERABLE_STATUSES,
@@ -27,6 +28,7 @@ import {
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import { PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE } from '@/apis/portfolio/types'
@@ -38,6 +40,7 @@ import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
@@ -47,13 +50,19 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQueryTable } from '@/composables/useQueryTable'
-import { PortfolioEvaluationIdentityMaterialScopeCode } from '@/types/enums/portfolio-evaluation-identity-material-scope-enum'
+import { PfIndicatorStatusCode } from '@/types/enums/pf-indicator-status-enum'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { loadAllPages } from '@/utils/load-all-pages'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { portfolioIdentityTypeDisplay } from '@/utils/portfolio-identity-type'
+import { portfolioLifecycleStatusDisplay } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const workgroups = ref<EvaluationWorkgroupVO[]>([])
+const workgroupRequestToken = ref(0)
+const workgroupsLoadFailed = ref(false)
+const indicatorConfigRequestToken = ref(0)
+const indicatorConfigsLoadFailed = ref(false)
 const indicatorConfigs = ref<PortfolioTenantIndicatorConfigVO[]>([])
 const previewTeacherOptions = ref<Array<{ value: string, label: string }>>([])
 const previewOpen = ref(false)
@@ -68,7 +77,7 @@ const returnDueTime = ref('')
 const returning = ref(false)
 const taskOperationKey = ref('')
 const exporting = ref(false)
-const exportConfirmOpen = ref(false)
+const exportApplyOpen = ref(false)
 const exportPurpose = ref('')
 const taskWriting = computed(() => Boolean(taskOperationKey.value))
 
@@ -109,16 +118,16 @@ function evaluationCourseArchiveMeta(preview: PortfolioEvaluationMaterialPreview
 }
 
 function identityScopeLabel(scope?: string): string {
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.CAMPUS) return '校内'
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.EXTERNAL) return '仅外部'
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.SHARED) return '共享'
+  if (scope === 'CAMPUS') return '校内'
+  if (scope === 'EXTERNAL') return '仅外部'
+  if (scope === 'SHARED') return '共享'
   return scope || '—'
 }
 
 function identityScopeTone(scope?: string): 'blue' | 'orange' | 'green' | 'gray' {
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.CAMPUS) return 'blue'
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.EXTERNAL) return 'orange'
-  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.SHARED) return 'green'
+  if (scope === 'CAMPUS') return 'blue'
+  if (scope === 'EXTERNAL') return 'orange'
+  if (scope === 'SHARED') return 'green'
   return 'gray'
 }
 
@@ -127,7 +136,7 @@ function identityMaterialRowKey(record: unknown): string {
     archiveRecordId?: string
     categoryCode?: string
     academicYear?: string
-    identityScope?: PortfolioEvaluationIdentityMaterialScopeCode
+    identityScope?: string
   }
   return [
     item.archiveRecordId ?? '',
@@ -259,8 +268,9 @@ function workgroupName(id?: string) {
 }
 
 async function loadWorkgroups() {
+  const currentToken = ++workgroupRequestToken.value
   try {
-    workgroups.value = await loadAllPages(
+    const rows = await loadAllPages(
       ({ pageNum, pageSize }) =>
         evaluationWorkgroupApi.page({
           pageNum,
@@ -268,17 +278,36 @@ async function loadWorkgroups() {
         }),
       QUALITY_SELECTOR_PAGE_SIZE,
     )
+    if (workgroupRequestToken.value !== currentToken) {
+      return
+    }
+    workgroups.value = rows
+    workgroupsLoadFailed.value = false
   } catch (error) {
+    if (workgroupRequestToken.value !== currentToken) {
+      return
+    }
+    workgroupsLoadFailed.value = true
     showUserError(error, '加载评价工作组失败')
   }
 }
 
 async function loadIndicatorConfigs() {
+  const currentToken = ++indicatorConfigRequestToken.value
   try {
-    indicatorConfigs.value = (await portfolioIndicatorTenantApi.listConfig()).filter(
-      (item) => item.enabled,
+    const rows = (await portfolioIndicatorTenantApi.listConfig()).filter(
+      (item) => item.enabled && item.platformStatus === PfIndicatorStatusCode.ACTIVE,
     )
+    if (indicatorConfigRequestToken.value !== currentToken) {
+      return
+    }
+    indicatorConfigs.value = rows
+    indicatorConfigsLoadFailed.value = false
   } catch (error) {
+    if (indicatorConfigRequestToken.value !== currentToken) {
+      return
+    }
+    indicatorConfigsLoadFailed.value = true
     showUserError(error, '加载可回流指标失败')
   }
 }
@@ -288,7 +317,11 @@ function buildPreviewTeacherOptions(rows: PortfolioEvaluationSubjectTeacherOptio
   return rows.map((item) => {
     const name = item.fullName?.trim() ? item.fullName : item.teacherUserId
     const hold = item.evaluationHeld
-      ? `（${item.lifecycleStatusLabel || item.lifecycleStatus || '参评hold'}）`
+      ? `（${
+        item.lifecycleStatus
+          ? portfolioLifecycleStatusDisplay(item.lifecycleStatus)
+          : '参评hold'
+      }）`
       : ''
     return {
       value: item.teacherUserId,
@@ -575,31 +608,38 @@ async function publishTask(id: string) {
   }
 }
 
-function openExportConfirm() {
-  if (exporting.value || taskWriting.value) {
+const router = useRouter()
+
+function openExportApply() {
+  if (taskWriting.value) {
     return
   }
   exportPurpose.value = ''
-  exportConfirmOpen.value = true
+  exportApplyOpen.value = true
 }
 
-async function exportExcel() {
-  if (exporting.value || taskWriting.value) {
-    return
-  }
+async function submitExportApply() {
   const purpose = exportPurpose.value.trim()
   if (!purpose) {
     showFormValidationMessage('请填写导出用途')
-    return
+    return Promise.reject(new Error('导出用途为空'))
+  }
+  if (exporting.value || taskWriting.value) {
+    return Promise.reject(new Error('导出申请进行中'))
   }
   exporting.value = true
   try {
-    const result = await portfolioEvaluationTaskApi.exportExcel({ exportPurpose: purpose })
-    await downloadPortfolioExcelExport(result)
-    exportConfirmOpen.value = false
-    void message.success('评价任务已导出')
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.EVALUATION_TASK,
+      businessRef: {},
+      exportPurpose: purpose,
+    })
+    exportApplyOpen.value = false
+    void message.success('已提交多元评价任务导出审批')
+    await router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出评价任务失败')
+    showUserError(error, '提交多元评价任务导出审批失败')
+    return Promise.reject(error)
   } finally {
     exporting.value = false
   }
@@ -621,13 +661,25 @@ onMounted(async () => {
             variant="primary"
             :loading="exporting"
             :disabled="exporting || taskWriting"
-            @click="openExportConfirm"
+            @click="openExportApply"
           >
-            导出表格文件
+            申请导出
           </UiButton>
         </template>
       </ContextBar>
     </template>
+    <UiAlertStrip
+      v-if="workgroupsLoadFailed"
+      tone="error"
+      title="评价工作组加载失败"
+      class="dp-mb-component"
+    />
+    <UiAlertStrip
+      v-if="indicatorConfigsLoadFailed"
+      tone="error"
+      title="可回流指标加载失败"
+      class="dp-mb-component"
+    />
     <UiCard>
       <div class="form-row">
         <input
@@ -757,7 +809,7 @@ onMounted(async () => {
             <UiTag :tone="record.freezeCompleted ? 'green' : 'gray'">
               {{ record.freezeCompleted ? '已冻结' : '未冻结' }}
             </UiTag>
-            <div v-if="record.freezeTime" class="text-xs text-[var(--dp-text-tertiary)]">
+            <div v-if="record.freezeTime" class="dp-text-muted-xs">
               {{ record.freezeTime }}
             </div>
           </template>
@@ -847,7 +899,7 @@ onMounted(async () => {
               :key="layer.identityId || `${layer.identityType}-${idx}`"
             >
               <UiTag :tone="layer.externalIdentity ? 'orange' : 'blue'">
-                {{ layer.identityTypeLabel || layer.identityType || '身份' }}
+                {{ portfolioIdentityTypeDisplay(layer.identityType) }}
               </UiTag>
               <span>材料 {{ layer.materialCount ?? 0 }} 条</span>
               <span v-if="layer.externalIdentity">（外部层，不替代校内硬门槛）</span>
@@ -944,37 +996,35 @@ onMounted(async () => {
         <UiEmpty size="sm" v-else description="该教师当前没有评价材料通知" />
       </template>
     </UiDialog>
+    <UiDialog
+      v-model:open="exportApplyOpen"
+      title="申请导出多元评价任务台账"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="submitExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="exportPurpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
-  <UiDialog
-    v-model:open="exportConfirmOpen"
-    title="导出评价任务台账"
-    ok-text="确认导出"
-    cancel-text="取消"
-    :confirm-loading="exporting"
-    @ok="exportExcel"
-  >
-    <label class="export-purpose__label">导出用途（必填）</label>
-    <UiTextarea
-      v-model="exportPurpose"
-      size="sm"
-      :rows="3"
-      placeholder="请填写本次导出用途（写入审计）"
-      :disabled="exporting"
-    />
-  </UiDialog>
 </template>
 
 <style scoped>
 .form-row,
 .filter-row {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .input {
-  padding: 6px 8px;
+  padding: var(--dp-space-component-tight);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-xs);
 }
@@ -984,24 +1034,24 @@ onMounted(async () => {
 }
 .evaluation-task-admin__preview-bar {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: var(--dp-space-component);
 }
 .evaluation-task-admin__preview-meta {
-  margin: 0 0 12px;
+  margin: 0 0 var(--dp-space-component);
   font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .evaluation-task-admin__identity-material {
-  margin: 0 0 12px;
-  padding: 12px;
+  margin: 0 0 var(--dp-space-component);
+  padding: var(--dp-space-component);
   border: 1px solid var(--dp-border-subtle);
   border-radius: 6px;
-  background: var(--dp-bg-subtle);
+  background: var(--dp-surface-subtle);
 }
 .evaluation-task-admin__identity-policy {
-  margin: 8px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-secondary);
@@ -1009,8 +1059,8 @@ onMounted(async () => {
 .evaluation-task-admin__identity-layers {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
-  margin: 8px 0 0;
+  gap: var(--dp-space-component-tight) var(--dp-space-block);
+  margin: var(--dp-space-component-tight) 0 0;
   padding: 0;
   list-style: none;
   font-size: var(--dp-font-size-sm);
@@ -1019,11 +1069,11 @@ onMounted(async () => {
 .evaluation-task-admin__identity-layers li {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .evaluation-task-admin__notice {
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top: var(--dp-space-block);
+  padding-top: var(--dp-space-block);
   border-top: 1px solid var(--dp-border-subtle);
 }
 .evaluation-task-admin__notice-meta,
@@ -1031,16 +1081,16 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component);
 }
 .evaluation-task-admin__return-actions {
   justify-content: flex-end;
-  margin-top: 12px;
+  margin-top: var(--dp-space-component);
   margin-bottom: 0;
 }
 .evaluation-task-admin__return-reason {
-  margin: 12px 0 0;
+  margin: var(--dp-space-component) 0 0;
   color: var(--dp-text-secondary);
 }
 </style>

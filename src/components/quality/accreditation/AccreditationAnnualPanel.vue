@@ -11,6 +11,7 @@ import { accreditationApi } from '@/apis/quality/accreditation'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
@@ -21,19 +22,26 @@ import UiProgressBar from '@/components/ui-guide/ui/UiProgressBar.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { canMutateAnnualEvaluationPlan } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import {
+  AnnualEvaluationPlanStatusCode,
+  AnnualEvaluationPlanStatusDescription,
+} from '@/types/enums/annual-evaluation-plan-status-enum'
 import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
   programId: string
   trainingPlanId: string
-  activeCycleId?: string
+  maintenanceCycleId?: string
 }>()
 
 const emit = defineEmits<{ refresh: [] }>()
 
 const planColumns: ColumnsType = [
   { title: '年度', dataIndex: 'planYear', key: 'planYear', width: 80, fixed: 'left' },
+  { title: '认证周期', dataIndex: 'accreditationCycleName', key: 'accreditationCycleName', width: 190 },
   { title: '计划标题', dataIndex: 'planTitle', key: 'planTitle' },
+  { title: '状态', dataIndex: 'planStatus', key: 'planStatus', width: 90 },
   { title: '须评价', dataIndex: 'requiredCourseCount', key: 'requiredCourseCount', width: 80 },
   { title: '已完成', dataIndex: 'completedCourseCount', key: 'completedCourseCount', width: 80 },
   { title: '覆盖率', key: 'coverage', width: 200 },
@@ -49,6 +57,7 @@ const courseColumns: ColumnsType = [
 ]
 
 const loading = ref(false)
+const submitting = ref(false)
 const plans = ref<AnnualEvaluationPlanVO[]>([])
 const planTotal = ref(0)
 const planPageNum = ref(1)
@@ -65,6 +74,7 @@ const drawerTitle = ref('年度评价课程计划')
 const form = reactive<AnnualEvaluationPlanSaveRequest>({
   programId: '',
   trainingPlanId: '',
+  accreditationCycleId: '',
   planYear: '',
   planTitle: '',
   coverageTargetRate: 100,
@@ -81,10 +91,22 @@ const courseProgress = computed(() => {
   }
 })
 
-const canMutatePlan = computed(() => canMutateAnnualEvaluationPlan(props.activeCycleId))
+const canCreatePlan = computed(() => canMutateAnnualEvaluationPlan(props.maintenanceCycleId))
+
+function canMutatePlan(record: AnnualEvaluationPlanVO) {
+  return canMutateAnnualEvaluationPlan(props.maintenanceCycleId, record.accreditationCycleId)
+}
+
+function isDraft(record: AnnualEvaluationPlanVO) {
+  return record.planStatus === AnnualEvaluationPlanStatusCode.DRAFT
+}
+
+function isPublished(record: AnnualEvaluationPlanVO) {
+  return record.planStatus === AnnualEvaluationPlanStatusCode.PUBLISHED
+}
 
 const annualPlanHint = computed(() =>
-  canMutatePlan.value ? '' : '请先创建并启用认证周期后再维护年度评价计划',
+  canCreatePlan.value ? '' : '当前无有效期内的认证状态保持周期，不能维护年度评价计划',
 )
 
 function coveragePercent(record: AnnualEvaluationPlanVO) {
@@ -170,7 +192,7 @@ function resetForm() {
   form.id = undefined
   form.programId = props.programId
   form.trainingPlanId = props.trainingPlanId
-  form.accreditationCycleId = props.activeCycleId
+  form.accreditationCycleId = props.maintenanceCycleId || ''
   form.planYear = String(new Date().getFullYear())
   form.planTitle = `${form.planYear} 年度课程评价计划`
   form.coverageTargetRate = 100
@@ -178,7 +200,7 @@ function resetForm() {
 }
 
 function openCreate() {
-  if (!canMutatePlan.value) {
+  if (!canCreatePlan.value) {
     void message.error(annualPlanHint.value)
     return
   }
@@ -188,8 +210,8 @@ function openCreate() {
 }
 
 function openEdit(record: AnnualEvaluationPlanVO) {
-  if (!canMutatePlan.value) {
-    void message.error(annualPlanHint.value)
+  if (!canMutatePlan(record) || !isDraft(record)) {
+    void message.error(!canMutatePlan(record) ? '历史认证周期的年度计划仅供查看' : '仅草稿年度评价计划允许编辑')
     return
   }
   drawerTitle.value = '编辑年度评价课程计划'
@@ -205,16 +227,23 @@ function openEdit(record: AnnualEvaluationPlanVO) {
 }
 
 async function submitPlan() {
+  if (submitting.value) {
+    return
+  }
   if (!form.planYear.trim() || !form.planTitle.trim()) {
     void message.error('请填写年度与计划标题')
     return
   }
-  if (!canMutatePlan.value) {
+  if (!canCreatePlan.value) {
     void message.error(annualPlanHint.value)
     return
   }
   if (!form.accreditationCycleId) {
     void message.error('年度评价计划必须绑定当前有效认证周期')
+    return
+  }
+  if (form.id && form.accreditationCycleId !== props.maintenanceCycleId) {
+    void message.error('历史认证周期的年度计划仅供查看')
     return
   }
   const request: AnnualEvaluationPlanSaveRequest = {
@@ -228,6 +257,7 @@ async function submitPlan() {
     remark: form.remark?.trim() || undefined,
     qualityCourseIds: form.qualityCourseIds,
   }
+  submitting.value = true
   try {
     if (form.id) {
       await accreditationApi.annualPlanUpdate(request)
@@ -241,16 +271,23 @@ async function submitPlan() {
     emit('refresh')
   } catch (e) {
     showUserError(e, '年度评价计划保存失败')
+  } finally {
+    submitting.value = false
   }
 }
 
 async function removePlan(id: string) {
-  if (!canMutatePlan.value) {
-    void message.error(annualPlanHint.value)
+  if (submitting.value) {
+    return
+  }
+  const record = plans.value.find((item) => item.id === id)
+  if (!record || !canMutatePlan(record) || !isDraft(record)) {
+    void message.error(record && !canMutatePlan(record) ? '历史认证周期的年度计划仅供查看' : '仅草稿年度评价计划允许删除')
     return
   }
   const ok = await confirmAsync({ title: '确认删除该年度评价计划？' })
   if (!ok) return
+  submitting.value = true
   try {
     await accreditationApi.annualPlanDelete(id)
     void message.success('已删除')
@@ -259,14 +296,24 @@ async function removePlan(id: string) {
     emit('refresh')
   } catch (e) {
     showUserError(e, '年度评价计划删除失败')
+  } finally {
+    submitting.value = false
   }
 }
 
 async function updateCourseStatus(courseRowId: string, evaluationCompleted: boolean) {
-  if (!canMutatePlan.value) {
-    void message.error(annualPlanHint.value)
+  if (submitting.value) {
     return
   }
+  if (!selectedPlan.value || !canMutatePlan(selectedPlan.value) || !isPublished(selectedPlan.value)) {
+    void message.error(
+      selectedPlan.value && !canMutatePlan(selectedPlan.value)
+        ? '历史认证周期的年度计划仅供查看'
+        : '仅已发布年度评价计划允许登记课程完成状态',
+    )
+    return
+  }
+  submitting.value = true
   try {
     await accreditationApi.updateAnnualPlanCourseStatus({ id: courseRowId, evaluationCompleted })
     void message.success(evaluationCompleted ? '已登记课程评价完成' : '已撤销课程评价完成')
@@ -277,6 +324,31 @@ async function updateCourseStatus(courseRowId: string, evaluationCompleted: bool
     emit('refresh')
   } catch (e) {
     showUserError(e, '年度计划课程状态更新失败')
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function transitionPlan(record: AnnualEvaluationPlanVO, target: AnnualEvaluationPlanStatusCode) {
+  if (submitting.value) return
+  if (!canMutatePlan(record)) {
+    void message.error('历史认证周期的年度计划仅供查看')
+    return
+  }
+  const action = target === AnnualEvaluationPlanStatusCode.PUBLISHED ? '发布' : '关闭'
+  const ok = await confirmAsync({ title: `确认${action}该年度评价计划？` })
+  if (!ok) return
+  submitting.value = true
+  try {
+    await accreditationApi.transitionAnnualPlanStatus({ id: record.id, planStatus: target })
+    void message.success(`年度评价计划已${action}`)
+    await loadPlans()
+    if (selectedPlan.value?.id === record.id) await selectPlan(record.id)
+    emit('refresh')
+  } catch (e) {
+    showUserError(e, `年度评价计划${action}失败`)
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -284,6 +356,8 @@ function handleAnnualPlanRowAction(key: string, record: AnnualEvaluationPlanVO) 
   if (key === 'courses') void selectPlan(record.id)
   else if (key === 'edit') openEdit(record)
   else if (key === 'delete') void removePlan(record.id)
+  else if (key === 'publish') void transitionPlan(record, AnnualEvaluationPlanStatusCode.PUBLISHED)
+  else if (key === 'close') void transitionPlan(record, AnnualEvaluationPlanStatusCode.CLOSED)
 }
 
 function handleAnnualCourseRowAction(key: string, courseRowId: string) {
@@ -303,7 +377,7 @@ defineExpose({ openCreate, loadPlans })
       <UiButton
         size="sm"
         variant="primary"
-        :disabled="!trainingPlanId || !canMutatePlan"
+        :disabled="!trainingPlanId || !canCreatePlan"
         @click="openCreate"
       >
         新建年度计划
@@ -329,12 +403,19 @@ defineExpose({ openCreate, loadPlans })
             </span>
           </div>
         </template>
+        <template v-else-if="column.key === 'planStatus'">
+          <UiTag :tone="record.planStatus === 'CLOSED' ? 'gray' : record.planStatus === 'PUBLISHED' ? 'green' : 'orange'" size="sm">
+            {{ strictEnumLabel(AnnualEvaluationPlanStatusDescription, record.planStatus, '年度评价计划状态') }}
+          </UiTag>
+        </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
             :items="[
               { key: 'courses', label: '课程明细' },
-              { key: 'edit', label: '编辑', disabled: !canMutatePlan },
-              { key: 'delete', label: '删除', tone: 'danger', disabled: !canMutatePlan },
+              { key: 'publish', label: '发布', hidden: !(canMutatePlan(record) && record.planStatus === 'DRAFT') },
+              { key: 'close', label: '关闭', hidden: !(canMutatePlan(record) && record.planStatus === 'PUBLISHED') },
+              { key: 'edit', label: '编辑', hidden: record.planStatus !== 'DRAFT', disabled: !canMutatePlan(record) },
+              { key: 'delete', label: '删除', tone: 'danger', hidden: record.planStatus !== 'DRAFT', disabled: !canMutatePlan(record) },
             ]"
             split
             @action="(key) => handleAnnualPlanRowAction(key, record)"
@@ -384,13 +465,13 @@ defineExpose({ openCreate, loadPlans })
                   key: 'mark-done',
                   label: '登记完成',
                   hidden: !(record.evaluationRequired && !record.evaluationCompleted),
-                  disabled: !canMutatePlan,
+                  disabled: !selectedPlan || !canMutatePlan(selectedPlan) || selectedPlan.planStatus !== 'PUBLISHED',
                 },
                 {
                   key: 'undo-done',
                   label: '撤销完成',
                   hidden: !record.evaluationCompleted,
-                  disabled: !canMutatePlan,
+                  disabled: !selectedPlan || !canMutatePlan(selectedPlan) || selectedPlan.planStatus !== 'PUBLISHED',
                 },
               ]"
               split
@@ -406,6 +487,7 @@ defineExpose({ openCreate, loadPlans })
       width="480"
       :hide-footer="false"
       ok-text="保存"
+      :confirm-loading="submitting"
       @ok="submitPlan"
     >
       <UiForm layout="vertical">
@@ -437,21 +519,21 @@ defineExpose({ openCreate, loadPlans })
 .annual-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-component);
 }
 .toolbar {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
 }
 .course-block {
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
 }
 .course-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: var(--dp-space-component);
+  margin-bottom: var(--dp-space-component-tight);
 }
 .course-head h4 {
   margin: 0;
@@ -460,25 +542,25 @@ defineExpose({ openCreate, loadPlans })
 }
 .course-meta {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 .course-progress {
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-component-tight);
   max-width: 360px;
 }
 .coverage-cell {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   min-width: 160px;
 }
 .coverage-text {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 .hint {
   font-size: var(--dp-font-size-xs);
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
   margin: 0;
 }
 .w-full {

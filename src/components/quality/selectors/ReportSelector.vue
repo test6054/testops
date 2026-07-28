@@ -20,6 +20,7 @@ interface Props {
   value?: string | null
   programId?: string | null
   trainingPlanId?: string | null
+  accreditationCycleId?: string | null
   qualityCourseId?: string | null
   schoolYear?: string | null
   semester?: SemesterCode | null
@@ -59,6 +60,7 @@ watch(
   () => [
     props.programId,
     props.trainingPlanId,
+    props.accreditationCycleId,
     props.qualityCourseId,
     props.schoolYear,
     props.semester,
@@ -77,6 +79,7 @@ async function loadOptions(keyword?: string) {
         pageSize,
         programId: props.programId || undefined,
         trainingPlanId: props.trainingPlanId || undefined,
+        accreditationCycleId: props.accreditationCycleId || undefined,
         qualityCourseId: props.qualityCourseId || undefined,
         schoolYear: props.schoolYear || undefined,
         semester: props.semester || undefined,
@@ -162,10 +165,10 @@ defineExpose({ reload: loadOptions })
 
 <style scoped>
 .text-gray-400 {
-  color: var(--dp-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .ml-1 {
-  margin-left: 4px;
+  margin-left: var(--dp-space-component-xs);
 }
 </style>

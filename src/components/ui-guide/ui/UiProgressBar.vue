@@ -116,7 +116,7 @@ function lightenColor(hex: string, percent: number): string {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--dp-space-1, 4px);
+  margin-bottom: var(--dp-space-component-xs);
 }
 
 .ui-progress-bar__label {
@@ -143,7 +143,7 @@ function lightenColor(hex: string, percent: number): string {
 .ui-progress-bar__fill {
   height: 100%;
   border-radius: var(--dp-radius-full);
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width var(--dp-duration-emphasis) cubic-bezier(0.4, 0, 0.2, 1);
   background: linear-gradient(90deg, var(--dp-color-primary), color-mix(in srgb, var(--dp-color-primary) 75%, var(--dp-blue-200)));
   box-shadow: 0 0 6px color-mix(in srgb, var(--dp-color-primary) 25%, transparent);
 }
@@ -190,7 +190,7 @@ function lightenColor(hex: string, percent: number): string {
 .ui-progress-bar:has(.ui-progress-bar__right) {
   display: flex;
   align-items: center;
-  gap: var(--dp-space-2, 8px);
+  gap: var(--dp-space-component-tight);
 }
 
 .ui-progress-bar:has(.ui-progress-bar__right) .ui-progress-bar__track {

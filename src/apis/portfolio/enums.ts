@@ -191,6 +191,11 @@ export {
   PortfolioCreditFactSourceChannelDescription,
 } from '@/types/enums/portfolio-credit-fact-source-channel-enum'
 export {
+  ALL_PORTFOLIO_DEPT_TEACHER_SEGMENT_CODES,
+  PortfolioDeptTeacherSegmentCode,
+  PortfolioDeptTeacherSegmentDescription,
+} from '@/types/enums/portfolio-dept-teacher-segment-code-enum'
+export {
   ALL_PORTFOLIO_DEVELOPMENT_PLAN_AUDIT_ACTION_CODES,
   PortfolioDevelopmentPlanAuditActionCode,
   PortfolioDevelopmentPlanAuditActionDescription,
@@ -267,12 +272,12 @@ export {
 } from '@/types/enums/portfolio-evaluation-publicity-status-enum'
 export { PortfolioEvaluationRereviewOrderStatusCode } from '@/types/enums/portfolio-evaluation-rereview-order-status-enum'
 export { PortfolioEvaluationRereviewTriggerTypeCode } from '@/types/enums/portfolio-evaluation-rereview-trigger-type-enum'
+
 export {
   ALL_PORTFOLIO_EVALUATION_SCENE_CODES,
   PortfolioEvaluationSceneCode,
   PortfolioEvaluationSceneDescription,
 } from '@/types/enums/portfolio-evaluation-scene-enum'
-
 export {
   ALL_PORTFOLIO_EVALUATION_TASK_ADVANCE_ACTION_CODES,
   PortfolioEvaluationTaskAdvanceActionCode,
@@ -447,6 +452,11 @@ export {
   PortfolioTeacherIdentityTypeDescription,
 } from '@/types/enums/portfolio-teacher-identity-type-enum'
 export {
+  ALL_PORTFOLIO_TEACHER_RECOMMEND_EVIDENCE_TYPE_CODES,
+  PortfolioTeacherRecommendEvidenceTypeCode,
+  PortfolioTeacherRecommendEvidenceTypeDescription,
+} from '@/types/enums/portfolio-teacher-recommend-evidence-type-enum'
+export {
   ALL_PORTFOLIO_TEACHER_RECOMMEND_RUN_MODE_CODES,
   PortfolioTeacherRecommendRunModeCode,
   PortfolioTeacherRecommendRunModeDescription,
@@ -589,6 +599,17 @@ export const PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES: PortfolioEvaluat
     PortfolioEvaluationTaskStatusEnum.CORRECTION_REVIEW,
     PortfolioEvaluationTaskStatusEnum.SUSPENDED,
   ]
+
+/** 可执行 CLOSE 的任务状态：已发布后的评价周期；草稿须 VOID，暂停须先恢复 */
+export const PORTFOLIO_EVALUATION_CLOSEABLE_STATUSES: PortfolioEvaluationTaskStatusEnum[] = [
+  PortfolioEvaluationTaskStatusEnum.PUBLISHED,
+  PortfolioEvaluationTaskStatusEnum.PRELIMINARY_REVIEW,
+  PortfolioEvaluationTaskStatusEnum.SCHOOL_REVIEW,
+  PortfolioEvaluationTaskStatusEnum.EXPERT_REVIEW,
+  PortfolioEvaluationTaskStatusEnum.RESULT_SUMMARY,
+  PortfolioEvaluationTaskStatusEnum.PUBLICITY,
+  PortfolioEvaluationTaskStatusEnum.OBJECTION_HANDLING,
+]
 
 export const PORTFOLIO_EVALUATION_TASK_STATUS_TONE: Record<
   PortfolioEvaluationTaskStatusEnum,

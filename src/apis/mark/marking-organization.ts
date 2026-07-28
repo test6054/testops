@@ -1,5 +1,8 @@
 import type { QualityDecisionCode } from './exam-scan'
+import type { DualMarkRoleCode } from '@/types/enums/dual-mark-role-enum'
+import type { GradeStatusCode } from '@/types/enums/grade-status-enum'
 import type { PaperInstanceDisplayVO } from './exam-score'
+import type { ObjectiveComparePolicyCode } from './exam-standard-answer'
 import type { QuestionTypeCode } from './question-type'
 import type { MarkAiReferenceExperienceAuditResponse } from '@/apis/mark/grading-experience-assist'
 import type { WorkflowBlockingItem } from '@/components/workbench/workflow-readiness/types'
@@ -87,6 +90,12 @@ export {
   MarkingTaskStatusCode,
 } from '@/types/enums/marking-task-status-enum'
 export { MarkingTaskStatusDescription } from '@/types/enums/marking-task-status-enum'
+export {
+  ALL_DUAL_MARK_ROLE_CODES,
+  DualMarkRoleCode,
+  DualMarkRoleDescription,
+} from '@/types/enums/dual-mark-role-enum'
+
 export {
   ALL_QUESTION_MARKING_GROUP_STATUS_CODES,
   QuestionMarkingGroupStatusCode,
@@ -242,6 +251,12 @@ export interface AllocationPolicySaveRequest {
   priorityRule?: string
   /** 随机题目抽样数量 */
   randomQuestionSampleSize?: number
+  /** 试评样本量：整卷为答卷份数，按题为作答切片条数 */
+  trialSampleSize: number
+  /** 是否启用双评 */
+  dualMarkEnabled?: boolean
+  /** 双评分差阈值（绝对分）；空表示须完全一致 */
+  dualMarkScoreDiffThreshold?: number | null
 }
 
 /** 保存任务回收策略请求 - 对应后端 RecyclePolicySaveRequest */
@@ -269,6 +284,12 @@ export interface AllocationPolicyResponse {
   anonymousTokenPolicy: AnonymousTokenPolicyCode
   priorityRule?: string
   randomQuestionSampleSize?: number
+  /** 试评样本量：整卷为答卷份数，按题为作答切片条数 */
+  trialSampleSize: number
+  /** 是否启用双评 */
+  dualMarkEnabled?: boolean
+  /** 双评分差阈值（绝对分）；空表示须完全一致 */
+  dualMarkScoreDiffThreshold?: number | null
 }
 
 /** 任务回收策略查询响应 - 对应后端 RecyclePolicyResponse */
@@ -299,6 +320,52 @@ export interface TrialSessionCalibrateRequest {
   /** 校准结论 */
   calibrationSummary: string
   discussionNotes?: string
+  /** 存在评分分歧样本时必须为 true */
+  acknowledgeScoreDivergences?: boolean
+}
+
+/** 试评校准教师给分 - 对应后端 TrialCalibrationReviewerScoreResponse */
+export interface TrialCalibrationReviewerScoreResponse {
+  taskId: string
+  reviewerUserId: string
+  reviewerName: string
+  score: number
+}
+
+/** 试评校准样本比较 - 对应后端 TrialCalibrationSampleResponse */
+export interface TrialCalibrationSampleResponse {
+  sampleKey: string
+  taskUnit: AllocationUnitCode
+  paperInstanceId: string
+  layoutQuestionId?: string
+  sliceId?: string
+  questionNo?: string
+  sampleFullScore: number
+  minScore: number
+  maxScore: number
+  meanScore: number
+  scoreSpread: number
+  divergenceThreshold: number
+  divergent: boolean
+  reviewerScores: TrialCalibrationReviewerScoreResponse[]
+}
+
+/** 试评校准一致性报告 - 对应后端 TrialCalibrationConsistencyResponse */
+export interface TrialCalibrationConsistencyResponse {
+  sessionId: string
+  sessionStatus: TrialSessionStatusCode
+  groupName: string
+  calibratable: boolean
+  blockedReason?: string
+  pendingTaskCount: number
+  finalizedTaskCount: number
+  comparableSampleCount: number
+  divergentSampleCount: number
+  consistencyRate?: number
+  maxScoreSpread?: number
+  divergenceRatioThreshold: number
+  requireAcknowledgeDivergences: boolean
+  samples: TrialCalibrationSampleResponse[]
 }
 
 /** 创建正评会话请求 - 对应后端 FormalSessionCreateRequest */
@@ -414,6 +481,10 @@ export interface QuestionMarkingGroupResponse {
    * （主考∧ACTIVE∧草稿∧无运行态引用）
    */
   canDeleteQuestionGroup?: boolean
+  /**
+   * 是否整卷题组 - 对应后端 wholePaperGroup（题目关联为空）
+   */
+  wholePaperGroup: boolean
 }
 
 /** 阅卷组织详情响应 - 对应后端 MarkingOrganizationResponse */
@@ -489,6 +560,14 @@ export interface MarkingTaskResponse {
   sessionStatusMessage: string
   sessionStartTime?: string
   reviewerUserId: string
+  /** 双评配对ID；单评为 null/undefined */
+  dualMarkPairId?: string | null
+  /** 双评角色；单评为 null/undefined */
+  dualMarkRole?: DualMarkRoleCode | null
+  /** 双评对端任务状态；单评或未回填为 null/undefined */
+  dualMarkPeerTaskStatus?: MarkingTaskStatusCode | null
+  /** 双评正式题分状态；等待对端时为 null */
+  dualMarkFormalGradeStatus?: GradeStatusCode | null
   reviewerName: string
   taskUnit: AllocationUnitCode
   anonymityMode: AnonymityModeCode
@@ -630,6 +709,12 @@ export interface TrialSessionResponse {
   /** 校准结论 */
   calibrationSummary?: string
   discussionNotes?: string
+  comparableSampleCount?: number
+  divergentSampleCount?: number
+  consistencyRate?: number
+  maxScoreSpread?: number
+  divergenceRatioThreshold?: number
+  divergencesAcknowledged?: boolean
   /** 试评关闭原因，closeTrialSession 写入 */
   closeReason?: string
   /** 试评进入 TRIAL_CLOSED 的时刻 */
@@ -718,6 +803,80 @@ export interface FormalSessionResponse {
   closeTime?: string
   createTime?: string
   updateTime?: string
+  /** 定标基准试评会话 ID */
+  trialBaselineSessionId?: string
+  /** 试评-正评可比样本数 */
+  trialFormalMatchedSampleCount?: number
+  /** 试评-正评漂移样本数 */
+  trialFormalDriftedSampleCount?: number
+  /** 试评-正评一致性率（0-100） */
+  trialFormalConsistencyRate?: number
+  /** 试评-正评最大分差 */
+  trialFormalMaxScoreDrift?: number
+  /** 试评-正评一致性汇总刷新时刻 */
+  trialFormalConsistencyCheckedTime?: string
+}
+
+/** 试评-正评一致性正评给分 - 对应后端 TrialFormalConsistencyReviewerScoreResponse */
+export interface TrialFormalConsistencyReviewerScoreResponse {
+  taskId: string
+  reviewerUserId: string
+  reviewerName?: string
+  formalScore: number
+  scoreDrift: number
+  trialScore?: number
+  sameReviewerScoreDrift?: number
+  drifted: boolean
+}
+
+/** 试评-正评一致性样本对照 - 对应后端 TrialFormalConsistencySampleResponse */
+export interface TrialFormalConsistencySampleResponse {
+  sampleKey: string
+  taskUnit: AllocationUnitCode
+  paperInstanceId: string
+  layoutQuestionId?: string
+  sliceId?: string
+  questionNo?: string
+  sampleFullScore: number
+  trialBaselineMeanScore: number
+  trialReviewerCount: number
+  driftThreshold: number
+  maxScoreDrift: number
+  drifted: boolean
+  formalScores: TrialFormalConsistencyReviewerScoreResponse[]
+}
+
+/** 试评-正评一致性教师汇总 - 对应后端 TrialFormalConsistencyReviewerSummaryResponse */
+export interface TrialFormalConsistencyReviewerSummaryResponse {
+  reviewerUserId: string
+  reviewerName?: string
+  matchedScoreCount: number
+  driftedScoreCount: number
+  averageAbsDrift?: number
+  maxAbsDrift?: number
+  sameReviewerPairCount: number
+  sameReviewerAverageAbsDrift?: number
+}
+
+/** 试评-正评一致性追踪报告 - 对应后端 TrialFormalConsistencyResponse */
+export interface TrialFormalConsistencyResponse {
+  formalSessionId: string
+  formalSessionStatus: FormalSessionStatusCode
+  groupName: string
+  trialBaselineSessionId?: string
+  trialBaselineSessionStatus?: TrialSessionStatusCode
+  trackable: boolean
+  blockedReason?: string
+  trialBaselineSampleCount: number
+  matchedSampleCount: number
+  driftedSampleCount: number
+  pendingFormalOnBaselineCount: number
+  consistencyRate?: number
+  maxScoreDrift?: number
+  driftRatioThreshold?: number
+  consistencyCheckedTime?: string
+  samples: TrialFormalConsistencySampleResponse[]
+  reviewerSummaries: TrialFormalConsistencyReviewerSummaryResponse[]
 }
 
 const MARKING_ORG_DATA_ERROR = '阅卷组织数据异常'
@@ -847,11 +1006,22 @@ export function createTrialSession(request: TrialSessionCreateRequest): Promise<
 }
 
 /**
- * 提交试评校准结论（含校准结果 + 讨论记录）。
+ * 提交试评校准结论（含程序化一致性汇总 + 讨论记录）。
  * POST /api/mark/organization/trial/calibrate
  */
 export function calibrateTrialSession(request: TrialSessionCalibrateRequest): Promise<boolean> {
   return http.post<boolean>('/api/mark/organization/trial/calibrate', request)
+}
+
+/**
+ * 查询试评校准评分一致性报告。
+ * POST /api/mark/organization/trial/calibration-consistency
+ */
+export function getTrialCalibrationConsistency(sessionId: string): Promise<TrialCalibrationConsistencyResponse> {
+  return http.post<TrialCalibrationConsistencyResponse>(
+    '/api/mark/organization/trial/calibration-consistency',
+    { id: sessionId },
+  )
 }
 
 /**
@@ -914,6 +1084,17 @@ export function createFormalSession(request: FormalSessionCreateRequest): Promis
  */
 export function startFormalSession(sessionId: string): Promise<boolean> {
   return http.post<boolean>('/api/mark/organization/formal/start', { id: sessionId })
+}
+
+/**
+ * 查询试评-正评评分一致性追踪报告。
+ * POST /api/mark/organization/formal/trial-consistency
+ */
+export function getTrialFormalConsistency(sessionId: string): Promise<TrialFormalConsistencyResponse> {
+  return http.post<TrialFormalConsistencyResponse>(
+    '/api/mark/organization/formal/trial-consistency',
+    { id: sessionId },
+  )
 }
 
 /**
@@ -1047,6 +1228,14 @@ export interface TeacherGroupClaimContextResponse {
   activeSessions: FormalSessionResponse[]
   /** 该题组下当前可领取的试评会话（session_status = TRIAL_ASSIGNED） */
   activeTrialSessions: TrialSessionResponse[]
+  /** 单次领取批次上限；与 claimTasks 分配策略同源 */
+  claimBatchSize: number
+  /** 在手任务负载上限 */
+  loadLimit: number
+  /** 当前评阅人在本考试本题组下已领取未提交任务数 */
+  reviewerInProgressCount: number
+  /** 超时回收窗口（分钟）；无策略时为空 */
+  recycleTimeoutMinutes?: number
 }
 
 /** 教师任务池状态汇总 - 对应 TeacherMarkingTaskPoolSummaryResponse */
@@ -1162,8 +1351,8 @@ export interface MarkingQuestionViewResponse {
   sourceScanPage?: ScannedPageRef
   /** 标准答案文本 */
   standardAnswer?: string
-  /** 标准答案比对策略编码 */
-  comparePolicy?: string
+  /** 标准答案比对策略 */
+  comparePolicy?: ObjectiveComparePolicyCode
   /** 评分细则/采分点说明 */
   evaluationCriteria?: string
   /** OCR识别答案 */
@@ -1238,8 +1427,9 @@ export async function getMarkingScanPageDisplayBlobUrl(
  * 阅卷解匿名请求 - 对应后端 AnonymousRevealRequest。
  *
  * 必须由 Exam.createUser（主考老师本人）触发；必须传入登录密码 + 解匿名理由。
- * 后端通过 UserInternalClient.verifyPassword 校验密码哈希，校验通过后 CAS
- * 写入 5 分钟临时查看态，并写 t_exam_operation_log 审计。
+ * 后端通过 UserInternalClient.verifyPassword 校验密码哈希，校验通过后写入
+ * 临时查看态（TTL 见响应 revealTtlMinutes，与 BE ANONYMOUS_REVEAL_TTL_MINUTES 同源），
+ * 并写 t_exam_operation_log 审计。
  */
 export interface AnonymousRevealRequest {
   examId: string
@@ -1257,6 +1447,8 @@ export interface AnonymousRevealResponse {
   studentNo: string
   revealTime: string
   revealExpireTime: string
+  /** 临时查看有效期（分钟），与 BE ANONYMOUS_REVEAL_TTL_MINUTES / Redis TTL 同源 */
+  revealTtlMinutes: number
 }
 
 /**

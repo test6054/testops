@@ -9,7 +9,7 @@ import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/
 import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
 import type { QualityScopeRequestToken } from '@/composables/useScopeRequestGuard'
 import message from 'ant-design-vue/es/message'
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import {
   AUDIT_ISSUE_SEVERITY_OPTIONS,
   AUDIT_ISSUE_SEVERITY_TONE,
@@ -27,6 +27,7 @@ import {
   AuditIssueStatusDescription,
 } from '@/apis/quality/types'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
+import QualityFormDraftStatusStrip from '@/components/quality/QualityFormDraftStatusStrip.vue'
 import {
   AchievementResultSelector,
   CourseGoalSelector,
@@ -53,12 +54,18 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
+  buildQualityLongFormDraftKey,
+  clearQualityLongFormDraft,
+} from '@/composables/useQualityLongFormDraftPersist'
+import { useQualityLongFormDraftSession } from '@/composables/useQualityLongFormDraftSession'
+import {
   assertQualityScopeFresh,
   beginQualityScopeRequest,
   isQualityScopeStaleError,
 } from '@/composables/useScopeRequestGuard'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
+import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
@@ -213,7 +220,230 @@ const issueEditor = reactive<AuditIssueSaveRequest>({
   raisedTime: '',
 })
 const issueEditorSubmitting = ref(false)
+const issueDraftSaving = ref(false)
+const issueCreateSessionKey = ref('')
+let issueDraftHydrating = false
+const userStore = useUserStore()
 const issueRectificationCount = ref<Map<string, number>>(new Map())
+
+interface AuditIssueDraftSnapshot {
+  id?: string
+  programId?: string
+  trainingPlanId?: string
+  qualityCourseId?: string
+  requirementIndicatorId?: string
+  courseGoalId?: string
+  achievementResultId?: string
+  issueCode: string
+  issueTitle: string
+  issueDescription?: string
+  issueSource: AuditIssueSourceCode
+  severity: AuditIssueSeverityCode
+  auditRound?: string
+  auditYear?: string
+  raisedUserId?: string
+  raisedTime?: string
+}
+
+function snapshotIssueEditor(): AuditIssueDraftSnapshot {
+  return {
+    id: issueEditor.id,
+    programId: issueEditor.programId || undefined,
+    trainingPlanId: issueEditor.trainingPlanId || undefined,
+    qualityCourseId: issueEditor.qualityCourseId || undefined,
+    requirementIndicatorId: issueEditor.requirementIndicatorId || undefined,
+    courseGoalId: issueEditor.courseGoalId || undefined,
+    achievementResultId: issueEditor.achievementResultId || undefined,
+    issueCode: issueEditor.issueCode || '',
+    issueTitle: issueEditor.issueTitle || '',
+    issueDescription: issueEditor.issueDescription || '',
+    issueSource: issueEditor.issueSource,
+    severity: issueEditor.severity,
+    auditRound: issueEditor.auditRound || undefined,
+    auditYear: issueEditor.auditYear || undefined,
+    raisedUserId: issueEditor.raisedUserId || undefined,
+    raisedTime: issueEditor.raisedTime || undefined,
+  }
+}
+
+function applyIssueEditorDraft(snapshot: AuditIssueDraftSnapshot): void {
+  issueDraftHydrating = true
+  try {
+    Object.assign(issueEditor, {
+      id: snapshot.id,
+      programId: snapshot.programId || '',
+      trainingPlanId: snapshot.trainingPlanId || '',
+      qualityCourseId: snapshot.qualityCourseId || '',
+      requirementIndicatorId: snapshot.requirementIndicatorId || '',
+      courseGoalId: snapshot.courseGoalId || '',
+      achievementResultId: snapshot.achievementResultId || '',
+      issueCode: snapshot.issueCode || '',
+      issueTitle: snapshot.issueTitle || '',
+      issueDescription: snapshot.issueDescription || '',
+      issueSource: snapshot.issueSource,
+      severity: snapshot.severity,
+      auditRound: snapshot.auditRound || '',
+      auditYear: snapshot.auditYear || '',
+      raisedUserId: snapshot.raisedUserId || '',
+      raisedTime: snapshot.raisedTime || '',
+    })
+    if (snapshot.id) {
+      issueCreateSessionKey.value = ''
+    }
+  } finally {
+    issueDraftHydrating = false
+  }
+}
+
+function canServerAutosaveIssue(snapshot: AuditIssueDraftSnapshot): boolean {
+  return Boolean(
+    snapshot.issueCode?.trim()
+    && snapshot.issueTitle?.trim()
+    && snapshot.issueSource
+    && snapshot.severity,
+  )
+}
+
+function buildIssueSaveRequest(snapshot: AuditIssueDraftSnapshot): AuditIssueSaveRequest {
+  return {
+    id: snapshot.id,
+    programId: snapshot.programId || undefined,
+    trainingPlanId: snapshot.trainingPlanId || undefined,
+    qualityCourseId: snapshot.qualityCourseId || undefined,
+    requirementIndicatorId: snapshot.requirementIndicatorId || undefined,
+    courseGoalId: snapshot.courseGoalId || undefined,
+    achievementResultId: snapshot.achievementResultId || undefined,
+    issueCode: snapshot.issueCode.trim(),
+    issueTitle: snapshot.issueTitle.trim(),
+    issueDescription: snapshot.issueDescription || undefined,
+    issueSource: snapshot.issueSource,
+    severity: snapshot.severity,
+    auditRound: snapshot.auditRound || undefined,
+    auditYear: snapshot.auditYear || undefined,
+    raisedUserId: snapshot.raisedUserId || undefined,
+    raisedTime: snapshot.raisedTime || undefined,
+  }
+}
+
+const issueDraft = useQualityLongFormDraftSession<AuditIssueDraftSnapshot>({
+  kind: 'audit-issue',
+  kindLabel: '审核评估问题',
+  getTenantId: () => String(userStore.userInfo.tenantId || ''),
+  getEntityKey: () => {
+    if (issueEditor.id) return 'issue:' + issueEditor.id
+    if (issueCreateSessionKey.value) return issueCreateSessionKey.value
+    return null
+  },
+  getSnapshot: snapshotIssueEditor,
+  isEditable: () => {
+    if (!issueEditorVisible.value) return false
+    if (issueEditorMode.value === 'create') return true
+    if (!issueEditor.id) return false
+    const current = issueList.value.find((item) => item.id === issueEditor.id)
+    if (current) return canEditAuditIssue(current.status)
+    return true
+  },
+  canServerAutosave: canServerAutosaveIssue,
+  serverAutosave: async (snapshot) => {
+    const request = buildIssueSaveRequest(snapshot)
+    if (snapshot.id) {
+      await auditIssueApi.update(request)
+      return
+    }
+    const tenantId = String(userStore.userInfo.tenantId || '')
+    const oldKey = issueCreateSessionKey.value
+      ? buildQualityLongFormDraftKey(tenantId, 'audit-issue', issueCreateSessionKey.value)
+      : null
+    const createdId = await auditIssueApi.create(request)
+    issueDraftHydrating = true
+    try {
+      issueEditor.id = String(createdId)
+      issueCreateSessionKey.value = ''
+    } finally {
+      issueDraftHydrating = false
+    }
+    if (oldKey) {
+      await clearQualityLongFormDraft(oldKey)
+    }
+  },
+})
+
+const issueDraftStatus = issueDraft.status
+const issueDraftStatusVisible = issueDraft.statusVisible
+const issueDraftLocalSavedAt = issueDraft.localSavedAt
+const issueDraftServerSavedAt = issueDraft.serverSavedAt
+const issueDraftErrorMessage = issueDraft.errorMessage
+
+async function startIssueDraftSession(): Promise<void> {
+  const baseline = snapshotIssueEditor()
+  const result = await issueDraft.beginSession(baseline)
+  if (result.restored && result.draft?.payloadJson) {
+    applyIssueEditorDraft(JSON.parse(result.draft.payloadJson) as AuditIssueDraftSnapshot)
+  }
+}
+
+async function handleIssueDraftSaveNow(): Promise<void> {
+  issueDraftSaving.value = true
+  try {
+    const ok = await issueDraft.saveNow()
+    if (ok) {
+      void message.success('审核问题草稿已保存到服务端')
+      await loadList({ refreshSignals: true, settleAfterMutation: true })
+    } else if (issueDraft.status.value === 'local_saved') {
+      void message.warning(
+        issueDraft.errorMessage.value || '仅本机暂存，请补齐编码/标题/来源/严重程度后同步服务端',
+      )
+    }
+  } finally {
+    issueDraftSaving.value = false
+  }
+}
+
+async function handleIssueEditorOpenChange(open: boolean): Promise<void> {
+  if (open) {
+    issueEditorVisible.value = true
+    return
+  }
+  if (issueDraft.needsLeaveConfirm()) {
+    const ok = await confirmAsync({
+      title: '关闭审核问题编辑？',
+      content: '未确认同步到服务端的内容已暂存在本机，下次打开可断点续填。关闭不会丢弃本机草稿。',
+      type: 'warning',
+      okText: '关闭并保留草稿',
+      cancelText: '继续编辑',
+    })
+    if (!ok) return
+    await issueDraft.endSession({ discardLocal: false })
+  } else {
+    await issueDraft.endSession()
+  }
+  issueEditorVisible.value = false
+}
+
+watch(
+  () => [
+    issueEditor.id,
+    issueEditor.programId,
+    issueEditor.trainingPlanId,
+    issueEditor.qualityCourseId,
+    issueEditor.requirementIndicatorId,
+    issueEditor.courseGoalId,
+    issueEditor.achievementResultId,
+    issueEditor.issueCode,
+    issueEditor.issueTitle,
+    issueEditor.issueDescription,
+    issueEditor.issueSource,
+    issueEditor.severity,
+    issueEditor.auditRound,
+    issueEditor.auditYear,
+    issueEditor.raisedUserId,
+    issueEditor.raisedTime,
+  ],
+  () => {
+    if (issueDraftHydrating || !issueEditorVisible.value) return
+    issueDraft.notifyChanged()
+  },
+)
 
 function hasLinkedRectification(issueId: string): boolean {
   return (issueRectificationCount.value.get(issueId) ?? 0) > 0
@@ -235,7 +465,10 @@ async function refreshIssueRectificationCounts(scope: QualityScopeRequestToken) 
   issueRectificationCount.value = countMap
 }
 
-async function loadList(options?: { refreshSignals?: boolean }) {
+async function loadList(options?: {
+  refreshSignals?: boolean
+  settleAfterMutation?: boolean
+}): Promise<'applied' | 'failed' | 'stale'> {
   const scope = beginQualityScopeRequest()
   issueLoading.value = true
   beginLoad()
@@ -253,27 +486,34 @@ async function loadList(options?: { refreshSignals?: boolean }) {
     issueTotal.value = page.total
     if (issueList.value.length === 0 && issueTotal.value > 0 && issueQuery.pageNum > 1) {
       issueQuery.pageNum -= 1
-      await loadList(options)
-      return
+      return await loadList(options)
     }
     await refreshIssueRectificationCounts(scope)
     if (options?.refreshSignals) {
-      await refreshWorkbenchSignalsAfterMutation(
+      const signalOutcome = await refreshWorkbenchSignalsAfterMutation(
         scope,
         props.onWorkbenchRefresh,
         props.onLoadError,
         '工作台指标加载失败',
       )
+      if (signalOutcome !== 'applied') {
+        okLoad()
+        return signalOutcome
+      }
     }
     okLoad()
+    return 'applied'
   } catch (error) {
     if (isQualityScopeStaleError(error) || scope.isStale()) {
-      return
+      return 'stale'
     }
     failLoad()
     const err = toUserError(error, '审核评估问题加载失败')
     props.onLoadError?.(err)
     showUserError(error, '审核评估问题加载失败')
+    if (options?.settleAfterMutation) {
+      return 'failed'
+    }
     throw err
   } finally {
     issueLoading.value = false
@@ -295,54 +535,68 @@ function resetIssueQuery() {
   loadList()
 }
 
-function openIssueCreate() {
+async function openIssueCreate() {
   issueEditorMode.value = 'create'
-  Object.assign(issueEditor, {
-    id: undefined,
-    programId: qualityStore.currentProgramId || '',
-    trainingPlanId: qualityStore.currentTrainingPlanId || '',
-    qualityCourseId: '',
-    requirementIndicatorId: '',
-    courseGoalId: '',
-    achievementResultId: '',
-    issueCode: '',
-    issueTitle: '',
-    issueDescription: '',
-    issueSource: AuditIssueSourceCode.SELF_AUDIT,
-    severity: AuditIssueSeverityCode.MINOR,
-    auditRound: '',
-    auditYear: new Date().getFullYear().toString(),
-    raisedUserId: '',
-    raisedTime: '',
-  })
+  issueCreateSessionKey.value = 'create-active:' + (userStore.userInfo.userId || 'anon')
+  issueDraftHydrating = true
+  try {
+    Object.assign(issueEditor, {
+      id: undefined,
+      programId: qualityStore.currentProgramId || '',
+      trainingPlanId: qualityStore.currentTrainingPlanId || '',
+      qualityCourseId: '',
+      requirementIndicatorId: '',
+      courseGoalId: '',
+      achievementResultId: '',
+      issueCode: '',
+      issueTitle: '',
+      issueDescription: '',
+      issueSource: AuditIssueSourceCode.SELF_AUDIT,
+      severity: AuditIssueSeverityCode.MINOR,
+      auditRound: '',
+      auditYear: new Date().getFullYear().toString(),
+      raisedUserId: '',
+      raisedTime: '',
+    })
+  } finally {
+    issueDraftHydrating = false
+  }
   issueEditorVisible.value = true
+  await startIssueDraftSession()
 }
 
-function openIssueEdit(record: AuditIssueVO) {
+async function openIssueEdit(record: AuditIssueVO) {
   if (!canEditAuditIssue(record.status)) {
     void message.error('当前状态不允许编辑审核问题')
     return
   }
   issueEditorMode.value = 'edit'
-  Object.assign(issueEditor, {
-    id: record.id,
-    programId: record.programId || '',
-    trainingPlanId: record.trainingPlanId || '',
-    qualityCourseId: record.qualityCourseId || '',
-    requirementIndicatorId: record.requirementIndicatorId || '',
-    courseGoalId: record.courseGoalId || '',
-    achievementResultId: record.achievementResultId || '',
-    issueCode: record.issueCode,
-    issueTitle: record.issueTitle,
-    issueDescription: record.issueDescription || '',
-    issueSource: record.issueSource,
-    severity: record.severity,
-    auditRound: record.auditRound || '',
-    auditYear: record.auditYear || '',
-    raisedUserId: record.raisedUserId || '',
-    raisedTime: record.raisedTime || '',
-  })
+  issueCreateSessionKey.value = ''
+  issueDraftHydrating = true
+  try {
+    Object.assign(issueEditor, {
+      id: record.id,
+      programId: record.programId || '',
+      trainingPlanId: record.trainingPlanId || '',
+      qualityCourseId: record.qualityCourseId || '',
+      requirementIndicatorId: record.requirementIndicatorId || '',
+      courseGoalId: record.courseGoalId || '',
+      achievementResultId: record.achievementResultId || '',
+      issueCode: record.issueCode,
+      issueTitle: record.issueTitle,
+      issueDescription: record.issueDescription || '',
+      issueSource: record.issueSource,
+      severity: record.severity,
+      auditRound: record.auditRound || '',
+      auditYear: record.auditYear || '',
+      raisedUserId: record.raisedUserId || '',
+      raisedTime: record.raisedTime || '',
+    })
+  } finally {
+    issueDraftHydrating = false
+  }
   issueEditorVisible.value = true
+  await startIssueDraftSession()
 }
 
 async function submitIssueEditor() {
@@ -362,6 +616,7 @@ async function submitIssueEditor() {
     void message.error('请填写编码、标题、来源、严重程度')
     return
   }
+  await issueDraft.pauseForSubmit()
   issueEditorSubmitting.value = true
   try {
     const request: AuditIssueSaveRequest = {
@@ -380,15 +635,18 @@ async function submitIssueEditor() {
       raisedUserId: issueEditor.raisedUserId || undefined,
       raisedTime: issueEditor.raisedTime || undefined,
     }
-    if (issueEditorMode.value === 'create') {
-      await auditIssueApi.create(request)
+    if (issueEditorMode.value === 'create' && !issueEditor.id) {
+      const createdId = await auditIssueApi.create(request)
+      issueEditor.id = String(createdId)
       void message.success('已登记')
     } else {
-      await auditIssueApi.update(request)
+      await auditIssueApi.update({ ...request, id: issueEditor.id || request.id })
       void message.success('已保存')
     }
+    await issueDraft.markCleanAfterServerSuccess()
+    await issueDraft.endSession()
     issueEditorVisible.value = false
-    await loadList({ refreshSignals: true })
+    await loadList({ refreshSignals: true, settleAfterMutation: true })
   } finally {
     issueEditorSubmitting.value = false
   }
@@ -401,7 +659,7 @@ async function handleIssueDelete(record: AuditIssueVO) {
     onOk: async () => {
       await auditIssueApi.delete(record.id)
       void message.success('已删除')
-      await loadList({ refreshSignals: true })
+      await loadList({ refreshSignals: true, settleAfterMutation: true })
     },
   })
 }
@@ -417,7 +675,7 @@ function nextAuditIssueStatuses(status: AuditIssueStatusCode): AuditIssueStatusC
 async function changeIssueStatus(record: AuditIssueVO, target: AuditIssueStatusCode) {
   await auditIssueApi.transitStatus({ id: record.id, targetStatus: target })
   void message.success(`已切换到「${issueStatusLabel(target)}」`)
-  await loadList({ refreshSignals: true })
+  await loadList({ refreshSignals: true, settleAfterMutation: true })
 }
 
 function buildAuditIssueActions(record: AuditIssueVO): UiTableRowActionItem[] {
@@ -558,12 +816,22 @@ defineExpose({
   </ImprovementWorkbenchPanel>
 
   <UiDialog
-    v-model:open="issueEditorVisible"
+    :open="issueEditorVisible"
     :title="issueEditorMode === 'create' ? '登记审核评估问题' : '编辑审核评估问题'"
     :confirm-loading="issueEditorSubmitting"
     width="820px"
+    @update:open="handleIssueEditorOpenChange"
     @ok="submitIssueEditor"
   >
+    <QualityFormDraftStatusStrip
+      :status="issueDraftStatus"
+      :visible="issueDraftStatusVisible"
+      :local-saved-at="issueDraftLocalSavedAt"
+      :server-saved-at="issueDraftServerSavedAt"
+      :error-message="issueDraftErrorMessage"
+      :saving="issueDraftSaving"
+      @save-now="handleIssueDraftSaveNow"
+    />
     <UiForm layout="vertical" :model="issueEditor">
       <UiRow :gutter="12">
         <UiCol :span="6">
@@ -598,8 +866,16 @@ defineExpose({
       <UiFormItem label="标题" required>
         <UiInput size="sm" v-model="issueEditor.issueTitle" />
       </UiFormItem>
-      <UiFormItem label="详细描述">
-        <UiTextarea size="sm" v-model="issueEditor.issueDescription" :rows="4" />
+      <UiFormItem label="详细描述（支持断点续填）">
+        <p class="iwb-tab__draft-hint">
+          长文填写支持本机暂存与服务端自动保存草稿；刷新或误关后可续填。
+        </p>
+        <UiTextarea
+          size="sm"
+          v-model="issueEditor.issueDescription"
+          :rows="6"
+          placeholder="描述问题现象、证据与影响范围。输入后约 2.5 秒自动保存草稿。"
+        />
       </UiFormItem>
       <UiRow :gutter="12">
         <UiCol :span="8">
@@ -690,9 +966,16 @@ defineExpose({
 <style scoped lang="scss">
 .iwb-tab {
   &__sub-desc {
-    margin-top: 4px;
+    margin-top: var(--dp-space-component-xs);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
+  }
+
+  &__draft-hint {
+    margin: 0 0 var(--dp-space-component-tight);
+    color: var(--dp-text-secondary);
+    font-size: var(--dp-font-size-sm);
+    line-height: 1.5;
   }
 }
 </style>

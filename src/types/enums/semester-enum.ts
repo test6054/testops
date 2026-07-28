@@ -47,8 +47,8 @@ export const SemesterOptions: Array<{ value: SemesterCode, label: string }> = [
   },
 ]
 
-/** 校验是否为 SemesterCode 枚举成员（逐值显式比对，禁止宽化承接）。 */
-export function isSemesterCode(value: SemesterCode | null | undefined): value is SemesterCode {
+/** 校验是否为 SemesterCode 枚举成员（协议边界 unknown → 枚举；逐值显式比对）。 */
+export function isSemesterCode(value: unknown): value is SemesterCode {
   return value === SemesterCode.AUTUMN || value === SemesterCode.SPRING
 }
 

@@ -430,7 +430,7 @@ function onQuestionAnalysisGenerated(): void {
 }
 
 async function onRejudgePlanChanged(): Promise<void> {
-  reloadAll()
+  await reloadAll()
   await refreshSnapshot()
 }
 
@@ -485,13 +485,10 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .stats-page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dp-space-3, 12px);
   min-width: 0;
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-component) 0;
   }
 
   &__notice {
@@ -502,7 +499,7 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     min-width: 0;
   }
 
@@ -510,7 +507,7 @@ onBeforeUnmount(() => {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     min-width: 0;
     flex: 1 1 auto;
   }
@@ -520,7 +517,7 @@ onBeforeUnmount(() => {
     flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     flex-shrink: 0;
   }
 
@@ -538,7 +535,7 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
     width: 100%;
     flex-wrap: wrap;
   }
@@ -546,7 +543,7 @@ onBeforeUnmount(() => {
   &__section-copy {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--dp-space-component-xs);
     min-width: 0;
     flex: 1 1 240px;
   }
@@ -554,9 +551,9 @@ onBeforeUnmount(() => {
   &__section-title {
     margin: 0;
     color: var(--dp-text-primary);
-    font-size: var(--dp-font-size-xl);
-    font-weight: var(--dp-font-weight-title);
-    line-height: 1.5;
+    font-size: var(--dp-type-panel-title-size);
+    font-weight: var(--dp-type-panel-title-weight);
+    line-height: var(--dp-type-panel-title-line-height);
   }
 
   &__section-desc {
@@ -569,114 +566,7 @@ onBeforeUnmount(() => {
   &__cards {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-4);
-
-    :deep(.stats-card) {
-      box-shadow: var(--dp-shadow-sm);
-    }
-
-    :deep(.stats-card__title) {
-      margin: 0;
-      font-size: var(--dp-font-size-lg);
-      font-weight: var(--dp-font-weight-title);
-      line-height: 1.5;
-    }
-
-    :deep(.stats-card .stats-card__select--class) {
-      width: 200px;
-    }
-
-    :deep(.stats-card .stats-card__select--class-wide) {
-      width: 240px;
-    }
-
-    :deep(.stats-card .stats-card__select--question),
-    :deep(.stats-card .stats-card__select--student) {
-      width: 280px;
-    }
-
-    :deep(.stats-card .stats-card__select--status) {
-      width: 160px;
-    }
-
-    :deep(.stats-card .question-analysis-card) {
-      display: flex;
-      flex-direction: column;
-      gap: var(--dp-space-3);
-    }
-
-    :deep(.stats-card .score-dist),
-    :deep(.stats-card .ai-record) {
-      display: flex;
-      flex-direction: column;
-      gap: var(--dp-space-3);
-    }
-
-    :deep(.stats-card .score-dist__chart),
-    :deep(.stats-card .question-analysis-card__chart),
-    :deep(.stats-card .ai-chart__canvas) {
-      width: 100%;
-      height: 300px;
-    }
-
-    :deep(.stats-card .score-dist__metrics) {
-      padding: var(--dp-space-3) var(--dp-space-4);
-      background: var(--dp-surface-subtle);
-      border-radius: var(--dp-radius-control-inner);
-    }
-
-    :deep(.stats-card .score-dist__chart-wrap),
-    :deep(.stats-card .question-analysis-card__chart-wrap),
-    :deep(.stats-card .ai-chart) {
-      padding: var(--dp-space-3) var(--dp-space-4);
-      border: 1px solid var(--dp-border);
-      border-radius: var(--dp-radius-panel);
-      background: var(--dp-surface);
-    }
-
-    :deep(.stats-card .score-dist__chart-meta),
-    :deep(.stats-card .question-analysis-card__chart-meta),
-    :deep(.stats-card .ai-chart__meta) {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--dp-space-3);
-      margin-bottom: var(--dp-space-2);
-
-      strong {
-        font-size: var(--dp-font-size-md);
-        font-weight: var(--dp-font-weight-title);
-      }
-    }
-
-    :deep(.stats-card .score-dist__chart-hint),
-    :deep(.stats-card .question-analysis-card__chart-hint) {
-      font-size: var(--dp-font-size-xs);
-      color: var(--dp-text-secondary);
-    }
-
-    :deep(.stats-card .analysis-item__title),
-    :deep(.stats-card .diagnosis-type) {
-      font-weight: var(--dp-font-weight-emphasis);
-    }
-
-    :deep(.stats-card .ai-items > strong),
-    :deep(.stats-card .ai-summary strong) {
-      font-weight: var(--dp-font-weight-title);
-    }
-
-    :deep(.stats-card .analysis-item__metric),
-    :deep(.stats-card .analysis-item__text),
-    :deep(.stats-card .diagnosis-rate),
-    :deep(.stats-card .diagnosis-text),
-    :deep(.stats-card .text-muted) {
-      color: var(--dp-text-secondary);
-    }
-
-    :deep(.stats-card .text-muted),
-    :deep(.stats-card .diagnosis-rate) {
-      color: var(--dp-text-muted);
-    }
+    gap: var(--dp-space-block);
   }
 }
 </style>

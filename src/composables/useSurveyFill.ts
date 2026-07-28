@@ -181,7 +181,8 @@ export function useSurveyFill() {
 
     submitting.value = true
     try {
-      const result = await publicSurveyApi.submit(token, {
+      const result = await publicSurveyApi.submit({
+        accessToken: token,
         respondentIdentity: survey.value.allowAnonymous
           ? undefined
           : {

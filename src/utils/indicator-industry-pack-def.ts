@@ -4,6 +4,9 @@ import type {
   PortfolioIndustryPackDictionaryDto,
   PortfolioIndustryPackWeightsDto,
 } from '@/apis/portfolio/indicator-types'
+import { PortfolioIndustryPackAssessmentSectionCode } from '@/types/enums/portfolio-industry-pack-assessment-section-code-enum'
+import { PortfolioIndustryPackDictSectionCode } from '@/types/enums/portfolio-industry-pack-dict-section-code-enum'
+import { PortfolioIndustryPackWeightCode } from '@/types/enums/portfolio-industry-pack-weight-code-enum'
 import { showFormValidationMessage } from '@/utils/error-handler'
 
 /** 行业包定义可视化编辑模型（映射 packDef 可维护字段） */
@@ -50,9 +53,11 @@ export function toIndustryPackDefForm(def: PortfolioIndustryPackDefDto): Portfol
 
 function emptyDictionary(): PortfolioIndustryPackDictionaryDto {
   return {
-    enterprisePractice: { categories: [] },
-    qualification: { categories: [] },
-    industryProject: { categories: [] },
+    sections: [
+      { sectionCode: PortfolioIndustryPackDictSectionCode.ENTERPRISE_PRACTICE, categories: [] },
+      { sectionCode: PortfolioIndustryPackDictSectionCode.QUALIFICATION, categories: [] },
+      { sectionCode: PortfolioIndustryPackDictSectionCode.INDUSTRY_PROJECT, categories: [] },
+    ],
   }
 }
 
@@ -61,9 +66,29 @@ function defaultAssessment(packCode: string): PortfolioIndustryPackAssessmentTem
     templateId: `${packCode}_annual`,
     sections: [
       {
-        sectionId: 'default',
-        title: '默认分区',
-        fieldRefs: ['enterprisePractice.*'],
+        sectionCode: PortfolioIndustryPackAssessmentSectionCode.PRACTICE,
+        title: '企业实践',
+        fieldRefs: [PortfolioIndustryPackWeightCode.ENTERPRISE_PRACTICE],
+      },
+      {
+        sectionCode: PortfolioIndustryPackAssessmentSectionCode.QUALIFICATION,
+        title: '职业资格',
+        fieldRefs: [PortfolioIndustryPackWeightCode.QUALIFICATION],
+      },
+      {
+        sectionCode: PortfolioIndustryPackAssessmentSectionCode.PROJECT,
+        title: '产教融合',
+        fieldRefs: [PortfolioIndustryPackWeightCode.INDUSTRY_PROJECT],
+      },
+      {
+        sectionCode: PortfolioIndustryPackAssessmentSectionCode.TEACHING,
+        title: '教学贡献',
+        fieldRefs: [PortfolioIndustryPackWeightCode.TEACHING_CONTRIBUTION],
+      },
+      {
+        sectionCode: PortfolioIndustryPackAssessmentSectionCode.SERVICE,
+        title: '社会服务',
+        fieldRefs: [PortfolioIndustryPackWeightCode.SOCIAL_SERVICE],
       },
     ],
   }
@@ -94,6 +119,17 @@ export function buildIndustryPackDefFromForm(
     showFormValidationMessage('请至少填写一项材料清单')
     return null
   }
+  if (
+    typeof form.weightEnterprisePractice !== 'number'
+    || typeof form.weightQualification !== 'number'
+    || typeof form.weightIndustryProject !== 'number'
+    || typeof form.weightTeachingContribution !== 'number'
+    || typeof form.weightSocialService !== 'number'
+    || typeof form.weightTrainingDevelopment !== 'number'
+  ) {
+    showFormValidationMessage('请填写全部六维权重')
+    return null
+  }
   const weights: PortfolioIndustryPackWeightsDto = {
     enterprisePractice: form.weightEnterprisePractice,
     qualification: form.weightQualification,
@@ -101,11 +137,6 @@ export function buildIndustryPackDefFromForm(
     teachingContribution: form.weightTeachingContribution,
     socialService: form.weightSocialService,
     trainingDevelopment: form.weightTrainingDevelopment,
-  }
-  const hasWeight = Object.values(weights).some(value => typeof value === 'number')
-  if (!hasWeight) {
-    showFormValidationMessage('请至少填写一项权重')
-    return null
   }
   return {
     packId,

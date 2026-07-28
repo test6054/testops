@@ -7,6 +7,14 @@
       </div>
     </template>
 
+    <UiAlertStrip
+      v-if="progressLoadFailed"
+      tone="error"
+      dense
+      title="题组任务进度加载失败"
+      class="org-group-progress__alert"
+    />
+
     <UiEmpty size="sm" v-if="groups.length === 0" description="暂无题组" />
 
     <ul v-else class="org-group-progress__list">
@@ -23,18 +31,18 @@
         <div class="org-group-progress__meta">
           <span>{{ group.questions.length || '整卷' }} 题</span>
           <span>{{ group.reviewers.length }} 人</span>
-          <span>任务 {{ progressOf(group.id).finalized }}/{{ progressOf(group.id).total }}</span>
+          <span>任务 {{ progressRatioLabel(group.id) }}</span>
         </div>
         <div class="org-group-progress__bar-row">
           <div class="org-group-progress__bar">
             <div
               class="org-group-progress__bar-fill"
               :style="{
-                transform: `scaleX(${Math.max(0, Math.min(1, progressPercent(group.id) / 100))})`,
+                transform: `scaleX(${progressBarScale(group.id)})`,
               }"
             />
           </div>
-          <span class="org-group-progress__percent">{{ progressPercent(group.id) }}%</span>
+          <span class="org-group-progress__percent">{{ progressPercentLabel(group.id) }}</span>
         </div>
         <div
           v-if="group.canEditQuestionGroup === true"
@@ -60,23 +68,28 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import {
+  formatTaskProgressRatio,
+  resolveTaskProgressPercent,
+} from '@/utils/session-task-progress'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkingOrgGroupProgressList' })
 
 const props = withDefaults(
   defineProps<{
-
   groups: QuestionMarkingGroupResponse[]
   groupProgressById: Record<string, GroupProgressSnapshot>
   canManage?: boolean
+  /** 题组进度请求失败：禁止用 0/0 伪装尚未形成 */
+  progressLoadFailed?: boolean
 }>(),
   {
-  canManage: false,
+    canManage: false,
   },
 )
-
 const emit = defineEmits<{
   'edit-group': [groupId: string]
 }>()
@@ -86,14 +99,40 @@ export interface GroupProgressSnapshot {
   finalized: number
 }
 
-function progressOf(groupId: string): GroupProgressSnapshot {
-  return props.groupProgressById[groupId] ?? { total: 0, finalized: 0 }
+function progressOf(groupId: string): GroupProgressSnapshot | null {
+  if (props.progressLoadFailed) {
+    return null
+  }
+  return props.groupProgressById[groupId] ?? null
 }
 
-function progressPercent(groupId: string): number {
+function progressRatioLabel(groupId: string): string {
   const snapshot = progressOf(groupId)
-  if (snapshot.total <= 0) return 0
-  return Math.round((snapshot.finalized * 100) / snapshot.total)
+  if (!snapshot) {
+    return '—'
+  }
+  return formatTaskProgressRatio(snapshot.total, snapshot.finalized)
+}
+
+function progressPercentLabel(groupId: string): string {
+  const snapshot = progressOf(groupId)
+  if (!snapshot) {
+    return '—'
+  }
+  const percent = resolveTaskProgressPercent(snapshot.total, snapshot.finalized)
+  return percent == null ? '—' : `${percent}%`
+}
+
+function progressBarScale(groupId: string): number {
+  const snapshot = progressOf(groupId)
+  if (!snapshot) {
+    return 0
+  }
+  const percent = resolveTaskProgressPercent(snapshot.total, snapshot.finalized)
+  if (percent == null) {
+    return 0
+  }
+  return Math.max(0, Math.min(1, percent / 100))
 }
 
 function groupStatusTone(status: QuestionMarkingGroupStatusCode): BadgeTone {
@@ -111,7 +150,7 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     width: 100%;
   }
 
@@ -126,19 +165,23 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
     color: var(--dp-text-muted);
   }
 
+  &__alert {
+    margin: var(--dp-space-component-tight) var(--dp-space-component) 0;
+  }
+
   &__list {
     display: flex;
     flex-direction: column;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-component-tight);
     margin: 0;
-    padding: var(--dp-space-2) var(--dp-space-3);
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     list-style: none;
   }
 
   &__item {
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-xs);
-    padding: 8px 10px;
+    padding: var(--dp-space-component-tight) var(--dp-space-component);
     background: var(--dp-surface);
   }
 
@@ -146,14 +189,14 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-2);
-    margin-bottom: 6px;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component-tight);
   }
 
   &__item-title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
     min-width: 0;
   }
 
@@ -170,8 +213,8 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
 
   &__meta {
     display: flex;
-    gap: var(--dp-space-3, 12px);
-    margin-bottom: 8px;
+    gap: var(--dp-space-component);
+    margin-bottom: var(--dp-space-component-tight);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
@@ -179,14 +222,14 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
   &__bar-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-component-tight);
   }
 
   &__bar {
     flex: 1;
     height: 4px;
     border-radius: 2px;
-    background: var(--dp-surface-sunken);
+    background: var(--dp-bg-muted);
     overflow: hidden;
   }
 
@@ -196,7 +239,7 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
     transform-origin: left center;
     border-radius: 2px;
     background: var(--dp-color-primary);
-    transition: transform 0.2s ease;
+    transition: transform var(--dp-duration-normal) var(--dp-ease-default);
   }
 
   &__percent {
@@ -207,7 +250,7 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
   }
 
   &__actions {
-    margin-top: 8px;
+    margin-top: var(--dp-space-component-tight);
   }
 }
 </style>

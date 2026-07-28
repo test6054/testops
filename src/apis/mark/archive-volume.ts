@@ -1,5 +1,6 @@
 import type { ArchiveMaterialOcrStatusCode } from './archive-ocr-status'
 import type { ArchiveMaterialCatalogTemplateResponse } from '@/apis/mark/archive-platform-template'
+import type { ExamCloseReadinessResponse } from '@/apis/mark/exam'
 import type { ScanWorkOrderStatusCode } from '@/apis/mark/scanner-work-order'
 import type { WorkflowBlockingItem } from '@/components/workbench/workflow-readiness/types'
 import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
@@ -9,12 +10,14 @@ import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
 import type { ArchiveVolumeAutoCreateFailureCategoryCode } from '@/constants/archive-volume-auto-create-failure-category'
 import type { PageResult, QueryDto } from '@/types'
 import type { ArchiveAppraisalDecisionCode } from '@/types/enums/archive-appraisal-decision-enum'
+import type { ArchiveCatalogCoverageGapKindCode } from '@/types/enums/archive-catalog-coverage-gap-kind-enum'
 import type { ArchiveDestructionDecisionCode } from '@/types/enums/archive-destruction-decision-enum'
 import type { ArchiveElectronicOriginalStatusCode } from '@/types/enums/archive-electronic-original-status-enum'
 import type { ArchiveEvaluationCampaignResolveMatchKindCode } from '@/types/enums/archive-evaluation-campaign-resolve-match-kind-enum'
 import type { ArchiveEvaluationCampaignScopeMatchKindCode } from '@/types/enums/archive-evaluation-campaign-scope-match-kind-enum'
 import type { ArchiveEvaluationCampaignStatusCode } from '@/types/enums/archive-evaluation-campaign-status-enum'
 import type { ArchiveEvaluationExportModeCode } from '@/types/enums/archive-evaluation-export-mode-enum'
+import type { ArchiveEventTypeCode } from '@/types/enums/archive-event-type-enum'
 import type { ArchiveExamFormCode } from '@/types/enums/archive-exam-form-enum'
 import type { ArchiveMaterialDeliveryModeCode } from '@/types/enums/archive-material-delivery-mode-enum'
 import type { ArchiveMaterialMediaTypeCode } from '@/types/enums/archive-material-media-type-enum'
@@ -22,6 +25,7 @@ import type { ArchiveMaterialSortRuleCode } from '@/types/enums/archive-material
 import type { ArchiveMaterialSubmissionStatusCode } from '@/types/enums/archive-material-submission-status-enum'
 import type { ArchiveMaterialTypeCode } from '@/types/enums/archive-material-type-enum'
 import type { ArchivePackageStatusCode } from '@/types/enums/archive-package-status-enum'
+import type { ArchivePackagingPhaseCode } from '@/types/enums/archive-packaging-phase-enum'
 import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
 import type { ArchiveRemediationPriorityCode } from '@/types/enums/archive-remediation-priority-enum'
 import type { ArchiveScoreCompletionStatusCode } from '@/types/enums/archive-score-completion-status-enum'
@@ -31,6 +35,7 @@ import type { ArchiveSharedMaterialRefTypeCode } from '@/types/enums/archive-sha
 import type { ArchiveTaskProvenanceCode } from '@/types/enums/archive-task-provenance-enum'
 import type { ArchiveVolumeAutoCreatePendingStatusCode } from '@/types/enums/archive-volume-auto-create-pending-status-enum'
 import type { ArchiveVolumeEventTypeCode } from '@/types/enums/archive-volume-event-type-enum'
+import type { ArchiveVolumeExamArchivePackageTimelineStepStatusCode } from '@/types/enums/archive-volume-exam-archive-package-timeline-step-status-enum'
 import type { ArchiveVolumeMemberRoleCode } from '@/types/enums/archive-volume-member-role-enum'
 import type { ArchiveVolumeMemberSourceCode } from '@/types/enums/archive-volume-member-source-enum'
 import type { ArchiveVolumeNavigationChainStatusCode } from '@/types/enums/archive-volume-navigation-chain-status-enum'
@@ -102,6 +107,11 @@ export {
   ArchiveAppraisalStatusCode,
   ArchiveAppraisalStatusDescription,
 } from '@/types/enums/archive-appraisal-status-enum'
+export {
+  ALL_ARCHIVE_CATALOG_COVERAGE_GAP_KIND_CODES,
+  ArchiveCatalogCoverageGapKindCode,
+  ArchiveCatalogCoverageGapKindDescription,
+} from '@/types/enums/archive-catalog-coverage-gap-kind-enum'
 export {
   ALL_ARCHIVE_CATALOG_STATUS_CODES,
   ArchiveCatalogStatusCode,
@@ -400,11 +410,11 @@ export interface ArchiveVolumeResponse {
   hasBlockingRemediationForSubmit?: boolean
   /** 是否存在未关闭整改任务 */
   hasOpenRemediationTask?: boolean
-  /** 成绩证明是否满足提交前置条件 */
+  /** 成绩维度是否满足提交前置（线上为考试双门禁） */
   scoreSubmitReady?: boolean
   /** 线上阅卷归档双门禁是否开放 */
   examGateOpen?: boolean
-  /** 成绩证明文件 ID */
+  /** 历史教务回写附带证明文件 ID（只读审计事实；提交门禁不认此旁路） */
   scoreProofFileId?: string
   selfCheckConfirmed?: boolean
   signOffReady?: boolean
@@ -444,7 +454,7 @@ export interface ArchiveVolumeResponse {
   transferSubmitUserId?: string
   /** 租户/院系是否启用院系审核门禁 */
   departmentReviewEnabled?: boolean
-  /** 逾期提交是否须填写说明（硬阻断策略） */
+  /** 逾期硬截止：true 时已逾期禁止提交/发起院系审核；false 为软截止须填逾期说明 */
   overdueSubmitBlocked?: boolean
 }
 
@@ -545,6 +555,12 @@ export interface ArchiveVolumeNavigationSummaryVO {
   fourPropertyStale?: boolean
 }
 
+export interface ArchiveMaterialWaivePendingItemVO {
+  materialType: ArchiveMaterialTypeCode
+  catalogCode?: string
+  requestUserId?: string
+}
+
 export interface ArchiveVolumeDetailResponse {
   volume: ArchiveVolumeResponse
   materials: ArchiveVolumeMaterialResponse[]
@@ -571,12 +587,22 @@ export interface ArchiveVolumeDetailResponse {
   canManageAppraisal?: boolean
   /** 当前用户是否具备该院系 ARCHIVE_ADMIN 职责 */
   canManageArchiveAdmin?: boolean
-  /** MVR-187：可授权材料缺失豁免（ARCHIVE_ADMIN + 收材/开放整改窗口） */
-  canWaiveMaterialMissing?: boolean
+  /** 可发起卷级完整性豁免申请（组织老师或学院协调 + DRAFT/COLLECTING + 无待批） */
+  canRequestIntegrityWaive?: boolean
+  /** 可审批卷级完整性豁免（ARCHIVE_ADMIN + 待批 + 非申请人/干系人） */
+  canApproveIntegrityWaive?: boolean
+  /** 是否存在待审批的卷级完整性豁免申请 */
+  integrityWaivePending?: boolean
+  /** 最近一次待批完整性豁免申请人 */
+  integrityWaiveRequestUserId?: string
+  /** 可发起材料缺失豁免申请（组织老师或学院协调 + 收材/开放整改窗口） */
+  canRequestMaterialWaive?: boolean
+  /** 可审批材料缺失豁免（ARCHIVE_ADMIN + 非干系人 + 收材/开放整改窗口） */
+  canApproveMaterialWaive?: boolean
+  /** 待审批的材料缺失豁免项 */
+  pendingMaterialWaives?: ArchiveMaterialWaivePendingItemVO[]
   /** MVR-187：可登记延迟补交（COLLEGE_COORDINATOR + 收材/开放整改窗口） */
   canAllowMaterialDelay?: boolean
-  /** MVR-188：可确认线下成绩完成（DRAFT/COLLECTING + OFFLINE_CONFIRMED 待确认 + 组织/提交/材料管理） */
-  canConfirmScoreCompletion?: boolean
   /** 当前用户是否可确认卷密级定密标记 */
   canConfirmSecurityMark?: boolean
   /** 当前用户是否可变更卷密级 */
@@ -715,7 +741,7 @@ export interface ArchiveVolumeMaterialResponse {
   tags?: string[]
   deliveryMode?: ArchiveMaterialDeliveryModeCode
   sourceSystem?: string
-  electronicOriginalStatus?: string
+  electronicOriginalStatus?: ArchiveElectronicOriginalStatusCode
 }
 
 export const ARCHIVE_VOLUME_EVENT_TYPE_OPTIONS: Array<{
@@ -1275,7 +1301,17 @@ export function getEvaluationCampaignStats(): Promise<ArchiveEvaluationCampaignS
   )
 }
 
-export interface ArchiveRemediationTaskPageRequest extends QueryDto {}
+export interface ArchiveRemediationTaskPageRequest extends QueryDto {
+  academicYear?: string
+  semester?: SemesterCode
+  departmentId?: string
+}
+
+export interface ArchiveRemediationOpenStatsRequest {
+  academicYear?: string
+  semester?: SemesterCode
+  departmentId?: string
+}
 
 export interface ArchiveEvaluationCampaignPageRequest extends QueryDto {}
 
@@ -1430,7 +1466,7 @@ export interface ArchiveRemediationTaskCreateRequest {
   volumeId: string
   taskTitle: string
   taskDescription?: string
-  diagnosticCode?: string
+  diagnosticCode?: ArchiveRemediationDiagnosticCode
   assigneeUserId: string
   dueTime?: string
 }
@@ -1461,8 +1497,13 @@ export interface ArchiveRemediationOpenStatsVO {
   canViewRemediationTab?: boolean
 }
 
-export function getOpenRemediationStats(): Promise<ArchiveRemediationOpenStatsVO> {
-  return http.post<ArchiveRemediationOpenStatsVO>('/api/mark/archive-volumes/remediation/stats', {})
+export function getOpenRemediationStats(
+  request: ArchiveRemediationOpenStatsRequest = {},
+): Promise<ArchiveRemediationOpenStatsVO> {
+  return http.post<ArchiveRemediationOpenStatsVO>(
+    '/api/mark/archive-volumes/remediation/stats',
+    request,
+  )
 }
 
 export interface ArchiveRemediationByCampaignStatsRequest {
@@ -1491,10 +1532,12 @@ export function getRemediationStatsByCampaign(
   )
 }
 
-export function getSupervisionRemediationStats(): Promise<ArchiveRemediationOpenStatsVO> {
+export function getSupervisionRemediationStats(
+  request: ArchiveRemediationOpenStatsRequest = {},
+): Promise<ArchiveRemediationOpenStatsVO> {
   return http.post<ArchiveRemediationOpenStatsVO>(
     '/api/mark/archive-volumes/supervision/remediation/stats',
-    {},
+    request,
   )
 }
 
@@ -1535,7 +1578,6 @@ export interface ArchiveVolumeTaskSettingsUpdateRequest {
   /** null 表示清除关联考试 */
   relatedExamId?: string | null
   templateSetCode: string
-  scoreSource: ArchiveScoreSourceCode
   examForm?: ArchiveExamFormCode | null
   securityLevel: ArchiveSecurityLevelCode
   retentionYears?: number
@@ -1786,10 +1828,36 @@ export interface ArchiveVolumeIntegrityWaiveRequest {
   reason: string
 }
 
-export function waiveArchiveVolumeIntegrity(
+export function requestArchiveVolumeIntegrityWaive(
   request: ArchiveVolumeIntegrityWaiveRequest,
 ): Promise<ArchiveVolumeResponse> {
-  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/integrity/waive', request)
+  return http.post<ArchiveVolumeResponse>(
+    '/api/mark/archive-volumes/integrity/waive/request',
+    request,
+  )
+}
+
+export function approveArchiveVolumeIntegrityWaive(
+  volumeId: string,
+): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>(
+    '/api/mark/archive-volumes/integrity/waive/approve',
+    { volumeId },
+  )
+}
+
+export interface ArchiveVolumeIntegrityWaiveRejectRequest {
+  volumeId: string
+  rejectReason: string
+}
+
+export function rejectArchiveVolumeIntegrityWaive(
+  request: ArchiveVolumeIntegrityWaiveRejectRequest,
+): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>(
+    '/api/mark/archive-volumes/integrity/waive/reject',
+    request,
+  )
 }
 
 export interface ArchiveVolumeSecurityMarkConfirmRequest {
@@ -1830,11 +1898,42 @@ export interface ArchiveVolumeMaterialWaiveRequest {
   reason: string
 }
 
-export function waiveArchiveMaterialMissing(
+export function requestArchiveMaterialWaive(
   request: ArchiveVolumeMaterialWaiveRequest,
 ): Promise<ArchiveVolumeMaterialResponse> {
   return http.post<ArchiveVolumeMaterialResponse>(
-    '/api/mark/archive-volumes/materials/waive-missing',
+    '/api/mark/archive-volumes/materials/waive-missing/request',
+    request,
+  )
+}
+
+export interface ArchiveVolumeMaterialWaiveApproveRequest {
+  volumeId: string
+  materialType: ArchiveMaterialTypeCode
+  catalogCode?: string
+}
+
+export function approveArchiveMaterialWaive(
+  request: ArchiveVolumeMaterialWaiveApproveRequest,
+): Promise<ArchiveVolumeMaterialResponse> {
+  return http.post<ArchiveVolumeMaterialResponse>(
+    '/api/mark/archive-volumes/materials/waive-missing/approve',
+    request,
+  )
+}
+
+export interface ArchiveVolumeMaterialWaiveRejectRequest {
+  volumeId: string
+  materialType: ArchiveMaterialTypeCode
+  catalogCode?: string
+  rejectReason: string
+}
+
+export function rejectArchiveMaterialWaive(
+  request: ArchiveVolumeMaterialWaiveRejectRequest,
+): Promise<ArchiveVolumeMaterialResponse> {
+  return http.post<ArchiveVolumeMaterialResponse>(
+    '/api/mark/archive-volumes/materials/waive-missing/reject',
     request,
   )
 }
@@ -1869,6 +1968,7 @@ export interface ArchiveVolumeExamGateResponse {
   gradablePaperCount?: number
   publishedScoreCount?: number
   unpublishedBoundPaperCount?: number
+  closeReadiness: ExamCloseReadinessResponse
   classPublishProgress?: ArchiveVolumeExamClassPublishProgressVO[]
   autoCreatePendingStatus?: ArchiveVolumeAutoCreatePendingStatusCode
   autoCreateNextRetryAt?: string
@@ -1957,7 +2057,7 @@ export function getArchiveVolumeExamGate(examId: string): Promise<ArchiveVolumeE
 /** 考后归档包事件流水（归档复盘时间线） */
 export interface ArchiveVolumeExamArchivePackageEventVO {
   eventId: string
-  eventType?: string
+  eventType?: ArchiveEventTypeCode
   eventTypeLabel?: string
   eventTime?: string
   reason?: string
@@ -1975,7 +2075,7 @@ export interface ArchiveVolumeExamArchivePackageSummaryVO {
   retentionYears?: number
   permanentRetention?: boolean
   retentionUntil?: string
-  packagingPhase?: string
+  packagingPhase?: ArchivePackagingPhaseCode
   packagingProgressPercent?: number
   packagingProgressMessage?: string
   originalScanCount?: number
@@ -1989,7 +2089,7 @@ export interface ArchiveVolumeExamArchivePackageTimelineStepVO {
   stepKey: string
   stepLabel: string
   description?: string
-  stepStatus: 'done' | 'active' | 'pending' | 'failed'
+  stepStatus: ArchiveVolumeExamArchivePackageTimelineStepStatusCode
   eventTime?: string
 }
 
@@ -2163,18 +2263,11 @@ export interface ArchiveTaskCreateRequest {
   examForm?: ArchiveExamFormCode
   archiveNo?: string
   archiveTitle: string
-  scoreSource: ArchiveScoreSourceCode
-  scoreProofFileId?: string
   securityLevel: ArchiveSecurityLevelCode
   retentionYears?: number
   permanentRetention?: boolean
   responsibleUserId?: string
   archiveDueTimeOverride?: string
-}
-
-/** 废弃归档任务创建阶段未使用的临时成绩证明。 */
-export function discardArchiveTaskScoreProof(fileId: string): Promise<void> {
-  return http.post<void>('/api/mark/archive-volumes/task/score-proof/discard', { fileId })
 }
 
 export interface ArchiveVolumeMaterialRegisterRequest {
@@ -2259,10 +2352,6 @@ export interface ArchiveVolumeDestructionSuperviseRequest {
   volumeId: string
   witnessUserId: string
   registerFileId: string
-}
-
-export interface ArchiveScoreCompletionConfirmRequest {
-  volumeId: string
 }
 
 export function createArchiveTask(request: ArchiveTaskCreateRequest): Promise<string> {
@@ -2375,11 +2464,23 @@ export interface ArchiveVolumeCatalogLineVO {
   materialId?: string
 }
 
+export interface ArchiveVolumeCatalogCoverageGapVO {
+  gapKind: ArchiveCatalogCoverageGapKindCode
+  materialType?: ArchiveMaterialTypeCode
+  catalogCode?: string
+  catalogName?: string
+  submissionStatus?: ArchiveMaterialSubmissionStatusCode
+  materialId?: string
+  missingReason: string
+}
+
 export interface ArchiveVolumeCatalogResponse {
   volumeId: string
   catalogStatus: ArchiveCatalogStatusCode
   catalogRevision: string
   lines: ArchiveVolumeCatalogLineVO[]
+  requiredCoverageReady: boolean
+  requiredCoverageGaps: ArchiveVolumeCatalogCoverageGapVO[]
 }
 
 export interface ArchiveVolumeCatalogLineSaveRequest {
@@ -2849,20 +2950,17 @@ export function executeArchiveVolumeDestruction(volumeId: string): Promise<Archi
   })
 }
 
+export function retryArchiveVolumeDestruction(volumeId: string): Promise<ArchiveVolumeResponse> {
+  return http.post<ArchiveVolumeResponse>('/api/mark/archive-volumes/destruction/retry', {
+    volumeId,
+  })
+}
+
 export function confirmArchiveVolumeDestructionSupervision(
   request: ArchiveVolumeDestructionSuperviseRequest,
 ): Promise<ArchiveVolumeResponse> {
   return http.post<ArchiveVolumeResponse>(
     '/api/mark/archive-volumes/destruction/supervise',
-    request,
-  )
-}
-
-export function confirmArchiveVolumeScoreCompletion(
-  request: ArchiveScoreCompletionConfirmRequest,
-): Promise<ArchiveVolumeResponse> {
-  return http.post<ArchiveVolumeResponse>(
-    '/api/mark/archive-volumes/score-completion/confirm',
     request,
   )
 }

@@ -7,18 +7,21 @@ import type {
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioTeacherLibraryApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -27,20 +30,27 @@ import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSear
 import { useQueryTable } from '@/composables/useQueryTable'
 import { useUserStore } from '@/stores/modules/user'
 import { PortfolioBusinessDataSourceTypeCode } from '@/types/enums/portfolio-business-data-source-type-enum'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
-import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import {
+  portfolioLifecycleStatusDisplay,
+  portfolioLifecycleTagTone,
+} from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 /** 院系路由或非租户管理员：本院系只读口径（PF-P0-421） */
 const isDepartmentScoped = computed(
   () => route.path.includes('/department/') || !userStore.isTenantAdmin,
 )
 const pageTitle = computed(() => (isDepartmentScoped.value ? '院系图书借阅' : '图书借阅'))
-
+const exportApplyModal = reactive({
+  open: false,
+  purpose: '',
+})
 
 const stats = ref<PortfolioTeacherLibraryBorrowStatsVO | null>(null)
 const form = reactive({
@@ -95,7 +105,6 @@ async function loadStats() {
     if (statsRequestToken.value === currentToken) statsLoading.value = false
   }
 }
-
 
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
@@ -234,14 +243,40 @@ async function returnBorrow(row: (typeof rows.value)[number]) {
 }
 
 async function exportCsv() {
+  if (isDepartmentScoped.value) {
+    showFormValidationMessage('图书借阅全量导出仅租户管理员可申请')
+    return
+  }
+  exportApplyModal.purpose = ''
+  exportApplyModal.open = true
+}
+
+async function confirmExportApply() {
+  if (isDepartmentScoped.value) {
+    showFormValidationMessage('图书借阅全量导出仅租户管理员可申请')
+    return Promise.reject(new Error('院系范围不可申请全量借阅导出'))
+  }
+  const exportPurpose = exportApplyModal.purpose.trim()
+  if (!exportPurpose) {
+    showFormValidationMessage('请填写导出用途')
+    return Promise.reject(new Error('导出用途为空'))
+  }
   const operation = 'borrow:export'
-  if (!beginOperation(operation)) return
+  if (!beginOperation(operation)) {
+    return Promise.reject(new Error('操作进行中'))
+  }
   try {
-    const result = await portfolioTeacherLibraryApi.export()
-    await downloadPortfolioExcelExport(result)
-    void message.success(`已导出 ${result.rowCount} 条`)
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.TEACHER_LIBRARY_BORROW,
+      businessRef: {},
+      exportPurpose,
+    })
+    exportApplyModal.open = false
+    void message.success('已提交图书借阅导出审批')
+    void router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
-    showUserError(error, '导出借阅记录失败')
+    showUserError(error, '提交图书借阅导出审批失败')
+    return Promise.reject(error)
   } finally {
     endOperation(operation)
   }
@@ -260,7 +295,7 @@ void loadStats()
       tone="warning"
       title="档案已封存写禁"
       :description="archiveWriteBlockMessage"
-      class="mb-3"
+      class="dp-mb-component"
     />
     <UiCard>
       <div v-if="stats" class="stats">
@@ -331,7 +366,7 @@ void loadStats()
           :disabled="operating"
           @click="exportCsv"
         >
-          导出
+          申请导出
         </UiButton>
       </div>
       <UiEmpty
@@ -349,7 +384,7 @@ void loadStats()
         :loading="loading"
         :load-error="loadError"
         row-key="id"
-        style="margin-top: 16px"
+        style="margin-top: var(--dp-space-block)"
         @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
@@ -357,8 +392,11 @@ void loadStats()
             {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
-              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+            <UiTag
+              v-if="record.lifecycleStatus"
+              :tone="portfolioLifecycleTagTone(record.lifecycleStatus)"
+            >
+              {{ portfolioLifecycleStatusDisplay(record.lifecycleStatus) }}
             </UiTag>
             <span v-else>—</span>
           </template>
@@ -387,6 +425,21 @@ void loadStats()
         </template>
       </UiDataTable>
     </UiCard>
+    <UiDialog
+      v-model:open="exportApplyModal.open"
+      title="申请导出图书借阅台账"
+      ok-text="提交审批"
+      cancel-text="取消"
+      :confirm-loading="operationKey === 'borrow:export'"
+      @ok="confirmExportApply"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="exportApplyModal.purpose"
+        :rows="3"
+        placeholder="请填写导出用途（必填，将写入审批记录）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -395,8 +448,8 @@ void loadStats()
 .stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--dp-space-component-tight);
+  margin-bottom: var(--dp-space-component-tight);
 }
 .stats {
   font-size: var(--dp-font-size-sm);

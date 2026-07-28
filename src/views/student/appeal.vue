@@ -4,9 +4,18 @@
       <ContextBar>
         <template #status>
           <UiTag tone="blue" size="sm">
-            {{ examStats?.appealableCount ?? appealableExams.length }} 场可申请
+            {{
+              examStats
+                ? `${examStats.appealableCount} 场可申请`
+                : examsLoadFailed
+                  ? '可申请场次加载失败'
+                  : `${appealableExams.length} 场可申请`
+            }}
           </UiTag>
-          <UiTag v-if="pendingRequestCount > 0" tone="orange" size="sm">
+          <UiTag v-if="pendingRequestCount == null" tone="red" size="sm">
+            待处理计数加载失败
+          </UiTag>
+          <UiTag v-else-if="pendingRequestCount > 0" tone="orange" size="sm">
             待处理 {{ pendingRequestCount }}
           </UiTag>
           <UiTag v-if="selectedExamCountdown" tone="orange" size="sm">
@@ -50,16 +59,16 @@
 
       <UiEmpty
         size="sm"
+        v-else-if="examsLoadFailed"
+        title="可申请考试加载失败"
+      />
+
+      <UiEmpty
+        size="sm"
         v-else-if="appealableExams.length === 0"
         title="当前没有可申诉的考试"
         :description="appealableEmptyDescription"
-      >
-        <template #action>
-          <UiButton variant="outline" size="sm" :loading="loadingExams" @click="reloadAll">
-            刷新列表
-          </UiButton>
-        </template>
-      </UiEmpty>
+      />
 
       <div v-else-if="!loadingExams && appealableExams.length > 0" class="exam-pick-list">
         <article
@@ -128,6 +137,7 @@
         :columns="columns"
         :data-source="requests"
         :loading="loadingRequests"
+        :load-error="requestsLoadFailed"
         row-key="id"
         size="middle"
         :total="requestPagination.total"
@@ -170,7 +180,7 @@
             </UiTooltip>
           </template>
           <template v-else-if="column.key === 'evidenceFileRefs'">
-            <div v-if="requests[index].evidenceFileRefs.length === 0" class="muted">—</div>
+            <div v-if="requests[index].evidenceFileRefs.length === 0" class="dp-text-muted">—</div>
             <div v-else class="appeal-evidence-links">
               <UiTextAction
                 v-for="file in requests[index].evidenceFileRefs"
@@ -227,8 +237,8 @@
           <input
             ref="evidenceInputRef"
             type="file"
-            class="sr-only"
-            accept=".jpg,.jpeg,.png,.webp,.pdf"
+            class="tw:sr-only"
+            accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
             @change="onEvidencePick"
           />
           <UiButton
@@ -248,7 +258,7 @@
             </li>
           </ul>
           <div class="appeal-evidence-hint">
-            支持 JPG / PNG / WEBP / PDF，最多 {{ EVIDENCE_MAX_COUNT }} 个，单个不超过 10MB。
+            支持 JPG / PNG / PDF / DOC / DOCX，最多 {{ EVIDENCE_MAX_COUNT }} 个，单个不超过 30MB。
           </div>
         </UiFormItem>
         <UiFormItem
@@ -294,11 +304,6 @@ import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  FINAL_SCORE_STATUS_TONE,
-  FinalScoreStatusCode,
-  FinalScoreStatusDescription,
-} from '@/apis/mark/final-score-status'
-import {
   countMyPendingReviewRequests,
   GRADE_REVIEW_REASON_TYPE_OPTIONS,
   GradeReviewReasonTypeCode,
@@ -338,19 +343,28 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE } from '@/composables/useMarkExamSelector'
+import {
+  StudentFacingFinalScoreStatusCode,
+} from '@/types/enums/student-facing-final-score-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTime, formatScore } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import {
+  studentFacingFinalScoreStatusLabel,
+  studentFacingFinalScoreStatusTone,
+} from '@/utils/student-final-score-status'
 
 defineOptions({ name: 'StudentAppeal' })
 
 const EVIDENCE_MAX_COUNT = 5
-const EVIDENCE_MAX_BYTES = 10 * 1024 * 1024
+const EVIDENCE_MAX_BYTES = 30 * 1024 * 1024
 const route = useRoute()
 const router = useRouter()
 const loadingExams = ref(false)
+const examsLoadFailed = ref(false)
 const loadingRequests = ref(false)
+const requestsLoadFailed = ref(false)
 const submitting = ref(false)
 const submitModalOpen = ref(false)
 const scoreDetailLoading = ref(false)
@@ -363,7 +377,7 @@ const examStats = ref<StudentExamStatsResponse | null>(null)
 const appealableEmptyDescription = computed(() => {
   const stats = examStats.value
   if (!stats) {
-    return '成绩发布后且复核窗口开放时，才会出现可申请场次。若你刚收到成绩，可点击刷新。'
+    return '成绩发布后且复核窗口开放时，才会出现可申请场次。可使用顶栏「刷新」重新拉取。'
   }
   if (stats.totalExamCount === 0) {
     return '你名下暂无关联考试。请确认已报名对应教学班，或联系任课教师。'
@@ -374,7 +388,7 @@ const appealableEmptyDescription = computed(() => {
   if (stats.reviewOpenCount === 0) {
     return `已发布 ${stats.publishedCount} 场，但当前没有处于开放中的复核窗口（未开窗或已截止）。`
   }
-  return `有 ${stats.reviewOpenCount} 场复核窗口开放，但当前均不可提交申请（可能已达次数上限或成绩状态不允许）。可在下方「我的复核申请」查看历史记录，或稍后刷新。`
+  return `有 ${stats.reviewOpenCount} 场复核窗口开放，但当前均不可提交申请（可能已达次数上限或成绩状态不允许）。可在下方「我的复核申请」查看历史记录，或使用顶栏「刷新」。`
 })
 const requests = ref<StudentGradeReviewRequestItemResponse[]>([])
 const requestPagination = reactive({
@@ -382,7 +396,8 @@ const requestPagination = reactive({
   pageSize: 10,
   total: 0,
 })
-const pendingRequestCount = ref(0)
+/** null = 未就绪或加载失败，禁止当成 0 */
+const pendingRequestCount = ref<number | null>(null)
 const selectedExamQuestions = ref<StudentQuestionScoreVO[]>([])
 const selectedExamId = ref<string | undefined>(undefined)
 const sourceQuestionId = ref<string | undefined>(undefined)
@@ -465,7 +480,7 @@ const selectedExamCannotSubmitReview = computed(() => {
 const selectedExamSubmitBlockedReason = computed(() => {
   const exam = selectedAppealableExam.value
   if (!exam) return '请先选择考试'
-  if (exam.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED) {
+  if (exam.finalScoreStatus !== StudentFacingFinalScoreStatusCode.PUBLISHED) {
     return '成绩未发布或已更正待重发，暂不能提交复核'
   }
   if (
@@ -497,7 +512,7 @@ async function loadPendingRequestCount(): Promise<void> {
   try {
     pendingRequestCount.value = await countMyPendingReviewRequests()
   } catch (error) {
-    pendingRequestCount.value = 0
+    pendingRequestCount.value = null
     showUserError(error, '待处理复核申请数量加载失败')
   }
 }
@@ -576,6 +591,7 @@ async function loadExamFilterOptions(keyword?: string) {
 
 async function loadExams() {
   loadingExams.value = true
+  examsLoadFailed.value = false
   try {
     const appealablePage = await pageMyExams({
       reviewWindowAppealableOnly: true,
@@ -612,6 +628,7 @@ async function loadExams() {
       }
     }
   } catch (error) {
+    examsLoadFailed.value = true
     appealableExams.value = []
     exams.value = []
     examStats.value = null
@@ -629,6 +646,7 @@ async function loadExams() {
  */
 async function loadRequests() {
   loadingRequests.value = true
+  requestsLoadFailed.value = false
   try {
     const result = await listMyReviewRequests({
       requestStatus: requestFilterForm.status,
@@ -649,8 +667,7 @@ async function loadRequests() {
       await Promise.all([loadRequests(), loadPendingRequestCount()])
     }
   } catch (error) {
-    requests.value = []
-    requestPagination.total = 0
+    requestsLoadFailed.value = true
     showUserError(error, '复核申请列表加载失败')
   } finally {
     loadingRequests.value = false
@@ -681,11 +698,11 @@ function handleRequestFilterReset() {
 }
 
 function finalScoreStatusLabel(exam: StudentExamItemVO): string {
-  return strictEnumLabel(FinalScoreStatusDescription, exam.finalScoreStatus, '最终成绩状态')
+  return studentFacingFinalScoreStatusLabel(exam.finalScoreStatus)
 }
 
 function finalScoreStatusTone(exam: StudentExamItemVO): BadgeTone {
-  return strictEnumTone(FINAL_SCORE_STATUS_TONE, exam.finalScoreStatus, '最终成绩状态')
+  return studentFacingFinalScoreStatusTone(exam.finalScoreStatus)
 }
 
 function reviewWindowStatusLabel(exam: StudentExamItemVO): string {
@@ -720,6 +737,9 @@ function reviewNoteText(item: StudentGradeReviewRequestItemResponse): string {
   if (item.reviewNote) return item.reviewNote
   if (item.requestStatus === GradeReviewRequestStatusCode.PENDING) return '等待复核处理'
   if (item.requestStatus === GradeReviewRequestStatusCode.IN_REVIEW) return '复核处理中'
+  if (item.requestStatus === GradeReviewRequestStatusCode.INVALIDATED) {
+    return '成绩已撤回，原复核申请已作废；重发后可再次申请'
+  }
   return '未填写复核意见'
 }
 
@@ -753,7 +773,7 @@ async function onEvidencePick(event: Event): Promise<void> {
     return
   }
   if (file.size > EVIDENCE_MAX_BYTES) {
-    showFormValidationMessage('单个佐证文件不能超过十兆字节')
+    showFormValidationMessage('单个佐证文件不能超过三十兆字节')
     input.value = ''
     return
   }
@@ -929,41 +949,41 @@ async function loadSelectedExamQuestions(): Promise<void> {
 
 <style lang="scss" scoped>
 .appeal-page__select-card {
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-block);
 }
 
 .appeal-page__select-head,
 .appeal-page__list-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-lg);
   font-weight: var(--dp-font-weight-title);
 }
 
 .appeal-page__list-card {
-  margin-top: 8px;
+  margin-top: var(--dp-space-component-tight);
 }
 
 .exam-pick-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--dp-space-component);
 }
 
 .exam-pick-item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: var(--dp-space-block);
+  padding: var(--dp-space-block);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
   cursor: pointer;
-  background: var(--dp-bg-container);
+  background: var(--dp-surface);
   transition:
-    border-color 0.2s ease,
-    background 0.2s ease,
-    box-shadow 0.2s ease;
+    border-color var(--dp-duration-normal) var(--dp-ease-default),
+    background var(--dp-duration-normal) var(--dp-ease-default),
+    box-shadow var(--dp-duration-normal) var(--dp-ease-default);
 
   &:hover {
     border-color: var(--dp-color-primary-border);
@@ -985,7 +1005,7 @@ async function loadSelectedExamQuestions(): Promise<void> {
     border: 1.5px solid var(--dp-border);
     border-radius: 50%;
     flex-shrink: 0;
-    transition: border-color 0.2s ease;
+    transition: border-color var(--dp-duration-normal) var(--dp-ease-default);
 
     .exam-pick-item--active & {
       border-color: var(--dp-color-primary);
@@ -997,7 +1017,7 @@ async function loadSelectedExamQuestions(): Promise<void> {
     height: 8px;
     border-radius: 50%;
     background: transparent;
-    transition: background 0.2s ease;
+    transition: background var(--dp-duration-normal) var(--dp-ease-default);
 
     .exam-pick-item--active & {
       background: var(--dp-color-primary);
@@ -1012,22 +1032,22 @@ async function loadSelectedExamQuestions(): Promise<void> {
   &__title-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
+    gap: var(--dp-space-component-tight);
+    margin-bottom: var(--dp-space-component-xs);
     flex-wrap: wrap;
   }
 
   &__title {
-    font-size: 15px;
+    font-size: var(--dp-type-panel-title-size);
     font-weight: 600;
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
     margin: 0;
   }
 
   &__meta {
     display: flex;
     align-items: center;
-    gap: var(--dp-space-3, 12px);
+    gap: var(--dp-space-component);
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
     flex-wrap: wrap;
@@ -1035,7 +1055,7 @@ async function loadSelectedExamQuestions(): Promise<void> {
     .meta-item {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: var(--dp-space-component-xs);
     }
 
     .score-text {
@@ -1056,13 +1076,13 @@ async function loadSelectedExamQuestions(): Promise<void> {
   gap: 2px;
 
   &__title {
-    color: var(--dp-text);
+    color: var(--dp-text-primary);
     font-weight: 500;
   }
 
   &__sub {
     font-size: var(--dp-font-size-xs);
-    color: var(--dp-text-tertiary);
+    color: var(--dp-text-muted);
   }
 }
 
@@ -1073,22 +1093,18 @@ async function loadSelectedExamQuestions(): Promise<void> {
   color: var(--dp-text-secondary);
 }
 
-.muted {
-  color: var(--dp-text-tertiary);
-}
-
 .appeal-evidence-list {
-  margin: 8px 0 0;
+  margin: var(--dp-space-component-tight) 0 0;
   padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
   font-size: var(--dp-font-size-sm);
 }
 
 .appeal-evidence-hint {
-  margin-top: 6px;
+  margin-top: var(--dp-space-component-tight);
   font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
   line-height: 1.5;
@@ -1097,14 +1113,14 @@ async function loadSelectedExamQuestions(): Promise<void> {
 .appeal-evidence-links {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-component-xs);
 }
 
 .modal-exam-info {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: var(--dp-space-component);
+  padding: var(--dp-space-component);
   background: var(--dp-fill-quaternary);
   border-radius: var(--dp-radius-control-inner);
 
@@ -1121,7 +1137,7 @@ async function loadSelectedExamQuestions(): Promise<void> {
 }
 
 .question-load-error {
-  margin-top: 6px;
+  margin-top: var(--dp-space-component-tight);
   color: var(--dp-error);
   font-size: var(--dp-font-size-xs);
 }

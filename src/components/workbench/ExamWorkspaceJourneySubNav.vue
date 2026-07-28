@@ -89,9 +89,9 @@ function navigate(item: ExamWorkspaceMenuItem): void {
 .exam-journey-sub-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-2);
-  padding: var(--dp-space-2) var(--dp-space-3);
-  margin-bottom: var(--dp-space-3);
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) var(--dp-space-component);
+  margin-bottom: var(--dp-space-component);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface-subtle);
@@ -100,7 +100,7 @@ function navigate(item: ExamWorkspaceMenuItem): void {
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
-    gap: var(--dp-space-1);
+    gap: var(--dp-space-component-xs);
   }
 
   &__label {
@@ -109,11 +109,11 @@ function navigate(item: ExamWorkspaceMenuItem): void {
 
   &__badge {
     min-width: 18px;
-    padding: 0 6px;
+    padding: 0 var(--dp-space-component-tight);
     border-radius: 9px;
     background: var(--dp-warning-bg);
     color: var(--dp-warning);
-    font-size: var(--dp-font-size-xxs);
+    font-size: var(--dp-font-size-xs);
     font-weight: 600;
     line-height: 18px;
     text-align: center;
