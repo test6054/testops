@@ -47,7 +47,19 @@
         <UiTag v-if="task.dualMarkFormalGradeStatus" :tone="formalGradeTone(task.dualMarkFormalGradeStatus)" size="sm">
           {{ formalGradeLabel(task.dualMarkFormalGradeStatus) }}
         </UiTag>
+        <span v-else-if="task.dualMarkPeerTaskStatus === MarkingTaskStatusCode.FINALIZED" class="dp-text-muted">
+          对端已齐，解算进行中
+        </span>
         <span v-else class="dp-text-muted">等待对端齐备后解算</span>
+      </UiDescriptionsItem>
+      <UiDescriptionsItem
+        v-if="task.dualMarkRole && task.dualMarkQuestionCount != null"
+        label="双评题量进度"
+      >
+        已解算 {{ task.dualMarkSettledQuestionCount ?? 0 }}/{{ task.dualMarkQuestionCount }}
+        <template v-if="(task.dualMarkArbitrationQuestionCount ?? 0) > 0">
+          · 仲裁 {{ task.dualMarkArbitrationQuestionCount }}
+        </template>
       </UiDescriptionsItem>
       <UiDescriptionsItem label="分配时间">
         {{ formatDateTime(task.allocatedTime) }}
@@ -94,8 +106,8 @@ import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type {
   AllocationUnitCode,
   MarkingTaskResponse,
-  MarkingTaskStatusCode,
 } from '@/apis/mark/marking-organization'
+import { MarkingTaskStatusCode } from '@/apis/mark/marking-organization'
 import { dualMarkRoleLabel } from '@/apis/mark/dual-mark-role'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'

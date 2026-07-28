@@ -176,7 +176,9 @@ const dualMarkWaitingDescription = computed(() => {
     </UiAlertStrip>
 
     <UiAlertStrip
-      v-if="task?.dualMarkRole && task.taskStatus === MarkingTaskStatusCode.FINALIZED && !task.dualMarkFormalGradeStatus"
+      v-if="task?.dualMarkRole
+        && task.taskStatus === MarkingTaskStatusCode.FINALIZED
+        && task.dualMarkPeerTaskStatus !== MarkingTaskStatusCode.FINALIZED"
       tone="info"
       title="双评等待对端"
       :description="dualMarkWaitingDescription"

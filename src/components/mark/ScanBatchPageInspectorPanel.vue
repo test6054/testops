@@ -142,7 +142,7 @@
         <h3 class="scan-batch-page-inspector__section-title">
           确认身份绑定
           <UiTooltip
-            title="对照中栏登记页与文字识别线索，从考试名册选择正确考生并确认绑定。"
+            title="优先从本场名册选择考生；未命中时可核对 OCR 学号、姓名并选择租户正式班级，创建或补入名册后立即绑定。"
             placement="topLeft"
           >
             <InfoCircleOutlined class="scan-batch-page-inspector__tip" />

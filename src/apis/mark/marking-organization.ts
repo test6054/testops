@@ -566,8 +566,14 @@ export interface MarkingTaskResponse {
   dualMarkRole?: DualMarkRoleCode | null
   /** 双评对端任务状态；单评或未回填为 null/undefined */
   dualMarkPeerTaskStatus?: MarkingTaskStatusCode | null
-  /** 双评正式题分状态；等待对端时为 null */
+  /** 双评正式题分状态；等待对端时为 null；整卷为全卷汇总 */
   dualMarkFormalGradeStatus?: GradeStatusCode | null
+  /** 双评覆盖题目总数 */
+  dualMarkQuestionCount?: number | null
+  /** 双评已解算题目数 */
+  dualMarkSettledQuestionCount?: number | null
+  /** 双评分歧仲裁题目数 */
+  dualMarkArbitrationQuestionCount?: number | null
   reviewerName: string
   taskUnit: AllocationUnitCode
   anonymityMode: AnonymityModeCode
@@ -767,9 +773,9 @@ export interface FormalSessionResponse {
   questionScopeCount: number
   /** 正评会话实际题目范围；随机题目模式展示本次启动固化后的抽题结果 */
   questionScopes: FormalSessionQuestionScopeResponse[]
-  /** 本会话派发阅卷任务总数 */
+  /** 本会话阅卷工作单元总数（双评按配对计 1） */
   totalTaskCount: number
-  /** 本会话已定稿阅卷任务数 */
+  /** 本会话已完成工作单元数（双评双方均定稿） */
   finalizedTaskCount: number
   /** 待领取或批改中任务数 */
   pendingTaskCount: number

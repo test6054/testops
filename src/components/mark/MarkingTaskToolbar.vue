@@ -12,7 +12,9 @@
         双评·{{ dualMarkRoleLabel(task.dualMarkRole) }}
       </UiTag>
       <UiTag
-        v-if="task?.dualMarkRole && task.taskStatus === MarkingTaskStatusCode.FINALIZED && !task.dualMarkFormalGradeStatus"
+        v-if="task?.dualMarkRole
+          && task.taskStatus === MarkingTaskStatusCode.FINALIZED
+          && task.dualMarkPeerTaskStatus !== MarkingTaskStatusCode.FINALIZED"
         tone="orange"
         size="sm"
       >
@@ -70,6 +72,15 @@
             <div v-if="task.dualMarkPeerTaskStatus" class="marking-task-toolbar__summary-item">
               <dt>对端状态</dt>
               <dd>{{ taskStatusLabel(task.dualMarkPeerTaskStatus) }}</dd>
+            </div>
+            <div v-if="task.dualMarkQuestionCount != null" class="marking-task-toolbar__summary-item">
+              <dt>双评题量</dt>
+              <dd>
+                已解算 {{ task.dualMarkSettledQuestionCount ?? 0 }}/{{ task.dualMarkQuestionCount }}
+                <template v-if="(task.dualMarkArbitrationQuestionCount ?? 0) > 0">
+                  · 仲裁 {{ task.dualMarkArbitrationQuestionCount }}
+                </template>
+              </dd>
             </div>
             <div class="marking-task-toolbar__summary-item">
               <dt>答卷</dt>

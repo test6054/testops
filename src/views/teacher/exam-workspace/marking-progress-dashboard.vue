@@ -117,7 +117,7 @@ const progressStatusLabel = computed(() => {
 const signalMetrics = computed<SignalMetric[]>(() => {
   if (loadFailed.value) {
     return [
-      { key: 'total', label: '总任务', value: '—', tone: 'gray' },
+      { key: 'total', label: '工作单元', value: '—', tone: 'gray' },
       { key: 'done', label: '已完成', value: '—', tone: 'gray' },
       { key: 'pending', label: '待完成', value: '—', tone: 'gray' },
       { key: 'recycled', label: '已回收', value: '—', tone: 'gray' },
@@ -125,10 +125,10 @@ const signalMetrics = computed<SignalMetric[]>(() => {
   }
   const summary = taskSummary.value
   if (!summary) {
-    return [{ key: 'total', label: '总任务', value: '—', tone: 'gray' }]
+    return [{ key: 'total', label: '工作单元', value: '—', tone: 'gray' }]
   }
   return [
-    { key: 'total', label: '总任务', value: summary.totalTaskCount, tone: 'blue' },
+    { key: 'total', label: '工作单元', value: summary.totalTaskCount, tone: 'blue' },
     { key: 'done', label: '已完成', value: summary.finalizedTaskCount, tone: 'green' },
     { key: 'pending', label: '待完成', value: summary.pendingTaskCount, tone: 'orange' },
     { key: 'recycled', label: '已回收', value: summary.recycledTaskCount, tone: 'gray' },
@@ -139,7 +139,7 @@ const formalColumns: TableColumnsType<FormalSessionResponse> = [
   { title: '题组', dataIndex: 'groupName', key: 'groupName', width: 160 },
   { title: '状态', key: 'status', width: 120 },
   {
-    title: '总任务',
+    title: '工作单元',
     dataIndex: 'totalTaskCount',
     key: 'totalTaskCount',
     width: 88,

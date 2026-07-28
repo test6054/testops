@@ -239,7 +239,8 @@
                 <div v-if="record.dualMarkRole" class="dp-space dp-space--vertical dp-space--dense">
                   <UiTag tone="blue" size="sm">{{ dualMarkRoleLabel(record.dualMarkRole) }}</UiTag>
                   <UiTag
-                    v-if="record.taskStatus === MarkingTaskStatusCode.FINALIZED && !record.dualMarkFormalGradeStatus"
+                    v-if="record.taskStatus === MarkingTaskStatusCode.FINALIZED
+                      && record.dualMarkPeerTaskStatus !== MarkingTaskStatusCode.FINALIZED"
                     tone="orange"
                     size="sm"
                   >

@@ -13,7 +13,7 @@ export function formatFormalSessionQuestionScope(session: FormalSessionResponse)
     .map((scope) => {
       const progress
         = scope.scopedTaskCount > 0
-          ? `（任务 ${scope.scopedFinalizedTaskCount}/${scope.scopedTaskCount}，成绩 ${scope.scopedConfirmedGradeCount}/${scope.scopedGradeItemCount}）`
+          ? `（工作单元 ${scope.scopedFinalizedTaskCount}/${scope.scopedTaskCount}，成绩 ${scope.scopedConfirmedGradeCount}/${scope.scopedGradeItemCount}）`
           : ''
       return `题 ${scope.questionNo}${progress}`
     })
@@ -25,9 +25,9 @@ export function formatFormalSessionQuestionScope(session: FormalSessionResponse)
 /** 正评会话任务进度展示文案 */
 export function formatFormalSessionTaskProgress(session: FormalSessionResponse): string {
   if (session.totalTaskCount <= 0) {
-    return '阅卷任务待生成'
+    return '阅卷工作单元待生成'
   }
-  let text = `${session.completionScopeLabel} 已定稿 ${session.finalizedTaskCount}/${session.totalTaskCount}`
+  let text = `${session.completionScopeLabel} 已完成 ${session.finalizedTaskCount}/${session.totalTaskCount}`
   if (session.recycledTaskCount > 0) {
     text += `，回收待处理 ${session.recycledTaskCount} 个`
   }
