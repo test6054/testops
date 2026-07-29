@@ -5,7 +5,6 @@
         layout="workbench"
         show-title
         title="阅卷概览"
-        :subtitle="filteredExamCount > 0 ? `${filteredExamCount} 场` : undefined"
       >
         <template #toolbar>
           <div
@@ -701,7 +700,7 @@ function handleSignalMetricClick(key: string): void {
       )
       return
     }
-    if (key === 'exceptions' || key === 'arbitration' || key === 'spot-check') {
+    if (key === 'arbitration' || key === 'spot-check') {
       goPriorityExamList()
     }
   } catch (error) {

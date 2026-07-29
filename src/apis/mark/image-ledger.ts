@@ -14,15 +14,15 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
  */
 import type { PageResult, QueryDto } from '@/types'
 import type { QualityDecisionCode } from '@/types/enums/quality-decision-enum'
-import {
-  ALL_DUPLICATE_RESOLUTION_STATUS_CODES,
-  DuplicateResolutionStatusCode,
-} from './duplicate-resolution-status'
 import http from '@/config/axios'
 import {
   ALL_LEDGER_STATUS_CODES,
   LedgerStatusCode,
 } from '@/types/enums/ledger-status-enum'
+import {
+  ALL_DUPLICATE_RESOLUTION_STATUS_CODES,
+  DuplicateResolutionStatusCode,
+} from './duplicate-resolution-status'
 
 export {
   ALL_LEDGER_STATUS_CODES,

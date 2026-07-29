@@ -35,7 +35,7 @@
           <span>{{ leavePlatformLabel }}</span>
         </UiMenuItem>
         <UiMenuItem
-          v-for="item in primaryGroupItems(platformMenuItems)"
+          v-for="item in platformMenuItems"
           :key="item.path"
           :disabled="item.meta?.disabled"
         >
@@ -46,26 +46,11 @@
           </template>
           <span>{{ item.meta?.title }}</span>
         </UiMenuItem>
-        <UiSubMenu
-          v-if="secondaryGroupItems(platformMenuItems).length > 0"
-          :key="moreMenuKey(PLATFORM_DOMAIN_KEY)"
-        >
-          <template #title>
-            <span>{{ moreMenuLabel('platform', platformMenuItems) }}</span>
-          </template>
-          <UiMenuItem
-            v-for="item in secondaryGroupItems(platformMenuItems)"
-            :key="item.path"
-            :disabled="item.meta?.disabled"
-          >
-            <span>{{ item.meta?.title }}</span>
-          </UiMenuItem>
-        </UiSubMenu>
       </template>
 
       <template v-else>
         <UiMenuItem
-          v-for="item in primaryGroupItems(activeGrouped.ungrouped)"
+          v-for="item in activeGrouped.ungrouped"
           :key="item.path"
           :disabled="item.meta?.disabled"
         >
@@ -77,23 +62,7 @@
           <span>{{ menuRouteLabel(item) }}</span>
         </UiMenuItem>
 
-        <UiSubMenu
-          v-if="secondaryGroupItems(activeGrouped.ungrouped).length > 0"
-          :key="moreMenuKey(activeSideNavDomain)"
-        >
-          <template #title>
-            <span>{{ moreMenuLabel(activeMoreScope, activeGrouped.ungrouped) }}</span>
-          </template>
-          <UiMenuItem
-            v-for="item in secondaryGroupItems(activeGrouped.ungrouped)"
-            :key="item.path"
-            :disabled="item.meta?.disabled"
-          >
-            <span>{{ menuRouteLabel(item) }}</span>
-          </UiMenuItem>
-        </UiSubMenu>
-
-        <template v-for="group in primaryTaskGroups" :key="group.key">
+        <template v-for="group in activeGrouped.groups" :key="group.key">
           <UiMenuItem
             v-if="isFlattenedMenuGroup(group)"
             :key="flattenedMenuGroupItem(group).path"
@@ -116,7 +85,7 @@
               </MenuCollapsedTooltip>
             </template>
             <UiMenuItem
-              v-for="item in primaryGroupItems(group.items)"
+              v-for="item in group.items"
               :key="item.path"
               :disabled="item.meta?.disabled"
             >
@@ -127,91 +96,10 @@
               </template>
               <span>{{ menuRouteLabel(item) }}</span>
             </UiMenuItem>
-            <UiSubMenu
-              v-if="secondaryGroupItems(group.items).length > 0"
-              :key="moreMenuKey(group.key)"
-            >
-              <template #title>
-                <span>{{ moreMenuLabel('group', group.items, group.title) }}</span>
-              </template>
-              <UiMenuItem
-                v-for="item in secondaryGroupItems(group.items)"
-                :key="item.path"
-                :disabled="item.meta?.disabled"
-              >
-                <span>{{ menuRouteLabel(item) }}</span>
-              </UiMenuItem>
-            </UiSubMenu>
           </UiSubMenu>
         </template>
 
-        <!-- 本域低频分组：收进一个折叠，避免单域仍呈「全功能清单」 -->
-        <UiSubMenu
-          v-if="deferredTaskGroups.length > 0"
-          :key="DOMAIN_MORE_GROUPS_KEY"
-        >
-          <template #title>
-            <span>{{ domainMoreGroupsLabel }}</span>
-          </template>
-          <template #icon>
-            <MenuCollapsedTooltip :collapsed="collapsed" :label="domainMoreGroupsLabel">
-              <MenuIcon icon="appstore" />
-            </MenuCollapsedTooltip>
-          </template>
-          <template v-for="group in deferredTaskGroups" :key="group.key">
-            <UiMenuItem
-              v-if="isFlattenedMenuGroup(group)"
-              :key="flattenedMenuGroupItem(group).path"
-              :disabled="flattenedMenuGroupItem(group).meta?.disabled"
-            >
-              <template #icon>
-                <MenuCollapsedTooltip :collapsed="collapsed" :label="group.title">
-                  <MenuIcon :icon="group.icon" />
-                </MenuCollapsedTooltip>
-              </template>
-              <span>{{ group.title }}</span>
-            </UiMenuItem>
-            <UiSubMenu v-else :key="group.key">
-              <template #title>
-                <span>{{ group.title }}</span>
-              </template>
-              <template #icon>
-                <MenuCollapsedTooltip :collapsed="collapsed" :label="group.title">
-                  <MenuIcon :icon="group.icon" />
-                </MenuCollapsedTooltip>
-              </template>
-              <UiMenuItem
-                v-for="item in primaryGroupItems(group.items)"
-                :key="item.path"
-                :disabled="item.meta?.disabled"
-              >
-                <template #icon>
-                  <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
-                    <MenuIcon :icon="routeIcon(item, 'folder')" />
-                  </MenuCollapsedTooltip>
-                </template>
-                <span>{{ menuRouteLabel(item) }}</span>
-              </UiMenuItem>
-              <UiSubMenu
-                v-if="secondaryGroupItems(group.items).length > 0"
-                :key="moreMenuKey(group.key)"
-              >
-                <template #title>
-                  <span>{{ moreMenuLabel('group', group.items, group.title) }}</span>
-                </template>
-                <UiMenuItem
-                  v-for="item in secondaryGroupItems(group.items)"
-                  :key="item.path"
-                  :disabled="item.meta?.disabled"
-                >
-                  <span>{{ menuRouteLabel(item) }}</span>
-                </UiMenuItem>
-              </UiSubMenu>
-            </UiSubMenu>
-          </template>
-        </UiSubMenu>
-
-        <!-- 系统管理：非产品域，收在当前域侧栏底部弱化脚，避免与本域任务一级并列 -->
+        <!-- 系统管理：非产品域，收在当前域侧栏底部弱化脚，避免与本域任务一级并列。 -->
         <UiSubMenu
           v-if="showPlatformFooter"
           :key="PLATFORM_DOMAIN_KEY"
@@ -225,7 +113,7 @@
             </MenuCollapsedTooltip>
           </template>
           <UiMenuItem
-            v-for="item in primaryGroupItems(platformMenuItems)"
+            v-for="item in platformMenuItems"
             :key="item.path"
             :disabled="item.meta?.disabled"
           >
@@ -236,21 +124,6 @@
             </template>
             <span>{{ item.meta?.title }}</span>
           </UiMenuItem>
-          <UiSubMenu
-            v-if="secondaryGroupItems(platformMenuItems).length > 0"
-            :key="moreMenuKey(PLATFORM_DOMAIN_KEY)"
-          >
-            <template #title>
-              <span>{{ moreMenuLabel('platform', platformMenuItems) }}</span>
-            </template>
-            <UiMenuItem
-              v-for="item in secondaryGroupItems(platformMenuItems)"
-              :key="item.path"
-              :disabled="item.meta?.disabled"
-            >
-              <span>{{ item.meta?.title }}</span>
-            </UiMenuItem>
-          </UiSubMenu>
         </UiSubMenu>
       </template>
     </UiMenu>
@@ -281,12 +154,6 @@ import {
   SHELL_LEAVE_PLATFORM_MENU_KEY,
   SHELL_PRODUCT_DOMAIN_LABEL,
 } from '@/utils/shell-domain'
-import {
-  primarySideMenuRoutes,
-  secondarySideMenuRoutes,
-  visiblePrimarySideMenuRoutes,
-  visibleSecondarySideMenuRoutes,
-} from '@/utils/side-menu-tier'
 import { isExternal } from '@/utils/validate'
 import MenuCollapsedTooltip from './MenuCollapsedTooltip.vue'
 import MenuIcon from './MenuIcon.vue'
@@ -321,13 +188,6 @@ const PLATFORM_DOMAIN_KEY = 'domain-platform'
 const QUALITY_DOMAIN_KEY = 'domain-quality'
 const PORTFOLIO_DOMAIN_KEY = 'domain-portfolio'
 const LEAVE_PLATFORM_MENU_KEY = SHELL_LEAVE_PLATFORM_MENU_KEY
-/** 本域低频分组折叠入口（非真实路由） */
-const DOMAIN_MORE_GROUPS_KEY = 'domain-more-groups'
-/**
- * 主任务分组上限：order ≤ 此值的 menuGroup 一级展示；更大 order 收进「本域更多」。
- * 当前路由所在分组始终提升，避免选中项被折叠藏住。
- */
-const PRIMARY_GROUP_ORDER_MAX = 4
 
 interface MenuGroup {
   key: string
@@ -363,60 +223,9 @@ function menuRouteLabel(item: RouteRecordRaw): string {
   return routeTitle(item)
 }
 
-/**
- * 侧栏主/次分层：始终尊重 meta.menuTier。
- * secondary 收进语义折叠；当前激活 secondary 由 visiblePrimary 提升，避免选中项被藏。
- * 禁止「secondary≤N 全量提升」——否则本域短任务标注在落地前一直无效。
- */
-function primaryGroupItems(items: RouteRecordRaw[]): RouteRecordRaw[] {
-  return visiblePrimarySideMenuRoutes(items, route.path)
-}
-
-/** 低频 secondary 收进语义折叠；无 secondary 时不渲染「更多」 */
-function secondaryGroupItems(items: RouteRecordRaw[]): RouteRecordRaw[] {
-  return visibleSecondarySideMenuRoutes(items, route.path)
-}
-
-function moreMenuLabel(
-  scope: 'marking' | 'quality' | 'portfolio' | 'platform' | 'group',
-  items: RouteRecordRaw[],
-  groupTitle?: string,
-): string {
-  const count = secondaryGroupItems(items).length
-  const suffix = count > 0 ? `（${count}）` : ''
-  switch (scope) {
-    case 'marking':
-      return `阅卷辅助与配置${suffix}`
-    case 'quality':
-      return `质量配置与台账${suffix}`
-    case 'portfolio':
-      return `档案袋管理入口${suffix}`
-    case 'platform':
-      return `平台管理入口${suffix}`
-    case 'group':
-      return `${groupTitle ?? '本组'}·配置入口${suffix}`
-  }
-}
-
-function moreMenuKey(parentKey: string): string {
-  return `${parentKey}__more`
-}
-
-/** 仅含一个 primary 且无 secondary 时展平，避免误藏「更多」。 */
+/** 仅含一个可访问任务时展平分组，避免不必要的二级展开。 */
 function isFlattenedMenuGroup(group: MenuGroup): boolean {
-  return (
-    primarySideMenuRoutes(group.items).length === 1
-    && secondarySideMenuRoutes(group.items).length === 0
-  )
-}
-
-function shouldOpenMoreSubmenu(items: RouteRecordRaw[]): boolean {
-  return secondarySideMenuRoutes(items).some((item) => {
-    if (!item.path) {
-      return false
-    }
-    return route.path === item.path || route.path.startsWith(`${item.path}/`)
-  })
+  return group.items.length === 1
 }
 
 function flattenedMenuGroupItem(group: MenuGroup): RouteRecordRaw {
@@ -480,68 +289,6 @@ const activeGrouped = computed(() => {
   }
 })
 
-/**
- * 分组是否包含当前路由（meta.menuGroup 或 path 前缀）。
- */
-function isMenuGroupActive(group: MenuGroup): boolean {
-  const groupKey = stringMetaValue(route.meta?.menuGroup)
-  if (groupKey && groupKey === group.key) {
-    return true
-  }
-  return group.items.some((item) => {
-    if (!item.path) {
-      return false
-    }
-    return route.path === item.path || route.path.startsWith(`${item.path}/`)
-  })
-}
-
-/**
- * 本域主任务分组：低 order 一级展示；激活中的尾部分组临时提升。
- */
-const primaryTaskGroups = computed(() => {
-  return activeGrouped.value.groups.filter((group) => {
-    return group.order <= PRIMARY_GROUP_ORDER_MAX || isMenuGroupActive(group)
-  })
-})
-
-/**
- * 本域低频分组：收进「本域更多」，缩短单域侧栏功能清单感。
- */
-const deferredTaskGroups = computed(() => {
-  const primaryKeys = new Set(primaryTaskGroups.value.map((group) => group.key))
-  return activeGrouped.value.groups.filter((group) => !primaryKeys.has(group.key))
-})
-
-const activeMoreScope = computed<'marking' | 'quality' | 'portfolio' | 'platform'>(() => {
-  switch (activeSideNavDomain.value) {
-    case QUALITY_DOMAIN_KEY:
-      return 'quality'
-    case PORTFOLIO_DOMAIN_KEY:
-      return 'portfolio'
-    case PLATFORM_DOMAIN_KEY:
-      return 'platform'
-    default:
-      return 'marking'
-  }
-})
-
-const domainMoreGroupsLabel = computed(() => {
-  const count = deferredTaskGroups.value.length
-  const suffix = count > 0 ? `（${count}）` : ''
-  switch (activeMoreScope.value) {
-    case 'quality':
-      return `质量更多入口${suffix}`
-    case 'portfolio':
-      return `档案袋更多入口${suffix}`
-    case 'platform':
-      return `平台更多入口${suffix}`
-    case 'marking':
-    default:
-      return `阅卷更多入口${suffix}`
-  }
-})
-
 const activeDomainFallbackIcon = computed(() => {
   switch (activeSideNavDomain.value) {
     case QUALITY_DOMAIN_KEY:
@@ -590,27 +337,19 @@ function onOpenChange(keys: Key[]) {
   openMenuKeys.value = normalizeOpenKeys(keys)
 }
 
-/**
- * 单域侧栏：只保留当前域分组 / 系统管理折叠的 open keys。
- */
+/** 单域侧栏仅保留真实业务分组和系统管理分组的展开状态。 */
 function normalizeOpenKeys(keys: Key[]): Key[] {
   const productGroupKeys = collectGroupKeySet(activeGrouped.value)
-  const allowed = new Set<string>([
-    ...productGroupKeys,
-    moreMenuKey(activeSideNavDomain.value),
-    ...[...productGroupKeys].map((key) => moreMenuKey(key)),
-    DOMAIN_MORE_GROUPS_KEY,
-  ])
+  const allowed = new Set<string>(productGroupKeys)
 
   if (!isPlatformActive.value && platformMenuItems.value.length > 0) {
     allowed.add(PLATFORM_DOMAIN_KEY)
-    allowed.add(moreMenuKey(PLATFORM_DOMAIN_KEY))
   }
 
   return keys.map(String).filter((key) => allowed.has(key))
 }
 
-/** 按当前路由展开本域分组；系统管理页只展开平台「更多」。 */
+/** 按当前路由展开其所属业务分组；平台入口保持直达。 */
 function resolveDefaultOpenKeys(): Key[] {
   if (props.collapsed) {
     return []
@@ -618,31 +357,11 @@ function resolveDefaultOpenKeys(): Key[] {
   const keys: Key[] = []
   const groupKey = stringMetaValue(route.meta?.menuGroup)
 
-  if (isPlatformActive.value) {
-    if (shouldOpenMoreSubmenu(platformMenuItems.value)) {
-      keys.push(moreMenuKey(PLATFORM_DOMAIN_KEY))
-    }
-    return keys
-  }
+  if (isPlatformActive.value) return keys
 
   const grouped = activeGrouped.value
-  if (shouldOpenMoreSubmenu(grouped.ungrouped)) {
-    keys.push(moreMenuKey(activeSideNavDomain.value))
-  }
   if (groupKey && groupKey !== QUALITY_ADMIN_MENU_GROUP && shouldOpenMenuGroup(groupKey, grouped)) {
-    const group = grouped.groups.find((entry) => entry.key === groupKey)
-    if (group && deferredTaskGroups.value.some((entry) => entry.key === group.key)) {
-      keys.push(DOMAIN_MORE_GROUPS_KEY)
-    }
     keys.push(groupKey)
-    if (group && shouldOpenMoreSubmenu(group.items)) {
-      keys.push(moreMenuKey(groupKey))
-    }
-  }
-
-  if (shouldOpenMoreSubmenu(platformMenuItems.value)) {
-    keys.push(PLATFORM_DOMAIN_KEY)
-    keys.push(moreMenuKey(PLATFORM_DOMAIN_KEY))
   }
 
   return keys
@@ -671,7 +390,6 @@ function onMenuClick({ key }: { key: Key }) {
     || keyStr === PLATFORM_DOMAIN_KEY
     || keyStr === QUALITY_DOMAIN_KEY
     || keyStr === PORTFOLIO_DOMAIN_KEY
-    || keyStr === DOMAIN_MORE_GROUPS_KEY
   ) {
     return
   }
@@ -773,7 +491,7 @@ function onMenuClick({ key }: { key: Key }) {
   }
 }
 
-/* 本域更多：次于主任务分组，高于系统管理脚 */
+/* 业务分组标题：仅表达真实任务归属。 */
 .dual-domain-side-nav--single-domain {
   :deep(> .ant-menu-submenu > .ant-menu-submenu-title) {
     font-weight: 600;

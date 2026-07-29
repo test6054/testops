@@ -1,7 +1,12 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="复核任务中心" :subtitle="examId ? `${pagination.total} 条` : undefined">
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="复核任务中心"
+        :subtitle="examId && !listLoadFailed ? `${pagination.total} 条` : undefined"
+      >
         <template #actions>
           <UiButton
             v-if="canManageReviewerWrites === true"
@@ -31,6 +36,20 @@
       <ExamWorkspaceJourneySubNav />
 
       <WorkbenchSurfaceCard flush>
+        <UiAlertStrip
+          v-if="listLoadFailed"
+          tone="error"
+          title="复核任务列表加载失败"
+          description="当前列表快照已撤销。请切换筛选、考试范围或离开后重新进入本页。"
+          dense
+        />
+        <UiAlertStrip
+          v-else-if="writeCapabilityLoadFailed"
+          tone="error"
+          title="复核写权限状态加载失败"
+          description="当前筛选没有任务，但服务端写能力位不可用；批量确认入口已关闭。"
+          dense
+        />
         <template #toolbar>
           <UiFilterBar
             v-model="filterModel"
@@ -46,11 +65,12 @@
 
         <UiEmpty
           size="sm"
-          v-if="!loading && rows.length === 0"
+          v-if="!listLoadFailed && !loading && rows.length === 0"
           description="当前筛选下暂无复核任务"
           class="review-task-hub__empty"
         />
         <UiDataTable
+          v-if="!listLoadFailed"
           pagination-mode="server"
           row-key="reviewTaskId"
           v-model:current="pagination.current"
@@ -89,13 +109,13 @@
               <UiTag tone="blue" size="sm">题 {{ record.questionNo }}</UiTag>
             </template>
             <template v-else-if="column.key === 'reviewType'">
-              <UiTag :tone="reviewTypeTone(record.reviewType)" size="sm">
-                {{ reviewTypeLabel(record.reviewType) }}
+              <UiTag :tone="ReviewTaskTypeTone[record.reviewType]" size="sm">
+                {{ strictEnumLabel(ReviewTaskTypeDescription, record.reviewType, '阅卷任务类型') }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'gradeSource'">
-              <UiTag :tone="gradeSourceTone(record.gradeSource)" size="sm">
-                {{ gradeSourceLabel(record.gradeSource) }}
+              <UiTag :tone="GRADE_SOURCE_TONE[record.gradeSource]" size="sm">
+                {{ strictEnumLabel(GradeSourceDescription, record.gradeSource, '成绩来源') }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'aiScore'">
@@ -103,8 +123,8 @@
               <UiTag v-else tone="gray" size="sm">未派生</UiTag>
             </template>
             <template v-else-if="column.key === 'status'">
-              <UiTag :tone="reviewStatusTone(record.status)" size="sm">
-                {{ reviewStatusLabel(record.status) }}
+              <UiTag :tone="REVIEW_TASK_STATUS_TONE[record.status]" size="sm">
+                {{ strictEnumLabel(ReviewTaskStatusDescription, record.status, '阅卷任务状态') }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'assignedTeacherName'">
@@ -132,12 +152,8 @@
 <script lang="ts" setup>
 // MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type {
-  GradeSourceCode,
-  ReviewTaskItemResponse,
-  ReviewTaskTypeCode,
-} from '@/apis/mark/exam-review-task'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
@@ -159,6 +175,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -180,10 +197,14 @@ const { examId } = useWorkspaceExamId()
 const { refreshing: workbenchRefreshing, snapshot } = useMarkWorkbenchContext()
 
 const loading = ref(false)
+const listLoadFailed = ref(false)
+const writeCapabilityLoadFailed = ref(false)
+let tasksLoadGeneration = 0
 const rows = ref<ReviewTaskItemResponse[]>([])
 // MVR-332：列表/制卷摘要下发 canManageReviewerWrites，缺声明会导致写闸 ReferenceError
 const canManageReviewerWrites = ref(false)
 const statusFilter = ref<ReviewTaskStatusCode>(ReviewTaskStatusCode.PENDING)
+const statusFilterDraft = ref<ReviewTaskStatusCode>(ReviewTaskStatusCode.PENDING)
 
 const pagination = reactive({
   current: 1,
@@ -204,7 +225,7 @@ const statusFilterFields: FilterField[] = [
 ]
 
 const filterModel = computed<Record<string, unknown>>({
-  get: () => ({ status: statusFilter.value }),
+  get: () => ({ status: statusFilterDraft.value }),
   set: (value) => {
     if (
       value.status === ReviewTaskStatusCode.PENDING
@@ -213,65 +234,71 @@ const filterModel = computed<Record<string, unknown>>({
       || value.status === ReviewTaskStatusCode.REJECTED
       || value.status === ReviewTaskStatusCode.INVALIDATED
     ) {
-      statusFilter.value = value.status
+      statusFilterDraft.value = value.status
     }
   },
 })
 
 const hubSignalMetrics = computed((): SignalMetric[] => {
   const progress = snapshot.value?.markingProgress
-  const pending = progress?.pendingReviewTaskCount ?? 0
-  const inProgress = progress?.inProgressReviewTaskCount ?? 0
+  const pending = progress?.pendingReviewTaskCount
+  const inProgress = progress?.inProgressReviewTaskCount
   return [
     {
       key: 'pending',
       label: '待复核',
-      value: pending,
-      unit: '条',
-      tone: pending > 0 ? 'orange' : 'green',
+      value: pending == null ? '—' : pending,
+      unit: pending == null ? undefined : '条',
+      tone: pending == null ? 'gray' : pending > 0 ? 'orange' : 'green',
       emphasis: 'primary',
-      actionLabel: pending > 0 ? '处理待复核' : undefined,
-      clickable: pending > 0,
-      helper: pending > 0 ? '点击切换待复核' : '暂无待复核',
+      actionLabel: pending != null && pending > 0 ? '处理待复核' : undefined,
+      clickable: pending != null && pending > 0,
+      helper: pending == null ? '工作台快照不可用' : pending > 0 ? '点击切换待复核' : '暂无待复核',
     },
     {
       key: 'in-progress',
       label: '复核中',
-      value: inProgress,
-      unit: '条',
-      tone: inProgress > 0 ? 'blue' : 'gray',
+      value: inProgress == null ? '—' : inProgress,
+      unit: inProgress == null ? undefined : '条',
+      tone: inProgress != null && inProgress > 0 ? 'blue' : 'gray',
       emphasis: 'secondary',
-      clickable: inProgress > 0,
-      helper: inProgress > 0 ? '点击切换复核中' : '暂无进行中',
+      clickable: inProgress != null && inProgress > 0,
+      helper: inProgress == null ? '工作台快照不可用' : inProgress > 0 ? '点击切换复核中' : '暂无进行中',
     },
     {
       key: 'filtered',
       label: '筛选结果',
-      value: pagination.total,
-      unit: '条',
-      tone: 'blue',
+      value: listLoadFailed.value ? '—' : pagination.total,
+      unit: listLoadFailed.value ? undefined : '条',
+      tone: listLoadFailed.value ? 'red' : 'blue',
       emphasis: 'secondary',
-      helper: statusFilterLabel.value,
+      helper: listLoadFailed.value ? '列表加载失败' : statusFilterLabel.value,
     },
   ]
 })
 
 function handleHubSignalClick(key: string): void {
-  if (key === 'pending' && (snapshot.value?.markingProgress?.pendingReviewTaskCount ?? 0) > 0) {
+  const pendingCount = snapshot.value?.markingProgress?.pendingReviewTaskCount
+  const inProgressCount = snapshot.value?.markingProgress?.inProgressReviewTaskCount
+  if (key === 'pending' && pendingCount != null && pendingCount > 0) {
+    statusFilterDraft.value = ReviewTaskStatusCode.PENDING
     statusFilter.value = ReviewTaskStatusCode.PENDING
     onFilterChange()
     return
   }
   if (
     key === 'in-progress'
-    && (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0
+    && inProgressCount != null
+    && inProgressCount > 0
   ) {
+    statusFilterDraft.value = ReviewTaskStatusCode.IN_PROGRESS
     statusFilter.value = ReviewTaskStatusCode.IN_PROGRESS
     onFilterChange()
   }
 }
 
 function resetStatusFilter(): void {
+  statusFilterDraft.value = ReviewTaskStatusCode.PENDING
   statusFilter.value = ReviewTaskStatusCode.PENDING
   onFilterChange()
 }
@@ -288,75 +315,68 @@ const columns: ColumnType<ReviewTaskItemResponse>[] = [
   { title: '主行动', key: 'actions', width: 120, align: 'right' },
 ]
 
-const statusFilterLabel = computed(() => reviewStatusLabel(statusFilter.value))
+const statusFilterLabel = computed(() =>
+  strictEnumLabel(ReviewTaskStatusDescription, statusFilter.value, '阅卷任务状态'),
+)
 
-function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
-  return REVIEW_TASK_STATUS_TONE[value]
-}
-
-function reviewStatusLabel(value: ReviewTaskStatusCode): string {
-  return strictEnumLabel(ReviewTaskStatusDescription, value, '阅卷任务状态')
-}
-
-function reviewTypeLabel(value: ReviewTaskTypeCode): string {
-  return strictEnumLabel(ReviewTaskTypeDescription, value, '阅卷任务类型')
-}
-
-function reviewTypeTone(value: ReviewTaskTypeCode): BadgeTone {
-  const color = ReviewTaskTypeTone[value]
-  if (color === 'green') {
-    return 'green'
-  }
-  if (color === 'purple') {
-    return 'purple'
-  }
-  return 'blue'
-}
-
-function gradeSourceLabel(source: GradeSourceCode): string {
-  return strictEnumLabel(GradeSourceDescription, source, '成绩来源')
-}
-
-function gradeSourceTone(source: GradeSourceCode): BadgeTone {
-  return GRADE_SOURCE_TONE[source]
-}
-
+/** 按考试、筛选与分页代际读取复核队列，并同步服务端写能力位。 */
 async function loadTasks(): Promise<void> {
   if (!examId.value) {
     return
   }
+  const currentExamId = examId.value
+  const generation = ++tasksLoadGeneration
   loading.value = true
   try {
     // MVR-980：先拉列表；空列表再用制卷摘要补齐 canManageReviewerWrites（禁止静默 catch 与损坏赋值）
     const result = await listReviewTasks({
-      examId: examId.value,
+      examId: currentExamId,
       status: statusFilter.value,
       excludeArbitration: true,
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
     })
+    if (generation !== tasksLoadGeneration || examId.value !== currentExamId) {
+      return
+    }
     const records = result.list
     rows.value = records
     pagination.total = result.total
+    listLoadFailed.value = false
+    writeCapabilityLoadFailed.value = false
     // MVR-328：列表有项时仅认行级 can===true；空列表用制卷摘要 can===true 补齐
     if (records.length > 0) {
       canManageReviewerWrites.value = records[0].canManageReviewerWrites === true
     } else {
       try {
-        const layoutSummary = await getExamLayoutQuestionSummary(examId.value)
+        const layoutSummary = await getExamLayoutQuestionSummary(currentExamId)
+        if (generation !== tasksLoadGeneration || examId.value !== currentExamId) {
+          return
+        }
         canManageReviewerWrites.value = layoutSummary.canManageReviewerWrites === true
       } catch (layoutError) {
+        if (generation !== tasksLoadGeneration || examId.value !== currentExamId) {
+          return
+        }
         canManageReviewerWrites.value = false
+        writeCapabilityLoadFailed.value = true
         showUserError(layoutError, '复核写权限能力位加载失败，写入口暂不可用')
       }
     }
   } catch (error) {
+    if (generation !== tasksLoadGeneration || examId.value !== currentExamId) {
+      return
+    }
     rows.value = []
     pagination.total = 0
+    listLoadFailed.value = true
+    writeCapabilityLoadFailed.value = false
     canManageReviewerWrites.value = false
     showUserError(error, '复核任务列表加载失败')
   } finally {
-    loading.value = false
+    if (generation === tasksLoadGeneration) {
+      loading.value = false
+    }
   }
 }
 
@@ -367,16 +387,22 @@ function onPageChange(page: { current: number, pageSize: number }): void {
 }
 
 function onFilterChange(): void {
+  statusFilter.value = statusFilterDraft.value
   pagination.current = 1
   void loadTasks()
 }
 
 function buildReviewTaskRowActions(record: ReviewTaskItemResponse): UiTableRowActionItem[] {
+  const readOnlyTask
+    = record.status === ReviewTaskStatusCode.INVALIDATED
+      || record.status === ReviewTaskStatusCode.APPROVED
+      || record.status === ReviewTaskStatusCode.REJECTED
+      || record.canManageReviewerWrites !== true
   return [
     {
       key: 'enter',
-      label: record.status === ReviewTaskStatusCode.INVALIDATED ? '查看详情' : '进入复核',
-      tone: record.status === ReviewTaskStatusCode.INVALIDATED ? 'default' : 'primary',
+      label: readOnlyTask ? '查看详情' : '进入复核',
+      tone: readOnlyTask ? 'default' : 'primary',
     },
   ]
 }
@@ -385,17 +411,17 @@ function enterReview(record: ReviewTaskItemResponse): void {
   if (!examId.value) {
     return
   }
-  if (record.status === ReviewTaskStatusCode.INVALIDATED) {
+  if (
+    record.status === ReviewTaskStatusCode.INVALIDATED
+    || record.status === ReviewTaskStatusCode.APPROVED
+    || record.status === ReviewTaskStatusCode.REJECTED
+    || record.canManageReviewerWrites !== true
+  ) {
     void router.push({
       name: 'TeacherExamWorkspaceReviewTaskDetail',
       params: { examId: examId.value, taskId: record.reviewTaskId },
       query: { source: 'review' },
     })
-    return
-  }
-  // MVR-394：进入复核写工作台仅认行级 canManageReviewerWrites===true（BE 评阅写∧ACTIVE）
-  if (record.canManageReviewerWrites !== true) {
-    void message.warning('当前账号无本场复核写权限，无法进入复核工作台')
     return
   }
   void router.push({
@@ -423,19 +449,29 @@ function goBatchConfirm(): void {
 watch(
   examId,
   (next) => {
+    tasksLoadGeneration += 1
     pagination.current = 1
+    listLoadFailed.value = false
+    writeCapabilityLoadFailed.value = false
     if (next) {
       void loadTasks()
     } else {
       rows.value = []
       pagination.total = 0
       canManageReviewerWrites.value = false
+      loading.value = false
     }
   },
   { immediate: true },
 )
 
+const skipFirstActivatedLoad = ref(true)
+
 onActivated(() => {
+  if (skipFirstActivatedLoad.value) {
+    skipFirstActivatedLoad.value = false
+    return
+  }
   if (examId.value) {
     void loadTasks()
   }

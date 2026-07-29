@@ -39,6 +39,7 @@
           v-if="loadFailed"
           tone="error"
           title="影像账本加载失败"
+          description="当前账本统计与重复队列不可确认，请切换考试或离开页面后重新进入。"
           :closable="false"
           dense
           class="ledger-page__blocking-strip"
@@ -49,12 +50,13 @@
           :load-failed="loadFailed"
           :can-manage-owner-ledger-writes="canManageOwnerLedgerWrites"
           @balance="handleBalance"
+          @go-batches="goToScanBatches"
         />
         <DuplicateResolutionCard
           :key="selectedExamId"
           ref="duplicateCardRef"
           :exam-id="selectedExamId"
-          :pending-duplicate-count="ledger?.pendingDuplicateCount ?? 0"
+          :pending-duplicate-count="ledger?.pendingDuplicateCount ?? null"
           :can-manage-owner-ledger-writes="canManageOwnerLedgerWrites"
           @resolve="openResolve"
         />
@@ -118,6 +120,7 @@ const loadFailed = ref(false)
 const resolveOpen = ref(false)
 const resolveTarget = ref<ExamPaperDuplicateResolutionVO | null>(null)
 let examLoadGeneration = 0
+let detailRequestGeneration = 0
 let refreshListenerActive = false
 /** 本页写后本地刷新时抑制 mitt 自回调，避免双载。 */
 let suppressSelfRefresh = false
@@ -137,11 +140,11 @@ const imageLedgerWorkbenchSubtitle = computed(() => {
     return '账本加载中'
   }
   const parts: string[] = []
-  if ((data.pendingDuplicateCount ?? 0) > 0) {
+  if (data.pendingDuplicateCount > 0) {
     parts.push(`待消重 ${data.pendingDuplicateCount}`)
   }
-  if ((data.missingCandidateCount ?? 0) > 0) {
-    parts.push(`缺考生 ${data.missingCandidateCount}`)
+  if (data.missingCandidateCount > 0) {
+    parts.push(`未绑定 ${data.missingCandidateCount}`)
   }
   const scanned = data.scannedPageCount
   const expected = data.expectedPageCount
@@ -152,16 +155,17 @@ const imageLedgerWorkbenchSubtitle = computed(() => {
 const ledgerSignalMetrics = computed((): SignalMetric[] => {
   const failed = loadFailed.value
   const data = ledger.value
+  if (failed) {
+    return [{
+      key: 'ledger-unavailable',
+      label: '影像账本',
+      value: '—',
+      tone: 'gray',
+      emphasis: 'primary',
+      helper: '数据未刷新',
+    }]
+  }
   if (!data) {
-    if (failed) {
-      return [{
-        key: 'ledger-unavailable',
-        label: '影像账本',
-        value: '—',
-        tone: 'gray',
-        emphasis: 'primary',
-      }]
-    }
     return []
   }
   const scanned: SignalMetric = {
@@ -193,7 +197,7 @@ const ledgerSignalMetrics = computed((): SignalMetric[] => {
   }
   const missing: SignalMetric = {
     key: 'missing',
-    label: '缺考人数',
+    label: '未绑定考生',
     value: data.missingCandidateCount,
     unit: '人',
     tone: data.missingCandidateCount > 0 ? 'orange' : 'gray',
@@ -201,11 +205,11 @@ const ledgerSignalMetrics = computed((): SignalMetric[] => {
 
   const primaryBase
     = data.pendingDuplicateCount > 0
-      ? { ...duplicate, actionLabel: '处置重复', helper: '重复影像待处置' }
+      ? { ...duplicate, clickable: true, actionLabel: '处置重复', helper: '重复影像待处置' }
       : data.missingCandidateCount > 0
-        ? { ...missing, actionLabel: '查看缺考', helper: '缺考名单待确认' }
+        ? { ...missing, clickable: true, actionLabel: '处理绑定', helper: '答卷身份尚未绑定' }
         : data.boundPaperCount < data.reconstructedPaperCount
-          ? { ...bound, actionLabel: '查看绑定', helper: '卷面绑定未完成' }
+          ? { ...bound, clickable: true, actionLabel: '处理绑定', helper: '卷面绑定未完成' }
           : { ...scanned, actionLabel: scanned.clickable ? '手动补录' : undefined }
 
   const primary: SignalMetric = {
@@ -219,17 +223,51 @@ const ledgerSignalMetrics = computed((): SignalMetric[] => {
   return [primary, ...secondaryPool.filter((item) => item.key !== primary.key).slice(0, 3)]
 })
 
+/** 将账本主指标下钻到重复队列、绑定异常或手动补录的真实工作面。 */
 function handleLedgerMetricClick(key: string): void {
-  if (loadFailed.value || key !== 'scanned' || !selectedExamId.value) return
+  if (loadFailed.value || !selectedExamId.value) return
   const data = ledger.value
-  if (!data || data.expectedPageCount == null || data.scannedPageCount >= data.expectedPageCount) return
+  if (!data) return
+  if (key === 'duplicate') {
+    document.getElementById('ledger-pending-duplicates')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+    return
+  }
+  if (key === 'missing' || key === 'bound') {
+    void router.push({
+      name: 'TeacherExamWorkspaceScanMonitor',
+      params: { examId: selectedExamId.value },
+      query: { tab: 'abnormal' },
+    })
+    return
+  }
+  if (
+    key !== 'scanned'
+    || data.expectedPageCount == null
+    || data.scannedPageCount >= data.expectedPageCount
+  ) {
+    return
+  }
   void router.push({
     name: 'TeacherExamWorkspaceScanManualEntry',
     params: { examId: selectedExamId.value },
   })
 }
 
+/** 账本尚未初始化时进入扫描批次工作台完成真实前置动作。 */
+function goToScanBatches(): void {
+  if (!selectedExamId.value) return
+  void router.push({
+    name: 'TeacherExamWorkspaceScanBatches',
+    params: { examId: selectedExamId.value },
+  })
+}
+
+/** 切换考试时失效请求并清空账本、写锁和重复处置对象。 */
 function clearExamScopedState(): void {
+  detailRequestGeneration += 1
   ledger.value = null
   loadFailed.value = false
   loadingDetail.value = false
@@ -238,30 +276,46 @@ function clearExamScopedState(): void {
   resolveTarget.value = null
 }
 
-async function loadDetail(expectedGeneration = examLoadGeneration): Promise<void> {
+/** 读取当前考试账本并同时隔离切考试与同考试并发刷新响应。 */
+async function loadDetail(expectedGeneration = examLoadGeneration): Promise<boolean> {
+  const requestGeneration = ++detailRequestGeneration
   const examId = selectedExamId.value
-  if (!examId) return
+  if (!examId) return false
   const hadLedgerForSameExam = ledger.value != null
   loadingDetail.value = true
   loadFailed.value = false
   try {
     const detail = await getImageLedgerDetail({ examId })
-    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
-      return
+    if (
+      requestGeneration !== detailRequestGeneration
+      || expectedGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
+      return false
     }
     ledger.value = detail
     loadFailed.value = false
+    return true
   } catch (e) {
-    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
-      return
+    if (
+      requestGeneration !== detailRequestGeneration
+      || expectedGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
+      return false
     }
     if (!hadLedgerForSameExam) {
       ledger.value = null
     }
     loadFailed.value = true
     showUserError(e, '影像账本加载失败')
+    return false
   } finally {
-    if (expectedGeneration === examLoadGeneration && selectedExamId.value === examId) {
+    if (
+      requestGeneration === detailRequestGeneration
+      && expectedGeneration === examLoadGeneration
+      && selectedExamId.value === examId
+    ) {
       loadingDetail.value = false
     }
   }
@@ -271,32 +325,36 @@ async function loadDetail(expectedGeneration = examLoadGeneration): Promise<void
  * 刷新待处置重复列表：世代/examId 必须在触发子卡请求前校验。
  * 切考时 :key 会重建子卡，需 nextTick 等 ref 就绪；过期 generation 不得误刷新考试。
  */
-async function loadDuplicates(expectedGeneration = examLoadGeneration): Promise<void> {
+async function loadDuplicates(expectedGeneration = examLoadGeneration): Promise<boolean> {
   const examId = selectedExamId.value
   if (!examId) {
-    return
+    return false
   }
   if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
-    return
+    return false
   }
   if (!duplicateCardRef.value) {
     await nextTick()
   }
   if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
-    return
+    return false
   }
-  await duplicateCardRef.value?.reload()
+  return (await duplicateCardRef.value?.reload()) ?? false
 }
 
-async function loadAll(expectedGeneration = examLoadGeneration): Promise<void> {
-  await loadDetail(expectedGeneration)
+/** 串行刷新账本和重复队列，账本请求失败或过期时停止后续回写。 */
+async function loadAll(expectedGeneration = examLoadGeneration): Promise<boolean> {
+  const detailLoaded = await loadDetail(expectedGeneration)
+  if (!detailLoaded) {
+    return false
+  }
   if (expectedGeneration !== examLoadGeneration || selectedExamId.value == null) {
-    return
+    return false
   }
   if (loadFailed.value && !ledger.value) {
-    return
+    return false
   }
-  await loadDuplicates(expectedGeneration)
+  return loadDuplicates(expectedGeneration)
 }
 
 function handleScanWorkbenchRefreshEvent(): void {
@@ -306,6 +364,7 @@ function handleScanWorkbenchRefreshEvent(): void {
   void loadAll(examLoadGeneration)
 }
 
+/** 经主考确认执行整体对账，并区分写入结果与后续快照同步结果。 */
 async function handleBalance(): Promise<void> {
   if (!selectedExamId.value) return
   if (canManageOwnerLedgerWrites.value !== true) {
@@ -333,6 +392,7 @@ async function handleBalance(): Promise<void> {
     return
   }
   balancing.value = true
+  let balanceWritten = false
   try {
     const detail = await executeImageLedgerBalance({ examId })
     if (generation !== examLoadGeneration || selectedExamId.value !== examId) {
@@ -341,16 +401,9 @@ async function handleBalance(): Promise<void> {
     if (detail?.ledgerStatus === LedgerStatusCode.BALANCED) {
       void message.success('影像账本已平账')
     } else {
-      void message.warning(detail?.diagnostic || '对账已执行，仍存在未关闭异常，请处理后再发布成绩')
+      void message.warning(detail.diagnostic || '对账已执行，仍存在未关闭异常，请处理后再发布成绩')
     }
-    await loadAll(generation)
-    await refreshSnapshot()
-    suppressSelfRefresh = true
-    try {
-      mittBus.emit('scan-workbench:refresh')
-    } finally {
-      suppressSelfRefresh = false
-    }
+    balanceWritten = true
   } catch (e) {
     if (generation !== examLoadGeneration || selectedExamId.value !== examId) {
       return
@@ -361,8 +414,24 @@ async function handleBalance(): Promise<void> {
       balancing.value = false
     }
   }
+  if (!balanceWritten || generation !== examLoadGeneration || selectedExamId.value !== examId) {
+    return
+  }
+  await loadAll(generation)
+  try {
+    await refreshSnapshot()
+  } catch (e) {
+    showUserError(e, '影像账本已对账，但阶段快照同步失败')
+  }
+  suppressSelfRefresh = true
+  try {
+    mittBus.emit('scan-workbench:refresh')
+  } finally {
+    suppressSelfRefresh = false
+  }
 }
 
+/** 按后端主考能力位打开指定重复影像证据对象。 */
 function openResolve(record: ExamPaperDuplicateResolutionVO): void {
   // MVR-391：打开处置弹窗仅认 canManageOwnerLedgerWrites===true
   if (canManageOwnerLedgerWrites.value !== true) {
@@ -373,12 +442,17 @@ function openResolve(record: ExamPaperDuplicateResolutionVO): void {
   resolveOpen.value = true
 }
 
+/** 重复影像写入成功后刷新账本、队列与阶段快照，并保留同步失败语义。 */
 async function onChildSubmitted(): Promise<void> {
   const generation = examLoadGeneration
   suppressSelfRefresh = true
   try {
     await loadAll(generation)
-    await refreshSnapshot()
+    try {
+      await refreshSnapshot()
+    } catch (e) {
+      showUserError(e, '重复影像已处置，但阶段快照同步失败')
+    }
     mittBus.emit('scan-workbench:refresh')
   } finally {
     suppressSelfRefresh = false

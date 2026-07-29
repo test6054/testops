@@ -16,7 +16,7 @@
             <UiButton
               size="sm"
               variant="outline"
-              :disabled="rows.length === 0 || listLoadFailed"
+              :disabled="rows.length === 0 || listLoadFailed || submitting"
               @click="applyAiScores"
             >
               填入建议分
@@ -49,6 +49,21 @@
           v-if="listLoadFailed"
           tone="error"
           title="待复核列表加载失败"
+          description="当前队列快照已撤销，写入口暂不可用。请切换范围或离开后重新进入本页。"
+          dense
+        />
+        <UiAlertStrip
+          v-else-if="writeCapabilityLoadFailed"
+          tone="error"
+          title="复核写权限状态加载失败"
+          description="当前暂无待复核任务，但服务端写能力位不可用；为避免越权，批量写入口已关闭。"
+          dense
+        />
+        <UiAlertStrip
+          v-else-if="workbenchRefreshPending"
+          tone="warning"
+          title="考试工作台状态已有更新"
+          description="当前页存在未提交确认分，暂未覆盖草稿；完成提交、切换分页或离开后重新进入本页即可同步。"
           dense
         />
         <UiAlertStrip
@@ -95,8 +110,8 @@
               <UiTag tone="blue" size="sm">题 {{ record.questionNo }}</UiTag>
             </template>
             <template v-else-if="column.key === 'gradeSource'">
-              <UiTag :tone="gradeSourceTone(record.gradeSource)" size="sm">
-                {{ gradeSourceLabel(record.gradeSource) }}
+              <UiTag :tone="GRADE_SOURCE_TONE[record.gradeSource]" size="sm">
+                {{ strictEnumLabel(GradeSourceDescription, record.gradeSource, '成绩来源') }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'aiScore'">
@@ -110,7 +125,8 @@
                 :max="record.fullScore"
                 :step="0.5"
                 size="sm"
-                style="width: 88px"
+                class="batch-confirm__score-input"
+                :disabled="submitting || canManageReviewerWrites !== true"
                 @update:value="(v: number | string | null) => updateScore(record.gradeResultId, v)"
               />
               <span class="batch-confirm__full-score">/ {{ record.fullScore }}</span>
@@ -118,18 +134,23 @@
           </template>
         </UiDataTable>
         <UiList
-          v-if="batchFailures.length"
+          v-if="batchFailureDisplayItems.length"
           size="small"
-          :data-source="batchFailures"
+          :data-source="batchFailureDisplayItems"
           class="batch-confirm__failures"
         >
           <template #renderItem="{ item }">
             <UiListItem>
               <UiListItemMeta>
-                <template #title> 成绩记录 {{ item.gradeResultId }} </template>
+                <template #title> {{ item.paperText }} · 题 {{ item.questionNo }} </template>
                 <template #description>
-                  <UiTag tone="red" size="sm">{{ item.code }}</UiTag>
-                  {{ item.message }}
+                  <div class="batch-confirm__failure-description">
+                    <span>
+                      <UiTag tone="red" size="sm">{{ item.code }}</UiTag>
+                      {{ item.message }}
+                    </span>
+                    <span>已保留确认分 {{ item.confirmedScore }}，可核对后重新提交</span>
+                  </div>
                 </template>
               </UiListItemMeta>
             </UiListItem>
@@ -146,8 +167,7 @@ import type {
   ExamGradeBatchConfirmFailureItem,
   ExamGradeBatchConfirmResponse,
 } from '@/apis/mark/exam-grade'
-import type { GradeSourceCode, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
@@ -192,10 +212,18 @@ const { refreshing: workbenchRefreshing } = useMarkWorkbenchContext()
 const loading = ref(false)
 const submitting = ref(false)
 const listLoadFailed = ref(false)
+const writeCapabilityLoadFailed = ref(false)
+const workbenchRefreshPending = ref(false)
 let tasksLoadGeneration = 0
+let batchWriteGeneration = 0
 // MVR-332：列表/制卷摘要下发 canManageReviewerWrites，缺声明会导致写闸 ReferenceError
 const canManageReviewerWrites = ref(false)
-const batchFailures = ref<ExamGradeBatchConfirmFailureItem[]>([])
+interface BatchFailureDisplayItem extends ExamGradeBatchConfirmFailureItem {
+  paperText: string
+  questionNo: string
+  confirmedScore: number
+}
+const batchFailureDisplayItems = ref<BatchFailureDisplayItem[]>([])
 const writeSettledMessage = ref('')
 const writeSettledTone = ref<'success' | 'warning' | 'error'>('success')
 const rows = ref<ReviewTaskItemResponse[]>([])
@@ -254,7 +282,12 @@ const isBatchDraftDirty = computed(() => {
   return false
 })
 
+/** 阻止写请求执行中离开，并在草稿未提交时要求教师明确确认。 */
 async function confirmLeaveIfDirty(): Promise<boolean> {
+  if (submitting.value) {
+    void message.warning('批量确认正在写入，请等待服务端返回后再离开')
+    return false
+  }
   if (bypassBatchDraftLeaveGuard || !isBatchDraftDirty.value) {
     return true
   }
@@ -282,30 +315,24 @@ const columns: ColumnType<ReviewTaskItemResponse>[] = [
 const rowSelection = computed(() => ({
   selectedRowKeys: selectedRowKeys.value,
   onChange: (keys: (string | number)[]) => {
+    if (submitting.value || canManageReviewerWrites.value !== true) {
+      return
+    }
     selectedRowKeys.value = keys.map(String)
   },
+  getCheckboxProps: () => ({
+    disabled: submitting.value || canManageReviewerWrites.value !== true,
+  }),
 }))
 
-function gradeSourceLabel(source: GradeSourceCode): string {
-  return strictEnumLabel(GradeSourceDescription, source, '成绩来源')
-}
-
-function gradeSourceTone(source: GradeSourceCode): BadgeTone {
-  return GRADE_SOURCE_TONE[source]
-}
-
-function clearScoreDraftMap(): void {
+/** 仅保留当前页草稿，避免跨页/跨考试分数残留。 */
+function initScoreDraft(records: ReviewTaskItemResponse[]): void {
   for (const key of Object.keys(scoreDraftMap)) {
     delete scoreDraftMap[key]
   }
   for (const key of Object.keys(scoreDraftBaselineMap)) {
     delete scoreDraftBaselineMap[key]
   }
-}
-
-/** 仅保留当前页草稿，避免跨页/跨考试分数残留。 */
-function initScoreDraft(records: ReviewTaskItemResponse[]): void {
-  clearScoreDraftMap()
   for (const record of records) {
     if (
       record.aiScore != null
@@ -340,8 +367,13 @@ function assertSelectedScoresInRange(): boolean {
   for (const gradeResultId of selectedRowKeys.value) {
     const score = scoreDraftMap[gradeResultId]
     const record = rows.value.find((item) => item.gradeResultId === gradeResultId)
-    if (score == null || record == null) {
-      continue
+    if (record == null) {
+      showFormValidationMessage('所选复核任务已不在当前队列，请同步页面状态后重新选择')
+      return false
+    }
+    if (score == null) {
+      showFormValidationMessage(`请填写题 ${record.questionNo} 的确认得分`)
+      return false
     }
     if (score < 0 || score > record.fullScore) {
       showFormValidationMessage(
@@ -356,6 +388,9 @@ function assertSelectedScoresInRange(): boolean {
 }
 
 function applyAiScores(): void {
+  if (submitting.value) {
+    return
+  }
   if (canManageReviewerWrites.value !== true) {
     void message.warning('当前账号无批量复核写权限')
     return
@@ -386,9 +421,13 @@ function applyAiScores(): void {
   )
 }
 
-async function loadTasks(): Promise<void> {
+/** 读取当前考试待复核队列，并按服务端快照重建权限、分页和当前页草稿。 */
+async function loadTasks(options?: {
+  preservedFailureDrafts: ReadonlyMap<string, number>
+  preservedFailureIds: ReadonlySet<string>
+}): Promise<boolean> {
   const examId = selectedExamId.value
-  if (!examId) return
+  if (!examId) return false
   const generation = ++tasksLoadGeneration
   loading.value = true
   try {
@@ -401,38 +440,71 @@ async function loadTasks(): Promise<void> {
       pageSize: pagination.pageSize,
     })
     if (generation !== tasksLoadGeneration || selectedExamId.value !== examId) {
-      return
+      return false
     }
     const records = result.list
     rows.value = records
     pagination.total = result.total
     listLoadFailed.value = false
+    writeCapabilityLoadFailed.value = false
+    workbenchRefreshPending.value = false
     // MVR-328：列表有项时仅认行级 can===true；空列表用制卷摘要 can===true 补齐
     if (records.length > 0) {
       canManageReviewerWrites.value = records[0].canManageReviewerWrites === true
     } else {
       try {
-        const layoutSummary = await getExamLayoutQuestionSummary(selectedExamId.value)
+        const layoutSummary = await getExamLayoutQuestionSummary(examId)
+        if (generation !== tasksLoadGeneration || selectedExamId.value !== examId) {
+          return false
+        }
         canManageReviewerWrites.value = layoutSummary.canManageReviewerWrites === true
       } catch (layoutError) {
+        if (generation !== tasksLoadGeneration || selectedExamId.value !== examId) {
+          return false
+        }
         canManageReviewerWrites.value = false
+        writeCapabilityLoadFailed.value = true
         showUserError(layoutError, '复核写权限能力位加载失败，写入口暂不可用')
       }
     }
     initScoreDraft(records)
-    selectedRowKeys.value = selectedRowKeys.value.filter((id) =>
-      records.some((row) => row.gradeResultId === id),
-    )
+    const currentGradeResultIds = new Set(records.map((record) => record.gradeResultId))
+    if (options) {
+      for (const [gradeResultId, score] of options.preservedFailureDrafts) {
+        if (currentGradeResultIds.has(gradeResultId)) {
+          scoreDraftMap[gradeResultId] = score
+        }
+      }
+      selectedRowKeys.value = [...options.preservedFailureIds].filter((gradeResultId) =>
+        currentGradeResultIds.has(gradeResultId),
+      )
+    } else {
+      selectedRowKeys.value = []
+    }
     committedPagination.current = pagination.current
     committedPagination.pageSize = pagination.pageSize
     bypassBatchDraftLeaveGuard = false
+    return true
   } catch (error) {
     if (generation !== tasksLoadGeneration || selectedExamId.value !== examId) {
-      return
+      return false
     }
     listLoadFailed.value = true
+    writeCapabilityLoadFailed.value = false
     canManageReviewerWrites.value = false
+    rows.value = []
+    pagination.total = 0
+    selectedRowKeys.value = []
+    if (!options) {
+      for (const key of Object.keys(scoreDraftMap)) {
+        delete scoreDraftMap[key]
+      }
+      for (const key of Object.keys(scoreDraftBaselineMap)) {
+        delete scoreDraftBaselineMap[key]
+      }
+    }
     showUserError(error, '待复核任务加载失败')
+    return false
   } finally {
     if (generation === tasksLoadGeneration) {
       loading.value = false
@@ -495,6 +567,7 @@ function openConfirm(): void {
   })
 }
 
+/** 按服务端逐项回执结算批量写入，仅移除成功项并保留失败项草稿继续处理。 */
 async function submitBatch(): Promise<void> {
   // MVR-960：确认后再次认写权/选择/得分完整性，防对话框期间权限或勾选漂移
   if (!selectedExamId.value || selectedRowKeys.value.length === 0) return
@@ -519,7 +592,18 @@ async function submitBatch(): Promise<void> {
   }
   const examId = selectedExamId.value
   const confirmedKeys = [...selectedRowKeys.value]
+  const submittedRows = new Map(
+    rows.value
+      .filter((record) => confirmedKeys.includes(record.gradeResultId))
+      .map((record) => [record.gradeResultId, record]),
+  )
+  const submittedScores = new Map(
+    confirmedKeys.map((gradeResultId) => [gradeResultId, scoreDraftMap[gradeResultId]]),
+  )
+  const generation = ++batchWriteGeneration
   submitting.value = true
+  batchFailureDisplayItems.value = []
+  writeSettledMessage.value = ''
   try {
     const items = confirmedKeys.map((gradeResultId) => ({
       gradeResultId,
@@ -529,44 +613,77 @@ async function submitBatch(): Promise<void> {
       examId,
       items,
     })
-    batchFailures.value = response.failures ?? []
+    if (generation !== batchWriteGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    batchFailureDisplayItems.value = response.failures.map((failure) => {
+      const record = submittedRows.get(failure.gradeResultId)
+      const confirmedScore = submittedScores.get(failure.gradeResultId)
+      if (!record || confirmedScore == null) {
+        throw new TypeError('批量确认回执无法关联当前提交任务')
+      }
+      return {
+        ...failure,
+        paperText: record.paperDisplay.primaryText,
+        questionNo: record.questionNo,
+        confirmedScore,
+      }
+    })
+    const failedGradeResultIds = new Set(response.failures.map((failure) => failure.gradeResultId))
     if (response.failureCount > 0) {
       writeSettledTone.value = 'warning'
       writeSettledMessage.value = `写入成功 ${response.successCount} 条，失败 ${response.failureCount} 条；请查看下方失败明细，勿重复提交已成功行`
       void message.warning(writeSettledMessage.value)
     } else {
-      batchFailures.value = []
+      batchFailureDisplayItems.value = []
       writeSettledTone.value = 'success'
       writeSettledMessage.value = `已确认写入 ${response.successCount} 条复核得分`
       void message.success(writeSettledMessage.value)
     }
-    selectedRowKeys.value = []
-    for (const gradeResultId of confirmedKeys) {
+    selectedRowKeys.value = [...failedGradeResultIds]
+    for (const gradeResultId of response.successGradeResultIds) {
       delete scoreDraftMap[gradeResultId]
       delete scoreDraftBaselineMap[gradeResultId]
     }
-    bypassBatchDraftLeaveGuard = true
-    try {
-      await loadTasks()
-    } catch (error) {
+    const failureDrafts = new Map(
+      batchFailureDisplayItems.value.map((failure) => [
+        failure.gradeResultId,
+        failure.confirmedScore,
+      ]),
+    )
+    const listReloaded = await loadTasks({
+      preservedFailureDrafts: failureDrafts,
+      preservedFailureIds: failedGradeResultIds,
+    })
+    if (generation !== batchWriteGeneration || selectedExamId.value !== examId) {
+      return
+    }
+    if (!listReloaded) {
       writeSettledTone.value = 'warning'
-      writeSettledMessage.value = `复核得分已写入（成功 ${response.successCount} 条），但列表刷新失败；切换范围或离开再进入本页后同步视图`
-      showUserError(error, '复核得分已写入，但列表刷新失败')
+      writeSettledMessage.value = `批量写入成功 ${response.successCount} 条、失败 ${response.failureCount} 条，但列表刷新失败；失败项确认分已保留，请离开后重新进入本页同步队列`
       return
     }
     try {
       await refreshSnapshot()
     } catch (error) {
+      if (generation !== batchWriteGeneration || selectedExamId.value !== examId) {
+        return
+      }
       writeSettledTone.value = 'warning'
       writeSettledMessage.value = `复核得分已写入（成功 ${response.successCount} 条），但阶段快照刷新失败；列表已同步`
       showUserError(error, '复核得分已写入，但阶段快照刷新失败')
     }
   } catch (error) {
+    if (generation !== batchWriteGeneration || selectedExamId.value !== examId) {
+      return
+    }
     writeSettledTone.value = 'error'
     writeSettledMessage.value = '批量确认写入失败'
     showUserError(error, '批量确认失败')
   } finally {
-    submitting.value = false
+    if (generation === batchWriteGeneration) {
+      submitting.value = false
+    }
   }
 }
 
@@ -575,14 +692,23 @@ const skipFirstActivatedLoad = ref(true)
 watch(
   selectedExamId,
   (value) => {
+    batchWriteGeneration += 1
+    submitting.value = false
     bypassBatchDraftLeaveGuard = false
     pagination.current = 1
     committedPagination.current = 1
     selectedRowKeys.value = []
-    clearScoreDraftMap()
-    batchFailures.value = []
+    for (const key of Object.keys(scoreDraftMap)) {
+      delete scoreDraftMap[key]
+    }
+    for (const key of Object.keys(scoreDraftBaselineMap)) {
+      delete scoreDraftBaselineMap[key]
+    }
+    batchFailureDisplayItems.value = []
     writeSettledMessage.value = ''
     listLoadFailed.value = false
+    writeCapabilityLoadFailed.value = false
+    workbenchRefreshPending.value = false
     if (value) {
       void loadTasks()
     } else {
@@ -612,6 +738,11 @@ onActivated(() => {
 
 watch(workbenchRefreshing, (isRefreshing, wasRefreshing) => {
   if (wasRefreshing && !isRefreshing && selectedExamId.value) {
+    if (isBatchDraftDirty.value) {
+      workbenchRefreshPending.value = true
+      return
+    }
+    workbenchRefreshPending.value = false
     void loadTasks()
   }
 })
@@ -626,9 +757,21 @@ watch(workbenchRefreshing, (isRefreshing, wasRefreshing) => {
   margin-left: var(--dp-space-component-xs);
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-xs);
+  white-space: nowrap;
+}
+
+.batch-confirm__score-input {
+  width: 5.5rem;
 }
 
 .batch-confirm__failures {
   margin-top: var(--dp-space-block);
+}
+
+.batch-confirm__failure-description {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-component-xs);
+  overflow-wrap: anywhere;
 }
 </style>

@@ -12,8 +12,13 @@ import type { PageResult, QueryDto } from '@/types'
 import type { ExamMaterialLayoutModeCode } from '@/types/enums/exam-material-layout-mode-enum'
 import type { ReviewTaskTypeCode } from '@/types/enums/review-task-type-enum'
 import http from '@/config/axios'
-import { GradeSourceCode } from '@/types/enums/grade-source-enum'
-import { ReviewTaskStatusCode, ReviewTaskStatusDescription } from '@/types/enums/review-task-status-enum'
+import { ALL_EXAM_MATERIAL_LAYOUT_MODE_CODES } from '@/types/enums/exam-material-layout-mode-enum'
+import { ALL_GRADE_SOURCE_CODES, GradeSourceCode } from '@/types/enums/grade-source-enum'
+import { ALL_OBJECTIVE_COMPARE_POLICY_CODES } from '@/types/enums/objective-compare-policy-enum'
+import { ALL_QUALITY_DECISION_CODES } from '@/types/enums/quality-decision-enum'
+import { ALL_QUESTION_TYPE_CODES } from '@/types/enums/question-type-enum'
+import { ALL_REVIEW_TASK_STATUS_CODES, ReviewTaskStatusCode, ReviewTaskStatusDescription } from '@/types/enums/review-task-status-enum'
+import { ALL_REVIEW_TASK_TYPE_CODES } from '@/types/enums/review-task-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 匿名批阅任务查询请求 - 对应 ReviewTaskQueryRequest */
@@ -90,9 +95,9 @@ export interface ReviewTaskItemResponse {
   anonymousNo: string
   paperInstanceId: string
   candidateRosterId?: string
-  studentUserId: string
-  studentNo: string
-  studentName: string
+  studentUserId?: string
+  studentNo?: string
+  studentName?: string
   classId?: string
   className: string
   paperDisplay: PaperInstanceDisplayVO
@@ -135,9 +140,9 @@ export interface ReviewTaskDetailResponse {
   examId: string
   paperInstanceId: string
   candidateRosterId?: string
-  studentUserId: string
-  studentNo: string
-  studentName: string
+  studentUserId?: string
+  studentNo?: string
+  studentName?: string
   classId?: string
   className: string
   paperDisplay: PaperInstanceDisplayVO
@@ -199,11 +204,65 @@ export interface ReviewArbitrationSummaryResponse {
   avgAiRatioPercent?: number | null
 }
 
-/** 查询匿名批阅任务列表。 */
-export function listReviewTasks(
+/** 校验复核任务分页、考试锚点、唯一身份与评分字段，阻止残缺任务进入批量写工作台。 */
+export async function listReviewTasks(
   request: ReviewTaskQueryRequest,
 ): Promise<PageResult<ReviewTaskItemResponse>> {
-  return http.post<PageResult<ReviewTaskItemResponse>>('/api/mark/exams/review-tasks', request)
+  const response = await http.post<PageResult<ReviewTaskItemResponse>>(
+    '/api/mark/exams/review-tasks',
+    request,
+  )
+  const reviewTaskIds = Array.isArray(response.list)
+    ? new Set(response.list.map((item) => item.reviewTaskId))
+    : new Set<string>()
+  const gradeResultIds = Array.isArray(response.list)
+    ? new Set(response.list.map((item) => item.gradeResultId))
+    : new Set<string>()
+  const reviewerWriteCapabilities = Array.isArray(response.list)
+    ? new Set(response.list.map((item) => item.canManageReviewerWrites))
+    : new Set<boolean | undefined>()
+  if (
+    !Array.isArray(response.list)
+    || !Number.isInteger(response.total)
+    || response.total < 0
+    || !Number.isInteger(response.pageNum)
+    || response.pageNum < 1
+    || !Number.isInteger(response.pageSize)
+    || response.pageSize < 1
+    || !Number.isInteger(response.pages)
+    || response.pages < 0
+    || response.list.length > response.pageSize
+    || response.list.length > response.total
+    || reviewTaskIds.size !== response.list.length
+    || gradeResultIds.size !== response.list.length
+    || reviewerWriteCapabilities.size > 1
+  ) {
+    throw new TypeError('复核任务分页合同异常：分页字段或任务集合不可用')
+  }
+  for (const item of response.list) {
+    if (
+      !item.reviewTaskId
+      || item.examId !== request.examId
+      || !item.anonymousNo?.trim()
+      || !item.paperInstanceId
+      || !item.paperDisplay?.primaryText?.trim()
+      || !item.layoutQuestionId
+      || !item.questionNo?.trim()
+      || !ALL_QUESTION_TYPE_CODES.includes(item.questionType)
+      || !Number.isFinite(item.fullScore)
+      || item.fullScore < 0
+      || !item.gradeResultId
+      || (item.aiScore != null
+        && (!Number.isFinite(item.aiScore) || item.aiScore < 0 || item.aiScore > item.fullScore))
+      || !ALL_REVIEW_TASK_STATUS_CODES.includes(item.status)
+      || !ALL_REVIEW_TASK_TYPE_CODES.includes(item.reviewType)
+      || !ALL_GRADE_SOURCE_CODES.includes(item.gradeSource)
+      || typeof item.canManageReviewerWrites !== 'boolean'
+    ) {
+      throw new TypeError('复核任务合同异常：考试锚点、任务身份或评分字段不可用')
+    }
+  }
+  return response
 }
 
 /** 同题复核流水线队列查询请求 */
@@ -223,11 +282,48 @@ export interface ReviewTaskPipelineResponse {
   items: ReviewTaskItemResponse[]
 }
 
-/** 查询同题复核流水线队列。 */
-export function getReviewTaskPipeline(
+/** 校验流水线队列身份、考试/题目范围与当前位次，阻止跨题或残缺任务进入连续复核导航。 */
+export async function getReviewTaskPipeline(
   request: ReviewTaskPipelineQueryRequest,
 ): Promise<ReviewTaskPipelineResponse> {
-  return http.post<ReviewTaskPipelineResponse>('/api/mark/exams/review-tasks/pipeline', request)
+  const response = await http.post<ReviewTaskPipelineResponse>('/api/mark/exams/review-tasks/pipeline', request)
+  if (
+    !Array.isArray(response.items)
+    || !Number.isInteger(response.totalCount)
+    || response.totalCount !== response.items.length
+    || !Number.isInteger(response.currentIndex)
+    || response.currentIndex < 0
+    || response.currentIndex > response.totalCount
+    || (!request.currentReviewTaskId && response.currentIndex !== 0)
+  ) {
+    throw new TypeError('复核流水线合同异常：队列计数或当前任务位次不可用')
+  }
+  const reviewTaskIds = new Set<string>()
+  for (const item of response.items) {
+    if (
+      !item.reviewTaskId
+      || reviewTaskIds.has(item.reviewTaskId)
+      || item.examId !== request.examId
+      || item.layoutQuestionId !== request.layoutQuestionId
+      || item.reviewType !== request.reviewType
+      || item.gradeSource !== request.gradeSource
+      || !item.gradeResultId
+      || !ALL_REVIEW_TASK_STATUS_CODES.includes(item.status)
+      || (item.status !== ReviewTaskStatusCode.PENDING
+        && item.status !== ReviewTaskStatusCode.IN_PROGRESS)
+    ) {
+      throw new TypeError('复核流水线合同异常：任务身份、范围或状态不可用')
+    }
+    reviewTaskIds.add(item.reviewTaskId)
+  }
+  if (
+    request.currentReviewTaskId
+    && response.currentIndex > 0
+    && response.items[response.currentIndex - 1]?.reviewTaskId !== request.currentReviewTaskId
+  ) {
+    throw new TypeError('复核流水线合同异常：当前任务位次与任务标识不一致')
+  }
+  return response
 }
 
 /** 查询题目复核仲裁工作台 KPI 汇总。 */
@@ -240,12 +336,61 @@ export function getReviewArbitrationSummary(request: {
   )
 }
 
+/** 校验匿名复核详情的正式证据、评分范围、任务状态与写能力位。 */
+function assertReviewTaskDetail(
+  response: ReviewTaskDetailResponse,
+  request: ReviewTaskActionRequest,
+): ReviewTaskDetailResponse {
+  const sourcePage = response.sourceScanPage
+  if (
+    response.reviewTaskId !== request.reviewTaskId
+    || response.examId !== request.examId
+    || !response.anonymousNo?.trim()
+    || !response.paperInstanceId
+    || !response.paperDisplay?.primaryText?.trim()
+    || !response.layoutQuestionId
+    || !response.questionNo?.trim()
+    || !ALL_QUESTION_TYPE_CODES.includes(response.questionType)
+    || !Number.isFinite(response.fullScore)
+    || response.fullScore < 0
+    || !response.gradeResultId
+    || !ALL_REVIEW_TASK_STATUS_CODES.includes(response.status)
+    || !ALL_REVIEW_TASK_TYPE_CODES.includes(response.reviewType)
+    || !ALL_GRADE_SOURCE_CODES.includes(response.gradeSource)
+    || !response.responseSliceId
+    || !response.recognitionResultId
+    || !response.sliceFileId
+    || !sourcePage?.pageId
+    || !sourcePage.fileId
+    || !Number.isInteger(sourcePage.pageSeq)
+    || sourcePage.pageSeq < 1
+    || !ALL_QUALITY_DECISION_CODES.includes(sourcePage.qualityStatus)
+    || (response.aiScore != null
+      && (!Number.isFinite(response.aiScore) || response.aiScore < 0 || response.aiScore > response.fullScore))
+    || typeof response.canManageReviewerWrites !== 'boolean'
+    || typeof response.canManageOwnerReviewOverride !== 'boolean'
+    || (response.materialLayoutMode != null
+      && !ALL_EXAM_MATERIAL_LAYOUT_MODE_CODES.includes(response.materialLayoutMode))
+    || (response.comparePolicy != null
+      && !ALL_OBJECTIVE_COMPARE_POLICY_CODES.includes(response.comparePolicy))
+  ) {
+    throw new TypeError('复核任务详情合同异常：任务身份、正式证据或评分字段不可用')
+  }
+  return response
+}
+
 /** 查询匿名批阅任务详情。 */
-export function getReviewTaskDetail(request: ReviewTaskActionRequest): Promise<ReviewTaskDetailResponse> {
-  return http.post<ReviewTaskDetailResponse>('/api/mark/exams/review-tasks/detail', request)
+export async function getReviewTaskDetail(request: ReviewTaskActionRequest): Promise<ReviewTaskDetailResponse> {
+  const response = await http.post<ReviewTaskDetailResponse>('/api/mark/exams/review-tasks/detail', request)
+  return assertReviewTaskDetail(response, request)
 }
 
 /** 领取匿名批阅任务（分派给当前教师）。 */
-export function claimReviewTask(request: ReviewTaskActionRequest): Promise<ReviewTaskDetailResponse> {
-  return http.post<ReviewTaskDetailResponse>('/api/mark/exams/review-tasks/claim', request)
+export async function claimReviewTask(request: ReviewTaskActionRequest): Promise<ReviewTaskDetailResponse> {
+  const response = await http.post<ReviewTaskDetailResponse>('/api/mark/exams/review-tasks/claim', request)
+  const detail = assertReviewTaskDetail(response, request)
+  if (detail.status !== ReviewTaskStatusCode.IN_PROGRESS || !detail.assignedTeacherUserId) {
+    throw new TypeError('复核任务领取回执异常：任务未进入处理中或缺少认领教师')
+  }
+  return detail
 }

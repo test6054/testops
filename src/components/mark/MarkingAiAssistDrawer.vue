@@ -8,7 +8,18 @@
     @update:open="emit('update:open', $event)"
   >
     <UiSpin :spinning="loading === true" tip="加载 AI 历史...">
-      <UiEmpty size="sm" v-if="loading !== true && executions.length === 0" description="暂无 AI 执行记录" />
+      <UiStateBlock
+        v-if="loading !== true && loadFailed === true"
+        state="error"
+        size="sm"
+        title="智能执行历史加载失败"
+        description="当前审计记录不可用，已停止展示旧任务的执行历史。"
+      />
+      <UiEmpty
+        v-else-if="loading !== true && executions.length === 0"
+        size="sm"
+        description="暂无 AI 执行记录"
+      />
       <UiTimeline v-else>
         <UiTimelineItem
           v-for="(item, index) in executions"
@@ -91,6 +102,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import UiTimeline from '@/components/ui-guide/ui/UiTimeline.vue'
 import UiTimelineItem from '@/components/ui-guide/ui/UiTimelineItem.vue'
 import { getUserErrorMessage } from '@/utils/error-handler'
@@ -99,9 +111,10 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkingAiAssistDrawer' })
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   open: boolean
   loading: boolean
+  loadFailed?: boolean
   executions: ExamQuestionAiExecutionItemResponse[]
   highlightTraceId?: string | null
   statusLabel: (status: AiExecutionStatusCode) => string
@@ -109,7 +122,9 @@ const props = defineProps<{
   abilityLabel: (code: AiAbilityCode) => string
   abilityTone: (code: AiAbilityCode) => BadgeTone
   timelineColor: (status: AiExecutionStatusCode) => string
-}>()
+}>(), {
+  loadFailed: false,
+})
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void

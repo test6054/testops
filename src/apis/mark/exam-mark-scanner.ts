@@ -9,11 +9,14 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
-import type { ScannerActivationCodeStatusCode } from '@/types/enums/scanner-activation-code-status-enum'
 import type { ScannerAgentDiagnosticStatusCode } from '@/types/enums/scanner-agent-diagnostic-status-enum'
 import type { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
 import type { ScannerDuplexModeCode } from '@/types/enums/scanner-duplex-mode-enum'
 import http from '@/config/axios'
+import {
+  ALL_SCANNER_ACTIVATION_CODE_STATUS_CODES,
+  ScannerActivationCodeStatusCode,
+} from '@/types/enums/scanner-activation-code-status-enum'
 import { ALL_SCANNER_COLOR_MODE_CODES, ScannerColorModeDescription } from '@/types/enums/scanner-color-mode-enum'
 import {
   ALL_SCANNER_DEVICE_STATUS_CODES,
@@ -233,6 +236,43 @@ export interface ExamScannerDeviceUpdateRequest {
   webSupplementEnabled: boolean
 }
 
+/** 校验扫描设备身份、必填枚举和布尔配置，阻止残缺设备进入运维工作台。 */
+function assertScannerDeviceContract(device: ExamScannerDeviceResponse): void {
+  if (
+    !device.id
+    || !device.scannerDeviceId
+    || !device.scannerStationId
+    || !device.deviceName
+    || !ALL_SCANNER_DEVICE_STATUS_CODES.includes(device.status)
+    || !ALL_SCANNER_INTERFACE_MODE_CODES.includes(device.interfaceMode)
+    || (
+      device.endpointOnlineStatus != null
+      && !ALL_SCANNER_ENDPOINT_ONLINE_STATUS_CODES.includes(device.endpointOnlineStatus)
+    )
+    || typeof device.kioskLockEnabled !== 'boolean'
+  ) {
+    throw new Error('扫描设备合同异常：设备身份、状态或配置不可用')
+  }
+}
+
+/** 校验设备激活交接锚点；解绑和重新绑定必须返回完整一次性激活码。 */
+function assertScannerActivationHandoffContract(
+  response: ExamScannerDeviceActivationHandoffResponse,
+  requireActivationCode: boolean,
+): void {
+  if (
+    !response.id
+    || !response.scannerDeviceId
+    || !response.scannerStationId
+    || !response.deviceName
+    || (Boolean(response.activationCode) !== Boolean(response.expireTime))
+    || (response.activationCode != null && !/^\d{8}$/.test(response.activationCode))
+    || (requireActivationCode && (!response.activationCode || !response.expireTime))
+  ) {
+    throw new Error('扫描设备激活交接合同异常：设备锚点或一次性激活码不可用')
+  }
+}
+
 // ScanAttentionQueryRequest / ScanAttentionItemResponse 定义在 @/apis/mark/exam-scan，避免重复
 
 /** 试卷身份批量绑定单项请求 - 对应 ExamPaperBatchBindItemRequest */
@@ -269,10 +309,34 @@ export interface ExamPaperBatchBindResponse {
  * 分页查询当前租户的扫描设备
  * POST /api/mark/exams/scan-devices/list
  */
-export function pageScannerDevices(
+export async function pageScannerDevices(
   request: ExamScannerDeviceQueryRequest,
 ): Promise<PageResult<ExamScannerDeviceResponse>> {
-  return http.post<PageResult<ExamScannerDeviceResponse>>('/api/mark/exams/scan-devices/list', request)
+  const response = await http.post<PageResult<ExamScannerDeviceResponse>>(
+    '/api/mark/exams/scan-devices/list',
+    request,
+  )
+  const deviceIds = Array.isArray(response.list)
+    ? new Set(response.list.map((device) => device.id))
+    : new Set<string>()
+  if (
+    !Array.isArray(response.list)
+    || !Number.isInteger(response.total)
+    || response.total < 0
+    || !Number.isInteger(response.pageNum)
+    || response.pageNum < 1
+    || !Number.isInteger(response.pageSize)
+    || response.pageSize < 1
+    || !Number.isInteger(response.pages)
+    || response.pages < 0
+    || response.list.length > response.pageSize
+    || response.list.length > response.total
+    || deviceIds.size !== response.list.length
+  ) {
+    throw new Error('扫描设备分页合同异常：分页字段或设备集合不可用')
+  }
+  response.list.forEach(assertScannerDeviceContract)
+  return response
 }
 
 /** 扫描设备汇总统计 - 对齐 ExamScannerDeviceSummaryResponse */
@@ -286,100 +350,177 @@ export interface ExamScannerDeviceSummaryResponse {
  * 按与 list 相同的筛选条件汇总扫描设备在线与 Agent 激活计数
  * POST /api/mark/exams/scan-devices/summary
  */
-export function summarizeScannerDevices(
+export async function summarizeScannerDevices(
   request: ExamScannerDeviceQueryRequest,
 ): Promise<ExamScannerDeviceSummaryResponse> {
-  return http.post<ExamScannerDeviceSummaryResponse>('/api/mark/exams/scan-devices/summary', request)
+  const response = await http.post<ExamScannerDeviceSummaryResponse>(
+    '/api/mark/exams/scan-devices/summary',
+    request,
+  )
+  if (
+    !Number.isInteger(response.totalCount)
+    || response.totalCount < 0
+    || !Number.isInteger(response.onlineCount)
+    || response.onlineCount < 0
+    || !Number.isInteger(response.agentActivatedCount)
+    || response.agentActivatedCount < 0
+    || response.onlineCount > response.totalCount
+    || response.agentActivatedCount > response.totalCount
+  ) {
+    throw new Error('扫描设备汇总合同异常：设备计数不可用')
+  }
+  return response
 }
 
 /**
  * 查询当前租户扫描设备物理位置选项
  * POST /api/mark/exams/scan-devices/locations
  */
-export function listScannerDeviceLocations(): Promise<ExamScannerDeviceLocationOptionResponse[]> {
-  return http.post<ExamScannerDeviceLocationOptionResponse[]>(
+export async function listScannerDeviceLocations(): Promise<ExamScannerDeviceLocationOptionResponse[]> {
+  const response = await http.post<ExamScannerDeviceLocationOptionResponse[]>(
     '/api/mark/exams/scan-devices/locations',
     {},
   )
+  const locations = Array.isArray(response)
+    ? response.map((item) => item.location?.trim())
+    : []
+  if (
+    !Array.isArray(response)
+    || locations.some((location) => !location)
+    || new Set(locations).size !== locations.length
+  ) {
+    throw new Error('扫描设备位置合同异常：位置选项缺失或重复')
+  }
+  return response
 }
 
 /**
  * 创建扫描设备（HTTP_PUSH 模式自动生成 push_token）
  * POST /api/mark/exams/scan-devices/create
  */
-export function createScannerDevice(
+export async function createScannerDevice(
   request: ExamScannerDeviceCreateRequest,
 ): Promise<ExamScannerDeviceActivationHandoffResponse> {
-  return http.post<ExamScannerDeviceActivationHandoffResponse>(
+  const response = await http.post<ExamScannerDeviceActivationHandoffResponse>(
     '/api/mark/exams/scan-devices/create',
     request,
   )
+  assertScannerActivationHandoffContract(
+    response,
+    request.status == null || request.status === ScannerDeviceStatusCode.ACTIVE,
+  )
+  if (
+    response.scannerDeviceId !== request.scannerDeviceId
+    || response.scannerStationId !== request.scannerStationId
+  ) {
+    throw new Error('扫描设备创建合同异常：返回设备业务键与请求不一致')
+  }
+  return response
 }
 
 /**
  * 更新扫描设备
  * POST /api/mark/exams/scan-devices/update
  */
-export function updateScannerDevice(
+export async function updateScannerDevice(
   request: ExamScannerDeviceUpdateRequest,
 ): Promise<ExamScannerDeviceActivationHandoffResponse> {
-  return http.post<ExamScannerDeviceActivationHandoffResponse>(
+  const response = await http.post<ExamScannerDeviceActivationHandoffResponse>(
     '/api/mark/exams/scan-devices/update',
     request,
   )
+  assertScannerActivationHandoffContract(response, false)
+  if (response.id !== request.id) {
+    throw new Error('扫描设备更新合同异常：返回设备与请求不一致')
+  }
+  return response
 }
 
 /**
  * 删除扫描设备（逻辑删除）
  * POST /api/mark/exams/scan-devices/delete
  */
-export function deleteScannerDevice(id: string): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/scan-devices/delete', { id })
+export async function deleteScannerDevice(id: string): Promise<boolean> {
+  const response = await http.post<boolean>('/api/mark/exams/scan-devices/delete', { id })
+  if (response !== true) {
+    throw new Error('扫描设备删除合同异常：服务端未确认写入成功')
+  }
+  return response
 }
 
 /**
  * 解绑扫描设备当前 Agent 端点，并返回新的激活码交接信息
  * POST /api/mark/exams/scan-devices/agent-unbind
  */
-export function unbindScannerDeviceAgent(id: string): Promise<ExamScannerDeviceActivationHandoffResponse> {
-  return http.post<ExamScannerDeviceActivationHandoffResponse>(
+export async function unbindScannerDeviceAgent(id: string): Promise<ExamScannerDeviceActivationHandoffResponse> {
+  const response = await http.post<ExamScannerDeviceActivationHandoffResponse>(
     '/api/mark/exams/scan-devices/agent-unbind',
     { id },
   )
+  assertScannerActivationHandoffContract(response, true)
+  if (response.id !== id) {
+    throw new Error('扫描组件解绑合同异常：返回设备与请求不一致')
+  }
+  return response
 }
 
 /**
  * 查询扫描设备详情（HTTP_PUSH 模式仅回 push_token 掩码，明文仅 Agent 激活下发）
  * POST /api/mark/exams/scan-devices/detail
  */
-export function getScannerDeviceDetail(id: string): Promise<ExamScannerDeviceDetailResponse> {
-  return http.post<ExamScannerDeviceDetailResponse>('/api/mark/exams/scan-devices/detail', { id })
+export async function getScannerDeviceDetail(id: string): Promise<ExamScannerDeviceDetailResponse> {
+  const response = await http.post<ExamScannerDeviceDetailResponse>(
+    '/api/mark/exams/scan-devices/detail',
+    { id },
+  )
+  assertScannerDeviceContract(response)
+  if (response.id !== id) {
+    throw new Error('扫描设备详情合同异常：返回设备与请求不一致')
+  }
+  return response
 }
 
 /**
  * 重置扫描设备 push_token（仅 HTTP_PUSH 模式可用）
  * POST /api/mark/exams/scan-devices/reset-token
  */
-export function resetScannerDevicePushToken(
+export async function resetScannerDevicePushToken(
   id: string,
 ): Promise<ExamScannerDeviceActivationHandoffResponse> {
-  return http.post<ExamScannerDeviceActivationHandoffResponse>(
+  const response = await http.post<ExamScannerDeviceActivationHandoffResponse>(
     '/api/mark/exams/scan-devices/reset-token',
     { id },
   )
+  assertScannerActivationHandoffContract(response, true)
+  if (response.id !== id) {
+    throw new Error('扫描设备重新绑定合同异常：返回设备与请求不一致')
+  }
+  return response
 }
 
 /**
  * 生成扫描 Agent 一次性激活码
  * POST /api/mark/exams/scan-devices/activation-code/create
  */
-export function createScannerActivationCode(
+export async function createScannerActivationCode(
   request: ExamScannerActivationCodeCreateRequest,
 ): Promise<ExamScannerActivationCodeResponse> {
-  return http.post<ExamScannerActivationCodeResponse>(
+  const response = await http.post<ExamScannerActivationCodeResponse>(
     '/api/mark/exams/scan-devices/activation-code/create',
     request,
   )
+  if (
+    !response.id
+    || !response.scannerDeviceId
+    || !response.scannerStationId
+    || !/^\d{8}$/.test(response.activationCode)
+    || !ALL_SCANNER_ACTIVATION_CODE_STATUS_CODES.includes(response.status)
+    || response.status !== ScannerActivationCodeStatusCode.UNUSED
+    || !response.expireTime
+  ) {
+    throw new Error('扫描组件激活码合同异常：设备锚点、状态或有效期不可用')
+  }
+  return response
 }
 
 // listScanAttentions 定义在 @/apis/mark/exam，避免重复

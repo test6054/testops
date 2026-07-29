@@ -1,8 +1,10 @@
 <template>
-  <section class="duplicate-resolution">
+  <section id="ledger-pending-duplicates" class="duplicate-resolution">
     <header class="duplicate-resolution__head">
       <h3 class="duplicate-resolution__title">待处置重复影像</h3>
-      <UiTag tone="orange" size="sm">待处置 {{ pendingDuplicateCount }}</UiTag>
+      <UiTag :tone="pendingDuplicateCount == null ? 'gray' : 'orange'" size="sm">
+        待处置 {{ pendingDuplicateCount ?? '—' }}
+      </UiTag>
     </header>
 
     <UiDataTable
@@ -19,7 +21,7 @@
       row-key="id"
       size="small"
       empty-kind="first-run"
-      empty-description="暂无待处置重复影像，扫描对账正常"
+      empty-description="当前没有待处置重复影像"
       @page-change="handlePageChange"
     >
       <template #bodyCell="{ column, index }">
@@ -63,7 +65,7 @@ defineOptions({ name: 'DuplicateResolutionCard' })
 const props = withDefaults(
   defineProps<{
   examId: string
-  pendingDuplicateCount: number
+  pendingDuplicateCount: number | null
   /** MVR-264：主考写能力；非主考不展示处置 */
   canManageOwnerLedgerWrites?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
 }>(),
@@ -167,6 +169,7 @@ defineExpose({ reload })
 .duplicate-resolution__head {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--dp-space-component-tight);
   margin-bottom: var(--dp-space-component);
 }

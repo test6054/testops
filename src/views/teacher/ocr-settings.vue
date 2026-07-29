@@ -81,7 +81,7 @@ import { RoleEnum } from '@/types/enums'
 import { AiHealthStatusCode } from '@/types/enums/ai-health-status-enum'
 import { ExamMaterialLayoutModeCode } from '@/types/enums/exam-material-layout-mode-enum'
 import { PaddleOcrDeviceKindCode } from '@/types/enums/paddle-ocr-device-kind-enum'
-import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -98,12 +98,12 @@ interface DebugFormState {
 }
 
 const debugFormRef = ref<FormInstance | null>(null)
+const platformProviderFormRef = ref<FormInstance | null>(null)
 const loading = ref(false)
 const loadFailed = ref(false)
 const healthChecking = ref(false)
 const recognizing = ref(false)
 const currentConfig = ref<MarkOcrConfigResponse | null>(null)
-// 加载失败：toast 提示，主区保持空态/列表壳
 const recognizeResult = ref<MarkOcrRecognizeResponse | null>(null)
 const debugForm = ref<DebugFormState>({})
 const { selectedExamId } = useMarkExamContext()
@@ -127,6 +127,15 @@ const ocrPlatformProviderManageAllowed = canManageOcrTenantChannel
 const ocrWorkbenchTitle = computed(() =>
   canManageOcrTenantChannel.value === true ? '文字识别配置' : '文字识别状态',
 )
+const ocrWorkbenchSubtitle = computed(() => {
+  if (isPaddleProvider.value && canManageOcrTenantChannel.value === true) {
+    if (paddleInstancesLoading.value) {
+      return '实例状态加载中'
+    }
+    return paddleInstancesLoadFailed.value ? '实例状态不可用' : `${paddlePagination.total} 个实例`
+  }
+  return currentProviderLabel.value
+})
 
 /**
  * 目标租户只来自当前会话（用户 / 租户 store），禁止用已加载配置的 tenantId 反向决定下一请求。
@@ -150,19 +159,34 @@ let paperSliceLoadGeneration = 0
 let paperCandidateLoadGeneration = 0
 let paddleInstanceLoadGeneration = 0
 let recognizeGeneration = 0
+let channelSaveGeneration = 0
+let platformProviderMutationGeneration = 0
+let healthCheckGeneration = 0
 let paperCandidateSearchTimer: number | undefined
 
+/** 切换租户时失效配置域全部读写请求，并清空旧租户可见状态。 */
 function clearOcrConfigSurfaces(): void {
   configLoadGeneration += 1
   platformProviderLoadGeneration += 1
   paddleInstanceLoadGeneration += 1
+  channelSaveGeneration += 1
+  platformProviderMutationGeneration += 1
+  healthCheckGeneration += 1
   currentConfig.value = null
   platformProviders.value = []
+  platformProvidersLoadFailed.value = false
   paddleInstances.value = []
+  paddleInstancesLoadFailed.value = false
   paddlePagination.total = 0
+  channelSaving.value = false
+  platformProviderSubmitting.value = false
+  platformProviderHealthLoading.value = ''
+  healthChecking.value = false
+  platformProviderEditorVisible.value = false
   syncChannelFormFromConfig()
 }
 
+/** 切换考试时失效调试域全部请求，并清空旧考试卷面与识别证据。 */
 function clearOcrExamDebugSurfaces(): void {
   examDetailLoadGeneration += 1
   paperSliceLoadGeneration += 1
@@ -177,6 +201,8 @@ function clearOcrExamDebugSurfaces(): void {
   paperCandidates.value = []
   paperCandidatesTotal.value = 0
   paperCandidatesLoadFailed.value = false
+  paperSlicesLoadFailed.value = false
+  examDetailLoadFailed.value = false
   paperCandidateKeyword.value = ''
   recognizeResult.value = null
   debugForm.value.paperInstanceId = undefined
@@ -208,9 +234,11 @@ const ocrChannelEmptyBody = computed(() => {
 // 用 watch(currentConfig.providerType) 自动开关加载，无需手动触发。
 const paddleInstances = ref<PaddleOcrInstanceResponse[]>([])
 const paddleInstancesLoading = ref(false)
+const paddleInstancesLoadFailed = ref(false)
 const paddlePagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 const paperSlices = ref<MarkOcrPaperSliceVO[]>([])
 const paperSlicesLoading = ref(false)
+const paperSlicesLoadFailed = ref(false)
 const paperCandidates = ref<ExamScoreSummaryItemResponse[]>([])
 const paperCandidatesLoading = ref(false)
 const paperCandidatesTotal = ref(0)
@@ -218,8 +246,10 @@ const paperCandidatesLoadFailed = ref(false)
 const paperCandidateKeyword = ref('')
 const examDetail = ref<ExamDetailResponse | null>(null)
 const examDetailLoading = ref(false)
+const examDetailLoadFailed = ref(false)
 const platformProviders = ref<MarkOcrPlatformProviderResponse[]>([])
 const platformProvidersLoading = ref(false)
+const platformProvidersLoadFailed = ref(false)
 const platformProviderHealthLoading = ref<string>('')
 const platformProviderEditorVisible = ref(false)
 const platformProviderSubmitting = ref(false)
@@ -237,12 +267,44 @@ const platformProviderEditor = reactive<MarkOcrPlatformProviderSaveRequest>({
   handwritingCompositionCreateTaskEndpoint: '',
   handwritingCompositionGetResultEndpoint: '',
 })
+const platformProviderCredentialState = reactive({
+  apiKeyConfigured: false,
+  secretKeyConfigured: false,
+})
 const platformProviderEditorIsBaidu = computed(
   () => platformProviderEditor.providerType === MarkOcrProviderTypeCode.BAIDU,
 )
 const platformProviderEditorIsPaddle = computed(
   () => platformProviderEditor.providerType === MarkOcrProviderTypeCode.PADDLE,
 )
+const platformProviderRules = computed<Record<string, Rule[]>>(() => ({
+  apiKey: [{
+    validator: async (_rule, value?: string) => {
+      if (
+        platformProviderEditorIsBaidu.value
+        && platformProviderEditor.enabled
+        && platformProviderCredentialState.apiKeyConfigured === false
+        && !value?.trim()
+      ) {
+        throw new Error('启用百度 OCR 前必须填写接口密钥')
+      }
+    },
+    trigger: 'blur',
+  }],
+  secretKey: [{
+    validator: async (_rule, value?: string) => {
+      if (
+        platformProviderEditorIsBaidu.value
+        && platformProviderEditor.enabled
+        && platformProviderCredentialState.secretKeyConfigured === false
+        && !value?.trim()
+      ) {
+        throw new Error('启用百度 OCR 前必须填写密钥')
+      }
+    },
+    trigger: 'blur',
+  }],
+}))
 
 const examMaterialLayoutMode = computed(() => examDetail.value?.materialLayoutMode)
 
@@ -327,6 +389,9 @@ const paperCutCapability = computed(() => {
 const canRecognize = computed(() =>
   Boolean(
     ocrDebugReady.value
+    && examDetailLoadFailed.value === false
+    && paperCandidatesLoadFailed.value === false
+    && paperSlicesLoadFailed.value === false
     && currentConfig.value?.providerType
     && currentConfig.value.enabled
     && debugForm.value.paperInstanceId
@@ -346,6 +411,14 @@ const paperSliceOptions = computed(() =>
     ].join(' · '),
   })),
 )
+const recognizedTextDisplay = computed(() => {
+  if (!recognizeResult.value) {
+    return ''
+  }
+  return recognizeResult.value.emptyAnswer
+    ? '未识别到文本（服务端判定为空作答）'
+    : recognizeResult.value.recognizedText
+})
 const paperCandidateOptions = computed(() =>
   paperCandidates.value
     .filter((item) => item.paperInstanceId)
@@ -444,17 +517,7 @@ function ocrHealthMessageText(messageText?: string): string {
   )
 }
 
-function applyConfig(config: MarkOcrConfigResponse, requestedTenantId?: string): void {
-  if (requestedTenantId && config.tenantId && config.tenantId !== requestedTenantId) {
-    throw toUserError(
-      null,
-      `文字识别配置租户不一致：请求 ${requestedTenantId}，返回 ${config.tenantId}`,
-    )
-  }
-  currentConfig.value = config
-  syncChannelFormFromConfig()
-}
-
+/** 加载当前会话租户文字识别配置，并隔离切换租户前发起的旧请求。 */
 async function loadConfig(): Promise<boolean> {
   const generation = ++configLoadGeneration
   loading.value = true
@@ -475,7 +538,8 @@ async function loadConfig(): Promise<boolean> {
     if (generation !== configLoadGeneration) {
       return false
     }
-    applyConfig(config, tenantId)
+    currentConfig.value = config
+    syncChannelFormFromConfig()
     return true
   } catch (error) {
     if (generation !== configLoadGeneration) {
@@ -499,7 +563,7 @@ async function handleSaveTenantChannel(): Promise<void> {
     void message.warning('仅平台超级管理员可配置租户文字识别渠道')
     return
   }
-  if (channelSaving.value) {
+  if (channelSaving.value || healthChecking.value) {
     return
   }
   const tenantId = resolveOcrSessionTenantId()
@@ -511,19 +575,33 @@ async function handleSaveTenantChannel(): Promise<void> {
     void message.warning('请选择文字识别渠道')
     return
   }
+  const generation = ++channelSaveGeneration
+  const providerType = channelForm.providerType
+  const enabled = channelForm.enabled
   channelSaving.value = true
   try {
     await saveMarkOcrConfig({
       tenantId,
-      providerType: channelForm.providerType,
-      enabled: channelForm.enabled,
+      providerType,
+      enabled,
     })
+    if (
+      generation !== channelSaveGeneration
+      || resolveOcrSessionTenantId() !== tenantId
+    ) {
+      return
+    }
     void message.success('租户文字识别渠道已保存')
   } catch (error) {
+    if (generation !== channelSaveGeneration) {
+      return
+    }
     showUserError(error, '租户文字识别渠道保存失败')
     return
   } finally {
-    channelSaving.value = false
+    if (generation === channelSaveGeneration) {
+      channelSaving.value = false
+    }
   }
   const refreshed = await loadConfig()
   if (!refreshed) {
@@ -531,13 +609,16 @@ async function handleSaveTenantChannel(): Promise<void> {
   }
 }
 
+/** 加载平台供应商配置；失败时清空旧快照并保留可重试错误态。 */
 async function loadPlatformProviders(): Promise<boolean> {
   if (ocrPlatformProviderManageAllowed.value !== true) {
     platformProviders.value = []
+    platformProvidersLoadFailed.value = false
     return true
   }
   const generation = ++platformProviderLoadGeneration
   platformProvidersLoading.value = true
+  platformProvidersLoadFailed.value = false
   try {
     const list = await listMarkOcrPlatformProviders()
     if (generation !== platformProviderLoadGeneration) {
@@ -549,6 +630,8 @@ async function loadPlatformProviders(): Promise<boolean> {
     if (generation !== platformProviderLoadGeneration) {
       return false
     }
+    platformProviders.value = []
+    platformProvidersLoadFailed.value = true
     showUserError(error, '平台文字识别供应商配置加载失败')
     return false
   } finally {
@@ -559,13 +642,18 @@ async function loadPlatformProviders(): Promise<boolean> {
 }
 
 /** 平台 OCR 供应商行：编辑为主行动 */
-function buildPlatformProviderRowActions(record: { providerType: string }): UiTableRowActionItem[] {
+function buildPlatformProviderRowActions(
+  record: MarkOcrPlatformProviderResponse,
+): UiTableRowActionItem[] {
   return [
     { key: 'edit', label: '编辑', tone: 'primary' },
     {
       key: 'health',
       label: '健康检查',
-      disabled: platformProviderHealthLoading.value === record.providerType,
+      disabled: !record.id
+        || record.enabled !== true
+        || Boolean(platformProviderHealthLoading.value)
+        || platformProviderSubmitting.value,
     },
   ]
 }
@@ -594,6 +682,8 @@ function openPlatformProviderEditor(record: MarkOcrPlatformProviderResponse): vo
   platformProviderEditor.appId = ''
   platformProviderEditor.apiKey = ''
   platformProviderEditor.secretKey = ''
+  platformProviderCredentialState.apiKeyConfigured = record.apiKeyConfigured
+  platformProviderCredentialState.secretKeyConfigured = record.secretKeyConfigured
   platformProviderEditor.region = record.region || ''
   platformProviderEditor.tokenEndpoint = record.tokenEndpoint || ''
   platformProviderEditor.ocrEndpoint = record.ocrEndpoint || ''
@@ -606,25 +696,44 @@ function openPlatformProviderEditor(record: MarkOcrPlatformProviderResponse): vo
   platformProviderEditorVisible.value = true
 }
 
+/** 保存当前供应商配置，并将写成功与后续状态刷新失败分别反馈。 */
 async function handlePlatformProviderSave(): Promise<void> {
   // MVR-316：与 ocrPlatformProviderManageAllowed / BE 超管门禁二次拦截
   if (ocrPlatformProviderManageAllowed.value !== true) {
     void message.warning('仅平台超级管理员可维护平台文字识别供应商配置')
     return
   }
-  if (platformProviderSubmitting.value) {
+  if (platformProviderSubmitting.value || platformProviderHealthLoading.value) {
     return
   }
+  try {
+    await platformProviderFormRef.value?.validate()
+  } catch {
+    return
+  }
+  const generation = ++platformProviderMutationGeneration
+  const tenantId = resolveOcrSessionTenantId()
   platformProviderSubmitting.value = true
   try {
     await saveMarkOcrPlatformProvider(buildPlatformProviderSavePayload())
+    if (
+      generation !== platformProviderMutationGeneration
+      || resolveOcrSessionTenantId() !== tenantId
+    ) {
+      return
+    }
     platformProviderEditorVisible.value = false
     void message.success('平台文字识别供应商配置已保存')
   } catch (error) {
+    if (generation !== platformProviderMutationGeneration) {
+      return
+    }
     showUserError(error, '平台文字识别供应商配置保存失败')
     return
   } finally {
-    platformProviderSubmitting.value = false
+    if (generation === platformProviderMutationGeneration) {
+      platformProviderSubmitting.value = false
+    }
   }
   const refreshFailures: string[] = []
   if (!(await loadPlatformProviders())) {
@@ -638,6 +747,7 @@ async function handlePlatformProviderSave(): Promise<void> {
   }
 }
 
+/** 执行单一平台供应商健康检查，隔离租户切换前发起的旧回执。 */
 async function handlePlatformProviderHealthCheck(
   providerType: MarkOcrProviderTypeCode,
 ): Promise<void> {
@@ -646,15 +756,31 @@ async function handlePlatformProviderHealthCheck(
     void message.warning('仅平台超级管理员可执行平台文字识别健康检查')
     return
   }
+  if (platformProviderHealthLoading.value || platformProviderSubmitting.value) {
+    return
+  }
+  const generation = ++platformProviderMutationGeneration
+  const tenantId = resolveOcrSessionTenantId()
   platformProviderHealthLoading.value = providerType
   try {
     await checkMarkOcrPlatformProviderHealth({ providerType })
+    if (
+      generation !== platformProviderMutationGeneration
+      || resolveOcrSessionTenantId() !== tenantId
+    ) {
+      return
+    }
     void message.success(`${providerLabel(providerType)} 平台健康检查完成`)
   } catch (error) {
+    if (generation !== platformProviderMutationGeneration) {
+      return
+    }
     showUserError(error, `${providerLabel(providerType)} 平台健康检查失败`)
     return
   } finally {
-    platformProviderHealthLoading.value = ''
+    if (generation === platformProviderMutationGeneration) {
+      platformProviderHealthLoading.value = ''
+    }
   }
   const refreshFailures: string[] = []
   if (!(await loadPlatformProviders())) {
@@ -675,22 +801,37 @@ async function handleHealthCheck(): Promise<void> {
     void message.warning('仅平台超级管理员可执行文字识别渠道健康检查')
     return
   }
+  if (healthChecking.value || channelSaving.value) {
+    return
+  }
   const tenantId = resolveOcrSessionTenantId()
   if (!tenantId) {
     void message.error('当前文字识别配置缺少租户信息，不能执行健康检查')
     return
   }
+  const generation = ++healthCheckGeneration
   healthChecking.value = true
   try {
     const result = await checkMarkOcrHealth(tenantId)
+    if (
+      generation !== healthCheckGeneration
+      || resolveOcrSessionTenantId() !== tenantId
+    ) {
+      return
+    }
     void message.success(
       `文字识别健康检查完成：${strictEnumLabel(AiHealthStatusDescription, result.healthStatus, '文字识别健康状态')}`,
     )
   } catch (error) {
+    if (generation !== healthCheckGeneration) {
+      return
+    }
     showUserError(error, '文字识别健康检查失败')
     return
   } finally {
-    healthChecking.value = false
+    if (generation === healthCheckGeneration) {
+      healthChecking.value = false
+    }
   }
   const refreshed = await loadConfig()
   if (!refreshed) {
@@ -698,13 +839,18 @@ async function handleHealthCheck(): Promise<void> {
   }
 }
 
+/** 按当前卷面正式切片执行同步识别，并校验返回渠道仍属于当前租户配置。 */
 async function handleRecognize(): Promise<void> {
   // MVR-423：与 canRecognize / 按钮 disabled 同源二次闸（配置就绪∧启用∧已选试卷/切片）
   if (!canRecognize.value) {
     void message.warning('当前不可发起调试识别（配置未就绪、渠道未启用或未选试卷/切片）')
     return
   }
-  await debugFormRef.value?.validate()
+  try {
+    await debugFormRef.value?.validate()
+  } catch {
+    return
+  }
   if (!currentPaperSlice.value) {
     void message.error('当前卷面的正式作答切片不存在，请重新选择')
     return
@@ -715,6 +861,7 @@ async function handleRecognize(): Promise<void> {
   const layoutQuestionId = currentPaperSlice.value.layoutQuestionId
   const generation = ++recognizeGeneration
   recognizing.value = true
+  recognizeResult.value = null
   try {
     const result = await recognizeMarkOcr({
       examId,
@@ -730,11 +877,15 @@ async function handleRecognize(): Promise<void> {
     ) {
       return
     }
+    if (result.providerType !== currentConfig.value?.providerType) {
+      throw new Error('文字识别结果合同异常：返回渠道与当前租户渠道不一致')
+    }
     recognizeResult.value = result
   } catch (error) {
     if (generation !== recognizeGeneration) {
       return
     }
+    recognizeResult.value = null
     showUserError(error, '调试识别失败')
   } finally {
     if (generation === recognizeGeneration) {
@@ -743,9 +894,11 @@ async function handleRecognize(): Promise<void> {
   }
 }
 
+/** 加载调试所需考试版式合同，失败时阻断卷面识别而非解释为未配置。 */
 async function loadExamDetail(examId: string): Promise<void> {
   const generation = ++examDetailLoadGeneration
   examDetailLoading.value = true
+  examDetailLoadFailed.value = false
   try {
     const detail = await getExamDetail(examId)
     if (generation !== examDetailLoadGeneration || selectedExamId.value !== examId) {
@@ -757,6 +910,7 @@ async function loadExamDetail(examId: string): Promise<void> {
       return
     }
     examDetail.value = null
+    examDetailLoadFailed.value = true
     showUserError(error, '考试详情加载失败')
   } finally {
     if (generation === examDetailLoadGeneration) {
@@ -765,9 +919,12 @@ async function loadExamDetail(examId: string): Promise<void> {
   }
 }
 
+/** 加载所选卷面的正式作答切片，并隔离切换卷面前发起的旧请求。 */
 async function loadPaperSlices(examId: string, paperInstanceId: string): Promise<void> {
   const generation = ++paperSliceLoadGeneration
   paperSlicesLoading.value = true
+  paperSlicesLoadFailed.value = false
+  paperSlices.value = []
   try {
     const slices = await listMarkOcrPaperSlices({ examId, paperInstanceId })
     if (
@@ -779,10 +936,15 @@ async function loadPaperSlices(examId: string, paperInstanceId: string): Promise
     }
     paperSlices.value = slices
   } catch (error) {
-    if (generation !== paperSliceLoadGeneration) {
+    if (
+      generation !== paperSliceLoadGeneration
+      || selectedExamId.value !== examId
+      || debugForm.value.paperInstanceId !== paperInstanceId
+    ) {
       return
     }
     paperSlices.value = []
+    paperSlicesLoadFailed.value = true
     showUserError(error, '正式作答切片列表加载失败')
   } finally {
     if (generation === paperSliceLoadGeneration) {
@@ -791,6 +953,7 @@ async function loadPaperSlices(examId: string, paperInstanceId: string): Promise
   }
 }
 
+/** 按服务端分页检索已绑定卷面，失败时清除旧查询结果以阻止误选。 */
 async function loadPaperCandidates(
   examId: string,
   keyword = paperCandidateKeyword.value,
@@ -821,6 +984,8 @@ async function loadPaperCandidates(
       return
     }
     paperCandidatesLoadFailed.value = true
+    paperCandidates.value = []
+    paperCandidatesTotal.value = 0
     showUserError(error, '卷面候选列表加载失败')
   } finally {
     if (generation === paperCandidateLoadGeneration) {
@@ -852,10 +1017,12 @@ function handlePaperCandidateDropdownVisibleChange(open: boolean): void {
 }
 
 function handlePaperCandidateChange(value: SelectValue): void {
+  paperSliceLoadGeneration += 1
   debugForm.value.responseSliceId = undefined
   recognizeResult.value = null
+  paperSlicesLoadFailed.value = false
+  paperSlices.value = []
   if (!value) {
-    paperSlices.value = []
     paperCandidateKeyword.value = ''
     if (debugForm.value.examId) {
       void loadPaperCandidates(debugForm.value.examId, '')
@@ -889,19 +1056,22 @@ const paddleInstanceColumns: ColumnType<PaddleOcrInstanceResponse>[] = [
 
 function paddleInstanceDeviceLabel(record: PaddleOcrInstanceResponse): string {
   if (record.deviceKind === PaddleOcrDeviceKindCode.GPU) {
-    return `GPU:${record.deviceIndex ?? 0}`
+    return `GPU:${record.deviceIndex}`
   }
   return 'CPU'
 }
 
+/** 分页加载 PaddleOCR 实例；失败时显式撤销旧实例快照。 */
 async function loadPaddleInstances(): Promise<void> {
   if (canManageOcrTenantChannel.value !== true) {
     paddleInstances.value = []
+    paddleInstancesLoadFailed.value = false
     paddlePagination.total = 0
     return
   }
   const generation = ++paddleInstanceLoadGeneration
   paddleInstancesLoading.value = true
+  paddleInstancesLoadFailed.value = false
   try {
     const page = await pagePaddleOcrInstances({
       pageNum: paddlePagination.pageNum,
@@ -918,6 +1088,9 @@ async function loadPaddleInstances(): Promise<void> {
     if (generation !== paddleInstanceLoadGeneration) {
       return
     }
+    paddleInstances.value = []
+    paddlePagination.total = 0
+    paddleInstancesLoadFailed.value = true
     showUserError(error, '本地文字识别实例加载失败')
   } finally {
     if (generation === paddleInstanceLoadGeneration) {
@@ -934,6 +1107,7 @@ watch(
     } else {
       paddleInstanceLoadGeneration += 1
       paddleInstances.value = []
+      paddleInstancesLoadFailed.value = false
       paddlePagination.total = 0
     }
   },
@@ -941,11 +1115,11 @@ watch(
 )
 
 watch(
-  selectedExamId,
-  (examId) => {
+  [selectedExamId, ocrDebugAllowed],
+  ([examId, debugAllowed]) => {
     clearOcrExamDebugSurfaces()
     debugForm.value.examId = examId
-    if (examId) {
+    if (examId && debugAllowed === true) {
       void Promise.all([loadExamDetail(examId), loadPaperCandidates(examId)])
     }
   },
@@ -963,7 +1137,7 @@ watch(
     void loadConfig()
     void loadPlatformProviders()
     const examId = selectedExamId.value
-    if (examId) {
+    if (examId && ocrDebugAllowed.value === true) {
       debugForm.value.examId = examId
       void Promise.all([loadExamDetail(examId), loadPaperCandidates(examId)])
     }
@@ -982,7 +1156,7 @@ async function reloadOcrWorkbench(): Promise<void> {
   await loadConfig()
   await loadPlatformProviders()
   const examId = selectedExamId.value
-  if (!examId) {
+  if (!examId || ocrDebugAllowed.value !== true) {
     return
   }
   await Promise.all([loadExamDetail(examId), loadPaperCandidates(examId)])
@@ -1009,7 +1183,12 @@ onBeforeUnmount(() => {
 <template>
   <StageWorkbenchShell class="ocr-settings">
     <template v-if="selectedExamId && currentConfig" #context>
-      <ContextBar layout="workbench" show-title :title="ocrWorkbenchTitle" :subtitle="`${paddlePagination.total} 个实例`">
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="ocrWorkbenchTitle"
+        :subtitle="ocrWorkbenchSubtitle"
+      >
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
@@ -1026,6 +1205,7 @@ onBeforeUnmount(() => {
             v-if="ocrHealthCheckAllowed"
             variant="outline"
             size="sm"
+            :disabled="channelSaving"
             :loading="healthChecking"
             @click="handleHealthCheck"
           >
@@ -1157,6 +1337,7 @@ onBeforeUnmount(() => {
             <UiButton
               variant="primary"
               size="sm"
+              :disabled="healthChecking"
               :loading="channelSaving"
               @click="handleSaveTenantChannel"
             >
@@ -1193,7 +1374,18 @@ onBeforeUnmount(() => {
             刷新
           </UiButton>
         </template>
+        <UiAlertStrip
+          v-if="paddleInstancesLoadFailed"
+          tone="error"
+          title="本地文字识别实例加载失败"
+          description="当前实例数量与健康状态不可用，不能解释为尚未注册实例。"
+        >
+          <template #actions>
+            <UiButton variant="outline" size="sm" @click="loadPaddleInstances">重新加载</UiButton>
+          </template>
+        </UiAlertStrip>
         <UiDataTable
+          v-else
           v-model:current="paddlePagination.pageNum"
           v-model:page-size="paddlePagination.pageSize"
           pagination-mode="server"
@@ -1264,7 +1456,18 @@ onBeforeUnmount(() => {
           </UiButton>
         </template>
 
+        <UiAlertStrip
+          v-if="platformProvidersLoadFailed"
+          tone="error"
+          title="平台文字识别供应商配置加载失败"
+          description="当前供应商配置不可用，不能解释为尚未维护。"
+        >
+          <template #actions>
+            <UiButton variant="outline" size="sm" @click="loadPlatformProviders">重新加载</UiButton>
+          </template>
+        </UiAlertStrip>
         <UiDataTable
+          v-else
           pagination-mode="none"
           :columns="platformProviderColumns"
           :data-source="platformProviders"
@@ -1318,6 +1521,61 @@ onBeforeUnmount(() => {
             <span>同步调试</span>
           </h3>
         </template>
+        <UiAlertStrip
+          v-if="examDetailLoadFailed"
+          tone="error"
+          title="考试版式合同加载失败"
+          description="当前无法确认答题卡或整卷模式，已阻断同步识别。"
+          class="ocr-settings__debug-alert"
+        >
+          <template #actions>
+            <UiButton
+              variant="outline"
+              size="sm"
+              @click="selectedExamId && loadExamDetail(selectedExamId)"
+            >
+              重新加载
+            </UiButton>
+          </template>
+        </UiAlertStrip>
+        <UiAlertStrip
+          v-if="paperCandidatesLoadFailed"
+          tone="error"
+          title="已绑定卷面加载失败"
+          description="当前卷面候选不可用，不能解释为尚无扫描卷面。"
+          class="ocr-settings__debug-alert"
+        >
+          <template #actions>
+            <UiButton
+              variant="outline"
+              size="sm"
+              @click="selectedExamId && loadPaperCandidates(selectedExamId)"
+            >
+              重新加载
+            </UiButton>
+          </template>
+        </UiAlertStrip>
+        <UiAlertStrip
+          v-if="paperSlicesLoadFailed"
+          tone="error"
+          title="正式作答切片加载失败"
+          description="当前卷面的题目切片不可用，已阻断同步识别。"
+          class="ocr-settings__debug-alert"
+        >
+          <template #actions>
+            <UiButton
+              variant="outline"
+              size="sm"
+              @click="
+                selectedExamId
+                  && debugForm.paperInstanceId
+                  && loadPaperSlices(selectedExamId, debugForm.paperInstanceId)
+              "
+            >
+              重新加载
+            </UiButton>
+          </template>
+        </UiAlertStrip>
         <UiForm
           ref="debugFormRef"
           :model="debugForm"
@@ -1333,7 +1591,12 @@ onBeforeUnmount(() => {
                   v-model="debugForm.paperInstanceId"
                   :options="paperCandidateOptions"
                   :loading="paperCandidatesLoading || examDetailLoading"
-                  :disabled="!debugForm.examId || !ocrDebugReady"
+                  :disabled="
+                    !debugForm.examId
+                      || !ocrDebugReady
+                      || examDetailLoadFailed
+                      || paperCandidatesLoadFailed
+                  "
                   allow-search
                   :filter-option="false"
                   allow-clear
@@ -1360,11 +1623,23 @@ onBeforeUnmount(() => {
                   v-model="debugForm.responseSliceId"
                   :options="paperSliceOptions"
                   :loading="paperSlicesLoading || examDetailLoading"
-                  :disabled="!debugForm.examId || !debugForm.paperInstanceId || !ocrDebugReady"
+                  :disabled="
+                    !debugForm.examId
+                      || !debugForm.paperInstanceId
+                      || !ocrDebugReady
+                      || examDetailLoadFailed
+                      || paperSlicesLoadFailed
+                  "
                   allow-search
                   option-filter-prop="label"
                   placeholder="请选择当前卷面的正式作答切片"
-                  :not-found-content="paperSlicesLoading ? undefined : '当前卷面暂无正式作答切片'"
+                  :not-found-content="
+                    paperSlicesLoading
+                      ? undefined
+                      : paperSlicesLoadFailed
+                        ? '正式作答切片加载失败，请重新加载'
+                        : '当前卷面暂无正式作答切片'
+                  "
                 />
               </UiFormItem>
             </UiCol>
@@ -1390,16 +1665,25 @@ onBeforeUnmount(() => {
             <UiDescriptionsItem label="识别处理说明">
               {{ ocrDiagnosticText(recognizeResult.diagnostic) }}
             </UiDescriptionsItem>
+            <UiDescriptionsItem label="引擎追踪标识">
+              {{ recognizeResult.engineTraceId }}
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="作答判定">
+              {{ recognizeResult.emptyAnswer ? '空作答' : '有作答内容' }}
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="人工复核">
+              {{ recognizeResult.manualReviewRequired === true ? '需要' : '不需要' }}
+            </UiDescriptionsItem>
           </UiDescriptions>
           <div class="result-text-block">
             <div class="result-text-label">识别文本</div>
-            <div class="result-text-content">{{ recognizeResult.recognizedText }}</div>
+            <div class="result-text-content">{{ recognizedTextDisplay }}</div>
           </div>
         </template>
         <UiEmpty
           size="sm"
           v-else-if="!recognizing"
-          description="上传样张并识别后，将在此展示识别文本"
+          description="选择已绑定卷面与正式作答切片并执行识别后，将在此展示服务端结果"
         />
       </WorkbenchSurfaceCard>
 
@@ -1410,7 +1694,12 @@ onBeforeUnmount(() => {
         :confirm-loading="platformProviderSubmitting"
         @ok="handlePlatformProviderSave"
       >
-        <UiForm layout="vertical">
+        <UiForm
+          ref="platformProviderFormRef"
+          :model="platformProviderEditor"
+          :rules="platformProviderRules"
+          layout="vertical"
+        >
           <UiFormItem label="供应商类型">
             <UiInput
               size="sm"
@@ -1429,14 +1718,14 @@ onBeforeUnmount(() => {
                 placeholder="留空表示不修改 / 不配置"
               />
             </UiFormItem>
-            <UiFormItem label="接口密钥">
+            <UiFormItem label="接口密钥" name="apiKey">
               <PasswordInput
                 v-model="platformProviderEditor.apiKey"
                 size="sm"
                 placeholder="留空表示保留原值"
               />
             </UiFormItem>
-            <UiFormItem label="密钥">
+            <UiFormItem label="密钥" name="secretKey">
               <PasswordInput
                 v-model="platformProviderEditor.secretKey"
                 size="sm"
@@ -1641,6 +1930,10 @@ onBeforeUnmount(() => {
 
 .ocr-settings__channel-alert {
   margin-bottom: var(--dp-space-component);
+}
+
+.ocr-settings__debug-alert {
+  margin-bottom: var(--dp-space-component-tight);
 }
 
 .ocr-settings__channel-form {

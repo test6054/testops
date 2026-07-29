@@ -15,15 +15,18 @@
       class="review-workspace__loading"
     />
 
-    <UiEmpty
+    <UiStateBlock
       size="sm"
       v-else-if="!loading && !detail"
+      state="error"
       title="复核任务不可用"
-      description="复核任务加载失败或不存在"
-      action-label="返回复核任务"
+      description="复核任务详情、正式影像或识别证据加载失败，当前页不能继续评分。"
       class="review-workspace__empty"
-      @action="goBack"
-    />
+    >
+      <template #actions>
+        <UiButton size="sm" variant="outline" @click="goBack">返回复核任务</UiButton>
+      </template>
+    </UiStateBlock>
 
     <template v-else-if="detail">
       <UiAlertStrip
@@ -98,6 +101,15 @@
             </template>
           </GradingImmersionChrome>
 
+          <UiAlertStrip
+            v-if="reviewQueueLoadFailed"
+            tone="error"
+            title="同题复核队列加载失败"
+            description="当前任务仍可单独提交，但队列跳转和“提交并取下一份”暂不可用。"
+            dense
+            inline
+          />
+
           <div
             v-if="queueTotal > 0 && currentQueueIndex > 0"
             class="review-workspace__queue-progress"
@@ -114,7 +126,7 @@
                   :min="1"
                   :max="queueTotal"
                   size="sm"
-                  style="width: 72px"
+                  class="review-workspace__queue-jump-input"
                   @update:value="
                     (value: number | string | null) => {
                       jumpTarget = typeof value === 'number' ? value : null
@@ -143,15 +155,7 @@
 
           <GradingImmersionSection title="阅卷影像">
             <template #icon><FileImageOutlined /></template>
-            <UiEmpty
-              size="sm"
-              v-if="
-                !detail?.sliceFileId && !detail?.sourceScanPage && !detail?.layoutPaperPage?.fileId
-              "
-              description="本题暂无阅卷影像"
-            />
             <MarkingScanMaterialPanel
-              v-else
               :slice-file-id="detail?.sliceFileId"
               :source-scan-page="detail?.sourceScanPage"
               :layout-paper-page="detail?.layoutPaperPage"
@@ -357,6 +361,13 @@
           <GradingImmersionSection title="批注历史">
             <template #icon><CommentOutlined /></template>
             <UiSkeletonState v-if="annotationsLoading" variant="card" compact />
+            <UiStateBlock
+              v-else-if="annotationsLoadFailed"
+              state="error"
+              size="sm"
+              title="批注历史加载失败"
+              description="当前批注证据不可用，已停止展示旧任务的批注。"
+            />
             <UiEmpty size="sm" v-else-if="annotations.length === 0" description="暂无批注历史" />
             <template v-else>
               <UiList :data-source="annotations" size="small">
@@ -383,7 +394,7 @@
                 :total="annotationPagination.total"
                 :show-size-changer="false"
                 size="small"
-                @change="loadAnnotations"
+                @change="() => loadAnnotations()"
               />
             </template>
           </GradingImmersionSection>
@@ -396,6 +407,9 @@
             </span>
             <span v-if="queueTotal > 0" class="review-workspace__hint">
               · 同题剩余 {{ Math.max(0, queueTotal - 1) }} 份
+            </span>
+            <span v-else-if="reviewQueueLoadFailed" class="review-workspace__hint">
+              · 同题队列不可用，不能自动取下一份
             </span>
           </div>
           <div class="review-workspace__sticky-actions">
@@ -435,6 +449,7 @@
     <MarkingAiAssistDrawer
       v-model:open="executionsDrawerOpen"
       :loading="executionsLoading === true"
+      :load-failed="aiExecutionsLoadFailed"
       :executions="aiExecutions"
       :highlight-trace-id="highlightExecutionTraceId"
       :status-label="statusLabel"
@@ -511,6 +526,7 @@ import UiList from '@/components/ui-guide/ui/UiList.vue'
 import UiListItem from '@/components/ui-guide/ui/UiListItem.vue'
 import UiListItemMeta from '@/components/ui-guide/ui/UiListItemMeta.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
 import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
@@ -626,6 +642,8 @@ const claimBlockedByOther = ref(false)
 const claiming = ref(false)
 /** 丢弃过期的复核任务加载，避免 J/K 导航与 claim 并发覆盖 detail。 */
 let loadTaskGeneration = 0
+/** 隔离确认、驳回与智能复评写回，切任务后旧回执不得更新新任务界面。 */
+let taskWriteGeneration = 0
 
 /** 沉浸顶栏副标题：队列位次 + 试卷/题号/状态，避免 status 槽重复堆 Tag。 */
 const immersionSubtitle = computed(() => {
@@ -666,6 +684,9 @@ const canConfirm = computed(() => {
   if (claimBlockedByOther.value === true) {
     return false
   }
+  if (claiming.value || submitting.value || rejecting.value || rescoring.value) {
+    return false
+  }
   return detail.value?.status === ReviewTaskStatusCode.IN_PROGRESS
 })
 
@@ -686,6 +707,7 @@ const canReject = computed(() => {
 // ─── 批注列表 ─────────────────────────────
 const annotations = ref<AnnotationResponse[]>([])
 const annotationsLoading = ref(false)
+const annotationsLoadFailed = ref(false)
 const annotationPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
 async function loadAnnotations(expectedGeneration = loadTaskGeneration): Promise<void> {
@@ -694,6 +716,7 @@ async function loadAnnotations(expectedGeneration = loadTaskGeneration): Promise
   const currentTaskId = taskId.value
   const { paperInstanceId, layoutQuestionId, gradeResultId } = detail.value
   annotationsLoading.value = true
+  annotationsLoadFailed.value = false
   try {
     const page = await listAnnotations({
       examId: currentExamId,
@@ -720,6 +743,7 @@ async function loadAnnotations(expectedGeneration = loadTaskGeneration): Promise
     }
     annotations.value = []
     annotationPagination.total = 0
+    annotationsLoadFailed.value = true
     showUserError(error, '批注记录加载失败')
   } finally {
     if (expectedGeneration === loadTaskGeneration) {
@@ -731,12 +755,16 @@ async function loadAnnotations(expectedGeneration = loadTaskGeneration): Promise
 // ─── B-7 同题剩余复核任务队列（用于「提交并取下一份」流水线接力） ─────
 const reviewQueue = ref<ReviewTaskItemResponse[]>([])
 const pipelineCurrentIndex = ref(0)
+const reviewQueueLoadFailed = ref(false)
 
 /**
  * 加载当前考试 + 当前题目下可继续复核的任务集合。
  * 只保留 PENDING 和当前教师自己已领取的 IN_PROGRESS 任务，避免把其他教师已领取任务误纳入“下一份”候选。
  */
-async function loadReviewQueue(expectedGeneration = loadTaskGeneration): Promise<void> {
+async function loadReviewQueue(
+  expectedGeneration = loadTaskGeneration,
+  allowCurrentMissing = false,
+): Promise<void> {
   if (
     !examId.value
     || !detail.value?.layoutQuestionId
@@ -744,10 +772,12 @@ async function loadReviewQueue(expectedGeneration = loadTaskGeneration): Promise
     || !detail.value.gradeSource
   ) {
     reviewQueue.value = []
+    reviewQueueLoadFailed.value = true
     return
   }
   if (!currentUserId.value) {
     reviewQueue.value = []
+    reviewQueueLoadFailed.value = true
     showUserError(
       new Error('当前登录用户缺少 userId，无法加载复核队列'),
       '当前登录用户缺少 userId，无法加载复核队列',
@@ -758,6 +788,7 @@ async function loadReviewQueue(expectedGeneration = loadTaskGeneration): Promise
   const currentTaskId = taskId.value
   const { layoutQuestionId, reviewType, gradeSource } = detail.value
   try {
+    reviewQueueLoadFailed.value = false
     const pipeline = await getReviewTaskPipeline({
       examId: currentExamId,
       layoutQuestionId,
@@ -773,6 +804,15 @@ async function loadReviewQueue(expectedGeneration = loadTaskGeneration): Promise
     ) {
       return
     }
+    if (
+      detail.value
+      && !allowCurrentMissing
+      && (detail.value.status === ReviewTaskStatusCode.PENDING
+        || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS)
+      && pipeline.currentIndex < 1
+    ) {
+      throw new TypeError('复核流水线合同异常：开放任务未出现在当前队列')
+    }
     reviewQueue.value = pipeline.items
     pipelineCurrentIndex.value = pipeline.currentIndex
   } catch (error) {
@@ -782,11 +822,12 @@ async function loadReviewQueue(expectedGeneration = loadTaskGeneration): Promise
     showUserError(error, '同题复核队列加载失败，提交并取下一份暂不可用。')
     reviewQueue.value = []
     pipelineCurrentIndex.value = 0
+    reviewQueueLoadFailed.value = true
   }
 }
 
 /**
- * 当前任务在同题复核队列中的 1-based 位次，找不到时回退为 1（流水线尚未刷新到当前任务）。
+ * 当前任务在同题复核队列中的 1-based 位次；0 表示当前任务已退出开放队列。
  */
 const currentQueueIndex = computed<number>(() => pipelineCurrentIndex.value)
 
@@ -928,6 +969,8 @@ async function loadTask(): Promise<void> {
     detail.value = null
     annotations.value = []
     reviewQueue.value = []
+    annotationsLoadFailed.value = false
+    reviewQueueLoadFailed.value = false
     showUserError(error, '教师复核工作台任务加载失败')
   } finally {
     if (generation === loadTaskGeneration) {
@@ -951,13 +994,21 @@ function resetTaskState(): void {
   ownerOverrideMode.value = false
   claimBlockedByOther.value = false
   claiming.value = false
+  submitting.value = false
+  rejecting.value = false
+  rescoring.value = false
   annotations.value = []
+  annotationsLoading.value = false
   annotationPagination.pageNum = 1
   annotationPagination.total = 0
+  annotationsLoadFailed.value = false
   reviewQueue.value = []
   pipelineCurrentIndex.value = 0
+  reviewQueueLoadFailed.value = false
   executionsDrawerOpen.value = false
+  executionsLoading.value = false
   aiExecutions.value = []
+  aiExecutionsLoadFailed.value = false
   lastExperienceAssistMeta.value = null
 }
 
@@ -984,6 +1035,10 @@ let bypassDirtyLeaveGuard = false
 const gradeFormBaseline = ref('')
 
 async function confirmLeaveIfDirty(): Promise<boolean> {
+  if (claiming.value || submitting.value || rejecting.value || rescoring.value) {
+    void message.warning('当前复核操作正在提交，请等待服务端返回后再离开')
+    return false
+  }
   if (bypassDirtyLeaveGuard || !isGradeFormDirty.value) {
     return true
   }
@@ -1046,7 +1101,7 @@ async function loadReviewTaskDetail(
   const heldByOther
     = !!preview.assignedTeacherUserId
       && preview.assignedTeacherUserId !== currentUserId.value
-  if (heldByOther && canManageOwnerReviewOverride.value) {
+  if (heldByOther && preview.canManageOwnerReviewOverride === true) {
     ownerOverrideMode.value = true
     claimBlockedByOther.value = false
     return preview
@@ -1088,6 +1143,9 @@ async function claimAndStartReview(): Promise<void> {
       || taskId.value !== expectedTaskId
     ) {
       return
+    }
+    if (claimed.assignedTeacherUserId !== currentUserId.value) {
+      throw new TypeError('复核任务领取回执异常：认领教师与当前用户不一致')
     }
     detail.value = claimed
     ownerOverrideMode.value = false
@@ -1195,12 +1253,26 @@ async function doRescoreByAi(): Promise<void> {
 
   if (rescoring.value === true) return
   if (canRescoreByAi.value !== true || !examId.value || !detail.value) return
+  const expectedExamId = examId.value
+  const expectedTaskId = taskId.value
+  const gradeResultId = detail.value.gradeResultId
+  const generation = ++taskWriteGeneration
   rescoring.value = true
   try {
     const result = await rescoreQuestionByAi({
-      examId: examId.value,
-      gradeResultId: detail.value.gradeResultId,
+      examId: expectedExamId,
+      gradeResultId,
     })
+    if (
+      generation !== taskWriteGeneration
+      || examId.value !== expectedExamId
+      || taskId.value !== expectedTaskId
+    ) {
+      return
+    }
+    if (result.aiScore != null && result.aiScore > detail.value.fullScore) {
+      throw new TypeError('单题智能复评合同异常：智能评分超过当前题满分')
+    }
     syncExperienceAssistMetaFromDetail({
       ...detail.value,
       referenceExperienceAudit: result.referenceExperienceAudit,
@@ -1215,9 +1287,18 @@ async function doRescoreByAi(): Promise<void> {
       void loadAiExecutions()
     }
   } catch (error) {
+    if (
+      generation !== taskWriteGeneration
+      || examId.value !== expectedExamId
+      || taskId.value !== expectedTaskId
+    ) {
+      return
+    }
     showUserError(error, '智能复评调用失败')
   } finally {
-    rescoring.value = false
+    if (generation === taskWriteGeneration) {
+      rescoring.value = false
+    }
   }
 }
 
@@ -1318,6 +1399,7 @@ function clearAiSuggestionToManual(): void {
 const executionsDrawerOpen = ref<boolean>(false)
 const executionsLoading = ref<boolean>(false)
 const aiExecutions = ref<ExamQuestionAiExecutionItemResponse[]>([])
+const aiExecutionsLoadFailed = ref(false)
 const highlightExecutionTraceId = ref<string | null>(null)
 
 /** 打开抽屉后拉取历史记录，可选定位当前 AI trace */
@@ -1333,6 +1415,7 @@ async function loadAiExecutions(expectedGeneration = loadTaskGeneration): Promis
   const currentExamId = examId.value
   const currentTaskId = taskId.value
   executionsLoading.value = true
+  aiExecutionsLoadFailed.value = false
   try {
     const list = await listAiExecutionsForQuestion({
       examId: currentExamId,
@@ -1352,6 +1435,7 @@ async function loadAiExecutions(expectedGeneration = loadTaskGeneration): Promis
     }
     showUserError(error, '智能复评历史加载失败')
     aiExecutions.value = []
+    aiExecutionsLoadFailed.value = true
   } finally {
     if (expectedGeneration === loadTaskGeneration) {
       executionsLoading.value = false
@@ -1444,29 +1528,61 @@ async function submitGrade(): Promise<boolean> {
   if (submitting.value === true || rejecting.value === true) {
     return false
   }
+  const expectedExamId = examId.value
+  const expectedTaskId = taskId.value
+  const gradeResultId = detail.value.gradeResultId
   const ownerOverrideReason = await resolveOwnerOverrideReason()
   if (ownerOverrideReason === null) {
     return false
   }
+  if (
+    canConfirm.value !== true
+    || examId.value !== expectedExamId
+    || taskId.value !== expectedTaskId
+    || detail.value?.gradeResultId !== gradeResultId
+  ) {
+    return false
+  }
+  const generation = ++taskWriteGeneration
   submitting.value = true
   try {
     await confirmQuestionGrade({
-      examId: examId.value,
-      gradeResultId: detail.value.gradeResultId,
+      examId: expectedExamId,
+      gradeResultId,
       teacherReviewScore: gradeForm.teacherReviewScore!,
       commentText: gradeForm.commentText?.trim() || undefined,
       annotationText: gradeForm.annotationText?.trim() || undefined,
       ownerOverrideReason,
     })
+    if (
+      generation !== taskWriteGeneration
+      || examId.value !== expectedExamId
+      || taskId.value !== expectedTaskId
+    ) {
+      return false
+    }
     ownerOverrideMode.value = false
     captureGradeBaseline()
     try {
       await refreshSnapshot()
     } catch (error) {
-      showUserError(error, '考试工作台状态刷新失败')
+      if (
+        generation === taskWriteGeneration
+        && examId.value === expectedExamId
+        && taskId.value === expectedTaskId
+      ) {
+        showUserError(error, '复核分已写入，但考试工作台状态刷新失败')
+      }
     }
     return true
   } catch (error) {
+    if (
+      generation !== taskWriteGeneration
+      || examId.value !== expectedExamId
+      || taskId.value !== expectedTaskId
+    ) {
+      return false
+    }
     if (isFinalScoreConfirmLockConflict(error)) {
       void message.warning('处理中')
       return false
@@ -1491,7 +1607,9 @@ async function submitGrade(): Promise<boolean> {
     showUserError(error, '确认复核失败')
     return false
   } finally {
-    submitting.value = false
+    if (generation === taskWriteGeneration) {
+      submitting.value = false
+    }
   }
 }
 
@@ -1530,27 +1648,61 @@ async function handleReject(): Promise<void> {
   if (rejecting.value === true || submitting.value === true) {
     return
   }
+  const expectedExamId = examId.value
+  const expectedTaskId = taskId.value
+  const gradeResultId = detail.value.gradeResultId
   const ownerOverrideReason = await resolveOwnerOverrideReason()
   if (ownerOverrideReason === null) {
     return
   }
+  if (
+    canReject.value !== true
+    || examId.value !== expectedExamId
+    || taskId.value !== expectedTaskId
+    || detail.value?.gradeResultId !== gradeResultId
+  ) {
+    return
+  }
+  const generation = ++taskWriteGeneration
+  let rejected = false
   rejecting.value = true
   try {
     await rejectQuestionGrade({
-      examId: examId.value,
-      gradeResultId: detail.value.gradeResultId,
+      examId: expectedExamId,
+      gradeResultId,
       rejectReason: gradeForm.commentText?.trim() || '教师驳回复核结论',
       ownerOverrideReason,
     })
+    if (
+      generation !== taskWriteGeneration
+      || examId.value !== expectedExamId
+      || taskId.value !== expectedTaskId
+    ) {
+      return
+    }
     ownerOverrideMode.value = false
+    captureGradeBaseline()
     void message.success('已驳回，任务已进入仲裁队列')
     try {
       await refreshSnapshot()
     } catch (error) {
-      showUserError(error, '考试工作台状态刷新失败')
+      if (
+        generation === taskWriteGeneration
+        && examId.value === expectedExamId
+        && taskId.value === expectedTaskId
+      ) {
+        showUserError(error, '复核任务已驳回，但考试工作台状态刷新失败')
+      }
     }
-    goBack()
+    rejected = true
   } catch (error) {
+    if (
+      generation !== taskWriteGeneration
+      || examId.value !== expectedExamId
+      || taskId.value !== expectedTaskId
+    ) {
+      return
+    }
     if (isFinalScoreConfirmLockConflict(error)) {
       void message.warning('处理中')
       return
@@ -1574,7 +1726,12 @@ async function handleReject(): Promise<void> {
     }
     showUserError(error, '驳回复核失败')
   } finally {
-    rejecting.value = false
+    if (generation === taskWriteGeneration) {
+      rejecting.value = false
+    }
+  }
+  if (rejected) {
+    goBack()
   }
 }
 
@@ -1610,7 +1767,7 @@ async function takeNextTask(): Promise<void> {
   const currentTaskId = taskId.value
   try {
     // 重新拉一次队列，确保不包含刚提交的任务（后端可能已变状态）
-    await loadReviewQueue(generation)
+    await loadReviewQueue(generation, true)
     if (generation !== loadTaskGeneration || examId.value !== expectedExamId) {
       return
     }
@@ -1657,6 +1814,8 @@ async function takeNextTask(): Promise<void> {
 watch(
   () => [examId.value, taskId.value],
   () => {
+    loadTaskGeneration += 1
+    taskWriteGeneration += 1
     bypassDirtyLeaveGuard = false
     resetTaskState()
     if (canSubmit.value === true) {

@@ -1,23 +1,7 @@
 <template>
   <UiSkeletonState v-if="loading" variant="card" :card-count="3" compact />
   <UiAlertStrip
-    v-else-if="loadFailed && !ledger"
-    tone="error"
-    size="sm"
-    dense
-    inline
-    :show-icon="false"
-    class="ledger-summary__gate"
-  >
-    <template #default>
-      <span class="ledger-summary__gate-row">
-        <UiTag tone="red" size="sm">账本加载失败</UiTag>
-        <span>影像账本请求失败。不可将失败当作「待建立」。</span>
-      </span>
-    </template>
-  </UiAlertStrip>
-  <UiAlertStrip
-    v-else-if="!ledger"
+    v-else-if="!loadFailed && !ledger"
     tone="info"
     size="sm"
     dense
@@ -28,15 +12,18 @@
     <template #default>
       <span class="ledger-summary__gate-row">
         <UiTag tone="blue" size="sm">待建立账本</UiTag>
-        <span>尚未建立影像账本，执行整体对账后将汇总扫描收录与绑定进度</span>
+        <span>尚未初始化影像账本，请先创建扫描批次后再返回对账</span>
+        <UiButton size="sm" variant="outline" @click="$emit('go-batches')">
+          查看扫描批次
+        </UiButton>
       </span>
     </template>
   </UiAlertStrip>
-  <div v-else class="ledger-summary">
+  <div v-else-if="ledger" class="ledger-summary">
     <!-- 顶栏：状态 + 进度环 + 操作 -->
     <div class="ledger-summary__hero">
       <div class="ledger-summary__hero-left">
-        <MarkGaugeBlock v-bind="scanGaugeBlockProps">
+        <MarkGaugeBlock v-if="hasDeterminateScanProgress" v-bind="scanGaugeBlockProps">
           <div class="ledger-summary__hero-meta">
             <div class="ledger-summary__hero-status">
               <UiTag :tone="statusTone" size="sm">{{ statusLabel }}</UiTag>
@@ -58,6 +45,25 @@
             </div>
           </div>
         </MarkGaugeBlock>
+        <div v-else class="ledger-summary__hero-meta">
+          <div class="ledger-summary__hero-status">
+            <UiTag :tone="statusTone" size="sm">{{ statusLabel }}</UiTag>
+            <span class="ledger-summary__hero-time">
+              最近对账：{{ formatDateTime(ledger.balancedTime) }}
+            </span>
+          </div>
+          <UiAlertStrip
+            tone="info"
+            :closable="false"
+            dense
+            title="扫描完成率不可计算"
+            :description="scanProgressUnavailableText"
+          />
+          <div v-if="ledger.diagnostic" class="ledger-summary__diagnostic">
+            <ExclamationCircleOutlined style="color: var(--dp-warning)" />
+            <span>{{ ledgerDiagnosticText(ledger.diagnostic) }}</span>
+          </div>
+        </div>
       </div>
       <div class="ledger-summary__hero-right">
         <UiButton
@@ -127,7 +133,10 @@ const props = withDefaults(
   canManageOwnerLedgerWrites: false,
   },
 )
-defineEmits<{ (e: 'balance'): void }>()
+defineEmits<{
+  (e: 'balance'): void
+  (e: 'go-batches'): void
+}>()
 
 const statusLabel = computed(() => {
   if (!props.ledger) return ''
@@ -147,6 +156,16 @@ const scanPercent = computed(() => {
   if (expected == null || expected <= 0) return 0
   return Math.min(Math.round((scanned / expected) * 100), 100)
 })
+
+const hasDeterminateScanProgress = computed(
+  () => props.ledger?.expectedPageCount != null && props.ledger.expectedPageCount > 0,
+)
+
+const scanProgressUnavailableText = computed(() =>
+  props.ledger?.expectedPageCount == null
+    ? '单卷页数真源尚未形成，请完成首扫或扫描事实推导后再对账。'
+    : '当前应考名单未形成有效页数基数，请先核对考生名册。',
+)
 
 const scanProgressLabel = computed(() => {
   const ledger = props.ledger
@@ -233,9 +252,11 @@ const scanSignalMetrics = computed((): SignalMetric[] => {
     {
       key: 'scanPercent',
       label: '扫描完成率',
-      value: `${scanPercent.value}`,
-      unit: '%',
-      tone: scanPercent.value >= 100 ? 'green' : 'blue',
+      value: hasDeterminateScanProgress.value ? `${scanPercent.value}` : '—',
+      unit: hasDeterminateScanProgress.value ? '%' : undefined,
+      tone: hasDeterminateScanProgress.value
+        ? scanPercent.value >= 100 ? 'green' : 'blue'
+        : 'gray',
     },
   ])
 })
@@ -260,7 +281,7 @@ const bindSignalMetrics = computed((): SignalMetric[] => {
     },
     {
       key: 'missingCandidate',
-      label: '未匹配考生',
+      label: '未绑定考生',
       value: formatLedgerMetric(ledger.missingCandidateCount),
       unit: '人',
       tone:
@@ -371,7 +392,28 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
 .ledger-summary__gate-row {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--dp-space-component-tight);
   min-width: 0;
+}
+
+@media (max-width: 600px) {
+  .ledger-summary__hero {
+    flex-direction: column;
+  }
+
+  .ledger-summary__hero-left,
+  .ledger-summary__hero-right {
+    width: 100%;
+  }
+
+  .ledger-summary__hero-right :deep(button) {
+    width: 100%;
+  }
+
+  .ledger-summary__hero-status {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 </style>

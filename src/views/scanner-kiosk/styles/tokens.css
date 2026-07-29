@@ -125,6 +125,7 @@
   --kiosk-h-icon-button: 48px;     /* 图标按钮 */
   --kiosk-h-input: 56px;           /* 表单输入 */
   --kiosk-h-input-sm: 48px;
+  --kiosk-h-hub-bar: 64px;         /* 业务入口页：应用识别、服务状态与刷新 */
   --kiosk-h-stage-bar: 64px;       /* 阶段指示器条 */
   --kiosk-h-app-bar: 72px;         /* 顶部 AppBar */
   --kiosk-h-bottom-bar: 88px;      /* 底部操作栏 */

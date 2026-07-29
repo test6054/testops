@@ -3,11 +3,10 @@
  * 一体机触摸屏考试选择：医院挂号式 5×2 大磁贴，单击即绑定/切换。
  */
 import type { ExamScannerKioskBindExamCandidateVO } from '@/apis/mark/scanner-kiosk'
-import { LeftOutlined, ReloadOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons-vue'
+import { BookOutlined, LeftOutlined, ReloadOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { formatSemester } from '@/types/enums/semester-enum'
-import { formatExamSubMeta, formatExamTimeRange } from '@/utils/exam-display-meta'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const props = withDefaults(
@@ -30,6 +29,7 @@ const emit = defineEmits<{
 const { workflow } = useKioskCtx()
 
 const searchInput = ref('')
+const searchInputElement = ref<HTMLInputElement>()
 let searchDebounce = 0
 
 const visibleExams = computed(() => {
@@ -87,24 +87,34 @@ function onSearchSubmit() {
   workflow.onBindExamCandidateSearch(searchInput.value)
 }
 
-function formatBatchBadge(candidate: ExamScannerKioskBindExamCandidateVO): string {
-  if (candidate.hasActiveScanSession === true) {
-    const batchNo = candidate.activeBatchExternalNo?.trim()
-    return batchNo ? `扫描中 · ${batchNo}` : '扫描中'
-  }
-  return `已扫 ${candidate.deviceScanBatchCount ?? 0} 批`
+/** 向本地 WebView2 宿主请求显示或收起 Windows 触摸键盘。普通浏览器不执行任何操作。 */
+function postTouchKeyboard(action: 'open' | 'close') {
+  const webview = (
+    window as Window & { chrome?: { webview?: { postMessage: (message: string) => void } } }
+  ).chrome?.webview
+  webview?.postMessage(JSON.stringify({ type: 'touch-keyboard', action }))
 }
 
-function formatExamTimeLine(candidate: ExamScannerKioskBindExamCandidateVO): string {
-  return formatExamTimeRange(candidate.examStartTime, candidate.examEndTime)
+/** 搜索框取得触摸焦点时显示 Windows 触摸键盘。 */
+function onSearchFocus() {
+  postTouchKeyboard('open')
 }
 
-function formatTermLine(candidate: ExamScannerKioskBindExamCandidateVO): string {
-  const parts: string[] = []
-  if (candidate.academicYear?.trim()) parts.push(candidate.academicYear.trim())
-  const semester = formatSemester(candidate.semester)
-  if (semester) parts.push(semester)
-  return parts.join(' · ')
+/** 点击搜索框以外的触摸区域时清除焦点并收起 Windows 触摸键盘。 */
+function onExamPickPointerDown(event: PointerEvent) {
+  if (event.target instanceof Node && searchInputElement.value?.contains(event.target)) return
+  searchInputElement.value?.blur()
+  postTouchKeyboard('close')
+}
+
+/** 将后端学年与学期编码组合为考试卡片可直接扫读的学期信息。 */
+function formatAcademicTerm(
+  academicYear?: string,
+  semester?: ExamScannerKioskBindExamCandidateVO['semester'],
+): string {
+  const year = academicYear?.trim()
+  const term = formatSemester(semester)
+  return [year, term].filter(Boolean).join(' ')
 }
 
 function goPrevPage() {
@@ -117,17 +127,20 @@ function goNextPage() {
 </script>
 
 <template>
-  <div class="exam-pick">
+  <div class="exam-pick" @pointerdown.capture="onExamPickPointerDown">
     <div class="exam-pick__toolbar">
       <div class="exam-pick__search">
         <SearchOutlined class="exam-pick__search-icon" />
         <input
+          ref="searchInputElement"
           v-model="searchInput"
           type="search"
           class="exam-pick__search-input"
-          placeholder="搜索考试名称或编号"
-          aria-label="搜索考试名称或编号"
+          placeholder="搜索考试名称"
+          aria-label="搜索考试名称"
           enterkeyhint="search"
+          @focus="onSearchFocus"
+          @blur="postTouchKeyboard('close')"
           @input="onSearchInput"
           @keydown.enter.prevent="onSearchSubmit"
         />
@@ -186,43 +199,21 @@ function goNextPage() {
         :disabled="interactionLocked || workflow.bindExamCandidateLoading.value"
         @click="bindExam(exam.examId)"
       >
-        <span class="exam-tile__icon" aria-hidden="true">
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-            <rect x="6" y="4" width="36" height="40" rx="6" fill="var(--kiosk-primary-soft)" />
-            <rect
-              x="10"
-              y="8"
-              width="28"
-              height="32"
-              rx="4"
-              stroke="var(--kiosk-primary)"
-              stroke-width="2"
-              fill="none"
-            />
-            <path
-              d="M16 18h16M16 24h16M16 30h10"
-              stroke="var(--kiosk-primary)"
-              stroke-width="2"
-              stroke-linecap="round"
-            />
-          </svg>
-        </span>
+        <div class="exam-tile__heading">
+          <span class="exam-tile__icon" aria-hidden="true"><BookOutlined /></span>
+          <div class="exam-tile__course-block">
+            <span class="exam-tile__label">课程</span>
+            <p class="exam-tile__course">{{ exam.courseName?.trim() || exam.examName }}</p>
+          </div>
+        </div>
         <div class="exam-tile__body">
+          <span class="exam-tile__label">考试</span>
           <h3 class="exam-tile__title">{{ exam.examName }}</h3>
-          <p v-if="exam.courseName" class="exam-tile__course">{{ exam.courseName }}</p>
-          <p v-if="formatExamSubMeta(exam.examNo, exam.departmentName)" class="exam-tile__sub">
-            {{ formatExamSubMeta(exam.examNo, exam.departmentName) }}
-          </p>
-          <p v-if="formatTermLine(exam)" class="exam-tile__meta">{{ formatTermLine(exam) }}</p>
-          <p v-if="formatExamTimeLine(exam)" class="exam-tile__meta">
-            {{ formatExamTimeLine(exam) }}
-          </p>
         </div>
         <div class="exam-tile__foot">
-          <span
-            class="exam-tile__badge"
-            :class="{ 'exam-tile__badge--active': exam.hasActiveScanSession === true }"
-          >{{ formatBatchBadge(exam) }}</span>
+          <span v-if="formatAcademicTerm(exam.academicYear, exam.semester)" class="exam-tile__term">
+            {{ formatAcademicTerm(exam.academicYear, exam.semester) }}
+          </span>
           <span class="exam-tile__action">
             {{ exam.hasActiveScanSession === true ? '继续扫描' : '进入扫描' }}
             <RightOutlined aria-hidden="true" />
@@ -378,7 +369,7 @@ function goNextPage() {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: flex-start;
   gap: var(--kiosk-space-2);
   min-height: 180px;
@@ -386,7 +377,7 @@ function goNextPage() {
   border: 2px solid var(--kiosk-divider);
   border-radius: var(--kiosk-radius-lg);
   background: var(--kiosk-surface);
-  text-align: center;
+  text-align: left;
   cursor: pointer;
   font-family: inherit;
   overflow: hidden;
@@ -415,13 +406,52 @@ function goNextPage() {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--kiosk-radius-md);
+  background: var(--kiosk-primary-soft);
+  color: var(--kiosk-primary);
+  font-size: 20px;
+}
+
+.exam-tile__heading {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--kiosk-space-2);
+  min-width: 0;
+}
+
+.exam-tile__course-block {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.exam-tile__label {
+  color: var(--kiosk-ink-tertiary);
+  font-size: var(--kiosk-fz-caption);
+  font-weight: var(--kiosk-fw-medium);
+  line-height: 1.2;
+}
+
+.exam-tile__course {
+  width: 100%;
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--kiosk-ink-secondary);
+  font-size: var(--kiosk-fz-label);
+  font-weight: var(--kiosk-fw-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .exam-tile__body {
   display: flex;
   flex: 1;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--kiosk-space-1);
   width: 100%;
   min-height: 0;
@@ -431,8 +461,9 @@ function goNextPage() {
   margin: 0;
   width: 100%;
   flex-shrink: 0;
-  max-height: calc(17px * 1.35 * 2);
-  font-size: 17px;
+  margin-top: var(--kiosk-space-1);
+  max-height: calc(18px * 1.35 * 2);
+  font-size: 18px;
   font-weight: var(--kiosk-fw-semibold);
   color: var(--kiosk-ink-primary);
   line-height: 1.35;
@@ -443,40 +474,6 @@ function goNextPage() {
   -webkit-line-clamp: 2;
 }
 
-.exam-tile__course {
-  margin: 0;
-  width: 100%;
-  flex-shrink: 0;
-  font-size: var(--kiosk-fz-label);
-  color: var(--kiosk-ink-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.exam-tile__sub {
-  margin: 0;
-  width: 100%;
-  flex-shrink: 0;
-  font-size: var(--kiosk-fz-caption);
-  font-family: var(--kiosk-font-mono);
-  color: var(--kiosk-ink-tertiary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.exam-tile__meta {
-  margin: 0;
-  width: 100%;
-  flex-shrink: 0;
-  font-size: var(--kiosk-fz-caption);
-  color: var(--kiosk-ink-tertiary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .exam-tile--resume {
   border-color: var(--kiosk-warning);
 }
@@ -485,7 +482,7 @@ function goNextPage() {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: var(--kiosk-space-2);
   width: 100%;
   margin-top: auto;
@@ -493,20 +490,14 @@ function goNextPage() {
   border-top: 1px solid var(--kiosk-divider);
 }
 
-.exam-tile__badge {
-  flex-shrink: 0;
-  padding: 2px var(--kiosk-space-2);
-  border-radius: var(--kiosk-radius-sm);
-  background: var(--kiosk-neutral-soft);
-  font-size: var(--dp-font-size-xs);
+.exam-tile__term {
+  min-width: 0;
+  overflow: hidden;
   color: var(--kiosk-ink-secondary);
+  font-size: var(--kiosk-fz-caption);
   font-variant-numeric: tabular-nums;
-}
-
-.exam-tile__badge--active {
-  background: var(--kiosk-warning-soft);
-  color: var(--kiosk-warning);
-  font-weight: var(--kiosk-fw-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .exam-tile__action {

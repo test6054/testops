@@ -1,10 +1,10 @@
 /**
  * 考试阅卷路由（/teacher）
  *
- * L0 全局左栏（顶栏切域后仅本域；menuTier 收敛主任务）：
- *   - primary：阅卷概览、考试列表、课程考核归档卷
- *   - secondary：材料检索（归档分组「更多」；激活提升）
- *   - 低频分组 order>4：AI 分析中心 →「本域更多入口」（组内保持 primary，避免空主列表）
+ * L0 全局左栏（顶栏切域后仅本域；按真实业务分组直达）：
+ *   - 工作台：阅卷概览、考试列表
+ *   - 课程考核归档：归档卷、材料检索
+ *   - AI 分析：AI 分析中心
  *   - 系统管理（quality-admin）：归档配置 / Agent / 租户策略 / 平台模板 → 平台脚
  * L1：/teacher/exam-workspace/:examId/* 考试详情工作台
  */
@@ -14,9 +14,6 @@ import { RoleEnum } from '@/utils/permission'
 const TEACHER_ROLES = [RoleEnum.SCH_TECH]
 const ALL_TEACHER_ROLES = [RoleEnum.SUPER_ADMIN, ...TEACHER_ROLES]
 const SCANNER_ADMIN_ROLES = [RoleEnum.SUPER_ADMIN]
-/** 本域低频入口：收进分组「更多」，激活时由 side-menu-tier 提升 */
-const MENU_SECONDARY = { menuTier: 'secondary' as const }
-
 export const teacherRoutes: RouteRecordRaw[] = [
   {
     path: '/teacher',
@@ -119,7 +116,6 @@ export const teacherRoutes: RouteRecordRaw[] = [
           roles: TEACHER_ROLES,
           icon: 'search',
           hideInMenu: false,
-          ...MENU_SECONDARY,
           keepAlive: true,
           menuGroup: 'archive-workbench',
           menuGroupTitle: '课程考核归档',

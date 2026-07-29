@@ -9,8 +9,9 @@ import type { MarkAiReferenceExperienceAuditResponse } from '@/apis/mark/grading
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { AiProviderTypeCode } from '@/types/enums/ai-provider-type-enum'
 import http from '@/config/axios'
-import { AiAbilityCode } from '@/types/enums/ai-ability-enum'
-import { AiExecutionStatusCode } from '@/types/enums/ai-execution-status-enum'
+import { AiAbilityCode, ALL_AI_ABILITY_CODES } from '@/types/enums/ai-ability-enum'
+import { AiExecutionStatusCode, ALL_AI_EXECUTION_STATUS_CODES } from '@/types/enums/ai-execution-status-enum'
+import { ALL_AI_PROVIDER_TYPE_CODES } from '@/types/enums/ai-provider-type-enum'
 
 /** 题目成绩确认请求 - 对应 ExamGradeConfirmRequest */
 export interface ExamGradeConfirmRequest {
@@ -212,43 +213,122 @@ export interface ExamQuestionAiExecutionItemResponse {
 }
 
 /** 教师确认题目得分。 */
-export function confirmQuestionGrade(request: ExamGradeConfirmRequest): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/question-grades/confirm', request)
+export async function confirmQuestionGrade(request: ExamGradeConfirmRequest): Promise<boolean> {
+  const response = await http.post<boolean>('/api/mark/exams/question-grades/confirm', request)
+  if (response !== true) {
+    throw new TypeError('题目成绩确认回执异常：服务端未确认写入成功')
+  }
+  return response
 }
 
 /** 教师驳回题目复核。 */
-export function rejectQuestionGrade(request: ExamGradeRejectRequest): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/question-grades/reject', request)
+export async function rejectQuestionGrade(request: ExamGradeRejectRequest): Promise<boolean> {
+  const response = await http.post<boolean>('/api/mark/exams/question-grades/reject', request)
+  if (response !== true) {
+    throw new TypeError('题目成绩驳回回执异常：服务端未确认写入成功')
+  }
+  return response
 }
 
-/** 教师批量确认题目得分，单题失败不阻塞其余条目。 */
-export function batchConfirmQuestionGrades(
+/** 批量确认题目得分，并校验成功/失败回执与请求条目严格一一对应。 */
+export async function batchConfirmQuestionGrades(
   request: ExamGradeBatchConfirmRequest,
 ): Promise<ExamGradeBatchConfirmResponse> {
-  return http.post<ExamGradeBatchConfirmResponse>(
+  const requestIds = request.items.map((item) => item.gradeResultId)
+  if (
+    requestIds.length === 0
+    || new Set(requestIds).size !== requestIds.length
+    || request.items.some((item) =>
+      !item.gradeResultId || !Number.isFinite(item.teacherReviewScore) || item.teacherReviewScore < 0)
+  ) {
+    throw new TypeError('题目成绩批量确认请求异常：条目为空、重复或得分不可用')
+  }
+  const response = await http.post<ExamGradeBatchConfirmResponse>(
     '/api/mark/exams/question-grades/batch-confirm',
     request,
   )
+  if (!Array.isArray(response.successGradeResultIds) || !Array.isArray(response.failures)) {
+    throw new TypeError('题目成绩批量确认回执异常：成功或失败条目缺失')
+  }
+  const successIds = response.successGradeResultIds
+  const failures = response.failures
+  const failureIds = failures.map((item) => item.gradeResultId)
+  const settledIds = [...successIds, ...failureIds]
+  if (
+    !Number.isInteger(response.totalCount)
+    || response.totalCount !== requestIds.length
+    || !Number.isInteger(response.successCount)
+    || response.successCount !== successIds.length
+    || !Number.isInteger(response.failureCount)
+    || response.failureCount !== failures.length
+    || response.successCount + response.failureCount !== response.totalCount
+    || new Set(settledIds).size !== settledIds.length
+    || settledIds.length !== requestIds.length
+    || settledIds.some((id) => !requestIds.includes(id))
+    || requestIds.some((id) => !settledIds.includes(id))
+    || failures.some((item) =>
+      !item.gradeResultId
+      || !Number.isInteger(item.code)
+      || !item.message?.trim())
+  ) {
+    throw new TypeError('题目成绩批量确认回执异常：请求与成功/失败条目无法对应')
+  }
+  return response
 }
 
 /** 教师异议场景单题 AI 复评，最终成绩仍由 confirmQuestionGrade 写入。 */
-export function rescoreQuestionByAi(
+export async function rescoreQuestionByAi(
   request: ExamQuestionAiRescoreRequest,
 ): Promise<SubjectiveGradeSuggestionResult> {
-  return http.post<SubjectiveGradeSuggestionResult>(
+  const response = await http.post<SubjectiveGradeSuggestionResult>(
     '/api/mark/exams/question-grades/ai-rescore',
     request,
   )
+  if (
+    typeof response.scored !== 'boolean'
+    || typeof response.limited !== 'boolean'
+    || (response.providerType != null && !ALL_AI_PROVIDER_TYPE_CODES.includes(response.providerType))
+    || (response.scored
+      ? typeof response.aiScore !== 'number'
+      || !Number.isFinite(response.aiScore)
+      || response.aiScore < 0
+      || !response.traceId?.trim()
+      : !response.diagnostic?.trim())
+  ) {
+    throw new TypeError('单题智能复评合同异常：评分状态、追踪标识或诊断不可用')
+  }
+  return response
 }
 
 /** 查询单题历次 AI 执行记录，仅暴露审计真源，不引入版本化读取。 */
-export function listAiExecutionsForQuestion(
+export async function listAiExecutionsForQuestion(
   request: ExamQuestionAiExecutionsRequest,
 ): Promise<ExamQuestionAiExecutionItemResponse[]> {
-  return http.post<ExamQuestionAiExecutionItemResponse[]>(
+  const response = await http.post<ExamQuestionAiExecutionItemResponse[]>(
     '/api/mark/exams/question-grades/ai-executions',
     request,
   )
+  if (!Array.isArray(response)) {
+    throw new TypeError('单题智能执行历史合同异常：历史集合缺失')
+  }
+  const traceIds = new Set<string>()
+  for (const item of response) {
+    if (
+      !item.traceId?.trim()
+      || traceIds.has(item.traceId)
+      || !ALL_AI_ABILITY_CODES.includes(item.abilityCode)
+      || !ALL_AI_EXECUTION_STATUS_CODES.includes(item.status)
+      || (item.providerType != null && !ALL_AI_PROVIDER_TYPE_CODES.includes(item.providerType))
+      || !Number.isFinite(item.latencyMs)
+      || item.latencyMs < 0
+      || !item.createTime?.trim()
+      || !item.createUser
+    ) {
+      throw new TypeError('单题智能执行历史合同异常：执行身份、状态或审计字段不可用')
+    }
+    traceIds.add(item.traceId)
+  }
+  return response
 }
 
 export interface ExamPaperScoreQueryRequest {

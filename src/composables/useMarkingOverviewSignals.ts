@@ -79,10 +79,8 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         tone: pendingTodoRowCount > 0 ? 'red' : 'gray',
         iconTone: 'gray',
         emphasis: 'primary',
-        actionLabel: pendingTodoRowCount > 0 ? '处理待办' : undefined,
-        helper: pendingTodoRowCount > 0 ? '优先推进阻塞项' : '暂无待办',
         trendPolarity: 'negative',
-        clickable: pendingTodoRowCount > 0,
+        clickable: false,
       },
       {
         key: 'active',

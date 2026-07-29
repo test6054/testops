@@ -98,11 +98,6 @@ const endpointLabel = computed(() => {
   return name || '未命名工位'
 })
 
-const agentVersionLabel = computed(() => {
-  const version = deviceActivation.health.value?.agentVersion?.trim()
-  return version ? `v${version}` : 'v—'
-})
-
 const stationLedTone = computed<'green' | 'gray'>(() =>
   deviceActivation.localAgentReachable.value ? 'green' : 'gray',
 )
@@ -508,22 +503,21 @@ onUnmounted(() => {
             />
           </svg>
         </div>
-        <div class="hub-shell__brand-text">
-          <span class="hub-shell__brand-title">文档采集工作台</span>
-          <span class="hub-shell__brand-version">一体机 · 扫描工位 · {{ agentVersionLabel }}</span>
-        </div>
+        <span class="hub-shell__brand-title">扫描终端</span>
       </div>
 
-      <div class="hub-shell__station">
+      <div class="hub-shell__connection" aria-live="polite">
         <span class="hub-led hub-led--sm" :class="`hub-led--${stationLedTone}`" />
-        <span class="hub-shell__station-label">当前工位</span>
-        <span class="hub-shell__station-name">{{ endpointLabel }}</span>
+        <span class="hub-shell__connection-label">
+          {{ deviceActivation.localAgentReachable.value ? '本地服务已连接' : '本地服务离线' }}
+        </span>
       </div>
 
       <button
         type="button"
         class="hub-shell__refresh"
         title="刷新工位状态"
+        aria-label="刷新工位状态"
         :disabled="hubLoading === true || deviceActivation.loading.value === true"
         @click="loadHubState"
       >

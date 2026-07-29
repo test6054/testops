@@ -60,13 +60,24 @@
           <UiButton
             size="sm"
             :variant="selectedPageId === side.pageId ? 'primary' : 'outline'"
-            :disabled="submitting || !canManageOwnerLedgerWrites"
+            :disabled="submitting || !canManageOwnerLedgerWrites || !evidencePreviewsReady"
             @click="selectKeepSide(side)"
           >
             {{ selectedPageId === side.pageId ? '已选保留此影像' : '保留此影像' }}
           </UiButton>
         </article>
       </div>
+      <UiAlertStrip
+        v-if="!evidencePreviewsReady"
+        :tone="evidencePreviewsLoading ? 'info' : 'error'"
+        :title="evidencePreviewsLoading ? '双侧影像证据加载中' : '双侧影像证据不完整'"
+        :description="evidencePreviewsLoading
+          ? '两侧原始扫描页均加载成功后才能选择保留侧。'
+          : '至少一侧原始扫描页不可用，当前不能提交破坏性处置。'"
+        :closable="false"
+        dense
+        class="duplicate-resolve__alert"
+      />
       <UiAlertStrip
         v-if="discardConsequence"
         tone="info"
@@ -178,6 +189,20 @@ const firstPreviewLoading = ref(false)
 const secondPreviewLoading = ref(false)
 const firstPreviewFailed = ref(false)
 const secondPreviewFailed = ref(false)
+let previewGeneration = 0
+let writeGeneration = 0
+
+const evidencePreviewsLoading = computed(
+  () => firstPreviewLoading.value === true || secondPreviewLoading.value === true,
+)
+const evidencePreviewsReady = computed(
+  () =>
+    Boolean(firstPreviewUrl.value)
+    && Boolean(secondPreviewUrl.value)
+    && evidencePreviewsLoading.value !== true
+    && firstPreviewFailed.value !== true
+    && secondPreviewFailed.value !== true,
+)
 
 const evidenceSides = computed((): EvidenceSideView[] => {
   const resolution = props.resolution
@@ -231,56 +256,102 @@ function releasePreview(urlRef: typeof firstPreviewUrl): void {
 function releaseAllPreviews(): void {
   releasePreview(firstPreviewUrl)
   releasePreview(secondPreviewUrl)
+  firstPreviewLoading.value = false
+  secondPreviewLoading.value = false
   firstPreviewFailed.value = false
   secondPreviewFailed.value = false
 }
 
+/** 加载一侧原始影像，并拒绝关闭、切考试或切重复记录后的过期对象 URL。 */
 async function loadSidePreview(
   pageId: string | undefined,
   urlRef: typeof firstPreviewUrl,
   loadingRef: typeof firstPreviewLoading,
   failedRef: typeof firstPreviewFailed,
+  expectedGeneration: number,
+  examId: string,
+  resolutionId: string,
 ): Promise<void> {
   releasePreview(urlRef)
   failedRef.value = false
-  if (!props.examId || !pageId) {
+  if (!examId || !pageId) {
     return
   }
   loadingRef.value = true
   try {
-    const previewPath = `/api/mark/exams/scanner-batches/pages/original-image?examId=${props.examId}&pageId=${pageId}`
-    urlRef.value = await fetchStoragePreviewBlobUrl(previewPath)
+    const previewPath = `/api/mark/exams/scanner-batches/pages/original-image?examId=${examId}&pageId=${pageId}`
+    const blobUrl = await fetchStoragePreviewBlobUrl(previewPath)
+    if (
+      expectedGeneration !== previewGeneration
+      || props.open !== true
+      || props.examId !== examId
+      || props.resolution?.id !== resolutionId
+    ) {
+      URL.revokeObjectURL(blobUrl)
+      return
+    }
+    urlRef.value = blobUrl
   } catch (error) {
+    if (
+      expectedGeneration !== previewGeneration
+      || props.open !== true
+      || props.examId !== examId
+      || props.resolution?.id !== resolutionId
+    ) {
+      return
+    }
     failedRef.value = true
     showUserError(error, '重复影像预览加载失败')
   } finally {
-    loadingRef.value = false
+    if (
+      expectedGeneration === previewGeneration
+      && props.open === true
+      && props.examId === examId
+      && props.resolution?.id === resolutionId
+    ) {
+      loadingRef.value = false
+    }
   }
 }
 
-async function loadEvidencePreviews(): Promise<void> {
+/** 并行加载当前重复记录双侧证据，两侧均成功才开放破坏性处置。 */
+async function loadEvidencePreviews(expectedGeneration: number): Promise<void> {
   const resolution = props.resolution
   if (!resolution?.firstPageEvidence || !resolution.secondPageEvidence) {
     return
   }
+  const examId = props.examId
+  const resolutionId = resolution.id
   await Promise.all([
     loadSidePreview(
       resolution.firstPageEvidence.pageId,
       firstPreviewUrl,
       firstPreviewLoading,
       firstPreviewFailed,
+      expectedGeneration,
+      examId,
+      resolutionId,
     ),
     loadSidePreview(
       resolution.secondPageEvidence.pageId,
       secondPreviewUrl,
       secondPreviewLoading,
       secondPreviewFailed,
+      expectedGeneration,
+      examId,
+      resolutionId,
     ),
   ])
 }
 
+/** 仅在双侧证据可见时记录同一侧的扫描页与答卷实例锚点。 */
 function selectKeepSide(side: EvidenceSideView): void {
   if (!props.canManageOwnerLedgerWrites || submitting.value) {
+    return
+  }
+  if (evidencePreviewsReady.value !== true) {
+    submitError.value = '双侧原始影像均加载成功后才能选择保留侧'
+    showFormValidationMessage('双侧原始影像均加载成功后才能选择保留侧')
     return
   }
   if (!side.pageId || !side.paperInstanceId) {
@@ -294,29 +365,30 @@ function selectKeepSide(side: EvidenceSideView): void {
 }
 
 watch(
-  () => props.open,
-  (open) => {
-    if (!open) {
-      releaseAllPreviews()
-      selectedPageId.value = ''
-      selectedPaperInstanceId.value = ''
-      resolutionReason.value = ''
-      submitError.value = ''
-      return
-    }
-    // 初始不默认选中任一侧，强制教师核验影像后再选
+  () => [props.open, props.examId, props.resolution?.id] as const,
+  ([open]) => {
+    const generation = ++previewGeneration
+    writeGeneration += 1
+    releaseAllPreviews()
     selectedPageId.value = ''
     selectedPaperInstanceId.value = ''
     resolutionReason.value = ''
     submitError.value = ''
-    void loadEvidencePreviews()
+    if (!open) {
+      return
+    }
+    // 初始不默认选中任一侧，强制教师核验影像后再选
+    void loadEvidencePreviews(generation)
   },
 )
 
 onBeforeUnmount(() => {
+  previewGeneration += 1
+  writeGeneration += 1
   releaseAllPreviews()
 })
 
+/** 校验双侧证据与所选页卷配对后提交处置，并隔离过期对象的写后 UI。 */
 async function handleOk(): Promise<void> {
   if (submitting.value === true) {
     return
@@ -324,6 +396,11 @@ async function handleOk(): Promise<void> {
   // MVR-372：写 handler 二次拦截；父页仅隐藏入口不能替代
   if (props.canManageOwnerLedgerWrites !== true) {
     void message.warning('仅考试主考可处置重复影像')
+    return
+  }
+  if (evidencePreviewsReady.value !== true) {
+    submitError.value = '双侧原始影像证据未完整加载，不能提交处置'
+    showFormValidationMessage('双侧原始影像证据未完整加载，不能提交处置')
     return
   }
   const reason = resolutionReason.value.trim()
@@ -356,22 +433,51 @@ async function handleOk(): Promise<void> {
     void message.warning('保留的扫描页必须来自当前重复影像记录')
     return
   }
+  const selectedEvidence = [
+    props.resolution.firstPageEvidence,
+    props.resolution.secondPageEvidence,
+  ].find((item) => item.pageId === selectedPageId.value)
+  if (!selectedEvidence || selectedEvidence.paperInstanceId !== selectedPaperInstanceId.value) {
+    submitError.value = '所选扫描页与答卷实例不匹配，不能提交处置'
+    void message.error('所选扫描页与答卷实例不匹配，不能提交处置')
+    return
+  }
+  const examId = props.examId
+  const resolutionId = props.resolution.id
+  const selectedPageIdForWrite = selectedPageId.value
+  const selectedPaperIdForWrite = selectedPaperInstanceId.value
+  const expectedWriteGeneration = writeGeneration
   submitting.value = true
   submitError.value = ''
   try {
     await resolveDuplicate({
-      examId: props.examId,
-      resolutionId: props.resolution.id,
-      selectedPageId: selectedPageId.value,
-      selectedPaperInstanceId: selectedPaperInstanceId.value,
+      examId,
+      resolutionId,
+      selectedPageId: selectedPageIdForWrite,
+      selectedPaperInstanceId: selectedPaperIdForWrite,
       resolutionReason: reason,
     })
+    if (
+      expectedWriteGeneration !== writeGeneration
+      || props.open !== true
+      || props.examId !== examId
+      || props.resolution?.id !== resolutionId
+    ) {
+      void message.success('上一条重复影像处置已提交')
+      return
+    }
     void message.success('重复影像处置已提交')
     emit('update:open', false)
     emit('submitted')
   } catch (e) {
-    submitError.value = getUserErrorMessage(e, '重复影像处置提交失败')
-    showUserError(e, '重复影像处置提交失败')
+    const isCurrentWrite
+      = expectedWriteGeneration === writeGeneration
+        && props.examId === examId
+        && props.resolution?.id === resolutionId
+    if (isCurrentWrite) {
+      submitError.value = getUserErrorMessage(e, '重复影像处置提交失败')
+    }
+    showUserError(e, isCurrentWrite ? '重复影像处置提交失败' : '上一条重复影像处置失败')
   } finally {
     submitting.value = false
   }
@@ -396,7 +502,7 @@ async function handleOk(): Promise<void> {
   gap: var(--dp-space-component-tight);
   padding: var(--dp-space-component);
   border: 1px solid var(--dp-border);
-  border-radius: 6px;
+  border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
 }
 
@@ -413,9 +519,9 @@ async function handleOk(): Promise<void> {
 .duplicate-resolve__meta {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--dp-space-component-xs);
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.4;
 }
 
