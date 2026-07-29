@@ -1,23 +1,20 @@
 <script setup lang="ts">
 import type { ScannerKioskArchiveVolumeItemVO } from '@/apis/mark/scanner-kiosk'
+import { createAdhocDispatchTicket, pageKioskArchiveVolumes } from '@/apis/mark/scanner-kiosk'
+import { MapPin, RefreshCw } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  ARCHIVE_VOLUME_STATUS_TONE,
-  ArchiveVolumeStatusDescription,
-} from '@/apis/mark/archive-volume'
-import { createAdhocDispatchTicket, pageKioskArchiveVolumes } from '@/apis/mark/scanner-kiosk'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSearchBox from '@/components/ui-guide/ui/SearchBox.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
-import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import {
+  getUserErrorMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 
 const props = defineProps<{
   open: boolean
@@ -25,35 +22,19 @@ const props = defineProps<{
   scannerStationId: string
 }>()
 
-const emit = defineEmits<{
-  'update:open': [value: boolean]
-}>()
-
+const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 const router = useRouter()
 const loading = ref(false)
 const pickingVolumeId = ref('')
 const errorMessage = ref('')
 const keyword = ref('')
 const pageNum = ref(1)
-const pageSize = ref(20)
+const pageSize = 8
 const total = ref(0)
 const volumes = ref<ScannerKioskArchiveVolumeItemVO[]>([])
 
 const canPick = computed(() => Boolean(props.scannerDeviceId) && Boolean(props.scannerStationId))
-
-const columns = [
-  {
-    title: '柜位',
-    key: 'physicalStorageLocation',
-    dataIndex: 'physicalStorageLocation',
-    width: 140,
-  },
-  { title: '归档编号', key: 'archiveNo', dataIndex: 'archiveNo', width: 120 },
-  { title: '卷名', key: 'archiveTitle', dataIndex: 'archiveTitle', ellipsis: true },
-  { title: '教学班', key: 'teachingClassName', dataIndex: 'teachingClassName', width: 120 },
-  { title: '状态', key: 'volumeStatus', dataIndex: 'volumeStatus', width: 96 },
-  { title: '主行动', key: 'actions', width: 88 },
-]
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
 watch(
   () => props.open,
@@ -72,7 +53,7 @@ async function loadVolumes() {
   try {
     const page = await pageKioskArchiveVolumes({
       pageNum: pageNum.value,
-      pageSize: pageSize.value,
+      pageSize,
       keyword: keyword.value.trim() || undefined,
     })
     volumes.value = page.list
@@ -86,31 +67,46 @@ async function loadVolumes() {
   }
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
-  pageNum.value = pageEvent.current
-  pageSize.value = pageEvent.pageSize
-  void loadVolumes()
+function volumeContractIssue(row: ScannerKioskArchiveVolumeItemVO): string {
+  if (row.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING) {
+    return '归档卷不在收集中状态'
+  }
+  if (!row.archiveTitle?.trim()) {
+    return '归档卷名称缺失'
+  }
+  if (!row.courseName?.trim()) {
+    return '课程名称缺失'
+  }
+  if (!row.examName?.trim()) {
+    return '考试名称缺失'
+  }
+  if (!row.academicYear?.trim()) {
+    return '学年缺失'
+  }
+  if (!row.physicalStorageLocation?.trim()) {
+    return '档案柜位未登记'
+  }
+  return ''
 }
 
-function volumeAcceptsKioskPick(status?: string): boolean {
-  return (
-    status === ArchiveVolumeStatusCode.COLLECTING
-    || status === ArchiveVolumeStatusCode.STORED
-    || status === ArchiveVolumeStatusCode.SUBMITTED
-  )
+async function changePage(nextPage: number) {
+  pageNum.value = nextPage
+  await loadVolumes()
+}
+
+async function searchVolumes() {
+  pageNum.value = 1
+  await loadVolumes()
 }
 
 async function pickVolume(row: ScannerKioskArchiveVolumeItemVO) {
   if (canPick.value !== true) {
-    showFormValidationMessage('工位未激活，无法创建临时派单')
+    showFormValidationMessage('工位未激活，无法现场开单')
     return
   }
-  if (!volumeAcceptsKioskPick(row.volumeStatus)) {
-    showFormValidationMessage('当前卷状态不允许临时开单')
-    return
-  }
-  if (!row.physicalStorageLocation?.trim()) {
-    showFormValidationMessage('该卷尚未登记档案柜位，请先在电脑端补录柜位后再临时开单')
+  const issue = volumeContractIssue(row)
+  if (issue) {
+    showFormValidationMessage(`${issue}，请先在电脑端修正`)
     return
   }
   pickingVolumeId.value = row.volumeId
@@ -121,123 +117,189 @@ async function pickVolume(row: ScannerKioskArchiveVolumeItemVO) {
       scannerDeviceId: props.scannerDeviceId,
       scannerStationId: props.scannerStationId,
     })
-    const ticketId = response.ticket?.ticketId
-    if (!ticketId) {
-      showUserError(null, '临时派单创建失败')
+    const ticket = response.ticket
+    if (!ticket?.ticketId) {
+      showUserError(null, '现场开单失败')
       return
     }
+    const ticketId = ticket.ticketId
     emit('update:open', false)
-    const kioskPath
-      = response.ticket?.kioskDispatchUrl || (ticketId ? `/scanner-kiosk/dispatch/${ticketId}` : '')
-    if (kioskPath) {
-      void router.push(kioskPath)
-    }
+    void router.push(ticket.kioskDispatchUrl || `/scanner-kiosk/dispatch/${ticketId}`)
   } catch (error) {
-    showUserError(error, '创建临时派单失败')
+    showUserError(error, '现场开单失败')
   } finally {
     pickingVolumeId.value = ''
   }
-}
-
-function volumeStatusLabel(status: ScannerKioskArchiveVolumeItemVO['volumeStatus']) {
-  return strictEnumLabel(ArchiveVolumeStatusDescription, status, 'volumeStatus')
-}
-
-function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus']) {
-  return strictEnumTone(ARCHIVE_VOLUME_STATUS_TONE, status, 'volumeStatus')
 }
 </script>
 
 <template>
   <UiDrawer
     :open="open"
-    title="临时扫描 · 选择归档卷"
-    width="880"
+    title="现场开单 · 考试归档"
+    width="920"
     destroy-on-close
     @update:open="emit('update:open', $event)"
   >
-    <p class="kiosk-archive-pick__hint">
-      仅展示您已加入协作组、状态为收集中且已登记柜位的归档卷。若列表为空，请联系卷负责人将您添加为扫描协作成员后再试。
-    </p>
-    <WorkbenchSurfaceCard flush>
-      <template #toolbar>
-        <UiSearchBox
-          v-model="keyword"
-          placeholder="搜索卷名 / 编号 / 柜位"
-          allow-clear
-          class="kiosk-archive-pick__search"
-          @search="
-            () => {
-              pageNum = 1
-              loadVolumes()
-            }
-          "
-        />
-        <UiButton variant="outline" :disabled="loading === true" @click="loadVolumes">
-          刷新
-        </UiButton>
-      </template>
+    <div class="archive-pick__toolbar">
+      <UiSearchBox
+        v-model="keyword"
+        placeholder="搜索考试或归档卷名称"
+        allow-clear
+        class="archive-pick__search"
+        @search="searchVolumes"
+      />
+      <UiButton variant="outline" size="lg" :loading="loading" @click="loadVolumes">
+        <template #icon><RefreshCw :size="20" /></template>
+        刷新
+      </UiButton>
+    </div>
 
-      <p v-if="errorMessage" class="kiosk-archive-pick__error">{{ errorMessage }}</p>
-      <UiDataTable
-        pagination-mode="server"
-        :columns="columns"
-        :data-source="volumes"
-        :loading="loading"
-        :total="total"
-        :current="pageNum"
-        :page-size="pageSize"
-        row-key="volumeId"
-        size="middle"
-        flat
-        @page-change="handlePageChange"
-        :sticky-header="false"
+    <p v-if="errorMessage" class="archive-pick__error">{{ errorMessage }}</p>
+    <div v-else-if="!loading && volumes.length === 0" class="archive-pick__empty">
+      当前没有可现场开单的收集中归档卷
+    </div>
+
+    <ul v-else class="archive-pick__list">
+      <li v-for="volume in volumes" :key="volume.volumeId" class="archive-pick__item">
+        <div class="archive-pick__main">
+          <div class="archive-pick__head">
+            <h3>{{ volume.archiveTitle || '归档卷名称缺失' }}</h3>
+            <UiTag tone="green" size="sm">收集中</UiTag>
+          </div>
+          <div class="archive-pick__meta">
+            <span>{{ volume.courseName || '课程名称缺失' }}</span>
+            <span>{{ volume.examName || '考试名称缺失' }}</span>
+            <span>
+              {{ volume.academicYear || '学年缺失' }}
+              <template v-if="volume.semester"> · 第{{ volume.semester }}学期</template>
+            </span>
+            <span>{{ volume.teachingClassName || '教学班信息缺失' }}</span>
+            <span>{{ volume.departmentName || '院系信息缺失' }}</span>
+            <span><MapPin :size="18" />{{ volume.physicalStorageLocation || '柜位未登记' }}</span>
+          </div>
+          <p v-if="volumeContractIssue(volume)" class="archive-pick__issue">
+            数据不完整：{{ volumeContractIssue(volume) }}
+          </p>
+        </div>
+        <UiButton
+          variant="primary"
+          size="lg"
+          :loading="pickingVolumeId === volume.volumeId"
+          :disabled="canPick !== true || Boolean(volumeContractIssue(volume))"
+          @click="pickVolume(volume)"
+        >
+          开始扫描
+        </UiButton>
+      </li>
+    </ul>
+
+    <div v-if="total > pageSize" class="archive-pick__pager">
+      <UiButton
+        variant="outline"
+        size="lg"
+        :disabled="pageNum <= 1"
+        @click="changePage(pageNum - 1)"
       >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'physicalStorageLocation'">
-            {{ record.physicalStorageLocation || '—' }}
-          </template>
-          <template v-else-if="column.key === 'volumeStatus'">
-            <UiTag :tone="volumeStatusTone(record.volumeStatus)" size="sm">
-              {{ volumeStatusLabel(record.volumeStatus) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <UiTableActions
-              :max-visible="2"
-              :items="[
-                {
-                  key: 'pick',
-                  label: '开单',
-                  disabled:
-                    canPick !== true
-                    || record.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING
-                    || pickingVolumeId === record.volumeId,
-                },
-              ]"
-              split
-              @action="() => pickVolume(record)"
-            />
-          </template>
-        </template>
-      </UiDataTable>
-    </WorkbenchSurfaceCard>
+        上一页
+      </UiButton>
+      <span>第 {{ pageNum }} / {{ totalPages }} 页</span>
+      <UiButton
+        variant="outline"
+        size="lg"
+        :disabled="pageNum >= totalPages"
+        @click="changePage(pageNum + 1)"
+      >
+        下一页
+      </UiButton>
+    </div>
   </UiDrawer>
 </template>
 
 <style scoped>
-.kiosk-archive-pick__hint {
-  margin: 0 0 var(--dp-space-component);
-  font-size: var(--dp-font-size-sm);
-  color: var(--kiosk-ink-secondary);
+.archive-pick__toolbar,
+.archive-pick__head,
+.archive-pick__meta,
+.archive-pick__pager {
+  display: flex;
+  align-items: center;
 }
-.kiosk-archive-pick__search {
+
+.archive-pick__toolbar {
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.archive-pick__search {
   flex: 1;
   min-width: 0;
 }
-.kiosk-archive-pick__error {
-  margin: 0 0 var(--dp-space-component);
-  padding: 0 var(--dp-space-block);
+
+.archive-pick__list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.archive-pick__item {
+  min-height: 136px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 20px;
+  border: 1px solid var(--kiosk-divider);
+  border-radius: 7px;
+  background: var(--kiosk-surface);
+}
+
+.archive-pick__head {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.archive-pick__head h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.archive-pick__meta {
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 12px;
+  color: var(--kiosk-ink-secondary);
+}
+
+.archive-pick__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.archive-pick__issue,
+.archive-pick__error {
   color: var(--kiosk-danger);
+}
+
+.archive-pick__issue {
+  margin: 8px 0 0;
+}
+
+.archive-pick__empty {
+  min-height: 300px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--kiosk-divider);
+  color: var(--kiosk-ink-secondary);
+}
+
+.archive-pick__pager {
+  justify-content: center;
+  gap: 14px;
+  margin-top: 18px;
 }
 </style>

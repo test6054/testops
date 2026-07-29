@@ -1,19 +1,21 @@
 <script setup lang="ts">
 import type { PortfolioGapTaskSummaryInternalVO } from '@/apis/mark/scanner-kiosk'
+import { createAdhocDispatchTicket, pageKioskPortfolioGapTasks } from '@/apis/mark/scanner-kiosk'
+import { CalendarClock, RefreshCw, UserRound } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { createAdhocDispatchTicket, pageKioskPortfolioGapTasks } from '@/apis/mark/scanner-kiosk'
 import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSearchBox from '@/components/ui-guide/ui/SearchBox.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
-import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  getUserErrorMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -22,31 +24,19 @@ const props = defineProps<{
   scannerStationId: string
 }>()
 
-const emit = defineEmits<{
-  'update:open': [value: boolean]
-}>()
-
+const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 const router = useRouter()
 const loading = ref(false)
 const pickingTaskId = ref('')
 const errorMessage = ref('')
 const keyword = ref('')
 const pageNum = ref(1)
-const pageSize = ref(20)
+const pageSize = 8
 const total = ref(0)
 const tasks = ref<PortfolioGapTaskSummaryInternalVO[]>([])
 
 const canPick = computed(() => Boolean(props.scannerDeviceId) && Boolean(props.scannerStationId))
-
-const columns = [
-  { title: '分类', key: 'categoryName', dataIndex: 'categoryName', width: 120 },
-  { title: '课程维度', key: 'courseScope', width: 140 },
-  { title: '任务', key: 'taskTitle', dataIndex: 'taskTitle', ellipsis: true },
-  { title: '教师', key: 'teacher', width: 168 },
-  { title: '状态', key: 'taskStatus', dataIndex: 'taskStatus', width: 96 },
-  { title: '截止', key: 'dueTime', dataIndex: 'dueTime', width: 160 },
-  { title: '主行动', key: 'actions', width: 88 },
-]
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
 watch(
   () => props.open,
@@ -65,7 +55,7 @@ async function loadTasks() {
   try {
     const page = await pageKioskPortfolioGapTasks({
       pageNum: pageNum.value,
-      pageSize: pageSize.value,
+      pageSize,
       openOnly: true,
       keyword: keyword.value.trim() || undefined,
     })
@@ -80,19 +70,13 @@ async function loadTasks() {
   }
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
-  pageNum.value = pageEvent.current
-  pageSize.value = pageEvent.pageSize
-  void loadTasks()
-}
-
 function gapStatusLabel(status: PortfolioGapTaskSummaryInternalVO['taskStatus']) {
-  return strictEnumLabel(PortfolioGapTaskStatusDescription, status, 'taskStatus')
+  return strictEnumLabel(PortfolioGapTaskStatusDescription, status, '补采任务状态')
 }
 
 function gapCourseScopeLabel(row: PortfolioGapTaskSummaryInternalVO): string {
   if (!row.courseCode) {
-    return '—'
+    return '非课程维度'
   }
   const parts = [row.courseCode]
   if (row.academicYear) {
@@ -104,19 +88,37 @@ function gapCourseScopeLabel(row: PortfolioGapTaskSummaryInternalVO): string {
   return parts.join(' · ')
 }
 
-function gapTeacherLabel(row: PortfolioGapTaskSummaryInternalVO): string {
-  const name = row.teacherName?.trim()
-  const number = row.teacherNumber?.trim()
-  // 与 BE fromDetails 合同一致：姓名与工号均须下发，禁止仅展示 teacherId 或半残字段
-  if (!name || !number) {
-    return '—'
+function taskContractIssue(row: PortfolioGapTaskSummaryInternalVO): string {
+  if (!row.teacherName?.trim()) {
+    return '教师姓名缺失'
   }
-  return `${name} · ${number}`
+  if (!row.categoryName?.trim()) {
+    return '档案分类缺失'
+  }
+  if (!row.taskTitle?.trim()) {
+    return '任务名称缺失'
+  }
+  return ''
+}
+
+async function changePage(nextPage: number) {
+  pageNum.value = nextPage
+  await loadTasks()
+}
+
+async function searchTasks() {
+  pageNum.value = 1
+  await loadTasks()
 }
 
 async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
   if (canPick.value !== true) {
     showFormValidationMessage('工位未激活，无法进入补采扫描')
+    return
+  }
+  const issue = taskContractIssue(row)
+  if (issue) {
+    showFormValidationMessage(`任务数据不完整：${issue}，请先在电脑端修正`)
     return
   }
   pickingTaskId.value = row.id
@@ -131,13 +133,13 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
       scannerStationId: props.scannerStationId,
     })
     if (!created.ticket?.ticketId) {
-      showUserError(null, '创建档案袋派单失败')
+      showUserError(null, '现场开单失败')
       return
     }
     emit('update:open', false)
     void router.push(`/scanner-kiosk/dispatch/${created.ticket.ticketId}`)
   } catch (error) {
-    showUserError(error, '创建档案袋派单失败')
+    showUserError(error, '现场开单失败')
   } finally {
     pickingTaskId.value = ''
   }
@@ -147,104 +149,171 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
 <template>
   <UiDrawer
     :open="open"
-    title="临时扫描 · 档案袋补采待办"
-    width="880"
+    title="现场开单 · 教师档案袋"
+    width="920"
     destroy-on-close
     @update:open="emit('update:open', $event)"
   >
-    <p class="kiosk-portfolio-pick__hint">
-      展示仍开放的补采任务。选定后将创建派单 ticket 并进入认知确认。
-    </p>
-    <WorkbenchSurfaceCard flush>
-      <template #toolbar>
-        <UiSearchBox
-          v-model="keyword"
-          placeholder="搜索任务标题"
-          allow-clear
-          class="kiosk-portfolio-pick__search"
-          @search="
-            () => {
-              pageNum = 1
-              loadTasks()
-            }
-          "
-        />
-        <UiButton variant="outline" :disabled="loading" @click="loadTasks">
-          刷新
-        </UiButton>
-      </template>
+    <div class="portfolio-pick__toolbar">
+      <UiSearchBox
+        v-model="keyword"
+        placeholder="搜索教师姓名或任务名称"
+        allow-clear
+        class="portfolio-pick__search"
+        @search="searchTasks"
+      />
+      <UiButton variant="outline" size="lg" :loading="loading" @click="loadTasks">
+        <template #icon><RefreshCw :size="20" /></template>
+        刷新
+      </UiButton>
+    </div>
 
-      <p v-if="errorMessage" class="kiosk-portfolio-pick__error">{{ errorMessage }}</p>
-      <UiDataTable
-        pagination-mode="server"
-        :columns="columns"
-        :data-source="tasks"
-        :loading="loading"
-        :total="total"
-        :current="pageNum"
-        :page-size="pageSize"
-        row-key="id"
-        size="middle"
-        flat
-        @page-change="handlePageChange"
-        :sticky-header="false"
+    <p v-if="errorMessage" class="portfolio-pick__error">{{ errorMessage }}</p>
+    <div v-else-if="!loading && tasks.length === 0" class="portfolio-pick__empty">
+      当前没有开放的档案袋采集任务
+    </div>
+
+    <ul v-else class="portfolio-pick__list">
+      <li v-for="task in tasks" :key="task.id" class="portfolio-pick__item">
+        <div class="portfolio-pick__main">
+          <div class="portfolio-pick__head">
+            <h3>{{ task.taskTitle || '任务名称缺失' }}</h3>
+            <UiTag tone="blue" size="sm">{{ gapStatusLabel(task.taskStatus) }}</UiTag>
+          </div>
+          <div class="portfolio-pick__identity">
+            <span><UserRound :size="18" />{{ task.teacherName || '教师姓名缺失' }}</span>
+            <span>{{ task.departmentName || '院系信息缺失' }}</span>
+          </div>
+          <div class="portfolio-pick__meta">
+            <span>{{ task.categoryName || '档案分类缺失' }}</span>
+            <span>{{ gapCourseScopeLabel(task) }}</span>
+            <span v-if="task.dueTime"><CalendarClock :size="18" />截止 {{ task.dueTime }}</span>
+          </div>
+          <p v-if="taskContractIssue(task)" class="portfolio-pick__issue">
+            数据不完整：{{ taskContractIssue(task) }}
+          </p>
+        </div>
+        <UiButton
+          variant="primary"
+          size="lg"
+          :loading="pickingTaskId === task.id"
+          :disabled="canPick !== true || Boolean(taskContractIssue(task))"
+          @click="openGapScan(task)"
+        >
+          开始扫描
+        </UiButton>
+      </li>
+    </ul>
+
+    <div v-if="total > pageSize" class="portfolio-pick__pager">
+      <UiButton
+        variant="outline"
+        size="lg"
+        :disabled="pageNum <= 1"
+        @click="changePage(pageNum - 1)"
       >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'categoryName'">
-            {{ record.categoryName || '—' }}
-          </template>
-          <template v-else-if="column.key === 'courseScope'">
-            {{ gapCourseScopeLabel(record) }}
-          </template>
-          <template v-else-if="column.key === 'teacher'">
-            <div class="kiosk-portfolio-pick__teacher">
-              <span>{{ gapTeacherLabel(record) }}</span>
-              <small v-if="record.departmentName">{{ record.departmentName }}</small>
-            </div>
-          </template>
-          <template v-else-if="column.key === 'taskStatus'">
-            <UiTag tone="blue" size="sm">{{ gapStatusLabel(record.taskStatus) }}</UiTag>
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <UiTableActions
-              :max-visible="2"
-              :items="[
-                { key: 'pick', label: '开单', disabled: canPick !== true || pickingTaskId === record.id },
-              ]"
-              split
-              @action="() => openGapScan(record)"
-            />
-          </template>
-        </template>
-      </UiDataTable>
-    </WorkbenchSurfaceCard>
+        上一页
+      </UiButton>
+      <span>第 {{ pageNum }} / {{ totalPages }} 页</span>
+      <UiButton
+        variant="outline"
+        size="lg"
+        :disabled="pageNum >= totalPages"
+        @click="changePage(pageNum + 1)"
+      >
+        下一页
+      </UiButton>
+    </div>
   </UiDrawer>
 </template>
 
 <style scoped>
-.kiosk-portfolio-pick__hint {
-  margin: 0 0 var(--dp-space-component);
-  font-size: var(--dp-font-size-sm);
-  color: var(--kiosk-ink-secondary);
+.portfolio-pick__toolbar,
+.portfolio-pick__head,
+.portfolio-pick__identity,
+.portfolio-pick__meta,
+.portfolio-pick__pager {
+  display: flex;
+  align-items: center;
 }
-.kiosk-portfolio-pick__search {
+
+.portfolio-pick__toolbar {
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.portfolio-pick__search {
   flex: 1;
   min-width: 0;
 }
-.kiosk-portfolio-pick__error {
-  margin: 0 0 var(--dp-space-component);
-  padding: 0 var(--dp-space-block);
+
+.portfolio-pick__list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.portfolio-pick__item {
+  min-height: 150px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 20px;
+  border: 1px solid var(--kiosk-divider);
+  border-radius: 7px;
+  background: var(--kiosk-surface);
+}
+
+.portfolio-pick__head {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.portfolio-pick__head h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.portfolio-pick__identity,
+.portfolio-pick__meta {
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 10px;
+  color: var(--kiosk-ink-secondary);
+}
+
+.portfolio-pick__identity span,
+.portfolio-pick__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.portfolio-pick__issue,
+.portfolio-pick__error {
   color: var(--kiosk-danger);
 }
-.kiosk-portfolio-pick__teacher {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+
+.portfolio-pick__issue {
+  margin: 8px 0 0;
 }
-.kiosk-portfolio-pick__teacher small {
+
+.portfolio-pick__empty {
+  min-height: 300px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--kiosk-divider);
   color: var(--kiosk-ink-secondary);
-  font-size: var(--dp-font-size-xs);
-  line-height: 1.3;
+}
+
+.portfolio-pick__pager {
+  justify-content: center;
+  gap: 14px;
+  margin-top: 18px;
 }
 </style>

@@ -1,11 +1,15 @@
 <template>
   <div class="review-task-detail-page grading-immersion-page grading-workspace-page">
     <WorkbenchContextGateStrip
-      v-if="hasParams !== true"
+      v-if="hasContext !== true"
       tag="缺少上下文"
-      body="缺少复核任务，请从复核列表进入"
+      body="缺少复核任务或合法来源，请从复核列表进入"
       cta-label="返回复核列表"
-      list-route-name="TeacherExamWorkspaceReviewBatchConfirm"
+      :list-route-name="
+        taskSource === 'arbitration'
+          ? 'TeacherExamWorkspaceMarkingArbitration'
+          : 'TeacherExamWorkspaceMarkingReview'
+      "
       class="review-task-detail-page__empty"
     />
 
@@ -17,23 +21,29 @@
       class="review-task-detail-page__loading"
     />
 
-    <UiEmpty
-      size="sm"
+    <UiStateBlock
       v-else-if="loading !== true && !detail"
-      description="复核任务加载失败或不存在"
+      state="error"
+      size="sm"
+      title="复核证据不可用"
+      :description="detailLoadErrorMessage"
       class="review-task-detail-page__empty"
-    />
+    >
+      <template #actions>
+        <UiButton size="sm" variant="outline" @click="goBack">返回复核任务</UiButton>
+      </template>
+    </UiStateBlock>
 
     <template v-else-if="detail">
-      <div
+      <UiAlertStrip
         v-if="detail.status === ReviewTaskStatusCode.INVALIDATED"
+        tone="warning"
+        title="当前复核任务已失效"
+        description="原作答影像已因补扫替换失效，系统正在重新执行识别与切片，请等待新复核任务生成。"
+        dense
+        inline
         class="review-task-detail-page__invalidated-banner"
-      >
-        <div class="review-task-detail-page__invalidated-title">当前复核任务已失效</div>
-        <div class="review-task-detail-page__invalidated-text">
-          原作答影像已因补扫替换失效，系统正在重新执行识别与切片，请等待新复核任务生成。
-        </div>
-      </div>
+      />
 
       <GradingWorkspaceLayout
         :confidential="isExamConfidential"
@@ -43,8 +53,11 @@
         <template #queue>
           <GradingImmersionChrome>
             <template #status>
-              <UiTag :tone="reviewStatusTone(detail.status)" size="sm">
-                {{ reviewStatusLabel(detail.status) }}
+              <UiTag
+                :tone="strictEnumTone(REVIEW_TASK_STATUS_TONE, detail.status, '复核任务状态')"
+                size="sm"
+              >
+                {{ strictEnumLabel(ReviewTaskStatusDescription, detail.status, '复核任务状态') }}
               </UiTag>
               <UiTag tone="gray" size="sm">{{ detail.paperDisplay.primaryText }}</UiTag>
               <UiTag tone="blue" size="sm">
@@ -67,13 +80,7 @@
 
           <GradingImmersionSection title="阅卷影像">
             <template #icon><PictureOutlined /></template>
-            <UiEmpty
-              size="sm"
-              v-if="!detail.sliceFileId && !detail.sourceScanPage"
-              description="本题暂无阅卷影像"
-            />
             <MarkingScanMaterialPanel
-              v-else
               :slice-file-id="detail.sliceFileId"
               :source-scan-page="detail.sourceScanPage"
               :layout-paper-page="detail.layoutPaperPage"
@@ -120,19 +127,15 @@
               >
                 查看 AI 历史
               </UiButton>
-              <UiButton
-                size="sm"
-                variant="outline"
-                :disabled="canRescoreByAi !== true"
-                :loading="rescoring === true"
-                @click="openRescoreConfirm"
-              >
-                重新 AI 复评
-              </UiButton>
             </template>
             <UiEmpty size="sm" v-if="!detail.aiDiagnostic" description="暂无 AI 复评说明" />
             <div v-else class="review-task-detail-page__text-block">
-              {{ aiReviewDiagnosticText(detail.aiDiagnostic) }}
+              {{
+                getUserErrorMessage(
+                  { message: detail.aiDiagnostic },
+                  'AI 评分暂未形成可展示说明，请按题目评分细则继续人工复核',
+                )
+              }}
             </div>
           </GradingImmersionSection>
         </template>
@@ -140,12 +143,18 @@
         <template #aside>
           <GradingImmersionSection title="题目与评分摘要">
             <template #icon><ProfileOutlined /></template>
-            <UiDescriptions :column="1" :label-style="labelStyle" size="small" bordered>
+            <UiDescriptions
+              class="review-task-detail-page__summary"
+              :column="1"
+              size="small"
+              bordered
+            >
               <UiDescriptionsItem label="答卷">
                 {{ detail.paperDisplay.primaryText }}
               </UiDescriptionsItem>
               <UiDescriptionsItem label="题目">
-                题{{ detail.questionNo }} · {{ questionTypeLabel(detail.questionType) }}
+                题{{ detail.questionNo }} ·
+                {{ strictEnumLabel(QuestionTypeDescription, detail.questionType, '题型') }}
               </UiDescriptionsItem>
               <UiDescriptionsItem label="评分">
                 <MarkScoreTriple
@@ -173,6 +182,13 @@
           <GradingImmersionSection title="批注历史">
             <template #icon><CommentOutlined /></template>
             <UiSkeletonState v-if="annotationsLoading" variant="card" compact />
+            <UiStateBlock
+              v-else-if="annotationsLoadFailed"
+              state="error"
+              size="sm"
+              title="批注历史加载失败"
+              :description="annotationsLoadErrorMessage"
+            />
             <UiEmpty size="sm" v-else-if="annotations.length === 0" description="暂无批注历史" />
             <template v-else>
               <UiList :data-source="annotations" size="small">
@@ -196,7 +212,7 @@
                 :total="annotationPagination.total"
                 :show-size-changer="false"
                 size="small"
-                @change="loadAnnotations"
+                @change="loadAnnotations()"
               />
             </template>
           </GradingImmersionSection>
@@ -210,7 +226,12 @@
           </div>
           <div class="review-task-detail-page__footer-actions">
             <UiButton variant="ghost" size="md" @click="goBack">返回</UiButton>
-            <UiButton v-if="canEnterWorkspace === true" size="md" variant="primary" @click="goWorkspace">
+            <UiButton
+              v-if="canEnterWorkspace === true"
+              size="md"
+              variant="primary"
+              @click="goWorkspace"
+            >
               <template #icon><EditOutlined /></template>
               进入复核
             </UiButton>
@@ -222,28 +243,29 @@
     <MarkingAiAssistDrawer
       v-model:open="executionsDrawerOpen"
       :loading="executionsLoading === true"
+      :load-failed="aiExecutionsLoadFailed"
       :executions="aiExecutions"
       :highlight-trace-id="highlightExecutionTraceId"
-      :status-label="statusLabel"
-      :status-tone="statusTone"
-      :ability-label="abilityLabel"
-      :ability-tone="abilityTone"
-      :timeline-color="timelineColor"
     />
   </div>
 </template>
 
 <script lang="ts" setup>
-// MVR-948：本地 can* 显隐/禁用仅认 === true
-import type { CSSProperties } from 'vue'
 import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
-import type {
-  AiAbilityCode,
-  AiExecutionStatusCode,
-  ExamQuestionAiExecutionItemResponse,
+import { listAnnotations } from '@/apis/mark/exam-annotation'
+import type { ExamQuestionAiExecutionItemResponse } from '@/apis/mark/exam-grade'
+import {
+  AI_ABILITY_TONE,
+  AiAbilityDescription,
+  listAiExecutionsForQuestion,
 } from '@/apis/mark/exam-grade'
 import type { ReviewTaskDetailResponse } from '@/apis/mark/exam-review-task'
-import type { QuestionTypeCode } from '@/apis/mark/question-type'
+import {
+  getReviewTaskDetail,
+  REVIEW_TASK_STATUS_TONE,
+  ReviewTaskStatusCode,
+  ReviewTaskStatusDescription,
+} from '@/apis/mark/exam-review-task'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
@@ -251,24 +273,8 @@ import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PictureOutlined from '@ant-design/icons-vue/PictureOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
-import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { listAnnotations } from '@/apis/mark/exam-annotation'
-import {
-  AI_ABILITY_TONE,
-  AI_EXECUTION_STATUS_TONE,
-  AiAbilityDescription,
-  AiExecutionStatusDescription,
-  listAiExecutionsForQuestion,
-  rescoreQuestionByAi,
-} from '@/apis/mark/exam-grade'
-import {
-  getReviewTaskDetail,
-  REVIEW_TASK_STATUS_TONE,
-  ReviewTaskStatusCode,
-  ReviewTaskStatusDescription,
-} from '@/apis/mark/exam-review-task'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import GradingImmersionChrome from '@/components/mark/GradingImmersionChrome.vue'
@@ -281,41 +287,23 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
 import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiList from '@/components/ui-guide/ui/UiList.vue'
 import UiListItem from '@/components/ui-guide/ui/UiListItem.vue'
 import UiListItemMeta from '@/components/ui-guide/ui/UiListItemMeta.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
 import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 import { isExamConfidentialFlag, useExamConfidential } from '@/composables/useConfidentialWatermark'
-import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamWorkspaceReviewTaskDetail' })
-
-function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
-  return strictEnumTone(REVIEW_TASK_STATUS_TONE, value, '复核任务状态')
-}
-
-function reviewStatusLabel(value: ReviewTaskStatusCode): string {
-  return strictEnumLabel(ReviewTaskStatusDescription, value, '复核任务状态')
-}
-
-function questionTypeLabel(value: QuestionTypeCode): string {
-  return strictEnumLabel(QuestionTypeDescription, value, '题型')
-}
-
-function aiReviewDiagnosticText(diagnostic?: string): string {
-  return getUserErrorMessage(
-    { message: diagnostic },
-    'AI 评分暂未形成可展示说明，请按题目评分细则继续人工复核',
-  )
-}
 
 const route = useRoute()
 const router = useRouter()
@@ -329,34 +317,39 @@ const {
 const isExamConfidential = computed(() => isExamConfidentialFlag(examConfidentialRef.value))
 const examConfidentialLabel = computed(() => examConfidentialLabelRef.value)
 const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
-const hasParams = computed(() => Boolean(examId.value) && Boolean(taskId.value))
-const taskSource = computed(() => (route.query.source === 'arbitration' ? 'arbitration' : 'review'))
+const taskSource = computed<'arbitration' | 'review' | null>(() => {
+  if (route.query.source === 'arbitration' || route.query.source === 'review') {
+    return route.query.source
+  }
+  return null
+})
+const hasContext = computed(
+  () => Boolean(examId.value) && Boolean(taskId.value) && taskSource.value !== null,
+)
 
 const detail = ref<ReviewTaskDetailResponse | null>(null)
 const loading = ref(false)
-const rescoring = ref(false)
+const detailLoadErrorMessage = ref(
+  '复核任务详情、正式影像或识别证据加载失败，当前页不能展示审计证据。',
+)
+let loadTaskGeneration = 0
 const executionsDrawerOpen = ref(false)
 const executionsLoading = ref(false)
 const aiExecutions = ref<ExamQuestionAiExecutionItemResponse[]>([])
+const aiExecutionsLoadFailed = ref(false)
+let aiExecutionsLoadGeneration = 0
 const highlightExecutionTraceId = ref<string | null>(null)
-const lastExperienceAssistMeta = ref<{
-  applied?: boolean
-  sourceExamName?: string
-  consistencyRate?: number
-} | null>(null)
-
-function syncExperienceAssistMetaFromDetail(taskDetail: ReviewTaskDetailResponse | null): void {
-  const audit = taskDetail?.referenceExperienceAudit
+const lastExperienceAssistMeta = computed(() => {
+  const audit = detail.value?.referenceExperienceAudit
   if (audit?.referenceExperienceApplied && audit.referenceExperienceSourceExamName) {
-    lastExperienceAssistMeta.value = {
+    return {
       applied: true,
       sourceExamName: audit.referenceExperienceSourceExamName,
       consistencyRate: audit.referenceExperienceConsistencyRate,
     }
-    return
   }
-  lastExperienceAssistMeta.value = null
-}
+  return null
+})
 
 const currentAiSourceLabel = computed(() => {
   const abilityCode = detail.value?.aiAbilityCode
@@ -372,96 +365,31 @@ const currentAiSourceTone = computed<BadgeTone>(() => {
 
 const canManageReviewerWrites = computed(() => detail.value?.canManageReviewerWrites === true)
 
-const canRescoreByAi = computed(() => {
-  // MVR-282：无阅卷写能力位不得暴露 AI 复评
-  if (canManageReviewerWrites.value !== true) return false
-  if (rescoring.value === true || loading.value === true || !detail.value?.gradeResultId) return false
-  return (
-    detail.value.status === ReviewTaskStatusCode.PENDING
-    || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
-  )
-})
-
 const canEnterWorkspace = computed(() => {
   const status = detail.value?.status
-  return status === ReviewTaskStatusCode.PENDING || status === ReviewTaskStatusCode.IN_PROGRESS
+  return (
+    canManageReviewerWrites.value === true &&
+    (status === ReviewTaskStatusCode.PENDING || status === ReviewTaskStatusCode.IN_PROGRESS)
+  )
 })
 
-function executionDiagnosticText(diagnostic?: string): string {
-  return getUserErrorMessage(
-    { message: diagnostic },
-    'AI 复评暂未生成可采纳评分，请按题目评分细则继续人工复核',
-  )
-}
-
-function resolveReviewTaskPoolRouteName():
-  'TeacherExamWorkspaceMarkingArbitration' | 'TeacherExamWorkspaceReviewBatchConfirm' {
-  return taskSource.value === 'arbitration'
-    ? 'TeacherExamWorkspaceMarkingArbitration'
-    : 'TeacherExamWorkspaceReviewBatchConfirm'
-}
-
-function reviewTaskDetailSourceQuery(): Record<string, string> | undefined {
-  if (taskSource.value !== 'arbitration') {
-    return undefined
-  }
-  return { source: 'arbitration' }
-}
-
+/** 返回进入详情前的复核任务池，并保留仲裁来源。 */
 function goBack(): void {
   if (!examId.value) {
     void router.push({ name: 'TeacherExamList' })
     return
   }
   void router.push({
-    name: resolveReviewTaskPoolRouteName(),
+    name:
+      taskSource.value === 'arbitration'
+        ? 'TeacherExamWorkspaceMarkingArbitration'
+        : 'TeacherExamWorkspaceMarkingReview',
     params: { examId: examId.value },
-    query: reviewTaskDetailSourceQuery(),
+    query: taskSource.value ? { source: taskSource.value } : undefined,
   })
 }
 
-function openRescoreConfirm(): void {
-  if (canRescoreByAi.value !== true) return
-  void confirmAsync({
-    title: '重新生成单题 AI 复评？',
-    content: '系统会重新生成单题 AI 复评结果，不会直接写入教师复核评分。',
-    type: 'info',
-    okText: '生成 AI 复评',
-    cancelText: '取消',
-    onOk: () => doRescoreByAi(),
-  })
-}
-
-async function doRescoreByAi(): Promise<void> {
-  // MVR-961：确认后再次认写权/可复评/防重入，防对话框期间状态漂移
-  if (canManageReviewerWrites.value !== true) {
-    void message.warning('当前账号无阅卷写权限')
-    return
-  }
-  if (rescoring.value === true) return
-  if (canRescoreByAi.value !== true || !examId.value || !detail.value) return
-  rescoring.value = true
-  try {
-    const result = await rescoreQuestionByAi({
-      examId: examId.value,
-      gradeResultId: detail.value.gradeResultId,
-    })
-    if (Boolean(result.scored) && result.aiScore != null) {
-      void message.success(`智能复评完成，智能评分 ${result.aiScore} 分`)
-    } else {
-      void message.warning(executionDiagnosticText(result.diagnostic))
-    }
-    await loadTask()
-    if (executionsDrawerOpen.value) {
-      await loadAiExecutions()
-    }
-  } catch (error) {
-    showUserError(error, '智能复评调用失败')
-  } finally {
-    rescoring.value = false
-  }
-}
-
+/** 打开当前题目的只读 AI 执行审计，并可定位指定追踪记录。 */
 function openExecutionsDrawer(highlightTraceId?: string | null): void {
   if (!detail.value?.gradeResultId) return
   highlightExecutionTraceId.value = highlightTraceId ?? detail.value.aiTraceId ?? null
@@ -469,111 +397,181 @@ function openExecutionsDrawer(highlightTraceId?: string | null): void {
   void loadAiExecutions()
 }
 
-async function loadAiExecutions(): Promise<void> {
+/** 读取当前题 AI 执行审计，并隔离重复打开或切任务产生的过期响应。 */
+async function loadAiExecutions(expectedTaskGeneration = loadTaskGeneration): Promise<void> {
   if (!examId.value || !detail.value) return
+  const expectedExamId = examId.value
+  const expectedTaskId = taskId.value
+  const expectedGradeResultId = detail.value.gradeResultId
+  const requestGeneration = ++aiExecutionsLoadGeneration
   executionsLoading.value = true
+  aiExecutionsLoadFailed.value = false
   try {
-    aiExecutions.value = await listAiExecutionsForQuestion({
-      examId: examId.value,
-      gradeResultId: detail.value.gradeResultId,
+    const executions = await listAiExecutionsForQuestion({
+      examId: expectedExamId,
+      gradeResultId: expectedGradeResultId,
     })
-    aiExecutions.value.forEach((record) => {
-      strictEnumLabel(AiAbilityDescription, record.abilityCode, 'AI 能力编码')
-      strictEnumLabel(AiExecutionStatusDescription, record.status, 'AI 执行状态')
-    })
+    if (
+      expectedTaskGeneration !== loadTaskGeneration ||
+      requestGeneration !== aiExecutionsLoadGeneration ||
+      examId.value !== expectedExamId ||
+      taskId.value !== expectedTaskId ||
+      detail.value?.gradeResultId !== expectedGradeResultId
+    ) {
+      return
+    }
+    aiExecutions.value = executions
   } catch (error) {
+    if (
+      expectedTaskGeneration !== loadTaskGeneration ||
+      requestGeneration !== aiExecutionsLoadGeneration
+    ) {
+      return
+    }
     showUserError(error, '智能复评历史加载失败')
     aiExecutions.value = []
+    aiExecutionsLoadFailed.value = true
   } finally {
-    executionsLoading.value = false
+    if (
+      expectedTaskGeneration === loadTaskGeneration &&
+      requestGeneration === aiExecutionsLoadGeneration
+    ) {
+      executionsLoading.value = false
+    }
   }
 }
 
-function abilityLabel(code: AiAbilityCode): string {
-  return strictEnumLabel(AiAbilityDescription, code, 'AI 能力编码')
-}
-
-function abilityTone(code: AiAbilityCode): BadgeTone {
-  return strictEnumTone(AI_ABILITY_TONE, code, 'AI 能力编码')
-}
-
-function statusLabel(status: AiExecutionStatusCode): string {
-  return strictEnumLabel(AiExecutionStatusDescription, status, 'AI 执行状态')
-}
-
-function statusTone(status: AiExecutionStatusCode): BadgeTone {
-  return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, 'AI 执行状态')
-}
-
-function timelineColor(status: AiExecutionStatusCode): string {
-  return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, 'AI 执行状态')
-}
-
-const labelStyle: CSSProperties = { color: 'var(--dp-text-muted)', width: '100px' }
-
 const annotations = ref<AnnotationResponse[]>([])
 const annotationsLoading = ref(false)
+const annotationsLoadFailed = ref(false)
+const annotationsLoadErrorMessage = ref('当前批注证据不可用，已停止展示旧任务的批注。')
+let annotationsLoadGeneration = 0
 const annotationPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
-async function loadAnnotations(): Promise<void> {
+/** 读取当前任务批注分页，并隔离翻页与切任务产生的过期响应。 */
+async function loadAnnotations(expectedTaskGeneration = loadTaskGeneration): Promise<void> {
   if (!examId.value || !detail.value) return
-  const currentExamId = examId.value
+  const expectedExamId = examId.value
+  const expectedTaskId = taskId.value
   const { paperInstanceId, layoutQuestionId, gradeResultId } = detail.value
+  const requestGeneration = ++annotationsLoadGeneration
   annotationsLoading.value = true
+  annotationsLoadFailed.value = false
   try {
     const page = await listAnnotations({
-      examId: currentExamId,
+      examId: expectedExamId,
       paperInstanceId,
       layoutQuestionId,
       gradeResultId,
       pageNum: annotationPagination.pageNum,
       pageSize: annotationPagination.pageSize,
     })
+    if (
+      expectedTaskGeneration !== loadTaskGeneration ||
+      requestGeneration !== annotationsLoadGeneration ||
+      examId.value !== expectedExamId ||
+      taskId.value !== expectedTaskId ||
+      detail.value?.gradeResultId !== gradeResultId
+    ) {
+      return
+    }
     annotations.value = page.list
     annotationPagination.total = page.total
     annotationPagination.pageNum = page.pageNum
     annotationPagination.pageSize = page.pageSize
   } catch (error) {
+    if (
+      expectedTaskGeneration !== loadTaskGeneration ||
+      requestGeneration !== annotationsLoadGeneration
+    ) {
+      return
+    }
     annotations.value = []
     annotationPagination.total = 0
+    annotationsLoadFailed.value = true
+    annotationsLoadErrorMessage.value = getUserErrorMessage(
+      error,
+      '当前批注证据不可用，已停止展示旧任务的批注。',
+    )
     showUserError(error, '批注记录加载失败')
   } finally {
-    annotationsLoading.value = false
+    if (
+      expectedTaskGeneration === loadTaskGeneration &&
+      requestGeneration === annotationsLoadGeneration
+    ) {
+      annotationsLoading.value = false
+    }
   }
 }
 
+/** 读取当前复核任务的正式证据，详情稳定后再加载任务范围内的批注。 */
 async function loadTask(): Promise<void> {
-  if (hasParams.value !== true) return
+  if (hasContext.value !== true) return
+  const expectedExamId = examId.value
+  const expectedTaskId = taskId.value
+  const expectedSource = taskSource.value
+  const requestGeneration = ++loadTaskGeneration
   loading.value = true
   try {
-    detail.value = await getReviewTaskDetail({
-      examId: examId.value,
-      reviewTaskId: taskId.value,
+    const loadedDetail = await getReviewTaskDetail({
+      examId: expectedExamId,
+      reviewTaskId: expectedTaskId,
     })
-    syncExperienceAssistMetaFromDetail(detail.value)
-    await loadAnnotations()
+    if (
+      requestGeneration !== loadTaskGeneration ||
+      examId.value !== expectedExamId ||
+      taskId.value !== expectedTaskId ||
+      taskSource.value !== expectedSource
+    ) {
+      return
+    }
+    detail.value = loadedDetail
+    await loadAnnotations(requestGeneration)
   } catch (error) {
+    if (requestGeneration !== loadTaskGeneration) return
     detail.value = null
     annotations.value = []
+    detailLoadErrorMessage.value = getUserErrorMessage(
+      error,
+      '复核任务详情、正式影像或识别证据加载失败，当前页不能展示审计证据。',
+    )
     showUserError(error, '复核任务详情加载失败')
   } finally {
-    loading.value = false
+    if (requestGeneration === loadTaskGeneration) {
+      loading.value = false
+    }
   }
 }
 
+/** 从只读证据页进入同一任务的可写复核工作台。 */
 function goWorkspace(): void {
-  if (hasParams.value !== true) return
+  if (hasContext.value !== true || canEnterWorkspace.value !== true) return
   void router.push({
     name: 'TeacherExamWorkspaceReviewWorkspace',
     params: { examId: examId.value, taskId: taskId.value },
-    query: reviewTaskDetailSourceQuery(),
+    query: { source: taskSource.value },
   })
 }
 
 watch(
-  () => [examId.value, taskId.value],
+  () => [examId.value, taskId.value, taskSource.value],
   () => {
-    if (hasParams.value) void loadTask()
+    loadTaskGeneration += 1
+    annotationsLoadGeneration += 1
+    aiExecutionsLoadGeneration += 1
+    detail.value = null
+    loading.value = false
+    executionsDrawerOpen.value = false
+    executionsLoading.value = false
+    aiExecutions.value = []
+    aiExecutionsLoadFailed.value = false
+    highlightExecutionTraceId.value = null
+    annotations.value = []
+    annotationsLoading.value = false
+    annotationsLoadFailed.value = false
+    annotationPagination.pageNum = 1
+    annotationPagination.total = 0
+    if (hasContext.value === true) void loadTask()
   },
   { immediate: true },
 )
@@ -592,23 +590,6 @@ watch(
 
   &__invalidated-banner {
     margin-bottom: var(--dp-space-component);
-    padding: var(--dp-space-component) var(--dp-space-block);
-    border: 1px solid var(--dp-border);
-    border-radius: var(--dp-radius-panel);
-    background: var(--dp-surface-subtle);
-  }
-
-  &__invalidated-title {
-    font-size: var(--dp-font-size-sm);
-    font-weight: 600;
-    color: var(--dp-text-primary);
-  }
-
-  &__invalidated-text {
-    margin-top: var(--dp-space-component-xs);
-    font-size: var(--dp-font-size-xs);
-    line-height: 1.6;
-    color: var(--dp-text-secondary);
   }
 
   &__text-block {
@@ -631,7 +612,9 @@ watch(
   }
 
   &__footer-hint {
+    display: block;
     min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   &__footer-actions {
@@ -641,12 +624,9 @@ watch(
     gap: var(--dp-space-component-tight);
   }
 
-  &__execution-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--dp-space-component-tight);
-    margin-bottom: var(--dp-space-component-xs);
+  &__summary :deep(.ant-descriptions-item-content) {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 }
 </style>

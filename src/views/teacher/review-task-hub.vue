@@ -5,7 +5,7 @@
         layout="workbench"
         show-title
         title="复核任务中心"
-        :subtitle="examId && !listLoadFailed ? `${pagination.total} 条` : undefined"
+        :subtitle="examId && !listLoadFailed && !loading ? `${pagination.total} 条` : undefined"
       >
         <template #actions>
           <UiButton
@@ -70,7 +70,7 @@
           class="review-task-hub__empty"
         />
         <UiDataTable
-          v-if="!listLoadFailed"
+          v-if="!listLoadFailed && (loading || rows.length > 0)"
           pagination-mode="server"
           row-key="reviewTaskId"
           v-model:current="pagination.current"
@@ -153,13 +153,6 @@
 // MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
-
 import {
   GRADE_SOURCE_TONE,
   GradeSourceDescription,
@@ -171,6 +164,12 @@ import {
   ReviewTaskTypeDescription,
   ReviewTaskTypeTone,
 } from '@/apis/mark/exam-review-task'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -228,11 +227,11 @@ const filterModel = computed<Record<string, unknown>>({
   get: () => ({ status: statusFilterDraft.value }),
   set: (value) => {
     if (
-      value.status === ReviewTaskStatusCode.PENDING
-      || value.status === ReviewTaskStatusCode.IN_PROGRESS
-      || value.status === ReviewTaskStatusCode.APPROVED
-      || value.status === ReviewTaskStatusCode.REJECTED
-      || value.status === ReviewTaskStatusCode.INVALIDATED
+      value.status === ReviewTaskStatusCode.PENDING ||
+      value.status === ReviewTaskStatusCode.IN_PROGRESS ||
+      value.status === ReviewTaskStatusCode.APPROVED ||
+      value.status === ReviewTaskStatusCode.REJECTED ||
+      value.status === ReviewTaskStatusCode.INVALIDATED
     ) {
       statusFilterDraft.value = value.status
     }
@@ -263,16 +262,21 @@ const hubSignalMetrics = computed((): SignalMetric[] => {
       tone: inProgress != null && inProgress > 0 ? 'blue' : 'gray',
       emphasis: 'secondary',
       clickable: inProgress != null && inProgress > 0,
-      helper: inProgress == null ? '工作台快照不可用' : inProgress > 0 ? '点击切换复核中' : '暂无进行中',
+      helper:
+        inProgress == null ? '工作台快照不可用' : inProgress > 0 ? '点击切换复核中' : '暂无进行中',
     },
     {
       key: 'filtered',
       label: '筛选结果',
-      value: listLoadFailed.value ? '—' : pagination.total,
-      unit: listLoadFailed.value ? undefined : '条',
-      tone: listLoadFailed.value ? 'red' : 'blue',
+      value: listLoadFailed.value || loading.value ? '—' : pagination.total,
+      unit: listLoadFailed.value || loading.value ? undefined : '条',
+      tone: listLoadFailed.value ? 'red' : loading.value ? 'gray' : 'blue',
       emphasis: 'secondary',
-      helper: listLoadFailed.value ? '列表加载失败' : statusFilterLabel.value,
+      helper: listLoadFailed.value
+        ? '列表加载失败'
+        : loading.value
+          ? '正在读取筛选结果'
+          : statusFilterLabel.value,
     },
   ]
 })
@@ -286,11 +290,7 @@ function handleHubSignalClick(key: string): void {
     onFilterChange()
     return
   }
-  if (
-    key === 'in-progress'
-    && inProgressCount != null
-    && inProgressCount > 0
-  ) {
+  if (key === 'in-progress' && inProgressCount != null && inProgressCount > 0) {
     statusFilterDraft.value = ReviewTaskStatusCode.IN_PROGRESS
     statusFilter.value = ReviewTaskStatusCode.IN_PROGRESS
     onFilterChange()
@@ -380,7 +380,7 @@ async function loadTasks(): Promise<void> {
   }
 }
 
-function onPageChange(page: { current: number, pageSize: number }): void {
+function onPageChange(page: { current: number; pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadTasks()
@@ -393,11 +393,11 @@ function onFilterChange(): void {
 }
 
 function buildReviewTaskRowActions(record: ReviewTaskItemResponse): UiTableRowActionItem[] {
-  const readOnlyTask
-    = record.status === ReviewTaskStatusCode.INVALIDATED
-      || record.status === ReviewTaskStatusCode.APPROVED
-      || record.status === ReviewTaskStatusCode.REJECTED
-      || record.canManageReviewerWrites !== true
+  const readOnlyTask =
+    record.status === ReviewTaskStatusCode.INVALIDATED ||
+    record.status === ReviewTaskStatusCode.APPROVED ||
+    record.status === ReviewTaskStatusCode.REJECTED ||
+    record.canManageReviewerWrites !== true
   return [
     {
       key: 'enter',
@@ -412,10 +412,10 @@ function enterReview(record: ReviewTaskItemResponse): void {
     return
   }
   if (
-    record.status === ReviewTaskStatusCode.INVALIDATED
-    || record.status === ReviewTaskStatusCode.APPROVED
-    || record.status === ReviewTaskStatusCode.REJECTED
-    || record.canManageReviewerWrites !== true
+    record.status === ReviewTaskStatusCode.INVALIDATED ||
+    record.status === ReviewTaskStatusCode.APPROVED ||
+    record.status === ReviewTaskStatusCode.REJECTED ||
+    record.canManageReviewerWrites !== true
   ) {
     void router.push({
       name: 'TeacherExamWorkspaceReviewTaskDetail',

@@ -4,7 +4,7 @@
       <h3 class="stats-card__title">题目质量分析</h3>
     </template>
     <template v-if="!embedded" #toolbar>
-      <div class="dp-space dp-space--tight">
+      <div class="question-analysis-card__toolbar">
         <UiSelect
           size="sm"
           v-model="selectedLayoutQuestionId"
@@ -45,14 +45,24 @@
         >
           全量生成
         </UiButton>
-        <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
-          <template #icon><ReloadOutlined /></template>刷新
+        <UiButton
+          variant="outline"
+          size="sm"
+          icon-only
+          :loading="loading"
+          aria-label="刷新题目质量分析"
+          title="刷新题目质量分析"
+          @click="reload"
+        >
+          <template #icon><ReloadOutlined /></template>
         </UiButton>
       </div>
     </template>
 
     <template v-if="embedded" #actions>
-      <span class="question-analysis-card__ideal-hint">参考区间：难度 0.3–0.8 · 区分度 ≥ 0.4（非正式质量结论）</span>
+      <span class="question-analysis-card__ideal-hint"
+        >参考区间：难度 0.3–0.8 · 区分度 ≥ 0.4（非正式质量结论）</span
+      >
     </template>
 
     <div class="question-analysis-card" :class="{ 'question-analysis-card--embedded': embedded }">
@@ -97,7 +107,17 @@
         >
           全量生成
         </UiButton>
-        <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 刷新 </UiButton>
+        <UiButton
+          variant="outline"
+          size="sm"
+          icon-only
+          :loading="loading"
+          aria-label="刷新题目质量分析"
+          title="刷新题目质量分析"
+          @click="reload"
+        >
+          <template #icon><ReloadOutlined /></template>
+        </UiButton>
       </div>
       <UiAlertStrip
         v-if="layoutRoiGap > 0 && generating !== true"
@@ -199,10 +219,7 @@
                 全量生成
               </UiButton>
             </div>
-            <div
-              class="dp-space dp-space--tight"
-              v-else-if="tableEmptyKind === 'no-result'"
-            >
+            <div class="dp-space dp-space--tight" v-else-if="tableEmptyKind === 'no-result'">
               <UiButton
                 v-if="canManageReviewerWrites === true"
                 variant="outline"
@@ -221,9 +238,9 @@
           <template #bodyCell="{ column, record: item }">
             <ExamQuestionIdentityCells
               v-if="
-                column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionType
-                  || column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionStem
-                  || column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.fullScore
+                column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionType ||
+                column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionStem ||
+                column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.fullScore
               "
               :column-key="String(column.key)"
               :record="item"
@@ -252,9 +269,9 @@
                   // MVR-387：模板须 === true；ComputedRef 对象 truthy 会导致无写权仍展示行操作
                   ...(canManageReviewerWrites
                     ? [
-                      { key: 'correct-answer', label: '修正答案并生效' },
-                      { key: 'regenerate', label: '重新生成' },
-                    ]
+                        { key: 'correct-answer', label: '修正答案并生效' },
+                        { key: 'regenerate', label: '重新生成' },
+                      ]
                     : []),
                 ]"
                 split
@@ -283,28 +300,28 @@ import type {
   ExamLayoutQuestionViewResponse,
   ExamTemplateResponse,
 } from '@/apis/mark/exam-layout-question'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import type {
   ExamQuestionAnalysisRecordResponse,
   QuestionAnalysisListQueryRequest,
 } from '@/apis/mark/question-analysis'
-import type { UiDataTableColumn } from '@/components/ui-guide/ui/data-table'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import {
   generateAllQuestionAnalysis,
   generateQuestionAnalysis,
   loadQuestionAnalysisChartRows,
   pageQuestionAnalysis,
 } from '@/apis/mark/question-analysis'
+import type { UiDataTableColumn } from '@/components/ui-guide/ui/data-table'
+import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import { computed, ref, watch } from 'vue'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkScatterSection from '@/components/chart/MarkScatterSection.vue'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import ExamQuestionIdentityCells from '@/components/mark/analysis/ExamQuestionIdentityCells.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
@@ -360,7 +377,7 @@ const generatingId = ref<string>('')
 const selectedLayoutQuestionId = ref<string>()
 const questionLoading = ref(false)
 const questionOptions = ref<
-  Array<{ value: string, label: string, disabled?: boolean, title?: string }>
+  Array<{ value: string; label: string; disabled?: boolean; title?: string }>
 >([])
 const layoutSummary = ref<ExamTemplateResponse | null>(null)
 /** MVR-277：修正答案等写动作；与 BE requireExamReviewerPermission 对齐 */
@@ -536,7 +553,7 @@ async function reload(): Promise<void> {
   await Promise.all([loadChartRows(), loadTablePage(1, tablePageSize.value)])
 }
 
-function handleTablePageChange(event: { current: number, pageSize: number }): void {
+function handleTablePageChange(event: { current: number; pageSize: number }): void {
   void loadTablePage(event.current, event.pageSize)
 }
 
@@ -562,8 +579,8 @@ async function loadQuestionOptions(): Promise<void> {
     }
     questionOptions.value = buildExamLayoutQuestionOptions(template.questions)
     if (
-      selectedLayoutQuestionId.value
-      && !template.questions.some(
+      selectedLayoutQuestionId.value &&
+      !template.questions.some(
         (q) => q.layoutQuestionId === selectedLayoutQuestionId.value && q.roiReady,
       )
     ) {
@@ -640,9 +657,9 @@ async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
         successMessage: '已重新生成',
         onSuccess: async () => {
           await reload()
-          const matched
-            = tableRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
-              ?? chartRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
+          const matched =
+            tableRows.value.find((item) => item.layoutQuestionId === layoutQuestionId) ??
+            chartRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
           generationSummary.value = matched
             ? `已生成题 ${matched.questionNo} 的质量分析，可查看难度、区分度与正确率。`
             : '已生成该题质量分析，可查看难度、区分度与正确率。'
@@ -769,7 +786,7 @@ const correctRatioBarItems = computed(() => correctRatioToBarItems(chartRows.val
 
 const scatterChartHint = computed(() =>
   mergeChartHint(
-    '参考区间：难度 0.3-0.8 且 区分度 ≥ 0.4（非正式质量结论）；可使用右上角工具框选题目查看清单。',
+    '参考：难度 0.3-0.8，区分度不低于 0.4。框选散点可查看题目。',
     buildScatterChartInsight(questionQualityScatterSeries.value),
   ),
 )
@@ -864,6 +881,60 @@ watch(
 
 <style lang="scss" scoped>
 .question-analysis-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-component);
+  min-width: 0;
+
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--dp-space-component-tight);
+    min-width: 0;
+  }
+
+  &__toolbar .stats-card__select--question {
+    flex: 1 1 240px;
+    width: auto;
+    max-width: 320px;
+  }
+
+  &__chart-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--dp-space-component);
+    min-width: 0;
+  }
+
+  &__chart {
+    min-width: 0;
+    min-height: var(--dp-chart-height-panel);
+    padding: var(--dp-space-component);
+    border: 1px solid var(--dp-border-subtle);
+    border-radius: var(--dp-radius-control-inner);
+    background: var(--dp-surface);
+  }
+
+  &__chart :deep(.mark-scatter-section__head),
+  &__chart :deep(.mark-bar-section__head) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--dp-space-component-tight);
+    min-width: 0;
+    margin-bottom: var(--dp-space-component-tight);
+  }
+
+  &__chart :deep(.mark-scatter-section__hint),
+  &__chart :deep(.mark-bar-section__hint) {
+    min-width: 0;
+    color: var(--dp-text-muted);
+    font-size: var(--dp-type-hint-size);
+    line-height: var(--dp-type-hint-line-height);
+  }
+
   &__question-cell {
     display: flex;
     flex-direction: column;
@@ -922,6 +993,16 @@ watch(
   &__brush-meta {
     color: var(--dp-text-secondary);
     white-space: nowrap;
+  }
+
+  @media (max-width: 1024px) {
+    &__chart-grid {
+      grid-template-columns: 1fr;
+    }
+
+    &__toolbar .stats-card__select--question {
+      max-width: none;
+    }
   }
 }
 </style>

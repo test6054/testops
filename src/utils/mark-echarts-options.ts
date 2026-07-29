@@ -12,8 +12,8 @@ import { formatScore, formatScorePercent } from '@/utils/format'
 import { prefersReducedMotion } from '@/utils/mark-chart-accessibility'
 import { SCATTER_ZONE_COLORS } from '@/utils/mark-statistics-chart'
 
-const DP_FONT_FAMILY_SANS
-  = '-apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif'
+const DP_FONT_FAMILY_SANS =
+  '-apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif'
 
 /** mark-vue ECharts 色板：与 --dp/--ant 主题对齐的十六进制真源 */
 interface MarkEchartsPalette {
@@ -81,13 +81,8 @@ export function resolveThemeColor(cssVarName: string, fallback: string): string 
 }
 
 /** 空态图表壳类型：与 Mark*Section 组件一一对应 */
-export type MarkEmptyChartShellKind
-  = | 'trend'
-    | 'bar'
-    | 'bar-horizontal'
-    | 'scatter'
-    | 'distribution'
-    | 'heatmap'
+export type MarkEmptyChartShellKind =
+  'trend' | 'bar' | 'bar-horizontal' | 'scatter' | 'distribution' | 'heatmap'
 
 function shellAxisStyle() {
   return {
@@ -395,8 +390,8 @@ export function buildTrendLineChartOption(
           const point = points[index]
           if (!point) return ''
           const delta = index > 0 ? values[index] - values[index - 1] : null
-          const deltaText
-            = delta == null
+          const deltaText =
+            delta == null
               ? ''
               : `<br/>较上一场 ${delta >= 0 ? '+' : ''}${formatScore(delta, 'score')}`
           return `${point.label}<br/>${config.yAxisName || '数值'}：${formatScore(values[index], 'score')}${deltaText}`
@@ -469,8 +464,8 @@ export function buildTrendLineChartOption(
 /** 双序列日趋势：确认题量 + 发布份数等驾驶舱主图 */
 export function buildDualTrendLineChartOption(
   categories: string[],
-  seriesA: { name: string, values: number[], color?: string },
-  seriesB: { name: string, values: number[], color?: string },
+  seriesA: { name: string; values: number[]; color?: string },
+  seriesB: { name: string; values: number[]; color?: string },
   config: MarkTrendChartConfig = {},
 ): EChartsCoreOption {
   if (categories.length === 0) {
@@ -568,7 +563,7 @@ export interface MarkBarChartConfig extends MarkChartToolboxConfig {
   /** 柱体内嵌人数与占比标签，如「12人 (24%)」 */
   innerCountLabel?: boolean
   innerCountLabelUnit?: string
-  markLines?: Array<{ value: number, name: string, color?: string }>
+  markLines?: Array<{ value: number; name: string; color?: string }>
   emptyText?: string
 }
 
@@ -581,8 +576,8 @@ export function buildCategoryBarChartOption(
     return emptyChartOption(config.emptyText || '暂无数据')
   }
   const orientation = config.orientation || 'vertical'
-  const maxValue
-    = config.maxValue && config.maxValue > 0
+  const maxValue =
+    config.maxValue && config.maxValue > 0
       ? config.maxValue
       : Math.max(...items.map((item) => Number(item.value)), 0)
   const categories = items.map((item) => item.label)
@@ -737,8 +732,8 @@ export function buildDashboardPublishedInsightChartOption(
             return ''
           }
           const avg = exam.averageScore != null ? formatScore(exam.averageScore, 'score') : '—'
-          const pass
-            = exam.passRatePercent != null ? formatScorePercent(exam.passRatePercent, '—') : '—'
+          const pass =
+            exam.passRatePercent != null ? formatScorePercent(exam.passRatePercent, '—') : '—'
           return `${exam.examName}<br/>平均分：${avg}<br/>及格率：${pass}`
         },
       },
@@ -815,6 +810,81 @@ export function buildDashboardPublishedInsightChartOption(
   )
 }
 
+export interface DashboardFiveGradeDistributionItem {
+  label: string
+  value: number
+}
+
+/** 已发布学情按高校百分制五级口径呈现的成绩分布环图。 */
+export function buildDashboardFiveGradeDistributionChartOption(
+  items: DashboardFiveGradeDistributionItem[],
+): EChartsCoreOption {
+  const total = items.reduce((sum, item) => sum + Math.max(0, item.value), 0)
+  if (total <= 0) {
+    return emptyChartOption('暂无已发布成绩分布')
+  }
+  const colors = [
+    MARK_ECHARTS_PALETTE.success,
+    MARK_ECHARTS_PALETTE.primary,
+    MARK_ECHARTS_PALETTE.purple,
+    MARK_ECHARTS_PALETTE.warning,
+    MARK_ECHARTS_PALETTE.danger,
+  ]
+  return finalizeMarkChartOption(
+    {
+      color: colors,
+      tooltip: {
+        trigger: 'item',
+        formatter: (param: CallbackDataParams) => {
+          const value = Number(param.value)
+          const percent = formatScore((value * 100) / total, 'percent')
+          return `${param.name}<br/>${formatScore(value, 'count')} 人 · ${percent}%`
+        },
+      },
+      legend: {
+        type: 'scroll',
+        bottom: 0,
+        left: 'center',
+        itemWidth: 10,
+        itemHeight: 10,
+        textStyle: {
+          color: MARK_ECHARTS_PALETTE.axisLabel,
+          fontSize: 11,
+          fontFamily: DP_FONT_FAMILY_SANS,
+        },
+      },
+      graphic: {
+        type: 'text',
+        left: 'center',
+        top: '39%',
+        style: {
+          text: `参考\n${formatScore(total, 'count')} 人`,
+          textAlign: 'center',
+          fill: MARK_ECHARTS_PALETTE.axisLabel,
+          fontSize: 12,
+          fontFamily: DP_FONT_FAMILY_SANS,
+          lineHeight: 18,
+        },
+      },
+      series: [
+        {
+          name: '五级成绩分布',
+          type: 'pie',
+          radius: ['48%', '70%'],
+          center: ['50%', '43%'],
+          avoidLabelOverlap: true,
+          itemStyle: { borderColor: '#fff', borderWidth: 2 },
+          label: { show: false },
+          emphasis: { scale: true, scaleSize: 6, label: { show: true, formatter: '{b}\n{d}%' } },
+          data: items.map((item) => ({ name: item.label, value: item.value })),
+        },
+      ],
+      animation: prefersReducedMotion() ? false : undefined,
+    },
+    { showToolbox: false },
+  )
+}
+
 export interface MarkScatterChartConfig extends MarkChartToolboxConfig {
   xLabel?: string
   yLabel?: string
@@ -871,7 +941,7 @@ export function buildScatterChartOption(
       tooltip: {
         trigger: 'item',
         formatter: (param: CallbackDataParams) => {
-          const data = param.data as { label?: string, helper?: string, value?: [number, number] }
+          const data = param.data as { label?: string; helper?: string; value?: [number, number] }
           if (!data?.value) return ''
           const label = data.label || param.seriesName || ''
           return `${label}<br/>难度 ${formatScore(data.value[0], 'achievement')} · 区分度 ${formatScore(data.value[1], 'achievement')}${data.helper ? `<br/>${data.helper}` : ''}`
@@ -958,8 +1028,8 @@ export function buildGaugeChartOption(
   config: MarkGaugeChartConfig = {},
 ): EChartsCoreOption {
   const safePercent = Math.max(0, Math.min(100, Math.round(percent)))
-  const color
-    = config.color || resolveThemeColor('--dp-color-primary', MARK_ECHARTS_PALETTE.primary)
+  const color =
+    config.color || resolveThemeColor('--dp-color-primary', MARK_ECHARTS_PALETTE.primary)
   const sizeKey = config.size || 'md'
   const sizeSpec = GAUGE_SIZE_MAP[sizeKey]
   const animate = config.reduceMotion === false ? true : !prefersReducedMotion()
@@ -1115,8 +1185,8 @@ export function buildHeatmapChartOption(
     : -1
   const data = cells.map((cell, index) => [index, 0, cell.value])
   const rotateLabels = labels.length > 12
-  const seriesData
-    = highlightIndex >= 0
+  const seriesData =
+    highlightIndex >= 0
       ? data.map((entry, index) => {
           if (index !== highlightIndex) {
             return entry

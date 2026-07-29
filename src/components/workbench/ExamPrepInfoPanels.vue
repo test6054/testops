@@ -1,7 +1,5 @@
 <script lang="ts" setup>
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
-import { computed } from 'vue'
 import {
   EXAM_KIND_TONE,
   ExamGradingStrategyDescription,
@@ -10,6 +8,8 @@ import {
   ExamPrintSourceModeDescription,
   ExamScorePolicyDescription,
 } from '@/apis/mark/exam'
+import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
+import { computed } from 'vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
@@ -42,8 +42,8 @@ const showAlert = computed(() => Boolean(props.alertTitle && props.alertDescript
 const examInfoRows = computed((): InfoRow[] => {
   const d = props.detail
   const term = [d.academicYear, formatSemester(d.semester)].filter(Boolean).join(' ')
-  const examTime
-    = d.examStartTime && d.examEndTime
+  const examTime =
+    d.examStartTime && d.examEndTime
       ? `${formatDateTimeWithSeconds(d.examStartTime)} ~ ${formatDateTimeWithSeconds(d.examEndTime)}`
       : '—'
   const examKindLabel = d.examKind
@@ -79,8 +79,8 @@ const configRows = computed((): InfoRow[] => {
   const scorePolicyLabel = d.scorePolicy
     ? strictEnumLabel(ExamScorePolicyDescription, d.scorePolicy, '成绩合成策略')
     : '—'
-  const fullScoreText
-    = props.examFullScore != null && Number.isFinite(props.examFullScore)
+  const fullScoreText =
+    props.examFullScore != null && Number.isFinite(props.examFullScore)
       ? String(props.examFullScore)
       : '—'
   return [
@@ -100,7 +100,7 @@ const configRows = computed((): InfoRow[] => {
   ]
 })
 
-const descColumn = { xs: 1, sm: 1, md: 2 }
+const descColumn = { xs: 1, sm: 1, md: 2, lg: 2, xl: 2, xxl: 2 }
 </script>
 
 <template>

@@ -153,6 +153,35 @@ export function buildPublishedInsightChartExams(
     .filter((exam) => exam.averageScore != null || exam.passRatePercent != null)
 }
 
+export interface PublishedInsightScoreLevel {
+  key: 'excellent' | 'good' | 'medium' | 'pass' | 'fail'
+  label: string
+  value: number
+}
+
+/** 已展示已发布考试按高校百分制五级口径汇总的成绩人数。 */
+export function buildPublishedInsightScoreLevels(
+  insights: MarkTeacherDashboardPublishedExamInsightItemVO[],
+): PublishedInsightScoreLevel[] {
+  const counts = insights.reduce(
+    (total, insight) => ({
+      excellent: total.excellent + insight.excellentCount,
+      good: total.good + insight.goodCount,
+      medium: total.medium + insight.mediumCount,
+      pass: total.pass + insight.passLevelCount,
+      fail: total.fail + insight.failCount,
+    }),
+    { excellent: 0, good: 0, medium: 0, pass: 0, fail: 0 },
+  )
+  return [
+    { key: 'excellent', label: '优秀（90-100）', value: counts.excellent },
+    { key: 'good', label: '良好（80-89）', value: counts.good },
+    { key: 'medium', label: '中等（70-79）', value: counts.medium },
+    { key: 'pass', label: '及格（60-69）', value: counts.pass },
+    { key: 'fail', label: '不及格（0-59）', value: counts.fail },
+  ]
+}
+
 export function filterScopeHint(filteredCount: number): string {
   return filteredCount > 0 ? `筛选域 ${filteredCount} 场` : '当前筛选暂无考试'
 }

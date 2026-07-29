@@ -6,112 +6,91 @@
     aria-label="成绩确认就绪度"
   >
     <header class="score-confirm-readiness__head">
-      <div class="score-confirm-readiness__title-wrap">
-        <h3 class="score-confirm-readiness__title">
-          成绩确认
-          <template v-if="examTitle"> · {{ examTitle }}</template>
-          <template v-if="candidateCount > 0">（{{ candidateCount }} 人）</template>
-        </h3>
+      <div class="score-confirm-readiness__status">
+        <div class="score-confirm-readiness__status-copy">
+          <h3 class="score-confirm-readiness__title">{{ statusTitle }}</h3>
+          <p v-if="primaryItem" class="score-confirm-readiness__summary">
+            <span class="score-confirm-readiness__primary-title">
+              <template v-if="primaryItem.count > 0">{{ primaryItem.count }} 份</template>
+              {{ primaryItem.title }}
+            </span>
+            <span class="score-confirm-readiness__summary-separator">：</span>
+            {{ primaryItem.description }}
+          </p>
+          <p v-else class="score-confirm-readiness__summary">{{ statusSummary }}</p>
+        </div>
         <UiTag :tone="statusTone" size="sm">{{ statusLabel }}</UiTag>
       </div>
-      <p v-if="viewModel.problemClassCount > 0" class="score-confirm-readiness__summary">
-        发现 {{ viewModel.problemClassCount }} 类问题需要处理
-        <span v-if="viewModel.mustFixCount > 0">
-          · 必须修复 {{ viewModel.mustFixCount }}
-        </span>
-        <span v-if="viewModel.advisoryCount > 0">
-          · 建议检查 {{ viewModel.advisoryCount }}
-        </span>
-      </p>
-      <p v-else class="score-confirm-readiness__summary score-confirm-readiness__summary--ok">
-        场级硬阻断已清除；可对无问题答卷批量确认或提交发布复核。
-      </p>
+
+      <div class="score-confirm-readiness__actions">
+        <UiButton
+          v-if="primaryActionItem"
+          variant="primary"
+          size="sm"
+          :loading="actionLoadingCode === primaryActionItem.actionCode"
+          @click="emitAction(primaryActionItem)"
+        >
+          {{ actionLabel(primaryActionItem.actionCode) }}
+        </UiButton>
+        <UiButton
+          v-if="showSafeConfirmAction"
+          variant="outline"
+          size="sm"
+          :loading="batchConfirming"
+          @click="emit('safe-confirm')"
+        >
+          确认无风险成绩（{{ safeConfirmableCount }} 人）
+        </UiButton>
+      </div>
     </header>
 
-    <div v-if="viewModel.bands.length > 0" class="score-confirm-readiness__bands">
-      <section
-        v-for="band in viewModel.bands"
-        :key="band.band"
-        class="score-confirm-readiness__band"
-        :class="`score-confirm-readiness__band--${band.band}`"
-      >
-        <h4 class="score-confirm-readiness__band-title">
-          <span class="score-confirm-readiness__band-mark" aria-hidden="true">
-            {{ bandMark(band.band) }}
-          </span>
-          {{ band.label }}
-        </h4>
-        <p class="score-confirm-readiness__band-desc">{{ band.description }}</p>
-
-        <ol class="score-confirm-readiness__list">
-          <li
-            v-for="(item, index) in band.items"
-            :key="item.code"
-            class="score-confirm-readiness__item"
+    <UiCollapse
+      v-if="supplementalItemCount > 0"
+      class="score-confirm-readiness__more"
+      :bordered="false"
+      ghost
+    >
+      <UiCollapsePanel key="more" :header="`查看其余 ${supplementalItemCount} 项`">
+        <div class="score-confirm-readiness__more-bands">
+          <section
+            v-for="band in supplementalBands"
+            :key="band.band"
+            class="score-confirm-readiness__band"
           >
-            <div class="score-confirm-readiness__item-index" aria-hidden="true">
-              {{ globalIndex(band.band, index) }}
-            </div>
-            <div class="score-confirm-readiness__item-main">
-              <div class="score-confirm-readiness__item-title-row">
-                <span class="score-confirm-readiness__item-title">
-                  <template v-if="item.count > 0">{{ item.count }} · </template>{{ item.title }}
-                </span>
-                <UiTag :tone="severityTone(item.severity)" size="sm">
-                  {{ severityLabel(item.severity) }}
-                </UiTag>
-              </div>
-              <p class="score-confirm-readiness__item-desc">{{ item.description }}</p>
-              <p
-                v-if="item.sampleLabels?.length"
-                class="score-confirm-readiness__item-samples"
-              >
-                {{ item.sampleLabels.join('、') }}
-                <span v-if="item.count > item.sampleLabels.length"> 等</span>
-              </p>
-              <div v-if="item.actionCode !== 'NONE'" class="score-confirm-readiness__item-actions">
+            <h4 class="score-confirm-readiness__band-title">{{ band.label }}</h4>
+            <ul class="score-confirm-readiness__list">
+              <li v-for="item in band.items" :key="item.code" class="score-confirm-readiness__item">
+                <div class="score-confirm-readiness__item-copy">
+                  <div class="score-confirm-readiness__item-title-row">
+                    <span class="score-confirm-readiness__item-title">
+                      <template v-if="item.count > 0">{{ item.count }} 份</template>
+                      {{ item.title }}
+                    </span>
+                    <UiTag :tone="severityTone(item.severity)" size="sm">
+                      {{ severityLabel(item.severity) }}
+                    </UiTag>
+                  </div>
+                  <p class="score-confirm-readiness__item-desc">{{ item.description }}</p>
+                  <p v-if="item.sampleLabels?.length" class="score-confirm-readiness__item-samples">
+                    {{ item.sampleLabels.join('、') }}
+                    <span v-if="item.count > item.sampleLabels.length">等</span>
+                  </p>
+                </div>
                 <UiButton
-                  :variant="band.band === 'must_fix' ? 'primary' : 'outline'"
+                  v-if="item.actionCode !== 'NONE'"
+                  variant="outline"
                   size="sm"
                   :loading="actionLoadingCode === item.actionCode"
                   @click="emitAction(item)"
                 >
                   {{ actionLabel(item.actionCode) }}
                 </UiButton>
-              </div>
-            </div>
-          </li>
-        </ol>
-      </section>
-    </div>
-
-    <!-- 页级实心主行动在 ContextBar；此处仅保留次要确认，避免双 primary 抢焦点 -->
-    <footer class="score-confirm-readiness__footer">
-      <UiButton
-        variant="outline"
-        size="sm"
-        :disabled="!canBulkPublish || viewModel.publishBlocked || viewModel.mustFixCount > 0"
-        :loading="bulkPublishing"
-        @click="emit('bulk-publish')"
-      >
-        {{
-          viewModel.mustFixCount > 0 || viewModel.publishBlocked
-            ? '全部修复后提交复核'
-            : '全场提交发布复核'
-        }}
-      </UiButton>
-      <UiButton
-        v-if="safeConfirmableCount > 0 || canBatchConfirmSafe"
-        variant="ghost"
-        size="sm"
-        :disabled="!canBatchConfirmSafe || viewModel.confirmBlocked"
-        :loading="batchConfirming"
-        @click="emit('safe-confirm')"
-      >
-        仅确认无风险成绩
-        <template v-if="safeConfirmableCount > 0">（{{ safeConfirmableCount }} 人）</template>
-      </UiButton>
-    </footer>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </UiCollapsePanel>
+    </UiCollapse>
   </section>
 </template>
 
@@ -122,14 +101,14 @@ import type {
   FinalScoreReadinessSeverityCode,
   FinalScoreRiskOverviewResponse,
 } from '@/apis/mark/exam-score'
-import type {ScoreConfirmPriorityBand} from '@/utils/score-confirm-readiness';
 import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiCollapse from '@/components/ui-guide/ui/UiCollapse.vue'
+import UiCollapsePanel from '@/components/ui-guide/ui/UiCollapsePanel.vue'
 import {
   buildScoreConfirmReadinessViewModel,
-  formatReadinessActionLabel
-  
+  formatReadinessActionLabel,
 } from '@/utils/score-confirm-readiness'
 
 defineOptions({ name: 'ScoreConfirmReadinessPanel' })
@@ -138,38 +117,47 @@ const props = withDefaults(
   defineProps<{
     overview: FinalScoreRiskOverviewResponse | null
     actionLoadingCode?: FinalScoreReadinessActionCode | null
-    examTitle?: string
-    candidateCount?: number
-    canBulkPublish?: boolean
     canBatchConfirmSafe?: boolean
     batchConfirming?: boolean
-    bulkPublishing?: boolean
   }>(),
   {
     actionLoadingCode: null,
-    examTitle: '',
-    candidateCount: 0,
-    canBulkPublish: false,
     canBatchConfirmSafe: false,
     batchConfirming: false,
-    bulkPublishing: false,
   },
 )
 
 const emit = defineEmits<{
-  "action": [item: FinalScoreReadinessItemResponse]
-  'bulk-publish': []
+  action: [item: FinalScoreReadinessItemResponse]
   'safe-confirm': []
 }>()
 
 const viewModel = computed(() => buildScoreConfirmReadinessViewModel(props.overview))
-
-const showPanel = computed(
-  () => !viewModel.value.allClear || viewModel.value.items.length > 0 || props.canBulkPublish,
+const primaryItem = computed(() =>
+  viewModel.value.allClear ? null : (viewModel.value.items[0] ?? null),
+)
+const primaryActionItem = computed(() =>
+  primaryItem.value?.actionCode === 'NONE' ? null : primaryItem.value,
+)
+const supplementalBands = computed(() => {
+  const primaryCode = primaryItem.value?.code
+  return viewModel.value.bands
+    .map((band) => ({
+      ...band,
+      items: band.items.filter((item) => item.code !== primaryCode),
+    }))
+    .filter((band) => band.items.length > 0)
+})
+const supplementalItemCount = computed(() =>
+  supplementalBands.value.reduce((total, band) => total + band.items.length, 0),
 )
 
-/** 人数唯一真源为 overview.safeConfirmableCount，不从 readinessItems 反推 */
+/** 人数唯一真源为 overview.safeConfirmableCount，不从 readinessItems 反推。 */
 const safeConfirmableCount = computed(() => props.overview?.safeConfirmableCount ?? 0)
+const showSafeConfirmAction = computed(
+  () => props.canBatchConfirmSafe && safeConfirmableCount.value > 0,
+)
+const showPanel = computed(() => primaryItem.value != null || showSafeConfirmAction.value)
 
 const panelClass = computed(() => {
   if (viewModel.value.mustFixCount > 0 || viewModel.value.hardBlockCount > 0) {
@@ -183,41 +171,35 @@ const panelClass = computed(() => {
 
 const statusTone = computed(() => {
   if (viewModel.value.mustFixCount > 0 || viewModel.value.hardBlockCount > 0) return 'red' as const
-  if (viewModel.value.advisoryCount > 0 || viewModel.value.actionRequiredCount > 0) return 'orange' as const
+  if (viewModel.value.advisoryCount > 0 || viewModel.value.actionRequiredCount > 0)
+    return 'orange' as const
   return 'green' as const
 })
 
+const statusTitle = computed(() => {
+  if (viewModel.value.mustFixCount > 0 || viewModel.value.hardBlockCount > 0) return '发布前需处理'
+  if (viewModel.value.advisoryCount > 0 || viewModel.value.actionRequiredCount > 0)
+    return '建议先检查'
+  return '成绩确认可继续推进'
+})
+
 const statusLabel = computed(() => {
-  if (viewModel.value.mustFixCount > 0 || viewModel.value.hardBlockCount > 0) return '须先修复'
-  if (viewModel.value.advisoryCount > 0 || viewModel.value.actionRequiredCount > 0) return '建议检查'
-  return '可推进'
+  if (viewModel.value.mustFixCount > 0 || viewModel.value.hardBlockCount > 0) return '发布被阻断'
+  if (viewModel.value.advisoryCount > 0 || viewModel.value.actionRequiredCount > 0) return '待检查'
+  return '可确认'
 })
 
-const bandStartIndex = computed(() => {
-  const map: Record<ScoreConfirmPriorityBand, number> = {
-    must_fix: 1,
-    advisory: 1,
-    opportunity: 1,
-  }
-  let cursor = 1
-  for (const band of viewModel.value.bands) {
-    map[band.band] = cursor
-    cursor += band.items.length
-  }
-  return map
+const statusSummary = computed(() => {
+  if (viewModel.value.mustFixCount > 0)
+    return `必须修复 ${viewModel.value.mustFixCount} 项后才能发布`
+  if (viewModel.value.advisoryCount > 0)
+    return `有 ${viewModel.value.advisoryCount} 项建议检查，不阻断当前处理`
+  return '可直接确认后端判定为无风险的成绩'
 })
 
-function globalIndex(band: ScoreConfirmPriorityBand, index: number): number {
-  return (bandStartIndex.value[band] ?? 1) + index
-}
-
-function bandMark(band: ScoreConfirmPriorityBand): string {
-  if (band === 'must_fix') return '●'
-  if (band === 'advisory') return '●'
-  return '○'
-}
-
-function severityTone(severity: FinalScoreReadinessSeverityCode): 'red' | 'orange' | 'blue' | 'green' {
+function severityTone(
+  severity: FinalScoreReadinessSeverityCode,
+): 'red' | 'orange' | 'blue' | 'green' {
   if (severity === 'HARD_BLOCK') return 'red'
   if (severity === 'ACTION_REQUIRED') return 'orange'
   return 'blue'
@@ -230,7 +212,7 @@ function severityLabel(severity: FinalScoreReadinessSeverityCode): string {
 }
 
 function actionLabel(code: FinalScoreReadinessActionCode): string {
-  return formatReadinessActionLabel(code) || '处理 →'
+  return formatReadinessActionLabel(code) || '处理'
 }
 
 function emitAction(item: FinalScoreReadinessItemResponse): void {
@@ -244,188 +226,192 @@ defineExpose({
 
 <style scoped lang="scss">
 .score-confirm-readiness {
-  margin-bottom: var(--dp-space-block);
-  padding: var(--dp-space-component) var(--dp-space-block);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-component-tight);
+  padding: var(--dp-space-component-tight) var(--dp-space-block);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
 
   &--blocked {
-    border-color: color-mix(in srgb, var(--dp-error) 35%, var(--dp-border-subtle));
-    background: color-mix(in srgb, var(--dp-error) 4%, var(--dp-surface));
+    border-color: var(--dp-error-border);
+    background: color-mix(in srgb, var(--dp-error-bg) 58%, var(--dp-surface));
   }
 
   &--action {
-    border-color: color-mix(in srgb, var(--dp-warning) 35%, var(--dp-border-subtle));
-    background: color-mix(in srgb, var(--dp-warning) 4%, var(--dp-surface));
+    border-color: var(--dp-warning-border);
+    background: color-mix(in srgb, var(--dp-warning-bg) 58%, var(--dp-surface));
   }
 
   &--ok {
-    border-color: color-mix(in srgb, var(--dp-success) 28%, var(--dp-border-subtle));
+    border-color: var(--dp-success-border);
+  }
+
+  &__head,
+  &__status,
+  &__actions,
+  &__item-title-row,
+  &__item {
+    display: flex;
+    align-items: center;
   }
 
   &__head {
-    display: flex;
-    flex-direction: column;
-    gap: var(--dp-space-component-xs);
-    margin-bottom: var(--dp-space-component);
+    justify-content: space-between;
+    gap: var(--dp-space-component);
   }
 
-  &__title-wrap {
-    display: flex;
-    align-items: center;
+  &__status,
+  &__actions,
+  &__item-title-row {
     gap: var(--dp-space-component-tight);
+  }
+
+  &__status {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  &__status-copy {
+    min-width: 0;
+  }
+
+  &__actions {
+    flex-shrink: 0;
     flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   &__title {
     margin: 0;
-    font-size: var(--dp-font-size-md);
-    font-weight: 600;
+    font-size: var(--dp-type-panel-title-size);
+    font-weight: var(--dp-type-panel-title-weight);
+    line-height: var(--dp-type-panel-title-line-height);
     color: var(--dp-text-primary);
+  }
+
+  &__summary,
+  &__item-desc,
+  &__item-samples {
+    margin: 0;
+    color: var(--dp-text-secondary);
   }
 
   &__summary {
-    margin: 0;
+    margin-top: var(--dp-space-component-xs);
     font-size: var(--dp-font-size-sm);
-    color: var(--dp-text-secondary);
-
-    &--ok {
-      color: var(--dp-text-muted);
-    }
+    line-height: var(--dp-line-height-normal);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  &__bands {
-    display: flex;
-    flex-direction: column;
-    gap: var(--dp-space-component);
-  }
-
-  &__band {
-    padding: var(--dp-space-component);
-    border: 1px solid var(--dp-border-subtle);
-    border-radius: var(--dp-radius-control);
-    background: var(--dp-surface);
-
-    &--must_fix {
-      border-color: color-mix(in srgb, var(--dp-error) 28%, var(--dp-border-subtle));
-      background: color-mix(in srgb, var(--dp-error) 3%, var(--dp-surface));
-    }
-
-    &--advisory {
-      border-color: color-mix(in srgb, var(--dp-warning) 28%, var(--dp-border-subtle));
-      background: color-mix(in srgb, var(--dp-warning) 3%, var(--dp-surface));
-    }
-
-    &--opportunity {
-      border-color: color-mix(in srgb, var(--dp-color-primary) 22%, var(--dp-border-subtle));
-    }
-  }
-
-  &__band-title {
-    display: flex;
-    align-items: center;
-    gap: var(--dp-space-component-tight);
-    margin: 0;
-    font-size: var(--dp-font-size-sm);
-    font-weight: 600;
+  &__primary-title {
+    font-weight: var(--dp-font-weight-emphasis);
     color: var(--dp-text-primary);
   }
 
-  &__band-mark {
-    color: var(--dp-text-muted);
-    font-size: var(--dp-font-size-xs);
-  }
-
-  &__band--must_fix &__band-mark {
-    color: var(--dp-error);
-  }
-
-  &__band--advisory &__band-mark {
-    color: var(--dp-warning);
-  }
-
-  &__band--opportunity &__band-mark {
-    color: var(--dp-color-primary);
-  }
-
-  &__band-desc {
-    margin: var(--dp-space-component-xs) 0 var(--dp-space-component-tight);
-    font-size: var(--dp-font-size-xs);
+  &__summary-separator {
     color: var(--dp-text-muted);
   }
 
-  &__list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: var(--dp-space-component-tight);
-  }
-
-  &__item {
-    display: flex;
-    gap: var(--dp-space-component);
-    padding: var(--dp-space-component-tight) var(--dp-space-component);
-    border: 1px solid var(--dp-border-subtle);
-    border-radius: var(--dp-radius-control);
-    background: var(--dp-surface);
-  }
-
-  &__item-index {
-    flex-shrink: 0;
-    width: 1.5rem;
-    height: 1.5rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--dp-radius-full, 999px);
-    background: var(--dp-surface-subtle);
-    color: var(--dp-text-secondary);
-    font-size: var(--dp-font-size-xs);
-    font-weight: 600;
-  }
-
-  &__item-main {
+  &__item-copy {
     min-width: 0;
     flex: 1;
   }
 
   &__item-title-row {
-    display: flex;
-    align-items: center;
-    gap: var(--dp-space-component-tight);
     flex-wrap: wrap;
   }
 
   &__item-title {
     font-size: var(--dp-font-size-sm);
-    font-weight: 500;
+    font-weight: var(--dp-font-weight-emphasis);
     color: var(--dp-text-primary);
   }
 
   &__item-desc {
-    margin: var(--dp-space-component-xs) 0 0;
+    margin-top: var(--dp-space-component-xs);
     font-size: var(--dp-font-size-xs);
-    line-height: 1.5;
-    color: var(--dp-text-muted);
+    line-height: var(--dp-line-height-normal);
   }
 
-  &__item-actions {
-    display: flex;
-    gap: var(--dp-space-component-tight);
-    margin-top: var(--dp-space-component-tight);
-    flex-wrap: wrap;
+  &__item-samples {
+    margin-top: var(--dp-space-component-xs);
+    font-size: var(--dp-font-size-xs);
+    line-height: var(--dp-line-height-normal);
   }
 
-  &__footer {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--dp-space-component-tight);
-    margin-top: var(--dp-space-component);
-    padding-top: var(--dp-space-component);
+  &__more {
     border-top: 1px solid var(--dp-border-subtle);
+  }
+
+  &__more :deep(.ant-collapse-header) {
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  &__more :deep(.ant-collapse-content-box) {
+    padding: var(--dp-space-component) 0 0 !important;
+  }
+
+  &__more-bands,
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dp-space-component-tight);
+  }
+
+  &__band {
+    min-width: 0;
+  }
+
+  &__band-title {
+    margin: 0;
+    font-size: var(--dp-font-size-xs);
+    font-weight: var(--dp-font-weight-emphasis);
+    color: var(--dp-text-secondary);
+  }
+
+  &__list {
+    margin: var(--dp-space-component-tight) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__item {
+    justify-content: space-between;
+    gap: var(--dp-space-component);
+    padding: var(--dp-space-component-tight) 0;
+  }
+
+  &__item + &__item {
+    border-top: 1px solid var(--dp-border-subtle);
+  }
+}
+
+@media (max-width: 768px) {
+  .score-confirm-readiness {
+    &__head,
+    &__status,
+    &__item {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    &__actions {
+      justify-content: flex-start;
+    }
+
+    &__actions :deep(.ui-button),
+    &__item :deep(.ui-button) {
+      width: 100%;
+    }
+
+    &__summary {
+      white-space: normal;
+    }
   }
 }
 </style>

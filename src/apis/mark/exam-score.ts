@@ -6,9 +6,14 @@ import type { PageResult, QueryDto } from '@/types'
  * 阅卷考试成绩汇总与最终成绩 API - 对接 /api/mark/exams/score-* 与 final-scores 接口。
  */
 import type { FinalScoreRiskReasonCode } from '@/types/enums/final-score-risk-reason-enum'
+import { ALL_FINAL_SCORE_RISK_REASON_CODES } from '@/types/enums/final-score-risk-reason-enum'
 import type { PaperInstanceDisplayModeCode } from '@/types/enums/paper-instance-display-mode-enum'
+import { ALL_PAPER_INSTANCE_DISPLAY_MODE_CODES } from '@/types/enums/paper-instance-display-mode-enum'
 import type { ResultCode } from '@/types/enums/result-code'
 import http from '@/config/axios'
+import { ALL_BINDING_STATUS_CODES } from '@/types/enums/binding-status-enum'
+import { ALL_CANDIDATE_STATUS_CODES } from '@/types/enums/candidate-status-enum'
+import { ALL_FINAL_SCORE_STATUS_CODES } from '@/types/enums/final-score-status-enum'
 
 export {
   ALL_FINAL_SCORE_RISK_REASON_CODES,
@@ -114,31 +119,26 @@ export interface ExamScoreSummaryItemResponse {
   paperDisplay: PaperInstanceDisplayVO
 }
 
-
 /** 最终成绩就绪分组 - 对应 FinalScoreReadinessGroup */
-export type FinalScoreReadinessGroupCode
-  = | 'ABSENCE'
-    | 'IMAGING'
-    | 'GRADING'
-    | 'SOFT_RISK'
-    | 'PUBLISH'
+export type FinalScoreReadinessGroupCode =
+  'ABSENCE' | 'IMAGING' | 'GRADING' | 'SOFT_RISK' | 'PUBLISH'
 
 /** 最终成绩就绪严重级别 - 对应 FinalScoreReadinessSeverity */
 export type FinalScoreReadinessSeverityCode = 'HARD_BLOCK' | 'ACTION_REQUIRED' | 'INFO'
 
 /** 最终成绩就绪动作 - 对应 FinalScoreReadinessAction */
-export type FinalScoreReadinessActionCode
-  = | 'NONE'
-    | 'GO_ABSENCE'
-    | 'REPAIR_SCORE_ZERO'
-    | 'GO_QUESTION_REVIEW'
-    | 'GO_SCAN_BATCHES'
-    | 'OPEN_RISK_REVIEW'
-    | 'BATCH_CONFIRM'
-    | 'FILTER_CORRECTED'
-    | 'FILTER_PENDING_PUBLISH_REVIEW'
-    | 'FILTER_PENDING_MY_PUBLISH_REVIEW'
-    | 'GO_DELAYED_TASKS'
+export type FinalScoreReadinessActionCode =
+  | 'NONE'
+  | 'GO_ABSENCE'
+  | 'REPAIR_SCORE_ZERO'
+  | 'GO_QUESTION_REVIEW'
+  | 'GO_SCAN_BATCHES'
+  | 'OPEN_RISK_REVIEW'
+  | 'BATCH_CONFIRM'
+  | 'FILTER_CORRECTED'
+  | 'FILTER_PENDING_PUBLISH_REVIEW'
+  | 'FILTER_PENDING_MY_PUBLISH_REVIEW'
+  | 'GO_DELAYED_TASKS'
 
 /** 最终成绩就绪项 - 对应 FinalScoreReadinessItemResponse */
 export interface FinalScoreReadinessItemResponse {
@@ -390,127 +390,420 @@ export interface ExamScoreDistributionResponse {
   counts: number[]
 }
 
+const FINAL_SCORE_READINESS_GROUP_CODES: readonly FinalScoreReadinessGroupCode[] = [
+  'ABSENCE',
+  'IMAGING',
+  'GRADING',
+  'SOFT_RISK',
+  'PUBLISH',
+]
+const FINAL_SCORE_READINESS_SEVERITY_CODES: readonly FinalScoreReadinessSeverityCode[] = [
+  'HARD_BLOCK',
+  'ACTION_REQUIRED',
+  'INFO',
+]
+const FINAL_SCORE_READINESS_ACTION_CODES: readonly FinalScoreReadinessActionCode[] = [
+  'NONE',
+  'GO_ABSENCE',
+  'REPAIR_SCORE_ZERO',
+  'GO_QUESTION_REVIEW',
+  'GO_SCAN_BATCHES',
+  'OPEN_RISK_REVIEW',
+  'BATCH_CONFIRM',
+  'FILTER_CORRECTED',
+  'FILTER_PENDING_PUBLISH_REVIEW',
+  'FILTER_PENDING_MY_PUBLISH_REVIEW',
+  'GO_DELAYED_TASKS',
+]
+
+/** 校验成绩发布链路通用的非负整数计数。 */
+function isNonNegativeInteger(value: unknown): value is number {
+  return Number.isInteger(value) && Number(value) >= 0
+}
+
+/** 校验单卷成绩写回必须返回 Long 字符串语义的成绩标识。 */
+function assertFinalScoreId(value: FinalScoreId): FinalScoreId {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new TypeError('最终成绩写回异常：缺少成绩标识')
+  }
+  return value
+}
+
+/** 校验全场成绩风险概览及 readinessItems，阻止残缺门禁进入发布工作台。 */
+function assertFinalScoreRiskOverview(
+  response: FinalScoreRiskOverviewResponse,
+): FinalScoreRiskOverviewResponse {
+  const countValues = [
+    response.totalCandidateCount,
+    response.pendingCount,
+    response.calculatedCount,
+    response.confirmedCount,
+    response.publishedCount,
+    response.withdrawnCount,
+    response.correctedCount,
+    response.safeConfirmableCount,
+    response.blockedCount,
+    response.missingQuestionGradeCount,
+    response.unconfirmedQuestionGradeCount,
+    response.abnormalPaperCount,
+    response.unreconciledAbsenceCount,
+    response.missingAbsenceScoreZeroFinalCount,
+    response.blockingIncidentCount,
+    response.pendingDuplicateImageCount,
+    response.pendingAbsenceCount,
+    response.unresolvedAbsenceScorePolicyCount,
+    response.publishableCount,
+    response.pendingPublishReviewCount,
+  ]
+  if (
+    countValues.some((value) => !isNonNegativeInteger(value)) ||
+    (response.pendingMyPublishReviewCount != null &&
+      !isNonNegativeInteger(response.pendingMyPublishReviewCount)) ||
+    typeof response.readyToSubmitPublishReview !== 'boolean' ||
+    typeof response.canManageReviewerWrites !== 'boolean' ||
+    typeof response.canRepairAbsenceScoreZeroFinal !== 'boolean' ||
+    !Array.isArray(response.riskReasons) ||
+    !Array.isArray(response.reviewedReasonCodes) ||
+    !Array.isArray(response.readinessItems)
+  ) {
+    throw new TypeError('最终成绩风险概览合同异常：计数、能力位或就绪集合不可用')
+  }
+  const riskReasonCodes = new Set<FinalScoreRiskReasonCode>()
+  for (const reason of response.riskReasons) {
+    if (
+      !ALL_FINAL_SCORE_RISK_REASON_CODES.includes(reason.reasonCode) ||
+      !reason.reasonName?.trim() ||
+      !isNonNegativeInteger(reason.count) ||
+      riskReasonCodes.has(reason.reasonCode)
+    ) {
+      throw new TypeError('最终成绩风险概览合同异常：风险原因不可用或重复')
+    }
+    riskReasonCodes.add(reason.reasonCode)
+  }
+  if (
+    new Set(response.reviewedReasonCodes).size !== response.reviewedReasonCodes.length ||
+    response.reviewedReasonCodes.some(
+      (code) => !ALL_FINAL_SCORE_RISK_REASON_CODES.includes(code),
+    ) ||
+    (response.primaryReadinessCode != null &&
+      !ALL_FINAL_SCORE_RISK_REASON_CODES.includes(response.primaryReadinessCode))
+  ) {
+    throw new TypeError('最终成绩风险概览合同异常：已复核原因或主就绪项不可用')
+  }
+  const readinessCodes = new Set<FinalScoreRiskReasonCode>()
+  for (const item of response.readinessItems) {
+    if (
+      !ALL_FINAL_SCORE_RISK_REASON_CODES.includes(item.code) ||
+      !FINAL_SCORE_READINESS_GROUP_CODES.includes(item.groupCode) ||
+      !FINAL_SCORE_READINESS_SEVERITY_CODES.includes(item.severity) ||
+      !FINAL_SCORE_READINESS_ACTION_CODES.includes(item.actionCode) ||
+      !item.title?.trim() ||
+      !item.description?.trim() ||
+      !isNonNegativeInteger(item.count) ||
+      typeof item.blocksConfirm !== 'boolean' ||
+      typeof item.blocksPublish !== 'boolean' ||
+      readinessCodes.has(item.code) ||
+      (item.sampleLabels != null &&
+        (!Array.isArray(item.sampleLabels) || item.sampleLabels.some((label) => !label?.trim())))
+    ) {
+      throw new TypeError('最终成绩风险概览合同异常：就绪项字段不可用或重复')
+    }
+    readinessCodes.add(item.code)
+  }
+  return response
+}
+
+/** 校验成绩汇总分页、考试范围、唯一考生与行级发布能力位。 */
+function assertExamScoreSummaryPage(
+  response: PageResult<ExamScoreSummaryItemResponse>,
+): PageResult<ExamScoreSummaryItemResponse> {
+  if (
+    !Array.isArray(response.list) ||
+    !isNonNegativeInteger(response.total) ||
+    !Number.isInteger(response.pageNum) ||
+    response.pageNum < 1 ||
+    !Number.isInteger(response.pageSize) ||
+    response.pageSize < 1 ||
+    !isNonNegativeInteger(response.pages) ||
+    response.list.length > response.pageSize ||
+    response.list.length > response.total
+  ) {
+    throw new TypeError('成绩发布队列合同异常：分页字段不可用')
+  }
+  const candidateRosterIds = new Set<string>()
+  for (const item of response.list) {
+    const scoreValues = [
+      item.finalScore,
+      item.examScore,
+      item.dailyScore,
+      item.estimatedExamScore,
+      item.estimatedTotalScore,
+      item.questionScoreSum,
+    ]
+    if (
+      !item.candidateRosterId ||
+      candidateRosterIds.has(item.candidateRosterId) ||
+      !item.studentUserId ||
+      !item.studentNo?.trim() ||
+      !item.studentName?.trim() ||
+      !ALL_BINDING_STATUS_CODES.includes(item.bindingStatus) ||
+      (item.candidateStatus != null &&
+        !ALL_CANDIDATE_STATUS_CODES.includes(item.candidateStatus)) ||
+      !ALL_FINAL_SCORE_STATUS_CODES.includes(item.finalScoreStatus) ||
+      !item.finalScoreStatusMessage?.trim() ||
+      !item.paperDisplay?.primaryText?.trim() ||
+      (item.paperDisplay.displayMode != null &&
+        !ALL_PAPER_INSTANCE_DISPLAY_MODE_CODES.includes(item.paperDisplay.displayMode)) ||
+      scoreValues.some((value) => value != null && (!Number.isFinite(value) || value < 0)) ||
+      typeof item.canSubmitPublishReview !== 'boolean' ||
+      typeof item.canApprovePublishReview !== 'boolean' ||
+      typeof item.canRejectPublishReview !== 'boolean' ||
+      typeof item.canCancelPublishReview !== 'boolean' ||
+      (item.absenceScoreZero != null && typeof item.absenceScoreZero !== 'boolean') ||
+      (item.questionScoreSumMatchesExamScore != null &&
+        typeof item.questionScoreSumMatchesExamScore !== 'boolean') ||
+      (item.latestTotalScoreCorrectionApplied != null &&
+        typeof item.latestTotalScoreCorrectionApplied !== 'boolean')
+    ) {
+      throw new TypeError('成绩发布队列合同异常：考生、成绩、状态或能力位不可用')
+    }
+    candidateRosterIds.add(item.candidateRosterId)
+  }
+  return response
+}
+
+/** 校验批量发布/签审回执完整覆盖请求答卷，防止部分结果被误判为成功。 */
+function assertBatchPublishReviewResponse(
+  response: FinalScoreBatchPublishReviewResponse,
+  requestedPaperInstanceIds: string[],
+): FinalScoreBatchPublishReviewResponse {
+  if (
+    !Array.isArray(response.successPaperInstanceIds) ||
+    !Array.isArray(response.failures) ||
+    !Array.isArray(response.failureGroups)
+  ) {
+    throw new TypeError('批量成绩发布复核回执异常：结果集合不可用')
+  }
+  const requestedIds = new Set(requestedPaperInstanceIds)
+  const successIds = new Set(response.successPaperInstanceIds)
+  const failureIds = new Set(response.failures.map((failure) => failure.paperInstanceId))
+  if (
+    requestedIds.size !== requestedPaperInstanceIds.length ||
+    !isNonNegativeInteger(response.requestedCount) ||
+    !isNonNegativeInteger(response.successCount) ||
+    !isNonNegativeInteger(response.failureCount) ||
+    response.requestedCount !== requestedIds.size ||
+    response.successCount !== response.successPaperInstanceIds.length ||
+    response.failureCount !== response.failures.length ||
+    response.successCount + response.failureCount !== response.requestedCount ||
+    successIds.size !== response.successPaperInstanceIds.length ||
+    failureIds.size !== response.failures.length ||
+    [...successIds].some((id) => !requestedIds.has(id) || failureIds.has(id)) ||
+    [...failureIds].some((id) => !requestedIds.has(id)) ||
+    [...requestedIds].some((id) => !successIds.has(id) && !failureIds.has(id)) ||
+    response.failures.some(
+      (failure) => !failure.paperInstanceId || !failure.code || !failure.message?.trim(),
+    )
+  ) {
+    throw new TypeError('批量成绩发布复核回执异常：结果未完整覆盖请求答卷')
+  }
+  assertFinalScoreRiskOverview(response.afterOverview)
+  return response
+}
+
 /** 分页查询考试成绩汇总。 */
-export function pageExamScoreSummary(
+export async function pageExamScoreSummary(
   request: ExamScoreSummaryQueryRequest,
 ): Promise<PageResult<ExamScoreSummaryItemResponse>> {
-  return http.post<PageResult<ExamScoreSummaryItemResponse>>(
+  const response = await http.post<PageResult<ExamScoreSummaryItemResponse>>(
     '/api/mark/exams/score-summary',
     request,
   )
+  return assertExamScoreSummaryPage(response)
 }
 
 /** 查询最终成绩全场风险概览，前端不得由分页列表自行推断全场状态。 */
-export function getFinalScoreRiskOverview(
+export async function getFinalScoreRiskOverview(
   request: FinalScoreRiskOverviewRequest,
 ): Promise<FinalScoreRiskOverviewResponse> {
-  return http.post<FinalScoreRiskOverviewResponse>(
+  const response = await http.post<FinalScoreRiskOverviewResponse>(
     '/api/mark/exams/final-scores/risk-overview',
     request,
   )
+  return assertFinalScoreRiskOverview(response)
 }
 
 /** 保存最终成绩风险复核状态，并返回最新风险概览。 */
-export function saveFinalScoreRiskReview(
+export async function saveFinalScoreRiskReview(
   request: FinalScoreRiskReviewSaveRequest,
 ): Promise<FinalScoreRiskOverviewResponse> {
-  return http.post<FinalScoreRiskOverviewResponse>(
+  const response = await http.post<FinalScoreRiskOverviewResponse>(
     '/api/mark/exams/final-scores/risk-review/save',
     request,
   )
+  return assertFinalScoreRiskOverview(response)
 }
 
 /** 安全批量确认最终成绩，只确认后端判定为无阻塞风险的已计算成绩。 */
-export function batchConfirmSafeFinalScores(
+export async function batchConfirmSafeFinalScores(
   request: FinalScoreSafeBatchConfirmRequest,
 ): Promise<FinalScoreSafeBatchConfirmResponse> {
-  return http.post<FinalScoreSafeBatchConfirmResponse>(
+  const response = await http.post<FinalScoreSafeBatchConfirmResponse>(
     '/api/mark/exams/final-scores/batch-confirm-safe',
     request,
   )
+  if (
+    !isNonNegativeInteger(response.totalCandidateCount) ||
+    !isNonNegativeInteger(response.successCount) ||
+    !isNonNegativeInteger(response.skippedCount) ||
+    !isNonNegativeInteger(response.failureCount) ||
+    response.successCount + response.skippedCount + response.failureCount >
+      response.totalCandidateCount
+  ) {
+    throw new TypeError('批量确认最终成绩回执异常：计数或结果集合不可用')
+  }
+  if (
+    !Array.isArray(response.confirmedPaperInstanceIds) ||
+    new Set(response.confirmedPaperInstanceIds).size !==
+      response.confirmedPaperInstanceIds.length ||
+    response.confirmedPaperInstanceIds.length !== response.successCount
+  ) {
+    throw new TypeError('批量确认最终成绩回执异常：计数或结果集合不可用')
+  }
+  if (!Array.isArray(response.failureGroups) || !Array.isArray(response.skipReasons)) {
+    throw new TypeError('批量确认最终成绩回执异常：计数或结果集合不可用')
+  }
+  return response
 }
 
 /** 查询可安全批量确认考生，供日常分批量录入。 */
-export function listSafeConfirmableCandidates(
+export async function listSafeConfirmableCandidates(
   request: FinalScoreSafeConfirmableCandidatesRequest,
 ): Promise<FinalScoreSafeConfirmableCandidateResponse[]> {
-  return http.post<FinalScoreSafeConfirmableCandidateResponse[]>(
+  const response = await http.post<FinalScoreSafeConfirmableCandidateResponse[]>(
     '/api/mark/exams/final-scores/safe-confirmable-candidates',
     request,
   )
+  if (!Array.isArray(response)) {
+    throw new TypeError('可批量确认成绩合同异常：候选集合不可用')
+  }
+  const paperInstanceIds = new Set(response.map((item) => item.paperInstanceId))
+  if (
+    paperInstanceIds.size !== response.length ||
+    response.some(
+      (item) =>
+        !item.paperInstanceId ||
+        !item.candidateRosterId ||
+        !item.studentUserId ||
+        (item.confirmedExamScore != null &&
+          (!Number.isFinite(item.confirmedExamScore) || item.confirmedExamScore < 0)),
+    )
+  ) {
+    throw new TypeError('可批量确认成绩合同异常：答卷身份或确认分不可用')
+  }
+  return response
 }
 
 /** 提交单卷最终成绩发布复核。 */
-export function submitPublishReview(
+export async function submitPublishReview(
   request: ExamFinalScoreSubmitPublishReviewRequest,
 ): Promise<FinalScoreId> {
-  return http.post<FinalScoreId>('/api/mark/exams/final-scores/submit-publish-review', request)
+  const response = await http.post<FinalScoreId>(
+    '/api/mark/exams/final-scores/submit-publish-review',
+    request,
+  )
+  return assertFinalScoreId(response)
 }
 
 /** 在后端同一锁与事务内确认最终成绩并提交发布复核。 */
-export function confirmAndSubmitPublishReview(
+export async function confirmAndSubmitPublishReview(
   request: ExamFinalScoreConfirmAndSubmitPublishReviewRequest,
 ): Promise<FinalScoreId> {
-  return http.post<FinalScoreId>(
+  const response = await http.post<FinalScoreId>(
     '/api/mark/exams/final-scores/confirm-and-submit-publish-review',
     request,
   )
+  return assertFinalScoreId(response)
 }
 
 /** 批量提交最终成绩发布复核。 */
-export function batchSubmitPublishReview(
+export async function batchSubmitPublishReview(
   request: ExamFinalScoreBatchSubmitPublishReviewRequest,
 ): Promise<FinalScoreBatchPublishReviewResponse> {
-  return http.post<FinalScoreBatchPublishReviewResponse>(
+  const response = await http.post<FinalScoreBatchPublishReviewResponse>(
     '/api/mark/exams/final-scores/batch-submit-publish-review',
     request,
   )
+  return assertBatchPublishReviewResponse(response, request.paperInstanceIds)
 }
 
 /** 复核通过并发布单卷最终成绩。 */
-export function approvePublishReview(
+export async function approvePublishReview(
   request: ExamFinalScoreApprovePublishReviewRequest,
 ): Promise<FinalScoreId> {
-  return http.post<FinalScoreId>('/api/mark/exams/final-scores/approve-publish-review', request)
+  const response = await http.post<FinalScoreId>(
+    '/api/mark/exams/final-scores/approve-publish-review',
+    request,
+  )
+  return assertFinalScoreId(response)
 }
 
 /** 批量复核通过并发布最终成绩。 */
-export function batchApprovePublishReview(
+export async function batchApprovePublishReview(
   request: ExamFinalScoreBatchApprovePublishReviewRequest,
 ): Promise<FinalScoreBatchPublishReviewResponse> {
-  return http.post<FinalScoreBatchPublishReviewResponse>(
+  const response = await http.post<FinalScoreBatchPublishReviewResponse>(
     '/api/mark/exams/final-scores/batch-approve-publish-review',
     request,
   )
+  return assertBatchPublishReviewResponse(response, request.paperInstanceIds)
 }
 
 /** 退回最终成绩发布复核。 */
-export function rejectPublishReview(
+export async function rejectPublishReview(
   request: ExamFinalScoreRejectPublishReviewRequest,
 ): Promise<FinalScoreId> {
-  return http.post<FinalScoreId>('/api/mark/exams/final-scores/reject-publish-review', request)
+  const response = await http.post<FinalScoreId>(
+    '/api/mark/exams/final-scores/reject-publish-review',
+    request,
+  )
+  return assertFinalScoreId(response)
 }
 
 /** 撤销本人提交的最终成绩发布复核。 */
-export function cancelPublishReview(
+export async function cancelPublishReview(
   request: ExamFinalScoreCancelPublishReviewRequest,
 ): Promise<FinalScoreId> {
-  return http.post<FinalScoreId>('/api/mark/exams/final-scores/cancel-publish-review', request)
+  const response = await http.post<FinalScoreId>(
+    '/api/mark/exams/final-scores/cancel-publish-review',
+    request,
+  )
+  return assertFinalScoreId(response)
 }
 
 /** 最终成绩 ID；后端 ResultInfo<Long>，客户端按 string 语义传递 */
 export type FinalScoreId = string
 
 /** 确认试卷最终成绩，仅落库 CONFIRMED 状态，不发送学生通知。 */
-export function confirmFinalScore(request: ExamFinalScoreConfirmRequest): Promise<FinalScoreId> {
-  return http.post<FinalScoreId>('/api/mark/exams/final-scores/confirm', request)
+export async function confirmFinalScore(
+  request: ExamFinalScoreConfirmRequest,
+): Promise<FinalScoreId> {
+  const response = await http.post<FinalScoreId>('/api/mark/exams/final-scores/confirm', request)
+  return assertFinalScoreId(response)
 }
 
 /** 撤回试卷最终成绩；作废同卷开放复核申请并通知学生。 */
-export function withdrawFinalScore(
+export async function withdrawFinalScore(
   request: ExamFinalScoreWithdrawRequest,
 ): Promise<ExamFinalScoreWithdrawResponse> {
-  return http.post<ExamFinalScoreWithdrawResponse>('/api/mark/exams/final-scores/withdraw', request)
+  const response = await http.post<ExamFinalScoreWithdrawResponse>(
+    '/api/mark/exams/final-scores/withdraw',
+    request,
+  )
+  if (!response.finalScoreId || !isNonNegativeInteger(response.invalidatedReviewRequestCount)) {
+    throw new TypeError('成绩撤回回执异常：成绩标识或作废复核数不可用')
+  }
+  return response
 }
 
 /** 查询考试分数分布（五级分段直方图）。 */

@@ -1,5 +1,5 @@
 <template>
-  <StageWorkbenchShell class="score-finalize-page">
+  <StageWorkbenchShell class="score-finalize-page" surface-density="dense">
     <template v-if="selectedExamId" #context>
       <ContextBar
         layout="workbench"
@@ -10,38 +10,26 @@
         <template #status>
           <UiTag v-if="scoresFullyPublished === true" tone="green" size="sm">已全部发布</UiTag>
           <UiTag
-            v-else-if="(effectiveRiskOverview?.pendingMyPublishReviewCount ?? 0) > 0"
+            v-else-if="
+              effectiveRiskOverview?.pendingMyPublishReviewCount != null &&
+              effectiveRiskOverview.pendingMyPublishReviewCount > 0
+            "
             tone="orange"
             size="sm"
           >
             待我复核
           </UiTag>
-          <UiTag v-else-if="blockingRiskReasons.length > 0" tone="orange" size="sm">
-            有阻塞
-          </UiTag>
+          <UiTag v-else-if="blockingRiskReasons.length > 0" tone="orange" size="sm"> 有阻塞 </UiTag>
         </template>
         <template #actions>
           <UiButton
-            v-if="canBatchConfirmSafe === true && scoreFinalizePrimaryAction?.key !== 'batch-confirm'"
+            v-if="canBatchConfirmSafe === true"
             variant="outline"
             size="sm"
             :loading="batchConfirming === true"
             @click="handleBatchConfirmSafe"
           >
             批量确认无风险
-          </UiButton>
-          <UiButton
-            v-if="scoreFinalizePrimaryAction"
-            variant="outline"
-            size="sm"
-            :loading="scoreFinalizePrimaryAction.loading"
-            :disabled="scoreFinalizePrimaryAction.disabled"
-            @click="scoreFinalizePrimaryAction.run()"
-          >
-            <template v-if="scoreFinalizePrimaryAction.key === 'bulk-submit'" #icon>
-              <ThunderboltOutlined />
-            </template>
-            {{ scoreFinalizePrimaryAction.label }}
           </UiButton>
         </template>
       </ContextBar>
@@ -62,8 +50,17 @@
     <template v-else>
       <ExamWorkspaceJourneySubNav />
 
+      <UiAlertStrip
+        v-if="panelLoadErrorMessage"
+        tone="error"
+        title="成绩工作台数据加载失败"
+        :description="panelLoadErrorMessage"
+        dense
+        inline
+        class="score-finalize__alert"
+      />
       <WorkbenchNoticeBanner
-        v-if="panelNotice"
+        v-else-if="panelNotice"
         :title="panelNotice.title"
         :description="panelNotice.description"
         :tone="panelNotice.tone"
@@ -99,16 +96,11 @@
       <ScoreConfirmReadinessPanel
         class="score-finalize__readiness"
         :overview="effectiveRiskOverview"
-        :exam-title="selectedExamTitle"
-        :candidate-count="effectiveRiskOverview?.totalCandidateCount ?? 0"
-        :can-bulk-publish="canBulkSubmitPublishReview === true"
         :can-batch-confirm-safe="canBatchConfirmSafe === true"
         :batch-confirming="batchConfirming === true"
-        :bulk-publishing="bulkSubmitRunning === true"
         :action-loading-code="readinessActionLoadingCode"
         @action="handleReadinessAction"
         @safe-confirm="handleBatchConfirmSafe"
-        @bulk-publish="openBulkSubmitReviewModal"
       />
 
       <UiAlertStrip
@@ -142,7 +134,7 @@
         @loaded="onExamArchiveGateLoaded"
       />
 
-      <WorkbenchSurfaceCard flush>
+      <WorkbenchSurfaceCard class="score-finalize__queue" flush>
         <template #head>
           <div class="score-finalize__table-head">
             <h3 class="score-finalize__table-title">发布队列</h3>
@@ -161,14 +153,6 @@
 
         <template #toolbar>
           <div class="score-finalize__table-toolbar">
-            <UiButton
-              size="sm"
-              v-if="blockingRiskReasons.length > 0"
-              variant="outline"
-              @click="openRiskReviewDrawer"
-            >
-              集中复核异常成绩
-            </UiButton>
             <div class="score-finalize__table-toolbar-main">
               <UiFilterBar
                 v-model="scoreFilterModel"
@@ -230,7 +214,15 @@
           </div>
         </template>
 
+        <UiStateBlock
+          v-if="candidatesLoadFailed"
+          state="error"
+          size="sm"
+          title="成绩发布队列加载失败"
+          :description="candidatesLoadErrorMessage"
+        />
         <UiDataTable
+          v-else
           v-model:current="pagination.current"
           v-model:page-size="pagination.pageSize"
           pagination-mode="server"
@@ -243,6 +235,8 @@
           :selected-row-keys="selectedCandidateRosterIds"
           size="middle"
           flat
+          fill-remaining
+          sticky-header
           @selection-change="handleCandidateSelectionChange"
           @page-change="handlePageChange"
         >
@@ -254,7 +248,9 @@
             </template>
             <template v-else-if="column.key === 'studentName'">
               <span class="score-summary-table__name">
-                <span class="score-summary-table__name-text">{{ tableCandidates[index].studentName || '—' }}</span>
+                <span class="score-summary-table__name-text">{{
+                  tableCandidates[index].studentName || '—'
+                }}</span>
                 <UiTag
                   v-if="tableCandidates[index].absenceScoreZero"
                   tone="orange"
@@ -266,7 +262,10 @@
               </span>
             </template>
             <template v-else-if="column.key === 'examScore'">
-              <span v-if="tableCandidates[index].examScore != null" class="score-summary-table__score">
+              <span
+                v-if="tableCandidates[index].examScore != null"
+                class="score-summary-table__score"
+              >
                 {{ tableCandidates[index].examScore }}
               </span>
               <span
@@ -307,13 +306,19 @@
               <div class="score-finalize__bias-cell">
                 <UiTag
                   :tone="
-                    biasLevelTone(classifyScoreBias(tableCandidates[index].finalScore, pageScoreStats))
+                    strictEnumTone(
+                      SCORE_BIAS_LEVEL_TONE,
+                      classifyScoreBias(tableCandidates[index].finalScore, pageScoreStats),
+                      '成绩偏差等级',
+                    )
                   "
                   size="sm"
                 >
                   {{
-                    biasLevelLabel(
+                    strictEnumLabel(
+                      ScoreBiasLevelDescription,
                       classifyScoreBias(tableCandidates[index].finalScore, pageScoreStats),
+                      '成绩偏差等级',
                     )
                   }}
                 </UiTag>
@@ -327,13 +332,29 @@
             </template>
             <template v-else-if="column.key === 'finalScoreStatus'">
               <div class="score-finalize__status-cell">
-                <UiTag :tone="finalScoreStatusTone(tableCandidates[index].finalScoreStatus)" size="sm">
-                  {{ finalScoreStatusLabel(tableCandidates[index].finalScoreStatus) }}
+                <UiTag
+                  :tone="
+                    strictEnumTone(
+                      FINAL_SCORE_STATUS_TONE,
+                      tableCandidates[index].finalScoreStatus,
+                      '最终成绩状态',
+                    )
+                  "
+                  size="sm"
+                >
+                  {{
+                    strictEnumLabel(
+                      FinalScoreStatusDescription,
+                      tableCandidates[index].finalScoreStatus,
+                      '最终成绩状态',
+                    )
+                  }}
                 </UiTag>
                 <span
                   v-if="
-                    tableCandidates[index].finalScoreStatus === FinalScoreStatusCode.PENDING_PUBLISH_REVIEW
-                      && tableCandidates[index].publishReviewerNames?.length
+                    tableCandidates[index].finalScoreStatus ===
+                      FinalScoreStatusCode.PENDING_PUBLISH_REVIEW &&
+                    tableCandidates[index].publishReviewerNames?.length
                   "
                   class="score-finalize__hint"
                 >
@@ -341,8 +362,9 @@
                 </span>
                 <span
                   v-if="
-                    tableCandidates[index].finalScoreStatus === FinalScoreStatusCode.PENDING_PUBLISH_REVIEW
-                      && tableCandidates[index].publishReviewSubmitUserName
+                    tableCandidates[index].finalScoreStatus ===
+                      FinalScoreStatusCode.PENDING_PUBLISH_REVIEW &&
+                    tableCandidates[index].publishReviewSubmitUserName
                   "
                   class="score-finalize__hint"
                 >
@@ -384,7 +406,13 @@
       @close="detailOpen = false"
     >
       <UiSkeletonState v-if="detailLoading" variant="card" compact />
-      <UiEmpty size="sm" v-else-if="!paperScore" description="暂无成绩明细" />
+      <UiStateBlock
+        v-else-if="!paperScore"
+        state="error"
+        size="sm"
+        title="成绩明细加载失败"
+        :description="detailLoadErrorMessage"
+      />
       <div v-else>
         <UiAlertStrip
           v-if="detailCandidate?.absenceScoreZero"
@@ -394,7 +422,6 @@
           dense
           inline
           class="score-finalize__detail-absence-alert"
-          style="margin-bottom: 12px"
         />
         <UiDescriptions :column="2" size="small" bordered class="score-finalize__detail-summary">
           <UiDescriptionsItem label="答卷">
@@ -419,8 +446,19 @@
             </span>
           </UiDescriptionsItem>
           <UiDescriptionsItem label="最终状态" :span="2">
-            <UiTag :tone="finalScoreStatusTone(paperScore.finalScoreStatus)" size="sm">
-              {{ finalScoreStatusLabel(paperScore.finalScoreStatus) }}
+            <UiTag
+              :tone="
+                strictEnumTone(FINAL_SCORE_STATUS_TONE, paperScore.finalScoreStatus, '最终成绩状态')
+              "
+              size="sm"
+            >
+              {{
+                strictEnumLabel(
+                  FinalScoreStatusDescription,
+                  paperScore.finalScoreStatus,
+                  '最终成绩状态',
+                )
+              }}
             </UiTag>
           </UiDescriptionsItem>
           <UiDescriptionsItem
@@ -459,7 +497,6 @@
           dense
           inline
           class="score-finalize__detail-correction-alert"
-          style="margin: 12px 0"
         />
 
         <UiAlertStrip
@@ -470,7 +507,6 @@
           dense
           inline
           class="score-finalize__detail-correction-alert"
-          style="margin: 12px 0"
         />
 
         <h4 class="score-finalize__detail-section-title">题目得分明细</h4>
@@ -520,6 +556,13 @@
           </span>
         </h4>
         <UiSkeletonState v-if="historicalLoading" variant="card" compact />
+        <UiStateBlock
+          v-else-if="historicalLoadFailed"
+          state="error"
+          size="sm"
+          title="历次成绩趋势加载失败"
+          description="当前学生的课程历史成绩不可用，已停止展示旧考试趋势。"
+        />
         <MarkTrendSection
           v-else
           title=""
@@ -536,6 +579,13 @@
 
         <h4 class="score-finalize__detail-section-title">操作记录</h4>
         <UiSkeletonState v-if="auditLoading" variant="card" compact />
+        <UiStateBlock
+          v-else-if="auditLoadFailed"
+          state="error"
+          size="sm"
+          title="操作记录加载失败"
+          description="当前成绩审计记录不可用，已停止展示旧答卷的操作历史。"
+        />
         <UiActivityTimeline
           v-else-if="auditTimelineGroups.length > 0"
           :groups="auditTimelineGroups"
@@ -596,7 +646,7 @@
             :min="0"
             :max="dailyScoreFull ?? undefined"
             :precision="2"
-            style="width: 100%"
+            class="score-finalize__full-width-control"
             placeholder="请输入日常成绩"
           />
           <div v-if="dailyScoreFull != null" class="score-finalize__hint">
@@ -614,11 +664,7 @@
             确认后立即提交发布复核
           </UiCheckbox>
         </UiFormItem>
-        <UiFormItem
-          v-if="confirmAndSubmitReview === true"
-          label="指定发布复核人"
-          :required="true"
-        >
+        <UiFormItem v-if="confirmAndSubmitReview === true" label="指定发布复核人" :required="true">
           <TeacherSelector
             v-model:value="confirmSubmitReviewerUserIds"
             mode="multiple"
@@ -691,7 +737,7 @@
               :min="0"
               :max="dailyScoreFull ?? undefined"
               :precision="2"
-              style="width: 100%"
+              class="score-finalize__full-width-control"
               placeholder="日常分"
             />
           </template>
@@ -758,8 +804,8 @@
           </UiButton>
           <UiButton
             v-else-if="
-              canRepairAbsenceScoreZeroFinal === true
-                && reason.reasonCode === FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
+              canRepairAbsenceScoreZeroFinal === true &&
+              reason.reasonCode === FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
             "
             size="sm"
             variant="outline"
@@ -770,17 +816,17 @@
           </UiButton>
           <UiButton
             v-if="
-              canManageReviewerWrites === true
-                && !isHardBlockingRiskReason(reason.reasonCode)
-                && !isQuestionConfirmRiskReason(reason.reasonCode)
-                && reason.reasonCode !== FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
+              canManageReviewerWrites === true &&
+              !isHardBlockingRiskReason(reason.reasonCode) &&
+              !isQuestionConfirmRiskReason(reason.reasonCode) &&
+              reason.reasonCode !== FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
             "
             size="sm"
             variant="outline"
             :loading="riskReviewSavingReasonCode === reason.reasonCode"
             :disabled="
-              riskReviewSavingReasonCode !== null
-                && riskReviewSavingReasonCode !== reason.reasonCode
+              riskReviewSavingReasonCode !== null &&
+              riskReviewSavingReasonCode !== reason.reasonCode
             "
             @click="toggleRiskReasonReviewed(reason.reasonCode)"
           >
@@ -811,8 +857,8 @@
         </UiFormItem>
         <p
           v-if="
-            withdrawCandidate?.finalScoreStatus === FinalScoreStatusCode.PUBLISHED
-              || withdrawCandidate?.finalScoreStatus === FinalScoreStatusCode.CORRECTED
+            withdrawCandidate?.finalScoreStatus === FinalScoreStatusCode.PUBLISHED ||
+            withdrawCandidate?.finalScoreStatus === FinalScoreStatusCode.CORRECTED
           "
           class="dp-text-muted-xs dp-mb-component"
         >
@@ -844,11 +890,7 @@
     >
       <UiForm layout="vertical">
         <UiFormItem label="题号">
-          <UiInput
-            size="sm"
-            :value="withdrawnRescoreQuestion?.questionNo ?? ''"
-            disabled
-          />
+          <UiInput size="sm" :value="withdrawnRescoreQuestion?.questionNo ?? ''" disabled />
         </UiFormItem>
         <UiFormItem label="教师复核评分" required>
           <UiInputNumber
@@ -857,7 +899,7 @@
             :min="0"
             :max="withdrawnRescoreQuestion?.fullScore"
             :precision="2"
-            style="width: 100%"
+            class="score-finalize__full-width-control"
           />
         </UiFormItem>
         <UiFormItem label="改分原因" required>
@@ -953,8 +995,8 @@
       </UiForm>
       <div v-if="bulkSubmitResult" class="score-finalize__bulk-result">
         <div class="score-finalize__bulk-meta">
-          本次成功 {{ bulkSubmitResult.successCount }} 条 · 失败 {{ bulkSubmitResult.failureCount }} 条 ·
-          请求 {{ bulkSubmitResult.requestedCount }} 条
+          本次成功 {{ bulkSubmitResult.successCount }} 条 · 失败
+          {{ bulkSubmitResult.failureCount }} 条 · 请求 {{ bulkSubmitResult.requestedCount }} 条
         </div>
         <div
           v-if="bulkSubmitFailureGroupsSummary"
@@ -968,10 +1010,7 @@
         size="small"
         class="score-finalize__bulk-list"
       >
-        <UiListItem
-          v-for="failure in bulkSubmitResult.failures"
-          :key="failure.paperInstanceId"
-        >
+        <UiListItem v-for="failure in bulkSubmitResult.failures" :key="failure.paperInstanceId">
           <UiListItemMeta>
             <template #title>
               {{ formatBatchFailureTarget(failure) }}
@@ -1044,8 +1083,9 @@
       </UiForm>
       <div v-if="selectionSubmitResult" class="score-finalize__bulk-result">
         <div class="score-finalize__bulk-meta">
-          本次成功 {{ selectionSubmitResult.successCount }} 条 · 失败 {{ selectionSubmitResult.failureCount }} 条 ·
-          请求 {{ selectionSubmitResult.requestedCount }} 条
+          本次成功 {{ selectionSubmitResult.successCount }} 条 · 失败
+          {{ selectionSubmitResult.failureCount }} 条 · 请求
+          {{ selectionSubmitResult.requestedCount }} 条
         </div>
         <div
           v-if="selectionSubmitFailureGroupsSummary"
@@ -1090,8 +1130,8 @@
     >
       <div v-if="batchApproveResult" class="score-finalize__bulk-result">
         <div class="score-finalize__bulk-meta">
-          本次成功 {{ batchApproveResult.successCount }} 条 · 失败 {{ batchApproveResult.failureCount }} 条 ·
-          请求 {{ batchApproveResult.requestedCount }} 条
+          本次成功 {{ batchApproveResult.successCount }} 条 · 失败
+          {{ batchApproveResult.failureCount }} 条 · 请求 {{ batchApproveResult.requestedCount }} 条
         </div>
         <div
           v-if="batchApproveFailureGroupsSummary"
@@ -1105,10 +1145,7 @@
         size="small"
         class="score-finalize__bulk-list"
       >
-        <UiListItem
-          v-for="failure in batchApproveResult.failures"
-          :key="failure.paperInstanceId"
-        >
+        <UiListItem v-for="failure in batchApproveResult.failures" :key="failure.paperInstanceId">
           <UiListItemMeta>
             <template #title>
               {{ formatBatchFailureTarget(failure) }}
@@ -1166,10 +1203,19 @@ import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { OperationLogResponse } from '@/apis/mark/admin-audit'
+import {
+  AuditTargetTypeCode,
+  listOperationLogs,
+  OPERATION_TYPE_TONE,
+  OperationTypeDescription,
+} from '@/apis/mark/admin-audit'
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
+import { confirmQuestionGrade, getPaperScore } from '@/apis/mark/exam-grade'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
+import { getScorePanel } from '@/apis/mark/exam-progress'
 import type {
   ExamScoreSummaryItemResponse,
   FinalScoreBatchPublishFailureResponse,
@@ -1177,9 +1223,26 @@ import type {
   FinalScoreFailureGroupResponse,
   FinalScoreReadinessActionCode,
   FinalScoreReadinessItemResponse,
-  FinalScoreRiskOverviewResponse, FinalScoreSafeConfirmableCandidateResponse
+  FinalScoreRiskOverviewResponse,
+  FinalScoreSafeConfirmableCandidateResponse,
 } from '@/apis/mark/exam-score'
-import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
+import {
+  approvePublishReview,
+  batchApprovePublishReview,
+  batchConfirmSafeFinalScores,
+  batchSubmitPublishReview,
+  cancelPublishReview,
+  confirmAndSubmitPublishReview,
+  confirmFinalScore,
+  FinalScoreRiskReasonCode,
+  getFinalScoreRiskOverview,
+  listSafeConfirmableCandidates,
+  pageExamScoreSummary,
+  rejectPublishReview,
+  saveFinalScoreRiskReview,
+  submitPublishReview,
+  withdrawFinalScore,
+} from '@/apis/mark/exam-score'
 import type {
   BadgeTone,
   FilterField,
@@ -1188,22 +1251,16 @@ import type {
 } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import {
+  buildScoreBulkPublishModalStatItems,
+  buildScoreConfirmStatusTabItems,
+  SCORE_STATUS_TAB_ALL,
+} from '@/utils/score-workbench-analytics'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { repairScoreZeroFinalScores } from '@/apis/mark/absence'
-import {
-  AuditTargetTypeCode,
-  listOperationLogs,
-  OPERATION_TYPE_TONE,
-  OperationTypeDescription,
-} from '@/apis/mark/admin-audit'
-import { getExamDetail, pageExams } from '@/apis/mark/exam'
-import { confirmQuestionGrade, getPaperScore } from '@/apis/mark/exam-grade'
-import { getScorePanel } from '@/apis/mark/exam-progress'
-import { approvePublishReview, batchApprovePublishReview, batchConfirmSafeFinalScores, batchSubmitPublishReview, cancelPublishReview, confirmAndSubmitPublishReview, confirmFinalScore, FinalScoreRiskReasonCode, getFinalScoreRiskOverview, listSafeConfirmableCandidates, pageExamScoreSummary, rejectPublishReview, saveFinalScoreRiskReview, submitPublishReview, withdrawFinalScore } from '@/apis/mark/exam-score'
 import {
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusCode,
@@ -1242,6 +1299,7 @@ import UiListItem from '@/components/ui-guide/ui/UiListItem.vue'
 import UiListItemMeta from '@/components/ui-guide/ui/UiListItemMeta.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -1273,23 +1331,10 @@ import { buildTrendChartInsight } from '@/utils/mark-chart-insights'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { formatFinalScoreFailureGroups } from '@/utils/score-confirm-readiness'
 import { isExamScoresFullyPublished } from '@/utils/score-release-readiness'
-import {
-  buildScoreBulkPublishModalStatItems,
-  buildScoreConfirmStatusTabItems,
-  SCORE_STATUS_TAB_ALL,
-} from '@/utils/score-workbench-analytics'
 import { buildScoreFinalizeSignalMetrics } from '@/utils/score-workbench-signal'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScoreFinalize' })
-
-function finalScoreStatusTone(value: FinalScoreStatusCode) {
-  return strictEnumTone(FINAL_SCORE_STATUS_TONE, value, '最终成绩状态')
-}
-
-function finalScoreStatusLabel(value: FinalScoreStatusCode): string {
-  return strictEnumLabel(FinalScoreStatusDescription, value, '最终成绩状态')
-}
 
 interface ScoreFilterForm {
   [key: string]: unknown
@@ -1366,13 +1411,16 @@ const scoreFilterFields = computed<FilterField[]>(() => {
 })
 
 const showIncompleteClassChip = computed(
-  () => (examArchiveGate.value?.unpublishedBoundPaperCount ?? 0) > 0,
+  () =>
+    examArchiveGate.value?.unpublishedBoundPaperCount != null &&
+    examArchiveGate.value.unpublishedBoundPaperCount > 0,
 )
 
 const showPendingMyReviewChip = computed(
   () =>
-    pendingMyReviewOnly.value === true
-    || (effectiveRiskOverview.value?.pendingMyPublishReviewCount ?? 0) > 0,
+    pendingMyReviewOnly.value === true ||
+    (effectiveRiskOverview.value?.pendingMyPublishReviewCount != null &&
+      effectiveRiskOverview.value.pendingMyPublishReviewCount > 0),
 )
 
 /** 列表展示源：待我复核由服务端过滤，前端不再二次截断 */
@@ -1453,16 +1501,28 @@ const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
 
 const examDetail = ref<ExamDetailResponse | null>(null)
+const examDetailLoadError = ref('')
+let scoreDataGeneration = 0
 
-async function loadExamDetail(): Promise<void> {
+/** 读取当前考试上下文，并隔离切换考试后的过期详情响应。 */
+async function loadExamDetail(expectedGeneration = scoreDataGeneration): Promise<void> {
   if (!selectedExamId.value) {
     examDetail.value = null
+    examDetailLoadError.value = ''
     return
   }
+  const expectedExamId = selectedExamId.value
   try {
-    examDetail.value = await getExamDetail(selectedExamId.value)
+    const detail = await getExamDetail(expectedExamId)
+    if (expectedGeneration !== scoreDataGeneration || selectedExamId.value !== expectedExamId)
+      return
+    examDetail.value = detail
+    examDetailLoadError.value = ''
   } catch (error) {
+    if (expectedGeneration !== scoreDataGeneration || selectedExamId.value !== expectedExamId)
+      return
     examDetail.value = null
+    examDetailLoadError.value = getUserErrorMessage(error, '考试详情加载失败')
     showUserError(error, '考试详情加载失败')
   }
 }
@@ -1471,10 +1531,13 @@ async function loadExamDetail(): Promise<void> {
 const candidates = ref<ExamScoreSummaryItemResponse[]>([])
 const loading = ref(false)
 let candidatesRequestSequence = 0
+const candidatesLoadFailed = ref(false)
+const candidatesLoadErrorMessage = ref('当前成绩发布队列不可用，已停止展示旧考试数据。')
 const riskOverview = ref<FinalScoreRiskOverviewResponse | null>(null)
 const scorePanel = ref<ExamWorkbenchScorePanelResponse | null>(null)
 const riskOverviewLoading = ref(false)
 const panelLoadError = ref('')
+const scorePanelLoadError = ref('')
 
 const statusTabItems = computed(() => buildScoreConfirmStatusTabItems(effectiveRiskOverview.value))
 
@@ -1489,8 +1552,8 @@ const canManageReviewerWrites = computed(
 
 /** 指定复核人工作台提示：可不在阅卷组织，仅签审通过后学生可见 */
 const publishReviewerNotice = computed(() => {
-  const pendingMy = effectiveRiskOverview.value?.pendingMyPublishReviewCount ?? 0
-  if (pendingMy <= 0) {
+  const pendingMy = effectiveRiskOverview.value?.pendingMyPublishReviewCount
+  if (pendingMy == null || pendingMy <= 0) {
     return ''
   }
   if (canManageReviewerWrites.value === true) {
@@ -1516,15 +1579,14 @@ const panelNotice = computed(() => {
       action: 'scan' as const,
     }
   }
-  if (panelLoadError.value && !effectiveRiskOverview.value) {
-    return {
-      title: '成绩风险概览暂不可用',
-      description: panelLoadError.value,
-      tone: 'info' as const,
-      action: null,
-    }
-  }
   return null
+})
+
+const panelLoadErrorMessage = computed(() => {
+  if (examDetailLoadError.value) return examDetailLoadError.value
+  if (scorePanelLoadError.value) return scorePanelLoadError.value
+  if (panelLoadError.value && !effectiveRiskOverview.value) return panelLoadError.value
+  return ''
 })
 
 const {
@@ -1585,17 +1647,25 @@ const referenceDepartmentId = computed(() => examDetail.value?.referenceDepartme
 
 const selectedCandidateRosterIds = ref<string[]>([])
 
-const tableSelectionEnabled = computed(
-  () =>
+const tableSelectionEnabled = computed(() => {
+  const publishable = publishableOverviewCount.value
+  const pendingPublish = effectiveRiskOverview.value?.pendingPublishReviewCount
+  const pendingMine = effectiveRiskOverview.value?.pendingMyPublishReviewCount
+  return (
     // 提交人侧：评阅写权 + 可提交/全场待审
-    (canManageReviewerWrites.value === true
-      && (publishableOverviewCount.value ?? 0) + (effectiveRiskOverview.value?.pendingPublishReviewCount ?? 0) > 0)
+    (canManageReviewerWrites.value === true &&
+      publishable != null &&
+      pendingPublish != null &&
+      publishable + pendingPublish > 0) ||
     // 指定复核人侧：仅有待我签审时也可勾选批量通过（不必是本场写权教师）
-    || (effectiveRiskOverview.value?.pendingMyPublishReviewCount ?? 0) > 0,
-)
+    (pendingMine != null && pendingMine > 0)
+  )
+})
 
 const selectedCandidates = computed(() =>
-  candidates.value.filter((item) => selectedCandidateRosterIds.value.includes(item.candidateRosterId)),
+  candidates.value.filter((item) =>
+    selectedCandidateRosterIds.value.includes(item.candidateRosterId),
+  ),
 )
 
 const selectedSubmitReviewCount = computed(
@@ -1629,13 +1699,16 @@ const columns = computed(() =>
 const hasDailyScoreConfig = computed(() => examDetail.value?.dailyScoreFull != null)
 const dailyScoreFull = computed(() => examDetail.value?.dailyScoreFull ?? null)
 
-async function loadCandidates(): Promise<void> {
+/** 读取当前考试成绩发布队列，并隔离分页、筛选和切考试产生的过期响应。 */
+async function loadCandidates(expectedGeneration = scoreDataGeneration): Promise<void> {
   if (!selectedExamId.value) return
+  const expectedExamId = selectedExamId.value
   const requestSequence = ++candidatesRequestSequence
   loading.value = true
+  candidatesLoadFailed.value = false
   try {
     const result = await pageExamScoreSummary({
-      examId: selectedExamId.value,
+      examId: expectedExamId,
       keyword: scoreFilterForm.keyword.trim() || undefined,
       finalScoreStatus: pendingMyReviewOnly.value
         ? FinalScoreStatusCode.PENDING_PUBLISH_REVIEW
@@ -1648,7 +1721,11 @@ async function loadCandidates(): Promise<void> {
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? DEFAULT_LIST_PAGE_SIZE,
     })
-    if (requestSequence !== candidatesRequestSequence) {
+    if (
+      expectedGeneration !== scoreDataGeneration ||
+      requestSequence !== candidatesRequestSequence ||
+      selectedExamId.value !== expectedExamId
+    ) {
       return
     }
     candidates.value = result.list
@@ -1660,53 +1737,90 @@ async function loadCandidates(): Promise<void> {
       pagination.pageSize = result.pageSize
     }
   } catch (error) {
-    if (requestSequence !== candidatesRequestSequence) {
+    if (
+      expectedGeneration !== scoreDataGeneration ||
+      requestSequence !== candidatesRequestSequence ||
+      selectedExamId.value !== expectedExamId
+    ) {
       return
     }
+    candidates.value = []
+    pagination.total = 0
+    candidatesLoadFailed.value = true
+    candidatesLoadErrorMessage.value = getUserErrorMessage(
+      error,
+      '当前成绩发布队列不可用，已停止展示旧考试数据。',
+    )
     showUserError(error, '成绩确认名单加载失败')
   } finally {
-    if (requestSequence === candidatesRequestSequence) {
+    if (
+      expectedGeneration === scoreDataGeneration &&
+      requestSequence === candidatesRequestSequence &&
+      selectedExamId.value === expectedExamId
+    ) {
       loading.value = false
     }
   }
 }
 
-async function loadRiskOverview(): Promise<void> {
+/** 读取当前考试成绩风险概览，失败时保留持久阻断说明。 */
+async function loadRiskOverview(expectedGeneration = scoreDataGeneration): Promise<void> {
   if (!selectedExamId.value) {
     riskOverview.value = null
     panelLoadError.value = ''
     return
   }
+  const expectedExamId = selectedExamId.value
   riskOverviewLoading.value = true
   panelLoadError.value = ''
   try {
-    riskOverview.value = await getFinalScoreRiskOverview({ examId: selectedExamId.value })
+    const overview = await getFinalScoreRiskOverview({ examId: expectedExamId })
+    if (expectedGeneration !== scoreDataGeneration || selectedExamId.value !== expectedExamId)
+      return
+    riskOverview.value = overview
   } catch (error) {
+    if (expectedGeneration !== scoreDataGeneration || selectedExamId.value !== expectedExamId)
+      return
     riskOverview.value = null
-    scorePanel.value = null
     panelLoadError.value = getUserErrorMessage(error, '成绩风险概览加载失败')
   } finally {
-    riskOverviewLoading.value = false
+    if (expectedGeneration === scoreDataGeneration && selectedExamId.value === expectedExamId) {
+      riskOverviewLoading.value = false
+    }
   }
 }
 
-async function loadScorePanel(): Promise<void> {
+/** 读取当前考试工作台成绩面板，失败状态必须持续显示。 */
+async function loadScorePanel(expectedGeneration = scoreDataGeneration): Promise<void> {
   if (!selectedExamId.value) {
     scorePanel.value = null
+    scorePanelLoadError.value = ''
     return
   }
+  const expectedExamId = selectedExamId.value
+  scorePanelLoadError.value = ''
   try {
-    scorePanel.value = await getScorePanel(selectedExamId.value)
+    const panel = await getScorePanel(expectedExamId)
+    if (expectedGeneration !== scoreDataGeneration || selectedExamId.value !== expectedExamId)
+      return
+    scorePanel.value = panel
   } catch (error) {
+    if (expectedGeneration !== scoreDataGeneration || selectedExamId.value !== expectedExamId)
+      return
     scorePanel.value = null
+    scorePanelLoadError.value = getUserErrorMessage(error, '成绩面板加载失败')
     showUserError(error, '成绩面板加载失败')
   }
 }
 
-async function refreshScoreFinalizeData(): Promise<void> {
-  await loadScorePanel()
-  await Promise.all([loadCandidates(), loadRiskOverview()])
-  applyReviewerLandingDefaults()
+/** 刷新成绩确认页的三块读模型，并保证同一考试代际才继续派生筛选。 */
+async function refreshScoreFinalizeData(expectedGeneration = scoreDataGeneration): Promise<void> {
+  await loadScorePanel(expectedGeneration)
+  if (expectedGeneration !== scoreDataGeneration) return
+  await Promise.all([loadCandidates(expectedGeneration), loadRiskOverview(expectedGeneration)])
+  if (expectedGeneration === scoreDataGeneration) {
+    applyReviewerLandingDefaults()
+  }
 }
 
 /**
@@ -1716,15 +1830,13 @@ function applyReviewerLandingDefaults(): void {
   if (autoPendingMyReviewApplied.value === true) {
     return
   }
-  const pendingMy = effectiveRiskOverview.value?.pendingMyPublishReviewCount ?? 0
-  if (pendingMy <= 0) {
+  const pendingMy = effectiveRiskOverview.value?.pendingMyPublishReviewCount
+  if (pendingMy == null || pendingMy <= 0) {
     return
   }
   const queryFlag = route.query.pendingMyReview
-  const fromNotification
-    = queryFlag === '1' || queryFlag === 'true' || queryFlag === 'yes'
-  const pureDesignatedReviewer
-    = canManageReviewerWrites.value !== true && pendingMy > 0
+  const fromNotification = queryFlag === '1' || queryFlag === 'true' || queryFlag === 'yes'
+  const pureDesignatedReviewer = canManageReviewerWrites.value !== true && pendingMy > 0
   if (fromNotification !== true && pureDesignatedReviewer !== true) {
     return
   }
@@ -1781,7 +1893,7 @@ function handleStatusTabChange(tabKey: Key): void {
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
@@ -1814,8 +1926,8 @@ function confirmButtonLabel(record: ExamScoreSummaryItemResponse): string {
   return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN ? '重新确认' : '确认'
 }
 function submitReviewButtonLabel(record: ExamScoreSummaryItemResponse): string {
-  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN
-    || record.finalScoreStatus === FinalScoreStatusCode.CORRECTED
+  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN ||
+    record.finalScoreStatus === FinalScoreStatusCode.CORRECTED
     ? '重新提交复核'
     : '提交发布复核'
 }
@@ -1867,10 +1979,10 @@ const hasUnreviewedBlockingRisks = computed(() => {
   // 未确认题目分 / 缺批改 / 计零终分待补齐：硬引导处置，不走「标记已复核」软通过
   return blockingRiskReasons.value.some(
     (reason) =>
-      !FINAL_SCORE_WRITE_HARD_BLOCK_REASON_CODES.has(reason.reasonCode)
-      && !isQuestionConfirmRiskReason(reason.reasonCode)
-      && reason.reasonCode !== FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
-      && !reviewedRiskReasonCodes.value.has(reason.reasonCode),
+      !FINAL_SCORE_WRITE_HARD_BLOCK_REASON_CODES.has(reason.reasonCode) &&
+      !isQuestionConfirmRiskReason(reason.reasonCode) &&
+      reason.reasonCode !== FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL &&
+      !reviewedRiskReasonCodes.value.has(reason.reasonCode),
   )
 })
 
@@ -1888,8 +2000,8 @@ function isHardBlockingRiskReason(reasonCode: FinalScoreRiskReasonCode): boolean
 
 function isQuestionConfirmRiskReason(reasonCode: FinalScoreRiskReasonCode): boolean {
   return (
-    reasonCode === FinalScoreRiskReasonCode.UNCONFIRMED_QUESTION_GRADE
-    || reasonCode === FinalScoreRiskReasonCode.MISSING_QUESTION_GRADE
+    reasonCode === FinalScoreRiskReasonCode.UNCONFIRMED_QUESTION_GRADE ||
+    reasonCode === FinalScoreRiskReasonCode.MISSING_QUESTION_GRADE
   )
 }
 
@@ -1934,8 +2046,8 @@ async function toggleRiskReasonReviewed(reasonCode: FinalScoreRiskReasonCode): P
   if (FINAL_SCORE_WRITE_HARD_BLOCK_REASON_CODES.has(reasonCode)) return
   // ABNORMAL_PAPER 可标记已复核（允许先发其它已确认卷），但引导去扫描处置，不能当缺考。
   if (
-    reasonCode === FinalScoreRiskReasonCode.UNCONFIRMED_QUESTION_GRADE
-    || reasonCode === FinalScoreRiskReasonCode.MISSING_QUESTION_GRADE
+    reasonCode === FinalScoreRiskReasonCode.UNCONFIRMED_QUESTION_GRADE ||
+    reasonCode === FinalScoreRiskReasonCode.MISSING_QUESTION_GRADE
   ) {
     void message.warning(
       reasonCode === FinalScoreRiskReasonCode.MISSING_QUESTION_GRADE
@@ -1993,7 +2105,9 @@ function warnUnreviewedBlockingRisks(): boolean {
 function warnFieldWideSafeBatchBlockers(): boolean {
   if (hasHardBlockingRisks.value || hasFieldWideHardBlockForWrite.value) {
     riskReviewDrawerOpen.value = true
-    void message.warning('存在场级硬拦（缺考核对 / 阻塞事件 / 重复影像），暂不可安全批量确认最终成绩')
+    void message.warning(
+      '存在场级硬拦（缺考核对 / 阻塞事件 / 重复影像），暂不可安全批量确认最终成绩',
+    )
     return true
   }
   return false
@@ -2001,12 +2115,12 @@ function warnFieldWideSafeBatchBlockers(): boolean {
 
 /** 未确认题目得分的答卷数（产品门禁：硬判/AI 仍须教师确认） */
 const unconfirmedQuestionGradeCount = computed(
-  () => effectiveRiskOverview.value?.unconfirmedQuestionGradeCount ?? 0,
+  () => effectiveRiskOverview.value?.unconfirmedQuestionGradeCount,
 )
 
 /** 已确认计零但尚未写入正式零分终分的人数（须一键补齐，不自动洗库） */
 const missingAbsenceScoreZeroFinalCount = computed(
-  () => effectiveRiskOverview.value?.missingAbsenceScoreZeroFinalCount ?? 0,
+  () => effectiveRiskOverview.value?.missingAbsenceScoreZeroFinalCount,
 )
 
 const repairingScoreZero = ref(false)
@@ -2051,12 +2165,12 @@ async function handleRepairScoreZero(): Promise<void> {
 const canBatchConfirmSafe = computed(() => {
   const overview = effectiveRiskOverview.value
   return Boolean(
-    overview
-    && canManageReviewerWrites.value === true
-    && overview.safeConfirmableCount > 0
-    && hasHardBlockingRisks.value !== true
-    && hasFieldWideHardBlockForWrite.value !== true
-    && batchConfirming.value !== true,
+    overview &&
+    canManageReviewerWrites.value === true &&
+    overview.safeConfirmableCount > 0 &&
+    hasHardBlockingRisks.value !== true &&
+    hasFieldWideHardBlockForWrite.value !== true &&
+    batchConfirming.value !== true,
   )
 })
 
@@ -2093,8 +2207,8 @@ async function openBatchDailyConfirmDrawer(): Promise<void> {
   batchDailyCandidatesLoading.value = true
   batchDailyConfirmRows.value = []
   try {
-    const candidates: FinalScoreSafeConfirmableCandidateResponse[]
-      = await listSafeConfirmableCandidates({ examId: selectedExamId.value })
+    const candidates: FinalScoreSafeConfirmableCandidateResponse[] =
+      await listSafeConfirmableCandidates({ examId: selectedExamId.value })
     batchDailyConfirmRows.value = candidates.map((item) => ({
       paperInstanceId: item.paperInstanceId,
       studentNo: item.studentNo,
@@ -2164,9 +2278,7 @@ async function applyBatchConfirmResult(
     const reasonText = result.skipReasons
       .map((reason) => `${reason.reasonName} ${reason.count}`)
       .join('，')
-    void message.warning(
-      reasonText ? `批量确认已跳过：${reasonText}` : '当前没有可批量确认的成绩',
-    )
+    void message.warning(reasonText ? `批量确认已跳过：${reasonText}` : '当前没有可批量确认的成绩')
   } else {
     void message.info('当前没有可批量确认的成绩')
   }
@@ -2214,20 +2326,18 @@ async function handleBatchConfirmSafe(): Promise<void> {
 const selectedExamTitle = computed(() => examDetail.value?.examName?.trim() || '')
 
 /** 任务工作台标题：优先考试名。 */
-const scoreFinalizeWorkbenchTitle = computed(
-  () => selectedExamTitle.value || '成绩确认与发布',
-)
+const scoreFinalizeWorkbenchTitle = computed(() => selectedExamTitle.value || '成绩确认与发布')
 
 /** 任务工作台副标题：发布流水线当前阻塞/阶段真数。 */
 const scoreFinalizeWorkbenchSubtitle = computed(() => {
-  if (unconfirmedQuestionGradeCount.value > 0) {
+  if (unconfirmedQuestionGradeCount.value != null && unconfirmedQuestionGradeCount.value > 0) {
     return `${unconfirmedQuestionGradeCount.value} 题待确认`
   }
   if (scoresFullyPublished.value === true) {
     return '已全部发布'
   }
-  const pendingMy = effectiveRiskOverview.value?.pendingMyPublishReviewCount ?? 0
-  if (pendingMy > 0) {
+  const pendingMy = effectiveRiskOverview.value?.pendingMyPublishReviewCount
+  if (pendingMy != null && pendingMy > 0) {
     return `待我复核 ${pendingMy} 份`
   }
   if (blockingRiskReasons.value.length > 0) {
@@ -2241,51 +2351,6 @@ const scoreFinalizeWorkbenchSubtitle = computed(() => {
   }
   const total = effectiveRiskOverview.value?.totalCandidateCount
   return total != null ? `${total} 名考生` : '成绩确认工作台'
-})
-
-/**
- * 页级唯一实心主行动：题目确认 → 待我复核 → 全场提交复核 → 批量确认无风险。
- * 就绪面板/表工具条不再重复实心主按钮。
- */
-const scoreFinalizePrimaryAction = computed(() => {
-  if (unconfirmedQuestionGradeCount.value > 0) {
-    return {
-      key: 'question-review',
-      label: `题目分待确认 ${unconfirmedQuestionGradeCount.value}`,
-      loading: false,
-      disabled: false,
-      run: () => goQuestionReviewBatch(),
-    }
-  }
-  const pendingMy = effectiveRiskOverview.value?.pendingMyPublishReviewCount ?? 0
-  if (pendingMy > 0) {
-    return {
-      key: 'pending-my-review',
-      label: `仅看待我复核 ${pendingMy}`,
-      loading: false,
-      disabled: false,
-      run: () => filterPendingMyPublishReviewOnly(),
-    }
-  }
-  if (canManageReviewerWrites.value === true) {
-    return {
-      key: 'bulk-submit',
-      label: '全场提交发布复核',
-      loading: bulkSubmitRunning.value === true,
-      disabled: canBulkSubmitPublishReview.value !== true,
-      run: () => openBulkSubmitReviewModal(),
-    }
-  }
-  if (canBatchConfirmSafe.value === true) {
-    return {
-      key: 'batch-confirm',
-      label: '批量确认无风险成绩',
-      loading: batchConfirming.value === true,
-      disabled: false,
-      run: () => handleBatchConfirmSafe(),
-    }
-  }
-  return null
 })
 
 /** SignalBand 主卡下钻到对应队列筛选/风险抽屉。 */
@@ -2384,9 +2449,9 @@ function bulkModalValueClass(valClass?: string): string | undefined {
 
 const canBulkSubmitPublishReview = computed(
   () =>
-    Boolean(selectedExamId.value)
-    && canManageReviewerWrites.value === true
-    && effectiveRiskOverview.value?.readyToSubmitPublishReview === true,
+    Boolean(selectedExamId.value) &&
+    canManageReviewerWrites.value === true &&
+    effectiveRiskOverview.value?.readyToSubmitPublishReview === true,
 )
 
 const bulkSubmitOpen = ref(false)
@@ -2566,14 +2631,6 @@ const pageScoreStats = computed(() =>
   ),
 )
 
-function biasLevelLabel(level: ScoreBiasLevelCode): string {
-  return strictEnumLabel(ScoreBiasLevelDescription, level, '成绩偏差等级')
-}
-
-function biasLevelTone(level: ScoreBiasLevelCode): BadgeTone {
-  return strictEnumTone(SCORE_BIAS_LEVEL_TONE, level, '成绩偏差等级')
-}
-
 function buildFinalizeActions(record: ExamScoreSummaryItemResponse): UiTableRowActionItem[] {
   // 只渲染当前可用动作；行内唯一 primary 置顶（maxVisible=2 → 主行动 + ⋯）
   const confirmable = canConfirm(record)
@@ -2692,9 +2749,9 @@ function canWithdraw(record: ExamScoreSummaryItemResponse): boolean {
   }
   // MVR-184：与 BE withdrawFinalScore 对齐，CONFIRMED 可直接撤销确认，无需先发布再撤回
   return (
-    s === FinalScoreStatusCode.CONFIRMED
-    || s === FinalScoreStatusCode.PUBLISHED
-    || s === FinalScoreStatusCode.CORRECTED
+    s === FinalScoreStatusCode.CONFIRMED ||
+    s === FinalScoreStatusCode.PUBLISHED ||
+    s === FinalScoreStatusCode.CORRECTED
   )
 }
 function withdrawButtonLabel(record: ExamScoreSummaryItemResponse): string {
@@ -2704,8 +2761,10 @@ function withdrawButtonLabel(record: ExamScoreSummaryItemResponse): string {
 // ─── 成绩明细 Drawer ─────────────────────────────
 const detailOpen = ref(false)
 const detailLoading = ref(false)
+let detailRequestSequence = 0
 const detailCandidate = ref<ExamScoreSummaryItemResponse | null>(null)
 const paperScore = ref<ExamPaperScoreResponse | null>(null)
+const detailLoadErrorMessage = ref('当前答卷成绩明细不可用，已停止展示旧答卷数据。')
 
 // computed 派生强类型题目数组，模板侧用 paperQuestions[index] 取 VO，避免 a-table slot record 类型丢失。
 const paperQuestions = computed<ExamQuestionScoreResponse[]>(
@@ -2718,8 +2777,8 @@ const paperTotalScoreCorrectionNotice = computed(() => {
   if (!score) return null
   // 题分之和与官方考试分不一致时始终提示；不依赖「最近一条更正是否为总分」。
   if (
-    score.questionScoreSumMatchesExamScore !== false
-    && !score.latestTotalScoreCorrectionApplied
+    score.questionScoreSumMatchesExamScore !== false &&
+    !score.latestTotalScoreCorrectionApplied
   ) {
     return null
   }
@@ -2753,11 +2812,11 @@ const withdrawnRescoreReason = ref('')
 
 function canRescoreWithdrawnQuestion(question: ExamQuestionScoreResponse): boolean {
   return (
-    canManageReviewerWrites.value === true
-    && paperScore.value?.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN
-    && question.gradeResultId != null
-    && question.gradeResultId !== ''
-    && question.gradeStatus === GradeStatusCode.CONFIRMED
+    canManageReviewerWrites.value === true &&
+    paperScore.value?.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN &&
+    question.gradeResultId != null &&
+    question.gradeResultId !== '' &&
+    question.gradeStatus === GradeStatusCode.CONFIRMED
   )
 }
 
@@ -2825,44 +2884,62 @@ async function handleWithdrawnRescore(): Promise<void> {
 // ─── B-6 操作记录（审计可追溯） ─────────────────────────────
 const auditLogs = ref<OperationLogResponse[]>([])
 const auditLoading = ref(false)
+const auditLoadFailed = ref(false)
+let auditRequestSequence = 0
 const auditPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 const TRACE_TAG_TONE: BadgeTone = 'gray'
 
-function scoreAuditTitle(log: OperationLogResponse): string {
-  return strictEnumLabel(OperationTypeDescription, log.operationType, '审计操作类型')
-}
-
-function scoreAuditTone(log: OperationLogResponse): BadgeTone {
-  return strictEnumTone(OPERATION_TYPE_TONE, log.operationType, '审计操作类型')
-}
-
-async function loadPaperAuditLogs(): Promise<void> {
+/** 读取当前答卷成绩审计，并隔离抽屉切换和分页产生的过期响应。 */
+async function loadPaperAuditLogs(expectedDetailSequence = detailRequestSequence): Promise<void> {
   if (!selectedExamId.value || !detailCandidate.value?.paperInstanceId) {
     auditLogs.value = []
     auditPagination.total = 0
+    auditLoadFailed.value = false
     return
   }
+  const expectedExamId = selectedExamId.value
+  const expectedPaperInstanceId = detailCandidate.value.paperInstanceId
+  const requestSequence = ++auditRequestSequence
   auditLoading.value = true
-  const examId = selectedExamId.value
-  const paperInstanceId = detailCandidate.value.paperInstanceId
+  auditLoadFailed.value = false
   try {
     const page = await listOperationLogs({
-      examId,
+      examId: expectedExamId,
       targetType: AuditTargetTypeCode.EXAM_FINAL_SCORE,
-      targetId: paperInstanceId,
+      targetId: expectedPaperInstanceId,
       pageNum: auditPagination.pageNum,
       pageSize: auditPagination.pageSize,
     })
+    if (
+      expectedDetailSequence !== detailRequestSequence ||
+      requestSequence !== auditRequestSequence ||
+      selectedExamId.value !== expectedExamId ||
+      detailCandidate.value?.paperInstanceId !== expectedPaperInstanceId
+    ) {
+      return
+    }
     auditLogs.value = page.list
     auditPagination.pageNum = page.pageNum
     auditPagination.pageSize = page.pageSize
     auditPagination.total = page.total
   } catch (error) {
+    if (
+      expectedDetailSequence !== detailRequestSequence ||
+      requestSequence !== auditRequestSequence
+    ) {
+      return
+    }
     void message.warning(getUserErrorMessage(error, '操作记录加载失败'))
     auditLogs.value = []
     auditPagination.total = 0
+    auditLoadFailed.value = true
   } finally {
-    auditLoading.value = false
+    if (
+      expectedDetailSequence === detailRequestSequence &&
+      requestSequence === auditRequestSequence
+    ) {
+      auditLoading.value = false
+    }
   }
 }
 
@@ -2877,11 +2954,11 @@ const auditTimelineGroups = computed(() => {
   const items = auditLogs.value.map((log, idx) => {
     return {
       key: log.id ?? idx,
-      title: scoreAuditTitle(log),
+      title: strictEnumLabel(OperationTypeDescription, log.operationType, '审计操作类型'),
       content: log.reason || undefined,
       time: log.createTime ? formatDateTimeWithSeconds(log.createTime, '') : undefined,
       actor: log.operatorRole ? `操作角色：${log.operatorRole}` : undefined,
-      tone: scoreAuditTone(log),
+      tone: strictEnumTone(OPERATION_TYPE_TONE, log.operationType, '审计操作类型'),
       tags: log.traceId
         ? [{ label: `处理追踪编号 ${log.traceId.slice(0, 8)}…`, tone: TRACE_TAG_TONE }]
         : undefined,
@@ -2909,6 +2986,8 @@ interface HistoricalScorePoint {
 
 const historicalScores = ref<HistoricalScorePoint[]>([])
 const historicalLoading = ref(false)
+const historicalLoadFailed = ref(false)
+let historicalRequestSequence = 0
 /** 同课程历次考试上限：超过 20 场不再回查（避免 N+1 雪崩；典型课程一学期 ≤ 10 场） */
 const HISTORICAL_EXAMS_MAX = 20
 
@@ -2917,14 +2996,19 @@ const HISTORICAL_EXAMS_MAX = 20
  * 调用链：pageExams({ courseId }) → 对每场 pageExamScoreSummary({ examId, keyword: studentNo, pageSize: 1 })
  * 仅纳入 finalScore != null 的考试，按 examEndTime 升序绘制。
  */
-async function loadHistoricalScores(): Promise<void> {
+async function loadHistoricalScores(expectedDetailSequence = detailRequestSequence): Promise<void> {
   const courseId = examDetail.value?.courseId
   const candidate = detailCandidate.value
   if (!courseId || !candidate?.studentNo) {
     historicalScores.value = []
+    historicalLoadFailed.value = false
     return
   }
+  const expectedExamId = selectedExamId.value
+  const expectedPaperInstanceId = candidate.paperInstanceId
+  const requestSequence = ++historicalRequestSequence
   historicalLoading.value = true
+  historicalLoadFailed.value = false
   try {
     const examsPage = await pageExams({
       pageNum: 1,
@@ -2952,6 +3036,14 @@ async function loadHistoricalScores(): Promise<void> {
         return point
       }),
     )
+    if (
+      expectedDetailSequence !== detailRequestSequence ||
+      requestSequence !== historicalRequestSequence ||
+      selectedExamId.value !== expectedExamId ||
+      detailCandidate.value?.paperInstanceId !== expectedPaperInstanceId
+    ) {
+      return
+    }
     historicalScores.value = settled
       .filter((p): p is HistoricalScorePoint => p !== null)
       .sort((a: HistoricalScorePoint, b: HistoricalScorePoint) => {
@@ -2960,10 +3052,22 @@ async function loadHistoricalScores(): Promise<void> {
         return ta - tb
       })
   } catch (error) {
+    if (
+      expectedDetailSequence !== detailRequestSequence ||
+      requestSequence !== historicalRequestSequence
+    ) {
+      return
+    }
     void message.warning(getUserErrorMessage(error, '历次成绩趋势加载失败'))
     historicalScores.value = []
+    historicalLoadFailed.value = true
   } finally {
-    historicalLoading.value = false
+    if (
+      expectedDetailSequence === detailRequestSequence &&
+      requestSequence === historicalRequestSequence
+    ) {
+      historicalLoading.value = false
+    }
   }
 }
 
@@ -3027,27 +3131,56 @@ const historicalSummary = computed(() => {
 
 async function openDetailDrawer(record: ExamScoreSummaryItemResponse): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
+  const expectedExamId = selectedExamId.value
+  const expectedDetailSequence = ++detailRequestSequence
   detailCandidate.value = record
   detailOpen.value = true
   detailLoading.value = true
   paperScore.value = null
+  detailLoadErrorMessage.value = '当前答卷成绩明细不可用，已停止展示旧答卷数据。'
   auditLogs.value = []
+  auditLoadFailed.value = false
   auditPagination.pageNum = 1
   auditPagination.total = 0
   historicalScores.value = []
+  historicalLoadFailed.value = false
   try {
-    paperScore.value = await getPaperScore({
-      examId: selectedExamId.value,
+    const score = await getPaperScore({
+      examId: expectedExamId,
       paperInstanceId: record.paperInstanceId,
     })
+    if (
+      expectedDetailSequence !== detailRequestSequence ||
+      selectedExamId.value !== expectedExamId ||
+      detailCandidate.value?.paperInstanceId !== record.paperInstanceId
+    ) {
+      return
+    }
+    paperScore.value = score
   } catch (error) {
+    if (
+      expectedDetailSequence !== detailRequestSequence ||
+      selectedExamId.value !== expectedExamId
+    ) {
+      return
+    }
+    paperScore.value = null
+    detailLoadErrorMessage.value = getUserErrorMessage(
+      error,
+      '当前答卷成绩明细不可用，已停止展示旧答卷数据。',
+    )
     showUserError(error, '成绩明细加载失败')
   } finally {
-    detailLoading.value = false
+    if (
+      expectedDetailSequence === detailRequestSequence &&
+      selectedExamId.value === expectedExamId
+    ) {
+      detailLoading.value = false
+    }
   }
   // 操作记录、历次成绩趋势与成绩明细并行展示但顺序加载，避免单点失败阻断主明细
-  void loadPaperAuditLogs()
-  void loadHistoricalScores()
+  void loadPaperAuditLogs(expectedDetailSequence)
+  void loadHistoricalScores(expectedDetailSequence)
 }
 
 // ─── 确认成绩 Modal ─────────────────────────────
@@ -3087,9 +3220,9 @@ function resolveConfirmExamScorePreview(score: ExamPaperScoreResponse): number |
     FinalScoreStatusCode.WITHDRAWN,
   ])
   if (
-    score.examScore != null
-    && score.finalScoreStatus
-    && formalStatuses.has(score.finalScoreStatus)
+    score.examScore != null &&
+    score.finalScoreStatus &&
+    formalStatuses.has(score.finalScoreStatus)
   ) {
     return score.examScore
   }
@@ -3107,9 +3240,7 @@ function resolveConfirmExamScorePreview(score: ExamPaperScoreResponse): number |
     return null
   }
   return Number(
-    questions
-      .reduce((sum, question) => sum + Number(question.teacherReviewScore ?? 0), 0)
-      .toFixed(2),
+    questions.reduce((sum, question) => sum + Number(question.teacherReviewScore), 0).toFixed(2),
   )
 }
 
@@ -3143,8 +3274,8 @@ async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<v
     })
     // 总分更正后 WITHDRAWN：官方分可与题分之和不一致；重新确认会覆盖官方更正分，须引导重发布。
     if (
-      record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN
-      && (score.latestTotalScoreCorrectionApplied || score.questionScoreSumMatchesExamScore === false)
+      record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN &&
+      (score.latestTotalScoreCorrectionApplied || score.questionScoreSumMatchesExamScore === false)
     ) {
       confirmOpen.value = false
       confirmCandidate.value = null
@@ -3213,11 +3344,11 @@ function deriveNextStepSuggestion(): void {
     return
   }
   // 当前页找下一份未确认
-  const next
-    = candidates.value.find(
+  const next =
+    candidates.value.find(
       (c) =>
-        c.finalScoreStatus === FinalScoreStatusCode.CALCULATED
-        || c.finalScoreStatus === FinalScoreStatusCode.PENDING,
+        c.finalScoreStatus === FinalScoreStatusCode.CALCULATED ||
+        c.finalScoreStatus === FinalScoreStatusCode.PENDING,
     ) ?? null
   if (next) {
     nextStep.value = {
@@ -3304,11 +3435,14 @@ async function handleConfirm(): Promise<void> {
   confirming.value = true
   try {
     if (confirmAndSubmitReview.value === true) {
-      const reviewerUserIds = confirmSubmitReviewerUserIds.value.filter((id) => id.trim().length > 0)
+      const reviewerUserIds = confirmSubmitReviewerUserIds.value.filter(
+        (id) => id.trim().length > 0,
+      )
       await confirmAndSubmitPublishReview({
         examId,
         paperInstanceId,
-        dailyScore: hasDailyScoreConfig.value === true ? (confirmDailyScore.value ?? undefined) : undefined,
+        dailyScore:
+          hasDailyScoreConfig.value === true ? (confirmDailyScore.value ?? undefined) : undefined,
         reviewerUserIds,
       })
       void message.success('成绩已确认并提交发布复核')
@@ -3316,7 +3450,8 @@ async function handleConfirm(): Promise<void> {
       await confirmFinalScore({
         examId,
         paperInstanceId,
-        dailyScore: hasDailyScoreConfig.value === true ? (confirmDailyScore.value ?? undefined) : undefined,
+        dailyScore:
+          hasDailyScoreConfig.value === true ? (confirmDailyScore.value ?? undefined) : undefined,
       })
       void message.success('成绩已确认，可在列表点击「提交发布复核」')
     }
@@ -3351,6 +3486,7 @@ const batchApproveFailureGroupsSummary = computed(() =>
   formatFinalScoreFailureGroups(batchApproveResult.value?.failureGroups),
 )
 const approvingReviewPaperId = ref<string | null>(null)
+const cancelingReviewPaperId = ref<string | null>(null)
 
 function openSubmitReviewModal(record: ExamScoreSummaryItemResponse): void {
   if (canSubmitPublishReview(record) !== true) {
@@ -3468,10 +3604,14 @@ async function handleApprovePublishReview(record: ExamScoreSummaryItemResponse):
     return
   }
   if (!selectedExamId.value || !record.paperInstanceId) return
-  const studentLabel
-    = [record.studentNo, record.studentName].filter((part) => part && String(part).trim()).join(' ')
-      || record.paperDisplay?.primaryText
-      || '该考生'
+  const expectedExamId = selectedExamId.value
+  const expectedGeneration = scoreDataGeneration
+  const studentLabel =
+    [record.studentNo, record.studentName]
+      .filter((part) => part && String(part).trim())
+      .join(' ') ||
+    record.paperDisplay?.primaryText ||
+    '该考生'
   const confirmed = await confirmAsync({
     title: '复核通过并发布？',
     content: `确认后将发布 ${studentLabel} 的最终成绩并对学生可见，同时下发学生通知。`,
@@ -3482,10 +3622,14 @@ async function handleApprovePublishReview(record: ExamScoreSummaryItemResponse):
   if (confirmed !== true) {
     return
   }
+  if (expectedGeneration !== scoreDataGeneration || selectedExamId.value !== expectedExamId) {
+    void message.warning('考试上下文已变化，本次发布确认已取消')
+    return
+  }
   approvingReviewPaperId.value = record.paperInstanceId
   try {
     await approvePublishReview({
-      examId: selectedExamId.value,
+      examId: expectedExamId,
       paperInstanceId: record.paperInstanceId,
     })
     void message.success('复核通过，成绩已发布并通知学生')
@@ -3502,6 +3646,8 @@ async function handleBatchApprovePublishReview(): Promise<void> {
     return
   }
   if (!selectedExamId.value) return
+  const expectedExamId = selectedExamId.value
+  const expectedGeneration = scoreDataGeneration
   const paperInstanceIds = selectedCandidates.value
     .filter((item) => item.canApprovePublishReview === true && item.paperInstanceId)
     .map((item) => item.paperInstanceId as string)
@@ -3519,12 +3665,16 @@ async function handleBatchApprovePublishReview(): Promise<void> {
   if (confirmed !== true) {
     return
   }
+  if (expectedGeneration !== scoreDataGeneration || selectedExamId.value !== expectedExamId) {
+    void message.warning('考试上下文已变化，本次批量发布确认已取消')
+    return
+  }
   batchApproveResult.value = null
   batchApproveResultOpen.value = false
   batchApproveRunning.value = true
   try {
     const result = await batchApprovePublishReview({
-      examId: selectedExamId.value,
+      examId: expectedExamId,
       paperInstanceIds,
     })
     batchApproveResult.value = result
@@ -3573,6 +3723,9 @@ async function handleRejectPublishReview(): Promise<void> {
     return
   }
   if (!selectedExamId.value || !rejectReviewCandidate.value?.paperInstanceId) return
+  const expectedExamId = selectedExamId.value
+  const expectedGeneration = scoreDataGeneration
+  const expectedPaperInstanceId = rejectReviewCandidate.value.paperInstanceId
   if (canRejectPublishReview(rejectReviewCandidate.value) !== true) {
     void message.warning('当前答卷不可退回复核')
     return
@@ -3582,12 +3735,12 @@ async function handleRejectPublishReview(): Promise<void> {
     showFormValidationMessage('请填写退回原因')
     return
   }
-  const studentLabel
-    = [rejectReviewCandidate.value.studentNo, rejectReviewCandidate.value.studentName]
+  const studentLabel =
+    [rejectReviewCandidate.value.studentNo, rejectReviewCandidate.value.studentName]
       .filter((part) => part && String(part).trim())
-      .join(' ')
-      || rejectReviewCandidate.value.paperDisplay?.primaryText
-      || '该考生'
+      .join(' ') ||
+    rejectReviewCandidate.value.paperDisplay?.primaryText ||
+    '该考生'
   const confirmed = await confirmAsync({
     title: '确认退回发布复核？',
     content: `退回后 ${studentLabel} 将恢复为提交前状态，提交人须修正后重新指定复核人。退回原因：${reason}`,
@@ -3598,11 +3751,19 @@ async function handleRejectPublishReview(): Promise<void> {
   if (confirmed !== true) {
     return
   }
+  if (
+    expectedGeneration !== scoreDataGeneration ||
+    selectedExamId.value !== expectedExamId ||
+    rejectReviewCandidate.value?.paperInstanceId !== expectedPaperInstanceId
+  ) {
+    void message.warning('考试或答卷上下文已变化，本次退回确认已取消')
+    return
+  }
   rejectReviewRunning.value = true
   try {
     await rejectPublishReview({
-      examId: selectedExamId.value,
-      paperInstanceId: rejectReviewCandidate.value.paperInstanceId,
+      examId: expectedExamId,
+      paperInstanceId: expectedPaperInstanceId,
       reason,
     })
     void message.success('已退回发布复核')
@@ -3620,11 +3781,15 @@ async function handleCancelPublishReview(record: ExamScoreSummaryItemResponse): 
     void message.warning('当前答卷不可撤销提交')
     return
   }
-  if (!selectedExamId.value || !record.paperInstanceId) return
-  const studentLabel
-    = [record.studentNo, record.studentName].filter((part) => part && String(part).trim()).join(' ')
-      || record.paperDisplay?.primaryText
-      || '该考生'
+  if (!selectedExamId.value || !record.paperInstanceId || cancelingReviewPaperId.value) return
+  const expectedExamId = selectedExamId.value
+  const expectedGeneration = scoreDataGeneration
+  const studentLabel =
+    [record.studentNo, record.studentName]
+      .filter((part) => part && String(part).trim())
+      .join(' ') ||
+    record.paperDisplay?.primaryText ||
+    '该考生'
   const confirmed = await confirmAsync({
     title: '撤销发布复核提交？',
     content: `撤销后 ${studentLabel} 将退出「待发布复核」，可重新指定复核人再提交。`,
@@ -3635,15 +3800,22 @@ async function handleCancelPublishReview(record: ExamScoreSummaryItemResponse): 
   if (confirmed !== true) {
     return
   }
+  if (expectedGeneration !== scoreDataGeneration || selectedExamId.value !== expectedExamId) {
+    void message.warning('考试上下文已变化，本次撤销确认已取消')
+    return
+  }
+  cancelingReviewPaperId.value = record.paperInstanceId
   try {
     await cancelPublishReview({
-      examId: selectedExamId.value,
+      examId: expectedExamId,
       paperInstanceId: record.paperInstanceId,
     })
     void message.success('已撤销发布复核提交')
     await refreshAfterScoreWrite()
   } catch (error) {
     showUserError(error, '撤销提交失败')
+  } finally {
+    cancelingReviewPaperId.value = null
   }
 }
 
@@ -3700,13 +3872,13 @@ async function handleWithdraw(): Promise<void> {
       paperInstanceId: withdrawCandidate.value.paperInstanceId,
       reason,
     })
-    const invalidatedCount = withdrawResult.invalidatedReviewRequestCount ?? 0
-    const confirmedWithdraw
-      = withdrawCandidate.value?.finalScoreStatus === FinalScoreStatusCode.CONFIRMED
+    const invalidatedCount = withdrawResult.invalidatedReviewRequestCount
+    const confirmedWithdraw =
+      withdrawCandidate.value?.finalScoreStatus === FinalScoreStatusCode.CONFIRMED
     void message.success(
       confirmedWithdraw
         ? '已撤销成绩确认'
-        : invalidatedCount > 0
+        : invalidatedCount != null && invalidatedCount > 0
           ? `成绩已撤回，并作废 ${invalidatedCount} 条待处理复核申请（已通知学生）`
           : '成绩已撤回',
     )
@@ -3719,10 +3891,43 @@ async function handleWithdraw(): Promise<void> {
   }
 }
 
+/** 任一成绩写操作未返回时禁止离开，避免旧回执刷新其他考试上下文。 */
+const scoreWritePending = computed(
+  () =>
+    repairingScoreZero.value === true ||
+    batchConfirming.value === true ||
+    riskReviewSavingReasonCode.value !== null ||
+    bulkSubmitRunning.value === true ||
+    withdrawnRescoring.value === true ||
+    confirming.value === true ||
+    submitReviewRunning.value === true ||
+    batchSubmitRunning.value === true ||
+    approvingReviewPaperId.value !== null ||
+    batchApproveRunning.value === true ||
+    rejectReviewRunning.value === true ||
+    cancelingReviewPaperId.value !== null ||
+    withdrawing.value === true,
+)
+
+/** 成绩确认、发布或撤回提交中时保持当前考试路由。 */
+function preventNavigationDuringScoreWrite(): boolean {
+  if (scoreWritePending.value !== true) return true
+  void message.warning('成绩操作正在提交，请等待服务端返回后再离开')
+  return false
+}
+
+onBeforeRouteLeave(preventNavigationDuringScoreWrite)
+onBeforeRouteUpdate(preventNavigationDuringScoreWrite)
+
 // ─── 初始化 ─────────────────────────────────────
 watch(
   selectedExamId,
   (value) => {
+    scoreDataGeneration += 1
+    candidatesRequestSequence += 1
+    detailRequestSequence += 1
+    auditRequestSequence += 1
+    historicalRequestSequence += 1
     pagination.current = 1
     statusTabKey.value = SCORE_STATUS_TAB_ALL
     scoreFilterForm.keyword = ''
@@ -3732,6 +3937,18 @@ watch(
     autoPendingMyReviewApplied.value = false
     examArchiveGate.value = null
     riskReviewDrawerOpen.value = false
+    detailOpen.value = false
+    detailLoading.value = false
+    detailCandidate.value = null
+    paperScore.value = null
+    auditLoading.value = false
+    auditLoadFailed.value = false
+    historicalLoading.value = false
+    historicalLoadFailed.value = false
+    confirmOpen.value = false
+    confirmCandidate.value = null
+    batchDailyConfirmOpen.value = false
+    withdrawnRescoreOpen.value = false
     bulkSubmitOpen.value = false
     bulkSubmitResult.value = null
     submitReviewOpen.value = false
@@ -3740,13 +3957,23 @@ watch(
     batchApproveResultOpen.value = false
     selectedCandidateRosterIds.value = []
     examDetail.value = null
+    examDetailLoadError.value = ''
     candidates.value = []
+    loading.value = false
+    candidatesLoadFailed.value = false
+    candidatesLoadErrorMessage.value = '当前成绩发布队列不可用，已停止展示旧考试数据。'
     riskOverview.value = null
+    riskOverviewLoading.value = false
     scorePanel.value = null
     panelLoadError.value = ''
+    scorePanelLoadError.value = ''
     pagination.total = 0
     if (value) {
-      void Promise.all([loadExamDetail(), refreshScoreFinalizeData()])
+      const expectedGeneration = scoreDataGeneration
+      void Promise.all([
+        loadExamDetail(expectedGeneration),
+        refreshScoreFinalizeData(expectedGeneration),
+      ])
     }
   },
   { immediate: true },
@@ -3756,6 +3983,7 @@ watch(
 <style lang="scss" scoped>
 .score-finalize-page {
   min-width: 0;
+  min-height: 0;
 }
 
 .score-finalize {
@@ -3867,6 +4095,11 @@ watch(
     min-width: 0;
   }
 
+  &__queue {
+    flex: 1 1 auto;
+    min-height: 320px;
+  }
+
   &__table-toolbar {
     display: flex;
     flex-direction: column;
@@ -3889,6 +4122,18 @@ watch(
 
   &__detail-summary {
     margin-bottom: var(--dp-space-block);
+  }
+
+  &__detail-absence-alert {
+    margin-bottom: var(--dp-space-component);
+  }
+
+  &__detail-correction-alert {
+    margin: var(--dp-space-component) 0;
+  }
+
+  &__full-width-control {
+    width: 100%;
   }
 
   &__detail-section-title {

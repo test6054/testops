@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ScanDispatchQueueSummaryVO } from '@/apis/mark/scanner-dispatch'
+import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
 import { ReloadOutlined, ScanOutlined } from '@ant-design/icons-vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
 import { getKioskArchiveCollaborationPolicy } from '@/apis/mark/scanner-kiosk'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -53,7 +53,7 @@ const DEEPLINK_CARDS: TaskKindCard[] = [
   {
     kind: ScanTaskKindCode.EXAM_ARCHIVE,
     title: '考后归档',
-    description: '查看电脑端派单推送的归档卷待办，或临时选择收集中卷开单扫描。',
+    description: '处理已下发的归档任务，或从收集中归档卷现场开单。',
     route: '/scanner-kiosk/queue',
     tagText: '待办队列',
     ctaText: '进入队列',
@@ -61,7 +61,7 @@ const DEEPLINK_CARDS: TaskKindCard[] = [
   {
     kind: ScanTaskKindCode.PORTFOLIO_COLLECT,
     title: '教师档案袋',
-    description: '查看授权范围内开放的补采待办，或从电脑端档案袋页创建派单后进入工位扫描。',
+    description: '处理开放的教师档案袋采集任务，支持本人采集与教师协作代采。',
     route: '/scanner-kiosk/queue',
     tagText: '待办队列',
     ctaText: '进入队列',
@@ -92,9 +92,9 @@ const scannerDeviceId = computed(() => deviceActivation.setup.value?.scannerDevi
 const scannerStationId = computed(() => deviceActivation.setup.value?.scannerStationId ?? '')
 
 const endpointLabel = computed(() => {
-  const name
-    = deviceActivation.setup.value?.deviceName?.trim()
-      || deviceActivation.activationForm.value.endpointName.trim()
+  const name =
+    deviceActivation.setup.value?.deviceName?.trim() ||
+    deviceActivation.activationForm.value.endpointName.trim()
   return name || '未命名工位'
 })
 
@@ -104,25 +104,25 @@ const stationLedTone = computed<'green' | 'gray'>(() =>
 
 const showAgentOfflineHint = computed(
   () =>
-    hubLoading.value !== true
-    && deviceActivation.loading.value !== true
-    && !deviceActivation.localAgentReachable.value
-    && (deviceActivation.isDeviceBound.value || !deviceActivation.needsActivationGate.value),
+    hubLoading.value !== true &&
+    deviceActivation.loading.value !== true &&
+    !deviceActivation.localAgentReachable.value &&
+    (deviceActivation.isDeviceBound.value || !deviceActivation.needsActivationGate.value),
 )
 
 const showTaskKindCards = computed(
   () =>
-    deviceActivation.localAgentReachable.value
-    && deviceActivation.isDeviceBound.value
-    && !deviceActivation.needsActivationGate.value,
+    deviceActivation.localAgentReachable.value &&
+    deviceActivation.isDeviceBound.value &&
+    !deviceActivation.needsActivationGate.value,
 )
 
 const showFailedAlert = computed(
   () =>
-    showTaskKindCards.value
-    && queueSummaryLoading.value !== true
-    && ((queueSummary.value?.failedTicketCount ?? 0) > 0
-      || (queueSummary.value?.committingWorkOrderCount ?? 0) > 0),
+    showTaskKindCards.value &&
+    queueSummaryLoading.value !== true &&
+    ((queueSummary.value?.failedTicketCount ?? 0) > 0 ||
+      (queueSummary.value?.committingWorkOrderCount ?? 0) > 0),
 )
 
 const contextSubtitle = computed(() => {
@@ -147,7 +147,9 @@ const contextSubtitle = computed(() => {
 const hubSignals = computed<HubSignalItem[]>(() => {
   const health = deviceActivation.health.value
   const agentOnline = deviceActivation.localAgentReachable.value
-  const bound = deviceActivation.isDeviceBound.value === true && deviceActivation.needsActivationGate.value !== true
+  const bound =
+    deviceActivation.isDeviceBound.value === true &&
+    deviceActivation.needsActivationGate.value !== true
 
   let scanValue: string
   let scanLed: HubSignalItem['ledTone']
@@ -268,7 +270,10 @@ const hubSignals = computed<HubSignalItem[]>(() => {
 })
 
 const showSignalBand = computed(
-  () => hubLoading.value !== true && !hubErrorMessage.value && !deviceActivation.needsActivationGate.value,
+  () =>
+    hubLoading.value !== true &&
+    !hubErrorMessage.value &&
+    !deviceActivation.needsActivationGate.value,
 )
 
 const archivePickFirst = computed(
@@ -283,7 +288,7 @@ const archiveEntryCard = computed<TaskKindCard>(() => {
   return {
     ...base,
     tagText: '临时选卷',
-    ctaText: '临时扫描',
+    ctaText: '现场开单',
   }
 })
 
@@ -461,8 +466,8 @@ function enterArchiveQueue() {
 function enterCard(card: TaskKindCard) {
   if (card.deeplinkOnly) return
   if (
-    card.kind === ScanTaskKindCode.EXAM_ARCHIVE
-    || card.kind === ScanTaskKindCode.PORTFOLIO_COLLECT
+    card.kind === ScanTaskKindCode.EXAM_ARCHIVE ||
+    card.kind === ScanTaskKindCode.PORTFOLIO_COLLECT
   ) {
     void router.push({ path: card.route, query: { taskKind: card.kind } })
     return
@@ -579,7 +584,10 @@ onUnmounted(() => {
           :description="hubErrorMessage"
         />
 
-        <div v-else-if="hubLoading === true || deviceActivation.loading.value === true" class="hub-shell__state">
+        <div
+          v-else-if="hubLoading === true || deviceActivation.loading.value === true"
+          class="hub-shell__state"
+        >
           <UiSkeletonState :rows="5" compact />
         </div>
 
@@ -717,7 +725,7 @@ onUnmounted(() => {
                 </button>
                 <button v-else type="button" class="hub-entry__temp-btn" @click="openArchivePick">
                   <ScanOutlined />
-                  临时扫描
+                  现场开单
                 </button>
               </div>
               <div class="hub-entry-block">
@@ -794,7 +802,7 @@ onUnmounted(() => {
                 </button>
                 <button type="button" class="hub-entry__temp-btn" @click="openPortfolioPick">
                   <ScanOutlined />
-                  临时扫描
+                  现场开单
                 </button>
               </div>
             </div>

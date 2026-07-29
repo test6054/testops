@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { AnswerBookletSourceModeCode } from '@/types/enums/answer-booklet-source-mode-enum'
-import type { ExamScanMaterialScopeCode } from '@/types/enums/exam-scan-material-scope-enum'
+import { AnswerBookletSourceModeOptions } from '@/types/enums/answer-booklet-source-mode-enum'
 // MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import { computed } from 'vue'
 import {
@@ -14,9 +14,7 @@ import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import {
-  AnswerBookletSourceModeOptions,
-} from '@/types/enums/answer-booklet-source-mode-enum'
-import {
+  ExamScanMaterialScopeCode,
   ExamScanMaterialScopeOptions,
 } from '@/types/enums/exam-scan-material-scope-enum'
 
@@ -25,7 +23,9 @@ defineOptions({ name: 'MaterialLayoutConfigModal' })
 const open = defineModel<boolean>('open', { required: true })
 const draftLayoutMode = defineModel<ExamMaterialLayoutModeCode | undefined>('draftLayoutMode')
 const draftPrintSource = defineModel<ExamPrintSourceModeCode | undefined>('draftPrintSource')
-const draftScanMaterialScope = defineModel<ExamScanMaterialScopeCode | undefined>('draftScanMaterialScope')
+const draftScanMaterialScope = defineModel<ExamScanMaterialScopeCode | undefined>(
+  'draftScanMaterialScope',
+)
 const draftAnswerBookletSourceMode = defineModel<AnswerBookletSourceModeCode | undefined>(
   'draftAnswerBookletSourceMode',
 )
@@ -52,7 +52,20 @@ const emit = defineEmits<{
 }>()
 
 /** 生命周期锁或非主考时表单只读；canManageOwnerWrites 缺省 false */
-const formReadonly = computed(() => props.layoutModeLocked === true || props.canManageOwnerWrites !== true)
+const formReadonly = computed(
+  () => props.layoutModeLocked === true || props.canManageOwnerWrites !== true,
+)
+
+const scanMaterialScopeOptions = computed(() => {
+  if (draftLayoutMode.value !== ExamMaterialLayoutModeCode.FULL_PAPER) {
+    return ExamScanMaterialScopeOptions.filter(
+      (option) => option.value !== ExamScanMaterialScopeCode.QUESTION_PAPER_ONLY,
+    )
+  }
+  return ExamScanMaterialScopeOptions.filter(
+    (option) => option.value === ExamScanMaterialScopeCode.QUESTION_PAPER_ONLY,
+  )
+})
 
 const printSourceHint = computed(() => {
   if (draftLayoutMode.value === ExamMaterialLayoutModeCode.ANSWER_SHEET) {
@@ -91,7 +104,10 @@ function handleSave(): void {
             draftLayoutMode === ExamMaterialLayoutModeCode.ANSWER_SHEET,
         }"
         :disabled="formReadonly === true"
-        @click="draftLayoutMode = ExamMaterialLayoutModeCode.ANSWER_SHEET"
+        @click="
+          draftLayoutMode = ExamMaterialLayoutModeCode.ANSWER_SHEET
+          draftScanMaterialScope = undefined
+        "
       >
         <span class="material-layout-modal__mode-option-title">试卷+答题页</span>
         <span class="material-layout-modal__mode-option-desc">
@@ -106,7 +122,11 @@ function handleSave(): void {
             draftLayoutMode === ExamMaterialLayoutModeCode.FULL_PAPER,
         }"
         :disabled="formReadonly === true"
-        @click="draftLayoutMode = ExamMaterialLayoutModeCode.FULL_PAPER"
+        @click="
+          draftLayoutMode = ExamMaterialLayoutModeCode.FULL_PAPER
+          draftScanMaterialScope = ExamScanMaterialScopeCode.QUESTION_PAPER_ONLY
+          draftAnswerBookletSourceMode = undefined
+        "
       >
         <span class="material-layout-modal__mode-option-title">单独试卷</span>
         <span class="material-layout-modal__mode-option-desc">
@@ -126,7 +146,7 @@ function handleSave(): void {
           v-model="draftScanMaterialScope"
           :disabled="formReadonly === true"
           placeholder="选择考后实际回收材料"
-          :options="ExamScanMaterialScopeOptions"
+          :options="scanMaterialScopeOptions"
         />
       </UiFormItem>
       <UiFormItem
@@ -180,9 +200,13 @@ function handleSave(): void {
         size="sm"
         v-if="canManageOwnerWrites === true && layoutModeLocked !== true"
         :variant="layoutDirty ? 'primary' : 'outline'"
-        :disabled="!draftLayoutMode || !draftScanMaterialScope || !layoutDirty
-          || (draftLayoutMode === ExamMaterialLayoutModeCode.ANSWER_SHEET
-            && !draftAnswerBookletSourceMode)"
+        :disabled="
+          !draftLayoutMode ||
+          !draftScanMaterialScope ||
+          !layoutDirty ||
+          (draftLayoutMode === ExamMaterialLayoutModeCode.ANSWER_SHEET &&
+            !draftAnswerBookletSourceMode)
+        "
         :loading="layoutSaving"
         @click="handleSave"
       >

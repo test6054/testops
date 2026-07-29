@@ -1,6 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router'
 import { createRouter, createWebHistory } from 'vue-router'
-import { confirmAsync } from '@/composables/useConfirmDialog'
 import { setupRouterGuard } from '@/router/guard'
 import { archiveVolumeWorkspaceRoutes } from '@/router/routes/archive-volume-workspace'
 import { commonRoutes, errorRoutes } from '@/router/routes/common'
@@ -26,19 +25,6 @@ const allRoutes: RouteRecordRaw[] = [
   ...errorRoutes,
 ]
 
-function isChunkLoadError(message: string) {
-  const chunkLoadPatterns = [
-    /Loading chunk [\w-]+ failed/i,
-    /Failed to fetch dynamically imported module/i,
-    /Importing a module script failed/i,
-  ]
-
-  return chunkLoadPatterns.some((pattern) => pattern.test(message))
-}
-
-/** 防止重复弹窗：发版升级期间多个动态 import 都会失败，但只能引导用户刷一次 */
-let chunkReloadPrompted = false
-
 /**
  * 创建路由实例
  * 使用静态路由配置，不依赖动态路由生成
@@ -47,43 +33,6 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: allRoutes,
   scrollBehavior: () => ({ left: 0, top: 0 }),
-})
-
-/**
- * 处理路由加载异常（版本更新导致 chunk 丢失）
- *
- * 触发场景：后端发版后，浏览器仍持有旧 index.html 引用，但旧 chunk 已被覆盖。
- * 此时任何懒加载路由 import 都会失败，页面会僵在 NProgress 状态，用户感知不到。
- *
- * 处理策略：弹一次 confirm 引导用户刷新；用户拒绝时仅记录日志，不再强制。
- */
-router.onError((error) => {
-  const message = error instanceof Error ? error.message : String(error)
-
-  if (!isChunkLoadError(message)) {
-    return
-  }
-
-  if (chunkReloadPrompted) {
-    return
-  }
-  chunkReloadPrompted = true
-
-  void confirmAsync({
-    title: '系统已更新',
-    content: '检测到本地缓存的应用资源已过期。请刷新页面以加载最新版本，避免功能异常。',
-    okText: '立即刷新',
-    cancelText: '稍后再说',
-    type: 'warning',
-    onOk() {
-      window.location.reload()
-    },
-  }).then((ok) => {
-    // 用户拒绝时允许后续 chunk 失败再次提示；确认后页面会 reload
-    if (!ok) {
-      chunkReloadPrompted = false
-    }
-  })
 })
 
 // 设置路由守卫

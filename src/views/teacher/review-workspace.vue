@@ -92,10 +92,16 @@
             @back="goBack"
           >
             <template #status>
-              <UiTag :tone="reviewStatusTone(detail.status)" size="sm">
-                {{ reviewStatusLabel(detail.status) }}
+              <UiTag
+                :tone="strictEnumTone(REVIEW_TASK_STATUS_TONE, detail.status, '复核任务状态')"
+                size="sm"
+              >
+                {{ strictEnumLabel(ReviewTaskStatusDescription, detail.status, '复核任务状态') }}
               </UiTag>
-              <span v-if="queueTotal > 0 && currentQueueIndex > 0" class="review-workspace__keyboard-hint">
+              <span
+                v-if="queueTotal > 0 && currentQueueIndex > 0"
+                class="review-workspace__keyboard-hint"
+              >
                 Space/←/→ · 0-9 给分
               </span>
             </template>
@@ -134,7 +140,12 @@
                   "
                   @keydown.enter="handleQueueJump"
                 />
-                <UiButton size="sm" variant="ghost" :disabled="!jumpTarget" @click="handleQueueJump">
+                <UiButton
+                  size="sm"
+                  variant="ghost"
+                  :disabled="!jumpTarget"
+                  @click="handleQueueJump"
+                >
                   跳转
                 </UiButton>
               </div>
@@ -175,15 +186,17 @@
             <div v-else class="review-workspace__text-block">{{ detail.recognizedAnswer }}</div>
           </GradingImmersionSection>
 
-          <GradingImmersionSection
-            v-if="detail?.standardAnswer"
-            title="标准答案"
-            class="review-workspace__section--standard"
-          >
+          <GradingImmersionSection v-if="detail?.standardAnswer" title="标准答案">
             <template #icon><CheckCircleOutlined /></template>
             <template #tags>
               <UiTag v-if="detail.comparePolicy" tone="blue" size="sm">
-                {{ comparePolicyLabel(detail.comparePolicy) }}
+                {{
+                  strictEnumLabel(
+                    ObjectiveComparePolicyDescription,
+                    detail.comparePolicy,
+                    '客观题比较策略',
+                  )
+                }}
               </UiTag>
             </template>
             <div class="review-workspace__text-block review-workspace__standard-answer">
@@ -452,49 +465,27 @@
       :load-failed="aiExecutionsLoadFailed"
       :executions="aiExecutions"
       :highlight-trace-id="highlightExecutionTraceId"
-      :status-label="statusLabel"
-      :status-tone="statusTone"
-      :ability-label="abilityLabel"
-      :ability-tone="abilityTone"
-      :timeline-color="timelineColor"
     />
   </div>
 </template>
 
 <script lang="ts" setup>
-// MVR-948：本地 can* 显隐/禁用仅认 === true
-// MVR-947：模板本地 can* 显隐/禁用仅认 === true（完整 token）
-// MVR-946：模板 canManage* 显隐/禁用仅认 === true
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
-import type {
-  AiAbilityCode,
-  AiExecutionStatusCode,
-  ExamQuestionAiExecutionItemResponse,
-} from '@/apis/mark/exam-grade'
-import type { ReviewTaskDetailResponse, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
-import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
-import EditOutlined from '@ant-design/icons-vue/EditOutlined'
-import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
-import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
-import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, inject, onActivated, onBeforeUnmount, onDeactivated, onMounted, reactive, ref, watch } from 'vue'
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { listAnnotations } from '@/apis/mark/exam-annotation'
+import type { ExamQuestionAiExecutionItemResponse } from '@/apis/mark/exam-grade'
 import {
   AI_ABILITY_TONE,
-  AI_EXECUTION_STATUS_TONE,
   AiAbilityDescription,
-  AiExecutionStatusDescription,
   confirmQuestionGrade,
   listAiExecutionsForQuestion,
   rejectQuestionGrade,
   rescoreQuestionByAi,
 } from '@/apis/mark/exam-grade'
+import type {
+  ReviewTaskDetailResponse,
+  ReviewTaskPipelineItemResponse,
+} from '@/apis/mark/exam-review-task'
 import {
   claimReviewTask,
   getReviewTaskDetail,
@@ -505,6 +496,26 @@ import {
   ReviewTaskStatusDescription,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
+import EditOutlined from '@ant-design/icons-vue/EditOutlined'
+import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
+import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
+import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
+import message from 'ant-design-vue/es/message'
+import {
+  computed,
+  inject,
+  onActivated,
+  onBeforeUnmount,
+  onDeactivated,
+  onMounted,
+  reactive,
+  ref,
+  watch,
+} from 'vue'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { ObjectiveComparePolicyDescription } from '@/apis/mark/exam-standard-answer'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import GradingImmersionChrome from '@/components/mark/GradingImmersionChrome.vue'
@@ -553,18 +564,6 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ReviewTaskHub from '@/views/teacher/review-task-hub.vue'
 
 defineOptions({ name: 'TeacherExamWorkspaceReviewWorkspace' })
-
-function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
-  return strictEnumTone(REVIEW_TASK_STATUS_TONE, value, '复核任务状态')
-}
-
-function reviewStatusLabel(value: ReviewTaskStatusCode): string {
-  return strictEnumLabel(ReviewTaskStatusDescription, value, '复核任务状态')
-}
-
-function comparePolicyLabel(code: ObjectiveComparePolicyCode): string {
-  return strictEnumLabel(ObjectiveComparePolicyDescription, code, '客观题比较策略')
-}
 
 const route = useRoute()
 const router = useRouter()
@@ -662,7 +661,7 @@ const immersionSubtitle = computed(() => {
     parts.push(`题 ${task.questionNo}`)
   }
   if (task.status) {
-    parts.push(reviewStatusLabel(task.status))
+    parts.push(strictEnumLabel(ReviewTaskStatusDescription, task.status, '复核任务状态'))
   }
   return parts.join(' · ')
 })
@@ -708,12 +707,15 @@ const canReject = computed(() => {
 const annotations = ref<AnnotationResponse[]>([])
 const annotationsLoading = ref(false)
 const annotationsLoadFailed = ref(false)
+let annotationsLoadGeneration = 0
 const annotationPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
+/** 读取当前任务批注分页，并隔离翻页与切任务产生的过期响应。 */
 async function loadAnnotations(expectedGeneration = loadTaskGeneration): Promise<void> {
   if (!examId.value || !detail.value) return
   const currentExamId = examId.value
   const currentTaskId = taskId.value
+  const requestGeneration = ++annotationsLoadGeneration
   const { paperInstanceId, layoutQuestionId, gradeResultId } = detail.value
   annotationsLoading.value = true
   annotationsLoadFailed.value = false
@@ -727,9 +729,10 @@ async function loadAnnotations(expectedGeneration = loadTaskGeneration): Promise
       pageSize: annotationPagination.pageSize,
     })
     if (
-      expectedGeneration !== loadTaskGeneration
-      || examId.value !== currentExamId
-      || taskId.value !== currentTaskId
+      expectedGeneration !== loadTaskGeneration ||
+      requestGeneration !== annotationsLoadGeneration ||
+      examId.value !== currentExamId ||
+      taskId.value !== currentTaskId
     ) {
       return
     }
@@ -738,7 +741,10 @@ async function loadAnnotations(expectedGeneration = loadTaskGeneration): Promise
     annotationPagination.pageNum = page.pageNum
     annotationPagination.pageSize = page.pageSize
   } catch (error) {
-    if (expectedGeneration !== loadTaskGeneration) {
+    if (
+      expectedGeneration !== loadTaskGeneration ||
+      requestGeneration !== annotationsLoadGeneration
+    ) {
       return
     }
     annotations.value = []
@@ -746,16 +752,20 @@ async function loadAnnotations(expectedGeneration = loadTaskGeneration): Promise
     annotationsLoadFailed.value = true
     showUserError(error, '批注记录加载失败')
   } finally {
-    if (expectedGeneration === loadTaskGeneration) {
+    if (
+      expectedGeneration === loadTaskGeneration &&
+      requestGeneration === annotationsLoadGeneration
+    ) {
       annotationsLoading.value = false
     }
   }
 }
 
 // ─── B-7 同题剩余复核任务队列（用于「提交并取下一份」流水线接力） ─────
-const reviewQueue = ref<ReviewTaskItemResponse[]>([])
+const reviewQueue = ref<ReviewTaskPipelineItemResponse[]>([])
 const pipelineCurrentIndex = ref(0)
 const reviewQueueLoadFailed = ref(false)
+let reviewQueueLoadGeneration = 0
 
 /**
  * 加载当前考试 + 当前题目下可继续复核的任务集合。
@@ -766,10 +776,10 @@ async function loadReviewQueue(
   allowCurrentMissing = false,
 ): Promise<void> {
   if (
-    !examId.value
-    || !detail.value?.layoutQuestionId
-    || !detail.value.reviewType
-    || !detail.value.gradeSource
+    !examId.value ||
+    !detail.value?.layoutQuestionId ||
+    !detail.value.reviewType ||
+    !detail.value.gradeSource
   ) {
     reviewQueue.value = []
     reviewQueueLoadFailed.value = true
@@ -786,6 +796,7 @@ async function loadReviewQueue(
   }
   const currentExamId = examId.value
   const currentTaskId = taskId.value
+  const requestGeneration = ++reviewQueueLoadGeneration
   const { layoutQuestionId, reviewType, gradeSource } = detail.value
   try {
     reviewQueueLoadFailed.value = false
@@ -798,25 +809,29 @@ async function loadReviewQueue(
       currentReviewTaskId: currentTaskId,
     })
     if (
-      expectedGeneration !== loadTaskGeneration
-      || examId.value !== currentExamId
-      || taskId.value !== currentTaskId
+      expectedGeneration !== loadTaskGeneration ||
+      requestGeneration !== reviewQueueLoadGeneration ||
+      examId.value !== currentExamId ||
+      taskId.value !== currentTaskId
     ) {
       return
     }
     if (
-      detail.value
-      && !allowCurrentMissing
-      && (detail.value.status === ReviewTaskStatusCode.PENDING
-        || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS)
-      && pipeline.currentIndex < 1
+      detail.value &&
+      !allowCurrentMissing &&
+      (detail.value.status === ReviewTaskStatusCode.PENDING ||
+        detail.value.status === ReviewTaskStatusCode.IN_PROGRESS) &&
+      pipeline.currentIndex < 1
     ) {
       throw new TypeError('复核流水线合同异常：开放任务未出现在当前队列')
     }
     reviewQueue.value = pipeline.items
     pipelineCurrentIndex.value = pipeline.currentIndex
   } catch (error) {
-    if (expectedGeneration !== loadTaskGeneration) {
+    if (
+      expectedGeneration !== loadTaskGeneration ||
+      requestGeneration !== reviewQueueLoadGeneration
+    ) {
       return
     }
     showUserError(error, '同题复核队列加载失败，提交并取下一份暂不可用。')
@@ -943,6 +958,7 @@ const canRescoreByAi = computed<boolean>(() => {
 })
 
 // ─── 加载主流程 ───────────────────────────
+/** 读取当前复核任务正式证据，并在详情稳定后并行加载批注与同题队列。 */
 async function loadTask(): Promise<void> {
   if (canSubmit.value !== true) return
   const expectedExamId = examId.value
@@ -950,11 +966,11 @@ async function loadTask(): Promise<void> {
   const generation = ++loadTaskGeneration
   loading.value = true
   try {
-    const loadedDetail = await loadReviewTaskDetail(expectedExamId, expectedTaskId)
+    const loadedDetail = await loadReviewTaskDetail(expectedExamId, expectedTaskId, generation)
     if (
-      generation !== loadTaskGeneration
-      || expectedExamId !== examId.value
-      || expectedTaskId !== taskId.value
+      generation !== loadTaskGeneration ||
+      expectedExamId !== examId.value ||
+      expectedTaskId !== taskId.value
     ) {
       return
     }
@@ -1024,9 +1040,9 @@ function captureGradeBaseline(): void {
   gradeFormBaseline.value = serializeGradeForm()
 }
 
-/** 可写态下未提交的正式分/评语/内部批注视为 dirty。 */
+/** 当前任务表单偏离加载基线即视为草稿；权限并发收缩不能抹掉离页提醒。 */
 const isGradeFormDirty = computed(
-  () => canConfirm.value && serializeGradeForm() !== gradeFormBaseline.value,
+  () => detail.value != null && serializeGradeForm() !== gradeFormBaseline.value,
 )
 
 /** 允许一次受控离开后跳过重复确认（路由守卫与主动导航共用）。 */
@@ -1034,6 +1050,7 @@ let bypassDirtyLeaveGuard = false
 
 const gradeFormBaseline = ref('')
 
+/** 阻止写请求执行中离开，并在复核草稿未提交时要求教师明确确认。 */
 async function confirmLeaveIfDirty(): Promise<boolean> {
   if (claiming.value || submitting.value || rejecting.value || rescoring.value) {
     void message.warning('当前复核操作正在提交，请等待服务端返回后再离开')
@@ -1083,11 +1100,19 @@ async function navigateToQueueTask(targetTaskId: string): Promise<void> {
 async function loadReviewTaskDetail(
   capturedExamId: string,
   capturedTaskId: string,
+  expectedGeneration: number,
 ): Promise<ReviewTaskDetailResponse> {
   const preview = await getReviewTaskDetail({
     examId: capturedExamId,
     reviewTaskId: capturedTaskId,
   })
+  if (
+    expectedGeneration !== loadTaskGeneration ||
+    examId.value !== capturedExamId ||
+    taskId.value !== capturedTaskId
+  ) {
+    return preview
+  }
   if (preview.status === ReviewTaskStatusCode.PENDING) {
     ownerOverrideMode.value = false
     claimBlockedByOther.value = false
@@ -1098,9 +1123,8 @@ async function loadReviewTaskDetail(
     claimBlockedByOther.value = false
     return preview
   }
-  const heldByOther
-    = !!preview.assignedTeacherUserId
-      && preview.assignedTeacherUserId !== currentUserId.value
+  const heldByOther =
+    !!preview.assignedTeacherUserId && preview.assignedTeacherUserId !== currentUserId.value
   if (heldByOther && preview.canManageOwnerReviewOverride === true) {
     ownerOverrideMode.value = true
     claimBlockedByOther.value = false
@@ -1138,9 +1162,9 @@ async function claimAndStartReview(): Promise<void> {
       reviewTaskId: expectedTaskId,
     })
     if (
-      generation !== loadTaskGeneration
-      || examId.value !== expectedExamId
-      || taskId.value !== expectedTaskId
+      generation !== loadTaskGeneration ||
+      examId.value !== expectedExamId ||
+      taskId.value !== expectedTaskId
     ) {
       return
     }
@@ -1158,9 +1182,9 @@ async function claimAndStartReview(): Promise<void> {
       return
     }
     if (isBusinessConflict(error)) {
-      claimBlockedByOther.value = canManageOwnerReviewOverride.value !== true
-      ownerOverrideMode.value = canManageOwnerReviewOverride.value === true
+      claiming.value = false
       void message.warning(getUserErrorMessage(error, '复核任务已被其他教师领取'))
+      await loadTask()
       return
     }
     showUserError(error, '开始复核失败')
@@ -1234,13 +1258,26 @@ const gradeFormRules: Record<string, Rule[]> = {
  */
 function openRescoreConfirm(): void {
   if (canRescoreByAi.value !== true) return
+  const expectedExamId = examId.value
+  const expectedTaskId = taskId.value
+  const expectedGradeResultId = detail.value?.gradeResultId
   void confirmAsync({
     title: '重新生成单题智能复评？',
     content: '系统会重新生成单题智能复评结果。复评只更新智能评分和评分说明，不会写入教师复核评分。',
     type: 'info',
     okText: '生成智能复评',
     cancelText: '取消',
-    onOk: () => doRescoreByAi(),
+    onOk: () => {
+      if (
+        examId.value !== expectedExamId ||
+        taskId.value !== expectedTaskId ||
+        detail.value?.gradeResultId !== expectedGradeResultId
+      ) {
+        void message.warning('复核任务已切换，请在当前任务重新发起智能复评')
+        return
+      }
+      return doRescoreByAi()
+    },
   })
 }
 
@@ -1264,9 +1301,9 @@ async function doRescoreByAi(): Promise<void> {
       gradeResultId,
     })
     if (
-      generation !== taskWriteGeneration
-      || examId.value !== expectedExamId
-      || taskId.value !== expectedTaskId
+      generation !== taskWriteGeneration ||
+      examId.value !== expectedExamId ||
+      taskId.value !== expectedTaskId
     ) {
       return
     }
@@ -1288,9 +1325,9 @@ async function doRescoreByAi(): Promise<void> {
     }
   } catch (error) {
     if (
-      generation !== taskWriteGeneration
-      || examId.value !== expectedExamId
-      || taskId.value !== expectedTaskId
+      generation !== taskWriteGeneration ||
+      examId.value !== expectedExamId ||
+      taskId.value !== expectedTaskId
     ) {
       return
     }
@@ -1400,6 +1437,7 @@ const executionsDrawerOpen = ref<boolean>(false)
 const executionsLoading = ref<boolean>(false)
 const aiExecutions = ref<ExamQuestionAiExecutionItemResponse[]>([])
 const aiExecutionsLoadFailed = ref(false)
+let aiExecutionsLoadGeneration = 0
 const highlightExecutionTraceId = ref<string | null>(null)
 
 /** 打开抽屉后拉取历史记录，可选定位当前 AI trace */
@@ -1410,10 +1448,12 @@ function openExecutionsDrawer(highlightTraceId?: string | null): void {
   void loadAiExecutions()
 }
 
+/** 读取当前题智能执行审计，并隔离重复打开抽屉产生的过期响应。 */
 async function loadAiExecutions(expectedGeneration = loadTaskGeneration): Promise<void> {
   if (!examId.value || !detail.value) return
   const currentExamId = examId.value
   const currentTaskId = taskId.value
+  const requestGeneration = ++aiExecutionsLoadGeneration
   executionsLoading.value = true
   aiExecutionsLoadFailed.value = false
   try {
@@ -1422,50 +1462,32 @@ async function loadAiExecutions(expectedGeneration = loadTaskGeneration): Promis
       gradeResultId: detail.value.gradeResultId,
     })
     if (
-      expectedGeneration !== loadTaskGeneration
-      || examId.value !== currentExamId
-      || taskId.value !== currentTaskId
+      expectedGeneration !== loadTaskGeneration ||
+      requestGeneration !== aiExecutionsLoadGeneration ||
+      examId.value !== currentExamId ||
+      taskId.value !== currentTaskId
     ) {
       return
     }
     aiExecutions.value = list
   } catch (error) {
-    if (expectedGeneration !== loadTaskGeneration) {
+    if (
+      expectedGeneration !== loadTaskGeneration ||
+      requestGeneration !== aiExecutionsLoadGeneration
+    ) {
       return
     }
     showUserError(error, '智能复评历史加载失败')
     aiExecutions.value = []
     aiExecutionsLoadFailed.value = true
   } finally {
-    if (expectedGeneration === loadTaskGeneration) {
+    if (
+      expectedGeneration === loadTaskGeneration &&
+      requestGeneration === aiExecutionsLoadGeneration
+    ) {
       executionsLoading.value = false
     }
   }
-}
-
-/** 能力编码 -> 来源文案 */
-function abilityLabel(code: AiAbilityCode): string {
-  return strictEnumLabel(AiAbilityDescription, code, '智能能力编码')
-}
-
-/** 能力编码 -> 来源色调 */
-function abilityTone(code: AiAbilityCode): BadgeTone {
-  return strictEnumTone(AI_ABILITY_TONE, code, '智能能力编码')
-}
-
-/** 状态编码 -> 文案 */
-function statusLabel(status: AiExecutionStatusCode): string {
-  return strictEnumLabel(AiExecutionStatusDescription, status, '智能执行状态')
-}
-
-/** 状态编码 -> 色调 */
-function statusTone(status: AiExecutionStatusCode): BadgeTone {
-  return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, '智能执行状态')
-}
-
-/** 时间线节点色彩，与状态一致 */
-function timelineColor(status: AiExecutionStatusCode): string {
-  return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, '智能执行状态')
 }
 
 /**
@@ -1492,8 +1514,8 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
   }
   const fullScore = detail.value.fullScore
   const teacherReviewScore = gradeForm.teacherReviewScore
-  const ratio
-    = fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
+  const ratio =
+    fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
       ? `${Math.round((teacherReviewScore / fullScore) * 100)}%`
       : '-'
   // 取下一份模式下额外提示队列剩余信息，让教师清楚复核会继续
@@ -1503,13 +1525,26 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
       ? `提交后将自动取同题剩余 ${remaining} 份中的下一份继续复核。`
       : '提交后同题剩余任务为 0，将自动返回。'
     : '提交后任务将被关闭，不可撤销。'
+  const expectedExamId = examId.value
+  const expectedTaskId = taskId.value
+  const expectedGradeResultId = detail.value.gradeResultId
   void confirmAsync({
     title: advanceToNext ? '确认提交并继续下一份复核？' : '确认提交该题复核？',
     content: `教师复核评分：${teacherReviewScore} / ${fullScore}（${ratio}）。${tailHint}`,
     type: 'info',
     okText: advanceToNext ? '提交并取下一份' : '确认提交',
     cancelText: '取消',
-    onOk: () => (advanceToNext ? handleSubmitAndNext() : handleSubmit()),
+    onOk: () => {
+      if (
+        examId.value !== expectedExamId ||
+        taskId.value !== expectedTaskId ||
+        detail.value?.gradeResultId !== expectedGradeResultId
+      ) {
+        void message.warning('复核任务已切换，请重新核对当前任务后提交')
+        return
+      }
+      return advanceToNext ? handleSubmitAndNext() : handleSubmit()
+    },
   })
 }
 
@@ -1536,10 +1571,10 @@ async function submitGrade(): Promise<boolean> {
     return false
   }
   if (
-    canConfirm.value !== true
-    || examId.value !== expectedExamId
-    || taskId.value !== expectedTaskId
-    || detail.value?.gradeResultId !== gradeResultId
+    canConfirm.value !== true ||
+    examId.value !== expectedExamId ||
+    taskId.value !== expectedTaskId ||
+    detail.value?.gradeResultId !== gradeResultId
   ) {
     return false
   }
@@ -1555,9 +1590,9 @@ async function submitGrade(): Promise<boolean> {
       ownerOverrideReason,
     })
     if (
-      generation !== taskWriteGeneration
-      || examId.value !== expectedExamId
-      || taskId.value !== expectedTaskId
+      generation !== taskWriteGeneration ||
+      examId.value !== expectedExamId ||
+      taskId.value !== expectedTaskId
     ) {
       return false
     }
@@ -1567,9 +1602,9 @@ async function submitGrade(): Promise<boolean> {
       await refreshSnapshot()
     } catch (error) {
       if (
-        generation === taskWriteGeneration
-        && examId.value === expectedExamId
-        && taskId.value === expectedTaskId
+        generation === taskWriteGeneration &&
+        examId.value === expectedExamId &&
+        taskId.value === expectedTaskId
       ) {
         showUserError(error, '复核分已写入，但考试工作台状态刷新失败')
       }
@@ -1577,9 +1612,9 @@ async function submitGrade(): Promise<boolean> {
     return true
   } catch (error) {
     if (
-      generation !== taskWriteGeneration
-      || examId.value !== expectedExamId
-      || taskId.value !== expectedTaskId
+      generation !== taskWriteGeneration ||
+      examId.value !== expectedExamId ||
+      taskId.value !== expectedTaskId
     ) {
       return false
     }
@@ -1592,16 +1627,15 @@ async function submitGrade(): Promise<boolean> {
       return false
     }
     if (
-      readBusinessResultCode(error) === ResultCode.PARAM_ERROR
-      && getUserErrorMessage(error, '').includes('主考代办')
+      readBusinessResultCode(error) === ResultCode.PARAM_ERROR &&
+      getUserErrorMessage(error, '').includes('主考代办')
     ) {
       void message.warning(getUserErrorMessage(error, '主考代办须填写代办原因'))
       return false
     }
     if (isBusinessConflict(error) && getUserErrorMessage(error, '').includes('已被其他教师领取')) {
-      claimBlockedByOther.value = canManageOwnerReviewOverride.value !== true
-      ownerOverrideMode.value = canManageOwnerReviewOverride.value === true
       void message.warning(getUserErrorMessage(error, '复核任务已被其他教师领取'))
+      await loadTask()
       return false
     }
     showUserError(error, '确认复核失败')
@@ -1613,7 +1647,8 @@ async function submitGrade(): Promise<boolean> {
   }
 }
 
-function openRejectConfirm(): void {
+/** 采集独立仲裁原因后执行驳回，禁止复用学生评语或补造默认原因。 */
+async function openRejectConfirm(): Promise<void> {
   // MVR-418：与 canReject 同源二次闸（可确认且非仲裁任务）
   if (canReject.value !== true) {
     void message.warning(
@@ -1624,17 +1659,34 @@ function openRejectConfirm(): void {
     return
   }
   if (!examId.value || !detail.value?.gradeResultId) return
-  void confirmAsync({
-    title: '确认驳回复核？',
-    content: '驳回后任务进入仲裁队列，需仲裁教师重新处理。',
-    type: 'error',
-    okText: '确认驳回',
+  const expectedExamId = examId.value
+  const expectedTaskId = taskId.value
+  const expectedGradeResultId = detail.value.gradeResultId
+  const rejectReason = await promptInputAsync({
+    title: '驳回并转入仲裁',
+    placeholder: '请说明评分证据、识别结果或评分建议存在的具体问题',
+    required: true,
+    emptyErrorMessage: '请填写驳回原因，供仲裁教师核对',
+    type: 'warning',
+    okText: '确认驳回并转入仲裁',
     cancelText: '取消',
-    onOk: () => handleReject(),
   })
+  if (rejectReason === null) {
+    return
+  }
+  if (
+    examId.value !== expectedExamId ||
+    taskId.value !== expectedTaskId ||
+    detail.value?.gradeResultId !== expectedGradeResultId
+  ) {
+    void message.warning('复核任务已切换，请在当前任务重新填写驳回原因')
+    return
+  }
+  await handleReject(rejectReason)
 }
 
-async function handleReject(): Promise<void> {
+/** 驳回当前复核任务并按当前任务代际刷新真实占用与工作台状态。 */
+async function handleReject(rejectReason: string): Promise<void> {
   // MVR-418：与 canReject / openRejectConfirm 同源二次闸
   if (canReject.value !== true) {
     void message.warning(
@@ -1656,10 +1708,10 @@ async function handleReject(): Promise<void> {
     return
   }
   if (
-    canReject.value !== true
-    || examId.value !== expectedExamId
-    || taskId.value !== expectedTaskId
-    || detail.value?.gradeResultId !== gradeResultId
+    canReject.value !== true ||
+    examId.value !== expectedExamId ||
+    taskId.value !== expectedTaskId ||
+    detail.value?.gradeResultId !== gradeResultId
   ) {
     return
   }
@@ -1670,13 +1722,13 @@ async function handleReject(): Promise<void> {
     await rejectQuestionGrade({
       examId: expectedExamId,
       gradeResultId,
-      rejectReason: gradeForm.commentText?.trim() || '教师驳回复核结论',
+      rejectReason,
       ownerOverrideReason,
     })
     if (
-      generation !== taskWriteGeneration
-      || examId.value !== expectedExamId
-      || taskId.value !== expectedTaskId
+      generation !== taskWriteGeneration ||
+      examId.value !== expectedExamId ||
+      taskId.value !== expectedTaskId
     ) {
       return
     }
@@ -1687,9 +1739,9 @@ async function handleReject(): Promise<void> {
       await refreshSnapshot()
     } catch (error) {
       if (
-        generation === taskWriteGeneration
-        && examId.value === expectedExamId
-        && taskId.value === expectedTaskId
+        generation === taskWriteGeneration &&
+        examId.value === expectedExamId &&
+        taskId.value === expectedTaskId
       ) {
         showUserError(error, '复核任务已驳回，但考试工作台状态刷新失败')
       }
@@ -1697,9 +1749,9 @@ async function handleReject(): Promise<void> {
     rejected = true
   } catch (error) {
     if (
-      generation !== taskWriteGeneration
-      || examId.value !== expectedExamId
-      || taskId.value !== expectedTaskId
+      generation !== taskWriteGeneration ||
+      examId.value !== expectedExamId ||
+      taskId.value !== expectedTaskId
     ) {
       return
     }
@@ -1712,16 +1764,15 @@ async function handleReject(): Promise<void> {
       return
     }
     if (
-      readBusinessResultCode(error) === ResultCode.PARAM_ERROR
-      && getUserErrorMessage(error, '').includes('主考代办')
+      readBusinessResultCode(error) === ResultCode.PARAM_ERROR &&
+      getUserErrorMessage(error, '').includes('主考代办')
     ) {
       void message.warning(getUserErrorMessage(error, '主考代办须填写代办原因'))
       return
     }
     if (isBusinessConflict(error) && getUserErrorMessage(error, '').includes('已被其他教师领取')) {
-      claimBlockedByOther.value = canManageOwnerReviewOverride.value !== true
-      ownerOverrideMode.value = canManageOwnerReviewOverride.value === true
       void message.warning(getUserErrorMessage(error, '复核任务已被其他教师领取'))
+      await loadTask()
       return
     }
     showUserError(error, '驳回复核失败')
@@ -1812,10 +1863,13 @@ async function takeNextTask(): Promise<void> {
 
 // ─── 生命周期 ─────────────────────────────
 watch(
-  () => [examId.value, taskId.value],
+  () => [examId.value, taskId.value, taskSource.value],
   () => {
     loadTaskGeneration += 1
     taskWriteGeneration += 1
+    annotationsLoadGeneration += 1
+    reviewQueueLoadGeneration += 1
+    aiExecutionsLoadGeneration += 1
     bypassDirtyLeaveGuard = false
     resetTaskState()
     if (canSubmit.value === true) {
@@ -1826,6 +1880,10 @@ watch(
 )
 
 onBeforeRouteLeave(async () => {
+  return confirmLeaveIfDirty()
+})
+
+onBeforeRouteUpdate(async () => {
   return confirmLeaveIfDirty()
 })
 
@@ -1860,11 +1918,6 @@ onDeactivated(unbindReviewWorkspaceKeyboard)
   gap: var(--dp-space-component);
   min-width: 0;
 
-  &__section--standard {
-    box-shadow: inset 3px 0 0 var(--dp-success-border);
-    padding-inline-start: var(--dp-space-component-tight);
-  }
-
   &__queue-progress {
     margin: 0;
     padding: 0;
@@ -1892,35 +1945,13 @@ onDeactivated(unbindReviewWorkspaceKeyboard)
     color: var(--dp-text-muted);
   }
 
-  &__queue-progress-title {
-    font-size: var(--dp-font-size-sm);
-    font-weight: 600;
-    color: var(--dp-text-primary);
-  }
-
   &__queue-progress-text {
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
-  &__row {
-    row-gap: var(--dp-space-component);
-  }
-
-  &__slice-viewer {
-    min-height: 140px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--dp-surface-subtle);
-    border-radius: var(--dp-radius-panel);
-    padding: var(--dp-space-component);
-  }
-
-  &__slice-image {
-    max-width: 100%;
-    max-height: 800px;
-    object-fit: contain;
+  &__queue-jump-input {
+    width: 4.5rem;
   }
 
   &__text-block {
@@ -1935,10 +1966,6 @@ onDeactivated(unbindReviewWorkspaceKeyboard)
     border-radius: var(--dp-radius-panel);
   }
 
-  &__alert {
-    margin-bottom: var(--dp-space-component);
-  }
-
   &__score-input {
     width: 100%;
   }
@@ -1949,25 +1976,23 @@ onDeactivated(unbindReviewWorkspaceKeyboard)
     color: var(--dp-text-muted);
   }
 
-  &__annotation-meta {
-    display: flex;
-    gap: var(--dp-space-component);
-    font-size: var(--dp-font-size-xs);
-  }
-
   &__empty {
     padding: var(--dp-space-component) 0;
   }
 
   &__sticky-left {
     flex: 1;
+    min-width: 0;
     color: var(--dp-text-secondary);
     font-size: var(--dp-font-size-sm);
+    overflow-wrap: anywhere;
   }
 
   &__sticky-actions {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
     gap: var(--dp-space-component-tight);
   }
 
@@ -1979,12 +2004,6 @@ onDeactivated(unbindReviewWorkspaceKeyboard)
     margin-top: var(--dp-space-component);
     padding-top: var(--dp-space-component);
     border-top: 1px dashed var(--dp-border);
-  }
-
-  &__ai-actions-hint {
-    font-size: var(--dp-font-size-xs);
-    color: var(--dp-text-muted);
-    margin-left: var(--dp-space-component-tight);
   }
 }
 

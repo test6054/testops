@@ -126,6 +126,11 @@ export interface MarkTeacherDashboardPublishedExamInsightItemVO {
   passRate?: number
   fullScore?: number
   passScore?: number
+  excellentCount: number
+  goodCount: number
+  mediumCount: number
+  passLevelCount: number
+  failCount: number
 }
 
 export interface MarkTeacherDashboardOverviewVO {

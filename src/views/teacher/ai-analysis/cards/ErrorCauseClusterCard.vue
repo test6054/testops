@@ -6,9 +6,13 @@
     <template v-if="!embedded" #toolbar>
       <div class="ai-analysis-card-toolbar">
         <UiButton
-          v-if="canManageReviewerWrites === true" variant="outline" size="sm" :loading="generating === true" @click="handleGenerate"
+          v-if="canManageReviewerWrites === true"
+          variant="outline"
+          size="sm"
+          :loading="generating === true"
+          @click="handleGenerate"
         >
-          重新生成
+          {{ record ? '重新生成' : '生成分析' }}
         </UiButton>
         <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
           <template #icon><ReloadOutlined /></template>刷新
@@ -19,9 +23,13 @@
     <template v-if="embedded" #actions>
       <div class="ai-analysis-card-toolbar">
         <UiButton
-          v-if="canManageReviewerWrites === true" variant="outline" size="sm" :loading="generating === true" @click="handleGenerate"
+          v-if="canManageReviewerWrites === true"
+          variant="outline"
+          size="sm"
+          :loading="generating === true"
+          @click="handleGenerate"
         >
-          重新生成
+          {{ record ? '重新生成' : '生成分析' }}
         </UiButton>
       </div>
     </template>
@@ -29,9 +37,9 @@
     <AiAnalysisCardBody
       :loading="loading"
       :generating="generating"
-      :has-content="record != null || !loadFailed"
+      :has-content="record != null"
       :load-failed="loadFailed"
-      empty-description="暂无错因聚类，可点击重新生成"
+      empty-description="暂无错因聚类，可点击生成分析"
       error-description="错因聚类分析加载失败"
       progress-title="AI 错因聚类分析生成中"
       :progress-waiting-text="
@@ -44,6 +52,7 @@
         <p v-if="record?.overallSummary" class="ai-analysis-summary">{{ record.overallSummary }}</p>
 
         <MarkBarSection
+          v-if="clusterBarItems.length"
           title="错因占比分布"
           :hint="clusterChartHint"
           :item-count="clusterBarItems.length"
@@ -82,13 +91,13 @@ import type {
   ErrorCauseClusterItemVO,
   ErrorCauseClusterResponse,
 } from '@/apis/mark/error-cause-cluster'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, inject, ref, watch } from 'vue'
-import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import {
   generateErrorCauseCluster,
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { computed, inject, ref, watch } from 'vue'
+import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
@@ -127,14 +136,8 @@ let loadGeneration = 0
 const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
 
 /** MVR-285：默认拒绝假可写；依赖 AI 分析中心 overview 或页面 provide 的能力位 */
-const injectedCanManageReviewerWrites = inject(
-  AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY,
-  null,
-)
-const canManageReviewerWrites = computed(
-  () => injectedCanManageReviewerWrites?.value === true,
-)
-
+const injectedCanManageReviewerWrites = inject(AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY, null)
+const canManageReviewerWrites = computed(() => injectedCanManageReviewerWrites?.value === true)
 
 const clusterBarItems = computed(() => errorCauseToBarItems(record.value?.clusterItems ?? []))
 
@@ -187,9 +190,9 @@ async function reload(): Promise<void> {
       classId,
     })
     if (
-      generation !== loadGeneration
-      || props.examId !== examId
-      || (props.classId || undefined) !== classId
+      generation !== loadGeneration ||
+      props.examId !== examId ||
+      (props.classId || undefined) !== classId
     ) {
       return
     }

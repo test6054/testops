@@ -16,8 +16,6 @@
     <ExamSelectGateStrip v-if="!currentExamId" class="stats-page__empty" />
 
     <template v-else>
-      <ExamWorkspaceJourneySubNav />
-
       <UiAlertStrip
         v-if="rosterLoadNotice"
         tone="warning"
@@ -52,7 +50,6 @@
                 :loading="rosterLoading"
                 @change="handleClassChange"
               />
-              <UiTag v-if="activeClassName" tone="blue" size="sm">{{ activeClassName }}</UiTag>
               <UiTag v-if="activeStudentText" tone="blue" size="sm">{{ activeStudentText }}</UiTag>
               <MarkQualitySyncChip :exam="selectedExam" />
             </div>
@@ -83,9 +80,7 @@
           <header class="stats-page__section-header">
             <div class="stats-page__section-copy">
               <h3 class="stats-page__section-title">考试统计与质量治理</h3>
-              <p class="stats-page__section-desc">
-                围绕本场考试的成绩分布、题目质量、重判计划与错因结构，支撑考后质量校准。
-              </p>
+              <p class="stats-page__section-desc">查看本场考试的成绩、题目质量、重判与错因情况。</p>
             </div>
             <UiSectionTabs
               :model-value="activeTab"
@@ -101,9 +96,6 @@
             :exam-id="currentExamId"
             :reload-token="scoreDistToken"
             :class-id="activeClassId"
-            :class-options="classOptions"
-            :roster-loading="rosterLoading"
-            @class-change="handleClassChange"
           />
           <template v-else-if="activeTab === 'question'">
             <PaperQualityCard
@@ -170,11 +162,11 @@
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamPaperAnalysisResponse } from '@/apis/mark/question-analysis'
+import { getExamPaperAnalysis } from '@/apis/mark/question-analysis'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getTeacherClaimContext } from '@/apis/mark/marking-organization'
-import { getExamPaperAnalysis } from '@/apis/mark/question-analysis'
 import MarkQualitySyncChip from '@/components/quality/MarkQualitySyncChip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -184,7 +176,6 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
-import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -275,7 +266,6 @@ async function loadReviewerWriteCapability(examId: string): Promise<void> {
   }
 }
 
-
 // B-12 联动：考试切换后统一加载考生名册，派生班级 / 学生选项交给子卡片，避免教师手输 ID
 const {
   classOptions,
@@ -314,15 +304,9 @@ const teachingImprovementRef = ref<InstanceType<typeof TeachingImprovementCard> 
 const activeClassId = ref<string>('')
 const activeStudentUserId = ref<string>('')
 
-const hasLinkageContext = computed(() => Boolean(activeClassId.value) || Boolean(activeStudentUserId.value))
-
-const activeClassName = computed(() => {
-  if (activeClassId.value) {
-    const selectedClass = classOptions.value.find((opt) => opt.value === activeClassId.value)
-    return selectedClass?.className ?? activeClassId.value
-  }
-  return ''
-})
+const hasLinkageContext = computed(
+  () => Boolean(activeClassId.value) || Boolean(activeStudentUserId.value),
+)
 
 const activeStudentText = computed(() => {
   if (activeStudentUserId.value) {
@@ -345,7 +329,6 @@ const statsSignalMetrics = computed((): SignalMetric[] => {
   const metrics = buildPaperQualitySignalMetrics(paperAnalysis.value)
   return metrics.length > 0 ? metrics : PAPER_QUALITY_SIGNAL_PLACEHOLDERS
 })
-
 
 /** 任务工作台副标题：主分析信号摘要。 */
 const statisticsWorkbenchSubtitle = computed(() => {
@@ -404,9 +387,9 @@ function handleClassChange(value?: SelectValue): void {
   void loadPaperAnalysis()
   void searchStudents('', activeClassId.value || undefined)
   if (
-    activeStudentUserId.value
-    && activeClassId.value
-    && !studentOptions.value.some(
+    activeStudentUserId.value &&
+    activeClassId.value &&
+    !studentOptions.value.some(
       (opt) => opt.value === activeStudentUserId.value && opt.classId === activeClassId.value,
     )
   ) {
@@ -529,6 +512,7 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: var(--dp-space-component-tight);
     min-width: 0;
   }
@@ -558,7 +542,9 @@ onBeforeUnmount(() => {
   }
 
   &__class-select {
-    width: 240px;
+    flex: 0 1 280px;
+    width: 280px;
+    max-width: 100%;
   }
 
   &__section-header {
@@ -597,6 +583,17 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     gap: var(--dp-space-block);
+  }
+
+  @media (max-width: 1180px) {
+    &__linkage {
+      align-items: flex-start;
+    }
+
+    &__linkage-actions {
+      width: 100%;
+      justify-content: flex-start;
+    }
   }
 }
 </style>

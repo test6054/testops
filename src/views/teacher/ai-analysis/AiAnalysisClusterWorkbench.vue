@@ -36,7 +36,9 @@ const readinessSteps = computed(() =>
   buildAiAnalysisClusterReadinessSteps(props.clusterSignal, props.examId),
 )
 
-const showReadinessPanel = computed(() => readinessSteps.value.some(step => step.status === 'pending'))
+const showReadinessPanel = computed(() =>
+  readinessSteps.value.some((step) => step.status === 'pending'),
+)
 
 watch(
   () => props.clusterSignal,
@@ -62,6 +64,7 @@ function handleClusterDataChanged(): void {
       title="错因聚类与题目治理前置"
       :steps="readinessSteps"
       :show-actions="true"
+      compact
     />
 
     <div class="ai-analysis-cluster-workbench__diagnostic">
@@ -109,16 +112,16 @@ function handleClusterDataChanged(): void {
           <span class="ai-analysis-cluster-workbench__panel-title">重判计划</span>
           <span
             v-if="
-              (clusterSignal?.pendingRejudgePlanCount ?? 0)
-                + (clusterSignal?.approvedRejudgePlanCount ?? 0)
-                > 0
+              (clusterSignal?.pendingRejudgePlanCount ?? 0) +
+                (clusterSignal?.approvedRejudgePlanCount ?? 0) >
+              0
             "
             class="ai-analysis-cluster-workbench__panel-badge ai-analysis-cluster-workbench__panel-badge--warn"
           >
             待处理
             {{
-              (clusterSignal?.pendingRejudgePlanCount ?? 0)
-                + (clusterSignal?.approvedRejudgePlanCount ?? 0)
+              (clusterSignal?.pendingRejudgePlanCount ?? 0) +
+              (clusterSignal?.approvedRejudgePlanCount ?? 0)
             }}
           </span>
         </template>

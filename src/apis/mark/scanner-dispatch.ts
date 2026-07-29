@@ -9,18 +9,19 @@ import type { PageRegisterStateCode } from '@/types/enums/page-register-state-en
 import type { PortfolioAiTaskTypeCode } from '@/types/enums/portfolio-ai-task-type-enum'
 import type { ScanBatchQualityFlagCode } from '@/types/enums/scan-batch-quality-flag-enum'
 import type { ScanDispatchTicketStatusCode } from '@/types/enums/scan-dispatch-ticket-status-enum'
-import type { ScanOperationActionCode } from '@/types/enums/scan-operation-action-enum'
-import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
-import type { ScannerExceptionItemKindCode } from '@/types/enums/scanner-exception-item-kind-enum'
-import http from '@/config/axios'
 import {
   ALL_SCAN_DISPATCH_TICKET_STATUS_CODES,
   ScanDispatchTicketStatusDescription,
 } from '@/types/enums/scan-dispatch-ticket-status-enum'
+import type { ScanOperationActionCode } from '@/types/enums/scan-operation-action-enum'
 import {
   ALL_SCAN_OPERATION_ACTION_CODES,
   ScanOperationActionDescription,
 } from '@/types/enums/scan-operation-action-enum'
+import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
+import type { ScannerExceptionItemKindCode } from '@/types/enums/scanner-exception-item-kind-enum'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import http from '@/config/axios'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
@@ -58,6 +59,10 @@ export interface ScanDispatchArchiveSnapshotVO {
   volumeId?: string
   archiveTitle?: string
   teachingClassName?: string
+  courseName?: string
+  examName?: string
+  academicYear?: string
+  semester?: SemesterCode
   catalogCode?: string
   materialType?: ArchiveMaterialTypeCode
   archiveBatchMode?: ArchiveScanBatchModeCode
@@ -70,11 +75,17 @@ export interface ScanDispatchArchiveSnapshotVO {
 export interface ScanDispatchPortfolioSnapshotVO {
   teacherId?: string
   teacherName?: string
+  teacherNumber?: string
+  departmentName?: string
   collectMode?: PortfolioCollectModeCode
   gapTaskId?: string
   gapTaskTitle?: string
   categoryId?: string
   categoryName?: string
+  courseCode?: string
+  academicYear?: string
+  semester?: SemesterCode
+  dueTime?: string
   taskType?: PortfolioAiTaskTypeCode
   templateCode?: string
   archiveRecordId?: string

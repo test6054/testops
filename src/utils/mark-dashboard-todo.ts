@@ -68,21 +68,6 @@ export function resolveTodoUrgency(todo: MarkTeacherDashboardPendingTodoItemVO):
   return 'normal'
 }
 
-/** 概览待办区副标题文案。 */
-export function buildPendingTodoHint(
-  todos: MarkTeacherDashboardPendingTodoItemVO[],
-  totals?: MarkDashboardPendingTodoTotals,
-): string {
-  const total = totals?.pendingTodoRowCount ?? todos.length
-  if (total <= 0) return '暂无待处理事项'
-  const urgent = totals?.urgentTodoCount ?? countUrgentTodos(todos)
-  if (urgent > 0) return `共 ${total} 项待处理，${urgent} 项紧急（含仲裁）`
-  const attention = totals?.attentionTodoCount
-    ?? todos.filter((todo) => !isUrgentTodo(todo) && isAttentionTodo(todo)).length
-  if (attention > 0) return `共 ${total} 项待处理，${attention} 项需关注`
-  return `共 ${total} 项待处理`
-}
-
 export function countUrgentTodos(todos: MarkTeacherDashboardPendingTodoItemVO[]): number {
   return todos.filter(isUrgentTodo).length
 }

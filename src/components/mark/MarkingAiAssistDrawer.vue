@@ -24,7 +24,7 @@
         <UiTimelineItem
           v-for="(item, index) in executions"
           :key="`${item.traceId}-${index}`"
-          :color="timelineColor(item.status)"
+          :color="strictEnumTone(AI_EXECUTION_STATUS_TONE, item.status, '智能执行状态')"
         >
           <div
             :ref="(el) => registerItemRef(item.traceId, el)"
@@ -35,13 +35,21 @@
             }"
           >
             <div class="marking-ai-assist-drawer__head">
-              <UiTag :tone="abilityTone(item.abilityCode)" size="sm">
-                {{ abilityLabel(item.abilityCode) }}
+              <UiTag
+                :tone="strictEnumTone(AI_ABILITY_TONE, item.abilityCode, '智能能力编码')"
+                size="sm"
+              >
+                {{ strictEnumLabel(AiAbilityDescription, item.abilityCode, '智能能力编码') }}
               </UiTag>
-              <UiTag :tone="statusTone(item.status)" size="sm">
-                {{ statusLabel(item.status) }}
+              <UiTag
+                :tone="strictEnumTone(AI_EXECUTION_STATUS_TONE, item.status, '智能执行状态')"
+                size="sm"
+              >
+                {{ strictEnumLabel(AiExecutionStatusDescription, item.status, '智能执行状态') }}
               </UiTag>
-              <span class="marking-ai-assist-drawer__time">{{ formatTime(item.createTime) }}</span>
+              <span class="marking-ai-assist-drawer__time">{{
+                formatDateTime(item.createTime)
+              }}</span>
               <span v-if="item.latencyMs != null" class="marking-ai-assist-drawer__latency">
                 耗时 {{ item.latencyMs }} ms
               </span>
@@ -51,7 +59,10 @@
             </div>
             <div v-if="item.modelName" class="marking-ai-assist-drawer__model">
               模型：{{ item.modelName }}
-              <span v-if="item.providerType"> / {{ providerLabel(item.providerType) }}</span>
+              <span v-if="item.providerType">
+                /
+                {{ strictEnumLabel(AiProviderTypeDescription, item.providerType, 'AI 供应商类型') }}
+              </span>
             </div>
             <div v-else class="marking-ai-assist-drawer__model">模型：未调用</div>
             <ExperienceAssistBadge
@@ -63,13 +74,17 @@
             />
             <p
               v-if="
-                item.referenceExperienceAudit?.referenceExperienceApplied
-                  && item.referenceExperienceAudit?.referenceExperienceMatchMode
+                item.referenceExperienceAudit?.referenceExperienceApplied &&
+                item.referenceExperienceAudit?.referenceExperienceMatchMode
               "
               class="marking-ai-assist-drawer__match-mode"
             >
               定标方式：{{
-                matchModeLabel(item.referenceExperienceAudit.referenceExperienceMatchMode)
+                strictEnumLabel(
+                  MATCH_MODE_LABEL,
+                  item.referenceExperienceAudit.referenceExperienceMatchMode,
+                  '经验匹配方式',
+                )
               }}
             </p>
             <div v-if="item.diagnostic" class="marking-ai-assist-drawer__diagnostic">
@@ -87,16 +102,16 @@
 
 <script lang="ts" setup>
 import type { ComponentPublicInstance } from 'vue'
-import type {
-  AiAbilityCode,
-  AiExecutionStatusCode,
-  AiProviderTypeCode,
-  ExamQuestionAiExecutionItemResponse,
-} from '@/apis/mark/exam-grade'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
 import { computed, nextTick, ref, watch } from 'vue'
-import { AiProviderTypeDescription } from '@/apis/mark/exam-grade'
+import type { ExamQuestionAiExecutionItemResponse } from '@/apis/mark/exam-grade'
+import {
+  AI_ABILITY_TONE,
+  AI_EXECUTION_STATUS_TONE,
+  AiAbilityDescription,
+  AiExecutionStatusDescription,
+  AiProviderTypeDescription,
+} from '@/apis/mark/exam-grade'
+import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -107,24 +122,22 @@ import UiTimeline from '@/components/ui-guide/ui/UiTimeline.vue'
 import UiTimelineItem from '@/components/ui-guide/ui/UiTimelineItem.vue'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { strictEnumLabel } from '@/utils/strict-enum'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkingAiAssistDrawer' })
 
-const props = withDefaults(defineProps<{
-  open: boolean
-  loading: boolean
-  loadFailed?: boolean
-  executions: ExamQuestionAiExecutionItemResponse[]
-  highlightTraceId?: string | null
-  statusLabel: (status: AiExecutionStatusCode) => string
-  statusTone: (status: AiExecutionStatusCode) => BadgeTone
-  abilityLabel: (code: AiAbilityCode) => string
-  abilityTone: (code: AiAbilityCode) => BadgeTone
-  timelineColor: (status: AiExecutionStatusCode) => string
-}>(), {
-  loadFailed: false,
-})
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    loading: boolean
+    loadFailed?: boolean
+    executions: ExamQuestionAiExecutionItemResponse[]
+    highlightTraceId?: string | null
+  }>(),
+  {
+    loadFailed: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
@@ -138,19 +151,6 @@ const resolvedHighlightTraceId = computed(() => props.highlightTraceId ?? focuse
 const MATCH_MODE_LABEL: Record<GradingExperienceReferenceMatchModeCode, string> = {
   EXPLICIT_BINDING: '题目显式绑定',
   SIMHASH_AUTO_MATCH: '相似题自动匹配',
-}
-
-function formatTime(value?: string): string {
-  if (!value) return '—'
-  return formatDateTime(value)
-}
-
-function providerLabel(providerType: AiProviderTypeCode): string {
-  return strictEnumLabel(AiProviderTypeDescription, providerType, 'AI 供应商类型')
-}
-
-function matchModeLabel(mode: GradingExperienceReferenceMatchModeCode): string {
-  return MATCH_MODE_LABEL[mode]
 }
 
 function diagnosticText(diagnostic?: string): string {
@@ -223,13 +223,13 @@ watch(
     display: flex;
     flex-direction: column;
     gap: var(--dp-space-component-tight);
-    border-radius: 6px;
+    border-radius: var(--dp-radius-panel);
     transition: background-color var(--dp-duration-normal) var(--dp-ease-default);
   }
 
   &__item--highlight {
     background: color-mix(in srgb, var(--dp-purple-500) 10%, transparent);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-purple-500) 28%, transparent);
+    outline: 1px solid color-mix(in srgb, var(--dp-purple-500) 28%, transparent);
     padding: var(--dp-space-component-tight);
     margin: calc(-1 * var(--dp-space-component-tight));
   }

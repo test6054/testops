@@ -10,15 +10,19 @@ import type { MarkAiReferenceExperienceAuditResponse } from '@/apis/mark/grading
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { ExamMaterialLayoutModeCode } from '@/types/enums/exam-material-layout-mode-enum'
-import type { ReviewTaskTypeCode } from '@/types/enums/review-task-type-enum'
-import http from '@/config/axios'
 import { ALL_EXAM_MATERIAL_LAYOUT_MODE_CODES } from '@/types/enums/exam-material-layout-mode-enum'
+import type { ReviewTaskTypeCode } from '@/types/enums/review-task-type-enum'
+import { ALL_REVIEW_TASK_TYPE_CODES } from '@/types/enums/review-task-type-enum'
+import http from '@/config/axios'
 import { ALL_GRADE_SOURCE_CODES, GradeSourceCode } from '@/types/enums/grade-source-enum'
 import { ALL_OBJECTIVE_COMPARE_POLICY_CODES } from '@/types/enums/objective-compare-policy-enum'
 import { ALL_QUALITY_DECISION_CODES } from '@/types/enums/quality-decision-enum'
 import { ALL_QUESTION_TYPE_CODES } from '@/types/enums/question-type-enum'
-import { ALL_REVIEW_TASK_STATUS_CODES, ReviewTaskStatusCode, ReviewTaskStatusDescription } from '@/types/enums/review-task-status-enum'
-import { ALL_REVIEW_TASK_TYPE_CODES } from '@/types/enums/review-task-type-enum'
+import {
+  ALL_REVIEW_TASK_STATUS_CODES,
+  ReviewTaskStatusCode,
+  ReviewTaskStatusDescription
+} from '@/types/enums/review-task-status-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 匿名批阅任务查询请求 - 对应 ReviewTaskQueryRequest */
@@ -258,6 +262,9 @@ export async function listReviewTasks(
       || !ALL_REVIEW_TASK_TYPE_CODES.includes(item.reviewType)
       || !ALL_GRADE_SOURCE_CODES.includes(item.gradeSource)
       || typeof item.canManageReviewerWrites !== 'boolean'
+      || (item.assignedTeacherUserId
+        ? !item.assignedTeacherName?.trim()
+        : item.assignedTeacherName != null)
     ) {
       throw new TypeError('复核任务合同异常：考试锚点、任务身份或评分字段不可用')
     }
@@ -276,10 +283,21 @@ export interface ReviewTaskPipelineQueryRequest {
 }
 
 /** 同题复核流水线队列响应 */
+export interface ReviewTaskPipelineItemResponse {
+  reviewTaskId: string
+  examId: string
+  layoutQuestionId: string
+  gradeResultId: string
+  status: ReviewTaskStatusCode
+  reviewType: ReviewTaskTypeCode
+  gradeSource: GradeSourceCode
+  assignedTeacherUserId?: string
+}
+
 export interface ReviewTaskPipelineResponse {
   totalCount: number
   currentIndex: number
-  items: ReviewTaskItemResponse[]
+  items: ReviewTaskPipelineItemResponse[]
 }
 
 /** 校验流水线队列身份、考试/题目范围与当前位次，阻止跨题或残缺任务进入连续复核导航。 */
@@ -311,6 +329,8 @@ export async function getReviewTaskPipeline(
       || !ALL_REVIEW_TASK_STATUS_CODES.includes(item.status)
       || (item.status !== ReviewTaskStatusCode.PENDING
         && item.status !== ReviewTaskStatusCode.IN_PROGRESS)
+      || (item.status === ReviewTaskStatusCode.PENDING && item.assignedTeacherUserId != null)
+      || (item.status === ReviewTaskStatusCode.IN_PROGRESS && !item.assignedTeacherUserId)
     ) {
       throw new TypeError('复核流水线合同异常：任务身份、范围或状态不可用')
     }
@@ -369,6 +389,12 @@ function assertReviewTaskDetail(
       && (!Number.isFinite(response.aiScore) || response.aiScore < 0 || response.aiScore > response.fullScore))
     || typeof response.canManageReviewerWrites !== 'boolean'
     || typeof response.canManageOwnerReviewOverride !== 'boolean'
+    || (response.canManageOwnerReviewOverride && !response.canManageReviewerWrites)
+    || (response.status === ReviewTaskStatusCode.PENDING
+      && response.assignedTeacherUserId != null)
+    || (response.status === ReviewTaskStatusCode.IN_PROGRESS
+      && !response.assignedTeacherUserId)
+    || (response.aiLimited != null && typeof response.aiLimited !== 'boolean')
     || (response.materialLayoutMode != null
       && !ALL_EXAM_MATERIAL_LAYOUT_MODE_CODES.includes(response.materialLayoutMode))
     || (response.comparePolicy != null

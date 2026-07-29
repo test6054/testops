@@ -5,11 +5,7 @@
       <div class="marking-overview-analytics__pin">
         <div class="marking-overview-analytics__pin-main">
           <span class="marking-overview-analytics__pin-kicker">近 14 日进度</span>
-          <span
-            v-if="sparkPolyline"
-            class="marking-overview-analytics__spark"
-            aria-hidden="true"
-          >
+          <span v-if="sparkPolyline" class="marking-overview-analytics__spark" aria-hidden="true">
             <svg viewBox="0 0 80 18" preserveAspectRatio="none">
               <polyline
                 fill="none"
@@ -47,7 +43,7 @@
             <div class="marking-overview-analytics__head-main">
               <h3 class="marking-overview-analytics__title">确认题量 / 发布成绩</h3>
               <p class="marking-overview-analytics__desc">
-                日趋势 · 确认题 CONFIRMED · 发布成绩 PUBLISHED
+                日趋势 · 已确认题目数量 · 已发布成绩份数
               </p>
             </div>
           </header>
@@ -65,7 +61,9 @@
 
         <div class="marking-overview-analytics__grid">
           <div class="marking-overview-analytics__panel">
-            <header class="marking-overview-analytics__head marking-overview-analytics__head--compact">
+            <header
+              class="marking-overview-analytics__head marking-overview-analytics__head--compact"
+            >
               <h3 class="marking-overview-analytics__title">旅程阶段分布</h3>
               <span class="marking-overview-analytics__hint">{{ journeyStageHint }}</span>
             </header>
@@ -80,7 +78,9 @@
           </div>
 
           <div class="marking-overview-analytics__panel">
-            <header class="marking-overview-analytics__head marking-overview-analytics__head--compact">
+            <header
+              class="marking-overview-analytics__head marking-overview-analytics__head--compact"
+            >
               <h3 class="marking-overview-analytics__title">待办类型构成</h3>
               <span class="marking-overview-analytics__hint">{{ todoTypeHint }}</span>
             </header>
@@ -172,35 +172,21 @@ const trendPoints = computed(() => props.dailyProgressTrend ?? [])
 const trendPointCount = computed(() => trendPoints.value.length)
 
 const trendHasActivity = computed(() =>
-  trendPoints.value.some(
-    (point) => point.confirmedGradeCount > 0 || point.publishedScoreCount > 0,
-  ),
+  trendPoints.value.some((point) => point.confirmedGradeCount > 0 || point.publishedScoreCount > 0),
 )
 
 /** 无确认/发布活动时按 0 点交给 MarkTrendSection 空壳，禁止用占位点撑成 ready。 */
-const trendChartPointCount = computed(() =>
-  trendHasActivity.value ? trendPointCount.value : 0,
-)
+const trendChartPointCount = computed(() => (trendHasActivity.value ? trendPointCount.value : 0))
 
-const trendCategories = computed(() =>
-  trendPoints.value.map((point) => formatDayLabel(point.day)),
-)
+const trendCategories = computed(() => trendPoints.value.map((point) => formatDayLabel(point.day)))
 
-const confirmedSeries = computed(() =>
-  trendPoints.value.map((point) => point.confirmedGradeCount),
-)
+const confirmedSeries = computed(() => trendPoints.value.map((point) => point.confirmedGradeCount))
 
-const publishedSeries = computed(() =>
-  trendPoints.value.map((point) => point.publishedScoreCount),
-)
+const publishedSeries = computed(() => trendPoints.value.map((point) => point.publishedScoreCount))
 
-const confirmedTotal = computed(() =>
-  confirmedSeries.value.reduce((sum, value) => sum + value, 0),
-)
+const confirmedTotal = computed(() => confirmedSeries.value.reduce((sum, value) => sum + value, 0))
 
-const publishedTotal = computed(() =>
-  publishedSeries.value.reduce((sum, value) => sum + value, 0),
-)
+const publishedTotal = computed(() => publishedSeries.value.reduce((sum, value) => sum + value, 0))
 
 const TREND_EMPTY_DESCRIPTION = '当前筛选下近 14 日暂无确认或发布记录'
 

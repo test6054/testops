@@ -23,7 +23,7 @@
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
         pagination-mode="server"
-        :sticky-header="!embedded"
+        :sticky-header="false"
         :columns="columns"
         :data-source="rows"
         :loading="loading"
@@ -122,10 +122,6 @@ import type {
   RejudgePlanStatusCode,
   RejudgeTriggerTypeCode,
 } from '@/apis/mark/question-analysis'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import {
   approveRejudgePlan,
   executeRejudgePlan,
@@ -135,6 +131,10 @@ import {
   RejudgePlanStatusDescription,
   RejudgeTriggerTypeDescription,
 } from '@/apis/mark/question-analysis'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -220,9 +220,9 @@ const tableEmptyTitle = computed(() => (filterForm.status ? '无匹配计划' : 
 
 const tableEmptyDescription = computed(() => {
   if (filterForm.status) {
-    return '当前筛选状态下暂无重判计划，请调整状态或等待系统根据答案修正与题目质量诊断自动触发。'
+    return '当前状态下没有重判计划。调整筛选条件后再查看。'
   }
-  return '本场考试尚未产生重判任务；当教师修正标准答案或治理低质量题目时，系统将自动生成待审批计划。'
+  return '本场暂无重判计划。修正标准答案或处理题目质量问题后，待审批计划会显示在这里。'
 })
 
 const columns: ColumnType<ExamRejudgePlan>[] = [
@@ -291,7 +291,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -457,9 +457,9 @@ function isRejudgePlanSubmitterSelf(row: ExamRejudgePlan): boolean {
 
 function canDecideRejudgePlan(row: ExamRejudgePlan): boolean {
   return (
-    canManageReviewerWrites.value === true
-    && row.planStatus === 'PENDING_APPROVAL'
-    && !isRejudgePlanSubmitterSelf(row)
+    canManageReviewerWrites.value === true &&
+    row.planStatus === 'PENDING_APPROVAL' &&
+    !isRejudgePlanSubmitterSelf(row)
   )
 }
 
@@ -472,7 +472,9 @@ function buildRejudgePlanActions(row: ExamRejudgePlan): UiTableRowActionItem[] {
       label: '通过',
       // MVR-952：canDecide 仅认 === true
       hidden: canDecide !== true,
-      disabled: operating('approve'), tone: 'primary' },
+      disabled: operating('approve'),
+      tone: 'primary',
+    },
     {
       key: 'reject',
       label: '驳回',
@@ -520,3 +522,12 @@ watch(
   { immediate: true },
 )
 </script>
+
+<style scoped lang="scss">
+.rejudge-plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-component);
+  min-width: 0;
+}
+</style>

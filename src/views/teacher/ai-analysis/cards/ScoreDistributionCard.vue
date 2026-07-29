@@ -3,25 +3,6 @@
     <template #head>
       <h3 class="stats-card__title">成绩分数分布</h3>
     </template>
-    <template #toolbar>
-      <div class="dp-space dp-space--tight">
-        <UiSelect
-          size="sm"
-          :model-value="props.classId"
-          placeholder="全场考生"
-          allow-clear
-          class="stats-card__select stats-card__select--class"
-          :options="props.classOptions"
-          :loading="props.rosterLoading"
-          @change="handleClassChange"
-        />
-        <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
-          <template #icon><ReloadOutlined /></template>
-          刷新
-        </UiButton>
-      </div>
-    </template>
-
     <UiSkeletonState v-if="loading" variant="card" compact />
 
     <div v-else class="score-dist">
@@ -42,16 +23,11 @@
 </template>
 
 <script lang="ts" setup>
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamScoreDistributionResponse } from '@/apis/mark/exam-score'
-import type { MarkClassOption } from '@/composables/useMarkExamRoster'
-import type { SignalMetric } from '@/types/workbench'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, ref, watch } from 'vue'
 import { getExamScoreDistribution } from '@/apis/mark/exam-score'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, ref, watch } from 'vue'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -67,11 +43,7 @@ const props = defineProps<{
   examId: string
   reloadToken: number
   classId?: string
-  classOptions: MarkClassOption[]
-  rosterLoading: boolean
 }>()
-
-const emit = defineEmits<{ (e: 'class-change', classId?: string): void }>()
 
 const distribution = ref<ExamScoreDistributionResponse | null>(null)
 const loading = ref(false)
@@ -199,10 +171,6 @@ async function reload(): Promise<void> {
   }
 }
 
-function handleClassChange(value?: SelectValue): void {
-  emit('class-change', typeof value === 'string' ? value : undefined)
-}
-
 watch(
   () => [props.examId, props.reloadToken, props.classId],
   () => {
@@ -215,4 +183,3 @@ watch(
   { immediate: true },
 )
 </script>
-

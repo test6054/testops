@@ -3,18 +3,18 @@
  * 考试准备聚合工作台：Signal 五 KPI、信息双栏、横向步骤流水线（含主操作）、制卷形态配置。
  */
 import type { ExamPrintSourceModeCode } from '@/apis/mark/exam'
+import { ExamMaterialLayoutModeCode, saveMaterialLayout } from '@/apis/mark/exam'
 import type { ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
+import { loadExamLayoutDesign } from '@/apis/mark/exam-layout-design'
 import type { AnswerBookletSourceModeCode } from '@/types/enums/answer-booklet-source-mode-enum'
-import type { ExamScanMaterialScopeCode } from '@/types/enums/exam-scan-material-scope-enum'
 import type { SignalMetric } from '@/types/workbench'
 import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
+import { buildPrepStepCards, resolvePrepStepRouteLocation } from '@/utils/exam-prep-step-ui'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, inject, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ExamMaterialLayoutModeCode, saveMaterialLayout } from '@/apis/mark/exam'
-import { loadExamLayoutDesign } from '@/apis/mark/exam-layout-design'
 import { WorkbenchNextActionKeyCode } from '@/apis/mark/exam-progress'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -32,9 +32,9 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
+import { ExamScanMaterialScopeCode } from '@/types/enums/exam-scan-material-scope-enum'
 import { ExamWorkbenchPrepStepKeyCode as PrepStepKey } from '@/types/enums/exam-workbench-prep-step-key-enum'
 import { showUserError } from '@/utils/error-handler'
-import { buildPrepStepCards, resolvePrepStepRouteLocation } from '@/utils/exam-prep-step-ui'
 import {
   canEnterReviewBatch,
   canStartScanRegistration,
@@ -79,9 +79,7 @@ const enterReviewAction = computed(() =>
   findWorkbenchNextAction(nextActions.value, WorkbenchNextActionKeyCode.ENTER_REVIEW),
 )
 
-const scanEntryEnabled = computed(() =>
-  canStartScanRegistration(nextActions.value),
-)
+const scanEntryEnabled = computed(() => canStartScanRegistration(nextActions.value))
 const scanEntryDisabledReason = computed(() =>
   resolveNextActionDisabledReason(nextActions.value, WorkbenchNextActionKeyCode.START_SCAN),
 )
@@ -112,16 +110,13 @@ const materialLayoutStep = computed(
   () => prepSteps.value.find((step) => step.key === PrepStepKey.MATERIAL_LAYOUT) ?? null,
 )
 
-
 /** 任务工作台标题：优先考试名。 */
 const examPrepWorkbenchTitle = computed(() => examDetail.value?.examName || '考试准备')
 
 /** 任务工作台副标题：备考进度 + 考试编号。 */
 const examPrepWorkbenchSubtitle = computed(() => {
   const total = prepSteps.value.length
-  const progress = total > 0
-    ? `已完成 ${completedPrepCount.value}/${total} 步`
-    : '备考步骤加载中'
+  const progress = total > 0 ? `已完成 ${completedPrepCount.value}/${total} 步` : '备考步骤加载中'
   const examNo = examDetail.value?.examNo
   return examNo ? `${progress} · #${examNo}` : progress
 })
@@ -190,10 +185,10 @@ const contextPrimaryAction = computed(() => {
   }
   // MVR-267：保存制卷形态仅主考；与 BE requireExamOwnerPermission 对齐
   if (
-    canManageOwnerExamPrepWrites.value === true
-    && layoutDirty.value
-    && layoutModeLocked.value !== true
-    && draftLayoutMode.value
+    canManageOwnerExamPrepWrites.value === true &&
+    layoutDirty.value &&
+    layoutModeLocked.value !== true &&
+    draftLayoutMode.value
   ) {
     return {
       label: '保存制卷形态',
@@ -223,26 +218,25 @@ const layoutDirty = computed(() => {
     return false
   }
   return (
-    draftLayoutMode.value !== detail.materialLayoutMode
-    || draftScanMaterialScope.value !== detail.scanMaterialScope
-    || draftAnswerBookletSourceMode.value !== detail.answerBookletSourceMode
-    || (draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER
-      && draftPrintSource.value !== detail.printSourceMode)
+    draftLayoutMode.value !== detail.materialLayoutMode ||
+    draftScanMaterialScope.value !== detail.scanMaterialScope ||
+    draftAnswerBookletSourceMode.value !== detail.answerBookletSourceMode ||
+    (draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER &&
+      draftPrintSource.value !== detail.printSourceMode)
   )
 })
 
 const pageLoading = computed(
-  () => examDetailLoading.value === true || (workbenchContext?.loading.value === true && !snapshot.value),
+  () =>
+    examDetailLoading.value === true ||
+    (workbenchContext?.loading.value === true && !snapshot.value),
 )
 
 async function loadExamFullScore(examId: string): Promise<void> {
   const generation = ++examFullScoreLoadGeneration
   try {
     const response = await loadExamLayoutDesign({ examId })
-    if (
-      generation !== examFullScoreLoadGeneration
-      || selectedExamId.value !== examId
-    ) {
+    if (generation !== examFullScoreLoadGeneration || selectedExamId.value !== examId) {
       return
     }
     const questions = response.document?.questions ?? []
@@ -260,10 +254,7 @@ async function loadExamFullScore(examId: string): Promise<void> {
     }
     examFullScore.value = sum
   } catch (error) {
-    if (
-      generation !== examFullScoreLoadGeneration
-      || selectedExamId.value !== examId
-    ) {
+    if (generation !== examFullScoreLoadGeneration || selectedExamId.value !== examId) {
       return
     }
     examFullScore.value = null
@@ -285,12 +276,21 @@ async function handleSaveLayoutMode(): Promise<void> {
     void message.warning('单独试卷需选择印刷来源')
     return
   }
+  if (
+    draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER &&
+    draftScanMaterialScope.value !== ExamScanMaterialScopeCode.QUESTION_PAPER_ONLY
+  ) {
+    void message.warning('单独试卷只能选择仅扫描试题卷')
+    return
+  }
   if (!draftScanMaterialScope.value) {
     void message.warning('请选择考后实际扫描材料')
     return
   }
-  if (draftLayoutMode.value === ExamMaterialLayoutModeCode.ANSWER_SHEET
-    && !draftAnswerBookletSourceMode.value) {
+  if (
+    draftLayoutMode.value === ExamMaterialLayoutModeCode.ANSWER_SHEET &&
+    !draftAnswerBookletSourceMode.value
+  ) {
     void message.warning('请选择答题纸来源')
     return
   }
@@ -340,7 +340,10 @@ async function goPrepStep(step: PrepStepCard): Promise<void> {
     return
   }
   // 仅制卷设计器需要已保存形态；名册/印刷等步骤与开扫不依赖制卷形态
-  if (step.routeName === 'TeacherExamWorkspaceLayoutDesigner' && !examDetail.value.materialLayoutMode) {
+  if (
+    step.routeName === 'TeacherExamWorkspaceLayoutDesigner' &&
+    !examDetail.value.materialLayoutMode
+  ) {
     layoutModalOpen.value = true
     return
   }
@@ -468,9 +471,7 @@ watch(
           :exam-full-score="examFullScore"
           :alert-tone="prepAdvisoryReasons.length > 0 ? 'warning' : undefined"
           :alert-title="prepAdvisoryReasons.length > 0 ? '准备项待完善' : undefined"
-          :alert-description="
-            prepAdvisoryReasons.length > 0 ? prepAdvisoryDescription : undefined
-          "
+          :alert-description="prepAdvisoryReasons.length > 0 ? prepAdvisoryDescription : undefined"
           class="exam-prep__info"
         >
           <template v-if="prepAdvisoryReasons.length > 0" #alert-actions>
@@ -498,8 +499,8 @@ watch(
             </UiButton>
             <UiTooltip
               :title="
-                contextPrimaryAction?.tooltip
-                  ?? (contextPrimaryAction?.disabled ? scanEntryDisabledReason : undefined)
+                contextPrimaryAction?.tooltip ??
+                (contextPrimaryAction?.disabled ? scanEntryDisabledReason : undefined)
               "
             >
               <UiButton

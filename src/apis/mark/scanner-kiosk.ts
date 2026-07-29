@@ -723,7 +723,7 @@ export async function pageScannerKioskBatchHistory(
 }
 
 // ============================================================================
-// 工位自主待办：归档卷 / 档案袋 gap / 临时派单
+// 工位自主待办：归档卷 / 档案袋 gap / 现场开单
 // ============================================================================
 
 /** 工位只读归档卷列表项，对齐 ScannerKioskArchiveVolumeItemVO，不含成绩字段 */
@@ -733,6 +733,10 @@ export interface ScannerKioskArchiveVolumeItemVO {
   departmentId?: string
   departmentName?: string
   teachingClassName?: string
+  courseName?: string
+  examName?: string
+  academicYear?: string
+  semester?: SemesterCode
   archiveNo: string
   archiveTitle: string
   volumeStatus: ArchiveVolumeStatusCode
