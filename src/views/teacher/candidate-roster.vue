@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="roster-page">
     <template v-if="selectedExamId" #context>
-      <ContextBar layout="workbench" show-title title="考生名册">
+      <ContextBar layout="workbench" show-title title="考生名册" :subtitle="`${pagination.total ?? 0} 人`">
         <template #status>
           <UiTag v-if="rosterPanel?.filterScopeApplied" tone="blue" size="sm">筛选范围内</UiTag>
           <UiTag v-if="rosterPanelLoadFailed === true" tone="red" size="sm">看板加载失败</UiTag>
@@ -23,7 +23,7 @@
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand compact variant="panel" :metrics="rosterSignalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="rosterSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip
@@ -491,13 +491,47 @@ const rosterSignalMetrics = computed((): SignalMetric[] => {
   const panel = rosterPanel.value
   if (panel) {
     const scoped = panel.filterScopeApplied
-    const metrics: SignalMetric[] = [
+    const primary
+      = panel.notScannedCount > 0
+        ? {
+            key: 'not-scanned',
+            label: '未扫描',
+            value: panel.notScannedCount,
+            unit: '人',
+            tone: 'orange' as const,
+            emphasis: 'primary' as const,
+            actionLabel: '处理未扫',
+            helper: '优先推进未扫描考生',
+          }
+        : panel.absentCount > 0
+          ? {
+              key: 'absent',
+              label: '缺考',
+              value: panel.absentCount,
+              unit: '人',
+              tone: 'red' as const,
+              emphasis: 'primary' as const,
+              actionLabel: '查看缺考',
+              helper: '缺考名单待确认',
+            }
+          : {
+              key: 'total',
+              label: scoped ? '筛选人数' : '总人数',
+              value: panel.totalCount,
+              unit: '人',
+              tone: 'blue' as const,
+              emphasis: 'primary' as const,
+              helper: scoped ? '当前筛选范围' : '名册总人数',
+            }
+
+    const secondaryPool: SignalMetric[] = [
       {
         key: 'total',
         label: scoped ? '筛选人数' : '总人数',
         value: panel.totalCount,
         unit: '人',
         tone: 'blue',
+        emphasis: 'secondary',
       },
       {
         key: 'active',
@@ -505,6 +539,7 @@ const rosterSignalMetrics = computed((): SignalMetric[] => {
         value: panel.activeCount,
         unit: '人',
         tone: 'green',
+        emphasis: 'secondary',
       },
       {
         key: 'not-scanned',
@@ -512,6 +547,7 @@ const rosterSignalMetrics = computed((): SignalMetric[] => {
         value: panel.notScannedCount,
         unit: '人',
         tone: panel.notScannedCount > 0 ? 'orange' : 'gray',
+        emphasis: 'secondary',
       },
       {
         key: 'bound',
@@ -519,6 +555,7 @@ const rosterSignalMetrics = computed((): SignalMetric[] => {
         value: panel.boundCount,
         unit: '人',
         tone: 'blue',
+        emphasis: 'secondary',
       },
       {
         key: 'absent',
@@ -526,6 +563,7 @@ const rosterSignalMetrics = computed((): SignalMetric[] => {
         value: panel.absentCount,
         unit: '人',
         tone: panel.absentCount > 0 ? 'red' : 'gray',
+        emphasis: 'secondary',
       },
       {
         key: 'classes',
@@ -533,17 +571,19 @@ const rosterSignalMetrics = computed((): SignalMetric[] => {
         value: panel.classCount,
         unit: '个',
         tone: 'gray',
+        emphasis: 'secondary',
       },
     ]
     if (panel.attendanceRate != null) {
-      metrics.push({
+      secondaryPool.push({
         key: 'attendance',
         label: '出勤率',
         value: `${panel.attendanceRate}%`,
         tone: panel.attendanceRate >= 90 ? 'green' : 'orange',
+        emphasis: 'secondary',
       })
     }
-    return metrics
+    return [primary, ...secondaryPool.filter((item) => item.key !== primary.key).slice(0, 3)]
   }
   const fallbackMetrics: SignalMetric[] = []
   if (candidateTotal.value > 0) {
@@ -553,6 +593,7 @@ const rosterSignalMetrics = computed((): SignalMetric[] => {
       value: candidateTotal.value,
       unit: '人',
       tone: 'blue',
+      emphasis: 'primary',
     })
   }
   if (classIds.value.length > 0) {
@@ -562,6 +603,7 @@ const rosterSignalMetrics = computed((): SignalMetric[] => {
       value: classIds.value.length,
       unit: '个',
       tone: 'gray',
+      emphasis: 'secondary',
     })
   }
   fallbackMetrics.push({
@@ -583,6 +625,7 @@ const rosterSignalMetrics = computed((): SignalMetric[] => {
         : rosterLocked.value === true
           ? 'orange'
           : 'green',
+    emphasis: fallbackMetrics.length === 0 ? 'primary' : 'secondary',
   })
   return fallbackMetrics
 })

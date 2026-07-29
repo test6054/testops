@@ -117,21 +117,48 @@ const progressStatusLabel = computed(() => {
 const signalMetrics = computed<SignalMetric[]>(() => {
   if (loadFailed.value) {
     return [
-      { key: 'total', label: '工作单元', value: '—', tone: 'gray' },
-      { key: 'done', label: '已完成', value: '—', tone: 'gray' },
-      { key: 'pending', label: '待完成', value: '—', tone: 'gray' },
-      { key: 'recycled', label: '已回收', value: '—', tone: 'gray' },
+      { key: 'pending', label: '待完成', value: '—', tone: 'gray', emphasis: 'primary' },
+      { key: 'total', label: '工作单元', value: '—', tone: 'gray', emphasis: 'secondary' },
+      { key: 'done', label: '已完成', value: '—', tone: 'gray', emphasis: 'secondary' },
+      { key: 'recycled', label: '已回收', value: '—', tone: 'gray', emphasis: 'secondary' },
     ]
   }
   const summary = taskSummary.value
   if (!summary) {
-    return [{ key: 'total', label: '工作单元', value: '—', tone: 'gray' }]
+    return [{ key: 'total', label: '工作单元', value: '—', tone: 'gray', emphasis: 'primary' }]
   }
+  const pending = summary.pendingTaskCount
   return [
-    { key: 'total', label: '工作单元', value: summary.totalTaskCount, tone: 'blue' },
-    { key: 'done', label: '已完成', value: summary.finalizedTaskCount, tone: 'green' },
-    { key: 'pending', label: '待完成', value: summary.pendingTaskCount, tone: 'orange' },
-    { key: 'recycled', label: '已回收', value: summary.recycledTaskCount, tone: 'gray' },
+    {
+      key: 'pending',
+      label: '待完成',
+      value: pending,
+      tone: pending > 0 ? 'orange' : 'green',
+      emphasis: 'primary',
+      actionLabel: pending > 0 ? '推进任务' : undefined,
+      helper: pending > 0 ? '待完成工作单元' : '暂无待完成',
+    },
+    {
+      key: 'total',
+      label: '工作单元',
+      value: summary.totalTaskCount,
+      tone: 'blue',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'done',
+      label: '已完成',
+      value: summary.finalizedTaskCount,
+      tone: 'green',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'recycled',
+      label: '已回收',
+      value: summary.recycledTaskCount,
+      tone: 'gray',
+      emphasis: 'secondary',
+    },
   ]
 })
 
@@ -154,7 +181,7 @@ const formalColumns: TableColumnsType<FormalSessionResponse> = [
   },
   { title: '进度', key: 'progress', width: 180 },
   { title: '创建时间', key: 'createTime', width: 168 },
-  { title: '操作', key: 'action', width: 100 },
+  { title: '主行动', key: 'action', width: 100 },
 ]
 
 const trialColumns: TableColumnsType<TrialSessionResponse> = [
@@ -177,7 +204,7 @@ const trialColumns: TableColumnsType<TrialSessionResponse> = [
   { title: '进度', key: 'progress', width: 180 },
   { title: '校准结论', dataIndex: 'calibrationSummary', key: 'calibrationSummary', ellipsis: true },
   { title: '关闭时间', key: 'closeTime', width: 168 },
-  { title: '操作', key: 'action', width: 100 },
+  { title: '主行动', key: 'action', width: 100 },
 ]
 
 function trialSessionStatusTone(status: TrialSessionStatusCode) {
@@ -275,6 +302,7 @@ watch(examId, () => loadPanel(), { immediate: true })
         layout="workbench"
         show-title
         :title="isTrialPhase ? '试评进度' : '阅卷进度'"
+        :subtitle="progressStatusLabel"
       >
         <template #status>
           <UiTag
@@ -293,7 +321,7 @@ watch(examId, () => loadPanel(), { immediate: true })
     </template>
 
     <template v-if="examId && (panel || loadFailed)" #signal>
-      <SignalBand compact variant="panel" :metrics="signalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="signalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!examId" class="marking-progress-dash__empty" />
@@ -418,6 +446,7 @@ watch(examId, () => loadPanel(), { immediate: true })
             </template>
             <template v-else-if="column.key === 'action'">
               <UiTableActions
+                :max-visible="2"
                 :items="[{ key: 'manage', label: '管理', disabled: !canManageSessions() }]"
                 split
                 @action="() => goSessionManage(record)"
@@ -471,6 +500,7 @@ watch(examId, () => loadPanel(), { immediate: true })
             </template>
             <template v-else-if="column.key === 'action'">
               <UiTableActions
+                :max-visible="2"
                 :items="[{ key: 'manage', label: '管理', disabled: !canManageSessions() }]"
                 split
                 @action="() => goSessionManage(record)"

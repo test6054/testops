@@ -70,6 +70,7 @@
 
     <template v-if="selectedExamId && signalMetrics.length > 0" #signal>
       <SignalBand
+        layout="spotlight"
         :metrics="signalMetrics"
         variant="panel"
         compact
@@ -411,12 +412,15 @@ const signalMetrics = computed<SignalMetric[]>(() => {
         label: '题组数',
         value: groupCount,
         tone: groupCount > 0 ? 'blue' : 'orange',
+        emphasis: 'primary',
+        actionLabel: groupCount > 0 ? '查看题组' : '配置题组',
       },
       {
         key: 'anonymous',
         label: '匿名阅卷',
         value: org.anonymousMode === true ? '已启用' : '关闭',
         tone: org.anonymousMode === true ? 'green' : 'gray',
+        emphasis: 'secondary',
       },
       {
         key: 'status',
@@ -431,6 +435,7 @@ const signalMetrics = computed<SignalMetric[]>(() => {
           org.organizationStatus,
           '阅卷组织状态',
         ),
+        emphasis: 'secondary',
       },
     ]
   }
@@ -443,6 +448,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
         value: '待配置',
         tone: 'orange',
         clickable: canManageExamOwner.value === true,
+        emphasis: 'primary',
+        actionLabel: canManageExamOwner.value === true ? '去配置' : undefined,
       },
     ]
   }

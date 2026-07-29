@@ -5,12 +5,12 @@
         layout="workbench"
         show-title
         title="材料检索"
-        subtitle="跨卷文字识别全文检索 · 归档材料内容"
+        :subtitle="pagination.total > 0 ? `${pagination.total} 条匹配` : '输入条件后检索'"
       />
     </template>
 
     <template v-if="signalMetrics.length > 0" #signal>
-      <SignalBand :metrics="signalMetrics" variant="panel" compact />
+      <SignalBand :metrics="signalMetrics" layout="spotlight" variant="panel" compact />
     </template>
 
     <WorkbenchSurfaceCard flush>
@@ -327,6 +327,7 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildArchiveSearchRowActions(record)"
               split
               @action="(key) => handleArchiveSearchAction(key, record)"
@@ -545,7 +546,16 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     return []
   }
   const metrics: SignalMetric[] = [
-    { key: 'hits', label: '命中材料', value: pagination.total, unit: '条', tone: 'green' },
+    {
+      key: 'hits',
+      label: '命中材料',
+      value: pagination.total,
+      unit: '条',
+      tone: 'green',
+      emphasis: 'primary',
+      actionLabel: '查看命中',
+      helper: '当前检索命中材料',
+    },
   ]
   if (searchHitVolumeCount.value > 0) {
     metrics.push({
@@ -554,6 +564,7 @@ const signalMetrics = computed<SignalMetric[]>(() => {
       value: searchHitVolumeCount.value,
       unit: '卷',
       tone: 'blue',
+      emphasis: 'secondary',
     })
   }
   return metrics
@@ -613,7 +624,7 @@ const columns: ColumnsType<ArchiveVolumeSearchResponse> = [
   { title: '材料类型', key: 'materialType', width: 130 },
   { title: '文字识别状态', key: 'ocrStatus', width: 110 },
   { title: '命中摘要', key: 'snippet', dataIndex: 'snippet', minWidth: 280, ellipsis: true },
-  { title: '操作', key: 'actions', width: 220 },
+  { title: '主行动', key: 'actions', width: 220 },
 ]
 
 const tableEmptyKind = computed(() => {

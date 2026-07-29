@@ -27,11 +27,11 @@
           v-if="step.status !== 'completed'"
           size="sm"
           :variant="step.status === 'warning' || step.status === 'error' ? 'outline' : 'ghost'"
-          @click="emit('step-navigate', step.key)"
+          @click="emit('step-navigate', step)"
         >
           去处理
         </UiButton>
-        <UiButton v-else size="sm" variant="ghost" @click="emit('step-navigate', step.key)">
+        <UiButton v-else size="sm" variant="ghost" @click="emit('step-navigate', step)">
           查看
         </UiButton>
       </li>
@@ -59,7 +59,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'step-navigate': [stepKey: string]
+  'step-navigate': [step: ExamWorkbenchPrepStepResponse]
 }>()
 
 const completedCount = computed(() => props.steps.filter((s) => s.status === 'completed').length)
@@ -153,6 +153,29 @@ function statusTone(status: WorkbenchStageStatusCode): BadgeTone {
     font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
     line-height: 1.4;
+  }
+
+  @media (max-width: 600px) {
+    &__head,
+    &__row {
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    &__step {
+      display: grid;
+      grid-template-columns: 8px minmax(0, 1fr);
+    }
+
+    &__step > :deep(.ui-button) {
+      grid-column: 2;
+      justify-self: start;
+    }
+
+    &__step-title,
+    &__advisory {
+      overflow-wrap: anywhere;
+    }
   }
 }
 </style>

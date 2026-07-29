@@ -16,6 +16,7 @@ import type {
 } from '@/apis/portfolio/types'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -59,6 +60,8 @@ import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
@@ -68,6 +71,7 @@ import { PortfolioTeacherLifecycleChangeTypeCode } from '@/types/enums/portfolio
 import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleChangeTypeDisplay, portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -141,7 +145,7 @@ const listColumns = computed<ColumnsType>(() => {
     { title: '身份层', key: 'identityLayers', width: 160 },
     { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 90 },
     { title: '主身份', key: 'primaryIdentityType', width: 120 },
-    { title: '操作', key: 'actions', width: 240 },
+    { title: '主行动', key: 'actions', width: 240 },
   )
   return columns
 })
@@ -215,7 +219,7 @@ const identityColumns: ColumnsType = [
   { title: '聘任编号', dataIndex: 'appointmentNo', key: 'appointmentNo', width: 120 },
   { title: '展示名称', dataIndex: 'displayName', key: 'displayName' },
   { title: '企业/单位', dataIndex: 'enterpriseName', key: 'enterpriseName' },
-  { title: '操作', key: 'actions', width: 80 },
+  { title: '主行动', key: 'actions', width: 80 },
 ]
 
 const list = ref<PortfolioTeacherSummaryVO[]>([])
@@ -399,7 +403,7 @@ function buildTeacherDirectoryRowActions(
   record: PortfolioTeacherSummaryVO,
 ): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = [
-    { key: 'home', label: '进入工作台' },
+    { key: 'home', label: '进入工作台', tone: 'primary' },
     { key: 'archive', label: '档案' },
     { key: 'detail', label: '详情' },
     { key: 'one-table', label: '一张表' },
@@ -1001,12 +1005,63 @@ watch(
     }
   },
 )
+
+const TeacherDirectorySignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && total.value === 0) {
+    return []
+  }
+  return applySpotlightEmphasis([
+    {
+      key: 'total',
+      label: '教师名册',
+      value: total.value,
+      clickable: true,
+    },
+    {
+      key: 'pageRows',
+      label: '本页',
+      value: list.value.length,
+      helper: '仅当前页',
+    },
+  ], {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+function onTeacherDirectorySignalClick(_key: string) {
+  void loadPage()
+}
+
+/** 任务工作台副标题：名册规模。 */
+const teacherDirectoryWorkbenchSubtitle = computed(() => `名册 ${total.value} 条`)
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="教师名册" />
+      <ContextBar layout="workbench" show-title title="教师名册" :subtitle="teacherDirectoryWorkbenchSubtitle">
+        <template #actions>
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="exporting"
+            :disabled="interactionLocked"
+            @click="exportRoster"
+          >
+            申请导出名册
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
+    <template v-if="TeacherDirectorySignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TeacherDirectorySignalMetrics"
+        @metric-click="onTeacherDirectorySignalClick"
+      />
     </template>
     <UiFilterBar
       variant="plain"
@@ -1015,17 +1070,6 @@ watch(
       @search="handleSearch"
     />
     <UiCard>
-      <div class="list-toolbar">
-        <UiButton
-          size="sm"
-          variant="primary"
-          :loading="exporting"
-          :disabled="interactionLocked"
-          @click="exportRoster"
-        >
-          申请导出名册
-        </UiButton>
-      </div>
       <UiDataTable
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
@@ -1092,6 +1136,7 @@ watch(
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildTeacherDirectoryRowActions(record)"
               split
               @action="(key) => handleTeacherDirectoryAction(key, record)"
@@ -1194,7 +1239,7 @@ watch(
             />
             <UiButton
               size="sm"
-              variant="primary"
+              variant="outline"
               :disabled="interactionLocked || !lifecycleChangeType"
               :loading="operationKey.startsWith('lifecycle:apply:')"
               @click="applyLifecycleChange"
@@ -1213,7 +1258,7 @@ watch(
             <label class="teacher-directory__import-transfer">
               <span class="teacher-directory__import-transfer-btn">
                 <UiButton
-                  variant="primary"
+                  variant="outline"
                   size="sm"
                   :disabled="interactionLocked"
                   :loading="operationKey.startsWith('lifecycle:import:')"
@@ -1337,6 +1382,7 @@ watch(
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[
                   {
                     key: 'edit',

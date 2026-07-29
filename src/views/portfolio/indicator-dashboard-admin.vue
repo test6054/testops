@@ -304,7 +304,7 @@ onMounted(loadDashboard)
       <UiButton size="sm" variant="primary" :loading="loading" @click="loadDashboard">刷新</UiButton>
     </div>
     <template #signal>
-      <SignalBand v-if="summary" :metrics="signals" variant="panel" compact />
+      <SignalBand layout="spotlight" v-if="summary" :metrics="signals" variant="panel" compact />
     </template>
     <UiSpin :spinning="loading">
       <UiAlertStrip

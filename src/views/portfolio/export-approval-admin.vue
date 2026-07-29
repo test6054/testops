@@ -2,6 +2,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExportApprovalVO } from '@/apis/portfolio/governance'
 import type { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -15,6 +16,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -27,6 +29,7 @@ import { PortfolioExportTypeDescription } from '@/types/enums/portfolio-export-t
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleStatusDisplay } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -46,6 +49,55 @@ const operationKey = ref('')
 const focusedApprovalId = ref('')
 const writing = computed(() => Boolean(operationKey.value))
 const approveLoading = computed(() => Boolean(operationKey.value))
+
+const pagePendingExportAdminCount = computed(() =>
+  rows.value.filter((row) => row.approvalStatus === PortfolioExportApprovalStatusCode.PENDING).length,
+)
+
+const exportAdminSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && total.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '导出审批',
+      value: total.value,
+      clickable: true,
+      tone:
+        total.value > 0 && filterForm.approvalStatus === PortfolioExportApprovalStatusCode.PENDING
+          ? 'orange'
+          : undefined,
+    },
+  ]
+  if (rows.value.length > 0) {
+    metrics.push({
+      key: 'page-pending',
+      label: '本页待审',
+      value: pagePendingExportAdminCount.value,
+      tone: pagePendingExportAdminCount.value > 0 ? 'orange' : undefined,
+      helper: '仅当前页',
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: pagePendingExportAdminCount.value > 0 ? 'page-pending' : 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const exportAdminWorkbenchSubtitle = computed(() => {
+  if (loadError.value) {
+    return '列表加载失败'
+  }
+  if (pagePendingExportAdminCount.value > 0) {
+    return `${total.value} 条 · 本页待审 ${pagePendingExportAdminCount.value}`
+  }
+  return `${total.value} 条`
+})
+
+function onExportAdminSignalClick(_key: string) {
+  void loadPage()
+}
 const rejectModalOpen = ref(false)
 const rejectReason = ref('')
 const pendingRow = ref<PortfolioExportApprovalVO | null>(null)
@@ -98,7 +150,7 @@ const columns: ColumnsType = [
   { title: '状态', key: 'approvalStatus', width: 100 },
   { title: '审批人', dataIndex: 'approverUserId', key: 'approverUserId', width: 120 },
   { title: '审批时间', dataIndex: 'approvedTime', key: 'approvedTime', width: 170 },
-  { title: '操作', key: 'actions', width: 140 },
+  { title: '主行动', key: 'actions', width: 140 },
 ]
 
 /** 导出审批状态写必须串行，避免同一待办被批准和驳回两次推进。 */
@@ -321,9 +373,20 @@ watch(
         layout="workbench"
         show-title
         title="导出审批"
-        subtitle="档案袋敏感数据导出须审批后下载"
+        :subtitle="exportAdminWorkbenchSubtitle"
       />
     </template>
+
+    <template v-if="exportAdminSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="exportAdminSignalMetrics"
+        @metric-click="onExportAdminSignalClick"
+      />
+    </template>
+
     <UiCard>
       <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
       <UiDataTable
@@ -374,6 +437,7 @@ watch(
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               v-if="record.approvalStatus === PortfolioExportApprovalStatusCode.PENDING"
               :items="[
                 { key: 'approve', label: '批准', disabled: writing },

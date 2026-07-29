@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioArchiveRecordStatusCode } from '@/apis/portfolio/enums'
+import type { SignalMetric } from '@/types/workbench'
+import { computed } from 'vue'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { PortfolioArchiveRecordStatusDescription } from '@/apis/portfolio/enums'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -8,9 +10,11 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { PortfolioMaterialTypeCode } from '@/types/enums/portfolio-material-type-enum'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -34,12 +38,44 @@ const columns: ColumnsType = [
 function recordStatusLabel(status: PortfolioArchiveRecordStatusCode): string {
   return strictEnumLabel(PortfolioArchiveRecordStatusDescription, status, '档案记录状态')
 }
+
+const TrainingArchiveSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && pageTotal.value === 0) {
+    return []
+  }
+  return applySpotlightEmphasis([
+    {
+      key: 'total',
+      label: '培训档案',
+      value: pageTotal.value,
+      clickable: true,
+    },
+  ], { primaryKey: 'total', actionLabel: '刷新' })
+})
+
+const TrainingArchiveWorkbenchSubtitle = computed(() => {
+  if (loadError.value) return '加载失败'
+  return `${pageTotal.value} 条`
+})
+
+function onTrainingArchiveSignalClick(_key: string) {
+  void loadPage()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="教师培训档案" />
+      <ContextBar layout="workbench" show-title title="教师培训档案" :subtitle="TrainingArchiveWorkbenchSubtitle" />
+    </template>
+    <template v-if="TrainingArchiveSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TrainingArchiveSignalMetrics"
+        @metric-click="onTrainingArchiveSignalClick"
+      />
     </template>
     <UiCard>
       <UiButton size="sm" @click="() => void loadPage()"> 刷新 </UiButton>

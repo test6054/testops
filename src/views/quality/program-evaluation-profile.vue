@@ -59,6 +59,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -69,7 +70,7 @@ const columns: ColumnsType = [
   { title: '评价方法', dataIndex: 'evaluationMethod', key: 'evaluationMethod', width: 180 },
   { title: '评价周期', dataIndex: 'evaluationCycle', key: 'evaluationCycle', width: 120 },
   { title: '启用', dataIndex: 'enabled', key: 'enabled', width: 80 },
-  { title: '操作', key: 'actions', width: 160 },
+  { title: '主行动', key: 'actions', width: 160 },
 ]
 
 const list = ref<ProgramEvaluationProfileVO[]>([])
@@ -232,7 +233,7 @@ const signals = computed<SignalMetric[]>(() => {
   const enabledCount = summary.enabledCount ?? 0
   const disabledCount = summary.disabledCount ?? 0
   const engineering = summary.engineeringAccreditationCount ?? 0
-  return [
+  return applySpotlightEmphasis([
     { key: 'overall', label: '总口径', value: summary.totalCount ?? 0, tone: 'gray' },
     {
       key: 'enabled',
@@ -252,7 +253,7 @@ const signals = computed<SignalMetric[]>(() => {
       value: engineering,
       tone: engineering > 0 ? 'blue' : 'gray',
     },
-  ]
+  ])
 })
 
 async function loadDicts(keyword?: string) {
@@ -415,7 +416,7 @@ function buildProgramEvaluationProfileActions(
   _record: ProgramEvaluationProfileVO,
 ): UiTableRowActionItem[] {
   return [
-    { key: 'edit', label: '编辑' },
+    { key: 'edit', label: '编辑', tone: 'primary' },
     { key: 'delete', label: '删除', tone: 'danger' },
   ]
 }
@@ -460,15 +461,18 @@ onMounted(async () => {
 onActivated(() => {
   void Promise.all([loadList(), loadDicts()])
 })
+
+/** 任务工作台副标题：口径配置条数。 */
+const programEvalProfileWorkbenchSubtitle = computed(() => `${total.value} 条口径`)
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar show-title title="专业评价口径" />
+      <QualityPageContextBar show-title title="专业评价口径" :subtitle="programEvalProfileWorkbenchSubtitle" />
     </template>
 
-    <SignalBand :metrics="signals" variant="panel" compact class="program-profile__signals" />
+    <SignalBand layout="spotlight" :metrics="signals" variant="panel" compact class="program-profile__signals" />
 
     <UiCard class="detail-table-card program-profile__table-card">
       <template #title>口径列表</template>
@@ -529,6 +533,7 @@ onActivated(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildProgramEvaluationProfileActions(record)"
               split
               @action="(key) => handleProgramEvaluationProfileAction(key, record)"

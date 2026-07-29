@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="spot-check-page">
     <template #context>
-      <ContextBar layout="workbench" show-title title="阅卷抽检">
+      <ContextBar layout="workbench" show-title title="阅卷抽检" :subtitle="pendingCount > 0 ? `${pendingCount} 条待处理` : undefined">
         <template #status>
           <UiTag :tone="pendingCount > 0 ? 'orange' : 'green'" size="sm">
             {{ pendingCount > 0 ? `${pendingCount} 条待处理` : '暂无待办' }}
@@ -11,7 +11,7 @@
     </template>
 
     <template #signal>
-      <SignalBand compact variant="panel" :metrics="spotCheckSignalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="spotCheckSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" body="请从考试列表进入工作台后再进行阅卷抽检" />
@@ -70,6 +70,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildSpotCheckActions(pendingItems[index])"
                 split
                 @action="(key) => handleSpotCheckAction(key, pendingItems[index])"
@@ -238,6 +239,9 @@ const spotCheckSignalMetrics = computed((): SignalMetric[] => [
     value: pendingCount.value,
     unit: '条',
     tone: pendingCount.value > 0 ? 'orange' : 'green',
+    emphasis: 'primary',
+    actionLabel: pendingCount.value > 0 ? '处理抽检' : undefined,
+    helper: pendingCount.value > 0 ? '抽检队列待结论' : '暂无待处理抽检',
   },
 ])
 
@@ -297,7 +301,7 @@ const columns: ColumnType<MyPendingSpotCheckItemResponse>[] = [
   { title: '抽检前教师复核评分', key: 'originalScore', width: 160, align: 'right' },
   { title: '抽检状态', key: 'spotCheckStatus', width: 110 },
   { title: '分派时间', key: 'createTime', width: 170 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 function statusTone(status: SpotCheckStatusCode): BadgeTone {

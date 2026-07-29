@@ -5,6 +5,7 @@
         layout="workbench"
         show-title
         title="阅卷概览"
+        :subtitle="filteredExamCount > 0 ? `${filteredExamCount} 场` : undefined"
       >
         <template #toolbar>
           <div
@@ -127,6 +128,7 @@
       <SignalBand
         v-else
         :metrics="dashboardSignals"
+        layout="spotlight"
         compact
         variant="panel"
         @metric-click="handleSignalMetricClick"
@@ -137,6 +139,14 @@
       class="marking-overview__content"
       :class="{ 'marking-overview__content--todo-focus': showTodoFocusLayout }"
     >
+      <UiAlertStrip
+        v-if="dashboardHasLoadFailure"
+        tone="error"
+        :title="dashboardLoadFailureTitle"
+        description="已保留成功加载的内容；可切换范围，或离开页面后重新进入。"
+        :inline="false"
+      />
+
       <div class="marking-overview__analytics-row">
         <UiSkeletonState
           v-if="signalLoading && !overview && !signalLoadFailed"
@@ -178,18 +188,20 @@
                 :card-count="3"
                 compact
               />
-              <UiAlertStrip
+              <UiStateBlock
                 v-else-if="signalLoadFailed && !overview"
-                tone="error"
-                title="概览指标加载失败"
-                dense
+                state="error"
+                size="sm"
+                title="考试概览暂不可用"
+                description="可切换范围，或离开页面后重新进入。"
               />
               <UiSkeletonState v-else-if="examsPanelLoading" variant="list" :rows="4" compact />
-              <UiAlertStrip
+              <UiStateBlock
                 v-else-if="examsLoadFailed"
-                tone="error"
-                title="考试列表加载失败"
-                dense
+                state="error"
+                size="sm"
+                title="进行中的考试加载失败"
+                description="已保留筛选范围；可切换范围，或离开页面后重新进入。"
               />
               <template v-else>
                 <UiEmpty
@@ -254,18 +266,20 @@
                 :rows="5"
                 compact
               />
-              <UiAlertStrip
+              <UiStateBlock
                 v-else-if="signalLoadFailed && !overview"
-                tone="error"
-                title="概览指标加载失败"
-                dense
+                state="error"
+                size="sm"
+                title="待办概览暂不可用"
+                description="可切换范围，或离开页面后重新进入。"
               />
               <UiSkeletonState v-else-if="todosPanelLoading" variant="list" :rows="5" compact />
-              <UiAlertStrip
+              <UiStateBlock
                 v-else-if="todosLoadFailed"
-                tone="error"
-                title="待办加载失败"
-                dense
+                state="error"
+                size="sm"
+                title="待处理事项加载失败"
+                description="已保留筛选范围；可切换范围，或离开页面后重新进入。"
               />
               <template v-else>
                 <UiSectionTabs
@@ -310,11 +324,12 @@
             :columns="5"
             compact
           />
-          <UiAlertStrip
+          <UiStateBlock
             v-else-if="signalLoadFailed && !overview"
-            tone="error"
-            title="概览指标加载失败"
-            dense
+            state="error"
+            size="sm"
+            title="已发布学情暂不可用"
+            description="可切换范围，或离开页面后重新进入。"
             class="marking-overview__insight-empty"
           />
           <UiSkeletonState v-else-if="examsLoading && !overview" variant="table" :rows="4" :columns="5" compact />
@@ -362,6 +377,7 @@ import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
@@ -472,6 +488,15 @@ const journeyFilterHint = computed(() => {
 })
 
 const filteredExamCount = computed(() => overview.value?.filterContext.filteredExamCount ?? 0)
+const dashboardHasLoadFailure = computed(
+  () => signalLoadFailed.value || examsLoadFailed.value || todosLoadFailed.value,
+)
+const dashboardLoadFailureTitle = computed(() => {
+  if (signalLoadFailed.value) return '阅卷概览加载失败'
+  if (examsLoadFailed.value && todosLoadFailed.value) return '考试与待办加载失败'
+  if (examsLoadFailed.value) return '进行中的考试加载失败'
+  return '待处理事项加载失败'
+})
 
 
 const examsPanelLoading = computed(() => {
@@ -891,9 +916,9 @@ onMounted(() => {
 }
 
 .marking-overview__panel--focus-urgent:deep(.workbench-surface-card) {
-  background: var(--dp-red-50);
-  border-color: var(--dp-red-200);
-  box-shadow: var(--dp-shadow-md);
+  background: var(--dp-surface);
+  border-color: var(--dp-error-border);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .marking-overview__panel--focus-urgent:deep(.workbench-surface-card__head) {
@@ -902,9 +927,9 @@ onMounted(() => {
 
 .marking-overview__panel--focus-attention:deep(.workbench-surface-card),
 .marking-overview__panel--focus-pending:deep(.workbench-surface-card) {
-  background: var(--dp-orange-50);
-  border-color: var(--dp-orange-200);
-  box-shadow: var(--dp-shadow-md);
+  background: var(--dp-surface);
+  border-color: var(--dp-warning-border);
+  box-shadow: var(--dp-shadow-card);
 }
 
 .marking-overview__panel--focus-attention:deep(.workbench-surface-card__head),

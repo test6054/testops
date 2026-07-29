@@ -31,35 +31,34 @@
 
     <div class="remember-row">
       <UiCheckbox v-model="loginConfig.rememberMe">记住我</UiCheckbox>
-      <RouterLink class="forgot-link" to="/forgot-password">忘记密码？</RouterLink>
+      <RouterLink class="forgot-link" :to="forgotPasswordLocation">忘记密码？</RouterLink>
     </div>
 
     <!-- 学号格式智能提示 -->
     <div v-if="showStudentHint" class="student-hint">
-      <svg class="hint-icon" viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
-        <path
-          fill-rule="evenodd"
-          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-          clip-rule="evenodd"
-        />
-      </svg>
+      <InfoCircleOutlined class="hint-icon" />
       <span>检测到您输入的账号可能是学号，</span>
-      <a @click="doSwitchToStudent">切换到学号登录</a>
+      <button type="button" class="student-hint__action" @click="doSwitchToStudent">
+        切换到学号登录
+      </button>
     </div>
 
     <!-- 错误提示 -->
-    <div v-if="errorMessage" class="login-error">
-      <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
-        <path
-          fill-rule="evenodd"
-          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-          clip-rule="evenodd"
-        />
-      </svg>
+    <div v-if="errorMessage" class="login-error" role="alert" aria-live="polite">
+      <ExclamationCircleFilled />
       <span>{{ errorMessage }}</span>
     </div>
 
-    <UiButton type="submit" variant="primary" size="lg" block :loading="loading">立即登录</UiButton>
+    <UiButton
+      type="submit"
+      variant="primary"
+      size="lg"
+      block
+      :loading="loading || captchaConfigLoading"
+      :disabled="!captchaConfigReady"
+    >
+      立即登录
+    </UiButton>
   </form>
 
   <!-- AJ-Captcha 滑块验证码弹窗 -->
@@ -72,6 +71,8 @@
 </template>
 
 <script lang="ts" setup>
+import ExclamationCircleFilled from '@ant-design/icons-vue/ExclamationCircleFilled'
+import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import { useStorage } from '@vueuse/core'
 import message from 'ant-design-vue/es/message'
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
@@ -133,14 +134,37 @@ const authStore = useAuthStore()
 const userStore = useUserStore()
 const router = useRouter()
 const loading = ref(false)
+const captchaConfigLoading = ref(true)
+const captchaConfigReady = ref(false)
+const forgotPasswordLocation = computed(() => {
+  const redirect = getSafeRedirect(
+    queryString(router.currentRoute.value.query.redirect),
+    '',
+  )
+  return {
+    path: '/forgot-password',
+    query: redirect ? { redirect } : undefined,
+  }
+})
 
 // 获取验证码配置
 const fetchCaptchaConfig = async () => {
+  captchaConfigLoading.value = true
+  captchaConfigReady.value = false
   try {
     const config = await getCaptchaConfig()
+    if (typeof config.enabled !== 'boolean') {
+      throw new TypeError('安全验证配置响应不完整')
+    }
     isCaptchaEnabled.value = config.enabled === true
-  } catch (error) {
-    isCaptchaEnabled.value = false
+    captchaConfigReady.value = true
+  } catch (error: unknown) {
+    errorMessage.value = getUserErrorMessage(
+      error,
+      '安全验证配置加载失败，请刷新页面后再试',
+    )
+  } finally {
+    captchaConfigLoading.value = false
   }
 }
 
@@ -148,7 +172,7 @@ const fetchCaptchaConfig = async () => {
 const onCaptchaSuccess = (verification: string) => {
   captchaVerification.value = verification
   // 验证码成功后继续登录流程
-  doLogin()
+  void doLogin()
 }
 
 // 验证码验证失败回调
@@ -192,6 +216,10 @@ const handleLogin = async () => {
 
 // 开始登录流程
 const startLoginProcess = async () => {
+  if (!captchaConfigReady.value) {
+    errorMessage.value = '安全验证配置尚未就绪，暂时不能登录'
+    return
+  }
   loading.value = true
   // 如果启用了验证码，先弹出滑块验证码
   if (isCaptchaEnabled.value === true) {
@@ -215,6 +243,7 @@ const doLogin = async () => {
     try {
       await userStore.getInfo()
     } catch (error) {
+      await authStore.logout()
       errorMessage.value = '获取用户信息失败，请重试'
       return
     }
@@ -224,6 +253,7 @@ const doLogin = async () => {
 
     // 验证登录状态是否正确
     if (!authStore.isAuthenticated || !userStore.userInfo.userId) {
+      await authStore.logout()
       errorMessage.value = '登录状态异常，请重试'
       return
     }
@@ -231,7 +261,14 @@ const doLogin = async () => {
     // 检查是否需要强制修改密码
     if (userStore.userInfo.forcePasswordChange === true) {
       void message.warning('出于安全考虑，您需要修改密码后才能继续使用系统')
-      await router.push('/change-password')
+      const redirect = getSafeRedirect(
+        queryString(router.currentRoute.value.query.redirect),
+        '',
+      )
+      await router.push({
+        path: '/change-password',
+        query: redirect ? { redirect } : undefined,
+      })
       return
     }
 
@@ -261,7 +298,7 @@ const doLogin = async () => {
   } catch (error: unknown) {
     const stdError = standardizeError(error)
     if (stdError.type === ErrorType.NETWORK) {
-      errorMessage.value = '登录失败，请检查账户和密码后重试'
+      errorMessage.value = '登录服务暂不可用，请稍后再试'
     } else {
       errorMessage.value = getUserErrorMessage(error, '登录失败，请检查账户和密码')
     }
@@ -320,7 +357,7 @@ onMounted(() => {
   gap: var(--dp-space-component-tight);
   padding: var(--dp-space-component) var(--dp-space-block);
   background: var(--dp-blue-50);
-  border: 1px solid rgba(37, 99, 235, 0.15);
+  border: 1px solid color-mix(in srgb, var(--dp-blue-600) 15%, transparent);
   border-radius: var(--dp-radius-control);
   color: var(--dp-text-secondary);
   font-size: var(--dp-font-size-sm);
@@ -331,14 +368,23 @@ onMounted(() => {
     color: var(--dp-blue-600);
   }
 
-  a {
+  .student-hint__action {
+    padding: 0;
+    border: 0;
+    background: transparent;
     color: var(--dp-blue-600);
     cursor: pointer;
     white-space: nowrap;
     font-weight: 500;
+    font: inherit;
 
     &:hover {
       text-decoration: underline;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--dp-focus-ring);
+      outline-offset: 2px;
     }
   }
 }
@@ -349,7 +395,7 @@ onMounted(() => {
   gap: var(--dp-space-component-tight);
   padding: var(--dp-space-component) var(--dp-space-block);
   background: var(--dp-red-50);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  border: 1px solid color-mix(in srgb, var(--dp-red-500) 20%, transparent);
   border-radius: var(--dp-radius-control);
   color: var(--dp-red-500);
   font-size: var(--dp-font-size-sm);

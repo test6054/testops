@@ -5,6 +5,7 @@ import type {
   PortfolioDevelopmentRecordVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
@@ -21,12 +22,14 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -37,6 +40,26 @@ const isDepartmentScoped = computed(
   () => route.path.includes('/department/') || !userStore.isTenantAdmin,
 )
 const pageTitle = computed(() => (isDepartmentScoped.value ? '院系成果综合查询' : '成果综合查询'))
+const achievementSignalMetrics = computed<SignalMetric[]>(() => {
+  if (!stats.value) {
+    return []
+  }
+  return applySpotlightEmphasis(
+    [
+      { key: 'total', label: '成果总数', value: stats.value.totalCount ?? 0 },
+      { key: 'national', label: '国家级', value: stats.value.nationalCount ?? 0 },
+    ],
+    { primaryKey: query.nationalOnly ? 'national' : 'total' },
+  )
+})
+
+const workbenchSubtitle = computed(() => {
+  if (!stats.value) {
+    return undefined
+  }
+  const scope = isDepartmentScoped.value ? '本院系' : '全校'
+  return `${scope} · ${stats.value.totalCount ?? 0} 条`
+})
 
 
 const recordTypeKeys: PortfolioDevelopmentRecordTypeCode[] = [
@@ -136,7 +159,7 @@ onMounted(loadPage)
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title :title="pageTitle" />
+      <ContextBar layout="workbench" show-title :title="pageTitle" :subtitle="workbenchSubtitle" />
     </template>
     <UiAlertStrip
       v-if="listLoadFailed"
@@ -150,10 +173,16 @@ onMounted(loadPage)
       title="成果统计加载失败"
       class="dp-mb-component"
     />
-    <UiCard v-if="stats" title="成果统计">
-      <p>成果总数 {{ stats.totalCount }} · 国家级 {{ stats.nationalCount }}</p>
-    </UiCard>
-    <UiCard style="margin-top: var(--dp-space-block)">
+    <template #signal>
+      <SignalBand
+        v-if="achievementSignalMetrics.length > 0"
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="achievementSignalMetrics"
+      />
+    </template>
+    <UiCard>
       <div class="toolbar">
         <UiInput
           size="sm"

@@ -92,7 +92,7 @@ const recordColumns: ColumnsType = [
   { title: '考核环节', key: 'assessmentItemRef' },
   { title: '得分 / 满分', key: 'score', width: 140 },
   { title: '状态', key: 'recordStatus', width: 140 },
-  { title: '操作', key: 'actions', width: 180 },
+  { title: '主行动', key: 'actions', width: 180 },
 ]
 
 const validByItemColumns: ColumnsType = [
@@ -432,9 +432,16 @@ const signals = computed<SignalMetric[]>(() => {
   const errored = summary ? Number(summary.erroredCount) : 0
   const ratio = summary?.avgScoreRatioPercent != null ? Math.round(summary.avgScoreRatioPercent) : 0
   const invalidFilterActive = filterForm.validFlag === 'false'
-  return [
-    { key: 'total', label: '当前明细', value: total, tone: 'blue', trendPolarity: 'neutral' },
-    { key: 'valid', label: '有效', value: valid, tone: 'green', trendPolarity: 'positive' },
+  const pool: SignalMetric[] = [
+    {
+      key: 'errored',
+      label: '异常',
+      value: errored,
+      tone: errored > 0 ? 'red' : 'gray',
+      trendPolarity: 'negative',
+      emphasis: 'secondary',
+      actionLabel: errored > 0 ? '查看异常' : undefined,
+    },
     {
       key: 'invalid',
       label: '无效',
@@ -443,13 +450,24 @@ const signals = computed<SignalMetric[]>(() => {
       trendPolarity: 'negative',
       clickable: invalid > 0,
       active: invalidFilterActive,
+      emphasis: 'secondary',
+      actionLabel: invalid > 0 ? '筛无效' : undefined,
     },
     {
-      key: 'errored',
-      label: '异常',
-      value: errored,
-      tone: errored > 0 ? 'red' : 'gray',
-      trendPolarity: 'negative',
+      key: 'total',
+      label: '当前明细',
+      value: total,
+      tone: 'blue',
+      trendPolarity: 'neutral',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'valid',
+      label: '有效',
+      value: valid,
+      tone: 'green',
+      trendPolarity: 'positive',
+      emphasis: 'secondary',
     },
     {
       key: 'ratio',
@@ -457,6 +475,7 @@ const signals = computed<SignalMetric[]>(() => {
       value: `${ratio}%`,
       tone: 'blue',
       trendPolarity: 'positive',
+      emphasis: 'secondary',
     },
     {
       key: 'batches',
@@ -464,7 +483,18 @@ const signals = computed<SignalMetric[]>(() => {
       value: batchTotal.value,
       tone: 'gray',
       trendPolarity: 'neutral',
+      emphasis: 'secondary',
     },
+  ]
+  const primaryBase
+    = errored > 0
+      ? pool.find((item) => item.key === 'errored')!
+      : invalid > 0
+        ? pool.find((item) => item.key === 'invalid')!
+        : pool.find((item) => item.key === 'total')!
+  return [
+    { ...primaryBase, emphasis: 'primary' },
+    ...pool.filter((item) => item.key !== primaryBase.key).slice(0, 3),
   ]
 })
 
@@ -707,7 +737,7 @@ async function submitEditor() {
 
 function buildScoreRecordActions(_record: ScoreRecordVO): UiTableRowActionItem[] {
   return [
-    { key: 'edit', label: '编辑' },
+    { key: 'edit', label: '编辑', tone: 'primary' },
     { key: 'delete', label: '删除', tone: 'danger' },
   ]
 }
@@ -878,12 +908,15 @@ const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
 function handleCourseChange(courseId: string | null) {
   qualityStore.setQualityCourse(courseId || '')
 }
+
+/** 任务工作台副标题：成绩记录规模。 */
+const scoreRecordWorkbenchSubtitle = computed(() => `${recordTotal.value} 条成绩`)
 </script>
 
 <template>
   <QualityIngestPageShell embedded>
     <template #context>
-      <QualityPageContextBar show-title title="成绩录入">
+      <QualityPageContextBar show-title title="成绩录入" :subtitle="scoreRecordWorkbenchSubtitle">
         <template #status>
           <span class="score-record__context-label">质量评价课程</span>
           <CourseSelector
@@ -918,6 +951,7 @@ function handleCourseChange(courseId: string | null) {
     <template v-else>
       <SignalBand
         :metrics="signals"
+        layout="spotlight"
         variant="panel"
         compact
         class="score-record__signals"
@@ -1072,6 +1106,7 @@ function handleCourseChange(courseId: string | null) {
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
+                    :max-visible="2"
                     v-if="isBatchRecordEditable"
                     :items="buildScoreRecordActions(record)"
                     split

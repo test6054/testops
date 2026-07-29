@@ -5,6 +5,8 @@ import type {
   PortfolioExpertAssignmentVO,
 } from '@/apis/portfolio/expert-assignment'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -24,6 +26,7 @@ import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -36,6 +39,7 @@ import {
   PortfolioExpertAssignmentStatusDescription,
 } from '@/types/enums/portfolio-expert-assignment-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const router = useRouter()
@@ -63,6 +67,34 @@ const createOptions = ref<PortfolioExpertAssignmentCreateOptionsVO | null>(null)
 const rows = ref<PortfolioExpertAssignmentVO[]>([])
 const total = ref(0)
 const tasks = ref<PortfolioEvaluationTaskVO[]>([])
+const ExpertAssignSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && total.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '专家授权',
+      value: total.value,
+      clickable: true,
+    },
+  ]
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const ExpertAssignWorkbenchSubtitle = computed(() => {
+  if (loadError.value) {
+    return '加载失败'
+  }
+  return `${total.value} 条`
+})
+
+function onExpertAssignSignalClick(_key: string) {
+  void loadPage()
+}
 const createOpen = ref(false)
 const createdLinkOpen = ref(false)
 const createdPublicLink = ref('')
@@ -166,7 +198,7 @@ const columns: ColumnsType = [
   { title: '数据保护', key: 'maskRequired', width: 100 },
   { title: '状态', key: 'assignmentStatus', width: 100 },
   { title: '过期时间', dataIndex: 'expireTime', key: 'expireTime', width: 170 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 /** 外部专家授权创建与吊销必须串行，避免同一专家访问边界被并发改写。 */
@@ -204,18 +236,19 @@ function canRevoke(row: PortfolioExpertAssignmentVO): boolean {
   return row.assignmentStatus === PortfolioExpertAssignmentStatusCode.ACTIVE
 }
 
-function buildRowActions(row: PortfolioExpertAssignmentVO) {
+function buildRowActions(row: PortfolioExpertAssignmentVO): UiTableRowActionItem[] {
   return [
     {
       key: 'review',
       label: '打开审阅',
       hidden: !canRevoke(row),
       disabled: operating.value,
+      tone: 'primary',
     },
     {
       key: 'revoke',
       label: '吊销',
-      tone: 'danger' as const,
+      tone: 'danger',
       hidden: !canRevoke(row),
       disabled: operating.value,
     },
@@ -471,7 +504,16 @@ onMounted(async () => {
         layout="workbench"
         show-title
         title="外部专家授权"
-        subtitle="为多元评价任务配置脱敏审阅授权"
+        :subtitle="ExpertAssignWorkbenchSubtitle"
+      />
+    </template>
+    <template v-if="ExpertAssignSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="ExpertAssignSignalMetrics"
+        @metric-click="onExpertAssignSignalClick"
       />
     </template>
     <UiCard>
@@ -513,6 +555,7 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildRowActions(record)"
               @action="(key) => onRowAction(key, record)"
             />

@@ -195,6 +195,8 @@ function passesPortfolioWorkShellGate(allowed?: PortfolioWorkShellCode[]): boole
 /**
  * 检查用户是否有权限访问指定路由
  *
+ * @param path 路由路径
+ * @param userRole 当前用户角色编码
  * @param isTenantAdmin 含超管投影的系统管理闸（requireTenantAdmin）
  * @param isEnterpriseTenantAdmin edu-user TenantAdmin 真值，不含超管投影（requireEnterpriseTenantAdmin）
  */

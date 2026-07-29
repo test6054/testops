@@ -15,6 +15,7 @@ import type {
   PortfolioArchiveTemplateDiffSummary,
   PortfolioArchiveTemplateVersionVO,
 } from '@/apis/portfolio/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
@@ -54,6 +55,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import UiTree from '@/components/ui-guide/ui/UiTree.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -61,6 +63,7 @@ import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { hasTeacherTenantPermission } from '@/utils/permission'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 interface TreeNode {
@@ -153,7 +156,7 @@ const fieldColumns: ColumnsType = [
   { title: '只读', dataIndex: 'readonly', key: 'readonly', width: 56 },
   { title: '来源', dataIndex: 'sourceType', key: 'sourceType', width: 88 },
   { title: '排序', dataIndex: 'sortOrder', key: 'sortOrder', width: 56 },
-  { title: '操作', key: 'actions', width: 160 },
+  { title: '主行动', key: 'actions', width: 160 },
 ]
 
 const historyColumns: ColumnsType = [
@@ -161,7 +164,7 @@ const historyColumns: ColumnsType = [
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
   { title: '发布时间', dataIndex: 'publishedTime', key: 'publishedTime', width: 180 },
   { title: '摘要', dataIndex: 'changeSummary', key: 'changeSummary', ellipsis: true },
-  { title: '操作', key: 'actions', width: 80 },
+  { title: '主行动', key: 'actions', width: 80 },
 ]
 
 const treeLoading = ref(false)
@@ -270,7 +273,7 @@ const enumOptionColumns: ColumnsType = [
   { title: '显示名', dataIndex: 'optionLabel', key: 'optionLabel' },
   { title: '排序', dataIndex: 'sortOrder', key: 'sortOrder', width: 64 },
   { title: '启用', dataIndex: 'enabled', key: 'enabled', width: 64 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 const selectedCategory = computed(() => selectedNode.value?.raw ?? null)
@@ -1268,12 +1271,86 @@ async function loadTeacherReadiness() {
 onMounted(async () => {
   await Promise.all([loadTree(), loadTeacherReadiness(), loadAuditFlowOptions()])
 })
+
+const TemplateAdminSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'roots',
+      label: '根分类',
+      value: treeData.value.length,
+      clickable: true,
+    },
+  ], { primaryKey: 'roots', actionLabel: '刷新' })
+})
+
+function onTemplateAdminSignalClick(_key: string) {
+  void loadTree()
+}
+
+/** 任务工作台副标题：根分类规模。 */
+const templateAdminWorkbenchSubtitle = computed(() => `根分类 ${treeData.value.length} 个`)
+
+/**
+ * 页级唯一实心主行动：可发布草稿时优先发布；否则新建根分类。
+ */
+const templatePagePrimaryAction = computed(() => {
+  if (!canManageTenant.value) {
+    return null
+  }
+  if (canEditFields.value) {
+    return {
+      key: 'publish',
+      label: '发布',
+      disabled: writing.value,
+      loading: false,
+      run: () => openPublishModal(),
+    }
+  }
+  return {
+    key: 'create-root',
+    label: '新建根分类',
+    disabled: interactionLocked.value,
+    loading: false,
+    run: () => openCreateCategory(),
+  }
+})
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="档案模板" />
+      <ContextBar layout="workbench" show-title title="档案模板" :subtitle="templateAdminWorkbenchSubtitle">
+        <template #actions>
+          <UiButton
+            v-if="templatePagePrimaryAction"
+            size="sm"
+            variant="primary"
+            :disabled="templatePagePrimaryAction.disabled"
+            :loading="templatePagePrimaryAction.loading"
+            @click="templatePagePrimaryAction.run()"
+          >
+            {{ templatePagePrimaryAction.label }}
+          </UiButton>
+          <UiButton
+            v-if="templatePagePrimaryAction?.key === 'publish'"
+            size="sm"
+            variant="outline"
+            :disabled="interactionLocked"
+            @click="openCreateCategory"
+          >
+            新建根分类
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
+    <template v-if="TemplateAdminSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TemplateAdminSignalMetrics"
+        @metric-click="onTemplateAdminSignalClick"
+      />
     </template>
     <UiAlertStrip
       v-if="readinessLoadError"
@@ -1310,16 +1387,9 @@ onMounted(async () => {
           />
         </div>
         <div v-if="canManageTenant" class="toolbar">
+          <!-- 新建根分类主行动已上移 ContextBar -->
           <UiButton
-            size="sm"
-            variant="primary"
-            :disabled="interactionLocked"
-            @click="openCreateCategory"
-          >
-            新建根分类
-          </UiButton>
-          <UiButton
-            variant="primary"
+            variant="outline"
             size="sm"
             :disabled="!selectedCategory || interactionLocked"
             @click="openCreateSubCategory"
@@ -1433,7 +1503,7 @@ onMounted(async () => {
               "
             />
             <UiButton
-              variant="primary"
+              variant="outline"
               size="sm"
               :loading="operationKey.startsWith('audit-flow:bind:')"
               :disabled="
@@ -1484,7 +1554,7 @@ onMounted(async () => {
               查看已发布
             </UiButton>
             <UiButton
-              variant="primary"
+              variant="outline"
               size="sm"
               :loading="operationKey.startsWith('version:draft:')"
               :disabled="writing"
@@ -1509,8 +1579,9 @@ onMounted(async () => {
               试算
             </UiButton>
             <UiButton
+              v-if="templatePagePrimaryAction?.key !== 'publish'"
               size="sm"
-              variant="primary"
+              variant="outline"
               :disabled="!canEditFields || writing"
               @click="openPublishModal"
             >
@@ -1567,6 +1638,7 @@ onMounted(async () => {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
+                  :max-visible="2"
                   v-if="canManageTenant && canEditFields"
                   :items="archiveFieldActionItems(archiveFieldRecord(record))"
                   split
@@ -1807,6 +1879,7 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               v-if="canManageTenant"
               :items="[
                 { key: 'edit', label: '编辑', disabled: writing },
@@ -1868,6 +1941,7 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="[{ key: 'view', label: '查看', disabled: writing }]"
               split
               @action="() => selectVersionFromHistory(archiveTemplateVersionRecord(record))"

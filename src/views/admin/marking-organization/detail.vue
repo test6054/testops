@@ -62,7 +62,7 @@
     </template>
 
     <template v-if="organization" #signal>
-      <SignalBand compact variant="panel" :metrics="orgSignalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="orgSignalMetrics" />
     </template>
 
     <ExamWorkspaceJourneySubNav v-if="isExamWorkspaceRoute" />
@@ -276,6 +276,7 @@
               </template>
               <template v-else-if="column.key === 'action'">
                 <UiTableActions
+                  :max-visible="2"
                   :items="[
                     { key: 'edit', label: '编辑', hidden: canEditGroup(record) !== true },
                     {
@@ -1387,7 +1388,7 @@ const groupColumns: ColumnType<QuestionMarkingGroupResponse>[] = [
   { title: '题组组长', key: 'leaderUser', width: 160 },
   { title: '状态', key: 'groupStatus', width: 100 },
   { title: '创建时间', key: 'createTime', width: 170 },
-  { title: '操作', key: 'action', width: 220 },
+  { title: '主行动', key: 'action', width: 220 },
 ]
 
 const teacherList = ref<UserListItemDto[]>([])

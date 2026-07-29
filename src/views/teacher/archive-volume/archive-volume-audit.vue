@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="archive-audit-page">
     <template #context>
-      <ContextBar layout="workbench" show-title title="归档审计事件" subtitle="历史归档">
+      <ContextBar layout="workbench" show-title title="归档审计事件" :subtitle="`${auditEventCount} 条事件`">
         <template #actions>
           <UiButton variant="ghost" size="sm" @click="goList">返回列表</UiButton>
         </template>
@@ -9,7 +9,7 @@
     </template>
 
     <template #signal>
-      <SignalBand :metrics="signalMetrics" variant="panel" />
+      <SignalBand layout="spotlight" :metrics="signalMetrics" variant="panel" />
     </template>
 
     <UiEmpty size="sm" v-if="loadFailed" title="加载失败" description="审计事件加载失败" />
@@ -137,6 +137,7 @@ const signalMetrics = computed<SignalMetric[]>(() => [
     unit: '条',
     tone: 'blue',
     helper: '当前筛选范围',
+    emphasis: 'primary',
   },
 ])
 

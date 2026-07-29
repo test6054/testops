@@ -11,6 +11,21 @@ export enum ExamWorkbenchPriorityReasonCode {
   PENDING_MY_PUBLISH_REVIEW = 'PENDING_MY_PUBLISH_REVIEW',
 }
 
+export const ExamWorkbenchPriorityReasonDescription: Record<
+  ExamWorkbenchPriorityReasonCode,
+  string
+> = {
+  [ExamWorkbenchPriorityReasonCode.SCAN_ATTENTION]: '扫描需关注',
+  [ExamWorkbenchPriorityReasonCode.UNBOUND_CANDIDATE_INCIDENT]: '考生绑定异常',
+  [ExamWorkbenchPriorityReasonCode.MISSING_CANDIDATE_ROSTER]: '缺少考生名单',
+  [ExamWorkbenchPriorityReasonCode.OPEN_PROCESSING_TASK]: '存在进行中处理任务',
+  [ExamWorkbenchPriorityReasonCode.PENDING_REVIEW_TASK]: '待复核',
+  [ExamWorkbenchPriorityReasonCode.UNCONFIRMED_GRADE]: '题分待确认',
+  [ExamWorkbenchPriorityReasonCode.CONFIRMED_UNPUBLISHED_SCORE]: '成绩待发布',
+  [ExamWorkbenchPriorityReasonCode.PENDING_PUBLISH_REVIEW_OPEN]: '成绩发布复核中',
+  [ExamWorkbenchPriorityReasonCode.PENDING_MY_PUBLISH_REVIEW]: '待我复核发布',
+}
+
 export const ALL_EXAM_WORKBENCH_PRIORITY_REASON_CODES: readonly ExamWorkbenchPriorityReasonCode[] = [
   ExamWorkbenchPriorityReasonCode.SCAN_ATTENTION,
   ExamWorkbenchPriorityReasonCode.UNBOUND_CANDIDATE_INCIDENT,

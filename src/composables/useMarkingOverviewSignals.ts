@@ -44,11 +44,17 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
 
     if (placeholder) {
       return [
-        { key: 'active', label: '进行中考试', value: '—', tone: 'gray', iconTone: 'gray' },
-        { key: 'marking-progress', label: '阅卷进度', value: '—', tone: 'gray', iconTone: 'gray' },
-        { key: 'exceptions', label: '待处理事项', value: '—', tone: 'gray', iconTone: 'gray' },
-        { key: 'unpublished', label: '待发布成绩', value: '—', tone: 'gray', iconTone: 'gray' },
-        { key: 'scan-attention', label: '扫描关注', value: '—', tone: 'gray', iconTone: 'gray' },
+        {
+          key: 'exceptions',
+          label: '待处理事项',
+          value: '—',
+          tone: 'gray',
+          iconTone: 'gray',
+          emphasis: 'primary',
+        },
+        { key: 'active', label: '进行中考试', value: '—', tone: 'gray', iconTone: 'gray', emphasis: 'secondary' },
+        { key: 'marking-progress', label: '阅卷进度', value: '—', tone: 'gray', iconTone: 'gray', emphasis: 'secondary' },
+        { key: 'unpublished', label: '待发布成绩', value: '—', tone: 'gray', iconTone: 'gray', emphasis: 'secondary' },
       ]
     }
 
@@ -63,7 +69,21 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
     const markingPercent
       = totalQuestions > 0 ? Math.round((confirmedQuestions / totalQuestions) * 1000) / 10 : 0
 
+    // 任务工作台：1 主（待处理）+ 次级规模；仲裁/抽检仅在有积压时进入次卡
     const metricsList: SignalMetric[] = [
+      {
+        key: 'exceptions',
+        label: '待处理事项',
+        value: pendingTodoRowCount,
+        unit: '项',
+        tone: pendingTodoRowCount > 0 ? 'red' : 'gray',
+        iconTone: 'gray',
+        emphasis: 'primary',
+        actionLabel: pendingTodoRowCount > 0 ? '处理待办' : undefined,
+        helper: pendingTodoRowCount > 0 ? '优先推进阻塞项' : '暂无待办',
+        trendPolarity: 'negative',
+        clickable: pendingTodoRowCount > 0,
+      },
       {
         key: 'active',
         label: '进行中考试',
@@ -71,6 +91,7 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         unit: '场',
         tone: activeExamCount > 0 ? 'blue' : 'gray',
         iconTone: activeExamCount > 0 ? 'blue' : 'gray',
+        emphasis: 'secondary',
         helper: activeExamCount > 0 ? '点击查看进行中列表' : '当前筛选无进行中',
         clickable: true,
       },
@@ -81,6 +102,7 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         unit: '%',
         tone: totalQuestions > 0 ? 'blue' : 'gray',
         iconTone: totalQuestions > 0 ? 'blue' : 'gray',
+        emphasis: 'secondary',
         trendPolarity: 'positive',
         helper:
           totalQuestions > 0
@@ -90,39 +112,33 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         clickable: totalQuestions > 0,
       },
       {
-        key: 'exceptions',
-        label: '待处理事项',
-        value: pendingTodoRowCount,
-        unit: '项',
-        tone: pendingTodoRowCount > 0 ? 'red' : 'gray',
-        iconTone: 'gray',
-        helper: pendingTodoRowCount > 0 ? '优先推进阻塞项' : '暂无待办',
-        trendPolarity: 'negative',
-        clickable: pendingTodoRowCount > 0,
-      },
-      {
         key: 'unpublished',
         label: '待发布成绩',
         value: unpublishedCount,
         unit: '份',
         tone: unpublishedCount > 0 ? 'orange' : 'gray',
         iconTone: 'gray',
+        emphasis: 'secondary',
         helper: unpublishedCount > 0 ? '成绩已确认待发布' : '暂无待发布',
         trendPolarity: 'negative',
         clickable: unpublishedCount > 0,
       },
-      {
+    ]
+
+    if (scanAttentionCount > 0) {
+      metricsList.push({
         key: 'scan-attention',
         label: '扫描关注',
         value: scanAttentionCount,
         unit: '项',
-        tone: scanAttentionCount > 0 ? 'orange' : 'gray',
+        tone: 'orange',
         iconTone: 'gray',
-        helper: scanAttentionCount > 0 ? '扫描异常待处理' : '扫描状态正常',
+        emphasis: 'secondary',
+        helper: '扫描异常待处理',
         trendPolarity: 'negative',
-        clickable: scanAttentionCount > 0,
-      },
-    ]
+        clickable: true,
+      })
+    }
 
     if (arbitrationCount > 0) {
       metricsList.push({
@@ -132,6 +148,7 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         unit: '项',
         tone: 'red',
         iconTone: 'gray',
+        emphasis: 'secondary',
         helper: '需仲裁确认',
         trendPolarity: 'negative',
         clickable: true,
@@ -146,30 +163,33 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         unit: '项',
         tone: 'orange',
         iconTone: 'gray',
+        emphasis: 'secondary',
         helper: '抽检队列待处理',
         trendPolarity: 'negative',
         clickable: true,
       })
     }
 
-    // 筛选范围内有考试但核心 KPI 全 0 时，补「筛选范围」语义（通常不会与 active 重复）
+    // 筛选范围内有考试但核心 KPI 全 0 时，补「筛选范围」语义（不抢主卡）
     if (
       metricsList.every((item) => item.value === 0)
       && (filterContext?.filteredExamCount ?? 0) > 0
     ) {
-      metricsList[0] = {
-        key: 'active',
-        label: '筛选范围内考试',
-        value: filterContext?.filteredExamCount ?? 0,
-        unit: '场',
-        tone: 'gray',
-        iconTone: 'gray',
-        helper: '当前筛选范围内',
-        clickable: true,
+      const activeMetric = metricsList.find((item) => item.key === 'active')
+      if (activeMetric) {
+        activeMetric.label = '筛选范围内考试'
+        activeMetric.value = filterContext?.filteredExamCount ?? 0
+        activeMetric.tone = 'gray'
+        activeMetric.iconTone = 'gray'
+        activeMetric.helper = '当前筛选范围内'
+        activeMetric.clickable = true
       }
     }
 
-    return metricsList.slice(0, 6)
+    // spotlight：主卡 + 最多 3 次卡，避免 KPI 墙回潮
+    const primary = metricsList.find((item) => item.emphasis === 'primary')
+    const secondaries = metricsList.filter((item) => item.key !== primary?.key).slice(0, 3)
+    return primary ? [primary, ...secondaries] : secondaries
   })
 
   return { metrics }

@@ -633,7 +633,7 @@ function buildIndirectResponseActions(
   _record: IndirectEvaluationResponseVO,
 ): UiTableRowActionItem[] {
   return [
-    { key: 'edit', label: '编辑' },
+    { key: 'edit', label: '编辑', tone: 'primary' },
     { key: 'delete', label: '删除', tone: 'danger' },
   ]
 }
@@ -875,6 +875,7 @@ defineExpose({
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
+            :max-visible="2"
             v-if="selectedForm && isTeacherResponseWritable(selectedForm)"
             :items="buildIndirectResponseActions(record)"
             split

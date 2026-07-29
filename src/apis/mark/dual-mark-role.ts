@@ -1,6 +1,7 @@
+import type {
+  DualMarkRoleCode} from '@/types/enums/dual-mark-role-enum';
 import {
   ALL_DUAL_MARK_ROLE_CODES,
-  DualMarkRoleCode,
   DualMarkRoleDescription,
 } from '@/types/enums/dual-mark-role-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'

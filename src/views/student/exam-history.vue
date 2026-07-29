@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar title="考试历史">
+      <ContextBar title="考试历史" :subtitle="ExamHistoryWorkbenchSubtitle">
         <template #status>
           <UiTag tone="blue" size="sm">
             {{ examStats == null ? '—' : `${examStats.totalExamCount} 场` }}
@@ -11,6 +11,16 @@
           </UiTag>
         </template>
       </ContextBar>
+    </template>
+
+    <template v-if="ExamHistorySignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="ExamHistorySignalMetrics"
+        @metric-click="onExamHistorySignalClick"
+      />
     </template>
 
     <WorkbenchSurfaceCard flush class="exam-history-page__table-card">
@@ -86,6 +96,7 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildExamHistoryActions(item)"
               split
               @action="(key) => handleExamHistoryAction(key, item)"
@@ -101,9 +112,10 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { StudentExamItemVO, StudentExamStatsResponse } from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import message from 'ant-design-vue/es/message'
-import { onActivated, onMounted, ref } from 'vue'
+import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   canSubmitReview,
@@ -117,6 +129,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
@@ -127,6 +140,7 @@ import {
 } from '@/types/enums/student-facing-final-score-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import {
   studentFacingFinalScoreStatusLabel,
@@ -173,6 +187,52 @@ const {
   },
 )
 
+const ExamHistorySignalMetrics = computed<SignalMetric[]>(() => {
+  if (!examStats.value) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '考试场次',
+      value: examStats.value.totalExamCount ?? 0,
+      clickable: true,
+    },
+  ]
+  if ((examStats.value.publishedCount ?? 0) > 0) {
+    metrics.push({
+      key: 'published',
+      label: '已发布成绩',
+      value: examStats.value.publishedCount ?? 0,
+    })
+  }
+  metrics.push({
+    key: 'page',
+    label: '本页',
+    value: pageTotal.value,
+    helper: '仅当前页',
+  })
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const ExamHistoryWorkbenchSubtitle = computed(() => {
+  if (!examStats.value) {
+    return undefined
+  }
+  const parts = [`${examStats.value.totalExamCount ?? 0} 场`]
+  if ((examStats.value.publishedCount ?? 0) > 0) {
+    parts.push(`已发布 ${examStats.value.publishedCount}`)
+  }
+  return parts.join(' · ')
+})
+
+function onExamHistorySignalClick(_key: string) {
+  void reloadPage()
+}
+
 const statusOptions = ALL_STUDENT_FACING_FINAL_SCORE_STATUS_CODES.map((value) => ({
   value,
   label: StudentFacingFinalScoreStatusDescription[value],
@@ -218,7 +278,7 @@ const columns: ColumnsType<StudentExamItemVO> = [
   },
   { title: '发布时间', key: 'publishedTime', dataIndex: 'publishedTime', width: 170 },
   { title: '复核窗口', key: 'reviewWindowStatus', dataIndex: 'reviewWindowStatus', width: 120 },
-  { title: '操作', key: 'actions', width: 200 },
+  { title: '主行动', key: 'actions', width: 200 },
 ]
 
 async function loadExamStats(): Promise<void> {
@@ -263,8 +323,7 @@ function buildExamHistoryActions(record: StudentExamItemVO): UiTableRowActionIte
     {
       key: 'detail',
       label: '查看详情',
-      disabled: record.finalScoreStatus !== StudentFacingFinalScoreStatusCode.PUBLISHED,
-    },
+      disabled: record.finalScoreStatus !== StudentFacingFinalScoreStatusCode.PUBLISHED, tone: 'primary' },
     {
       key: 'appeal',
       label: '提交复核',

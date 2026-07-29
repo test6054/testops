@@ -5,12 +5,17 @@
         layout="workbench"
         show-title
         title="扫描批次"
-        :subtitle="contextBarSubtitle"
+        :subtitle="scanBatchWorkbenchSubtitle"
       >
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
           </UiTag>
+        </template>
+        <template v-if="scanBatchPrimaryAction" #actions>
+          <UiButton size="sm" variant="primary" @click="scanBatchPrimaryAction.run()">
+            {{ scanBatchPrimaryAction.label }}
+          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -18,6 +23,7 @@
     <template #signal>
       <SignalBand
         v-if="selectedExamId"
+        layout="spotlight"
         compact
         variant="panel"
         :metrics="summaryMetrics"
@@ -206,6 +212,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="batchRowActions(record)"
                 split
                 @action="(key) => handleBatchRowAction(key, record)"
@@ -383,6 +390,38 @@ const filterFields = computed<FilterField[]>(() => [
   },
 ])
 
+
+/** 任务工作台副标题：阻断/异常真数，覆盖旅程空 subtitle。 */
+const scanBatchWorkbenchSubtitle = computed(() => {
+  const data = summary.value
+  if (summaryLoadFailed.value) {
+    return '批次指标加载失败'
+  }
+  if (!data) {
+    return '批次指标加载中'
+  }
+  if (data.blockedCount > 0) {
+    return `页登记阻断 ${data.blockedCount} · 优先清障`
+  }
+  if (data.attentionCount > 0) {
+    return `扫描异常 ${data.attentionCount} 项`
+  }
+  return `批次 ${data.batchTotal ?? 0} 个`
+})
+
+/** 页级主行动：有阻断/异常时进入异常队列。 */
+const scanBatchPrimaryAction = computed(() => {
+  const data = summary.value
+  if (!data) return null
+  if (data.blockedCount > 0 || data.attentionCount > 0) {
+    return {
+      label: data.blockedCount > 0 ? '处理页登记阻断' : '处理扫描异常',
+      run: () => goScanMonitorAbnormal(),
+    }
+  }
+  return null
+})
+
 const summaryMetrics = computed((): SignalMetric[] => {
   const data = summary.value
   if (!data) {
@@ -391,14 +430,73 @@ const summaryMetrics = computed((): SignalMetric[] => {
     }
     return [{ key: 'kpi-pending', label: '批次关键指标', value: '—', tone: 'gray' }]
   }
-  const metrics: SignalMetric[] = [
-    { key: 'batchTotal', label: '批次总数', value: data.batchTotal, unit: '个', tone: 'blue' },
+  const primary
+    = data.blockedCount > 0
+      ? {
+          key: 'blocked',
+          label: '页登记阻断',
+          value: data.blockedCount,
+          unit: '个',
+          tone: 'red' as const,
+          emphasis: 'primary' as const,
+          actionLabel: '处理阻断',
+          helper: '页登记阻断优先清障',
+          clickable: true,
+        }
+      : data.attentionCount > 0
+        ? {
+            key: 'attention',
+            label: '扫描异常',
+            value: data.attentionCount,
+            unit: '项',
+            tone: 'orange' as const,
+            emphasis: 'primary' as const,
+            actionLabel: '查看异常',
+            helper: '扫描异常待处理',
+            clickable: true,
+          }
+        : data.orphanPendingEventCount > 0
+          ? {
+              key: 'orphanEvents',
+              label: '游离页事件',
+              value: data.orphanPendingEventCount,
+              unit: '条',
+              tone: 'orange' as const,
+              emphasis: 'primary' as const,
+              actionLabel: '处理游离页',
+              helper: '游离页事件待归并',
+              clickable: true,
+            }
+          : {
+              key: 'inProgress',
+              label: '进行中',
+              value: data.inProgressCount,
+              unit: '个',
+              tone: data.inProgressCount > 0 ? 'blue' as const : 'gray' as const,
+              emphasis: 'primary' as const,
+              actionLabel: data.inProgressCount > 0 ? '查看进行中' : undefined,
+              helper: data.inProgressCount > 0 ? '扫描进行中批次' : '暂无进行中批次',
+              clickable: data.inProgressCount > 0,
+            }
+
+  const secondaryPool: SignalMetric[] = [
+    {
+      key: 'batchTotal',
+      label: '批次总数',
+      value: data.batchTotal,
+      unit: '个',
+      tone: 'blue',
+      emphasis: 'secondary',
+      clickable: true,
+    },
     {
       key: 'inProgress',
       label: '进行中',
       value: data.inProgressCount,
       unit: '个',
       tone: data.inProgressCount > 0 ? 'blue' : 'gray',
+      emphasis: 'secondary',
+      clickable: data.inProgressCount > 0,
     },
     {
       key: 'blocked',
@@ -406,6 +504,8 @@ const summaryMetrics = computed((): SignalMetric[] => {
       value: data.blockedCount,
       unit: '个',
       tone: data.blockedCount > 0 ? 'red' : 'green',
+      emphasis: 'secondary',
+      clickable: data.blockedCount > 0,
     },
     {
       key: 'orphanEvents',
@@ -413,6 +513,8 @@ const summaryMetrics = computed((): SignalMetric[] => {
       value: data.orphanPendingEventCount,
       unit: '条',
       tone: data.orphanPendingEventCount > 0 ? 'orange' : 'green',
+      emphasis: 'secondary',
+      clickable: data.orphanPendingEventCount > 0,
     },
     {
       key: 'attention',
@@ -420,21 +522,24 @@ const summaryMetrics = computed((): SignalMetric[] => {
       value: data.attentionCount,
       unit: '项',
       tone: data.attentionCount > 0 ? 'orange' : 'green',
+      emphasis: 'secondary',
+      clickable: data.attentionCount > 0,
     },
   ]
   const progress = markingProgress.value
   if (progress && progress.paperCount > 0) {
     const bindingRate = Math.round((progress.gradablePaperCount / progress.paperCount) * 100)
-    metrics.push({
+    secondaryPool.push({
       key: 'bindingRate',
       label: '卷面绑定率',
       value: bindingRate,
       unit: '%',
       helper: `${progress.gradablePaperCount}/${progress.paperCount}`,
       tone: progress.gradablePaperCount < progress.paperCount ? 'orange' : 'green',
+      emphasis: 'secondary',
     })
   }
-  return metrics
+  return [primary, ...secondaryPool.filter((item) => item.key !== primary.key).slice(0, 3)]
 })
 
 const batchColumns: ColumnType<ExamScannerBatchResponse>[] = [
@@ -454,7 +559,7 @@ const batchColumns: ColumnType<ExamScannerBatchResponse>[] = [
   { title: '落库', key: 'pageProgress', width: 90 },
   { title: '异常', key: 'attentionCount', width: 80 },
   { title: '顺序', key: 'orderAudit', width: 90 },
-  { title: '操作', key: 'actions', width: 140 },
+  { title: '主行动', key: 'actions', width: 140 },
 ]
 
 function batchStatusTone(batch: ExamScannerBatchResponse): BadgeTone {

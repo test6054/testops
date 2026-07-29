@@ -478,4 +478,19 @@ function formatDayLabel(day: string): string {
     white-space: normal;
   }
 }
+
+@media (max-width: 600px) {
+  .marking-overview-analytics__pin {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .marking-overview-analytics__pin-main {
+    align-items: flex-start;
+  }
+
+  .marking-overview-analytics__toggle {
+    align-self: flex-start;
+  }
+}
 </style>

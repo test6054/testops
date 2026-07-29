@@ -1,7 +1,14 @@
 <template>
   <StageWorkbenchShell class="appeal-page">
     <template #context>
-      <ContextBar layout="workbench" show-title title="成绩复核">
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="成绩复核"
+        :subtitle="pendingCount != null
+          ? `${pendingCount} 条待处理`
+          : undefined"
+      >
         <template #status>
           <UiTag tone="blue" size="sm">阶段 成绩复核</UiTag>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
@@ -25,7 +32,7 @@
     </template>
 
     <template v-if="currentExamId" #signal>
-      <SignalBand compact variant="panel" :metrics="appealSignalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="appealSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!currentExamId" class="appeal-page__empty" />
@@ -157,33 +164,66 @@ const appealSignalMetrics = computed((): SignalMetric[] => {
   const statusTone = policy?.policyStatus
     ? strictEnumTone(REVIEW_WINDOW_STATUS_TONE, policy.policyStatus, '复核窗口状态')
     : 'gray'
-  return [
+  const pendingValue = pendingCount.value == null ? '—' : pendingCount.value
+  const pendingTone
+    = (pendingCount.value ?? 0) > 0
+? 'orange' as const
+      : pendingCount.value == null
+? 'red' as const
+        : 'green' as const
+  const primary
+    = (pendingCount.value ?? 0) > 0 || pendingCount.value == null
+      ? {
+          key: 'pending',
+          label: '待办复核',
+          value: pendingValue,
+          unit: pendingCount.value == null ? undefined : '条',
+          tone: pendingTone,
+          emphasis: 'primary' as const,
+          actionLabel: (pendingCount.value ?? 0) > 0 ? '处理待办' : undefined,
+          helper: (pendingCount.value ?? 0) > 0 ? '学生复核申请待办' : '待办计数不可用',
+        }
+      : {
+          key: 'window-status',
+          label: '窗口状态',
+          value: statusLabel,
+          tone: statusTone,
+          emphasis: 'primary' as const,
+          helper: '复核窗口策略状态',
+        }
+
+  const secondaryPool: SignalMetric[] = [
     {
       key: 'window-status',
       label: '窗口状态',
       value: statusLabel,
       tone: statusTone,
+      emphasis: 'secondary',
     },
     {
       key: 'open-time',
       label: '开放时间',
       value: policy?.openTime ? formatDateTimeWithSeconds(policy.openTime).split(' ')[0] : '—',
       tone: policy?.openTime ? 'blue' : 'gray',
+      emphasis: 'secondary',
     },
     {
       key: 'close-time',
       label: '截止时间',
       value: policy?.closeTime ? formatDateTimeWithSeconds(policy.closeTime).split(' ')[0] : '—',
       tone: policy?.closeTime ? 'orange' : 'gray',
+      emphasis: 'secondary',
     },
     {
       key: 'pending',
       label: '待办复核',
-      value: pendingCount.value == null ? '—' : pendingCount.value,
+      value: pendingValue,
       unit: pendingCount.value == null ? undefined : '条',
-      tone: (pendingCount.value ?? 0) > 0 ? 'orange' : pendingCount.value == null ? 'red' : 'green',
+      tone: pendingTone,
+      emphasis: 'secondary',
     },
   ]
+  return [primary, ...secondaryPool.filter((item) => item.key !== primary.key).slice(0, 3)]
 })
 
 const windowReloadToken = ref(0)

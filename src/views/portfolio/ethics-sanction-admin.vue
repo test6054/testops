@@ -5,6 +5,8 @@ import type {
   PortfolioEthicsReviewLogVO,
   PortfolioEthicsSanctionVO,
 } from '@/apis/portfolio/ethics-sanction'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
@@ -23,7 +25,9 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
@@ -54,6 +58,7 @@ import {
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -129,7 +134,7 @@ const columns: ColumnsType = [
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
-  { title: '操作', key: 'actions', width: 240 },
+  { title: '主行动', key: 'actions', width: 240 },
 ]
 
 const writing = computed(() => saving.value || reviewing.value || earlyReviewing.value)
@@ -199,6 +204,40 @@ function openCreate() {
   editorOpen.value = true
 }
 
+/** 师德处分行操作：待复核时「复核」为主行动 */
+function buildEthicsRowActions(record: PortfolioEthicsSanctionVO): UiTableRowActionItem[] {
+  const blocked = writing.value || archiveWriteForbidden.value || archiveWriteCapabilityUnknown.value
+  return [
+    {
+      key: 'review',
+      label: '复核',
+      tone: 'primary',
+      hidden: record.sanctionStatus !== PortfolioEthicsSanctionStatusCode.PENDING_REVIEW,
+      disabled: blocked,
+    },
+    { key: 'detail', label: '详情' },
+    {
+      key: 'early',
+      label: '提前复核',
+      hidden: record.sanctionStatus !== PortfolioEthicsSanctionStatusCode.IN_EFFECT,
+      disabled: blocked || earlyReviewing.value,
+    },
+  ]
+}
+
+function handleEthicsRowAction(key: string, record: PortfolioEthicsSanctionVO): void {
+  if (key === 'review') {
+    openReview(record)
+    return
+  }
+  if (key === 'detail') {
+    void openDetail(record)
+    return
+  }
+  if (key === 'early') {
+    void requestEarlyReview(record)
+  }
+}
 function openReview(row: PortfolioEthicsSanctionVO) {
   if (writing.value) return
   if (row.sanctionStatus !== PortfolioEthicsSanctionStatusCode.PENDING_REVIEW) {
@@ -476,6 +515,34 @@ onMounted(async () => {
   await loadPage()
   await applySanctionDeepLink()
 })
+
+const EthicsSanctionSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && total.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '处分记录',
+      value: total.value,
+      clickable: true,
+    },
+  ]
+  metrics.push({
+    key: 'pageRows',
+    label: '本页',
+    value: rows.value.length,
+    helper: '仅当前页',
+  })
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+function onEthicsSanctionSignalClick(_key: string) {
+  void loadPage()
+}
 </script>
 
 <template>
@@ -485,13 +552,23 @@ onMounted(async () => {
         layout="workbench"
         show-title
         title="师德处分"
-        subtitle="登记处分、期满复核；约束结果按有效状态实时生效"
+        :subtitle="`${total} 条`"
       >
         <template #actions>
           <UiButton size="sm" variant="primary" :disabled="writing || archiveWriteGuardLoading" @click="openCreate"> 登记处分 </UiButton>
         </template>
       </ContextBar>
     </template>
+    <template v-if="EthicsSanctionSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="EthicsSanctionSignalMetrics"
+        @metric-click="onEthicsSanctionSignalClick"
+      />
+    </template>
+
     <PortfolioArchiveWriteGuardStrip
       :blocked="archiveWriteForbidden"
       :capability-unknown="archiveWriteCapabilityUnknown"
@@ -597,26 +674,12 @@ onMounted(async () => {
               </span>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton size="sm" variant="soft" @click="openDetail(record)"> 详情 </UiButton>
-              <UiButton
-                v-if="record.sanctionStatus === PortfolioEthicsSanctionStatusCode.IN_EFFECT"
-                size="sm"
-                variant="soft"
-                :loading="earlyReviewing"
-                @click="requestEarlyReview(record)"
-                :disabled="writing || archiveWriteForbidden || archiveWriteCapabilityUnknown"
-              >
-                提前复核
-              </UiButton>
-              <UiButton
-                v-if="record.sanctionStatus === PortfolioEthicsSanctionStatusCode.PENDING_REVIEW"
-                size="sm"
-                variant="primary"
-                @click="openReview(record)"
-                :disabled="writing || archiveWriteForbidden || archiveWriteCapabilityUnknown"
-              >
-                复核
-              </UiButton>
+              <UiTableActions
+                :max-visible="2"
+                :items="buildEthicsRowActions(record)"
+                split
+                @action="(key) => handleEthicsRowAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -669,7 +732,7 @@ onMounted(async () => {
       </div>
       <template #footer>
         <UiButton size="sm" variant="soft" @click="editorOpen = false"> 取消 </UiButton>
-        <UiButton size="sm" variant="primary" :loading="saving" :disabled="writing || archiveWriteForbidden || archiveWriteCapabilityUnknown" @click="saveSanction">
+        <UiButton size="sm" variant="outline" :loading="saving" :disabled="writing || archiveWriteForbidden || archiveWriteCapabilityUnknown" @click="saveSanction">
           登记
         </UiButton>
       </template>

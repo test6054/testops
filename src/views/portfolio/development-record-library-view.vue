@@ -6,6 +6,7 @@ import type {
   PortfolioDevelopmentRecordEntrySchemaVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioDevelopmentRecordEvidenceStatusCode } from '@/types/enums/portfolio-development-record-evidence-status-enum'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -30,6 +31,7 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
@@ -40,6 +42,7 @@ import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enu
 import { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -104,6 +107,30 @@ const requiresTeacher = computed(
   () => entrySchema.value?.teacherRequired === true
     || props.recordType === PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT,
 )
+
+const DevelopmentRecordLibrarySignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && pageTotal.value === 0) {
+    return []
+  }
+  return applySpotlightEmphasis([
+    {
+      key: 'total',
+      label: props.title || '资源条目',
+      value: pageTotal.value,
+      clickable: true,
+    },
+  ], { primaryKey: 'total', actionLabel: '刷新' })
+})
+
+const DevelopmentRecordLibraryWorkbenchSubtitle = computed(() => {
+  if (loadError.value) return '加载失败'
+  return `${pageTotal.value} 条`
+})
+
+function onDevelopmentRecordLibrarySignalClick(_key: string) {
+  void loadPage()
+}
+
 const showEditor = computed(() => !props.readonly)
 const evidenceRequired = computed(() => entrySchema.value?.evidenceRequired === true)
 const schemaFields = computed(() => entrySchema.value?.fields ?? [])
@@ -132,7 +159,7 @@ const columns = computed<ColumnsType>(() => {
   base.push(
     { title: '状态', dataIndex: 'recordStatus', key: 'recordStatus', width: 88 },
     { title: '身份层', key: 'identityLayers', width: 160 },
-    { title: '操作', key: 'actions', width: 120 },
+    { title: '主行动', key: 'actions', width: 120 },
   )
   return base
 })
@@ -373,7 +400,16 @@ onMounted(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title :title="title" :subtitle="subtitle" />
+      <ContextBar layout="workbench" show-title :title="title" :subtitle="DevelopmentRecordLibraryWorkbenchSubtitle" />
+    </template>
+    <template v-if="DevelopmentRecordLibrarySignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="DevelopmentRecordLibrarySignalMetrics"
+        @metric-click="onDevelopmentRecordLibrarySignalClick"
+      />
     </template>
     <UiCard v-if="showEditor" :title="entrySchema?.libraryName ? `${entrySchema.libraryName}·新增` : '新增条目'">
       <UiAlertStrip
@@ -536,6 +572,7 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               v-if="showEditor"
               :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
               split

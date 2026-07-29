@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PortfolioEligibilityEvalResultDto } from '@/apis/portfolio/indicator-types'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, ref, watch } from 'vue'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import PortfolioIndicatorExplainDrawer from '@/components/portfolio/PortfolioIndicatorExplainDrawer.vue'
@@ -13,10 +14,12 @@ import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
 import { PfEligibilityAuditStatusCode } from '@/types/enums/pf-eligibility-audit-status-enum'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 
 const { targetTeacherId, canPickTeachers, scopeReady } = usePortfolioPageScope()
 const evaluating = ref(false)
@@ -85,12 +88,51 @@ watch(
     resetEvaluationContext()
   },
 )
+
+const TeacherIndicatorSignalMetrics = computed<SignalMetric[]>(() => {
+  if (!result.value) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'eligible',
+      label: '资格结论',
+      value: result.value.eligible ? '已具备' : '未具备',
+      clickable: true,
+      tone: result.value.eligible ? 'green' : 'orange',
+    },
+  ]
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'eligible',
+    actionLabel: '重新评估',
+  })
+})
+
+const TeacherIndicatorWorkbenchSubtitle = computed(() => {
+  if (!targetTeacherId.value && canPickTeachers.value) return '请先选择教师'
+  if (evaluating.value) return '评估中'
+  if (!result.value) return '待评估'
+  return result.value.eligible ? '已具备资格' : '未具备资格'
+})
+
+function onTeacherIndicatorSignalClick(_key: string) {
+  void evaluate()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="我的资格评估" />
+      <ContextBar show-title layout="workbench" title="我的资格评估" :subtitle="TeacherIndicatorWorkbenchSubtitle" />
+    </template>
+    <template v-if="TeacherIndicatorSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TeacherIndicatorSignalMetrics"
+        @metric-click="onTeacherIndicatorSignalClick"
+      />
     </template>
     <PortfolioTeacherPickGate v-if="canPickTeachers && !scopeReady" />
     <UiCard v-else>

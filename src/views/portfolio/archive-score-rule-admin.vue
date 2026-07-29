@@ -5,6 +5,7 @@ import type {
   PortfolioArchiveScoreRuleVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioArchiveCategoryTreeNodeVO } from '@/apis/portfolio/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
@@ -26,10 +27,12 @@ import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const SCORE_POINTS_MAX = 100
@@ -71,7 +74,7 @@ const columns: ColumnsType = [
   { title: '分值', dataIndex: 'scorePoints', key: 'scorePoints', width: 80 },
   { title: '权重', dataIndex: 'weight', key: 'weight', width: 80 },
   { title: '仅正式档案', dataIndex: 'officialOnly', key: 'officialOnly', width: 100 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 function ruleTypeLabel(type: PortfolioArchiveScoreRuleTypeCode): string {
@@ -299,6 +302,41 @@ async function handleDelete(row: PortfolioArchiveScoreRuleVO) {
   }
 }
 
+
+const ArchiveScoreRuleSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && rows.value.length === 0) {
+    return []
+  }
+  const officialOnlyCount = rows.value.filter((row) => row.officialOnly === 1).length
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '评分规则',
+      value: rows.value.length,
+      clickable: true,
+      helper: '当前已加载',
+    },
+  ]
+  if (!loadError.value) {
+    metrics.push({
+      key: 'official',
+      label: '仅正式档案',
+      value: officialOnlyCount,
+      helper: '仅当前列表',
+    })
+  }
+  return applySpotlightEmphasis(metrics, { primaryKey: 'total', actionLabel: '刷新' })
+})
+
+const ArchiveScoreRuleWorkbenchSubtitle = computed(() => {
+  if (loadError.value) return '加载失败'
+  return `${rows.value.length} 条`
+})
+
+function onArchiveScoreRuleSignalClick(_key: string) {
+  void loadRules()
+}
+
 onMounted(async () => {
   await Promise.all([loadRules(), loadCategoryOptions()])
 })
@@ -307,7 +345,16 @@ onMounted(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="档案评分规则" />
+      <ContextBar layout="workbench" show-title title="档案评分规则" :subtitle="ArchiveScoreRuleWorkbenchSubtitle" />
+    </template>
+    <template v-if="ArchiveScoreRuleSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="ArchiveScoreRuleSignalMetrics"
+        @metric-click="onArchiveScoreRuleSignalClick"
+      />
     </template>
     <UiCard>
       <div class="toolbar">
@@ -357,6 +404,7 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="[
                 { key: 'edit', label: '编辑', disabled: writing },
                 { key: 'delete', label: '删除', tone: 'danger', disabled: writing },

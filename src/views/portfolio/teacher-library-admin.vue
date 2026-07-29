@@ -4,6 +4,7 @@ import type {
   PortfolioTeacherLibraryBorrowSaveRequest,
   PortfolioTeacherLibraryBorrowStatsVO,
 } from '@/apis/portfolio/teacher-platform'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, reactive, ref } from 'vue'
@@ -23,6 +24,7 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
@@ -37,6 +39,7 @@ import {
   portfolioLifecycleTagTone,
 } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
@@ -72,6 +75,54 @@ const {
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange }
   = useQueryTable(portfolioTeacherLibraryApi.page)
+
+const TeacherLibrarySignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && pageTotal.value === 0 && !stats.value) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '借阅记录',
+      value: pageTotal.value,
+      clickable: true,
+    },
+  ]
+  if (stats.value && !statsLoadError.value) {
+    metrics.push({
+      key: 'active',
+      label: '在借',
+      value: stats.value.activeBorrowCount,
+    })
+    const overdueMetric: SignalMetric = {
+      key: 'overdue',
+      label: '逾期',
+      value: stats.value.overdueCount,
+    }
+    if (stats.value.overdueCount > 0) {
+      overdueMetric.tone = 'orange'
+    }
+    metrics.push(overdueMetric)
+  }
+  const primaryKey = stats.value && stats.value.overdueCount > 0 ? 'overdue' : 'total'
+  return applySpotlightEmphasis(metrics, {
+    primaryKey,
+    actionLabel: primaryKey === 'overdue' ? '查看逾期' : '刷新',
+  })
+})
+
+const TeacherLibraryWorkbenchSubtitle = computed(() => {
+  if (loadError.value) {
+    return '加载失败'
+  }
+  return `${pageTotal.value} 条`
+})
+
+function onTeacherLibrarySignalClick(_key: string) {
+  void loadPage()
+  void loadStats()
+}
+
 const statsLoading = ref(false)
 const statsLoadError = ref(false)
 const statsRequestToken = ref(0)
@@ -116,7 +167,7 @@ const columns: ColumnsType = [
   { title: '逾期天数', dataIndex: 'overdueDays', key: 'overdueDays', width: 88, align: 'right' },
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '身份层', key: 'identityLayers', width: 160 },
-  { title: '操作', key: 'actions', width: 130, fixed: 'right' },
+  { title: '主行动', key: 'actions', width: 130, fixed: 'right' },
 ]
 
 function resetForm() {
@@ -288,7 +339,16 @@ void loadStats()
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" :title="pageTitle" />
+      <ContextBar show-title layout="workbench" :title="pageTitle" :subtitle="TeacherLibraryWorkbenchSubtitle" />
+    </template>
+    <template v-if="TeacherLibrarySignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TeacherLibrarySignalMetrics"
+        @metric-click="onTeacherLibrarySignalClick"
+      />
     </template>
     <UiAlertStrip
       v-if="archiveWriteForbidden"
@@ -298,11 +358,8 @@ void loadStats()
       class="dp-mb-component"
     />
     <UiCard>
-      <div v-if="stats" class="stats">
-        在借 {{ stats.activeBorrowCount }} 册 · 逾期 {{ stats.overdueCount }} 册
-      </div>
-      <div v-else-if="statsLoadError" class="stats stats--error">借阅统计加载失败</div>
-      <div v-else-if="statsLoading" class="stats">借阅统计加载中</div>
+      <div v-if="statsLoadError" class="stats stats--error">借阅统计加载失败</div>
+      <div v-else-if="statsLoading && !stats" class="stats">借阅统计加载中</div>
       <div class="form-row">
         <template v-if="!isDepartmentScoped">
           <UiSelect
@@ -408,6 +465,7 @@ void loadStats()
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               v-if="!isDepartmentScoped"
               :items="[
                 ...(!record.returnTime

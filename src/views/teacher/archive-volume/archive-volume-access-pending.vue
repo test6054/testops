@@ -5,7 +5,7 @@
         layout="workbench"
         show-title
         title="查阅审批"
-        subtitle="涉密档案查阅申请按密级矩阵授权，批准后自动附加水印"
+        :subtitle="accessStats ? `${accessStats.pendingCount} 条待审批` : `${records.length} 条`"
       >
         <template #actions>
           <UiButton variant="ghost" size="sm" @click="goList">查阅台账</UiButton>
@@ -14,7 +14,7 @@
     </template>
 
     <template #signal>
-      <SignalBand v-if="accessStatsMetrics.length" :metrics="accessStatsMetrics" variant="panel" />
+      <SignalBand v-if="accessStatsMetrics.length" :metrics="accessStatsMetrics" layout="spotlight" variant="panel" />
     </template>
 
     <WorkbenchSurfaceCard flush>
@@ -195,12 +195,59 @@ const accessStatsMetrics = computed<SignalMetric[]>(() => {
   if (!stats) {
     return []
   }
+  const pool: SignalMetric[] = [
+    {
+      key: 'pending',
+      label: '待审批',
+      value: stats.pendingCount,
+      unit: '条',
+      tone: 'orange',
+      emphasis: 'secondary',
+      actionLabel: stats.pendingCount > 0 ? '去审批' : undefined,
+      helper: stats.pendingCount > 0 ? '访问申请待审批' : '暂无待审批',
+    },
+    {
+      key: 'rejected',
+      label: '已驳回',
+      value: stats.rejectedCount,
+      unit: '条',
+      tone: 'red',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'active',
+      label: '生效中',
+      value: stats.activeCount,
+      unit: '条',
+      tone: 'green',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'expired',
+      label: '已过期',
+      value: stats.expiredCount,
+      unit: '条',
+      tone: 'gray',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'closed',
+      label: '已关闭',
+      value: stats.closedCount,
+      unit: '条',
+      tone: 'blue',
+      emphasis: 'secondary',
+    },
+  ]
+  const primaryBase
+    = stats.pendingCount > 0
+      ? pool[0]
+      : stats.rejectedCount > 0
+        ? pool[1]
+        : pool[2]
   return [
-    { key: 'pending', label: '待审批', value: stats.pendingCount, unit: '条', tone: 'orange' },
-    { key: 'active', label: '生效中', value: stats.activeCount, unit: '条', tone: 'green' },
-    { key: 'rejected', label: '已驳回', value: stats.rejectedCount, unit: '条', tone: 'red' },
-    { key: 'expired', label: '已过期', value: stats.expiredCount, unit: '条', tone: 'gray' },
-    { key: 'closed', label: '已关闭', value: stats.closedCount, unit: '条', tone: 'blue' },
+    { ...primaryBase, emphasis: 'primary' },
+    ...pool.filter((item) => item.key !== primaryBase.key).slice(0, 3),
   ]
 })
 

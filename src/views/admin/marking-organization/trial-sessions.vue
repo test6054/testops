@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="试评定标">
+      <ContextBar layout="workbench" show-title title="试评定标" :subtitle="`${trialSessions.length} 个会话`">
         <template #status>
           <UiTag v-if="isJourneyChrome && examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
@@ -43,7 +43,7 @@
     </template>
 
     <template v-if="organization && signalMetrics.length > 0" #signal>
-      <SignalBand :metrics="signalMetrics" variant="panel" compact />
+      <SignalBand layout="spotlight" :metrics="signalMetrics" variant="panel" compact />
     </template>
 
     <ExamWorkspaceJourneySubNav v-if="isExamWorkspaceRoute" />

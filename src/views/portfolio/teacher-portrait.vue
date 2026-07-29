@@ -58,7 +58,6 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSegmented from '@/components/ui-guide/ui/UiSegmented.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -102,6 +101,7 @@ import {
   buildPortraitRadarChartOption,
   resolveCohortHint,
 } from '@/utils/portfolio-portrait-charts'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -122,6 +122,67 @@ const portraitAbsent = ref(false)
 const detailOpen = ref(false)
 const indicatorDetail = ref<PortfolioTeacherPortraitIndicatorDetailVO | null>(null)
 const planCompletion = ref<PortfolioDevelopmentPlanCompletionVO | null>(null)
+
+/** 规划完成度：spotlight，退回/待审优先主卡。 */
+const planCompletionSignalMetrics = computed<SignalMetric[]>(() => {
+  const row = planCompletion.value
+  if (!row) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    { key: 'year', label: '统计年度', value: row.planYear },
+    { key: 'total', label: '规划总数', value: row.totalPlanCount },
+    {
+      key: 'approved',
+      label: '已通过',
+      value: row.approvedPlanCount,
+      tone: 'green',
+    },
+    {
+      key: 'pending',
+      label: '待审',
+      value: row.pendingPlanCount,
+      tone: row.pendingPlanCount > 0 ? 'blue' : undefined,
+    },
+    {
+      key: 'returned',
+      label: '退回',
+      value: row.returnedPlanCount,
+      tone: row.returnedPlanCount > 0 ? 'orange' : undefined,
+    },
+    {
+      key: 'rate',
+      label: '审批完成率',
+      value: row.completionRatePercent,
+      unit: '%',
+    },
+    { key: 'itemTotal', label: '明细项总数', value: row.totalPlanItemCount },
+    {
+      key: 'itemDone',
+      label: '已完成明细',
+      value: row.completedPlanItemCount,
+      tone: 'green',
+    },
+    {
+      key: 'itemRate',
+      label: '明细完成率',
+      value: row.planItemCompletionRatePercent,
+      unit: '%',
+    },
+    {
+      key: 'itemAvg',
+      label: '平均完成度',
+      value: row.averageItemCompletionPercent,
+      unit: '%',
+    },
+  ]
+  const primaryKey = row.returnedPlanCount > 0
+    ? 'returned'
+    : row.pendingPlanCount > 0
+      ? 'pending'
+      : 'rate'
+  return applySpotlightEmphasis(metrics, { primaryKey })
+})
 const suggestions = ref<PortfolioAnalysisSuggestionVO[]>([])
 const trainingRecommendations = ref<PortfolioAnalysisTrainingRecommendVO[]>([])
 const creditCurve = ref<PortfolioPortraitCreditCurveVO | null>(null)
@@ -783,7 +844,7 @@ watch(creditCategory, (next, prev) => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="教师画像">
+      <ContextBar show-title layout="workbench" title="教师画像" :subtitle="PORTRAIT_SURFACE_OPTIONS.find((item) => item.value === portraitSurface)?.label">
         <template #actions>
           <UiButton
             size="sm"
@@ -810,7 +871,7 @@ watch(creditCategory, (next, prev) => {
       <UiSpin :spinning="loading">
         <template v-if="portraitSurface === 'overview'">
           <UiCard v-if="portrait" title="综合画像">
-            <SignalBand :metrics="compositeItems" variant="panel" compact />
+            <SignalBand layout="spotlight" :metrics="compositeItems" variant="panel" compact />
             <p class="teacher-portrait__meta">加权：核心 30% · 教学 25% · 科研/培训/实践各 15%</p>
             <div
               v-if="portrait.lifecycleStatus || archiveWriteForbidden"
@@ -912,63 +973,11 @@ watch(creditCategory, (next, prev) => {
       <template v-if="portrait && portraitSurface === 'action'">
         <UiSpin :spinning="actionSurfaceLoading">
           <UiCard v-if="planCompletion" title="年度规划完成度" style="margin-top: var(--dp-space-block)">
-            <UiStatPanel
-              :items="[
-                { key: 'year', label: '统计年度', value: planCompletion.planYear },
-                { key: 'total', label: '规划总数', value: String(planCompletion.totalPlanCount) },
-                {
-                  key: 'approved',
-                  label: '已通过',
-                  value: String(planCompletion.approvedPlanCount),
-                  tone: 'green',
-                },
-                {
-                  key: 'pending',
-                  label: '待审',
-                  value: String(planCompletion.pendingPlanCount),
-                  tone: 'blue',
-                },
-                {
-                  key: 'returned',
-                  label: '退回',
-                  value: String(planCompletion.returnedPlanCount),
-                  tone: 'orange',
-                },
-                {
-                  key: 'rate',
-                  label: '审批完成率',
-                  value: planCompletion.completionRatePercent,
-                  unit: '%',
-                  tone: 'blue',
-                },
-                {
-                  key: 'itemTotal',
-                  label: '明细项总数',
-                  value: String(planCompletion.totalPlanItemCount),
-                },
-                {
-                  key: 'itemDone',
-                  label: '已完成明细',
-                  value: String(planCompletion.completedPlanItemCount),
-                  tone: 'green',
-                },
-                {
-                  key: 'itemRate',
-                  label: '明细完成率',
-                  value: planCompletion.planItemCompletionRatePercent,
-                  unit: '%',
-                  tone: 'blue',
-                },
-                {
-                  key: 'itemAvg',
-                  label: '平均完成度',
-                  value: planCompletion.averageItemCompletionPercent,
-                  unit: '%',
-                },
-              ]"
-              :columns="3"
-              variant="grid"
+            <SignalBand
+              layout="spotlight"
+              variant="inline"
               compact
+              :metrics="planCompletionSignalMetrics"
             />
           </UiCard>
           <MarkChartCard

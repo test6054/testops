@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="arbitration-page">
     <template v-if="selectedExamId" #context>
-      <ContextBar layout="workbench" show-title title="仲裁复核">
+      <ContextBar layout="workbench" show-title title="仲裁复核" :subtitle="`${pageTotal} 条`">
         <template #status>
           <UiTag
             v-if="actionableCount != null"
@@ -16,6 +16,7 @@
 
     <template v-if="selectedExamId" #signal>
       <SignalBand
+        layout="spotlight"
         compact
         variant="panel"
         :metrics="signalMetrics"
@@ -154,6 +155,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildArbitrationActions(record)"
                 split
                 @action="(key) => handleArbitrationAction(key, record)"
@@ -299,41 +301,83 @@ function metricValue(count: number | null): string | number {
   return count
 }
 
-const signalMetrics = computed((): SignalMetric[] => [
-  {
-    key: 'total',
-    label: '仲裁总数',
-    value: metricValue(totalCount.value),
-    tone: 'blue',
-  },
-  {
-    key: 'pending',
-    label: '待处理',
-    value: metricValue(pendingCount.value),
-    tone: !summaryLoadFailed.value && (pendingCount.value ?? 0) > 0 ? 'orange' : 'gray',
-    clickable: !summaryLoadFailed.value && (pendingCount.value ?? 0) > 0,
-  },
-  {
-    key: 'in-progress',
-    label: '我的复核中',
-    value: metricValue(inProgressMineCount.value),
-    tone: !summaryLoadFailed.value && (inProgressMineCount.value ?? 0) > 0 ? 'blue' : 'gray',
-    clickable: !summaryLoadFailed.value && (inProgressMineCount.value ?? 0) > 0,
-  },
-  {
-    key: 'completed',
-    label: '已结案',
-    value: metricValue(completedCount.value),
-    tone: 'gray',
-    clickable: !summaryLoadFailed.value && (completedCount.value ?? 0) > 0,
-  },
-  {
-    key: 'avg-ratio',
-    label: '平均 AI 占比',
-    value: avgAiRatio.value,
-    tone: 'gray',
-  },
-])
+const signalMetrics = computed((): SignalMetric[] => {
+  const pendingActive = !summaryLoadFailed.value && (pendingCount.value ?? 0) > 0
+  const inProgressActive = !summaryLoadFailed.value && (inProgressMineCount.value ?? 0) > 0
+  const primary
+    = pendingActive
+      ? {
+          key: 'pending',
+          label: '待处理',
+          value: metricValue(pendingCount.value),
+          tone: 'orange' as const,
+          emphasis: 'primary' as const,
+          actionLabel: '处理仲裁',
+          clickable: true,
+          helper: '待仲裁队列',
+        }
+      : inProgressActive
+        ? {
+            key: 'in-progress',
+            label: '我的复核中',
+            value: metricValue(inProgressMineCount.value),
+            tone: 'blue' as const,
+            emphasis: 'primary' as const,
+            actionLabel: '继续复核',
+            clickable: true,
+            helper: '我的进行中仲裁',
+          }
+        : {
+            key: 'total',
+            label: '仲裁总数',
+            value: metricValue(totalCount.value),
+            tone: 'blue' as const,
+            emphasis: 'primary' as const,
+            helper: '本场仲裁总量',
+          }
+
+  const secondaryPool: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '仲裁总数',
+      value: metricValue(totalCount.value),
+      tone: 'blue',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'pending',
+      label: '待处理',
+      value: metricValue(pendingCount.value),
+      tone: pendingActive ? 'orange' : 'gray',
+      emphasis: 'secondary',
+      clickable: pendingActive,
+    },
+    {
+      key: 'in-progress',
+      label: '我的复核中',
+      value: metricValue(inProgressMineCount.value),
+      tone: inProgressActive ? 'blue' : 'gray',
+      emphasis: 'secondary',
+      clickable: inProgressActive,
+    },
+    {
+      key: 'completed',
+      label: '已结案',
+      value: metricValue(completedCount.value),
+      tone: 'gray',
+      emphasis: 'secondary',
+      clickable: !summaryLoadFailed.value && (completedCount.value ?? 0) > 0,
+    },
+    {
+      key: 'avg-ratio',
+      label: '平均 AI 占比',
+      value: avgAiRatio.value,
+      tone: 'gray',
+      emphasis: 'secondary',
+    },
+  ]
+  return [primary, ...secondaryPool.filter((item) => item.key !== primary.key).slice(0, 3)]
+})
 
 const statusTabItems = computed<UiSectionTabItem[]>(() => [
   {
@@ -406,7 +450,7 @@ const columns: ColumnType<ReviewTaskItemResponse>[] = [
   { title: '指派教师', key: 'assignedTeacher', width: 120 },
   { title: '状态', key: 'status', width: 96, align: 'center' },
   { title: '更新时间', key: 'updateTime', width: 168 },
-  { title: '操作', key: 'actions', width: 160 },
+  { title: '主行动', key: 'actions', width: 160 },
 ]
 
 function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {

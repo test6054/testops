@@ -25,7 +25,7 @@
       <UiDropdownAction
         trigger-style="table"
         :items="overflowDropdownItems"
-        button-text="更多"
+        button-text="⋯"
         @select="emitAction"
       />
     </template>
@@ -44,14 +44,14 @@ defineOptions({
 
 const props = withDefaults(
   defineProps<{
-    /** 行内操作项；超出 maxVisible 的项收入「更多」，「更多」占 1 个展示位 */
+    /** 行内操作项；超出 maxVisible 的项收入溢出菜单；溢出触发器占 1 个展示位（默认 1 主行动 + ⋯） */
     items: UiTableRowActionItem[]
     maxVisible?: number
     align?: 'start' | 'center' | 'end'
     split?: boolean
   }>(),
   {
-    maxVisible: 3,
+    maxVisible: 2,
     align: 'center',
     split: true,
   },
@@ -63,7 +63,7 @@ const emit = defineEmits<{
 
 const resolvedItems = computed(() => props.items.filter((item) => !item.hidden))
 
-/** 有溢出时为「更多」预留 1 个展示位，保证行内最多 maxVisible 个控件 */
+/** 有溢出时为「⋯」预留 1 个展示位，保证行内最多 maxVisible 个控件（默认 1 可见主行动 + ⋯） */
 const visibleItems = computed(() => {
   const list = resolvedItems.value
   if (list.length <= props.maxVisible) {

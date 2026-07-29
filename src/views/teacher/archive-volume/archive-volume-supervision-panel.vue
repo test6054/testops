@@ -1,6 +1,7 @@
 <template>
   <div class="archive-supervision-panel">
     <SignalBand
+      layout="spotlight"
       :metrics="panelSignalMetrics"
       variant="panel"
       class="archive-supervision-panel__top-signal"
@@ -81,6 +82,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="supervisionVolumeRowActions(record)"
                 split
                 @action="(key) => handleSupervisionVolumeRowAction(key, record.volumeId)"
@@ -132,6 +134,7 @@
         />
         <template v-else>
           <SignalBand
+            layout="spotlight"
             v-if="matrixPreviewRows.length"
             :metrics="statsMetrics"
             variant="inline"
@@ -230,6 +233,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[{ key: 'handle', label: '查看整改' }]"
                 split
                 @action="() => goRemediationTaskDetail(record)"
@@ -573,11 +577,14 @@ const panelSignalMetrics = computed<SignalMetric[]>(() => [
     label: '待处理整改',
     value: remediationOpenCount.value,
     tone: remediationOpenCount.value > 0 ? 'orange' : undefined,
+    emphasis: 'primary',
+    actionLabel: remediationOpenCount.value > 0 ? '处理整改' : undefined,
   },
   {
     key: 'supervisionVolumes',
     label: '督导归档任务',
     value: supervisionVolumeCount.value,
+    emphasis: 'secondary',
   },
 ])
 
@@ -631,7 +638,7 @@ const volumeColumns: ColumnsType<ArchiveVolumeResponse> = [
   { title: '归档任务', key: 'archive', dataIndex: 'archiveNo', width: 240 },
   { title: '院系', key: 'departmentName', dataIndex: 'departmentName', width: 140 },
   { title: '状态', key: 'volumeStatus', dataIndex: 'volumeStatus', width: 120 },
-  { title: '操作', key: 'actions', width: 140 },
+  { title: '主行动', key: 'actions', width: 140 },
 ]
 
 interface MatrixPreviewRow extends ArchiveReadinessMatrixPreviewRowVO {
@@ -660,7 +667,7 @@ const remediationColumns: ColumnsType<ArchiveRemediationTaskResponse> = [
   { title: '卷编号', dataIndex: 'volumeId', key: 'volumeId', width: 100 },
   { title: '状态', key: 'taskStatus', dataIndex: 'taskStatus', width: 100 },
   { title: '责任人', key: 'assigneeNickName', dataIndex: 'assigneeNickName', width: 120 },
-  { title: '操作', key: 'actions', width: 88 },
+  { title: '主行动', key: 'actions', width: 88 },
 ]
 
 const campaignColumns: ColumnsType<ArchiveEvaluationCampaignResponse> = [
@@ -696,11 +703,17 @@ const statsMetrics = computed<SignalMetric[]>(() => {
   const stats = previewStats.value
   if (!stats || stats.rowCount <= 0) return []
   return [
-    { key: 'rows', label: '院系课程', value: stats.rowCount },
     {
       key: 'stored',
       label: '平均入库率',
       value: `${Math.round(stats.averageStoredRate * 100)}%`,
+      emphasis: 'primary',
+    },
+    {
+      key: 'rows',
+      label: '院系课程',
+      value: stats.rowCount,
+      emphasis: 'secondary',
     },
   ]
 })

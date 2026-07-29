@@ -19,6 +19,7 @@ import type {
   PortfolioPlanningSyncConfigVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import { ReloadOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import message from 'ant-design-vue/es/message'
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
@@ -60,6 +61,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -82,6 +84,7 @@ import {
 import { createClientSnowflakeId } from '@/utils/client-snowflake'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -168,7 +171,7 @@ const historyBatchColumns: ColumnsType = [
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
-  { title: '操作', key: 'actions', width: 128 },
+  { title: '主行动', key: 'actions', width: 128 },
 ]
 
 function historyBatchStatusLabel(
@@ -329,7 +332,7 @@ function buildHistoryBatchActions(
   record: PortfolioDevelopmentPlanHistoryImportBatchVO,
 ): UiTableRowActionItem[] {
   return [
-    { key: 'detail', label: '详情' },
+    { key: 'detail', label: '详情', tone: 'primary' },
     {
       key: 'rollback',
       label: '回滚',
@@ -531,7 +534,7 @@ const columns: ColumnsType = [
   { title: '年度', dataIndex: 'planYear', key: 'planYear', width: 88 },
   { title: '类型', dataIndex: 'planType', key: 'planType', width: 100 },
   { title: '状态', dataIndex: 'planStatus', key: 'planStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 140 },
+  { title: '主行动', key: 'actions', width: 140 },
 ]
 
 const orgColumns: ColumnsType = [
@@ -549,7 +552,7 @@ const itemColumns: ColumnsType = [
   { title: '里程碑', dataIndex: 'milestoneText', key: 'milestoneText', width: 160 },
   { title: '完成率', dataIndex: 'completionPercent', key: 'completionPercent', width: 88 },
   { title: '状态', dataIndex: 'itemStatus', key: 'itemStatus', width: 100 },
-  { title: '操作', key: 'itemActions', width: 140 },
+  { title: '主行动', key: 'itemActions', width: 140 },
 ]
 
 const indicatorConfigs = ref<PortfolioTenantIndicatorConfigVO[]>([])
@@ -1127,6 +1130,34 @@ watch(
     scrollToHighlightedPlan()
   },
 )
+
+const DevelopmentPlanSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && pageTotal.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '年度规划',
+      value: pageTotal.value,
+      clickable: true,
+    },
+  ]
+  metrics.push({
+    key: 'pageRows',
+    label: '本页',
+    value: rows.value.length,
+    helper: '仅当前页',
+  })
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+function onDevelopmentPlanSignalClick(_key: string) {
+  void loadPage()
+}
 </script>
 
 <template>
@@ -1136,7 +1167,7 @@ watch(
         show-title
         layout="workbench"
         title="教师年度规划"
-        subtitle="教师编制 · 科室审核 · 完成度回流 · 历史规划导入"
+        :subtitle="`${pageTotal} 条`"
       >
         <template v-if="showAdminStats" #actions>
           <UiButton
@@ -1158,6 +1189,16 @@ watch(
         />
       </ContextBar>
     </template>
+    <template v-if="DevelopmentPlanSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="DevelopmentPlanSignalMetrics"
+        @metric-click="onDevelopmentPlanSignalClick"
+      />
+    </template>
+
     <UiCard>
       <div class="toolbar">
         <input
@@ -1248,6 +1289,7 @@ watch(
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildDevelopmentPlanRowActions(record)"
                 split
                 @action="(key) => handleDevelopmentPlanAction(key, record)"
@@ -1275,7 +1317,7 @@ watch(
           <UiButton
             v-if="planItemEditable"
             size="sm"
-            variant="primary"
+            variant="outline"
             :disabled="!selectedPlanId || itemSaving"
             @click="savePlanItems"
           >
@@ -1622,7 +1664,7 @@ watch(
           <div class="history-section-actions">
             <UiButton
               size="sm"
-              variant="primary"
+              variant="outline"
               :loading="historyConfigSaving"
               :disabled="historyWriteBusy && !historyConfigSaving"
               @click="saveHistorySyncConfig"
@@ -1680,6 +1722,7 @@ watch(
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
+                  :max-visible="2"
                   :items="buildHistoryBatchActions(record)"
                   split
                   @action="(key) => handleHistoryBatchAction(key, record)"

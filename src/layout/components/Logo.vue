@@ -10,6 +10,7 @@
 import { getDefaultRoute } from '@/router/permission'
 import { useAppStore, useAuthStore } from '@/stores'
 import { useTenantStore } from '@/stores/modules/tenant'
+import { resolveShellLogoNavigateTo } from '@/utils/shell-domain'
 
 const props = withDefaults(defineProps<Props>(), {
   collapsed: false,
@@ -17,6 +18,7 @@ const props = withDefaults(defineProps<Props>(), {
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const tenantStore = useTenantStore()
+const route = useRoute()
 const title = computed(() => appStore.getTitle())
 // 优先使用租户自定义 Logo，无租户 Logo 时使用站点默认 Logo
 const logo = computed(() => tenantStore.tenantLogo || appStore.getLogo())
@@ -26,11 +28,21 @@ interface Props {
 }
 
 const router = useRouter()
-// 根据用户角色跳转到对应的dashboard
+
+/**
+ * Logo 回首页：产品域内回到本域首页；系统管理回到归属域上次任务页，避免跨域误跳。
+ */
 const toHome = () => {
+  const shellTarget = resolveShellLogoNavigateTo(router, route.path, route.meta?.menuGroup)
+  if (shellTarget) {
+    if (shellTarget !== route.fullPath) {
+      void router.push(shellTarget)
+    }
+    return
+  }
   const userRole = authStore.userRole
   const defaultRoute = getDefaultRoute(userRole)
-  router.push(defaultRoute)
+  void router.push(defaultRoute)
 }
 </script>
 

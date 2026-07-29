@@ -35,6 +35,7 @@ import { DispatchQueueStatusFilterCode } from '@/types/enums/dispatch-queue-stat
 import { ScanTaskKindCode, ScanTaskKindDescription } from '@/types/enums/scan-task-kind-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ScanDispatchPanel' })
@@ -130,41 +131,49 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     return []
   }
   const failedCount = summary.failedTicketCount ?? 0
-  return [
+  return applySpotlightEmphasis(
+    [
+      {
+        key: 'failed',
+        label: '失败派单',
+        value: String(failedCount),
+        tone: failedCount > 0 ? 'red' : 'green',
+        clickable: true,
+        active: queueFilter.value === DispatchQueueStatusFilterCode.FAILED,
+        helper: failedCount > 0 ? '打开失败队列' : undefined,
+      },
+      {
+        key: 'pending',
+        label: '待处理',
+        value: String(summary.pendingCount ?? 0),
+        tone: 'blue',
+        clickable: true,
+        active: queueFilter.value === DispatchQueueStatusFilterCode.PENDING,
+      },
+      {
+        key: 'processing',
+        label: '处理中',
+        value: String(summary.processingCount ?? 0),
+        tone: 'orange',
+        clickable: true,
+        active: queueFilter.value === DispatchQueueStatusFilterCode.PROCESSING,
+      },
+      {
+        key: 'suspended',
+        label: '已挂起',
+        value: String(summary.suspendedCount ?? 0),
+        tone: 'gray',
+        clickable: true,
+        active: queueFilter.value === DispatchQueueStatusFilterCode.SUSPENDED,
+      },
+    ],
     {
-      key: 'pending',
-      label: '待处理',
-      value: String(summary.pendingCount ?? 0),
-      tone: 'blue',
-      clickable: true,
-      active: queueFilter.value === DispatchQueueStatusFilterCode.PENDING,
+      primaryKey: failedCount > 0
+        ? 'failed'
+        : ((summary.pendingCount ?? 0) > 0 ? 'pending' : 'processing'),
+      actionLabel: failedCount > 0 ? '打开失败队列' : '查看队列',
     },
-    {
-      key: 'processing',
-      label: '处理中',
-      value: String(summary.processingCount ?? 0),
-      tone: 'orange',
-      clickable: true,
-      active: queueFilter.value === DispatchQueueStatusFilterCode.PROCESSING,
-    },
-    {
-      key: 'suspended',
-      label: '已挂起',
-      value: String(summary.suspendedCount ?? 0),
-      tone: 'gray',
-      clickable: true,
-      active: queueFilter.value === DispatchQueueStatusFilterCode.SUSPENDED,
-    },
-    {
-      key: 'failed',
-      label: '失败派单',
-      value: String(failedCount),
-      tone: failedCount > 0 ? 'red' : 'green',
-      clickable: true,
-      active: queueFilter.value === DispatchQueueStatusFilterCode.FAILED,
-      helper: failedCount > 0 ? '打开失败队列' : undefined,
-    },
-  ]
+  )
 })
 
 const tableEmptyDescription = computed(() =>
@@ -583,6 +592,7 @@ onMounted(() => {
   <div class="scan-dispatch-panel">
     <SignalBand
       v-if="signalMetrics.length"
+      layout="spotlight"
       variant="panel"
       compact
       :metrics="signalMetrics"

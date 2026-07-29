@@ -5,6 +5,7 @@ import type { PortfolioAuditActionTypeCode } from '@/types/enums/portfolio-audit
 import type {
   PortfolioAuditOutcomeCode} from '@/types/enums/portfolio-audit-outcome-enum';
 import type { PortfolioAuditResourceTypeCode } from '@/types/enums/portfolio-audit-resource-type-enum'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -12,7 +13,9 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
@@ -27,6 +30,7 @@ import {
   PortfolioAuditResourceTypeDescription,
 } from '@/types/enums/portfolio-audit-resource-type-enum'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
@@ -35,6 +39,34 @@ const requestToken = ref(0)
 const rows = ref<PortfolioAuditLogVO[]>([])
 const total = ref(0)
 const detailOpen = ref(false)
+const AuditLogSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && total.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '审计日志',
+      value: total.value,
+      clickable: true,
+    },
+  ]
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const AuditLogWorkbenchSubtitle = computed(() => {
+  if (loadError.value) {
+    return '加载失败'
+  }
+  return `${total.value} 条`
+})
+
+function onAuditLogSignalClick(_key: string) {
+  void loadPage()
+}
 const detailRow = ref<PortfolioAuditLogVO | null>(null)
 
 const filterForm = reactive({
@@ -214,7 +246,7 @@ onMounted(() => {
         layout="workbench"
         show-title
         title="审计日志"
-        subtitle="导出、政策、脱敏、专家授权与报送操作留痕"
+        :subtitle="AuditLogWorkbenchSubtitle"
       >
         <template #actions>
           <UiButton size="sm" :disabled="loading" @click="loadPage()">
@@ -224,6 +256,15 @@ onMounted(() => {
       </ContextBar>
     </template>
     <UiCard>
+      <template v-if="AuditLogSignalMetrics.length > 0" #signal>
+        <SignalBand
+          layout="spotlight"
+          variant="inline"
+          compact
+          :metrics="AuditLogSignalMetrics"
+          @metric-click="onAuditLogSignalClick"
+        />
+      </template>
       <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
       <UiDataTable
         v-model:current="query.pageNum"
@@ -245,9 +286,12 @@ onMounted(() => {
             {{ resourceLabel(record.resourceType) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton size="sm" variant="ghost" @click="openDetail(record)">
-              查看
-            </UiButton>
+            <UiTableActions
+              :max-visible="2"
+              :items="[{ key: 'view', label: '查看' }]"
+              split
+              @action="() => openDetail(record)"
+            />
           </template>
         </template>
       </UiDataTable>

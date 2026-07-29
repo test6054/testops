@@ -5,6 +5,7 @@ import type {
   PortfolioDevelopmentPlanItemSaveRequest,
   PortfolioDevelopmentPlanItemVO,
 } from '@/apis/portfolio/teacher-platform'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -32,12 +33,14 @@ import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { createClientSnowflakeId } from '@/utils/client-snowflake'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -97,13 +100,43 @@ const {
   { immediate: false },
 )
 
+const DevelopmentPlanDeptSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && pageTotal.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '部门规划',
+      value: pageTotal.value,
+      clickable: true,
+    },
+  ]
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const DevelopmentPlanDeptWorkbenchSubtitle = computed(() => {
+  if (loadError.value) {
+    return '加载失败'
+  }
+  return `${pageTotal.value} 条`
+})
+
+function onDevelopmentPlanDeptSignalClick(_key: string) {
+  void loadPlansPage()
+}
+
+
 const columns: ColumnsType = [
   { title: '标题', dataIndex: 'planTitle', key: 'planTitle' },
   { title: '年度', dataIndex: 'planYear', key: 'planYear', width: 88 },
   { title: '科室', dataIndex: 'portfolioOrgId', key: 'portfolioOrgId', width: 120 },
   { title: '状态', dataIndex: 'planStatus', key: 'planStatus', width: 100 },
   { title: '身份层', key: 'identityLayers', width: 160 },
-  { title: '操作', key: 'actions', width: 140 },
+  { title: '主行动', key: 'actions', width: 140 },
 ]
 
 const itemColumns: ColumnsType = [
@@ -113,7 +146,7 @@ const itemColumns: ColumnsType = [
   { title: '里程碑', dataIndex: 'milestoneText', key: 'milestoneText', width: 160 },
   { title: '完成率', dataIndex: 'completionPercent', key: 'completionPercent', width: 88 },
   { title: '状态', dataIndex: 'itemStatus', key: 'itemStatus', width: 100 },
-  { title: '操作', key: 'itemActions', width: 72 },
+  { title: '主行动', key: 'itemActions', width: 72 },
 ]
 
 const indicatorConfigs = ref<PortfolioTenantIndicatorConfigVO[]>([])
@@ -400,7 +433,7 @@ onMounted(async () => {
         layout="workbench"
         show-title
         title="部门年度规划"
-        subtitle="科室编制 · 提交审核 · 年度唯一"
+        :subtitle="DevelopmentPlanDeptWorkbenchSubtitle"
       >
         <template #actions>
           <UiButton
@@ -414,6 +447,15 @@ onMounted(async () => {
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+    <template v-if="DevelopmentPlanDeptSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="DevelopmentPlanDeptSignalMetrics"
+        @metric-click="onDevelopmentPlanDeptSignalClick"
+      />
     </template>
     <UiCard>
       <div class="toolbar">
@@ -440,7 +482,7 @@ onMounted(async () => {
               style="width: 220px"
               :options="portfolioOrgOptions()"
             />
-            <UiButton size="sm" variant="primary" @click="createPlan"> 创建 </UiButton>
+            <UiButton size="sm" variant="outline" @click="createPlan"> 创建 </UiButton>
           </div>
         </UiCard>
         <UiEmpty
@@ -476,6 +518,7 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[
                   {
                     key: 'submit',
@@ -506,7 +549,7 @@ onMounted(async () => {
           <UiButton size="sm" :disabled="!selectedPlanId" @click="() => void loadPlanItems()">
             刷新明细
           </UiButton>
-          <UiButton variant="primary" size="sm" v-if="planItemEditable" @click="addPlanItemRow">
+          <UiButton variant="outline" size="sm" v-if="planItemEditable" @click="addPlanItemRow">
             新增行
           </UiButton>
           <UiButton

@@ -1,5 +1,23 @@
 <template>
   <StageWorkbenchShell>
+    <template v-if="examId" #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="经验辅助评阅"
+        :subtitle="contextBarSubtitle"
+      />
+    </template>
+    <template v-if="AssistPolicySignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="AssistPolicySignalMetrics"
+        @metric-click="onAssistPolicySignalClick"
+      />
+    </template>
+
     <ExamWorkspaceJourneySubNav />
 
     <ExamSelectGateStrip v-if="!examId" body="缺少考试上下文，请先进入考试工作台" />
@@ -149,6 +167,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildBindingRowActions(record)"
                 split
                 @action="(key) => handleBindingRowAction(key, record)"
@@ -198,6 +217,7 @@ import type {
   UiAlertStripTone,
   UiTableRowActionItem,
 } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import type { ExperienceAssistBindingFilterQuery } from '@/utils/experience-assist-binding-filter'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
@@ -217,11 +237,14 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { ExamKindDescription } from '@/types/enums/exam-kind-enum'
@@ -236,11 +259,13 @@ import {
 } from '@/types/enums/grading-experience-assist-question-resolution-enum'
 import { showUserError } from '@/utils/error-handler'
 import { buildEmptyPageResult } from '@/utils/page-result'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamWorkspaceMarkingExperienceAssistPolicy' })
 
 const { examId } = useWorkspaceExamId()
+const { contextBarSubtitle } = useExamJourneyContextBar('经验辅助评阅')
 const { snapshot, refreshSnapshot } = useMarkWorkbenchContext()
 const loading = ref(false)
 const saving = ref(false)
@@ -337,7 +362,7 @@ const bindingColumns: ColumnType<ExamQuestionExperienceAssistBindingResponse>[] 
   { title: '经验摘要', key: 'experienceSummary', dataIndex: 'experienceSummary', width: 280 },
   { title: '一致率', key: 'consistencyRate', width: 88 },
   { title: '绑定时间', key: 'boundTime', width: 140 },
-  { title: '操作', key: 'actions', width: 128 },
+  { title: '主行动', key: 'actions', width: 128 },
 ]
 
 const requiresExplicitBinding = computed(() => policy.value?.autoMatchSupported === false)
@@ -631,6 +656,7 @@ function buildBindingRowActions(
     {
       key: 'bind',
       label: row.experienceCaseId ? '更换' : '绑定',
+      tone: 'primary',
       disabled: frozen === true || writeBlocked === true,
     },
   ]
@@ -746,6 +772,24 @@ watch(
     }
   },
 )
+
+const AssistPolicySignalMetrics = computed<SignalMetric[]>(() => {
+  if (bindingsLoadError.value && bindingPageTotal.value === 0) {
+    return []
+  }
+  return applySpotlightEmphasis([
+    {
+      key: 'bindings',
+      label: '经验绑定',
+      value: bindingPageTotal.value,
+      clickable: true,
+    },
+  ], { primaryKey: 'bindings', actionLabel: '刷新' })
+})
+
+function onAssistPolicySignalClick(_key: string) {
+  void loadBindings()
+}
 </script>
 
 <style lang="scss" scoped>

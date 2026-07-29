@@ -13,7 +13,7 @@ import type {
   PortfolioEvaluationSubjectTeacherOptionVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -43,8 +43,8 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { useQueryTable } from '@/composables/useQueryTable'
@@ -64,6 +64,7 @@ import { buildEmptyPageResult } from '@/utils/page-result'
 import { portfolioIdentityTypeDisplay } from '@/utils/portfolio-identity-type'
 import { portfolioLifecycleStatusDisplay } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const route = useRoute()
@@ -321,26 +322,46 @@ const assignmentContextDescription = computed(() => {
   return `${taskLabel} · 授权 ${ctx.assignmentId} · 被评 ${teacherCount} 人 · 分类 ${categoryCount} · ${maskLabel} · ${statusLabel} · 截止 ${ctx.expireTime || '—'}`
 })
 
-const taskSummaryItems = computed<UiStatPanelItem[]>(() => {
-  if (!summary.value) {
+/** 选中任务摘要：SignalBand spotlight，禁止等权 UiStatPanel 墙。 */
+const taskSummarySignalMetrics = computed<SignalMetric[]>(() => {
+  if (!summary.value || !selectedTaskId.value) {
     return []
   }
-  return [
+  const metrics: SignalMetric[] = [
     {
       key: 'entries',
       label: '填报条目',
-      value: String(summary.value.entryCount),
-      tone: 'blue',
+      value: summary.value.entryCount,
+      clickable: true,
     },
-    { key: 'avg', label: '加权综合分', value: summary.value.averageScore, unit: '分' },
-    { key: 'mode', label: '评价模式', value: evaluationModeLabel(summary.value.evaluationMode) },
+    {
+      key: 'avg',
+      label: '加权综合分',
+      value: summary.value.averageScore,
+      unit: '分',
+    },
+    {
+      key: 'mode',
+      label: '评价模式',
+      value: evaluationModeLabel(summary.value.evaluationMode),
+    },
     {
       key: 'scene',
       label: '业务场景',
       value: evaluationSceneLabel(summary.value.sceneCode),
     },
   ]
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'entries',
+    actionLabel: '看汇总',
+  })
 })
+
+function onTaskSummarySignalClick(key: string): void {
+  if (key === 'entries') {
+    activeTab.value = 'summary'
+  }
+}
 
 const entryColumns: ColumnsType<PortfolioEvaluationEntryVO> = [
   { title: '被评教师', dataIndex: 'subjectTeacherUserId', key: 'subjectTeacherUserId', width: 100 },
@@ -724,6 +745,43 @@ watch(assignmentId, async (next, prev) => {
     await loadEntries()
   }
 })
+
+
+/** 任务工作台副标题：填报条目规模。 */
+const evaluationFillWorkbenchSubtitle = computed(() => {
+  if (entryPageTotal.value <= 0) {
+    return '暂无填报条目'
+  }
+  return `待维护 ${entryPageTotal.value} 条`
+})
+
+const EvaluationFillSignalMetrics = computed<SignalMetric[]>(() => {
+  if (entryLoadError.value && entryPageTotal.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '待填报',
+      value: entryPageTotal.value,
+      clickable: true,
+    },
+  ]
+  metrics.push({
+    key: 'pageRows',
+    label: '本页',
+    value: entries.value.length,
+    helper: '仅当前页',
+  })
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+function onEvaluationFillSignalClick(_key: string) {
+  void loadEntryPage()
+}
 </script>
 
 <template>
@@ -732,7 +790,17 @@ watch(assignmentId, async (next, prev) => {
       <ContextBar
         show-title
         layout="workbench"
-        :title="isExternalExpertFill ? '外部专家评价填报' : '多元评价填报'"
+        :title="isExternalExpertFill ? '专家评价填报台' : '多元评价填报台'"
+        :subtitle="evaluationFillWorkbenchSubtitle"
+      />
+    </template>
+    <template v-if="EvaluationFillSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="EvaluationFillSignalMetrics"
+        @metric-click="onEvaluationFillSignalClick"
       />
     </template>
 
@@ -799,13 +867,14 @@ watch(assignmentId, async (next, prev) => {
           fillWindowBlockedReason
         }}</span>
       </div>
-      <UiStatPanel
-        v-if="summary && selectedTaskId"
-        :items="taskSummaryItems"
-        :columns="3"
-        variant="grid"
+      <SignalBand
+        v-if="taskSummarySignalMetrics.length > 0"
+        layout="spotlight"
+        variant="inline"
         compact
-        style="margin-bottom: var(--dp-space-block)"
+        class="evaluation-fill-task-summary"
+        :metrics="taskSummarySignalMetrics"
+        @metric-click="onTaskSummarySignalClick"
       />
       <UiSectionTabs v-model="activeTab" :items="fillTabItems" compact divided />
       <template v-if="activeTab === 'fill'">

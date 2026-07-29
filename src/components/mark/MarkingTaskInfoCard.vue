@@ -107,10 +107,10 @@ import type {
   AllocationUnitCode,
   MarkingTaskResponse,
 } from '@/apis/mark/marking-organization'
-import { MarkingTaskStatusCode } from '@/apis/mark/marking-organization'
-import { dualMarkRoleLabel } from '@/apis/mark/dual-mark-role'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import { dualMarkRoleLabel } from '@/apis/mark/dual-mark-role'
+import { MarkingTaskStatusCode } from '@/apis/mark/marking-organization'
 import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'

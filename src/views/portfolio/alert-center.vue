@@ -4,8 +4,10 @@ import type {
   PortfolioAnalysisAlertVO,
   PortfolioAnalysisComplianceAlertVO,
 } from '@/apis/portfolio/analysis'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { PortfolioAlertTypeCode } from '@/types/enums/portfolio-alert-type-enum'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
@@ -22,7 +24,9 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -44,6 +48,7 @@ import {
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -60,11 +65,10 @@ const isDepartmentScoped = computed(
   () => route.path.includes('/department/') || !userStore.isTenantAdmin,
 )
 const pageTitle = computed(() => (isDepartmentScoped.value ? '院系预警中心' : '预警中心'))
-const pageSubtitle = computed(() =>
-  isDepartmentScoped.value
-    ? '画像预警与结构合规预警 · 本院系范围'
-    : '画像预警与结构合规预警 · 全校与院系范围',
-)
+const pageSubtitle = computed(() => {
+  const scope = isDepartmentScoped.value ? '本院系' : '全校'
+  return `${scope} · 画像预警 ${portraitTotal.value} · 合规预警 ${complianceTotal.value}`
+})
 const portraitLoading = ref(false)
 const complianceLoading = ref(false)
 const actionId = ref('')
@@ -90,6 +94,16 @@ const portraitAlerts = ref<PortfolioAnalysisAlertVO[]>([])
 const complianceAlerts = ref<PortfolioAnalysisComplianceAlertVO[]>([])
 const portraitTotal = ref(0)
 const complianceTotal = ref(0)
+
+const alertSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis(
+    [
+      { key: 'portrait', label: '画像预警', value: portraitTotal.value },
+      { key: 'compliance', label: '合规预警', value: complianceTotal.value },
+    ],
+    { primaryKey: 'portrait' },
+  )
+})
 const loading = computed(
   () =>
     Boolean(actionId.value)
@@ -159,7 +173,7 @@ const portraitColumns: ColumnsType = [
   { title: '摘要', dataIndex: 'alertSummary', key: 'alertSummary', ellipsis: true },
   { title: '状态', key: 'alertStatus', width: 100 },
   { title: '画像时间', dataIndex: 'portraitComputedTime', key: 'portraitComputedTime', width: 170 },
-  { title: '操作', key: 'actions', width: 180 },
+  { title: '主行动', key: 'actions', width: 180 },
 ]
 
 const complianceColumns: ColumnsType = [
@@ -171,7 +185,7 @@ const complianceColumns: ColumnsType = [
   { title: '摘要', dataIndex: 'alertSummary', key: 'alertSummary', ellipsis: true },
   { title: '状态', key: 'alertStatus', width: 100 },
   { title: '计算时间', dataIndex: 'computedTime', key: 'computedTime', width: 170 },
-  { title: '操作', key: 'actions', width: 180 },
+  { title: '主行动', key: 'actions', width: 180 },
 ]
 
 function alertTypeLabel(code: string): string {
@@ -357,6 +371,43 @@ function initDepartmentComplianceScope() {
   }
 }
 
+/** 画像预警：关闭为主行动 */
+function buildPortraitAlertActions(record: PortfolioAnalysisAlertVO): UiTableRowActionItem[] {
+  const busy = Boolean(actionId.value)
+  return [
+    { key: 'resolve', label: '关闭', tone: 'primary', disabled: busy },
+    { key: 'ack', label: '已知晓', disabled: busy },
+  ]
+}
+
+function handlePortraitAlertAction(key: string, record: PortfolioAnalysisAlertVO): void {
+  if (key === 'resolve') {
+    void resolvePortraitAlert(record, PortfolioAlertStatusCode.RESOLVED)
+    return
+  }
+  if (key === 'ack') {
+    void resolvePortraitAlert(record, PortfolioAlertStatusCode.ACKNOWLEDGED)
+  }
+}
+
+/** 结构合规预警：关闭为主行动 */
+function buildComplianceAlertActions(record: PortfolioAnalysisComplianceAlertVO): UiTableRowActionItem[] {
+  const busy = Boolean(actionId.value)
+  return [
+    { key: 'resolve', label: '关闭', tone: 'primary', disabled: busy },
+    { key: 'ack', label: '已知晓', disabled: busy },
+  ]
+}
+
+function handleComplianceAlertAction(key: string, record: PortfolioAnalysisComplianceAlertVO): void {
+  if (key === 'resolve') {
+    void resolveComplianceAlert(record, PortfolioAlertStatusCode.RESOLVED)
+    return
+  }
+  if (key === 'ack') {
+    void resolveComplianceAlert(record, PortfolioAlertStatusCode.ACKNOWLEDGED)
+  }
+}
 async function resolvePortraitAlert(
   row: PortfolioAnalysisAlertVO,
   alertStatus: PortfolioAlertStatusCode,
@@ -528,6 +579,14 @@ onMounted(() => {
         :subtitle="pageSubtitle"
       />
     </template>
+    <template #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="alertSignalMetrics"
+      />
+    </template>
     <UiSectionTabs v-model="activeTab" :items="tabItems" @update:model-value="reloadActiveTab" />
     <UiSpin :spinning="loading">
       <UiCard v-if="activeTab === 'portrait'" title="画像预警">
@@ -613,22 +672,12 @@ onMounted(() => {
                 column.key === 'actions' && record.alertStatus === PortfolioAlertStatusCode.OPEN
               "
             >
-              <UiButton
-                size="sm"
-                :loading="actionId === record.id"
-                :disabled="Boolean(actionId)"
-                @click="resolvePortraitAlert(record, PortfolioAlertStatusCode.ACKNOWLEDGED)"
-              >
-                已知晓
-              </UiButton>
-              <UiButton
-                size="sm"
-                :loading="actionId === record.id"
-                :disabled="Boolean(actionId)"
-                @click="resolvePortraitAlert(record, PortfolioAlertStatusCode.RESOLVED)"
-              >
-                关闭
-              </UiButton>
+              <UiTableActions
+                :max-visible="2"
+                :items="buildPortraitAlertActions(record)"
+                split
+                @action="(key) => handlePortraitAlertAction(key, record)"
+              />
             </template>
           </template>
           <template #emptyText>
@@ -701,22 +750,12 @@ onMounted(() => {
                 column.key === 'actions' && record.alertStatus === PortfolioAlertStatusCode.OPEN
               "
             >
-              <UiButton
-                size="sm"
-                :loading="actionId === record.id"
-                :disabled="Boolean(actionId)"
-                @click="resolveComplianceAlert(record, PortfolioAlertStatusCode.ACKNOWLEDGED)"
-              >
-                已知晓
-              </UiButton>
-              <UiButton
-                size="sm"
-                :loading="actionId === record.id"
-                :disabled="Boolean(actionId)"
-                @click="resolveComplianceAlert(record, PortfolioAlertStatusCode.RESOLVED)"
-              >
-                关闭
-              </UiButton>
+              <UiTableActions
+                :max-visible="2"
+                :items="buildComplianceAlertActions(record)"
+                split
+                @action="(key) => handleComplianceAlertAction(key, record)"
+              />
             </template>
           </template>
           <template #emptyText>

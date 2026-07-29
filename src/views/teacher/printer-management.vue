@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="printer-management-page">
     <template #context>
-      <ContextBar layout="workbench" show-title title="扫描设备">
+      <ContextBar layout="workbench" show-title title="扫描设备" :subtitle="`${pagination.total} 台`">
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
@@ -22,7 +22,7 @@
     </template>
 
     <template #signal>
-      <SignalBand compact variant="panel" :metrics="deviceSignalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="deviceSignalMetrics" />
     </template>
 
     <ExamWorkspaceJourneySubNav />
@@ -74,6 +74,7 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildDeviceActions(devices[index])"
               split
               @action="(key) => handleDeviceAction(key, devices[index])"
@@ -509,20 +510,20 @@ const columns: ColumnsType<ExamScannerDeviceResponse> = [
   { title: '组件版本', dataIndex: 'agentVersion', key: 'agentVersion', width: 120 },
   { title: '最近通讯', dataIndex: 'lastSeenTime', key: 'lastSeenTime', width: 170 },
   { title: '位置', dataIndex: 'location', key: 'location', width: 160, ellipsis: true },
-  { title: '操作', key: 'actions', width: 200 },
+  { title: '主行动', key: 'actions', width: 200 },
 ]
 
 function buildDeviceActions(record: ExamScannerDeviceResponse): UiTableRowActionItem[] {
   // MVR-316：无运维写权仅保留详情，避免行内假可写
-  const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
   if (canManageScannerDeviceWrites.value !== true) {
-    return actions
+    return [{ key: 'detail', label: '详情', tone: 'primary' }]
   }
-  actions.push(
-    { key: 'edit', label: '编辑' },
+  const actions: UiTableRowActionItem[] = [
+    { key: 'edit', label: '编辑', tone: 'primary' },
+    { key: 'detail', label: '详情' },
     { key: 'rebind', label: '重新绑定' },
     { key: 'activation', label: '激活码' },
-  )
+  ]
   if (record.endpointMachineCode) {
     actions.push({ key: 'unbind', label: '解绑扫描组件', tone: 'danger' })
   }

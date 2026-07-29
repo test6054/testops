@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDoubleDutyAnalyticsVO } from '@/apis/portfolio/teacher-platform'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -18,6 +19,7 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioReviewAccess } from '@/composables/usePortfolioReviewAccess'
@@ -32,6 +34,7 @@ import {
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -111,6 +114,63 @@ const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange }
   = useQueryTable(portfolioDoubleDutyApi.page)
 
+const DoubleDutySignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && pageTotal.value === 0 && !analytics.value) {
+    return []
+  }
+  const totalCount = analytics.value?.totalCount ?? pageTotal.value
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '双肩挑台账',
+      value: totalCount,
+      clickable: true,
+    },
+  ]
+  if (analytics.value && !analyticsFailed.value) {
+    metrics.push({
+      key: 'active',
+      label: '在册',
+      value: analytics.value.activeCount,
+    })
+    if (analytics.value.doubleDutyRatioPercent != null) {
+      metrics.push({
+        key: 'ratio',
+        label: '在岗双肩挑占比',
+        value: analytics.value.doubleDutyRatioPercent,
+        unit: '%',
+      })
+    }
+  } else {
+    const activeOnPage = rows.value.filter(
+      (row) => row.registryStatus === PortfolioKeyTeacherRegistryStatusCode.ACTIVE,
+    ).length
+    metrics.push({
+      key: 'active-page',
+      label: '本页在册',
+      value: activeOnPage,
+      helper: '仅当前页',
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新列表',
+  })
+})
+
+const DoubleDutyWorkbenchSubtitle = computed(() => {
+  if (loadError.value) {
+    return '加载失败'
+  }
+  return `${pageTotal.value} 条`
+})
+
+function onDoubleDutySignalClick(_key: string) {
+  void loadPage()
+  void loadAnalytics()
+}
+
+
 const columns: ColumnsType = [
   { title: '教师', key: 'teacher', width: 120 },
   { title: '行政岗位', dataIndex: 'adminPostName', key: 'adminPostName' },
@@ -120,7 +180,7 @@ const columns: ColumnsType = [
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
-  { title: '操作', key: 'actions', width: 80 },
+  { title: '主行动', key: 'actions', width: 80 },
 ]
 
 
@@ -234,7 +294,16 @@ async function confirmExportApply() {
         layout="workbench"
         show-title
         :title="pageTitle"
-        subtitle="行政与教学岗位登记 · 查询统计 · 导出台账"
+        :subtitle="DoubleDutyWorkbenchSubtitle"
+      />
+    </template>
+    <template v-if="DoubleDutySignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="DoubleDutySignalMetrics"
+        @metric-click="onDoubleDutySignalClick"
       />
     </template>
     <UiAlertStrip
@@ -245,15 +314,6 @@ async function confirmExportApply() {
       class="dp-mb-component"
     />
     <div class="analytics-grid dp-mb-component">
-      <UiCard title="台账概览">
-        <template v-if="analyticsLoading">加载中…</template>
-        <template v-else-if="analyticsFailed">结构分析加载失败</template>
-        <template v-else-if="analytics">
-          <p>台账总数 {{ analytics.totalCount }}</p>
-          <p>在册数量 {{ analytics.activeCount }}</p>
-        </template>
-        <template v-else>暂无分析数据</template>
-      </UiCard>
       <UiCard title="在岗结构双肩挑比例">
         <template v-if="analyticsLoading">加载中…</template>
         <template v-else-if="analyticsFailed">—</template>
@@ -377,6 +437,7 @@ async function confirmExportApply() {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               v-if="record.registryStatus === PortfolioKeyTeacherRegistryStatusCode.ACTIVE"
               :items="[{ key: 'revoke', label: '作废', tone: 'danger' }]"
               split

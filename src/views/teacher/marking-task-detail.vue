@@ -1,5 +1,8 @@
 <script lang="ts" setup>
 import type { FormInstance } from 'ant-design-vue/es/form'
+import { computed } from 'vue'
+import { dualMarkRoleLabel } from '@/apis/mark/dual-mark-role'
+import { MarkingTaskStatusCode } from '@/apis/mark/marking-organization'
 import ApplyScoreToRemainingModal from '@/components/mark/ApplyScoreToRemainingModal.vue'
 import GradingSessionProgressBand from '@/components/mark/GradingSessionProgressBand.vue'
 import GradingWorkspaceLayout from '@/components/mark/GradingWorkspaceLayout.vue'
@@ -13,11 +16,8 @@ import WholePaperGallery from '@/components/mark/WholePaperGallery.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
-import { dualMarkRoleLabel } from '@/apis/mark/dual-mark-role'
-import { MarkingTaskStatusCode } from '@/apis/mark/marking-organization'
 import { useMarkingTaskDetailState } from '@/composables/useMarkingTaskDetailState'
 import { GradeStatusCode } from '@/types/enums/grade-status-enum'
-import { computed } from 'vue'
 
 defineOptions({ name: 'TeacherExamWorkspaceMarkingTaskDetail' })
 

@@ -4,6 +4,8 @@ import type {
   PortfolioTeacherHonorCategoryVO,
   PortfolioTeacherHonorVO,
 } from '@/apis/portfolio/teacher-honor'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -22,7 +24,9 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -38,6 +42,7 @@ import {
   PortfolioHonorLevelOptions,
 } from '@/types/enums/portfolio-honor-level-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -97,14 +102,14 @@ const honorColumns: ColumnsType = [
   { title: '获得日期', dataIndex: 'recordDate', key: 'recordDate', width: 110 },
   { title: '业务日工号', dataIndex: 'affiliationStaffNo', key: 'affiliationStaffNo', width: 120 },
   { title: '身份层', key: 'identityLayers', width: 160 },
-  { title: '操作', key: 'actions', width: 210 },
+  { title: '主行动', key: 'actions', width: 210 },
 ]
 
 const categoryColumns: ColumnsType = [
   { title: '分类名称', dataIndex: 'categoryName', key: 'categoryName' },
   { title: '编码', dataIndex: 'categoryCode', key: 'categoryCode', width: 200 },
   { title: '类型', key: 'preset', width: 88 },
-  { title: '操作', key: 'actions', width: 88 },
+  { title: '主行动', key: 'actions', width: 88 },
 ]
 
 function scopeTeacherId() {
@@ -184,6 +189,60 @@ async function loadData(): Promise<boolean> {
   }
 }
 
+/** 荣誉行：编辑/查看为主行动 */
+function buildHonorRowActions(record: PortfolioTeacherHonorVO): UiTableRowActionItem[] {
+  return [
+    {
+      key: 'edit',
+      label: readonlyMode.value ? '查看' : '编辑',
+      tone: 'primary',
+    },
+    {
+      key: 'archive',
+      label: '归入档案',
+      hidden: readonlyMode.value,
+      disabled: Boolean(preparingArchiveId.value),
+    },
+    {
+      key: 'delete',
+      label: '删除',
+      tone: 'danger',
+      hidden: readonlyMode.value,
+      disabled: Boolean(deletingHonorId.value) || Boolean(preparingArchiveId.value),
+    },
+  ]
+}
+
+function handleHonorRowAction(key: string, record: PortfolioTeacherHonorVO): void {
+  if (key === 'edit') {
+    openModal(record)
+    return
+  }
+  if (key === 'archive') {
+    void prepareArchiveDraft(record)
+    return
+  }
+  if (key === 'delete') {
+    void removeHonor(record)
+  }
+}
+
+function buildHonorCategoryRowActions(record: PortfolioTeacherHonorCategoryVO): UiTableRowActionItem[] {
+  return [
+    {
+      key: 'delete',
+      label: '删除',
+      tone: 'danger',
+      hidden: readonlyMode.value || Boolean(record.preset) || !record.id,
+    },
+  ]
+}
+
+function handleHonorCategoryRowAction(key: string, record: PortfolioTeacherHonorCategoryVO): void {
+  if (key === 'delete') {
+    void confirmDeleteCategory(record)
+  }
+}
 function openModal(row?: PortfolioTeacherHonorVO) {
   if (readonlyMode.value && !row) {
     showFormValidationMessage('管理员查看模式下不可新增荣誉')
@@ -432,12 +491,54 @@ watch(
   },
 )
 usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
+
+const TeacherHonorSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadFailed.value && rows.value.length === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '获奖记录',
+      value: rows.value.length,
+      clickable: true,
+      helper: '当前已加载',
+    },
+  ]
+  if (categories.value.length > 0) {
+    metrics.push({
+      key: 'categories',
+      label: '荣誉分类',
+      value: categories.value.length,
+      helper: '当前已加载',
+    })
+  }
+  return applySpotlightEmphasis(metrics, { primaryKey: 'total', actionLabel: '刷新' })
+})
+
+const TeacherHonorWorkbenchSubtitle = computed(() => {
+  if (loadFailed.value) return '加载失败'
+  return `${rows.value.length} 条`
+})
+
+function onTeacherHonorSignalClick(_key: string) {
+  void loadData()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="获奖情况" subtitle="荣誉档案与证明材料" />
+      <ContextBar layout="workbench" show-title title="获奖情况" :subtitle="TeacherHonorWorkbenchSubtitle" />
+    </template>
+    <template v-if="TeacherHonorSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TeacherHonorSignalMetrics"
+        @metric-click="onTeacherHonorSignalClick"
+      />
     </template>
     <UiAlertStrip
       v-if="archiveWriteForbidden"
@@ -484,30 +585,12 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
               {{ record.affiliationStaffNo || '—' }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton size="sm" variant="ghost" @click="openModal(record)">
-                {{ readonlyMode ? '查看' : '编辑' }}
-              </UiButton>
-              <UiButton
-                size="sm"
-                v-if="!readonlyMode"
-                variant="ghost"
-                :loading="preparingArchiveId === record.id"
-                :disabled="Boolean(preparingArchiveId)"
-                @click="prepareArchiveDraft(record)"
-              >
-                归入档案
-              </UiButton>
-              <UiButton
-                size="sm"
-                v-if="!readonlyMode"
-                variant="ghost"
-                danger
-                :loading="deletingHonorId === record.id"
-                :disabled="Boolean(deletingHonorId) || Boolean(preparingArchiveId)"
-                @click="removeHonor(record)"
-              >
-                删除
-              </UiButton>
+              <UiTableActions
+                :max-visible="2"
+                :items="buildHonorRowActions(record)"
+                split
+                @action="(key) => handleHonorRowAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -515,7 +598,7 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 
       <UiCard title="荣誉分类" :loading="categoryLoading" style="margin-top: var(--dp-space-block)">
         <template #extra>
-          <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCategoryModal">
+          <UiButton size="sm" variant="outline" v-if="!readonlyMode" @click="openCategoryModal">
             新建分类
           </UiButton>
         </template>
@@ -530,16 +613,12 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
               {{ record.preset ? '预设' : '自建' }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton
-                size="sm"
-                v-if="!readonlyMode && !record.preset && record.id"
-                variant="ghost"
-                danger
-                :loading="deletingCategoryId === record.id"
-                @click="confirmDeleteCategory(record)"
-              >
-                删除
-              </UiButton>
+              <UiTableActions
+                :max-visible="2"
+                :items="buildHonorCategoryRowActions(record)"
+                split
+                @action="(key) => handleHonorCategoryRowAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>

@@ -64,10 +64,10 @@ const emit = defineEmits<{
   align-items: center;
   justify-content: space-between;
   gap: var(--dp-space-component-tight) var(--dp-space-component);
-  padding: var(--dp-space-component) var(--dp-space-block);
-  background: var(--dp-surface);
-  border: 1px solid var(--dp-border);
-  border-radius: var(--dp-radius-panel);
+  padding: var(--dp-space-component-tight) 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 
   &__lead {
     display: flex;
@@ -90,7 +90,7 @@ const emit = defineEmits<{
   }
 
   &__title {
-    font-size: var(--dp-font-size-sm);
+    font-size: var(--dp-font-size-md);
     font-weight: var(--dp-font-weight-title);
     color: var(--dp-text-primary);
     line-height: 1.4;

@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>mark-vue 考试列表 · 优化原型（对比分析）</title>
+  <style>
+    :root {
+      --dp-primary: #2b67ff;
+      --dp-primary-bg: #eef4ff;
+      --dp-text: rgba(15, 23, 42, 0.92);
+      --dp-text-2: rgba(15, 23, 42, 0.68);
+      --dp-text-3: rgba(15, 23, 42, 0.48);
+      --dp-border: #e2e8f0;
+      --dp-split: rgba(15, 23, 42, 0.05);
+      --dp-bg: #f6f7f9;
+      --dp-surface: #ffffff;
+      --dp-chrome: #f8fafc;
+      --dp-success: #16a34a;
+      --dp-warning: #d97706;
+      --dp-error: #dc2626;
+      --dp-radius: 10px;
+      --dp-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 4px 12px rgba(15, 23, 42, 0.03);
+      --dp-sidebar: 220px;
+      --dp-header: 48px;
+      --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font-family: var(--font); color: var(--dp-text); background: #0b1220; }
+    button, input, select { font: inherit; }
+    .app-frame { min-height: 100%; display: flex; flex-direction: column; }
+    .proto-top {
+      position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      padding: 12px 20px; background: rgba(11, 18, 32, 0.92); backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255,255,255,0.08); color: #e5eefc;
+    }
+    .proto-top h1 { margin: 0; font-size: 15px; font-weight: 600; }
+    .proto-top p { margin: 0; font-size: 12px; color: #93a4c3; }
+    .toggle { display: inline-flex; padding: 3px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); }
+    .toggle button { border: 0; background: transparent; color: #93a4c3; padding: 7px 14px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 500; }
+    .toggle button.active { background: #fff; color: #0b1220; }
+    .proto-top .meta { margin-left: auto; display: flex; gap: 10px; align-items: center; font-size: 12px; color: #93a4c3; }
+    .badge { display: inline-flex; padding: 4px 10px; border-radius: 999px; background: rgba(43,103,255,0.15); color: #9db7ff; border: 1px solid rgba(43,103,255,0.25); }
+    .stage { flex: 1; padding: 18px; }
+    .stage-grid { display: grid; grid-template-columns: 1fr; gap: 16px; max-width: 1440px; margin: 0 auto; }
+    .stage-grid.compare { grid-template-columns: 1fr 1fr; }
+    @media (max-width: 1180px) { .stage-grid.compare { grid-template-columns: 1fr; } }
+    .panel-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; color: #c7d4ea; font-size: 12px; gap: 8px; }
+    .panel-label strong { font-size: 13px; color: #fff; font-weight: 600; }
+    .device { border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); background: var(--dp-bg); box-shadow: 0 20px 50px rgba(0,0,0,0.35); min-height: 760px; display: flex; flex-direction: column; }
+    .shell { display: flex; flex: 1; min-height: 0; }
+    .sidebar { width: var(--dp-sidebar); background: var(--dp-surface); border-right: 1px solid var(--dp-border); display: flex; flex-direction: column; flex-shrink: 0; }
+    .logo { height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--dp-border); font-weight: 700; font-size: 14px; }
+    .logo-mark { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #2b67ff, #6b8cff); color: #fff; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+    .nav { padding: 10px 8px; overflow: auto; flex: 1; }
+    .nav-group, .nav-section-title { font-size: 12px; color: var(--dp-text-3); padding: 8px 10px 4px; }
+    .nav-section-title { margin-top: 8px; letter-spacing: 0.04em; font-weight: 600; }
+    .nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; font-size: 13.5px; color: var(--dp-text-2); margin-bottom: 2px; }
+    .nav-item.active { background: var(--dp-primary-bg); color: var(--dp-primary); font-weight: 600; box-shadow: inset 2px 0 0 var(--dp-primary); }
+    .nav-item .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.45; }
+    .main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--dp-bg); }
+    .header { height: var(--dp-header); background: var(--dp-surface); border-bottom: 1px solid var(--dp-border); display: flex; align-items: center; padding: 0 16px; gap: 12px; }
+    .header-right { margin-left: auto; display: flex; gap: 8px; align-items: center; color: var(--dp-text-2); font-size: 12px; }
+    .avatar { width: 28px; height: 28px; border-radius: 50%; background: #dbe7ff; color: var(--dp-primary); display: grid; place-items: center; font-weight: 700; font-size: 12px; }
+    .content { padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow: auto; }
+    .card { background: var(--dp-surface); border: 1px solid var(--dp-border); border-radius: var(--dp-radius); box-shadow: var(--dp-shadow); }
+    .card-head { padding: 0 8px; border-bottom: 1px solid var(--dp-split); background: var(--dp-chrome); font-weight: 700; font-size: 15px; }
+    .card-toolbar { padding: 10px 16px; border-bottom: 1px solid var(--dp-split); background: var(--dp-chrome); display: flex; gap: 8px; flex-wrap: wrap; }
+    .card-body { padding: 12px 16px; }
+    .btn { height: 30px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--dp-border); background: #fff; color: var(--dp-text); font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-sm { height: 28px; font-size: 12px; padding: 0 10px; }
+    .btn-primary { background: var(--dp-primary); border-color: var(--dp-primary); color: #fff; font-weight: 600; }
+    .btn-ghost { background: transparent; }
+    .btn-text { border: 0; background: transparent; color: var(--dp-primary); height: auto; padding: 0; font-weight: 600; font-size: 13px; }
+    .select, .input { height: 30px; border: 1px solid var(--dp-border); border-radius: 8px; padding: 0 10px; background: #fff; color: var(--dp-text-2); font-size: 12px; min-width: 110px; }
+    .cur-context { padding: 12px 16px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .cur-title { font-size: 16px; font-weight: 700; }
+    .cur-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .kpi { border: 1px solid var(--dp-border); border-radius: 10px; background: #fff; padding: 10px 12px; }
+    .kpi .l { font-size: 12px; color: var(--dp-text-3); }
+    .kpi .v { font-size: 20px; font-weight: 700; margin-top: 4px; }
+    .tabs { display: flex; gap: 0; }
+    .tab { padding: 10px 14px; font-size: 13px; color: var(--dp-text-2); border-bottom: 2px solid transparent; }
+    .tab.active { color: var(--dp-primary); border-bottom-color: var(--dp-primary); font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; font-size: 12px; color: var(--dp-text-3); font-weight: 600; padding: 10px 12px; background: var(--dp-chrome); border-bottom: 1px solid var(--dp-border); }
+    td { padding: 12px; border-bottom: 1px solid var(--dp-split); vertical-align: middle; }
+    .tag { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; background: #f1f5f9; color: var(--dp-text-2); }
+    .tag-ok { background: #f0fdf4; color: var(--dp-success); }
+    .tag-warn { background: #fffbeb; color: var(--dp-warning); }
+    .tag-err { background: #fef2f2; color: var(--dp-error); }
+    .tag-run { background: var(--dp-primary-bg); color: var(--dp-primary); }
+    .ops { display: flex; gap: 8px; flex-wrap: wrap; color: var(--dp-primary); font-size: 12px; }
+    .ops .muted { color: var(--dp-text-3); }
+    .prop-header-context { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; flex-wrap: wrap; }
+    .domain-switch, .seg { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--dp-chrome); border: 1px solid var(--dp-border); }
+    .domain-switch span, .seg span { padding: 5px 10px; border-radius: 8px; font-size: 12px; color: var(--dp-text-2); font-weight: 500; }
+    .domain-switch span.on, .seg span.on { background: #fff; color: var(--dp-text); box-shadow: var(--dp-shadow); font-weight: 600; }
+    .ctx-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; background: var(--dp-chrome); border: 1px solid var(--dp-border); font-size: 12px; color: var(--dp-text-2); white-space: nowrap; }
+    .ctx-chip strong { color: var(--dp-text); font-weight: 600; }
+    .ctx-chip.warn { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+    .ctx-chip.err { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .prop-body { padding: 14px 16px 18px; gap: 14px; }
+    .prop-hero { display: grid; grid-template-columns: 1.4fr 0.9fr; gap: 12px; }
+    @media (max-width: 900px) { .prop-hero { grid-template-columns: 1fr; } }
+    .prop-title-block h2 { margin: 0; font-size: 22px; line-height: 1.25; font-weight: 700; letter-spacing: -0.02em; }
+    .prop-title-block p { margin: 6px 0 0; font-size: 13px; color: var(--dp-text-2); line-height: 1.5; }
+    .prop-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .priority-card { border-radius: 12px; border: 1px solid #ffd7a8; background: linear-gradient(180deg, #fffaf3 0%, #fff 70%); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+    .priority-card .eyebrow { font-size: 12px; color: #b45309; font-weight: 600; }
+    .priority-card .big { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; }
+    .priority-card .desc { font-size: 12px; color: var(--dp-text-2); line-height: 1.45; }
+    .metric-strip { display: grid; grid-template-columns: 1.3fr repeat(3, 1fr); gap: 0; border: 1px solid var(--dp-border); border-radius: 12px; background: var(--dp-surface); overflow: hidden; box-shadow: var(--dp-shadow); }
+    .metric { padding: 14px 16px; position: relative; min-width: 0; }
+    .metric + .metric::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 1px; background: var(--dp-border); }
+    .metric.primary { background: linear-gradient(180deg, #eef4ff 0%, #f8fbff 100%); }
+    .metric.primary::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--dp-primary); }
+    .metric .l { font-size: 12px; color: var(--dp-text-3); }
+    .metric.primary .l { color: #3557b8; font-weight: 600; }
+    .metric .v { margin-top: 4px; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .metric.primary .v { font-size: 24px; }
+    .metric .h { margin-top: 4px; font-size: 12px; color: var(--dp-text-3); }
+    .metric-variant { display: none; }
+    .metric-variant.show { display: block; }
+    .metric-v2 { display: grid; grid-template-columns: 1fr 2.05fr; gap: 10px; }
+    .metric-v2-main { border: 1px solid #c7d7ff; border-radius: 12px; background: linear-gradient(165deg, #eef4ff 0%, #fff 72%); padding: 13px 15px; box-shadow: var(--dp-shadow); position: relative; overflow: hidden; }
+    .metric-v2-main::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--dp-primary); }
+    .metric-v2-main .l { color: #3557b8; font-weight: 600; font-size: 12px; }
+    .metric-v2-main .v { font-size: 28px; font-weight: 700; color: var(--dp-primary); letter-spacing: -0.04em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .metric-v2-main .h { font-size: 12px; color: var(--dp-text-2); margin-top: 5px; }
+    .metric-v2-main .cta { margin-top: auto; padding-top: 8px; } .metric-v2-main { min-height: 100%; display: flex; flex-direction: column; } .metric-link { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 600; color: var(--dp-primary); text-decoration: none; white-space: nowrap; line-height: 1; padding: 0; border: 0; background: transparent; cursor: pointer; } .metric-link:hover { opacity: 0.85; } .metric-link .arr { transition: transform 0.15s ease; } .metric-link:hover .arr { transform: translateX(2px); }
+    .metric-v2-side { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .metric-v2-side .metric-card { background: #fff; border: 1px solid var(--dp-border); border-radius: 12px; padding: 12px 13px; }
+    .metric-v2-side .l, .metric-v3 .l { font-size: 12px; color: var(--dp-text-3); }
+    .metric-v2-side .v, .metric-v3 .v { margin-top: 4px; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .metric-v2-side .h, .metric-v3 .h { margin-top: 4px; font-size: 11.5px; color: var(--dp-text-3); }
+    .metric-v3 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .metric-v3 .metric-card { background: #fff; border: 1px solid var(--dp-border); border-radius: 12px; padding: 12px 13px; }
+    .metric-v3 .metric-card.primary { border-color: #c7d7ff; background: linear-gradient(180deg, #eef4ff, #f7faff); box-shadow: 0 0 0 1px rgba(43,103,255,0.05); }
+    .metric-v3 .metric-card.primary .l { color: #3557b8; font-weight: 600; }
+    .metric-v3 .metric-card.primary .v { color: var(--dp-primary); font-size: 24px; }
+    .metric-switch { display: inline-flex; padding: 2px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); }
+    .metric-switch button { border: 0; background: transparent; color: #93a4c3; padding: 4px 9px; border-radius: 999px; cursor: pointer; font-size: 11px; }
+    .metric-switch button.active { background: #fff; color: #0b1220; font-weight: 600; }
+    .toolbar-line { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+    .toolbar-left, .toolbar-right { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .list-surface { border: 1px solid var(--dp-border); border-radius: 12px; background: var(--dp-surface); overflow: hidden; }
+    .row { display: grid; grid-template-columns: 28px 1.5fr 0.7fr 0.7fr 0.9fr 0.7fr; gap: 8px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--dp-split); }
+    .row:last-child { border-bottom: 0; }
+    .row.head { background: var(--dp-chrome); font-size: 12px; color: var(--dp-text-3); font-weight: 600; padding-top: 10px; padding-bottom: 10px; }
+    .row:not(.head):hover { background: #fbfcfe; }
+    .exam-name { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+    .exam-meta { margin-top: 4px; font-size: 12px; color: var(--dp-text-3); display: flex; gap: 8px; flex-wrap: wrap; }
+    .status-line { display: flex; flex-direction: column; gap: 4px; }
+    .progress { height: 4px; border-radius: 999px; background: #eef2f7; overflow: hidden; width: 100%; max-width: 120px; }
+    .progress > i { display: block; height: 100%; background: var(--dp-primary); border-radius: inherit; }
+    .progress.err > i { background: var(--dp-error); }
+    .row-actions { display: flex; gap: 10px; align-items: center; justify-content: flex-end; }
+    .more { color: var(--dp-text-3); font-size: 12px; }
+    .note { margin: 14px auto 10px; max-width: 1440px; color: #9db0d0; font-size: 12px; line-height: 1.6; }
+    .diff-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+    @media (max-width: 900px) { .diff-list { grid-template-columns: 1fr; } .kpi-row, .metric-strip, .metric-v3 { grid-template-columns: 1fr 1fr; } .metric-v2, .metric-v2-side { grid-template-columns: 1fr; } .metric + .metric::before { display: none; } .row { grid-template-columns: 28px 1fr; } .row > :nth-child(n+3) { grid-column: 2; } }
+    .diff-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px 14px; color: #c7d4ea; }
+    .diff-item b { display: block; color: #fff; margin-bottom: 4px; font-size: 13px; }
+  </style>
+</head>
+<body>
+<div class="app-frame">
+
+  <div class="proto-top">
+    <div>
+      <h1>mark-vue 考试列表 · 设计原型</h1>
+      <p>用于「传统后台现状」与「优化方案」并排/切换对比 · 不改业务代码</p>
+    </div>
+    <div class="toggle" role="group" aria-label="视图模式">
+      <button type="button" class="active" data-mode="compare">并排对比</button>
+      <button type="button" data-mode="current">仅现状</button>
+      <button type="button" data-mode="proposed">仅原型</button>
+    </div>
+    <div class="meta">
+      <span class="badge">token 对齐 #2B67FF / --dp-*</span>
+      <span>样板页：教师端考试列表</span>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="stage-grid compare" id="stageGrid">
+      <section id="panelCurrent">
+        <div class="panel-label">
+          <strong>A · 现状示意（传统工作台合同）</strong>
+          <span>Context + 等权 KPI + 叠卡 + 多操作链</span>
+        </div>
+        <div class="device">
+          <div class="shell">
+            <aside class="sidebar">
+              <div class="logo"><div class="logo-mark">质</div>教学质量中心</div>
+              <div class="nav">
+                <div class="nav-group">考试阅卷</div>
+                <div class="nav-item active"><span class="dot"></span>考试列表</div>
+                <div class="nav-item"><span class="dot"></span>扫描中心</div>
+                <div class="nav-item"><span class="dot"></span>阅卷进度</div>
+                <div class="nav-item"><span class="dot"></span>成绩发布</div>
+                <div class="nav-item"><span class="dot"></span>归档卷</div>
+                <div class="nav-item"><span class="dot"></span>更多…</div>
+                <div class="nav-group">质量评价</div>
+                <div class="nav-item"><span class="dot"></span>达成度分析</div>
+                <div class="nav-item"><span class="dot"></span>课程评价</div>
+                <div class="nav-group">教学档案袋</div>
+                <div class="nav-item"><span class="dot"></span>我的档案</div>
+                <div class="nav-item"><span class="dot"></span>完整度</div>
+              </div>
+            </aside>
+            <div class="main">
+              <div class="header">
+                <div style="flex:1"></div>
+                <div class="header-right"><span>通知</span><div class="avatar">师</div></div>
+              </div>
+              <div class="content">
+                <div class="card">
+                  <div class="cur-context">
+                    <div class="cur-title">考试列表</div>
+                    <div class="cur-tools">
+                      <select class="select"><option>2025-2026</option></select>
+                      <select class="select"><option>第二学期</option></select>
+                      <select class="select"><option>全部状态</option></select>
+                      <button class="btn btn-sm" type="button">本学期</button>
+                      <button class="btn btn-sm" type="button">批量关闭</button>
+                      <button class="btn btn-sm" type="button">批量删除</button>
+                      <button class="btn btn-sm btn-primary" type="button">+ 新建考试</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="kpi-row">
+                  <div class="kpi"><div class="l">全部</div><div class="v">128</div></div>
+                  <div class="kpi"><div class="l">进行中</div><div class="v">36</div></div>
+                  <div class="kpi"><div class="l">待发布</div><div class="v">12</div></div>
+                  <div class="kpi"><div class="l">异常</div><div class="v">5</div></div>
+                </div>
+                <div class="card">
+                  <div class="card-head">
+                    <div class="tabs">
+                      <div class="tab active">优先处理</div>
+                      <div class="tab">全部考试</div>
+                      <div class="tab">已归档</div>
+                    </div>
+                  </div>
+                  <div class="card-toolbar">
+                    <input class="input" style="min-width:180px" placeholder="课程/考试名称" />
+                    <select class="select"><option>院系</option></select>
+                    <select class="select"><option>考试类型</option></select>
+                    <input class="input" style="min-width:200px" placeholder="开始日期 - 结束日期" />
+                    <button class="btn btn-sm btn-primary" type="button">查询</button>
+                    <button class="btn btn-sm" type="button">重置</button>
+                  </div>
+                  <div class="card-body" style="padding:0">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th style="width:36px"></th>
+                          <th>考试名称</th>
+                          <th>状态</th>
+                          <th>进度</th>
+                          <th>时间窗</th>
+                          <th>操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><input type="checkbox" /></td>
+                          <td>高等数学 A · 期末统考</td>
+                          <td><span class="tag tag-err">扫描异常</span></td>
+                          <td>62%</td>
+                          <td>03-18 ~ 03-22</td>
+                          <td><div class="ops"><span>进入</span><span>编辑</span><span>关闭</span><span class="muted">更多</span></div></td>
+                        </tr>
+                        <tr>
+                          <td><input type="checkbox" /></td>
+                          <td>大学物理 · 阶段测验 03</td>
+                          <td><span class="tag tag-warn">待发布</span></td>
+                          <td>100%</td>
+                          <td>03-10 ~ 03-12</td>
+                          <td><div class="ops"><span>进入</span><span>发布</span><span>导出</span><span class="muted">更多</span></div></td>
+                        </tr>
+                        <tr>
+                          <td><input type="checkbox" /></td>
+                          <td>电路分析 · 期中考试</td>
+                          <td><span class="tag tag-run">阅卷中</span></td>
+                          <td>48%</td>
+                          <td>03-01 ~ 03-08</td>
+                          <td><div class="ops"><span>进入</span><span>进度</span><span>编辑</span><span class="muted">更多</span></div></td>
+                        </tr>
+                        <tr>
+                          <td><input type="checkbox" /></td>
+                          <td>C 语言程序设计 · 补考</td>
+                          <td><span class="tag tag-ok">已结束</span></td>
+                          <td>100%</td>
+                          <td>02-20 ~ 02-25</td>
+                          <td><div class="ops"><span>进入</span><span>归档</span><span>删除</span><span class="muted">更多</span></div></td>
+                        </tr>
+                        <tr>
+                          <td><input type="checkbox" /></td>
+                          <td>工程制图 · 课程设计检查</td>
+                          <td><span class="tag">未开始</span></td>
+                          <td>0%</td>
+                          <td>04-01 ~ 04-10</td>
+                          <td><div class="ops"><span>进入</span><span>编辑</span><span>删除</span><span class="muted">更多</span></div></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panelProposed">
+        <div class="panel-label">
+          <strong>B · 优化原型（任务队列工作台）</strong>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span>指标布局：</span>
+            <div class="metric-switch" id="metricSwitch" role="group" aria-label="B 指标布局">
+              <button type="button" data-metric="v1">1 连体</button>
+              <button type="button" class="active" data-metric="v2">2 主+次</button>
+              <button type="button" data-metric="v3">3 分离</button>
+            </div>
+            <a href="exam-list-metrics-compare.html" style="color:#9db7ff;font-size:11px;text-decoration:none">三方案细比 →</a>
+          </div>
+        </div>
+        <div class="device">
+          <div class="shell">
+            <aside class="sidebar">
+              <div class="logo"><div class="logo-mark">质</div>教学质量中心</div>
+              <div class="nav">
+                <div class="nav-section-title">本域任务</div>
+                <div class="nav-item active"><span class="dot"></span>考试与待办</div>
+                <div class="nav-item"><span class="dot"></span>扫描与异常</div>
+                <div class="nav-item"><span class="dot"></span>批阅工作台</div>
+                <div class="nav-item"><span class="dot"></span>成绩发布</div>
+                <div class="nav-item"><span class="dot"></span>考后归档</div>
+                <div class="nav-section-title">次要</div>
+                <div class="nav-item"><span class="dot"></span>组织与策略</div>
+                <div class="nav-item"><span class="dot"></span>全部考试库</div>
+              </div>
+            </aside>
+            <div class="main">
+              <div class="header">
+                <div class="prop-header-context">
+                  <div class="domain-switch" title="域切换一级化">
+                    <span class="on">阅卷</span><span>质量</span><span>档案袋</span>
+                  </div>
+                  <span class="ctx-chip">2025-2026 · <strong>第二学期</strong></span>
+                  <span class="ctx-chip warn">待发布 <strong>12</strong></span>
+                  <span class="ctx-chip err">扫描异常 <strong>5</strong></span>
+                </div>
+                <div class="header-right">
+                  <span>⌘K</span><span>通知 3</span><div class="avatar">师</div>
+                </div>
+              </div>
+              <div class="content prop-body">
+                <div class="prop-hero">
+                  <div class="prop-title-block">
+                    <h2>考试与待办</h2>
+                    <p>先处理会阻断发布或现场扫描的事项。资源库式「全部考试」仍保留，但不再作为默认心智。</p>
+                    <div class="prop-actions">
+                      <button class="btn btn-primary" type="button">+ 新建考试</button>
+                      <button class="btn" type="button">导入考试</button>
+                      <button class="btn btn-ghost" type="button">本学期范围</button>
+                    </div>
+                  </div>
+                  <div class="priority-card">
+                    <div class="eyebrow">今日优先 · 需你处理</div>
+                    <div class="big">5 场异常</div>
+                    <div class="desc">3 场缺页 / 1 场绑定失败 / 1 场 OCR 置信度偏低。建议先清扫描异常，再进入统分发布。</div>
+                    <div><button class="btn btn-sm btn-primary" type="button">处理异常队列</button></div>
+                  </div>
+                </div>
+
+                <div class="metric-variant" id="metric-v1">
+                  <div class="metric-strip">
+                    <div class="metric primary">
+                      <div class="l">需要行动</div>
+                      <div class="v" style="color:var(--dp-primary)">17</div>
+                      <div class="h">异常 5 · 待发布 12</div>
+                    </div>
+                    <div class="metric"><div class="l">阅卷中</div><div class="v">36</div><div class="h">本学期进行中</div></div>
+                    <div class="metric"><div class="l">今日完成</div><div class="v">84</div><div class="h">已批卷份</div></div>
+                    <div class="metric"><div class="l">全部考试</div><div class="v">128</div><div class="h">含未开始 / 已结束</div></div>
+                  </div>
+                </div>
+
+                <div class="metric-variant show" id="metric-v2">
+                  <div class="metric-v2">
+                    <div class="metric-v2-main">
+                      <div class="l">需要行动</div>
+                      <div class="v">17</div>
+                      <div class="h">异常 5 · 待发布 12 · 建议优先处理</div>
+                      <div class="cta"><button class="metric-link" type="button">查看待办 <span class="arr" aria-hidden="true">→</span></button></div>
+                    </div>
+                    <div class="metric-v2-side">
+                      <div class="metric-card"><div class="l">阅卷中</div><div class="v">36</div><div class="h">本学期进行中</div></div>
+                      <div class="metric-card"><div class="l">今日完成</div><div class="v">84</div><div class="h">已批卷份</div></div>
+                      <div class="metric-card"><div class="l">全部考试</div><div class="v">128</div><div class="h">含未开始 / 已结束</div></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="metric-variant" id="metric-v3">
+                  <div class="metric-v3">
+                    <div class="metric-card primary"><div class="l">需要行动</div><div class="v">17</div><div class="h">异常 5 · 待发布 12</div></div>
+                    <div class="metric-card"><div class="l">阅卷中</div><div class="v">36</div><div class="h">本学期进行中</div></div>
+                    <div class="metric-card"><div class="l">今日完成</div><div class="v">84</div><div class="h">已批卷份</div></div>
+                    <div class="metric-card"><div class="l">全部考试</div><div class="v">128</div><div class="h">含未开始 / 已结束</div></div>
+                  </div>
+                </div>
+                <div class="toolbar-line">
+                  <div class="toolbar-left">
+                    <div class="seg">
+                      <span class="on">待办优先</span><span>阅卷中</span><span>全部</span><span>已归档</span>
+                    </div>
+                    <input class="input" style="min-width:200px" placeholder="搜索课程 / 考试 / 教师" />
+                  </div>
+                  <div class="toolbar-right">
+                    <button class="btn btn-sm" type="button">更多筛选</button>
+                    <button class="btn btn-sm" type="button">批量操作</button>
+                  </div>
+                </div>
+
+                <div class="list-surface">
+                  <div class="row head">
+                    <div></div><div>考试</div><div>状态</div><div>进度</div><div>窗口</div><div style="text-align:right">主行动</div>
+                  </div>
+                  <div class="row">
+                    <div><input type="checkbox" /></div>
+                    <div>
+                      <div class="exam-name">高等数学 A · 期末统考</div>
+                      <div class="exam-meta"><span>机考</span><span>缺页 12 份</span><span>责任人 李老师</span></div>
+                    </div>
+                    <div><span class="tag tag-err">扫描异常</span></div>
+                    <div class="status-line"><div class="progress err"><i style="width:62%"></i></div><span style="font-size:12px;color:var(--dp-text-3)">62%</span></div>
+                    <div style="font-size:12px;color:var(--dp-text-2)">03-18 ~ 03-22</div>
+                    <div class="row-actions"><button class="btn-text" type="button">处理异常</button><span class="more">⋯</span></div>
+                  </div>
+                  <div class="row">
+                    <div><input type="checkbox" /></div>
+                    <div>
+                      <div class="exam-name">大学物理 · 阶段测验 03</div>
+                      <div class="exam-meta"><span>已完成批阅</span><span>待成绩发布</span></div>
+                    </div>
+                    <div><span class="tag tag-warn">待发布</span></div>
+                    <div class="status-line"><div class="progress"><i style="width:100%"></i></div><span style="font-size:12px;color:var(--dp-text-3)">可发布</span></div>
+                    <div style="font-size:12px;color:var(--dp-text-2)">03-10 ~ 03-12</div>
+                    <div class="row-actions"><button class="btn-text" type="button">去发布</button><span class="more">⋯</span></div>
+                  </div>
+                  <div class="row">
+                    <div><input type="checkbox" /></div>
+                    <div>
+                      <div class="exam-name">电路分析 · 期中考试</div>
+                      <div class="exam-meta"><span>主观题复核中</span><span>剩余 186 份</span></div>
+                    </div>
+                    <div><span class="tag tag-run">阅卷中</span></div>
+                    <div class="status-line"><div class="progress"><i style="width:48%"></i></div><span style="font-size:12px;color:var(--dp-text-3)">48%</span></div>
+                    <div style="font-size:12px;color:var(--dp-text-2)">03-01 ~ 03-08</div>
+                    <div class="row-actions"><button class="btn-text" type="button">继续批阅</button><span class="more">⋯</span></div>
+                  </div>
+                  <div class="row">
+                    <div><input type="checkbox" /></div>
+                    <div>
+                      <div class="exam-name">C 语言程序设计 · 补考</div>
+                      <div class="exam-meta"><span>成绩已发布</span><span>可归档</span></div>
+                    </div>
+                    <div><span class="tag tag-ok">已结束</span></div>
+                    <div class="status-line"><div class="progress"><i style="width:100%"></i></div><span style="font-size:12px;color:var(--dp-text-3)">完成</span></div>
+                    <div style="font-size:12px;color:var(--dp-text-2)">02-20 ~ 02-25</div>
+                    <div class="row-actions"><button class="btn-text" type="button">查看结果</button><span class="more">⋯</span></div>
+                  </div>
+                  <div class="row">
+                    <div><input type="checkbox" /></div>
+                    <div>
+                      <div class="exam-name">工程制图 · 课程设计检查</div>
+                      <div class="exam-meta"><span>未到开考</span><span>名单已同步</span></div>
+                    </div>
+                    <div><span class="tag">未开始</span></div>
+                    <div class="status-line"><div class="progress"><i style="width:8%"></i></div><span style="font-size:12px;color:var(--dp-text-3)">准备中</span></div>
+                    <div style="font-size:12px;color:var(--dp-text-2)">04-01 ~ 04-10</div>
+                    <div class="row-actions"><button class="btn-text" type="button">准备检查</button><span class="more">⋯</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="note">
+      <div><strong style="color:#fff">对比要点（请你审）</strong></div>
+      <div class="diff-list">
+        <div class="diff-item"><b>1. 信息架构</b>A：三域深菜单并行。B：顶栏域切换 + 本域 5 个主任务。</div>
+        <div class="diff-item"><b>2. 页面心智</b>A：资源管理表。B：任务队列优先，资源库仍可达。</div>
+        <div class="diff-item"><b>3. 指标区</b>B 可切换三种：连体加强 / 1主+3次（默认） / 四卡分离。细比见 metrics-compare。</div>
+        <div class="diff-item"><b>4. 行交互</b>A：多操作并列。B：每行一个情境主行动，其余进 ⋯。</div>
+        <div class="diff-item"><b>5. 顶栏</b>A：空品牌位。B：学期上下文 + 风险芯片。</div>
+        <div class="diff-item"><b>6. 约束</b>主色 #2B67FF，对齐现有 --dp-*，便于回落真页实现。</div>
+      </div>
+      <p style="margin:12px 0 0">文件：<code style="color:#c9d7f5">edu-practice-mark-vue/prototypes/exam-list-redesign.html</code> · 确认后按 B 改真实页面。</p>
+    </div>
+  </div>
+</div>
+<script>
+  const grid = document.getElementById('stageGrid');
+  const current = document.getElementById('panelCurrent');
+  const proposed = document.getElementById('panelProposed');
+  document.querySelectorAll('.toggle button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.toggle button').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      const mode = btn.dataset.mode;
+      current.style.display = mode === 'proposed' ? 'none' : '';
+      proposed.style.display = mode === 'current' ? 'none' : '';
+      grid.classList.toggle('compare', mode === 'compare');
+    });
+  });
+  function setMetric(v) {
+    document.querySelectorAll('.metric-variant').forEach((el) => el.classList.toggle('show', el.id === 'metric-' + v));
+    document.querySelectorAll('#metricSwitch button').forEach((b) => b.classList.toggle('active', b.dataset.metric === v));
+  }
+  document.querySelectorAll('#metricSwitch button').forEach((btn) => {
+    btn.addEventListener('click', () => setMetric(btn.dataset.metric));
+  });
+  setMetric('v2');
+</script>
+</body>
+</html>

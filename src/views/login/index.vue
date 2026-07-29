@@ -96,6 +96,7 @@ import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import { resetAuthState } from '@/config/axios/auth-state'
 import { useAppStore } from '@/stores'
+import { rememberCasLoginRedirect } from '@/utils/cas-login-redirect'
 import { showUserError } from '@/utils/error-handler'
 
 import { resolveSubdomainTenant, subdomainLoading, subdomainTenant } from '@/utils/subdomain'
@@ -183,6 +184,7 @@ async function triggerAutoCasLogin() {
   if (!loginUrl) {
     throw new Error('统一认证暂不可用')
   }
+  rememberCasLoginRedirect(route.query.redirect)
   window.location.href = loginUrl
 }
 
@@ -261,27 +263,6 @@ onMounted(async () => {
   min-height: 0;
   padding: var(--dp-space-component-tight) var(--dp-space-component-xs) 0;
   overflow: hidden;
-}
-
-/* 极淡天蓝网格，承接插画结构线，不抢主体 */
-.login-brand::before {
-  content: '';
-  position: absolute;
-  inset: 10px 0 84px;
-  background:
-    linear-gradient(
-      color-mix(in srgb, var(--dp-blue-200) 55%, transparent) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--dp-blue-200) 55%, transparent) 1px,
-      transparent 1px
-    );
-  background-size: 56px 56px;
-  opacity: 0.18;
-  pointer-events: none;
-  mask-image: radial-gradient(ellipse at 40% 45%, black 20%, transparent 72%);
 }
 
 .login-brand__top,
@@ -474,6 +455,25 @@ onMounted(async () => {
 .login-tab-content {
   margin-top: var(--dp-space-component-xs);
 
+  :deep(.ant-form-item) {
+    margin-bottom: var(--dp-space-block);
+  }
+
+  :deep(.ui-input__control),
+  :deep(.ui-password-input__control),
+  :deep(.school-autocomplete__input .ant-select-selector) {
+    border-radius: var(--dp-radius-control);
+  }
+
+  :deep(.ui-button--size-lg),
+  :deep(.dp-btn--lg) {
+    min-height: 48px;
+    border-radius: var(--dp-radius-control);
+    font-weight: var(--dp-font-weight-title);
+  }
+}
+
+.login-body {
   :deep(.ui-radio-group :where(.ant-radio-group)) {
     gap: 3px;
     padding: 3px;
@@ -482,11 +482,17 @@ onMounted(async () => {
   }
 
   :deep(.ui-radio-group .ant-radio-button-wrapper) {
-    min-height: 34px;
+    display: inline-flex;
+    min-width: 0;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
     padding: 0 var(--dp-space-component);
     font-size: var(--dp-font-size-sm);
     font-weight: var(--dp-font-weight-emphasis);
-    line-height: 34px;
+    line-height: 1.3;
+    white-space: normal;
+    overflow-wrap: anywhere;
     color: var(--dp-text-secondary);
   }
 
@@ -507,19 +513,6 @@ onMounted(async () => {
   :deep(.ui-radio-group) {
     width: 100%;
   }
-
-  :deep(.ui-input__control),
-  :deep(.ui-password-input__control),
-  :deep(.school-autocomplete__input .ant-select-selector) {
-    border-radius: var(--dp-radius-control);
-  }
-
-  :deep(.ui-button--size-lg),
-  :deep(.dp-btn--lg) {
-    min-height: 48px;
-    border-radius: var(--dp-radius-control);
-    font-weight: var(--dp-font-weight-title);
-  }
 }
 
 .login-footer {
@@ -539,7 +532,7 @@ onMounted(async () => {
   color: var(--dp-text-muted);
 }
 
-@media (max-width: 1180px) {
+@media (max-width: bp.$ant-grid-lg) {
   .login-stage {
     display: block;
     overflow: auto;
@@ -577,7 +570,7 @@ onMounted(async () => {
   .login-brand__visual {
     width: 100%;
     max-width: none;
-    height: min(520px, 58vh);
+    height: min(300px, 34vh);
     margin: 0 auto;
   }
 
@@ -604,7 +597,7 @@ onMounted(async () => {
   }
 
   .login-brand__visual {
-    height: min(320px, 42vh);
+    height: min(200px, 24vh);
   }
 
   .login-brand__visual-image {

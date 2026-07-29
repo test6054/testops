@@ -85,9 +85,10 @@
       </section>
     </div>
 
+    <!-- 页级实心主行动在 ContextBar；此处仅保留次要确认，避免双 primary 抢焦点 -->
     <footer class="score-confirm-readiness__footer">
       <UiButton
-        variant="primary"
+        variant="outline"
         size="sm"
         :disabled="!canBulkPublish || viewModel.publishBlocked || viewModel.mustFixCount > 0"
         :loading="bulkPublishing"
@@ -101,7 +102,7 @@
       </UiButton>
       <UiButton
         v-if="safeConfirmableCount > 0 || canBatchConfirmSafe"
-        variant="outline"
+        variant="ghost"
         size="sm"
         :disabled="!canBatchConfirmSafe || viewModel.confirmBlocked"
         :loading="batchConfirming"

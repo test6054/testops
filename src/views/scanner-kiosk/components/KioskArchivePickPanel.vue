@@ -52,7 +52,7 @@ const columns = [
   { title: '卷名', key: 'archiveTitle', dataIndex: 'archiveTitle', ellipsis: true },
   { title: '教学班', key: 'teachingClassName', dataIndex: 'teachingClassName', width: 120 },
   { title: '状态', key: 'volumeStatus', dataIndex: 'volumeStatus', width: 96 },
-  { title: '操作', key: 'actions', width: 88 },
+  { title: '主行动', key: 'actions', width: 88 },
 ]
 
 watch(
@@ -204,6 +204,7 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="[
                 {
                   key: 'pick',

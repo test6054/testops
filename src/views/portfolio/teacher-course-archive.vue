@@ -10,6 +10,8 @@ import type {
   PortfolioMultiIdentityLayerVO,
   PortfolioTeachingWorkloadByIdentityVO,
 } from '@/apis/portfolio/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -27,7 +29,9 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
@@ -40,6 +44,7 @@ import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioIdentityTypeDisplay } from '@/utils/portfolio-identity-type'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 
 const router = useRouter()
 const route = useRoute()
@@ -121,14 +126,14 @@ const frameworkColumns: ColumnsType = [
   { title: '框架', dataIndex: 'categoryName', key: 'categoryName' },
   { title: '状态', key: 'completed', width: 96 },
   { title: '更新时间', dataIndex: 'latestUpdateTime', key: 'latestUpdateTime', width: 168 },
-  { title: '操作', key: 'actions', width: 88 },
+  { title: '主行动', key: 'actions', width: 88 },
 ]
 
 const customColumns: ColumnsType = [
   { title: '分类名称', dataIndex: 'categoryName', key: 'categoryName' },
   { title: '编码', dataIndex: 'categoryCode', key: 'categoryCode', width: 180 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 168 },
-  { title: '操作', key: 'actions', width: 140 },
+  { title: '主行动', key: 'actions', width: 140 },
 ]
 
 /** 路由 query 决定课程档案上下文；缺省时也必须清空旧筛选，避免复用页残留。 */
@@ -252,6 +257,34 @@ function openFrameworkIntake(
   void router.push({ path: `/portfolio/teacher/archive/${framework.categoryId}`, query })
 }
 
+/** 框架外自建分类：进入档案为主行动 */
+function buildCustomCategoryRowActions(
+  record: PortfolioTeacherCustomCategoryVO,
+): UiTableRowActionItem[] {
+  return [
+    { key: 'open', label: '进入档案', tone: 'primary' },
+    {
+      key: 'delete',
+      label: '删除',
+      tone: 'danger',
+      hidden: readonlyMode.value,
+      disabled: deletingCategoryId.value === record.categoryId,
+    },
+  ]
+}
+
+function handleCustomCategoryRowAction(
+  key: string,
+  record: PortfolioTeacherCustomCategoryVO,
+): void {
+  if (key === 'open') {
+    openCustomCategoryArchive(record)
+    return
+  }
+  if (key === 'delete') {
+    void confirmDeleteCustomCategory(record)
+  }
+}
 function openCustomCategoryArchive(row: PortfolioTeacherCustomCategoryVO) {
   const query: Record<string, string> = {}
   if (scopeTeacherId()) {
@@ -348,6 +381,46 @@ watch(
     void loadOverview()
   },
 )
+
+const TeacherCourseArchiveSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadFailed.value && courses.value.length === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'courses',
+      label: '讲授课程',
+      value: overviewSummary.value.taughtCourseCount ?? courses.value.length,
+      clickable: true,
+    },
+  ]
+  if (overviewSummary.value.fullyCompleteCourseCount != null) {
+    metrics.push({
+      key: 'complete',
+      label: '五框架齐备',
+      value: overviewSummary.value.fullyCompleteCourseCount,
+    })
+  }
+  if (overviewSummary.value.frameworkSlotDone != null && overviewSummary.value.frameworkSlotTotal != null) {
+    metrics.push({
+      key: 'slots',
+      label: '框架槽位',
+      value: `${overviewSummary.value.frameworkSlotDone}/${overviewSummary.value.frameworkSlotTotal}`,
+    })
+  }
+  return applySpotlightEmphasis(metrics, { primaryKey: 'courses', actionLabel: '刷新' })
+})
+
+const TeacherCourseArchiveWorkbenchSubtitle = computed(() => {
+  if (loadFailed.value) return '加载失败'
+  const taught = overviewSummary.value.taughtCourseCount
+  if (taught != null) return `讲授 ${taught} 门`
+  return courses.value.length > 0 ? `${courses.value.length} 门课程` : '暂无课程'
+})
+
+function onTeacherCourseArchiveSignalClick(_key: string) {
+  void loadOverview()
+}
 </script>
 
 <template>
@@ -357,7 +430,16 @@ watch(
         layout="workbench"
         show-title
         title="课程档案"
-        subtitle="按讲授课程查看五框架完成度"
+        :subtitle="TeacherCourseArchiveWorkbenchSubtitle"
+      />
+    </template>
+    <template v-if="TeacherCourseArchiveSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TeacherCourseArchiveSignalMetrics"
+        @metric-click="onTeacherCourseArchiveSignalClick"
       />
     </template>
     <UiAlertStrip
@@ -504,13 +586,18 @@ watch(
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'actions'">
-                  <UiButton
-                    size="sm"
-                    variant="ghost"
-                    @click="openFrameworkIntake(record, framework)"
-                  >
-                    {{ framework.completed ? '查看' : '填报' }}
-                  </UiButton>
+                  <UiTableActions
+                    :max-visible="2"
+                    :items="[
+                      {
+                        key: 'intake',
+                        label: framework.completed ? '查看' : '填报',
+                        tone: 'primary',
+                      },
+                    ]"
+                    split
+                    @action="() => openFrameworkIntake(record, framework)"
+                  />
                 </template>
               </template>
             </UiDataTable>
@@ -538,19 +625,12 @@ watch(
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'actions'">
-              <UiButton size="sm" variant="ghost" @click="openCustomCategoryArchive(record)">
-                进入档案
-              </UiButton>
-              <UiButton
-                size="sm"
-                v-if="!readonlyMode"
-                variant="ghost"
-                danger
-                :loading="deletingCategoryId === record.categoryId"
-                @click="confirmDeleteCustomCategory(record)"
-              >
-                删除
-              </UiButton>
+              <UiTableActions
+                :max-visible="2"
+                :items="buildCustomCategoryRowActions(record)"
+                split
+                @action="(key) => handleCustomCategoryRowAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>

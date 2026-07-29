@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="消息中心">
+      <ContextBar layout="workbench" show-title title="消息中心" :subtitle="unreadTotal > 0 ? `${unreadTotal} 条未读` : undefined">
         <template #status>
           <UiTag tone="blue" size="sm">站内信 + 系统公告</UiTag>
           <UiTag v-if="unreadTotal > 0" tone="red" size="sm">未读 {{ unreadTotal }}</UiTag>
@@ -29,6 +29,16 @@
         </template>
       </ContextBar>
     </template>
+    <template v-if="MessageCenterSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="MessageCenterSignalMetrics"
+        @metric-click="onMessageCenterSignalClick"
+      />
+    </template>
+
 
     <!-- Tabs -->
     <UiCard class="message-page__list-card">
@@ -251,6 +261,7 @@ import type {
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { NotificationTypeEnum } from '@/types/enums/notification-type';
+import type { SignalMetric } from '@/types/workbench'
 import BellOutlined from '@ant-design/icons-vue/BellOutlined'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -284,11 +295,13 @@ import UiListItemMeta from '@/components/ui-guide/ui/UiListItemMeta.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useNotificationStore } from '@/stores/modules/notification'
 import { NotificationTypeDescription } from '@/types/enums/notification-type'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 
 defineOptions({ name: 'UserMessage' })
 
@@ -656,6 +669,27 @@ onMounted(async () => {
 onActivated(() => {
   void reloadAll()
 })
+
+const MessageCenterSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'unread',
+      label: '未读消息',
+      value: unreadTotal.value,
+      clickable: true,
+    },
+    {
+      key: 'inbox',
+      label: '本页收件',
+      value: messages.value.length,
+      helper: '仅当前页',
+    },
+  ], { primaryKey: 'unread', actionLabel: '刷新' })
+})
+
+function onMessageCenterSignalClick(_key: string) {
+  void reloadAll()
+}
 </script>
 
 <style lang="scss" scoped>

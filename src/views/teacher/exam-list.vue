@@ -3,7 +3,7 @@
   <div class="exam-list-page">
     <StageWorkbenchShell>
       <template #context>
-        <ContextBar layout="workbench" show-title title="考试列表">
+        <ContextBar layout="workbench" show-title title="考试与待办" :subtitle="examListWorkbenchSubtitle">
           <template #toolbar>
             <div class="exam-list__scope dp-exam-scope" role="group" aria-label="考试范围筛选">
               <div class="dp-exam-scope__item">
@@ -88,6 +88,7 @@
         <SignalBand
           compact
           variant="panel"
+          layout="spotlight"
           :metrics="summarySignalMetrics"
           @metric-click="handleSummaryMetricClick"
         />
@@ -118,16 +119,32 @@
                 format="YYYY-MM-DD"
                 value-format="YYYY-MM-DD HH:mm:ss"
                 :placeholder="['开始日期', '结束日期']"
-                style="width: 260px"
+                class="exam-list-page__date-range"
               />
             </template>
           </UiFilterBar>
         </template>
 
-        <UiEmpty
+        <UiAlertStrip
+          v-if="examListDrillAnchor"
+          tone="info"
+          :title="examListDrillAnchor.title"
+          :description="examListDrillAnchor.description"
+          class="exam-list-page__drill-anchor"
+        >
+          <template #actions>
+            <UiButton size="sm" variant="outline" @click="clearExamListDrillFilter">
+              清除筛选
+            </UiButton>
+          </template>
+        </UiAlertStrip>
+
+        <UiStateBlock
           size="sm"
           v-if="listLoadFailed"
-          title="加载失败"
+          state="error"
+          title="考试列表加载失败"
+          description="已保留上次成功的筛选范围；可切换范围，或离开页面后重新进入。"
           class="exam-list-page__empty"
         />
         <UiEmpty
@@ -140,14 +157,26 @@
               : '当前筛选下没有需要优先处理的考试'
           "
           class="exam-list-page__empty"
-        />
+        >
+          <template v-if="priorityReasonFilter" #action>
+            <UiButton size="sm" variant="outline" @click="clearExamListDrillFilter">
+              清除原因筛选
+            </UiButton>
+          </template>
+        </UiEmpty>
         <UiEmpty
           size="sm"
           v-else-if="listTab === 'ongoing' && !ongoingLoading && ongoingPagination.total === 0"
           title="暂无进行中考试"
           description="可新建考试，或切换到「全部」查看历史"
           class="exam-list-page__empty"
-        />
+        >
+          <template #action>
+            <UiButton size="sm" variant="outline" @click="goCreateExam">
+              新建考试
+            </UiButton>
+          </template>
+        </UiEmpty>
 
         <UiDataTable
           v-else-if="!listLoadFailed"
@@ -272,7 +301,8 @@
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 :items="buildExamRowActions(record)"
-                align="center"
+                :max-visible="2"
+                align="end"
                 split
                 @action="(key) => handleExamRowAction(key, record)"
               />
@@ -337,9 +367,11 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiRangePicker from '@/components/ui-guide/ui/RangePicker.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -355,6 +387,7 @@ import { useExamListBatchLifecycle } from '@/composables/useExamListBatchLifecyc
 import { useExamListKeyboard } from '@/composables/useExamListKeyboard'
 import { useMarkDashboardFilterOptions } from '@/composables/useMarkDashboardFilterOptions'
 import { useUserStore } from '@/stores/modules/user'
+import { ExamWorkbenchPriorityReasonDescription } from '@/types/enums/exam-workbench-priority-reason-code-enum'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import {
@@ -559,7 +592,7 @@ const allTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
   { title: '阅卷进度', key: 'progress', width: 140 },
   { title: '考试时间', key: 'examWindow', width: 160 },
   { title: '创建时间', key: 'createTime', width: 180 },
-  { title: '操作', key: 'actions', align: 'center', width: 200, fixed: 'right' },
+  { title: '主行动', key: 'actions', align: 'right', width: 148, fixed: 'right' },
 ]
 
 const workbenchTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
@@ -580,7 +613,7 @@ const workbenchTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
   { title: '进行中批阅', key: 'openMarking', width: 108 },
   { title: '考试时间', key: 'examWindow', width: 160 },
   { title: '创建时间', key: 'createTime', width: 168 },
-  { title: '操作', key: 'actions', align: 'center', width: 200, fixed: 'right' },
+  { title: '主行动', key: 'actions', align: 'right', width: 148, fixed: 'right' },
 ]
 
 const ongoingTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
@@ -602,7 +635,7 @@ const ongoingTabColumns: ColumnType<ExamWorkbenchSummaryResponse>[] = [
   { title: '进行中批阅', key: 'openMarking', width: 108 },
   { title: '考试时间', key: 'examWindow', width: 160 },
   { title: '创建时间', key: 'createTime', width: 168 },
-  { title: '操作', key: 'actions', align: 'center', width: 200, fixed: 'right' },
+  { title: '主行动', key: 'actions', align: 'right', width: 148, fixed: 'right' },
 ]
 
 type ExamListTabKey = 'priority' | 'ongoing' | 'all'
@@ -611,7 +644,7 @@ const listTab = ref<ExamListTabKey>('priority')
 /** 优先推进原因深链筛选；列表命中以服务端 priorityReasonCode 为唯一真源。 */
 const priorityReasonFilter = ref<ExamWorkbenchPriorityReasonCode | undefined>(undefined)
 /** SignalBand 显式下钻键；stale 等无法仅由 Tab/状态反推的范围依赖此字段。 */
-type ExamListSignalDrillKey = 'filtered' | 'active' | 'closed' | 'stale'
+type ExamListSignalDrillKey = 'priority' | 'filtered' | 'active' | 'closed' | 'stale'
 const signalDrillKey = ref<ExamListSignalDrillKey | null>(null)
 
 /** 路由深链写入 Tab 时抑制 watch 重复拉数。 */
@@ -707,14 +740,62 @@ function clearPriorityReasonFilter(): void {
   void loadTabData(ExamListScopeCode.PRIORITY)
 }
 
+/** 清除 Signal/原因下钻，回到本学期 ACTIVE 的优先推进工作台范围。 */
+async function clearExamListDrillFilter(): Promise<void> {
+  const queryWillChange = route.query.tab !== 'priority'
+    || route.query.academicYear !== filterForm.academicYear
+    || route.query.semester !== filterForm.semester
+    || route.query.status !== ExamStatusCode.ACTIVE
+    || Object.prototype.hasOwnProperty.call(route.query, 'priorityReason')
+  signalDrillKey.value = null
+  priorityReasonFilter.value = undefined
+  filterForm.status = ExamStatusCode.ACTIVE
+  routeExplicitListTab = true
+  resetAllTabPaginations()
+  selectedRowKeys.value = []
+  suppressListTabWatch = true
+  try {
+    listTab.value = 'priority'
+  } finally {
+    suppressListTabWatch = false
+  }
+  await router.replace({
+    query: {
+      academicYear: filterForm.academicYear,
+      semester: filterForm.semester,
+      status: ExamStatusCode.ACTIVE,
+      tab: 'priority',
+    },
+  })
+  if (!queryWillChange) {
+    await reloadListAndCounts({ resolveTab: false })
+  }
+}
+
+const examListWorkbenchSubtitle = computed(() => {
+  const total = currentPagination.value?.total ?? 0
+  if (statusTotalsFailed.value) {
+    return '范围统计加载失败'
+  }
+  if (listTab.value === 'priority') {
+    return total > 0 ? `优先推进 ${total} 场` : '暂无优先推进'
+  }
+  if (listTab.value === 'ongoing') {
+    return total > 0 ? `进行中 ${total} 场` : '暂无进行中考试'
+  }
+  return total > 0 ? `命中 ${total} 场` : '当前筛选无考试'
+})
+
 const tableColumns = computed<ColumnType<ExamWorkbenchSummaryResponse>[]>(() => {
   if (listTab.value === 'all') {
     return allTabColumns
   }
   if (listTab.value === 'ongoing') {
-    return ongoingTabColumns
+    // 进行中队列同样去掉创建时间
+    return ongoingTabColumns.filter((column) => column.key !== 'createTime')
   }
-  return workbenchTabColumns
+  // 优先推进：任务队列列，去掉「创建时间」降低资源台账感
+  return workbenchTabColumns.filter((column) => column.key !== 'createTime')
 })
 
 const currentDataSource = computed<ExamWorkbenchSummaryResponse[]>(() => {
@@ -745,6 +826,26 @@ const currentPagination = computed<TablePaginationConfig>(() => {
     return ongoingPagination
   }
   return allPagination
+})
+
+const examListDrillAnchor = computed<{ title: string, description: string } | null>(() => {
+  const description = `${examListWorkbenchSubtitle.value} · 当前列表 ${currentPagination.value.total ?? 0} 场`
+  if (priorityReasonFilter.value) {
+    return {
+      title: `列表已按「${ExamWorkbenchPriorityReasonDescription[priorityReasonFilter.value]}」过滤`,
+      description,
+    }
+  }
+  const titleByDrill: Partial<Record<ExamListSignalDrillKey, string>> = {
+    priority: '列表已按「优先推进」过滤',
+    active: '列表已按「进行中」过滤',
+    filtered: '列表已按当前筛选范围过滤',
+    closed: '列表已按「已关闭」过滤',
+    stale: '列表已按「超 30 天未推进」过滤',
+  }
+  const drill = signalDrillKey.value
+    ?? (listTab.value === 'all' && filterForm.status === ExamStatusCode.CLOSED ? 'closed' : null)
+  return drill ? { title: titleByDrill[drill] ?? '列表已按当前范围过滤', description } : null
 })
 
 const examListTabs = computed<UiSectionTabItem[]>(() => [
@@ -821,7 +922,10 @@ const activeExamListSignalKey = computed<ExamListSignalDrillKey | null>(() => {
     return signalDrillKey.value
   }
   if (priorityReasonFilter.value) {
-    return null
+    return 'priority'
+  }
+  if (listTab.value === 'priority') {
+    return 'priority'
   }
   if (listTab.value === 'ongoing') {
     return 'active'
@@ -829,34 +933,39 @@ const activeExamListSignalKey = computed<ExamListSignalDrillKey | null>(() => {
   if (listTab.value === 'all' && filterForm.status === ExamStatusCode.CLOSED) {
     return 'closed'
   }
+  if (listTab.value === 'all') {
+    return 'filtered'
+  }
   return null
 })
 
 const summarySignalMetrics = computed((): SignalMetric[] => {
   const dash = '—'
-  const allHitTotal = allBadgeTotal.value
+  const priority = priorityBadgeTotal.value
   const ongoing = ongoingBadgeTotal.value
-  const closed = closedTotal.value
+  const allHitTotal = allBadgeTotal.value
   const stale = stalePushTotal.value
   const activeKey = activeExamListSignalKey.value
   const drill = signalDrillKey.value
-  const closedSubset
-    = listTab.value === 'all' && filterForm.status === ExamStatusCode.CLOSED
   return [
     {
-      key: 'filtered',
-      label: '全部命中',
-      value: statusTotalsFailed.value ? dash : allHitTotal,
+      key: 'priority',
+      label: '优先推进',
+      value: statusTotalsFailed.value ? dash : priority,
       unit: '场',
-      tone: 'blue',
+      tone: !statusTotalsFailed.value && priority > 0 ? 'orange' : 'blue',
       iconTone: 'blue',
+      emphasis: 'primary',
+      actionLabel: statusTotalsFailed.value ? undefined : '查看待办',
       helper: statusTotalsFailed.value
         ? undefined
-        : drill === 'filtered'
-          ? '当前筛选'
-          : '点击筛选全部范围',
+        : drill === 'priority' || activeKey === 'priority'
+          ? '当前待办队列'
+          : priority > 0
+            ? '需优先处理的考试'
+            : '暂无优先事项',
       clickable: !statusTotalsFailed.value,
-      active: activeKey === 'filtered',
+      active: activeKey === 'priority',
     },
     {
       key: 'active',
@@ -865,6 +974,7 @@ const summarySignalMetrics = computed((): SignalMetric[] => {
       unit: '场',
       tone: 'green',
       iconTone: 'green',
+      emphasis: 'secondary',
       helper: statusTotalsFailed.value
         ? undefined
         : drill === 'active'
@@ -876,19 +986,20 @@ const summarySignalMetrics = computed((): SignalMetric[] => {
       active: activeKey === 'active',
     },
     {
-      key: 'closed',
-      label: '已关闭',
-      value: statusTotalsFailed.value ? dash : closed,
+      key: 'filtered',
+      label: '全部命中',
+      value: statusTotalsFailed.value ? dash : allHitTotal,
       unit: '场',
-      tone: 'gray',
-      iconTone: 'gray',
+      tone: 'blue',
+      iconTone: 'blue',
+      emphasis: 'secondary',
       helper: statusTotalsFailed.value
         ? undefined
-        : drill === 'closed' || closedSubset
+        : drill === 'filtered'
           ? '当前筛选'
-          : '点击筛选已关闭',
+          : '点击筛选全部范围',
       clickable: !statusTotalsFailed.value,
-      active: activeKey === 'closed',
+      active: activeKey === 'filtered',
     },
     {
       key: 'stale',
@@ -897,6 +1008,7 @@ const summarySignalMetrics = computed((): SignalMetric[] => {
       unit: '场',
       tone: stale > 0 || activeKey === 'stale' ? 'orange' : 'gray',
       iconTone: 'gray',
+      emphasis: 'secondary',
       helper: statusTotalsFailed.value
         ? undefined
         : drill === 'stale'
@@ -909,9 +1021,25 @@ const summarySignalMetrics = computed((): SignalMetric[] => {
     },
   ]
 })
-
 /** KPI 改状态/Tab 并写入下钻锚点；列表加载由 listTab watch 或同 Tab reload 承接。 */
 function handleSummaryMetricClick(key: string): void {
+  if (key === 'priority') {
+    if (statusTotalsFailed.value) {
+      return
+    }
+    signalDrillKey.value = 'priority'
+    priorityReasonFilter.value = undefined
+    if (filterForm.status === ExamStatusCode.CLOSED) {
+      filterForm.status = undefined
+    }
+    resetAllTabPaginations()
+    if (listTab.value === 'priority') {
+      void reloadListAndCounts({ resolveTab: false })
+      return
+    }
+    listTab.value = 'priority'
+    return
+  }
   if (key === 'filtered') {
     if (statusTotalsFailed.value) {
       return
@@ -1227,7 +1355,6 @@ async function loadWorkbenchScopeCounts(): Promise<void> {
     priorityBadgeTotal.value = counts.priorityCount
     ongoingBadgeTotal.value = counts.ongoingCount
     allBadgeTotal.value = counts.allCount
-    closedTotal.value = counts.closedCount
     stalePushTotal.value = counts.stalePushCount
   } catch (error) {
     statusTotalsFailed.value = true
@@ -1337,7 +1464,6 @@ function goExamArchiveReview(exam: ExamWorkbenchSummaryResponse): void {
 }
 
 // ─── KPI 概览：workbench-scope-counts 返回 CLOSED；Signal「进行中」与 Tab 共用 ongoingCount ─
-const closedTotal = ref<number>(0)
 const statusTotalsFailed = ref(false)
 
 const formModalOpen = ref(false)
@@ -1501,7 +1627,7 @@ function canManageOwnerExamLifecycle(exam: ExamWorkbenchSummaryResponse): boolea
   return exam.canManageOwnerExamLifecycleWrites === true
 }
 
-/** 组装考试列表行内操作：默认展示 3 项，其余由 UiTableActions 收入「更多」。 */
+/** 组装考试列表行内操作：行内 1 个主行动（maxVisible=2 含更多），其余进「更多」。 */
 function resolveExamEnterActionLabel(exam: ExamWorkbenchSummaryResponse): string {
   const label = exam.enterActionLabel?.trim()
   if (!label) {
@@ -1511,19 +1637,19 @@ function resolveExamEnterActionLabel(exam: ExamWorkbenchSummaryResponse): string
 }
 
 function buildExamRowActions(exam: ExamWorkbenchSummaryResponse): UiTableRowActionItem[] {
-  // 行内仅 1 个 primary：进入为默认主路径；阅卷为次操作
+  // 行内唯一 primary：进入工作台；其余进 ⋯（含阅卷/归档/生命周期）
   const actions: UiTableRowActionItem[] = [
     { key: 'enter', label: resolveExamEnterActionLabel(exam), tone: 'primary' },
   ]
-  if (exam.status === ExamStatusCode.ACTIVE) {
-    actions.push({ key: 'marking', label: '阅卷' })
-  }
   if (isExamArchiveReady(exam)) {
+    // 待建袋仅改文案强调；禁止第二 primary 与「进入」抢主路径（tone 合同仅 default/primary/danger）
     actions.push({
       key: 'archive',
       label: isAttentionExam(exam.examId) ? '待建袋·归档复盘' : '归档复盘',
-      tone: isAttentionExam(exam.examId) ? 'primary' : undefined,
     })
+  }
+  if (exam.status === ExamStatusCode.ACTIVE) {
+    actions.push({ key: 'marking', label: '阅卷' })
   }
   // MVR-272：编辑/关闭/删除均仅主考；与 BE requireExamOwnerPermission 对齐
   if (exam.status !== ExamStatusCode.CLOSED && canManageOwnerExamLifecycle(exam) === true) {
@@ -1767,6 +1893,15 @@ watch(
   padding: var(--dp-space-page) var(--dp-space-block);
 }
 
+.exam-list-page__date-range {
+  width: 100%;
+  max-width: 260px;
+}
+
+.exam-list-page__drill-anchor {
+  margin: var(--dp-space-component) var(--dp-space-block) 0;
+}
+
 .exam-list-page__exam-name-cell {
   display: flex;
   flex-direction: column;
@@ -1990,5 +2125,15 @@ watch(
 .exam-table :deep(.exam-list-row--archive-attention:hover > td.ant-table-cell-fix-left),
 .exam-table :deep(.exam-list-row--archive-attention:hover > td.ant-table-cell-fix-right) {
   background: color-mix(in srgb, var(--dp-warning) 14%, var(--dp-surface));
+}
+
+@media (max-width: 600px) {
+  .exam-list-page__date-range {
+    max-width: none;
+  }
+
+  .exam-list-page__drill-anchor {
+    margin-inline: var(--dp-space-component);
+  }
 }
 </style>

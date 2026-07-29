@@ -58,6 +58,7 @@ import {
   showFormValidationMessage,
   showUserError,
 } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const pageNum = ref(1)
@@ -73,7 +74,7 @@ const columns: ColumnsType = [
   { title: '最大输入字符', dataIndex: 'maxInputChars', key: 'maxInputChars', width: 130 },
   { title: '密钥', dataIndex: 'apiKeyMasked', key: 'apiKeyMasked', width: 220 },
   { title: '健康', dataIndex: 'healthStatus', key: 'healthStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 380 },
+  { title: '主行动', key: 'actions', width: 380 },
 ]
 
 function healthLabel(value: AiHealthStatusCode | null | undefined): string {
@@ -454,7 +455,7 @@ const signals = computed<SignalMetric[]>(() => {
   const healthy = summary.healthyCount ?? 0
   const failed = summary.failedCount ?? 0
   const keyMissing = summary.keyMissingCount ?? 0
-  return [
+  return applySpotlightEmphasis([
     { key: 'total', label: '候选总数', value: summary.totalCount ?? 0, tone: 'blue' },
     {
       key: 'enabled',
@@ -470,7 +471,7 @@ const signals = computed<SignalMetric[]>(() => {
       value: keyMissing,
       tone: keyMissing > 0 ? 'orange' : 'gray',
     },
-  ]
+  ])
 })
 
 onMounted(() => {
@@ -480,16 +481,25 @@ onMounted(() => {
 onActivated(() => {
   void loadList()
 })
+
+/** 任务工作台副标题：启用与配置规模。 */
+const aiModelProfileWorkbenchSubtitle = computed(() => {
+  const enabled = signalSummary.value?.enabledCount
+  if (typeof enabled === 'number') {
+    return `启用 ${enabled} · 共 ${pageTotal.value} 条`
+  }
+  return `共 ${pageTotal.value} 条`
+})
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar show-title title="AI 模型配置" />
+      <QualityPageContextBar show-title title="AI 模型配置" :subtitle="aiModelProfileWorkbenchSubtitle" />
     </template>
 
     <template #signal>
-      <SignalBand :metrics="signals" variant="panel" compact class="ai-model__signals" />
+      <SignalBand layout="spotlight" :metrics="signals" variant="panel" compact class="ai-model__signals" />
     </template>
 
     <UiCard class="detail-table-card ai-model__active-card">
@@ -612,6 +622,7 @@ onActivated(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildAiModelProfileActions(record)"
               split
               @action="(key) => handleAiModelProfileAction(key, record)"

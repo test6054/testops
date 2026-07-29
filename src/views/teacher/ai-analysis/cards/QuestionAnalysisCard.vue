@@ -247,6 +247,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[
                   // MVR-387：模板须 === true；ComputedRef 对象 truthy 会导致无写权仍展示行操作
                   ...(canManageReviewerWrites
@@ -452,7 +453,7 @@ const columns: UiDataTableColumn<ExamQuestionAnalysisRecordResponse>[] = [
   }),
   { title: '平均分/满分', key: 'avgScore', width: 140, align: 'right', meta: { hideBelow: 'lg' } },
   { title: '快照时间', key: 'snapshotTime', width: 160, meta: { hideBelow: 'lg' } },
-  { title: '操作', key: 'actions', width: 190 },
+  { title: '主行动', key: 'actions', width: 190 },
 ]
 
 function buildListQueryBase(): Omit<QuestionAnalysisListQueryRequest, 'pageNum' | 'pageSize'> {

@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="批量复核确认">
+      <ContextBar layout="workbench" show-title title="批量复核确认" :subtitle="listLoadFailed ? undefined : `${pagination.total} 条待复核`">
         <template #status>
           <UiTag tone="blue" size="sm">
             待复核 {{ listLoadFailed ? '—' : pagination.total }} 条
@@ -36,7 +36,7 @@
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand compact variant="panel" :metrics="batchSignalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="batchSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" body="缺少考试上下文，请从考试列表进入批量确认" />
@@ -222,6 +222,9 @@ const batchSignalMetrics = computed((): SignalMetric[] => [
     value: listLoadFailed.value ? '—' : pagination.total,
     unit: listLoadFailed.value ? undefined : '条',
     tone: listLoadFailed.value ? 'red' : pagination.total > 0 ? 'orange' : 'green',
+    emphasis: 'primary',
+    actionLabel: !listLoadFailed.value && pagination.total > 0 ? '批量确认' : undefined,
+    helper: listLoadFailed.value ? '列表加载失败' : pagination.total > 0 ? '待批量复核队列' : '暂无待复核',
   },
   {
     key: 'selected',
@@ -229,6 +232,7 @@ const batchSignalMetrics = computed((): SignalMetric[] => [
     value: selectedRowKeys.value.length,
     unit: '条',
     tone: selectedRowKeys.value.length > 0 ? 'blue' : 'gray',
+    emphasis: 'secondary',
   },
 ])
 

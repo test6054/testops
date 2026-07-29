@@ -55,7 +55,7 @@
     </template>
 
     <template v-if="workbench" #signal>
-      <SignalBand compact variant="panel" :metrics="workbenchSignalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="workbenchSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" body="请先选择考试后再查看扫描批次明细" />
@@ -771,39 +771,62 @@ const workbenchSignalMetrics = computed((): SignalMetric[] => {
   if (!data) {
     return []
   }
+  const received: SignalMetric = {
+    key: 'received',
+    label: '已收件',
+    value: data.sourceReceivedCount ?? 0,
+    unit: '份',
+    tone: 'blue',
+  }
+  const registered: SignalMetric = {
+    key: 'registered',
+    label: '已登记',
+    value: data.pageRegisteredCount ?? 0,
+    unit: '页',
+    tone: 'purple',
+  }
+  const bound: SignalMetric = {
+    key: 'bound',
+    label: '已绑定',
+    value: data.paperBoundCount ?? 0,
+    unit: '卷',
+    tone: 'green',
+  }
+  const regProgress: SignalMetric = {
+    key: 'progress',
+    label: '登记进度',
+    value: data.registrationProgressPercent ?? '—',
+    unit:
+      data.registrationProgressPercent !== undefined && data.registrationProgressPercent !== null
+        ? '%'
+        : undefined,
+    tone: 'gray',
+    showProgress: typeof data.registrationProgressPercent === 'number',
+    progress: typeof data.registrationProgressPercent === 'number'
+      ? data.registrationProgressPercent
+      : undefined,
+  }
+  const scanProgress: SignalMetric = {
+    key: 'scanProgress',
+    label: '扫描进度',
+    value: data.progressPercent ?? '—',
+    unit: data.progressPercent !== undefined && data.progressPercent !== null ? '%' : undefined,
+    tone: 'blue',
+    showProgress: typeof data.progressPercent === 'number',
+    progress: typeof data.progressPercent === 'number' ? data.progressPercent : undefined,
+  }
+
+  const primary: SignalMetric = {
+    ...regProgress,
+    emphasis: 'primary',
+    actionLabel: '查看登记',
+    helper: '本批次页登记进度',
+  }
   return [
-    {
-      key: 'received',
-      label: '已收件',
-      value: data.sourceReceivedCount ?? 0,
-      unit: '份',
-      tone: 'blue',
-    },
-    {
-      key: 'registered',
-      label: '已登记',
-      value: data.pageRegisteredCount ?? 0,
-      unit: '页',
-      tone: 'purple',
-    },
-    { key: 'bound', label: '已绑定', value: data.paperBoundCount ?? 0, unit: '卷', tone: 'green' },
-    {
-      key: 'progress',
-      label: '登记进度',
-      value: data.registrationProgressPercent ?? '—',
-      unit:
-        data.registrationProgressPercent !== undefined && data.registrationProgressPercent !== null
-          ? '%'
-          : undefined,
-      tone: 'gray',
-    },
-    {
-      key: 'scanProgress',
-      label: '扫描进度',
-      value: data.progressPercent ?? '—',
-      unit: data.progressPercent !== undefined && data.progressPercent !== null ? '%' : undefined,
-      tone: 'blue',
-    },
+    primary,
+    ...[received, registered, bound, scanProgress]
+      .map((item) => ({ ...item, emphasis: 'secondary' as const }))
+      .slice(0, 3),
   ]
 })
 

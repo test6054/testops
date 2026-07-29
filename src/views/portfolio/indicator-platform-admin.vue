@@ -12,6 +12,7 @@ import type {
 } from '@/apis/portfolio/indicator-types'
 import type {
   PortfolioIndicatorDimensionL1Code} from '@/types/enums/portfolio-indicator-dimension-l1-code-enum';
+import type { SignalMetric } from '@/types/workbench'
 import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
 import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
 import message from 'ant-design-vue/es/message'
@@ -51,6 +52,7 @@ import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTree from '@/components/ui-guide/ui/UiTree.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -69,6 +71,7 @@ import {
   toIndustryPackDefForm,
 } from '@/utils/indicator-industry-pack-def'
 import { defaultTemplateParams } from '@/utils/indicator-template-params'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function dataSourceLabel(value: PfIndicatorDataSourceChannelCode): string {
@@ -190,7 +193,7 @@ const definitionColumns: ColumnsType = [
   { title: '二级维度', dataIndex: 'dimensionL2Name', key: 'dimensionL2Name', width: 120 },
   { title: '数据来源', dataIndex: 'defaultDataSource', key: 'defaultDataSource', width: 160 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 72 },
-  { title: '操作', key: 'actions', width: 100 },
+  { title: '主行动', key: 'actions', width: 100 },
 ]
 
 const templateColumns: ColumnsType = [
@@ -198,7 +201,7 @@ const templateColumns: ColumnsType = [
   { title: '模板名称', dataIndex: 'templateName', key: 'templateName' },
   { title: '规则类型', dataIndex: 'ruleType', key: 'ruleType', width: 120 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 88 },
-  { title: '操作', key: 'actions', width: 72 },
+  { title: '主行动', key: 'actions', width: 72 },
 ]
 
 const packColumns: ColumnsType = [
@@ -206,7 +209,7 @@ const packColumns: ColumnsType = [
   { title: '包名称', dataIndex: 'packName', key: 'packName' },
   { title: '版本', dataIndex: 'packVersion', key: 'packVersion', width: 88 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 88 },
-  { title: '操作', key: 'actions', width: 72 },
+  { title: '主行动', key: 'actions', width: 72 },
 ]
 
 const mappingColumns: ColumnsType = [
@@ -742,12 +745,33 @@ function onTabChange(key: string | number) {
 onMounted(async () => {
   await Promise.all([loadSummary(), loadTree()])
 })
+
+const IndicatorPlatformSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'total',
+      label: '指标定义',
+      value: definitionTotal.value,
+      clickable: true,
+    },
+    {
+      key: 'pageRows',
+      label: '本页',
+      value: rows.value.length,
+      helper: '仅当前页',
+    },
+  ], { primaryKey: 'total', actionLabel: '刷新' })
+})
+
+function onIndicatorPlatformSignalClick(_key: string) {
+  void loadPage()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="平台指标资产">
+      <ContextBar show-title layout="workbench" title="平台指标资产" :subtitle="`${definitionTotal} 条`">
         <template #actions>
           <UiButton
             size="sm"
@@ -761,6 +785,16 @@ onMounted(async () => {
         </template>
       </ContextBar>
     </template>
+    <template v-if="IndicatorPlatformSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="IndicatorPlatformSignalMetrics"
+        @metric-click="onIndicatorPlatformSignalClick"
+      />
+    </template>
+
     <UiAlertStrip
       v-if="summary"
       :tone="summary.t001T100Ready ? 'success' : 'warning'"
@@ -869,6 +903,7 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[
                   { key: 'detail', label: '详情', disabled: interactionLocked },
                   { key: 'edit', label: '编辑', disabled: interactionLocked },
@@ -948,6 +983,7 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[{ key: 'edit', label: '编辑', disabled: interactionLocked }]"
                 split
                 @action="() => openTemplateEdit(record)"
@@ -982,6 +1018,7 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[{ key: 'edit', label: '编辑', disabled: interactionLocked }]"
                 split
                 @action="() => openPackEdit(record)"
@@ -994,7 +1031,7 @@ onMounted(async () => {
         <p class="hint">请先下载模板，填写后上传表格文件批量导入指标定义。</p>
         <UiButton
           size="sm"
-          variant="primary"
+          variant="outline"
           :disabled="interactionLocked"
           @click="importModalOpen = true"
         >
@@ -1129,7 +1166,7 @@ onMounted(async () => {
             <UiButton size="sm" :disabled="writing" @click="editMode = false"> 取消 </UiButton>
             <UiButton
               size="sm"
-              variant="primary"
+              variant="outline"
               :loading="operationKey.startsWith('save:definition:')"
               :disabled="writing"
               @click="saveDefinition"
@@ -1182,7 +1219,7 @@ onMounted(async () => {
         </UiFormItem>
         <UiButton
           size="sm"
-          variant="primary"
+          variant="outline"
           :loading="operationKey.startsWith('save:template:')"
           :disabled="writing"
           @click="saveTemplateForm"

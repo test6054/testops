@@ -9,7 +9,14 @@ import type { RefreshTokenResponse } from '@/types/auth'
 import { jwtDecode } from 'jwt-decode'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { passwordLogin, phoneLogin, refreshToken, studentLogin, wechatCallback } from '@/apis/auth'
+import {
+  logout as logoutRequest,
+  passwordLogin,
+  phoneLogin,
+  refreshToken,
+  studentLogin,
+  wechatCallback,
+} from '@/apis/auth'
 import { clearAllGradingDrafts } from '@/composables/useGradingDraftPersist'
 import { clearAllQualityLongFormDrafts } from '@/composables/useQualityLongFormDraftPersist'
 import { resetAuthState } from '@/config/axios/auth-state'
@@ -725,13 +732,8 @@ export const useAuthStore = defineStore(
       showFormValidationMessage('当前登录方式暂不可用，请重新选择')
     }
 
+    /** 鉴权失效后的本地收口，不再向已失效的服务端会话发起登出请求。 */
     const logoutCallBack = async () => {
-      try {
-        await logout()
-      } catch {
-        // Silent fail
-      }
-
       role.value = ''
       permissions.value = []
       pwdExpiredShow.value = true
@@ -747,13 +749,18 @@ export const useAuthStore = defineStore(
       tenantStore.resetTenantId()
     }
 
+    /** 主动退出先交由 Spring Security 注销服务端会话，随后无条件清理本地认证状态。 */
     const logout = async () => {
+      let requestSucceeded = true
       try {
+        await logoutRequest()
+      } catch (error: unknown) {
+        requestSucceeded = false
+        showUserError(error, '服务端退出登录失败，本地会话已清除')
+      } finally {
         await logoutCallBack()
-        return true
-      } catch {
-        return false
       }
+      return requestSucceeded
     }
 
     const getTokenRefreshStatus = () => {

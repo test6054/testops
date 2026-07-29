@@ -6,6 +6,7 @@ import type {
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { PortfolioDualTeacherCertLevelCode } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -16,17 +17,11 @@ import {
 } from '@/apis/portfolio/enums'
 import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
-import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
-import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioReviewAccess } from '@/composables/usePortfolioReviewAccess'
@@ -38,8 +33,8 @@ import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enu
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { hasTeacherTenantPermission } from '@/utils/permission'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const authStore = useAuthStore()
 const userStore = useUserStore()
@@ -147,6 +142,34 @@ const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handle
       },
     },
   )
+const DualTeacherSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && pageTotal.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '双师认定',
+      value: pageTotal.value,
+      clickable: true,
+    },
+  ]
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const DualTeacherWorkbenchSubtitle = computed(() => {
+  if (loadError.value) {
+    return '加载失败'
+  }
+  return `${pageTotal.value} 条`
+})
+
+function onDualTeacherSignalClick(_key: string) {
+  void loadPage()
+}
 
 function dualTeacherRowClassName(record: PortfolioDualTeacherApplicationVO): string {
   return record.id === highlightedApplicationId.value ? 'dual-teacher-admin__row-active' : ''
@@ -168,7 +191,7 @@ const columns: ColumnsType = [
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
-  { title: '操作', key: 'actions', width: 260 },
+  { title: '主行动', key: 'actions', width: 260 },
 ]
 
 
@@ -221,34 +244,30 @@ function canAcademicApprove(record: PortfolioDualTeacherApplicationVO): boolean 
   return record.eligibilityFreeze.eligible === true
 }
 
+/** 双师申请行主行动：院审/教务通过 > 提交 primary 置顶；唯一 primary。 */
 function buildDualTeacherRowActions(
   record: PortfolioDualTeacherApplicationVO,
 ): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
+  if (canCollegeReview.value && canCollegeApprove(record)) {
+    actions.push({ key: 'collegeApprove', label: '院审通过', tone: 'primary' })
+  }
+  if (canAcademicReview.value && canAcademicApprove(record)) {
+    actions.push({ key: 'academicApprove', label: '教务通过', tone: 'primary' })
+  }
   if (
     record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.DRAFT
     || record.applicationStatus === 'COLLEGE_RETURNED'
     || record.applicationStatus === 'ACADEMIC_RETURNED'
   ) {
-    actions.push({ key: 'submit', label: '提交' })
+    actions.push({ key: 'submit', label: '提交', tone: 'primary' })
   }
   if (
     canCollegeReview.value
     && record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
   ) {
     actions.push({ key: 'preview', label: '预览资格' })
-  }
-  if (canCollegeReview.value && canCollegeApprove(record)) {
-    actions.push({ key: 'collegeApprove', label: '院审通过', tone: 'primary' })
-  }
-  if (
-    canCollegeReview.value
-    && record.applicationStatus === PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING
-  ) {
     actions.push({ key: 'collegeReturn', label: '院审退回' })
-  }
-  if (canAcademicReview.value && canAcademicApprove(record)) {
-    actions.push({ key: 'academicApprove', label: '教务通过', tone: 'primary' })
   }
   if (
     canAcademicReview.value
@@ -257,7 +276,6 @@ function buildDualTeacherRowActions(
     actions.push({ key: 'academicReturn', label: '教务退回' })
     actions.push({ key: 'academicReject', label: '教务驳回', tone: 'danger' })
   }
-  // 行内仅 1 个 primary（院审通过优先于教务通过）
   let primaryUsed = false
   return actions.map((action) => {
     const next = { ...action, disabled: action.disabled || writing.value }
@@ -485,7 +503,7 @@ async function handleImportSuccess() {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="双师认定台账">
+      <ContextBar show-title layout="workbench" title="双师认定台账" :subtitle="DualTeacherWorkbenchSubtitle">
         <template #actions>
           <UiButton size="sm" variant="outline" :disabled="writing" @click="() => void loadPage()">
             刷新
@@ -512,6 +530,16 @@ async function handleImportSuccess() {
         </template>
       </ContextBar>
     </template>
+    <template v-if="DualTeacherSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="DualTeacherSignalMetrics"
+        @metric-click="onDualTeacherSignalClick"
+      />
+    </template>
+
     <UiAlertStrip
       v-if="archiveWriteForbidden"
       tone="warning"
@@ -525,6 +553,7 @@ async function handleImportSuccess() {
       entity-label="双师认定历史数据"
       @success="handleImportSuccess"
     />
+
     <WorkbenchSurfaceCard flush>
       <UiDataTable
         v-model:current="pageNum"
@@ -601,6 +630,7 @@ async function handleImportSuccess() {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildDualTeacherRowActions(record)"
               split
               @action="(key) => handleDualTeacherRowAction(key, record)"
@@ -609,6 +639,7 @@ async function handleImportSuccess() {
         </template>
       </UiDataTable>
     </WorkbenchSurfaceCard>
+
     <UiDialog
       v-model:open="exportApplyModal.open"
       title="申请导出双师台账"
@@ -624,6 +655,7 @@ async function handleImportSuccess() {
         placeholder="请填写导出用途（必填，将写入审批与水印）"
       />
     </UiDialog>
+
     <UiDialog
       v-model:open="opinionModal.open"
       :title="opinionModal.title"

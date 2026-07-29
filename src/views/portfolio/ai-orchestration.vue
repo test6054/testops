@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { PortfolioAiAnalysisDetailVO, PortfolioAiJobSummaryVO } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -29,6 +30,7 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioAiTaskPolling } from '@/composables/usePortfolioAiTaskPolling'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
@@ -46,6 +48,7 @@ import {
 } from '@/types/enums/portfolio-policy-check-mode-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function readRouteStringParam(value: unknown): string {
@@ -654,6 +657,22 @@ usePortfolioScopedLoader(
   },
   () => targetTeacherId.value,
 )
+
+const AiOrchestrationSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'tasks',
+      label: '材料任务',
+      value: materialTaskRows.value.length,
+      clickable: true,
+      helper: '当前已加载',
+    },
+  ], { primaryKey: 'tasks', actionLabel: '刷新' })
+})
+
+function onAiOrchestrationSignalClick(_key: string) {
+  void loadMaterialTasks()
+}
 </script>
 
 <template>
@@ -663,7 +682,16 @@ usePortfolioScopedLoader(
         layout="workbench"
         show-title
         title="智能问数与政策核验"
-        subtitle="材料须先登记材料库，再提交智能问数或政策核验编排任务"
+        :subtitle="`${materialTaskRows.length} 条材料任务`"
+      />
+    </template>
+    <template v-if="AiOrchestrationSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="AiOrchestrationSignalMetrics"
+        @metric-click="onAiOrchestrationSignalClick"
       />
     </template>
     <PortfolioArchiveWriteGuardStrip

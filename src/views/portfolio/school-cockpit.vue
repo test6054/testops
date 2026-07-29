@@ -181,7 +181,66 @@ const signals = computed<SignalMetric[]>(() => {
       },
     )
   }
-  return items
+  const priorityKeys = [
+    'reviewBacklog',
+    'gap',
+    'completenessSevere',
+    'completenessPending',
+    'training',
+    'teacher',
+  ] as const
+  function attentionValue(metric: SignalMetric): number {
+    if (typeof metric.value === 'number') {
+      return metric.value
+    }
+    if (typeof metric.value === 'string' && metric.value !== '—') {
+      const n = Number(metric.value)
+      return Number.isFinite(n) ? n : 0
+    }
+    return 0
+  }
+  const primaryBase
+    = priorityKeys
+      .map((key) => items.find((item) => item.key === key))
+      .find((item) => {
+        if (!item) {
+          return false
+        }
+        if (item.key === 'teacher') {
+          return true
+        }
+        if (item.key === 'training') {
+          return typeof item.value === 'number' && item.value < 100
+        }
+        return attentionValue(item) > 0
+      })
+      ?? items[0]
+
+  if (!primaryBase) {
+    return []
+  }
+
+  const actionByKey: Record<string, string> = {
+    reviewBacklog: '清审核积压',
+    gap: '去补采',
+    completenessSevere: '查严重缺失',
+    completenessPending: '查待补充',
+    training: '看培训',
+    teacher: '教师名单',
+  }
+
+  return [
+    {
+      ...primaryBase,
+      emphasis: 'primary',
+      actionLabel: actionByKey[primaryBase.key] ?? '查看详情',
+      clickable: primaryBase.clickable ?? true,
+    },
+    ...items
+      .filter((item) => item.key !== primaryBase.key)
+      .slice(0, 3)
+      .map((item) => ({ ...item, emphasis: 'secondary' as const })),
+  ]
 })
 
 function goTeacherAnalytics() {
@@ -294,6 +353,7 @@ onMounted(async () => {
       <SignalBand
         v-if="cockpit?.summary"
         :metrics="signals"
+        layout="spotlight"
         variant="panel"
         compact
         @metric-click="handleSignalMetricClick"

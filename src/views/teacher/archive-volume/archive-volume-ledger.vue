@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="查阅台账" subtitle="历史归档">
+      <ContextBar layout="workbench" show-title title="查阅台账" :subtitle="ledgerWorkbenchSubtitle">
         <template #actions>
           <UiButton variant="ghost" size="sm" @click="goList">返回列表</UiButton>
         </template>
@@ -9,7 +9,7 @@
     </template>
 
     <template #signal>
-      <SignalBand :metrics="signalMetrics" variant="panel" />
+      <SignalBand layout="spotlight" :metrics="signalMetrics" variant="panel" />
     </template>
 
     <WorkbenchSurfaceCard flush class="archive-volume-ledger__surface">
@@ -328,6 +328,19 @@ function formatSearchVisibilityPaths(paths?: string): string {
   if (!paths) return '—'
   return paths.split(',').map(formatSearchVisibilityPath).join('、')
 }
+
+const ledgerWorkbenchSubtitle = computed(() => {
+  if (ledgerTab.value === 'volume') {
+    if (!selectedVolumeId.value) {
+      return '选择归档卷后查看查阅记录'
+    }
+    return `${accessRecords.value.length} 条查阅记录`
+  }
+  if (ledgerTab.value === 'searchAudit') {
+    return `${searchAuditPagination.total} 条检索留痕`
+  }
+  return `${tenantPagination.total} 条租户记录`
+})
 
 const signalMetrics = computed<SignalMetric[]>(() => {
   if (ledgerTab.value === 'volume') {

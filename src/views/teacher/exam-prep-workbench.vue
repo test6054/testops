@@ -21,6 +21,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamPrepInfoPanels from '@/components/workbench/ExamPrepInfoPanels.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
@@ -111,6 +112,20 @@ const materialLayoutStep = computed(
   () => prepSteps.value.find((step) => step.key === PrepStepKey.MATERIAL_LAYOUT) ?? null,
 )
 
+
+/** 任务工作台标题：优先考试名。 */
+const examPrepWorkbenchTitle = computed(() => examDetail.value?.examName || '考试准备')
+
+/** 任务工作台副标题：备考进度 + 考试编号。 */
+const examPrepWorkbenchSubtitle = computed(() => {
+  const total = prepSteps.value.length
+  const progress = total > 0
+    ? `已完成 ${completedPrepCount.value}/${total} 步`
+    : '备考步骤加载中'
+  const examNo = examDetail.value?.examNo
+  return examNo ? `${progress} · #${examNo}` : progress
+})
+
 const prepSignalMetrics = computed((): SignalMetric[] => {
   const detail = examDetail.value
   const total = prepSteps.value.length
@@ -118,38 +133,49 @@ const prepSignalMetrics = computed((): SignalMetric[] => {
     return []
   }
 
-  return [
+  const progressComplete = completedPrepCount.value >= total && total > 0
+  const primary: SignalMetric = {
+    key: 'progress',
+    label: '准备进度',
+    value: total > 0 ? `${completedPrepCount.value}/${total}` : '—',
+    tone: progressComplete ? 'green' : 'blue',
+    emphasis: 'primary',
+    actionLabel: progressComplete ? '进入扫描' : '继续准备',
+    helper: progressComplete ? '备考步骤已完成' : '按步骤完成备考',
+    showProgress: total > 0,
+    progress: total > 0 ? Math.round((completedPrepCount.value / total) * 100) : undefined,
+  }
+  const secondaryPool: SignalMetric[] = [
     {
       key: 'candidates',
       label: '考生数',
       value: detail.candidateCount,
       tone: detail.candidateCount > 0 ? 'blue' : 'orange',
+      emphasis: 'secondary',
     },
     {
       key: 'questions',
       label: '题目数',
       value: detail.questionCount,
       tone: detail.questionCount > 0 ? 'green' : 'orange',
+      emphasis: 'secondary',
     },
     {
       key: 'pages',
       label: '页数',
       value: detail.totalPages == null ? '—' : detail.totalPages,
       tone: detail.totalPages != null && detail.totalPages > 0 ? 'blue' : 'gray',
+      emphasis: 'secondary',
     },
     {
       key: 'full-score',
       label: '满分',
       value: examFullScore.value ?? '—',
       tone: examFullScore.value != null ? 'gray' : 'orange',
-    },
-    {
-      key: 'progress',
-      label: '准备进度',
-      value: total > 0 ? `${completedPrepCount.value}/${total}` : '—',
-      tone: completedPrepCount.value >= total && total > 0 ? 'green' : 'blue',
+      emphasis: 'secondary',
     },
   ]
+  return [primary, ...secondaryPool.slice(0, 3)]
 })
 
 const contextPrimaryAction = computed(() => {
@@ -404,8 +430,16 @@ watch(
   <ExamSelectGateStrip v-if="!selectedExamId" class="exam-prep__empty" />
 
   <StageWorkbenchShell v-else>
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="examPrepWorkbenchTitle"
+        :subtitle="examPrepWorkbenchSubtitle"
+      />
+    </template>
     <template v-if="prepSignalMetrics.length > 0" #signal>
-      <SignalBand compact variant="panel" :metrics="prepSignalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="prepSignalMetrics" />
     </template>
 
     <ExamWorkspaceJourneySubNav />

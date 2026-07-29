@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PfEligibilityRuleTreeNodeDto } from '@/apis/portfolio/indicator-types'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, ref } from 'vue'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
@@ -17,10 +18,12 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { validateEligibilityTree } from '@/utils/eligibility-tree'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 
 function emptyRuleTree(): PfEligibilityRuleTreeNodeDto {
   return {
@@ -131,13 +134,53 @@ function onPresetPick() {
   void loadRule()
 }
 
+
+const EligibilityRuleSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && !ruleReady.value) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'ready',
+      label: '规则状态',
+      value: loadError.value ? '失败' : (ruleReady.value ? '已就绪' : (loading.value ? '加载中' : '未加载')),
+      clickable: true,
+    },
+    {
+      key: 'code',
+      label: '资格编码',
+      value: eligibilityCode.value || '—',
+    },
+  ]
+  return applySpotlightEmphasis(metrics, { primaryKey: 'ready', actionLabel: '重新加载' })
+})
+
+const EligibilityRuleWorkbenchSubtitle = computed(() => {
+  if (loadError.value) return '加载失败'
+  if (!ruleReady.value) return loading.value ? '加载中' : '选择预置规则'
+  return eligibilityName.value || eligibilityCode.value
+})
+
+function onEligibilityRuleSignalClick(_key: string) {
+  void loadRule()
+}
+
 onMounted(loadRule)
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="资格规则编辑" />
+      <ContextBar show-title layout="workbench" title="资格规则编辑" :subtitle="EligibilityRuleWorkbenchSubtitle" />
+    </template>
+    <template v-if="EligibilityRuleSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="EligibilityRuleSignalMetrics"
+        @metric-click="onEligibilityRuleSignalClick"
+      />
     </template>
     <UiCard>
       <div class="toolbar">

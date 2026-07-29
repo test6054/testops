@@ -30,6 +30,7 @@
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
+            :max-visible="2"
             v-if="canManageOwnerLedgerWrites === true"
             :items="[{ key: 'resolve', label: '处置' }]"
             split
@@ -126,7 +127,7 @@ const columns: ColumnType<ExamPaperDuplicateResolutionVO>[] = [
       record.firstPageEvidence?.scannedTime || record.secondPageEvidence?.scannedTime || '—',
   },
   { title: '状态', key: 'resolutionStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 100 },
+  { title: '主行动', key: 'actions', width: 100 },
 ]
 
 function duplicateStatusColor(row: ExamPaperDuplicateResolutionVO): BadgeTone {

@@ -40,8 +40,28 @@
       </template>
     </UiAlertStrip>
 
+    <UiSkeletonState
+      v-if="loading"
+      variant="card"
+      :card-count="1"
+      compact
+      class="portfolio-onboarding-wizard__state"
+    />
+    <UiStateBlock
+      v-else-if="loadError"
+      state="error"
+      title="档案袋启用状态获取失败"
+      :description="loadError"
+      size="sm"
+      class="portfolio-onboarding-wizard__state"
+    >
+      <template #actions>
+        <UiButton size="sm" variant="outline" @click="reloadWizard">再次获取状态</UiButton>
+      </template>
+    </UiStateBlock>
+
     <div
-      v-if="onboardingState?.ownerIdentityLayers?.length"
+      v-if="!loading && !loadError && onboardingState?.ownerIdentityLayers?.length"
       class="portfolio-onboarding-wizard__identity"
       role="status"
     >
@@ -53,7 +73,7 @@
       />
     </div>
 
-    <template v-if="effectiveReadonly">
+    <template v-if="!loading && !loadError && effectiveReadonly">
       <UiCard title="档案分类树" class="portfolio-onboarding-wizard__card">
         <UiTree
           v-if="reviewContent?.categoryTree?.length"
@@ -80,12 +100,12 @@
       </UiCard>
     </template>
 
-    <template v-else-if="!blockedByTemplate && !blockedByReadiness">
+    <template v-else-if="!loading && !loadError && !blockedByTemplate && !blockedByReadiness">
       <UiSteps :current="currentStep - 1" size="small" class="portfolio-onboarding-wizard__steps">
         <UiStep title="了解" />
         <UiStep title="分类树" />
         <UiStep title="字段规格" />
-        <UiStep title="示范采集" />
+        <UiStep title="采集入口" />
         <UiStep title="完成" />
       </UiSteps>
       <UiCard :title="stepTitle" class="portfolio-onboarding-wizard__card">
@@ -99,7 +119,7 @@
           选择叶子分类查看已发布字段规格，确认填报要求。
         </p>
         <p v-else-if="currentStep === 4" class="portfolio-onboarding-wizard__copy">
-          可进入采集工作台上传示范材料（不入审核链）。
+          进入正式材料采集工作台前，先确认本校模板已经发布。正式材料将按既有采集与审核规则处理。
         </p>
         <p v-else class="portfolio-onboarding-wizard__copy">
           引导完成后进入工作台，开始日常材料采集与档案维护。
@@ -111,6 +131,15 @@
           default-expand-all
           block-node
         />
+        <UiAlertStrip
+          v-else-if="currentStep === 2 && categoryTreeLoadFailed"
+          tone="error"
+          title="档案分类树获取失败"
+        >
+          <template #actions>
+            <UiButton size="sm" variant="outline" @click="loadCategoryTree">再次获取分类树</UiButton>
+          </template>
+        </UiAlertStrip>
         <div v-if="currentStep === 3" class="portfolio-onboarding-wizard__picker">
           <PortfolioCategoryTreePicker
             v-model:model-value="previewCategoryId"
@@ -126,23 +155,59 @@
             :sticky-header="false"
             flat
           />
+          <UiAlertStrip
+            v-else-if="previewCategoryId && previewFieldsLoadFailed"
+            tone="error"
+            title="字段规格获取失败"
+          >
+            <template #actions>
+              <UiButton size="sm" variant="outline" @click="loadPreviewFields(previewCategoryId)">
+                再次获取字段规格
+              </UiButton>
+            </template>
+          </UiAlertStrip>
         </div>
         <UiAlertStrip
           v-if="currentStep === 4 && !templateReady"
           tone="warning"
           title="模板尚未就绪，请联系管理员发布档案模板"
         />
+        <div v-else-if="currentStep === 4" class="portfolio-onboarding-wizard__intake-action">
+          <UiButton size="sm" variant="outline" @click="goToTeacherIntake">
+            <template #icon><CloudUploadOutlined /></template>
+            打开正式采集入口
+          </UiButton>
+        </div>
       </UiCard>
 
       <div class="portfolio-onboarding-wizard__actions">
-        <UiButton size="sm" variant="ghost" @click="handleDismiss"> 稍后继续 </UiButton>
-        <UiButton size="sm" v-if="currentStep > 1" variant="outline" @click="prevStep">
+        <UiButton size="sm" variant="ghost" :disabled="stepSaving" @click="handleDismiss"> 稍后继续 </UiButton>
+        <UiButton
+          size="sm"
+          v-if="currentStep > 1"
+          variant="outline"
+          :disabled="stepSaving"
+          @click="changeStep(-1)"
+        >
           上一步
         </UiButton>
-        <UiButton variant="primary" size="sm" v-if="currentStep < totalSteps" @click="nextStep">
+        <UiButton
+          variant="primary"
+          size="sm"
+          v-if="currentStep < totalSteps"
+          :loading="stepSaving"
+          @click="changeStep(1)"
+        >
           下一步
         </UiButton>
-        <UiButton variant="primary" size="sm" v-else :loading="completing" @click="handleComplete">
+        <UiButton
+          variant="primary"
+          size="sm"
+          v-else
+          :disabled="stepSaving"
+          :loading="completing"
+          @click="handleComplete"
+        >
           启用我的教学档案袋
         </UiButton>
       </div>
@@ -159,8 +224,9 @@ import type {
   PortfolioTeacherOnboardingReviewContentVO,
   PortfolioTeacherOnboardingStateVO,
 } from '@/apis/portfolio/types'
+import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioOnboardingApi } from '@/apis/portfolio/onboarding'
@@ -171,12 +237,14 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import UiStep from '@/components/ui-guide/ui/UiStep.vue'
 import UiSteps from '@/components/ui-guide/ui/UiSteps.vue'
 import UiTree from '@/components/ui-guide/ui/UiTree.vue'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
-import { showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 defineOptions({ name: 'PortfolioTeacherOnboardingWizard' })
@@ -197,6 +265,8 @@ const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 
 const loading = ref(false)
 const completing = ref(false)
+const stepSaving = ref(false)
+const loadError = ref('')
 const currentStep = ref(1)
 const totalSteps = ref(5)
 const templateReady = ref(false)
@@ -204,8 +274,10 @@ const onboardingState = ref<PortfolioTeacherOnboardingStateVO | null>(null)
 const reviewContent = ref<PortfolioTeacherOnboardingReviewContentVO | null>(null)
 const readiness = ref<PortfolioArchiveTeacherReadinessVO | null>(null)
 const categoryTree = ref<PortfolioArchiveCategoryTreeNodeVO[]>([])
+const categoryTreeLoadFailed = ref(false)
 const previewCategoryId = ref('')
 const previewFields = ref<PortfolioTargetFieldDefinition[]>([])
+const previewFieldsLoadFailed = ref(false)
 const completedReadonly = ref(false)
 const onboardingRequestToken = ref(0)
 const previewFieldRequestToken = ref(0)
@@ -244,10 +316,13 @@ function resetInteractiveState() {
   onboardingRequestToken.value += 1
   previewFieldRequestToken.value += 1
   currentStep.value = 1
+  loadError.value = ''
   templateReady.value = false
   categoryTree.value = []
+  categoryTreeLoadFailed.value = false
   previewCategoryId.value = ''
   previewFields.value = []
+  previewFieldsLoadFailed.value = false
   onboardingState.value = null
 }
 
@@ -260,6 +335,7 @@ function resetReadonlyState() {
 async function loadState() {
   const requestToken = onboardingRequestToken.value
   loading.value = true
+  loadError.value = ''
   try {
     const nextState = await portfolioOnboardingApi.getState(teacherRequest.value)
     if (onboardingRequestToken.value !== requestToken) {
@@ -279,7 +355,7 @@ async function loadState() {
     if (onboardingRequestToken.value !== requestToken) {
       return
     }
-    showUserError(error, '加载引导状态失败')
+    loadError.value = getUserErrorMessage(error, '加载引导状态失败')
   } finally {
     if (onboardingRequestToken.value === requestToken) {
       loading.value = false
@@ -299,12 +375,13 @@ async function loadReviewContent() {
     if (onboardingRequestToken.value !== requestToken) {
       return
     }
-    showUserError(error, '加载引导回顾内容失败')
+    loadError.value = getUserErrorMessage(error, '加载引导回顾内容失败')
   }
 }
 
 async function loadCategoryTree() {
   const requestToken = onboardingRequestToken.value
+  categoryTreeLoadFailed.value = false
   try {
     const nextCategoryTree
       = (await portfolioArchiveTemplateApi.listCategoryTree({
@@ -318,6 +395,7 @@ async function loadCategoryTree() {
     if (onboardingRequestToken.value !== requestToken) {
       return
     }
+    categoryTreeLoadFailed.value = true
     showUserError(error, '加载档案分类树失败')
   }
 }
@@ -343,8 +421,10 @@ async function loadPreviewFields(categoryId: string) {
   const fieldRequestToken = ++previewFieldRequestToken.value
   if (!categoryId) {
     previewFields.value = []
+    previewFieldsLoadFailed.value = false
     return
   }
+  previewFieldsLoadFailed.value = false
   try {
     const published = await portfolioArchiveTemplateApi.listPublishedFields({ categoryId })
     if (
@@ -364,27 +444,59 @@ async function loadPreviewFields(categoryId: string) {
       return
     }
     previewFields.value = []
+    previewFieldsLoadFailed.value = true
     showUserError(error, '加载字段规格失败')
   }
 }
 
-async function persistStep(step: number) {
-  await portfolioOnboardingApi.saveProgress({
-    ...teacherRequest.value,
-    currentStep: step,
+/** 持久化向导步进，失败时停留当前步骤并保留教师已阅读的上下文。 */
+async function changeStep(offset: -1 | 1) {
+  if (stepSaving.value) {
+    return
+  }
+  const nextStep = Math.min(Math.max(currentStep.value + offset, 1), totalSteps.value)
+  stepSaving.value = true
+  try {
+    await portfolioOnboardingApi.saveProgress({
+      ...teacherRequest.value,
+      currentStep: nextStep,
+    })
+    currentStep.value = nextStep
+  } catch (error) {
+    showUserError(error, '保存引导进度失败')
+  } finally {
+    stepSaving.value = false
+  }
+}
+
+/** 进入真实材料采集工作台；不创建或模拟示范材料。 */
+function goToTeacherIntake() {
+  void router.push({
+    path: '/portfolio/teacher/intake',
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
   })
 }
 
-async function nextStep() {
-  const next = Math.min(currentStep.value + 1, totalSteps.value)
-  await persistStep(next)
-  currentStep.value = next
-}
-
-async function prevStep() {
-  const prev = Math.max(currentStep.value - 1, 1)
-  await persistStep(prev)
-  currentStep.value = prev
+/** 按只读、阻断或交互模式重新装载向导真实状态。 */
+async function reloadWizard() {
+  resetInteractiveState()
+  resetReadonlyState()
+  if (props.blockedByTemplate || props.blockedByReadiness) {
+    if (props.blockedByTemplate) {
+      await loadReadiness()
+    }
+    return
+  }
+  if (props.readonlyMode) {
+    loading.value = true
+    try {
+      await loadReviewContent()
+    } finally {
+      loading.value = false
+    }
+    return
+  }
+  await Promise.all([loadState(), loadCategoryTree()])
 }
 
 async function handleDismiss() {
@@ -437,28 +549,10 @@ watch(
     targetTeacherId.value,
   ],
   () => {
-    resetInteractiveState()
-    resetReadonlyState()
-    if (props.readonlyMode || props.blockedByTemplate || props.blockedByReadiness) {
-      if (props.readonlyMode) {
-        void loadReviewContent()
-      }
-      if (props.blockedByTemplate) {
-        void loadReadiness()
-      }
-      return
-    }
-    void loadState()
-    void loadCategoryTree()
+    void reloadWizard()
   },
   { immediate: true },
 )
-
-onMounted(() => {
-  if (props.blockedByTemplate) {
-    void loadReadiness()
-  }
-})
 </script>
 
 <style scoped lang="scss">
@@ -468,6 +562,10 @@ onMounted(() => {
 }
 
 .portfolio-onboarding-wizard__card {
+  margin: var(--dp-space-block);
+}
+
+.portfolio-onboarding-wizard__state {
   margin: var(--dp-space-block);
 }
 
@@ -500,6 +598,12 @@ onMounted(() => {
 .portfolio-onboarding-wizard__picker {
   display: grid;
   gap: var(--dp-space-block);
+}
+
+.portfolio-onboarding-wizard__intake-action {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: var(--dp-space-component);
 }
 
 .portfolio-onboarding-wizard__spec-row {

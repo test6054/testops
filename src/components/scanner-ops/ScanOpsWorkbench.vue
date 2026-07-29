@@ -36,6 +36,7 @@ import {
   fetchArchiveSuspectedMixedPendingTotal,
 } from '@/utils/archive-suspected-mixed-navigation'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ScanOpsWorkbench' })
@@ -413,31 +414,28 @@ const backlogDutyMetrics = computed(() =>
 )
 
 const headerSignalMetrics = computed<SignalMetric[]>(() =>
-  dutyBoardMetrics.value.map((metric) => ({
-    key: metric.key,
-    label: metric.label,
-    value: metricValue(metric.count),
-    unit: '条',
-    tone: metric.tone,
-    clickable: metric.count != null && metric.count > 0,
-    active: metric.active,
-    helper: metric.count != null && metric.count > 0 ? metric.helper : '正常',
-  })),
+  applySpotlightEmphasis(
+    dutyBoardMetrics.value.map((metric) => ({
+      key: metric.key,
+      label: metric.label,
+      value: metricValue(metric.count),
+      unit: '条',
+      tone: metric.tone,
+      clickable: metric.count != null && metric.count > 0,
+      active: metric.active,
+      helper: metric.count != null && metric.count > 0 ? metric.helper : '正常',
+    })),
+    {
+      // 积压优先：有 clickable 的红/橙项；否则首项
+      actionLabel: '进入处置',
+    },
+  ),
 )
 
 const totalBacklogCount = computed(() =>
   backlogDutyMetrics.value.reduce((sum, metric) => sum + (metric.count ?? 0), 0),
 )
 
-const domainSubtitlePrefix = computed(() => {
-  if (props.domain === 'exam') {
-    return '考试扫描运营'
-  }
-  if (props.domain === 'archive') {
-    return '归档扫描运营'
-  }
-  return '档案袋扫描运营'
-})
 
 const recommendedDutyAction = computed(() => {
   if (overviewLoading.value === true) {
@@ -533,16 +531,12 @@ const recommendedDutyAction = computed(() => {
 
 const dutyContextSubtitle = computed(() => {
   if (overviewLoadFailed.value) {
-    return `${domainSubtitlePrefix.value} · 概览不可用 · 请刷新队列`
+    return '概览不可用'
   }
   if (totalBacklogCount.value > 0) {
-    const hot = backlogDutyMetrics.value
-      .slice(0, 3)
-      .map((metric) => `${metric.label} ${metric.count}`)
-      .join(' · ')
-    return `${domainSubtitlePrefix.value} · 待处置 ${totalBacklogCount.value} 项 · ${hot}`
+    return `待处置 ${totalBacklogCount.value} 项`
   }
-  return `${domainSubtitlePrefix.value} · 当前无积压`
+  return '当前无积压'
 })
 
 function resetOverviewMetrics() {
@@ -757,6 +751,7 @@ watch(
       </UiAlertStrip>
       <SignalBand
         v-if="headerSignalMetrics.length > 0 && !overviewLoadFailed"
+        layout="spotlight"
         variant="panel"
         compact
         class="scan-ops__metrics"

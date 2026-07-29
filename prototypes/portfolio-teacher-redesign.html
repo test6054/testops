@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>教师档案袋 · 设计原型</title><style>
+:root{--dp-primary:#2b67ff;--dp-primary-bg:#eef4ff;--dp-text:rgba(15,23,42,.92);--dp-text-2:rgba(15,23,42,.68);--dp-text-3:rgba(15,23,42,.48);--dp-border:#e2e8f0;--dp-split:rgba(15,23,42,.05);--dp-bg:#f6f7f9;--dp-surface:#fff;--dp-chrome:#f8fafc;--dp-success:#16a34a;--dp-warning:#d97706;--dp-error:#dc2626;--dp-radius:10px;--dp-shadow:0 1px 3px rgba(15,23,42,.05),0 4px 12px rgba(15,23,42,.03);--font:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif}
+*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:var(--font);color:var(--dp-text);background:#0b1220}
+button,input,select,textarea{font:inherit}.app-frame{min-height:100%;display:flex;flex-direction:column}
+.proto-top{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 20px;background:rgba(11,18,32,.92);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.08);color:#e5eefc}
+.proto-top h1{margin:0;font-size:15px;font-weight:600}.proto-top p{margin:0;font-size:12px;color:#93a4c3}
+.toggle{display:inline-flex;padding:3px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
+.toggle button{border:0;background:transparent;color:#93a4c3;padding:7px 14px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:500}
+.toggle button.active{background:#fff;color:#0b1220}
+.meta{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:12px;color:#93a4c3;flex-wrap:wrap}
+.badge{display:inline-flex;padding:4px 10px;border-radius:999px;background:rgba(43,103,255,.15);color:#9db7ff;border:1px solid rgba(43,103,255,.25)}
+.stage{flex:1;padding:18px}.stage-grid{display:grid;grid-template-columns:1fr;gap:16px;max-width:1480px;margin:0 auto}
+.stage-grid.compare{grid-template-columns:1fr 1fr}@media(max-width:1200px){.stage-grid.compare{grid-template-columns:1fr}}
+.panel-label{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;color:#c7d4ea;font-size:12px}
+.panel-label strong{color:#fff;font-size:13px}
+.device{border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:var(--dp-bg);box-shadow:0 20px 50px rgba(0,0,0,.35);min-height:820px;display:flex;flex-direction:column}
+.btn{height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--dp-border);background:#fff;color:var(--dp-text);font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.btn-sm{height:28px;font-size:12px;padding:0 10px}.btn-primary{background:var(--dp-primary);border-color:var(--dp-primary);color:#fff;font-weight:600}
+.btn-ghost{background:transparent}.btn-danger{background:#fff;border-color:#fecaca;color:var(--dp-error)}
+.btn-text{border:0;background:transparent;color:var(--dp-primary);height:auto;padding:0;font-weight:600}
+.tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;font-size:12px;background:#f1f5f9;color:var(--dp-text-2)}
+.tag-ok{background:#f0fdf4;color:var(--dp-success)}.tag-warn{background:#fffbeb;color:var(--dp-warning)}.tag-err{background:#fef2f2;color:var(--dp-error)}.tag-run{background:var(--dp-primary-bg);color:var(--dp-primary)}
+.note{margin:14px auto 10px;max-width:1480px;color:#9db0d0;font-size:12px;line-height:1.6}
+.diff-list{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}@media(max-width:900px){.diff-list{grid-template-columns:1fr}}
+.diff-item{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:12px 14px;color:#c7d4ea}
+.diff-item b{display:block;color:#fff;margin-bottom:4px;font-size:13px}
+.nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.nav a{color:#9db7ff;text-decoration:none;font-size:12px;padding:4px 8px;border:1px solid rgba(157,183,255,.25);border-radius:999px}
+.muted{color:var(--dp-text-3);font-size:12px}.select,.input{height:30px;border:1px solid var(--dp-border);border-radius:8px;padding:0 10px;background:#fff;color:var(--dp-text-2);font-size:12px;min-width:110px}
+
+
+.p-shell{display:flex;flex-direction:column;min-height:820px;background:var(--dp-bg)}
+.p-header{display:flex;gap:12px;align-items:center;padding:12px 14px;background:var(--dp-surface);border-bottom:1px solid var(--dp-border);flex-wrap:wrap}
+.p-header h2{margin:0;font-size:15px}.p-body{padding:14px;display:flex;flex-direction:column;gap:12px}
+.profile{display:flex;gap:12px;align-items:center}
+.avatar-lg{width:48px;height:48px;border-radius:12px;background:#dbe7ff;color:var(--dp-primary);display:grid;place-items:center;font-weight:700}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.grid21{display:grid;grid-template-columns:1.2fr .8fr;gap:12px}.hero{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:900px){.grid3,.grid21,.hero{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid var(--dp-border);border-radius:12px;padding:14px;box-shadow:var(--dp-shadow)}
+.card h3{margin:0 0 8px;font-size:14px}
+.bar{height:8px;border-radius:999px;background:#eef2f7;overflow:hidden}.bar>i{display:block;height:100%;background:var(--dp-primary)}
+.item{display:flex;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid var(--dp-split);font-size:13px}.item:last-child{border-bottom:0}
+.timeline{display:flex;flex-direction:column;gap:10px}.tl{display:grid;grid-template-columns:14px 1fr;gap:10px}
+.tl .dot{width:10px;height:10px;border-radius:50%;background:var(--dp-primary);margin-top:4px}
+.tl .box{background:var(--dp-chrome);border:1px solid var(--dp-border);border-radius:10px;padding:10px 12px}
+.score-ring{width:120px;height:120px;border-radius:50%;background:conic-gradient(var(--dp-primary) 0 72%,#e2e8f0 0);display:grid;place-items:center;margin:8px auto}
+.score-ring>span{width:86px;height:86px;border-radius:50%;background:#fff;display:grid;place-items:center;font-weight:700;font-size:22px}
+.gap{border:1px solid #ffd7a8;background:linear-gradient(180deg,#fffaf3,#fff);border-radius:14px;padding:14px}.gap .big{font-size:28px;font-weight:700}
+</style></head><body>
+<div class="app-frame"><div class="proto-top"><div>
+<h1>教师档案袋 · 设计原型</h1><p>完整度目标 · 过程时间线 · 补齐行动</p>
+<div class="nav">
+<a href="index.html">索引</a>
+<a href="exam-list-redesign.html">考试列表</a>
+<a href="grading-immersion-redesign.html">批阅沉浸</a>
+<a href="quality-cockpit-redesign.html">质量 cockpit</a>
+<a href="portfolio-teacher-redesign.html">教师档案袋</a>
+</div></div>
+<div class="toggle" role="group" aria-label="视图模式">
+<button type="button" class="active" data-mode="compare">并排对比</button>
+<button type="button" data-mode="current">仅现状</button>
+<button type="button" data-mode="proposed">仅原型</button>
+</div>
+<div class="meta"><span class="badge">teacher portfolio</span></div></div>
+<div class="stage"><div class="stage-grid compare" id="stageGrid">
+<section id="panelCurrent"><div class="panel-label"><strong>A · 现状示意</strong><span>传统后台 / 多 chrome</span></div><div class="device">
+<div class="p-shell">
+  <div class="p-header">
+    <h2>教学档案袋 / 我的档案</h2>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn btn-sm" type="button">导出</button>
+      <button class="btn btn-sm btn-primary" type="button">上传材料</button>
+    </div>
+  </div>
+  <div class="p-body">
+    <div class="card profile">
+      <div class="avatar-lg">王</div>
+      <div><div style="font-weight:700">王老师 · 自动化学院</div><div class="muted">工号 T202188 · 副教授 · 完整度 72%</div></div>
+    </div>
+    <div class="grid3">
+      <div class="card"><div class="muted">材料总数</div><div style="font-size:22px;font-weight:700;margin-top:4px">128</div></div>
+      <div class="card"><div class="muted">待补齐</div><div style="font-size:22px;font-weight:700;margin-top:4px">11</div></div>
+      <div class="card"><div class="muted">审核中</div><div style="font-size:22px;font-weight:700;margin-top:4px">3</div></div>
+    </div>
+    <div class="card"><h3>材料分类列表</h3>
+      <div class="item"><span>教学大纲</span><span class="tag tag-ok">已齐全</span></div>
+      <div class="item"><span>教案 / 课件</span><span class="tag tag-warn">缺 2</span></div>
+      <div class="item"><span>过程考核</span><span class="tag tag-err">缺 4</span></div>
+      <div class="item"><span>期末试卷与分析</span><span class="tag tag-warn">缺 1</span></div>
+      <div class="item"><span>教研活动</span><span class="tag tag-ok">已齐全</span></div>
+      <div class="item"><span>学生评价</span><span class="tag">未开始</span></div>
+    </div>
+  </div>
+</div>
+</div></section>
+<section id="panelProposed"><div class="panel-label"><strong>B · 优化原型</strong><span>任务沉浸 / 叙事更强</span></div><div class="device">
+<div class="p-shell">
+  <div class="p-header">
+    <div class="profile">
+      <div class="avatar-lg">王</div>
+      <div>
+        <div style="font-weight:700;font-size:16px">王老师的教学档案</div>
+        <div class="muted">自动化学院 · 本学期档案周期 2025-2026-2 · 距离截止 18 天</div>
+      </div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm" type="button">预览归档包</button>
+      <button class="btn btn-sm btn-primary" type="button">继续补齐</button>
+    </div>
+  </div>
+  <div class="p-body">
+    <div class="hero">
+      <div class="card" style="text-align:center">
+        <div class="muted">档案完整度</div>
+        <div class="score-ring"><span>72%</span></div>
+        <div class="bar" style="max-width:200px;margin:0 auto"><i style="width:72%"></i></div>
+        <div class="muted" style="margin-top:8px">达标线 85% · 还差关键材料 11 项</div>
+      </div>
+      <div class="gap">
+        <div class="muted" style="color:#b45309;font-weight:600">本周最值得补的 3 件事</div>
+        <div class="big">11 项缺口</div>
+        <div class="item"><span>过程考核记录（实验 3/4）</span><button class="btn-text" type="button">去上传</button></div>
+        <div class="item"><span>期末试卷分析报告</span><button class="btn-text" type="button">去完善</button></div>
+        <div class="item"><span>督导听课反馈扫描件</span><button class="btn-text" type="button">去处理</button></div>
+      </div>
+    </div>
+    <div class="grid21">
+      <div class="card"><h3>材料时间线（按教学过程）</h3>
+        <div class="timeline">
+          <div class="tl"><div class="dot"></div><div class="box"><b>开课准备</b><div class="muted">大纲 / 日历 / 教案 · 已完成</div></div></div>
+          <div class="tl"><div class="dot" style="background:var(--dp-warning)"></div><div class="box"><b>过程实施</b><div class="muted">缺实验报告汇总、课堂录像 1 次</div><div style="margin-top:6px"><button class="btn btn-sm btn-primary" type="button">补过程材料</button></div></div></div>
+          <div class="tl"><div class="dot" style="background:var(--dp-error)"></div><div class="box"><b>考核与分析</b><div class="muted">试卷分析未提交 · 阻塞归档</div></div></div>
+          <div class="tl"><div class="dot" style="background:#94a3b8"></div><div class="box"><b>反思与改进</b><div class="muted">待过程材料齐全后开启</div></div></div>
+        </div>
+      </div>
+      <div class="card"><h3>审核与隐私</h3>
+        <div class="item"><span>院系审核</span><span class="tag tag-warn">3 项待审</span></div>
+        <div class="item"><span>隐私同意</span><span class="tag tag-ok">已签署</span></div>
+        <div class="item"><span>可对外展示</span><span class="tag">部分字段</span></div>
+        <div class="muted" style="margin-top:8px">强调「我还差什么、会不会耽误归档」，不是材料仓库浏览器。</div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-primary" type="button">一键生成补齐清单</button>
+          <button class="btn btn-sm" type="button">查看审核意见</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div></section>
+</div>
+<div class="note"><div><strong style="color:#fff">对比要点</strong></div><div class="diff-list">
+<div class="diff-item"><b>1. 心智</b>A 材料仓库。B 完整度目标 + 截止叙事。</div>
+<div class="diff-item"><b>2. 入口</b>A 上传/导出。B 继续补齐 / 预览归档包。</div>
+<div class="diff-item"><b>3. 结构</b>A 分类列表。B 教学过程时间线 + 缺口清单。</div>
+<div class="diff-item"><b>4. 情绪</b>B 用截止与阻塞归档形成行动峰值。</div>
+<div class="diff-item"><b>5. 合规</b>保留审核/隐私状态。</div>
+<div class="diff-item"><b>6. 映射</b>可落到现有 portfolio 完整度与上传链路。</div>
+</div>
+<p style="margin:12px 0 0">文件：<code style="color:#c9d7f5">edu-practice-mark-vue/prototypes/portfolio-teacher-redesign.html</code></p></div>
+</div></div>
+<script>
+const grid=document.getElementById('stageGrid');
+const current=document.getElementById('panelCurrent');
+const proposed=document.getElementById('panelProposed');
+document.querySelectorAll('.toggle button').forEach((btn)=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.toggle button').forEach((b)=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const mode=btn.dataset.mode;
+    current.style.display=mode==='proposed'?'none':'';
+    proposed.style.display=mode==='current'?'none':'';
+    grid.classList.toggle('compare', mode==='compare');
+  });
+});
+</script></body></html>

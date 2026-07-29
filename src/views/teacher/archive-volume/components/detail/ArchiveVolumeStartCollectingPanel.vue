@@ -483,6 +483,7 @@ async function handleStart(): Promise<void> {
     </header>
 
     <SignalBand
+      layout="spotlight"
       :metrics="signalMetrics"
       variant="panel"
       compact
@@ -684,7 +685,7 @@ async function handleStart(): Promise<void> {
             必填项已就绪；另有 {{ warnCount }} 项建议补齐（不阻断开收）。
           </p>
           <UiButton
-            variant="primary"
+            variant="outline"
             size="md"
             :loading="starting || loadingPrecheck"
             :disabled="canCommit !== true"

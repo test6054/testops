@@ -45,7 +45,7 @@ const columns = [
   { title: '教师', key: 'teacher', width: 168 },
   { title: '状态', key: 'taskStatus', dataIndex: 'taskStatus', width: 96 },
   { title: '截止', key: 'dueTime', dataIndex: 'dueTime', width: 160 },
-  { title: '操作', key: 'actions', width: 88 },
+  { title: '主行动', key: 'actions', width: 88 },
 ]
 
 watch(
@@ -207,6 +207,7 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="[
                 { key: 'pick', label: '开单', disabled: canPick !== true || pickingTaskId === record.id },
               ]"

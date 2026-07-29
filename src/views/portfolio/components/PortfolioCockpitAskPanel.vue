@@ -47,7 +47,7 @@ const teacherColumns: ColumnsType = [
   { title: '院系', dataIndex: 'departmentName', key: 'departmentName', width: 120 },
   { title: '指标', dataIndex: 'metricCode', key: 'metricCode', width: 88 },
   { title: '指标值', dataIndex: 'metricValue', key: 'metricValue', width: 120 },
-  { title: '操作', key: 'actions', width: 200, fixed: 'right' },
+  { title: '主行动', key: 'actions', width: 200, fixed: 'right' },
 ]
 
 const historyColumns: ColumnsType = [
@@ -59,7 +59,7 @@ const historyColumns: ColumnsType = [
     fixed: 'left',
   },
   { title: '生成时间', dataIndex: 'generatedTime', key: 'generatedTime', width: 168 },
-  { title: '操作', key: 'actions', width: 72 },
+  { title: '主行动', key: 'actions', width: 72 },
 ]
 
 const teacherRows = computed<PortfolioCockpitAskTeacherRow[]>(
@@ -362,6 +362,7 @@ async function openTaskResult(taskId: string) {
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'actions'">
           <UiTableActions
+            :max-visible="2"
             :items="[{ key: 'view', label: '查看' }]"
             split
             @action="() => void openHistoryRow(record)"
@@ -416,6 +417,7 @@ async function openTaskResult(taskId: string) {
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'actions'">
           <UiTableActions
+            :max-visible="2"
             v-if="record.teacherUserId"
             :items="[
               { key: 'home', label: '档案首页' },

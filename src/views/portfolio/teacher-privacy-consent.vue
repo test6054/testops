@@ -7,6 +7,7 @@ import type {
   PortfolioPrivacyConsentNoticeVO,
   PortfolioPrivacyConsentVO,
 } from '@/apis/portfolio/privacy-consent'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -15,11 +16,17 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { PortfolioPrivacyConsentStatusCode } from '@/types/enums/portfolio-privacy-consent-status-enum'
+import {
+  PortfolioPrivacyConsentStatusCode,
+  PortfolioPrivacyConsentStatusDescription,
+} from '@/types/enums/portfolio-privacy-consent-status-enum'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
@@ -277,6 +284,35 @@ watch(
   },
   { immediate: true },
 )
+
+const PrivacyConsentWorkbenchSubtitle = computed(() => {
+  if (loadError.value && !state.value) {
+    return '授权状态加载失败'
+  }
+  const status = state.value?.consentStatus
+  if (!status) {
+    return '尚未加载授权状态'
+  }
+  return `授权状态 ${strictEnumLabel(PortfolioPrivacyConsentStatusDescription, status, '隐私授权状态')}`
+})
+
+const PrivacyConsentSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && !state.value) {
+    return []
+  }
+  return applySpotlightEmphasis([
+    {
+      key: 'status',
+      label: '授权状态',
+      value: state.value?.consentStatus ?? '—',
+      clickable: true,
+    },
+  ], { primaryKey: 'status', actionLabel: '刷新' })
+})
+
+function onPrivacyConsentSignalClick(_key: string) {
+  void load()
+}
 </script>
 
 <template>
@@ -286,13 +322,23 @@ watch(
         layout="workbench"
         show-title
         title="个人信息处理同意"
-        subtitle="管理教师数据采集与使用授权"
+        :subtitle="PrivacyConsentWorkbenchSubtitle"
       >
         <template #actions>
           <UiButton size="sm" variant="outline" :loading="loading" @click="load">刷新</UiButton>
         </template>
       </ContextBar>
     </template>
+    <template v-if="PrivacyConsentSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="PrivacyConsentSignalMetrics"
+        @metric-click="onPrivacyConsentSignalClick"
+      />
+    </template>
+
     <div v-if="isProxyPrivacyTarget" class="privacy-consent__proxy-gate" role="status">
       <span class="privacy-consent__proxy-text">
         当前为目标教师范围：隐私授权仅本人可签，管理员不可代签同意或撤回。

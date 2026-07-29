@@ -112,7 +112,7 @@ const columns: ColumnsType<ScannerAgentReleaseResponse> = [
   { title: '发布状态', dataIndex: 'published', key: 'published', width: 100, align: 'center' },
   { title: '推送', dataIndex: 'pushEnabled', key: 'pushEnabled', width: 120 },
   { title: '上传时间', dataIndex: 'createTime', key: 'createTime', width: 160 },
-  { title: '操作', key: 'actions', width: 140, align: 'center' },
+  { title: '主行动', key: 'actions', width: 140, align: 'center' },
 ]
 
 function isMsiPackage(record: ScannerAgentReleaseResponse): boolean {
@@ -200,7 +200,7 @@ async function submitRegister() {
 
 function buildReleaseRowActions(): UiTableRowActionItem[] {
   return [
-    { key: 'publish', label: '发布' },
+    { key: 'publish', label: '发布', tone: 'primary' },
     { key: 'delete', label: '删除', tone: 'danger' },
   ]
 }
@@ -329,7 +329,7 @@ onMounted(() => {
         layout="workbench"
         show-title
         title="一体机扫描端版本发布"
-        subtitle="注册安装包、切换当前发布版本，安装包格式可启用次日 01:00 主动推送"
+        :subtitle="publishedReleaseSnapshot ? `当前 ${publishedReleaseSnapshot.version} · ${pagination.total} 个版本` : `${pagination.total} 个版本`"
       >
         <template #actions>
           <UiButton
@@ -346,7 +346,7 @@ onMounted(() => {
     </template>
 
     <template #signal>
-      <SignalBand v-if="signalMetrics.length" :metrics="signalMetrics" variant="panel" compact />
+      <SignalBand layout="spotlight" v-if="signalMetrics.length" :metrics="signalMetrics" variant="panel" compact />
     </template>
 
     <UiEmpty size="sm" v-if="canManage !== true" description="仅平台超级管理员可维护扫描端发布包" />
@@ -406,6 +406,7 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               v-if="record.published !== true"
               :items="buildReleaseRowActions()"
               split

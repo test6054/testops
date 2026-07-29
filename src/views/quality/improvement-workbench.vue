@@ -116,6 +116,25 @@ const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
   return null
 })
 
+/** 任务工作台副标题：逾期与改进任务规模。 */
+const improvementWorkbenchSubtitle = computed(() => {
+  if (planGateMode.value === 'need-plan') {
+    return '需先选择培养方案'
+  }
+  if (planGateMode.value === 'need-confirm') {
+    return '培养方案待确认'
+  }
+  if (signalsLoadFailed.value) {
+    return '指标加载失败'
+  }
+  const summary = signalSummary.value
+  if (!summary) {
+    return '指标加载中'
+  }
+  return `逾期 ${summary.overdueCount} · 改进任务 ${summary.improvementTotal}`
+})
+
+
 async function handleScopeChange(): Promise<void> {
   const serial = ++scopeChangeSerial
   loading.value = true
@@ -194,7 +213,7 @@ onActivated(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar show-title title="持续改进与审核闭环" />
+      <QualityPageContextBar show-title title="持续改进与审核闭环" :subtitle="improvementWorkbenchSubtitle" />
     </template>
 
     <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="iwb__empty" />
@@ -216,6 +235,7 @@ onActivated(async () => {
         <SignalBand
           v-if="signalSummary"
           :metrics="signals"
+          layout="spotlight"
           variant="panel"
           compact
           class="iwb__signals"

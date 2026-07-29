@@ -9,15 +9,18 @@
 
     <UiSkeletonState v-if="loading" variant="card" :card-count="2" compact />
 
-    <UiEmpty
+    <UiStateBlock
       v-else-if="loadFailed || !overview"
+      state="error"
       size="sm"
-      description="考试总览加载失败，可离开后再进入或使用页面刷新"
+      title="考试总览加载失败"
+      description="可离开后重新进入，或使用页面既有刷新工具恢复"
     />
 
     <template v-else>
       <SignalBand
         v-if="kpiMetrics.length"
+        layout="spotlight"
         compact
         variant="panel"
         :metrics="kpiMetrics"
@@ -190,17 +193,20 @@
 
 <script lang="ts" setup>
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import type { ExamWorkbenchLifecycleOverviewResponse } from '@/apis/mark/exam-progress'
+import type {
+  ExamWorkbenchLifecycleOverviewResponse,
+  ExamWorkbenchPrepStepResponse,
+} from '@/apis/mark/exam-progress'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getWorkbenchLifecycleOverview } from '@/apis/mark/exam-progress'
 import PendingTodoFeed from '@/components/mark/dashboard/PendingTodoFeed.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { EXAM_JOURNEY_STEPS } from '@/constants/exam-journey'
@@ -230,7 +236,7 @@ const emit = defineEmits<{
   'secondary-action': []
   'enter-quality': []
   'todo-navigate': [routeName: string | undefined, examId: string | undefined]
-  'prep-step-navigate': [stepKey: string]
+  'prep-step-navigate': [step: ExamWorkbenchPrepStepResponse]
   "loaded": [overview: ExamWorkbenchLifecycleOverviewResponse]
 }>()
 
@@ -238,6 +244,7 @@ const router = useRouter()
 const loading = ref(false)
 const loadFailed = ref(false)
 const overview = ref<ExamWorkbenchLifecycleOverviewResponse | null>(null)
+const loadGeneration = ref(0)
 
 const recommendedPrimaryLabel = computed(() => props.recommendedPrimaryLabel?.trim() || '')
 const recommendedSecondaryLabel = computed(() => props.recommendedSecondaryLabel?.trim() || '')
@@ -314,7 +321,7 @@ const kpiMetrics = computed<SignalMetric[]>(() => {
   if (!overview.value) {
     return []
   }
-  return overview.value.kpiBand.map((item) => ({
+  const mapped = overview.value.kpiBand.map((item) => ({
     key: item.drillKey,
     label: item.label,
     value: item.value,
@@ -323,6 +330,50 @@ const kpiMetrics = computed<SignalMetric[]>(() => {
     clickable: item.clickable,
     tone: resolveKpiTone(item.drillKey, item.value),
   }))
+  if (mapped.length === 0) {
+    return []
+  }
+
+  // 考试工作台：异常/发布阻塞优先主卡，其次批阅与备考（后端 kpiBand 真源）
+  const priorityKeys = ['scan', 'publish', 'marking', 'prep', 'archive'] as const
+  function isAttentionMetric(item: (typeof mapped)[number]): boolean {
+    if (item.key === 'scan' && String(item.value) !== '0') {
+      return true
+    }
+    if (item.key === 'publish' && String(item.value) === '待处置') {
+      return true
+    }
+    if (item.key === 'marking' && item.tone === 'orange') {
+      return true
+    }
+    return false
+  }
+  const primary
+    = mapped.find((item) => isAttentionMetric(item))
+      ?? priorityKeys
+        .map((key) => mapped.find((item) => item.key === key))
+        .find((item): item is (typeof mapped)[number] => item != null)
+        ?? mapped[0]
+
+  const actionByKey: Record<string, string> = {
+    scan: '查看扫描',
+    publish: '处理发布',
+    marking: '进入批阅',
+    prep: '备考准备',
+    archive: '查看归档',
+  }
+
+  return [
+    {
+      ...primary,
+      emphasis: 'primary' as const,
+      actionLabel: primary.clickable ? (actionByKey[primary.key] ?? '查看详情') : undefined,
+    },
+    ...mapped
+      .filter((item) => item.key !== primary.key)
+      .slice(0, 3)
+      .map((item) => ({ ...item, emphasis: 'secondary' as const })),
+  ]
 })
 
 /** 无应批题目时进度尚未形成，禁止显示成真实 0% */
@@ -408,21 +459,35 @@ const quickStatItems = computed(() => {
 
 const urgentTodoCount = computed(() => countUrgentTodos(pendingTodos.value))
 
+/** 按最新考试上下文加载生命周期总览，切换考试时丢弃旧请求的迟到响应。 */
 async function loadOverview(): Promise<void> {
+  const generation = ++loadGeneration.value
   if (!props.examId) {
+    overview.value = null
+    loadFailed.value = false
+    loading.value = false
     return
   }
   loading.value = true
   loadFailed.value = false
   try {
-    overview.value = await getWorkbenchLifecycleOverview(props.examId)
-    emit('loaded', overview.value)
+    const response = await getWorkbenchLifecycleOverview(props.examId)
+    if (generation !== loadGeneration.value) {
+      return
+    }
+    overview.value = response
+    emit('loaded', response)
   } catch (error) {
+    if (generation !== loadGeneration.value) {
+      return
+    }
     overview.value = null
     loadFailed.value = true
     showUserError(error, '考试总览加载失败')
   } finally {
-    loading.value = false
+    if (generation === loadGeneration.value) {
+      loading.value = false
+    }
   }
 }
 

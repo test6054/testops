@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {PortfolioEvaluationTaskVO} from '@/apis/portfolio/teacher-platform';
+import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
 import type {
   PortfolioOrgTreeNodeVO,
   PortfolioSourceFixBatchPreviewVO,
@@ -8,15 +8,14 @@ import type {
   PortfolioSourceFixEventVO,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioSourceFixApi } from '@/apis/portfolio/source-fix'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import {
-  portfolioEvaluationTaskApi
-  
-} from '@/apis/portfolio/teacher-platform'
+import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import {
   QUALITY_SELECTOR_PAGE_SIZE,
   QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
@@ -34,7 +33,9 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
@@ -60,6 +61,7 @@ import {
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { portfolioTeacherSelectOptionsFromSummaries } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -201,7 +203,7 @@ const columns: ColumnsType = [
   { title: '状态', key: 'eventStatus', width: 100 },
   { title: '告警', key: 'alertStatus', width: 90 },
   { title: '影响规模', key: 'counts', width: 180 },
-  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
+  { title: '主行动', key: 'actions', width: 220, fixed: 'right' },
 ]
 
 const itemColumns: ColumnsType = [
@@ -352,6 +354,40 @@ async function applyEventIdDeepLink() {
   await openDetail({ id: eventId } as PortfolioSourceFixEventVO)
 }
 
+/** 源修复事件：执行为主行动 */
+function buildSourceFixRowActions(record: PortfolioSourceFixEventVO): UiTableRowActionItem[] {
+  return [
+    {
+      key: 'execute',
+      label: '执行',
+      tone: 'primary',
+      disabled:
+        acting.value
+        || record.eventStatus === PortfolioSourceFixEventStatusCode.SUCCESS
+        || record.eventStatus === PortfolioSourceFixEventStatusCode.RUNNING,
+    },
+    { key: 'detail', label: '详情', disabled: acting.value },
+    {
+      key: 'ack',
+      label: '确认告警',
+      disabled: acting.value || record.alertStatus !== PortfolioSourceFixAlertStatusCode.OPEN,
+    },
+  ]
+}
+
+function handleSourceFixRowAction(key: string, record: PortfolioSourceFixEventVO): void {
+  if (key === 'execute') {
+    void executeEvent(record)
+    return
+  }
+  if (key === 'detail') {
+    void openDetail(record)
+    return
+  }
+  if (key === 'ack') {
+    void ackAlert(record)
+  }
+}
 async function openDetail(row: PortfolioSourceFixEventVO) {
   if (!row.id || acting.value) return
   acting.value = true
@@ -546,11 +582,50 @@ watch(
     batchPreview.value = null
   },
 )
+
+const SourceFixSignalMetrics = computed<SignalMetric[]>(() => {
+  if (listLoadError.value && total.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '修复事件',
+      value: total.value,
+      clickable: true,
+    },
+  ]
+  metrics.push({
+    key: 'pageRows',
+    label: '本页',
+    value: rows.value.length,
+    helper: '仅当前页',
+  })
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+function onSourceFixSignalClick(_key: string) {
+  void loadPage()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="源修复回流与批量重算" subtitle="统一事件 · 范围预检 · 同步结果可追踪" />
+    <template #context>
+      <ContextBar title="源修复回流与批量重算" :subtitle="`${total} 条`" />
+    </template>
+    <template v-if="SourceFixSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="SourceFixSignalMetrics"
+        @metric-click="onSourceFixSignalClick"
+      />
+    </template>
 
     <UiCard class="dp-mb-block">
       <div class="dp-mb-component flex flex-wrap items-center justify-between gap-2">
@@ -612,28 +687,12 @@ watch(
             {{ impactCountsText(record) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="flex flex-wrap gap-2">
-              <UiButton size="sm" :disabled="acting" @click="openDetail(record)">详情</UiButton>
-              <UiButton
-                size="sm"
-                tone="primary"
-                :disabled="
-                  acting
-                    || record.eventStatus === PortfolioSourceFixEventStatusCode.SUCCESS
-                    || record.eventStatus === PortfolioSourceFixEventStatusCode.RUNNING
-                "
-                @click="executeEvent(record)"
-              >
-                执行
-              </UiButton>
-              <UiButton
-                size="sm"
-                :disabled="acting || record.alertStatus !== PortfolioSourceFixAlertStatusCode.OPEN"
-                @click="ackAlert(record)"
-              >
-                确认告警
-              </UiButton>
-            </div>
+            <UiTableActions
+              :max-visible="2"
+              :items="buildSourceFixRowActions(record)"
+              split
+              @action="(key) => handleSourceFixRowAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

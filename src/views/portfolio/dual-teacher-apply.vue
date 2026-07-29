@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PortfolioDualTeacherApplicationVO } from '@/apis/portfolio/teacher-platform'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -20,6 +21,7 @@ import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
@@ -30,6 +32,7 @@ import {
 } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -447,12 +450,61 @@ watch(
   },
   { immediate: true },
 )
+
+const DualTeacherApplySignalMetrics = computed<SignalMetric[]>(() => {
+  if (!application.value) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'status',
+      label: '申请状态',
+      value: statusLabel(application.value.applicationStatus),
+      clickable: true,
+    },
+  ]
+  if (application.value.applicationNo) {
+    metrics.push({
+      key: 'no',
+      label: '申请单号',
+      value: application.value.applicationNo,
+    })
+  }
+  if (attachmentItems.value.length > 0) {
+    metrics.push({
+      key: 'attachments',
+      label: '附件',
+      value: attachmentItems.value.length,
+      helper: '当前申请',
+    })
+  }
+  return applySpotlightEmphasis(metrics, { primaryKey: 'status', actionLabel: '刷新' })
+})
+
+const DualTeacherApplyWorkbenchSubtitle = computed(() => {
+  if (!targetTeacherId.value && canPickTeachers.value) return '请先选择教师'
+  if (!application.value) return '待填写申请'
+  return statusLabel(application.value.applicationStatus)
+})
+
+function onDualTeacherApplySignalClick(_key: string) {
+  void loadApplication()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="双师认定申请" />
+      <ContextBar show-title layout="workbench" title="双师认定申请" :subtitle="DualTeacherApplyWorkbenchSubtitle" />
+    </template>
+    <template v-if="DualTeacherApplySignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="DualTeacherApplySignalMetrics"
+        @metric-click="onDualTeacherApplySignalClick"
+      />
     </template>
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
     <template v-else>
@@ -542,14 +594,14 @@ watch(
             <UiButton
               v-if="canStartReReview"
               size="sm"
-              variant="primary"
+              variant="outline"
               :disabled="operationPending"
               @click="startReReview"
             >
               发起复核申请
             </UiButton>
             <UiButton
-              variant="primary"
+              variant="outline"
               size="sm"
               :loading="saving"
               :disabled="!canEdit || operationPending"

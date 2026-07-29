@@ -124,7 +124,7 @@
             <div class="approval-card__action-row">
               <UiButton size="sm" variant="outline" @click="cancelApprove">取消</UiButton>
               <UiButton
-                variant="primary"
+                variant="outline"
                 size="sm"
                 :loading="approveAccessSubmitting === true"
                 @click="submitApproveAccess(record.accessRecordId)"

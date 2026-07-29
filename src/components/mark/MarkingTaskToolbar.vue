@@ -181,11 +181,6 @@ import type {
   AnonymousRevealResponse,
   MarkingTaskResponse,
 } from '@/apis/mark/marking-organization'
-import {
-  MarkingTaskStatusCode,
-} from '@/apis/mark/marking-organization'
-import { dualMarkRoleLabel } from '@/apis/mark/dual-mark-role'
-import { GradeStatusCode } from '@/types/enums/grade-status-enum'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { MarkingRecentSubmitEntry } from '@/composables/useMarkingRecentSubmit'
 import type { useMarkingTaskNavigation } from '@/composables/useMarkingTaskNavigation'
@@ -195,10 +190,15 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import RightOutlined from '@ant-design/icons-vue/RightOutlined'
 import UnlockOutlined from '@ant-design/icons-vue/UnlockOutlined'
 import { computed } from 'vue'
+import { dualMarkRoleLabel } from '@/apis/mark/dual-mark-role'
+import {
+  MarkingTaskStatusCode,
+} from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiPopoverPanel from '@/components/ui-guide/ui/UiPopoverPanel.vue'
 import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
+import { GradeStatusCode } from '@/types/enums/grade-status-enum'
 
 defineOptions({ name: 'MarkingTaskToolbar' })
 
@@ -242,11 +242,11 @@ const navNextLabel = computed(() => props.navigation.navNextLabel.value)
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-  border: 1px solid var(--dp-border-subtle);
-  border-radius: var(--dp-radius-panel);
-  background: var(--dp-bg-container);
+  gap: var(--dp-space-component-tight) var(--dp-space-component);
+  padding: var(--dp-space-component-tight) 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 
   &__main,
   &__actions {

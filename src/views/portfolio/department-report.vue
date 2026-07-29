@@ -2,6 +2,7 @@
 import type { PortfolioDoubleHighMonitorVO } from '@/apis/portfolio/double-high'
 import type { PortfolioCompletenessLevelCode } from '@/apis/portfolio/enums'
 import type { PortfolioDeptOneTableSummaryVO } from '@/apis/portfolio/teacher'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -14,7 +15,8 @@ import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import {
   flattenPortfolioOrgOptionsUnderDepartment,
@@ -22,6 +24,7 @@ import {
   usePortfolioOrgTree,
 } from '@/composables/usePortfolioOrgTree'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 
 const { loadTree, departmentOptions: loadDepartmentOptions, treeRoots } = usePortfolioOrgTree()
 const router = useRouter()
@@ -145,40 +148,64 @@ watch(
   },
 )
 
-const previewStats = computed(() => {
+/** 报告摘要预览：spotlight 1 主 + N 次，禁止等权 Stat 墙。 */
+const previewSignalMetrics = computed<SignalMetric[]>(() => {
   if (!deptSummary.value) {
     return []
   }
   const summary = deptSummary.value
-  const items = [
-    { label: '教师总数', value: String(summary.teacherCount) },
-    { label: '双师人数', value: String(summary.dualTeacherCount) },
-    { label: '正高', value: String(summary.titleSeniorCount) },
-    { label: '副高', value: String(summary.titleAssociateCount) },
-    { label: '完整度达标', value: String(summary.completenessCompleteCount ?? 0) },
-    { label: '规划完成率', value: `${summary.developmentPlanCompletionRatePercent ?? 0}%` },
+  const metrics: SignalMetric[] = [
+    { key: 'teachers', label: '教师总数', value: summary.teacherCount },
+    { key: 'dual', label: '双师人数', value: summary.dualTeacherCount },
+    { key: 'senior', label: '正高', value: summary.titleSeniorCount },
+    { key: 'associate', label: '副高', value: summary.titleAssociateCount },
+    {
+      key: 'complete',
+      label: '完整度达标',
+      value: summary.completenessCompleteCount ?? 0,
+    },
+    {
+      key: 'planRate',
+      label: '规划完成率',
+      value: `${summary.developmentPlanCompletionRatePercent ?? 0}%`,
+    },
   ]
   if (excludeDoubleHigh.value) {
-    items.push({ label: '数据口径', value: '仅院系一表通（不含双高监测）' })
+    metrics.push({
+      key: 'scope',
+      label: '数据口径',
+      value: '仅院系一表通',
+      helper: '不含双高监测',
+    })
   } else if (doubleHighMonitor.value) {
-    items.push(
-      { label: '建设指数', value: String(doubleHighMonitor.value.constructionIndex ?? '—') },
-      { label: '双高任务完成率', value: `${doubleHighMonitor.value.taskCompletionRatePercent}%` },
+    metrics.push(
+      {
+        key: 'constructionIndex',
+        label: '建设指数',
+        value: doubleHighMonitor.value.constructionIndex ?? '—',
+      },
+      {
+        key: 'taskRate',
+        label: '双高任务完成率',
+        value: `${doubleHighMonitor.value.taskCompletionRatePercent}%`,
+      },
     )
     if (doubleHighMonitor.value.baselineConstructionIndex) {
-      items.push({
+      metrics.push({
+        key: 'baseline',
         label: '基线指数',
         value: String(doubleHighMonitor.value.baselineConstructionIndex),
       })
     }
     if (doubleHighMonitor.value.periodValueAdded) {
-      items.push({
+      metrics.push({
+        key: 'valueAdded',
         label: '周期增值',
         value: String(doubleHighMonitor.value.periodValueAdded),
       })
     }
   }
-  return items
+  return applySpotlightEmphasis(metrics, { primaryKey: 'teachers' })
 })
 
 watch(excludeDoubleHigh, (excluded) => {
@@ -337,7 +364,23 @@ onMounted(() => {
 </script>
 
 <template>
-  <StageWorkbenchShell title="院系师资发展报告">
+  <StageWorkbenchShell>
+    <template #context>
+      <ContextBar
+        show-title
+        layout="workbench"
+        title="院系师资发展报告"
+        :subtitle="previewSignalMetrics.length > 0 ? `已预览 ${previewSignalMetrics[0]?.value ?? '—'} 人` : '先预览再提交审批'"
+      />
+    </template>
+    <template v-if="previewSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="previewSignalMetrics"
+      />
+    </template>
     <UiCard title="导出范围（须经导出审批）">
       <div class="report-filter">
         <label class="report-filter__field">
@@ -444,8 +487,13 @@ onMounted(() => {
         <span>排除双高监测口径（产物不含双高 Sheet，仅院系一表通）</span>
       </label>
     </UiCard>
-    <UiCard v-if="previewStats.length" title="报告摘要预览">
-      <UiStatPanel title="院系报告口径" :items="previewStats" compact />
+    <UiCard v-if="previewSignalMetrics.length > 0" title="报告摘要预览">
+      <SignalBand
+        layout="spotlight"
+        variant="panel"
+        compact
+        :metrics="previewSignalMetrics"
+      />
     </UiCard>
   </StageWorkbenchShell>
 </template>

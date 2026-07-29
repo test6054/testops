@@ -2,6 +2,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/enums'
 import type { PortfolioGapTaskSummaryVO } from '@/apis/portfolio/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -20,9 +21,11 @@ import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -62,6 +65,59 @@ const requestToken = ref(0)
 
 const writing = computed(() => Boolean(urgingId.value || extendingId.value))
 
+/** 本页逾期数（仅当前页真源，helper 标明范围，不作全局 KPI） */
+const pageOverdueCount = computed(() => {
+  const now = Date.now()
+  return rows.value.filter((row) => {
+    if (!row.dueTime) {
+      return false
+    }
+    const due = Date.parse(row.dueTime)
+    return Number.isFinite(due) && due < now
+  }).length
+})
+
+const gapSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadFailed.value && pageTotal.value === 0 && rows.value.length === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'open',
+      label: '开放补采',
+      value: pageTotal.value,
+      tone: pageTotal.value > 0 ? 'orange' : undefined,
+      clickable: true,
+    },
+  ]
+  if (rows.value.length > 0) {
+    metrics.push({
+      key: 'page-overdue',
+      label: '本页逾期',
+      value: pageOverdueCount.value,
+      tone: pageOverdueCount.value > 0 ? 'red' : undefined,
+      helper: '仅当前页',
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'open',
+    actionLabel: '刷新',
+  })
+})
+
+const gapWorkbenchSubtitle = computed(() => {
+  if (loadFailed.value) {
+    return '加载失败'
+  }
+  return `${pageTotal.value} 项开放补采`
+})
+
+function onGapSignalClick(key: string) {
+  if (key === 'open' || key === 'page-overdue') {
+    void loadPage()
+  }
+}
+
 function gapCourseScopeLabel(row: PortfolioGapTaskSummaryVO): string {
   if (!row.courseCode) {
     return '—'
@@ -87,7 +143,7 @@ const columns: ColumnsType<PortfolioGapTaskSummaryVO> = [
   { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '截止', dataIndex: 'dueTime', key: 'dueTime', width: 170 },
-  { title: '操作', key: 'actions', width: 140 },
+  { title: '主行动', key: 'actions', width: 140 },
 ]
 
 async function loadPage() {
@@ -216,12 +272,22 @@ void loadPage()
         layout="workbench"
         show-title
         title="补采督办"
-        subtitle="院系补采任务催办与进度跟踪"
+        :subtitle="gapWorkbenchSubtitle"
       >
         <template #actions>
-          <UiButton size="sm" :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
+          <UiButton size="sm" variant="primary" :loading="loading" @click="() => void loadPage()">刷新队列</UiButton>
         </template>
       </ContextBar>
+    </template>
+
+    <template v-if="gapSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="gapSignalMetrics"
+        @metric-click="onGapSignalClick"
+      />
     </template>
 
     <UiAlertStrip
@@ -283,8 +349,9 @@ void loadPage()
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="[
-                { key: 'view', label: '查看' },
+                { key: 'view', label: '查看', tone: 'primary' },
                 { key: 'urge', label: '催办', disabled: writing },
                 { key: 'extend', label: '延期', disabled: writing },
               ]"

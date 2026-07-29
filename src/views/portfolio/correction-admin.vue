@@ -5,6 +5,7 @@ import type {
   PortfolioCorrectionSummaryVO,
 } from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
@@ -21,23 +22,16 @@ import {
   PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
 } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
-import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 function statusLabel(status: PortfolioCorrectionRequestStatusCode): string {
   return strictEnumLabel(PortfolioCorrectionRequestStatusDescription, status, '纠错工单状态')
@@ -70,6 +64,28 @@ const pageNum = ref(1)
 const pageSize = ref(10)
 const pageTotal = ref(0)
 const rejectDrawerOpen = ref(false)
+const CorrectionAdminSignalMetrics = computed<SignalMetric[]>(() => {
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '纠错工单',
+      value: pageTotal.value,
+      clickable: true,
+    },
+  ]
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const CorrectionAdminWorkbenchSubtitle = computed(() => {
+  return `${pageTotal.value} 条`
+})
+
+function onCorrectionAdminSignalClick(_key: string) {
+  void loadPage()
+}
 const rejectTarget = ref<PortfolioCorrectionSummaryVO | null>(null)
 const rejectForm = reactive({ handleOpinion: '' })
 const listRequestToken = ref(0)
@@ -111,7 +127,7 @@ const columns: ColumnsType<PortfolioCorrectionSummaryVO> = [
   { title: '字段', dataIndex: 'fieldLabel', key: 'fieldLabel', width: 120 },
   { title: '状态', key: 'requestStatus', width: 110 },
   { title: '原因', dataIndex: 'reason', key: 'reason' },
-  { title: '操作', key: 'actions', width: 260 },
+  { title: '主行动', key: 'actions', width: 260 },
 ]
 
 
@@ -363,12 +379,22 @@ void loadPage()
         layout="workbench"
         show-title
         title="纠错处理"
-        subtitle="管理端受理与流转纠错工单"
+        :subtitle="CorrectionAdminWorkbenchSubtitle"
       >
         <template #actions>
           <UiButton size="sm" :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
         </template>
       </ContextBar>
+    </template>
+
+    <template v-if="CorrectionAdminSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="CorrectionAdminSignalMetrics"
+        @metric-click="onCorrectionAdminSignalClick"
+      />
     </template>
 
     <UiAlertStrip
@@ -424,6 +450,7 @@ void loadPage()
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildCorrectionRowActions(record)"
               @action="(key) => handleCorrectionRowAction(key, record)"
             />

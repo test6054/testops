@@ -686,7 +686,7 @@ const columns: ColumnsType = [
   { title: '学年 / 学期', key: 'period', width: 120 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 110 },
   { title: '附件 / 导出', key: 'exports', width: 260 },
-  { title: '操作', key: 'actions', width: 380 },
+  { title: '主行动', key: 'actions', width: 380 },
 ]
 
 function resetQuery() {
@@ -1197,15 +1197,24 @@ const signals = computed<SignalMetric[]>(() => {
   const draftCount = b[ReportStatusCode.DRAFT]
   const submittedCount = b[ReportStatusCode.SUBMITTED]
   const returnedCount = b[ReportStatusCode.RETURNED]
-  return [
-    { key: 'total', label: '报告总数', value: counts.totalCount ?? 0, tone: 'blue' },
+  const pool: SignalMetric[] = [
     {
-      key: 'draft',
-      label: '草稿',
-      value: draftCount,
-      tone: draftCount > 0 ? 'orange' : 'gray',
-      clickable: draftCount > 0,
-      active: query.status === ReportStatusCode.DRAFT,
+      key: 'returned',
+      label: '已驳回',
+      value: returnedCount,
+      tone: returnedCount > 0 ? 'red' : 'gray',
+      clickable: returnedCount > 0,
+      active: query.status === ReportStatusCode.RETURNED,
+      emphasis: 'secondary',
+      actionLabel: returnedCount > 0 ? '处理驳回' : undefined,
+    },
+    {
+      key: 'export-failed',
+      label: '导出未完成',
+      value: exportFailed,
+      tone: exportFailed > 0 ? 'red' : 'gray',
+      emphasis: 'secondary',
+      actionLabel: exportFailed > 0 ? '处理导出' : undefined,
     },
     {
       key: 'submitted',
@@ -1214,33 +1223,53 @@ const signals = computed<SignalMetric[]>(() => {
       tone: submittedCount > 0 ? 'blue' : 'gray',
       clickable: submittedCount > 0,
       active: query.status === ReportStatusCode.SUBMITTED,
+      emphasis: 'secondary',
+      actionLabel: submittedCount > 0 ? '去确认' : undefined,
     },
     {
-      key: 'returned',
-      label: '已驳回',
-      value: returnedCount,
-      tone: returnedCount > 0 ? 'red' : 'gray',
-      clickable: returnedCount > 0,
-      active: query.status === ReportStatusCode.RETURNED,
+      key: 'draft',
+      label: '草稿',
+      value: draftCount,
+      tone: draftCount > 0 ? 'orange' : 'gray',
+      clickable: draftCount > 0,
+      active: query.status === ReportStatusCode.DRAFT,
+      emphasis: 'secondary',
     },
     {
       key: 'export-running',
       label: '导出中',
       value: exporting,
       tone: exporting > 0 ? 'orange' : 'gray',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'total',
+      label: '报告总数',
+      value: counts.totalCount ?? 0,
+      tone: 'blue',
+      emphasis: 'secondary',
     },
     {
       key: 'export-completed',
       label: '导出完成',
       value: exportComplete,
       tone: exportComplete > 0 ? 'green' : 'gray',
+      emphasis: 'secondary',
     },
-    {
-      key: 'export-failed',
-      label: '导出未完成',
-      value: exportFailed,
-      tone: exportFailed > 0 ? 'red' : 'gray',
-    },
+  ]
+  const primaryBase
+    = returnedCount > 0
+      ? pool[0]
+      : exportFailed > 0
+        ? pool[1]
+        : submittedCount > 0
+          ? pool[2]
+          : draftCount > 0
+            ? pool[3]
+            : pool[5]
+  return [
+    { ...primaryBase, emphasis: 'primary' },
+    ...pool.filter((item) => item.key !== primaryBase.key).slice(0, 3),
   ]
 })
 
@@ -1333,7 +1362,7 @@ function buildReportActions(record: ReportVO): UiTableRowActionItem[] {
       actions.push({
         key: to,
         label: `→ ${reportStatusLabel(to)}`,
-        tone: to === ReportStatusCode.RETURNED ? 'danger' : 'primary',
+        tone: to === ReportStatusCode.RETURNED ? 'danger' : undefined,
         disabled: targetRequiresReportBody(to) && !hasReportBody(record),
       })
     }
@@ -1356,8 +1385,31 @@ function buildReportActions(record: ReportVO): UiTableRowActionItem[] {
     actions.push({ key: 'delete', label: '删除', tone: 'danger' })
   }
   actions.push({ key: 'audit', label: '审计' })
+
+  // 行内唯一 primary：状态推进 > 编辑 > 详情
+  const primary
+    = actions.find((item) =>
+      item.tone !== 'danger'
+      && item.disabled !== true
+      && !['detail', 'edit', 'export', 'audit', 'delete'].includes(String(item.key)))
+    || actions.find((item) => item.key === 'edit' && item.disabled !== true)
+    || actions.find((item) => item.key === 'detail')
+  if (primary) {
+    for (const item of actions) {
+      if (item.tone === 'primary' && item !== primary) {
+        item.tone = undefined
+      }
+    }
+    primary.tone = 'primary'
+    const idx = actions.indexOf(primary)
+    if (idx > 0) {
+      actions.splice(idx, 1)
+      actions.unshift(primary)
+    }
+  }
   return actions
 }
+
 
 function handleReportAction(key: string, record: ReportVO): void {
   switch (key) {
@@ -1398,16 +1450,20 @@ onBeforeUnmount(() => {
   exportPollTokens.clear()
   pollingExportIds.value.clear()
 })
+
+/** 任务工作台副标题：报告份数。 */
+const reportWorkbenchSubtitle = computed(() => `报告队列 ${total.value} 份`)
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar show-title title="质量评价报告">
+      <QualityPageContextBar show-title title="质量评价报告" :subtitle="reportWorkbenchSubtitle">
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="handleScopeChange">
             刷新
           </UiButton>
+          <UiButton size="sm" variant="primary" @click="openCreate">新建报告</UiButton>
         </template>
       </QualityPageContextBar>
     </template>
@@ -1418,6 +1474,7 @@ onBeforeUnmount(() => {
       <StageRail :stages="stages" compact class="report__stages" />
       <SignalBand
         :metrics="signals"
+        layout="spotlight"
         variant="panel"
         compact
         class="report__signals"
@@ -1445,10 +1502,7 @@ onBeforeUnmount(() => {
       />
 
       <UiCard class="detail-table-card report__table-card">
-        <template #title>报告列表</template>
-        <template #extra>
-          <UiButton size="sm" variant="primary" @click="openCreate">新建报告</UiButton>
-        </template>
+        <template #title>报告队列</template>
 
         <UiFilterBar
           variant="plain"
@@ -1572,6 +1626,7 @@ onBeforeUnmount(() => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildReportActions(record)"
                 split
                 @action="(key) => handleReportAction(key, record)"

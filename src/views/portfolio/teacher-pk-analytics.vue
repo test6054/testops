@@ -7,6 +7,7 @@ import type {
 } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
@@ -32,6 +33,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
@@ -43,6 +45,7 @@ import {
   formatPortfolioTeacherPkDisplay,
   portfolioTeacherSelectOptionsFromSummaries,
 } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -96,7 +99,7 @@ const historyColumns: ColumnsType = [
   { title: '教师数', dataIndex: 'teacherCount', key: 'teacherCount', width: 90 },
   { title: '展示范围', key: 'maskMode', width: 110 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
-  { title: '操作', key: 'actions', width: 130 },
+  { title: '主行动', key: 'actions', width: 130 },
 ]
 
 
@@ -355,6 +358,32 @@ onUnmounted(() => {
     teacherSearchTimer = null
   }
 })
+
+const TeacherPkSignalMetrics = computed<SignalMetric[]>(() => {
+  const result = pkResult.value
+  if (!result) {
+    return applySpotlightEmphasis([
+      {
+        key: 'idle',
+        label: 'PK 对比',
+        value: '待生成',
+        clickable: true,
+      },
+    ], { primaryKey: 'idle', actionLabel: '预览' })
+  }
+  return applySpotlightEmphasis([
+    {
+      key: 'session',
+      label: '对比结果',
+      value: result.sessionId ? '已生成' : '已预览',
+      clickable: true,
+    },
+  ], { primaryKey: 'session', actionLabel: '刷新预览' })
+})
+
+function onTeacherPkSignalClick(_key: string) {
+  void previewPkCompare()
+}
 </script>
 
 <template>
@@ -365,6 +394,15 @@ onUnmounted(() => {
         show-title
         :title="pageTitle"
         :subtitle="pageSubtitle"
+      />
+    </template>
+    <template v-if="TeacherPkSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TeacherPkSignalMetrics"
+        @metric-click="onTeacherPkSignalClick"
       />
     </template>
 
@@ -564,6 +602,7 @@ onUnmounted(() => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[
                   { key: 'restore', label: '查看', disabled: operationPending },
                   { key: 'export', label: '申请导出', disabled: operationPending },

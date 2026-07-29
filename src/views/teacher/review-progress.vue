@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="progress-page">
     <template v-if="selectedExamId" #context>
-      <ContextBar layout="workbench" show-title title="复核进度">
+      <ContextBar layout="workbench" show-title title="复核进度" :subtitle="`${questionPageTotal} 题`">
         <template #status>
           <UiTag :tone="confirmedPercent >= 100 ? 'green' : 'blue'" size="sm">
             已确认 {{ confirmedPercent }}%
@@ -11,7 +11,7 @@
     </template>
 
     <template v-if="selectedExamId && progress" #signal>
-      <SignalBand compact variant="panel" :metrics="pageSignalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="pageSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" class="progress-page__empty" />
@@ -70,7 +70,7 @@
                 :option="statusDistributionOption"
                 :aria-label="statusDistributionAriaLabel"
               />
-              <SignalBand :metrics="statusSignalMetrics" compact variant="inline" />
+              <SignalBand layout="spotlight" :metrics="statusSignalMetrics" compact variant="inline" />
             </div>
           </WorkbenchSurfaceCard>
         </UiCol>
@@ -224,6 +224,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 v-if="canRetryPaperGrade(record) === true"
                 :items="[
                   {
@@ -512,7 +513,7 @@ const processingTaskColumns: ColumnType<ExamProcessingTaskItemResponse>[] = [
   { title: '制卷题目', dataIndex: 'layoutQuestionId', key: 'layoutQuestionId', width: 120 },
   { title: '诊断', dataIndex: 'diagnostic', key: 'diagnostic' },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 160 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 const contextProgress = computed(
@@ -662,17 +663,25 @@ const pageSignalMetrics = computed((): SignalMetric[] => {
   if (!progress.value) {
     return []
   }
-  return [
-    {
-      key: 'confirmed',
-      label: '已确认率',
-      value: confirmedPercent.value,
-      unit: '%',
-      tone: confirmedPercent.value >= 100 ? 'green' : 'blue',
-    },
+  const primary: SignalMetric = {
+    key: 'confirmed',
+    label: '已确认率',
+    value: confirmedPercent.value,
+    unit: '%',
+    tone: confirmedPercent.value >= 100 ? 'green' : 'blue',
+    emphasis: 'primary',
+    actionLabel: confirmedPercent.value >= 100 ? undefined : '继续推进',
+    showProgress: true,
+    progress: confirmedPercent.value,
+    helper: confirmedPercent.value >= 100 ? '复核已确认完成' : '确认进度主指标',
+  }
+  const secondaries = [
     ...overviewSignalMetrics.value,
     ...toSignalMetrics(auxStatItems.value).filter((metric) => Number(metric.value) > 0),
   ]
+    .map((metric) => ({ ...metric, emphasis: 'secondary' as const }))
+    .slice(0, 3)
+  return [primary, ...secondaries]
 })
 
 const statusSignalMetrics = computed(() =>

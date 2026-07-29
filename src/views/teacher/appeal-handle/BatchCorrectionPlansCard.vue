@@ -68,6 +68,7 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildBatchCorrectionPlanActions(record)"
               split
               @action="(key) => handleBatchCorrectionPlanAction(key, record)"
@@ -713,7 +714,7 @@ const columns: ColumnType<ExamBatchGradeCorrectionPlan>[] = [
   { title: '审批时间', key: 'approvedTime', width: 160 },
   { title: '执行时间', key: 'executedTime', width: 160 },
   { title: '创建时间', key: 'createTime', width: 160 },
-  { title: '操作', key: 'actions', width: 210 },
+  { title: '主行动', key: 'actions', width: 210 },
 ]
 
 const detailItemColumns: ColumnType<BatchCorrectionPlanItemDetailVO>[] = [

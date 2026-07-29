@@ -4,6 +4,7 @@ import type {
   PortfolioIndicatorEngineReadinessVO,
   PortfolioPublishImpactReportVO,
 } from '@/apis/portfolio/indicator-types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -31,11 +32,13 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiStep from '@/components/ui-guide/ui/UiStep.vue'
 import UiSteps from '@/components/ui-guide/ui/UiSteps.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const router = useRouter()
@@ -382,12 +385,74 @@ async function exportImpact() {
 }
 
 onMounted(loadReadiness)
+
+const IndicatorPublishWorkbenchSubtitle = computed(() => {
+  const row = readiness.value
+  if (!row) {
+    return readinessError.value ? '就绪状态加载失败' : '尚未加载就绪状态'
+  }
+  const ready = row.allScenesReady ? '全场景就绪' : '场景未齐'
+  return `${ready} · 已启用 ${row.enabledIndicatorCount} · 平台 ${row.platformIndicatorCount}`
+})
+
+const IndicatorPublishSignalMetrics = computed<SignalMetric[]>(() => {
+  if (readinessError.value && !readiness.value) {
+    return []
+  }
+  const row = readiness.value
+  if (!row) {
+    return applySpotlightEmphasis([
+      { key: 'status', label: '就绪状态', value: '未加载', clickable: true },
+    ], { primaryKey: 'status', actionLabel: '刷新' })
+  }
+  return applySpotlightEmphasis([
+    {
+      key: 'scenes',
+      label: '全场景就绪',
+      value: row.allScenesReady ? '是' : '否',
+      clickable: true,
+    },
+    {
+      key: 'enabled',
+      label: '已启用指标',
+      value: row.enabledIndicatorCount,
+    },
+    {
+      key: 'platform',
+      label: '平台指标',
+      value: row.platformIndicatorCount,
+    },
+    {
+      key: 'core',
+      label: 'T001-T100',
+      value: row.t001T100Enabled ? '已启用' : '未齐',
+    },
+  ], { primaryKey: 'scenes', actionLabel: '刷新就绪' })
+})
+
+function onIndicatorPublishSignalClick(_key: string) {
+  void loadReadiness()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="规则发布向导" />
+      <ContextBar
+        show-title
+        layout="workbench"
+        title="规则发布向导"
+        :subtitle="IndicatorPublishWorkbenchSubtitle"
+      />
+    </template>
+    <template v-if="IndicatorPublishSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="IndicatorPublishSignalMetrics"
+        @metric-click="onIndicatorPublishSignalClick"
+      />
     </template>
     <UiCard title="指标工程贯通">
       <p v-if="readinessError" class="readiness-error">{{ readinessError }}</p>
@@ -465,7 +530,7 @@ onMounted(loadReadiness)
           size="sm"
           :loading="previewing"
           :disabled="writing || !workflowDraftHash || draftHashStale"
-          variant="primary"
+          variant="outline"
           @click="runImpactPreview"
         >
           生成影响报告

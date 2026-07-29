@@ -20,6 +20,7 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { PortfolioNationalReportIssueStatusCode } from '@/types/enums/portfolio-national-report-issue-status-enum'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import {
   PORTFOLIO_INTEGRATION_OWNER_ROUTE,
   PORTFOLIO_INTEGRATION_OWNER_SUBTITLE,
@@ -82,52 +83,64 @@ const healthBreachCount = computed(() => {
 })
 
 /** 治理 cockpit：只展示阻断信号，点击进入对应 owner 路由。 */
-const cockpitSignals = computed<SignalMetric[]>(() => [
-  {
-    key: 'health',
-    label: 'SLA 违约渠道',
-    value: loadError.health
-      ? '—'
-      : health.value
-        ? healthBreachCount.value ?? 0
-        : '—',
-    tone: (healthBreachCount.value ?? 0) > 0 ? 'orange' : 'green',
-    clickable: true,
-    helper: '进入字典与健康',
-  },
-  {
-    key: 'unmatched',
-    label: '身份待匹配',
-    value: loadError.unmatched ? '—' : unmatchedTotal.value,
-    tone: unmatchedTotal.value > 0 ? 'orange' : 'blue',
-    clickable: true,
-    helper: '进入身份与冲突',
-  },
-  {
-    key: 'conflicts',
-    label: '开放冲突',
-    value: loadError.conflicts ? '—' : conflictTotal.value,
-    tone: conflictTotal.value > 0 ? 'orange' : 'blue',
-    clickable: true,
-    helper: '进入身份与冲突',
-  },
-  {
-    key: 'national',
-    label: '上报待修正',
-    value: loadError.nationalIssues ? '—' : nationalIssueTotal.value,
-    tone: nationalIssueTotal.value > 0 ? 'red' : 'blue',
-    clickable: true,
-    helper: '进入上报与异常',
-  },
-  {
-    key: 'failed-message',
-    label: '异常消息',
-    value: loadError.failedMessages ? '—' : failedMessageTotal.value,
-    tone: failedMessageTotal.value > 0 ? 'orange' : 'gray',
-    clickable: true,
-    helper: '进入上报与异常',
-  },
-])
+const cockpitSignals = computed<SignalMetric[]>(() =>
+  applySpotlightEmphasis(
+    [
+      {
+        key: 'national',
+        label: '上报待修正',
+        value: loadError.nationalIssues ? '—' : nationalIssueTotal.value,
+        tone: nationalIssueTotal.value > 0 ? 'red' : 'blue',
+        clickable: true,
+        helper: '进入上报与异常',
+      },
+      {
+        key: 'health',
+        label: 'SLA 违约渠道',
+        value: loadError.health
+          ? '—'
+          : health.value
+            ? healthBreachCount.value ?? 0
+            : '—',
+        tone: (healthBreachCount.value ?? 0) > 0 ? 'orange' : 'green',
+        clickable: true,
+        helper: '进入字典与健康',
+      },
+      {
+        key: 'unmatched',
+        label: '身份待匹配',
+        value: loadError.unmatched ? '—' : unmatchedTotal.value,
+        tone: unmatchedTotal.value > 0 ? 'orange' : 'blue',
+        clickable: true,
+        helper: '进入身份与冲突',
+      },
+      {
+        key: 'conflicts',
+        label: '开放冲突',
+        value: loadError.conflicts ? '—' : conflictTotal.value,
+        tone: conflictTotal.value > 0 ? 'orange' : 'blue',
+        clickable: true,
+        helper: '进入身份与冲突',
+      },
+      {
+        key: 'failed-message',
+        label: '异常消息',
+        value: loadError.failedMessages ? '—' : failedMessageTotal.value,
+        tone: failedMessageTotal.value > 0 ? 'orange' : 'gray',
+        clickable: true,
+        helper: '进入上报与异常',
+      },
+    ],
+    {
+      primaryKey: nationalIssueTotal.value > 0
+        ? 'national'
+        : ((healthBreachCount.value ?? 0) > 0
+            ? 'health'
+            : (unmatchedTotal.value > 0 ? 'unmatched' : 'national')),
+      actionLabel: '进入处置',
+    },
+  ),
+)
 
 const ownerEntries = computed(() => [
   {
@@ -340,6 +353,7 @@ onMounted(async () => {
     </template>
 
     <SignalBand
+      layout="spotlight"
       :metrics="cockpitSignals"
       variant="panel"
       compact

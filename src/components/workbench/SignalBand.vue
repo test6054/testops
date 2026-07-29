@@ -4,90 +4,151 @@
     :class="{
       'signal-band--compact': compact,
       'signal-band--panel': variant === 'panel',
+      'signal-band--spotlight': layout === 'spotlight',
     }"
   >
-    <component
-      :is="metric.clickable ? 'button' : 'div'"
-      v-for="metric in metrics"
-      :key="metric.key"
-      :type="metric.clickable ? 'button' : undefined"
-      class="signal-band__item"
-      :class="{
-        'signal-band__item--clickable': metric.clickable,
-        'signal-band__item--active': metric.active,
-      }"
-      @click="metric.clickable ? emit('metric-click', metric.key) : undefined"
-    >
-      <span
-        v-if="variant === 'panel' && hasIconSlot(metric.key)"
-        class="signal-band__icon"
-        :class="iconToneClass(metric)"
-        aria-hidden="true"
+    <!-- spotlight：1 主 + N 次；balanced：等权条带（默认，既有页保持） -->
+    <template v-if="layout === 'spotlight' && primaryMetric">
+      <component
+        :is="primaryMetric.clickable ? 'button' : 'div'"
+        :type="primaryMetric.clickable ? 'button' : undefined"
+        class="signal-band__item signal-band__item--primary"
+        :class="{
+          'signal-band__item--clickable': primaryMetric.clickable,
+          'signal-band__item--active': primaryMetric.active,
+        }"
+        @click="primaryMetric.clickable ? emit('metric-click', primaryMetric.key) : undefined"
       >
-        <slot :name="`icon-${metric.key}`" />
-      </span>
-      <div class="signal-band__body">
-        <span class="signal-band__label">
+        <div class="signal-band__body">
+          <span class="signal-band__label">{{ primaryMetric.label }}</span>
+          <div class="signal-band__value-row">
+            <span class="signal-band__value" :class="toneClass(primaryMetric.tone)">
+              {{ displayValue(primaryMetric) }}
+              <span v-if="primaryMetric.unit" class="signal-band__unit">{{ primaryMetric.unit }}</span>
+            </span>
+          </div>
+          <span v-if="primaryMetric.helper" class="signal-band__helper">{{ primaryMetric.helper }}</span>
           <span
-            v-if="variant === 'panel' && !hasIconSlot(metric.key)"
-            class="signal-band__dot"
-            :class="`signal-band__dot--${resolveIconTone(metric)}`"
-            aria-hidden="true"
-          />
-          {{ metric.label }}
-        </span>
-        <div class="signal-band__value-row">
-          <span class="signal-band__value" :class="toneClass(metric.tone)">
-            {{ displayValue(metric) }}
-            <span v-if="metric.unit" class="signal-band__unit">{{ metric.unit }}</span>
-          </span>
-          <span
-            v-if="metric.trend !== undefined && metric.trend !== 0"
-            class="signal-band__trend"
-            :class="trendClass(metric)"
+            v-if="primaryMetric.actionLabel"
+            class="signal-band__action-link"
+            role="link"
           >
-            {{ metric.trend > 0 ? '↑' : '↓' }}{{ Math.abs(metric.trend) }}%
+            {{ primaryMetric.actionLabel }}
+            <span class="signal-band__action-arr" aria-hidden="true">→</span>
           </span>
         </div>
-        <span v-if="metric.helper" class="signal-band__helper">{{ metric.helper }}</span>
-        <span
-          v-if="shouldShowProgress(metric)"
-          class="signal-band__progress"
-          role="progressbar"
-          :aria-valuenow="metric.progress"
-          aria-valuemin="0"
-          aria-valuemax="100"
+      </component>
+      <div class="signal-band__secondary" role="group" aria-label="次级指标">
+        <component
+          :is="metric.clickable ? 'button' : 'div'"
+          v-for="metric in secondaryMetrics"
+          :key="metric.key"
+          :type="metric.clickable ? 'button' : undefined"
+          class="signal-band__item signal-band__item--secondary"
+          :class="{
+            'signal-band__item--clickable': metric.clickable,
+            'signal-band__item--active': metric.active,
+          }"
+          @click="metric.clickable ? emit('metric-click', metric.key) : undefined"
         >
-          <span
-            class="signal-band__progress-bar"
-            :style="{ width: `${metric.progress}%` }"
-          />
-        </span>
+          <div class="signal-band__body">
+            <span class="signal-band__label">{{ metric.label }}</span>
+            <div class="signal-band__value-row">
+              <span class="signal-band__value" :class="toneClass(metric.tone)">
+                {{ displayValue(metric) }}
+                <span v-if="metric.unit" class="signal-band__unit">{{ metric.unit }}</span>
+              </span>
+            </div>
+            <span v-if="metric.helper" class="signal-band__helper">{{ metric.helper }}</span>
+          </div>
+        </component>
+      </div>
+    </template>
+
+    <template v-else>
+      <component
+        :is="metric.clickable ? 'button' : 'div'"
+        v-for="metric in metrics"
+        :key="metric.key"
+        :type="metric.clickable ? 'button' : undefined"
+        class="signal-band__item"
+        :class="{
+          'signal-band__item--clickable': metric.clickable,
+          'signal-band__item--active': metric.active,
+        }"
+        @click="metric.clickable ? emit('metric-click', metric.key) : undefined"
+      >
         <span
-          v-if="sparkPolyline(metric)"
-          class="signal-band__spark"
+          v-if="variant === 'panel' && hasIconSlot(metric.key)"
+          class="signal-band__icon"
+          :class="iconToneClass(metric)"
           aria-hidden="true"
         >
-          <svg viewBox="0 0 80 18" preserveAspectRatio="none">
-            <polyline
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.6"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              :points="sparkPolyline(metric)"
-            />
-          </svg>
+          <slot :name="`icon-${metric.key}`" />
         </span>
-      </div>
-    </component>
+        <div class="signal-band__body">
+          <span class="signal-band__label">
+            <span
+              v-if="variant === 'panel' && !hasIconSlot(metric.key)"
+              class="signal-band__dot"
+              :class="`signal-band__dot--${resolveIconTone(metric)}`"
+              aria-hidden="true"
+            />
+            {{ metric.label }}
+          </span>
+          <div class="signal-band__value-row">
+            <span class="signal-band__value" :class="toneClass(metric.tone)">
+              {{ displayValue(metric) }}
+              <span v-if="metric.unit" class="signal-band__unit">{{ metric.unit }}</span>
+            </span>
+            <span
+              v-if="metric.trend !== undefined && metric.trend !== 0"
+              class="signal-band__trend"
+              :class="trendClass(metric)"
+            >
+              {{ metric.trend > 0 ? '↑' : '↓' }}{{ Math.abs(metric.trend) }}%
+            </span>
+          </div>
+          <span v-if="metric.helper" class="signal-band__helper">{{ metric.helper }}</span>
+          <span
+            v-if="shouldShowProgress(metric)"
+            class="signal-band__progress"
+            role="progressbar"
+            :aria-valuenow="metric.progress"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <span
+              class="signal-band__progress-bar"
+              :style="{ width: `${metric.progress}%` }"
+            />
+          </span>
+          <span
+            v-if="sparkPolyline(metric)"
+            class="signal-band__spark"
+            aria-hidden="true"
+          >
+            <svg viewBox="0 0 80 18" preserveAspectRatio="none">
+              <polyline
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                :points="sparkPolyline(metric)"
+              />
+            </svg>
+          </span>
+        </div>
+      </component>
+    </template>
   </div>
 </template>
 
 <script lang="ts" setup>
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, SignalMetricIconTone, SignalMetricTrendPolarity } from '@/types/workbench'
-import { onBeforeUnmount, reactive, useSlots, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, useSlots, watch } from 'vue'
 
 defineOptions({
   name: 'SignalBand',
@@ -98,6 +159,11 @@ const props = withDefaults(
     metrics?: SignalMetric[]
     compact?: boolean
     variant?: 'inline' | 'panel'
+    /**
+     * balanced：等权指标带（默认）。
+     * spotlight：1 主 + N 次（考试列表等任务队列页）；主卡可用 actionLabel 文字链。
+     */
+    layout?: 'balanced' | 'spotlight'
     trendPolarity?: SignalMetricTrendPolarity
     /** 数字 KPI 使用 200ms count-up；非数字与 reduced-motion 直接落值 */
     animateValue?: boolean
@@ -107,6 +173,7 @@ const props = withDefaults(
     compact: false,
     /* 列表页默认 inline；驾驶舱 / 工作台顶栏用 panel（齐平贴顶 KPI 带，非浮卡） */
     variant: 'inline',
+    layout: 'balanced',
     trendPolarity: 'negative',
     animateValue: true,
   },
@@ -115,6 +182,24 @@ const props = withDefaults(
 const emit = defineEmits<{
   'metric-click': [key: string]
 }>()
+
+/** spotlight 主指标：显式 emphasis=primary，否则取首项 */
+const primaryMetric = computed((): SignalMetric | null => {
+  const list = props.metrics ?? []
+  if (list.length === 0) {
+    return null
+  }
+  return list.find((item) => item.emphasis === 'primary') ?? list[0] ?? null
+})
+
+/** spotlight 次级指标：排除主卡 */
+const secondaryMetrics = computed((): SignalMetric[] => {
+  const primary = primaryMetric.value
+  if (!primary) {
+    return []
+  }
+  return (props.metrics ?? []).filter((item) => item.key !== primary.key)
+})
 
 const COUNT_UP_MS = 200
 
@@ -663,6 +748,117 @@ function sparkPolyline(metric: SignalMetric): string {
   .signal-band--panel .signal-band__item {
     flex: 1 1 calc(50% - 1px);
     min-width: 0;
+  }
+}
+
+/* ── spotlight：1 主 + N 次（任务队列） ───────────────── */
+.signal-band--spotlight {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.05fr) minmax(0, 2.1fr);
+  gap: var(--dp-space-component);
+  align-items: stretch;
+  padding: var(--dp-space-component);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.signal-band--spotlight.signal-band--panel {
+  gap: var(--dp-space-component);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.signal-band--spotlight .signal-band__item--primary {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100%;
+  padding: var(--dp-space-component) var(--dp-space-block);
+  border: 1px solid var(--dp-color-primary-border, var(--dp-blue-200));
+  border-radius: var(--dp-radius-panel);
+  background: linear-gradient(165deg, var(--dp-color-primary-bg) 0%, var(--dp-surface) 72%);
+  box-shadow: var(--dp-shadow-card);
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+}
+
+.signal-band--spotlight .signal-band__item--primary::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--dp-color-primary);
+}
+
+.signal-band--spotlight .signal-band__item--primary .signal-band__label {
+  color: var(--dp-blue-700, #3557b8);
+  font-weight: 600;
+}
+
+.signal-band--spotlight .signal-band__item--primary .signal-band__value {
+  font-size: var(--dp-font-size-3xl);
+  color: var(--dp-color-primary);
+  letter-spacing: -0.03em;
+}
+
+.signal-band--spotlight .signal-band__item--primary.signal-band__item--active {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--dp-color-primary) 28%, transparent);
+}
+
+.signal-band--spotlight .signal-band__secondary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--dp-space-component);
+  min-width: 0;
+}
+
+.signal-band--spotlight .signal-band__item--secondary {
+  padding: var(--dp-space-component) var(--dp-space-component);
+  border: 1px solid var(--dp-panel-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+  text-align: left;
+}
+
+.signal-band--spotlight .signal-band__item--secondary .signal-band__value {
+  font-size: var(--dp-font-size-xl);
+}
+
+.signal-band__action-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: var(--dp-space-component-tight);
+  font-size: var(--dp-type-hint-size);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--dp-color-primary);
+  white-space: nowrap;
+}
+
+.signal-band__item--primary:hover .signal-band__action-arr {
+  transform: translateX(2px);
+}
+
+.signal-band__action-arr {
+  display: inline-block;
+  transition: transform var(--dp-duration-normal, 0.15s) ease;
+}
+
+@media (max-width: bp.$layout-mobile-max) {
+  .signal-band--spotlight {
+    grid-template-columns: 1fr;
+  }
+
+  .signal-band--spotlight .signal-band__secondary {
+    grid-template-columns: 1fr 1fr;
   }
 }
 </style>

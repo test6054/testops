@@ -167,7 +167,49 @@ const signals = computed<SignalMetric[]>(() => {
     })
   }
 
-  return metrics
+  const priorityKeys = [
+    'responses-invalid',
+    'responses-pending',
+    'item-pending-conversion',
+    'pending-conversion',
+    'completion-rate',
+    'forms-enabled',
+    'forms-total',
+  ] as const
+  function attention(metric: SignalMetric): number {
+    return typeof metric.value === 'number' ? metric.value : 0
+  }
+  const primaryBase
+    = priorityKeys
+      .map((key) => metrics.find((item) => item.key === key))
+      .find((item) => {
+        if (!item) return false
+        if (item.key === 'forms-total' || item.key === 'forms-enabled') return true
+        if (item.key === 'completion-rate') return attention(item) < 100
+        return attention(item) > 0
+      })
+      ?? metrics[0]
+  if (!primaryBase) return []
+  const actionByKey: Record<string, string> = {
+    'responses-invalid': '查无效',
+    'responses-pending': '去确认',
+    'item-pending-conversion': '去换算',
+    'pending-conversion': '去换算',
+    'completion-rate': '看完成率',
+    'forms-enabled': '管理问卷',
+    'forms-total': '查看问卷',
+  }
+  return [
+    {
+      ...primaryBase,
+      emphasis: 'primary',
+      actionLabel: actionByKey[primaryBase.key] ?? '查看详情',
+    },
+    ...metrics
+      .filter((item) => item.key !== primaryBase.key)
+      .slice(0, 3)
+      .map((item) => ({ ...item, emphasis: 'secondary' as const })),
+  ]
 })
 
 const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
@@ -283,12 +325,26 @@ onActivated(async () => {
   await reloadIndirectWorkbench()
   await tryOpenStatisticsFromQuery()
 })
+
+/** 任务工作台副标题：表单与待换算。 */
+const indirectEvalWorkbenchSubtitle = computed(() => {
+  const summary = signalSummary.value
+  if (!summary) {
+    return '指标未加载'
+  }
+  const enabled = summary.formEnabledCount
+  const pending = summary.pendingConversionCount
+  if (typeof enabled !== 'number' || typeof pending !== 'number') {
+    return '指标字段缺失'
+  }
+  return `启用表单 ${enabled} · 待换算 ${pending}`
+})
 </script>
 
 <template>
   <QualityIngestPageShell embedded>
     <template #context>
-      <QualityPageContextBar show-title title="间接评价">
+      <QualityPageContextBar show-title title="间接评价" :subtitle="indirectEvalWorkbenchSubtitle">
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="formsLoading" @click="handleScopeChange">
             刷新
@@ -306,6 +362,7 @@ onActivated(async () => {
     <template v-else>
       <SignalBand
         :metrics="signals"
+        layout="spotlight"
         variant="panel"
         compact
         class="ie__signals"

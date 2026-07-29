@@ -6,6 +6,7 @@ import type {
   PortfolioPolicyDocumentVO,
   PortfolioPolicyIndicatorMappingVO,
 } from '@/apis/portfolio/policy'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioPolicyApi } from '@/apis/portfolio/policy'
@@ -22,6 +23,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -36,6 +38,7 @@ import {
   PortfolioPolicyLevelDescription,
 } from '@/types/enums/portfolio-policy-level-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
@@ -152,7 +155,7 @@ const columns: ColumnsType = [
   { title: '状态', key: 'documentStatus', width: 100 },
   { title: 'hash', key: 'policyHash', width: 100 },
   { title: '发布日期', dataIndex: 'publishDate', key: 'publishDate', width: 110 },
-  { title: '操作', key: 'actions', width: 240 },
+  { title: '主行动', key: 'actions', width: 240 },
 ]
 
 /** 政策发布、修订与指标映射写操作必须串行，避免同一政策被跨弹窗并发改写。 */
@@ -584,12 +587,47 @@ function onPageChange(page: { current: number, pageSize: number }) {
 onMounted(() => {
   void loadPage()
 })
+
+const PolicyLibrarySignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'total',
+      label: '政策文件',
+      value: total.value,
+      clickable: true,
+    },
+    {
+      key: 'pageRows',
+      label: '本页',
+      value: rows.value.length,
+      helper: '仅当前页',
+    },
+  ], { primaryKey: 'total', actionLabel: '刷新' })
+})
+
+function onPolicyLibrarySignalClick(_key: string) {
+  void loadPage()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="政策文件库" subtitle="四级政策维护与发布" />
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="政策文件库"
+        :subtitle="`${total} 份政策文档`"
+      />
+    </template>
+    <template v-if="PolicyLibrarySignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="PolicyLibrarySignalMetrics"
+        @metric-click="onPolicyLibrarySignalClick"
+      />
     </template>
     <UiAlertStrip
       v-if="listRefreshError"
@@ -636,6 +674,7 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="[
                 { key: 'detail', label: '详情', disabled: writing },
                 { key: 'preview', label: '预览', disabled: writing },
@@ -804,7 +843,7 @@ onMounted(() => {
             </UiButton>
           </div>
           <div class="policy-admin__mapping-actions">
-            <UiButton variant="primary" size="sm" :disabled="writing || !canEditMappings" @click="addMappingRow">
+            <UiButton variant="outline" size="sm" :disabled="writing || !canEditMappings" @click="addMappingRow">
               新增映射
             </UiButton>
             <UiButton

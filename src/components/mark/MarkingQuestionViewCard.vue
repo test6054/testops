@@ -1,9 +1,6 @@
 <template>
-  <UiCard class="info-card">
-    <template #title>
-      <FileImageOutlined />
-      <span>阅卷影像</span>
-    </template>
+  <GradingImmersionSection title="阅卷影像" class="marking-question-view-card">
+    <template #icon><FileImageOutlined /></template>
     <UiEmpty size="sm" v-if="showWholePaperPlaceholder" description="整卷任务请在影像区查看" />
     <UiSpin v-else :spinning="loading" tip="加载题目信息中...">
       <UiEmpty size="sm" v-if="!loaded && !loading" description="题目信息尚未加载" />
@@ -71,14 +68,14 @@
         </template>
       </div>
     </UiSpin>
-  </UiCard>
+  </GradingImmersionSection>
 </template>
 
 <script lang="ts" setup>
 import type { MarkingQuestionViewResponse } from '@/apis/mark/marking-organization'
 import { FileImageOutlined } from '@ant-design/icons-vue'
+import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'

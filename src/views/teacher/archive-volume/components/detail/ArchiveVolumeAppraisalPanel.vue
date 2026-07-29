@@ -40,7 +40,7 @@
         </UiButton>
         <UiButton
           v-if="canApproveDestructionAction === true"
-          variant="primary"
+          variant="outline"
           size="sm"
           @click="openDestructionApproval(ArchiveDestructionDecisionCode.APPROVED)"
         >
@@ -56,7 +56,7 @@
         </UiButton>
         <UiButton
           v-if="canExecuteDestruction === true"
-          variant="primary"
+          variant="outline"
           size="sm"
           @click="handleExecuteDestruction"
         >
@@ -64,7 +64,7 @@
         </UiButton>
         <UiButton
           v-if="canRetryDestruction === true"
-          variant="primary"
+          variant="outline"
           size="sm"
           @click="handleRetryDestruction"
         >

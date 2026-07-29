@@ -8,6 +8,7 @@ import type {
   PortfolioEvaluationTeacherNoticeVO,
 } from '@/apis/portfolio/types'
 import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -46,6 +47,7 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -56,6 +58,7 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { loadAllPages } from '@/utils/load-all-pages'
 import { portfolioIdentityTypeDisplay } from '@/utils/portfolio-identity-type'
 import { portfolioLifecycleStatusDisplay } from '@/utils/portfolio-lifecycle-tag'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const workgroups = ref<EvaluationWorkgroupVO[]>([])
@@ -213,7 +216,7 @@ const columns: ColumnsType = [
   { title: '状态', dataIndex: 'taskStatus', key: 'taskStatus', width: 88 },
   { title: '四冻结', key: 'freeze', width: 100 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 160 },
-  { title: '操作', key: 'actions', width: 140 },
+  { title: '主行动', key: 'actions', width: 140 },
 ]
 
 function evaluationModeLabel(mode: PortfolioEvaluationModeCode): string {
@@ -649,12 +652,40 @@ onMounted(async () => {
   await Promise.all([loadWorkgroups(), loadIndicatorConfigs()])
   await loadPage()
 })
+
+const EvaluationTaskSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && pageTotal.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '评价任务',
+      value: pageTotal.value,
+      clickable: true,
+    },
+  ]
+  metrics.push({
+    key: 'pageRows',
+    label: '本页',
+    value: rows.value.length,
+    helper: '仅当前页',
+  })
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+function onEvaluationTaskSignalClick(_key: string) {
+  void loadPage()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="多元评价任务">
+      <ContextBar show-title layout="workbench" title="多元评价任务" :subtitle="`${pageTotal} 条`">
         <template #actions>
           <UiButton
             size="sm"
@@ -668,6 +699,16 @@ onMounted(async () => {
         </template>
       </ContextBar>
     </template>
+    <template v-if="EvaluationTaskSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="EvaluationTaskSignalMetrics"
+        @metric-click="onEvaluationTaskSignalClick"
+      />
+    </template>
+
     <UiAlertStrip
       v-if="workgroupsLoadFailed"
       tone="error"
@@ -744,7 +785,7 @@ onMounted(async () => {
         />
         <UiButton
           size="sm"
-          variant="primary"
+          variant="outline"
           :loading="taskOperationKey === 'create'"
           :disabled="taskWriting"
           @click="createTask"
@@ -824,6 +865,7 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="[
                 {
                   key: 'publish',

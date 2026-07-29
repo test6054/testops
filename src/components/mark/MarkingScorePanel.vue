@@ -1,9 +1,9 @@
 <template>
-  <UiCard class="marking-score-panel info-card">
-    <template #title>
-      <EditOutlined />
-      <span>{{ usesWholePaperWorkspace ? '当前任务负责题目' : '批改提交' }}</span>
-    </template>
+  <GradingImmersionSection
+    class="marking-score-panel"
+    :title="usesWholePaperWorkspace ? '当前任务负责题目' : '批改提交'"
+  >
+    <template #icon><EditOutlined /></template>
 
     <UiForm
       ref="innerFormRef"
@@ -342,7 +342,7 @@
         </UiButton>
       </UiFormItem>
     </UiForm>
-  </UiCard>
+  </GradingImmersionSection>
 </template>
 
 <script lang="ts" setup>
@@ -358,9 +358,9 @@ import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grad
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import { ref, watch } from 'vue'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
+import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
 import MarkScoreTriple from '@/components/mark/MarkScoreTriple.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'

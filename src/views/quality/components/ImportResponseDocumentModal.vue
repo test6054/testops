@@ -90,7 +90,7 @@
       />
       <div class="ird__action-row">
         <UiButton variant="ghost" size="sm" @click="resetToUpload"> 重新选择文件 </UiButton>
-        <UiButton variant="primary" size="sm" @click="handleClose"> 关闭并对照录入 </UiButton>
+        <UiButton variant="outline" size="sm" @click="handleClose"> 关闭并对照录入 </UiButton>
       </div>
     </template>
 
@@ -102,7 +102,7 @@
       />
       <div class="ird__action-row">
         <UiButton variant="ghost" size="sm" @click="resetToUpload"> 继续上传 </UiButton>
-        <UiButton variant="primary" size="sm" @click="handleCloseAndRefresh">
+        <UiButton variant="outline" size="sm" @click="handleCloseAndRefresh">
           关闭并刷新列表
         </UiButton>
       </div>

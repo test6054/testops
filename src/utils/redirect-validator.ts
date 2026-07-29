@@ -56,6 +56,10 @@ export function getSafeRedirect(path: string | undefined | null, fallback: strin
   if (!path) {
     return fallback
   }
-  const decoded = decodeURIComponent(path)
-  return isValidRedirect(decoded) ? decoded : fallback
+  try {
+    const decoded = decodeURIComponent(path)
+    return isValidRedirect(decoded) ? decoded : fallback
+  } catch {
+    return fallback
+  }
 }

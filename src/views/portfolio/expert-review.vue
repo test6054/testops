@@ -5,6 +5,7 @@ import type {
   PortfolioExpertAssignmentSubjectTeacherVO,
   PortfolioExpertReviewMaterialItemVO,
 } from '@/apis/portfolio/expert-assignment'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
@@ -13,12 +14,15 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { PORTFOLIO_POLICY_MATCH_CONCLUSION_LABEL } from '@/types/enums/portfolio-policy-match-conclusion-enum'
 import { showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
@@ -92,6 +96,49 @@ const allSubjectsEvaluationHeld = computed(() => {
   return teachers.length > 0 && heldSubjectCount.value === teachers.length
 })
 
+const ExpertReviewSignalMetrics = computed<SignalMetric[]>(() => {
+  if (!bundle.value) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'subjects',
+      label: '被评教师',
+      value: bundle.value.subjectTeachers.length,
+      clickable: true,
+    },
+    {
+      key: 'materials',
+      label: '审阅材料',
+      value: bundle.value.materials.length,
+    },
+  ]
+  if (heldSubjectCount.value > 0) {
+    metrics.push({
+      key: 'held',
+      label: '参评 hold',
+      value: heldSubjectCount.value,
+      tone: 'orange',
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: heldSubjectCount.value > 0 ? 'held' : 'subjects',
+    actionLabel: heldSubjectCount.value > 0 ? '查看 hold' : '刷新',
+  })
+})
+
+const ExpertReviewWorkbenchSubtitle = computed(() => {
+  if (errorMessage.value) return '授权异常'
+  if (loadError.value) return '加载失败'
+  if (!bundle.value) return loading.value ? '加载中' : '等待授权上下文'
+  return bundle.value.readOnly ? '只读审阅' : '可填报'
+})
+
+function onExpertReviewSignalClick(_key: string) {
+  void loadBundle()
+}
+
+
 const accessToken = computed(() => {
   const token = route.query.accessToken
   return typeof token === 'string' ? token : undefined
@@ -112,7 +159,7 @@ const subjectTeacherColumns = computed<ColumnsType<PortfolioExpertAssignmentSubj
   if (!bundle.value?.maskRequired) {
     cols.push(
       { title: '教师编号', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
-      { title: '操作', key: 'actions', width: 100 },
+      { title: '主行动', key: 'actions', width: 100 },
     )
   }
   return cols
@@ -201,7 +248,7 @@ watch(
         layout="workbench"
         show-title
         title="外部专家脱敏审阅"
-        subtitle="只读审阅正式档案材料；填分请进入评价填报"
+        :subtitle="ExpertReviewWorkbenchSubtitle"
       >
         <template #actions>
           <UiButton
@@ -215,6 +262,15 @@ watch(
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+    <template v-if="ExpertReviewSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="ExpertReviewSignalMetrics"
+        @metric-click="onExpertReviewSignalClick"
+      />
     </template>
     <UiCard :loading="loading">
       <template v-if="bundle">
@@ -263,14 +319,18 @@ watch(
               />
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton
-                size="sm"
-                variant="soft"
-                :disabled="!subjectTeacherRow(record).teacherUserId"
-                @click="goTeacherMasterpiece(subjectTeacherRow(record).teacherUserId)"
-              >
-                读整袋
-              </UiButton>
+              <UiTableActions
+                :max-visible="2"
+                :items="[
+                  {
+                    key: 'portfolio',
+                    label: '读整袋',
+                    disabled: !subjectTeacherRow(record).teacherUserId,
+                  },
+                ]"
+                split
+                @action="() => goTeacherMasterpiece(subjectTeacherRow(record).teacherUserId)"
+              />
             </template>
           </template>
         </UiDataTable>

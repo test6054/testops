@@ -7,6 +7,7 @@ import type {
   PortfolioEvaluationWorkgroupOptionVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -41,6 +42,7 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -62,6 +64,7 @@ import {
 import { loadAllPages } from '@/utils/load-all-pages'
 import { portfolioLifecycleStatusDisplay } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function readScoreVarianceBlocking(error: unknown): {
@@ -284,7 +287,7 @@ const columns: ColumnsType<PortfolioEvaluationTaskVO> = [
   { title: '模式', dataIndex: 'evaluationMode', key: 'evaluationMode', width: 100 },
   { title: '时间窗', key: 'timeWindow', width: 200 },
   { title: '状态', key: 'taskStatus', width: 120 },
-  { title: '操作', key: 'actions', width: 200 },
+  { title: '主行动', key: 'actions', width: 200 },
 ]
 
 const expiredAwaitingArchiveTasks = computed(() =>
@@ -1061,6 +1064,27 @@ watch(
 )
 
 void loadPage()
+
+const SchoolEvaluationSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'total',
+      label: '评价任务',
+      value: pageTotal.value,
+      clickable: true,
+    },
+    {
+      key: 'pageRows',
+      label: '本页',
+      value: rows.value.length,
+      helper: '仅当前页',
+    },
+  ], { primaryKey: 'total', actionLabel: '刷新' })
+})
+
+function onSchoolEvaluationSignalClick(_key: string) {
+  void loadPage()
+}
 </script>
 
 <template>
@@ -1070,9 +1094,7 @@ void loadPage()
         layout="workbench"
         show-title
         title="学校评价"
-        :subtitle="isTenantAdmin
-          ? '评价任务状态推进、公示发布与归档'
-          : '工作组任务台账：查看状态与站内信深链定位'"
+        :subtitle="`${pageTotal} 条`"
       >
         <template #actions>
           <UiButton
@@ -1096,6 +1118,16 @@ void loadPage()
         </template>
       </ContextBar>
     </template>
+    <template v-if="SchoolEvaluationSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="SchoolEvaluationSignalMetrics"
+        @metric-click="onSchoolEvaluationSignalClick"
+      />
+    </template>
+
 
     <UiAlertStrip
       v-if="archiveReminderText"
@@ -1144,6 +1176,7 @@ void loadPage()
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildTaskRowActions(record)"
               @action="(key) => handleTaskRowAction(key, record)"
             />

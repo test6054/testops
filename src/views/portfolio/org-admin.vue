@@ -9,6 +9,7 @@ import type {
   PortfolioOrgTreeNodeVO,
   PortfolioOrgUnitSaveRequest,
 } from '@/apis/portfolio/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
@@ -36,6 +37,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTree from '@/components/ui-guide/ui/UiTree.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { isPortfolioUnitNode, usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
@@ -45,6 +47,7 @@ import { useUserStore } from '@/stores/modules/user'
 import { PortfolioOrgUnitStatusCode } from '@/types/enums/portfolio-org-unit-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { hasTeacherTenantPermission } from '@/utils/permission'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 interface TreeNode {
@@ -71,7 +74,7 @@ const aliasColumns: ColumnsType = [
   { title: '生效起', dataIndex: 'effectiveFrom', key: 'effectiveFrom', width: 110 },
   { title: '生效止', dataIndex: 'effectiveTo', key: 'effectiveTo', width: 110 },
   { title: '备注', dataIndex: 'remark', key: 'remark', ellipsis: true },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 const { loading, loadFailed: treeLoadFailed, treeRoots, loadTree } = usePortfolioOrgTree()
@@ -557,6 +560,35 @@ onMounted(async () => {
   await refreshTree()
   await loadLatestSync()
 })
+
+const OrgAdminSignalMetrics = computed<SignalMetric[]>(() => {
+  const log = lastSyncLog.value
+  const metrics: SignalMetric[] = [
+    {
+      key: 'units',
+      label: '组织节点',
+      value: treeData.value.length,
+      clickable: true,
+    },
+  ]
+  if (log) {
+    metrics.push({
+      key: 'departments',
+      label: '院系',
+      value: log.departmentCount ?? 0,
+    })
+    metrics.push({
+      key: 'majors',
+      label: '专业',
+      value: log.majorCount ?? 0,
+    })
+  }
+  return applySpotlightEmphasis(metrics, { primaryKey: 'units', actionLabel: '刷新同步' })
+})
+
+function onOrgAdminSignalClick(_key: string) {
+  void loadLatestSync()
+}
 </script>
 
 <template>
@@ -603,6 +635,16 @@ onMounted(async () => {
         </template>
       </ContextBar>
     </template>
+    <template v-if="OrgAdminSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="OrgAdminSignalMetrics"
+        @metric-click="onOrgAdminSignalClick"
+      />
+    </template>
+
     <UiCard v-if="syncDiagnostics.length" title="挂接失效诊断" class="org-admin__diagnostics">
       <ul class="org-admin__diagnostic-list">
         <li v-for="item in syncDiagnostics" :key="item.id">
@@ -686,6 +728,7 @@ onMounted(async () => {
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'actions'">
                 <UiTableActions
+                  :max-visible="2"
                   v-if="canManageTenant"
                   :items="[
                     { key: 'edit', label: '编辑', disabled: interactionLocked },

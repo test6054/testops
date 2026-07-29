@@ -140,41 +140,28 @@ const createCycleLabel = computed(() => maintenanceCycle.value ? '启动复认�
 const signalMetrics = computed(() => {
   const base = metrics.value
   if (!base.length) return base
-  return [
-    ...base.map((item) => {
-      const iconTone: SignalMetricIconTone
-        = item.tone === 'green'
-          ? 'green'
-          : item.tone === 'blue'
-            ? 'blue'
-            : item.tone === 'purple'
-              ? 'purple'
-              : 'gray'
-      return {
-        ...item,
-        iconTone,
-        helper: item.helper ?? '认证驾驶舱',
-      }
-    }),
-    {
-      key: 'application-evidence',
-      label: '申请期认证证据',
-      value: cockpit.value?.applicationCycle
-        ? String(cockpit.value.applicationEvidenceCount)
-        : '不适用',
-      iconTone: 'blue' as const,
-      helper: '当前在办申请周期',
-    },
-    {
-      key: 'maintenance-evidence',
-      label: '保持期认证证据',
-      value: cockpit.value?.maintenanceCycle
-        ? String(cockpit.value.maintenanceEvidenceCount)
-        : '不适用',
-      iconTone: 'gray' as const,
-      helper: '当前有效保持周期',
-    },
-  ]
+  const enriched = base.map((item, index) => {
+    const iconTone: SignalMetricIconTone
+      = item.tone === 'green'
+        ? 'green'
+        : item.tone === 'blue'
+          ? 'blue'
+          : item.tone === 'purple'
+            ? 'purple'
+            : 'gray'
+    const isBlocked = item.tone === 'orange' || item.tone === 'red'
+    const primaryIndex = base.findIndex((m) => m.tone === 'orange' || m.tone === 'red')
+    const primaryAt = primaryIndex >= 0 ? primaryIndex : 0
+    return {
+      ...item,
+      iconTone,
+      helper: item.helper ?? '认证驾驶舱',
+      clickable: true,
+      emphasis: index === primaryAt ? 'primary' as const : 'secondary' as const,
+      actionLabel: index === primaryAt && isBlocked ? '处理阻断' : undefined,
+    }
+  })
+  return enriched
 })
 
 const annualCourseCoverages = computed(() => cockpit.value?.annualCourseCoverages || [])
@@ -199,6 +186,23 @@ function onPhaseSelect(stage: { key: string }) {
 function onCreateCycle() {
   activeTab.value = 'cycle'
   cyclePanelRef.value?.openCreate()
+}
+
+/** 将后端驾驶舱指标下钻到承载该任务的真实业务页签。 */
+function handleSignalMetricClick(key: string): void {
+  const metricTab: Record<string, string> = {
+    "annual": 'annual',
+    "coverage": 'annual',
+    "onsite": 'onsite',
+    "checklist": 'onsite',
+    "support": 'support',
+    'faculty-profile': 'support',
+    'annual-material': 'annual-material',
+  }
+  const targetTab = metricTab[key]
+  if (targetTab) {
+    activeTab.value = targetTab
+  }
 }
 
 /** 按后端 actionKey / routeName 跳转；已覆盖项也可进入查看 */
@@ -271,12 +275,29 @@ function onEvidenceChanged(): void {
 }
 
 useQualityScopedLoader(refreshAll, { watchScope: true, immediate: true, reloadOnActivated: true })
+
+/** 任务工作台副标题：优先表达阻断，再补充条款覆盖进度。 */
+const accreditationCockpitWorkbenchSubtitle = computed(() => {
+  if (!workbenchReady.value) {
+    return '确认培养方案后进入认证任务'
+  }
+  if (cockpitLoading.value && !cockpit.value) {
+    return '正在获取认证状态'
+  }
+  if (!standardClauses.value.length) {
+    return hasAnyCycle.value ? '标准条款待获取' : '尚未建立认证业务周期'
+  }
+  if (blockedStandardClauses.value.length > 0) {
+    return `待完善 ${blockedStandardClauses.value.length} · 已覆盖 ${passedStandardClauseCount.value}/${standardClauses.value.length}`
+  }
+  return `标准条款已覆盖 ${passedStandardClauseCount.value}/${standardClauses.value.length}`
+})
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar show-title title="工程教育认证驾驶舱">
+      <QualityPageContextBar show-title title="工程教育认证驾驶舱" :subtitle="accreditationCockpitWorkbenchSubtitle">
         <template #actions>
           <UiButton variant="primary" size="sm" :disabled="!canCreateCycle" @click="onCreateCycle">
             {{ createCycleLabel }}
@@ -313,7 +334,13 @@ useQualityScopedLoader(refreshAll, { watchScope: true, immediate: true, reloadOn
     </template>
 
     <template v-if="workbenchReady" #signal>
-      <SignalBand :metrics="signalMetrics" variant="panel" compact />
+      <SignalBand
+        layout="spotlight"
+        :metrics="signalMetrics"
+        variant="panel"
+        compact
+        @metric-click="handleSignalMetricClick"
+      />
     </template>
 
     <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="acc-empty" />
@@ -322,8 +349,10 @@ useQualityScopedLoader(refreshAll, { watchScope: true, immediate: true, reloadOn
       <UiEmpty
         size="sm"
         title="认证驾驶舱加载失败"
-        description="切换培养方案或使用「刷新」后将再次拉取；失败态不展示空周期"
+        description="当前未展示空周期或推测状态，可再次获取后端认证状态"
+        action-label="再次获取状态"
         class="acc-empty"
+        @action="refreshAll"
       />
     </template>
 
@@ -574,6 +603,10 @@ useQualityScopedLoader(refreshAll, { watchScope: true, immediate: true, reloadOn
 .acc-standard-check__item:hover,
 .acc-standard-check__item--actionable:hover {
   border-color: var(--dp-color-primary-border);
+}
+.acc-standard-check__item:focus-visible {
+  outline: 2px solid var(--dp-color-primary-border);
+  outline-offset: 2px;
 }
 .acc-standard-check__label {
   font-weight: 600;

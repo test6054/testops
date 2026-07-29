@@ -4,6 +4,7 @@ import type {
   PortfolioArchiveRecordVersionVO,
   PortfolioTargetFieldDefinition,
 } from '@/apis/portfolio/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
@@ -28,6 +29,7 @@ import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
@@ -39,6 +41,7 @@ import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWrit
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { validatePortfolioArchiveFields } from '@/utils/portfolio-archive-field-validation'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const route = useRoute()
@@ -476,6 +479,26 @@ function onCategoryEditMoreAction(key: string) {
     versionCompareOpen.value = true
   }
 }
+
+const ArchiveCategoryEditSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'fields',
+      label: '可编辑字段',
+      value: editableFields.value.length,
+      clickable: true,
+    },
+    {
+      key: 'status',
+      label: '记录状态',
+      value: recordStatus.value ?? '—',
+    },
+  ], { primaryKey: 'fields', actionLabel: '刷新' })
+})
+
+function onArchiveCategoryEditSignalClick(_key: string) {
+  void loadPage()
+}
 </script>
 
 <template>
@@ -485,6 +508,7 @@ function onCategoryEditMoreAction(key: string) {
         show-title
         layout="workbench"
         :title="categoryName ? `${categoryName} · 分类填报` : '分类填报'"
+        :subtitle="recordStatus ? strictEnumLabel(PortfolioArchiveRecordStatusDescription, recordStatus, '档案记录状态') : undefined"
       >
         <template #actions>
           <UiButton
@@ -521,6 +545,15 @@ function onCategoryEditMoreAction(key: string) {
           class="dp-mb-component"
         />
       </ContextBar>
+    </template>
+    <template v-if="ArchiveCategoryEditSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="ArchiveCategoryEditSignalMetrics"
+        @metric-click="onArchiveCategoryEditSignalClick"
+      />
     </template>
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 

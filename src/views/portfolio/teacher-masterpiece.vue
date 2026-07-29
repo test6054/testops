@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { PortfolioProcessSessionVO } from '@/apis/portfolio/process-session'
 import type { PortfolioMasterpieceContributionVO } from '@/apis/portfolio/types'
+import type { SignalMetric } from '@/types/workbench'
 /**
  * 教学代表作只读预览：文档式阅读——身份/陈述为主叙事，过程与成果为证据，覆盖度/贡献度为旁注。
  */
@@ -18,12 +19,14 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 defineOptions({ name: 'PortfolioTeacherMasterpiece' })
@@ -40,6 +43,16 @@ const completeness = ref<number | null>(null)
 const officialCount = ref<number | null>(null)
 const philosophyText = ref('')
 const honorCount = ref<number | null>(null)
+const masterpieceSubtitle = computed(() => {
+  const parts: string[] = []
+  if (officialCount.value != null) {
+    parts.push(`${officialCount.value} 条正式档案`)
+  }
+  if (honorCount.value != null) {
+    parts.push(`${honorCount.value} 条获奖`)
+  }
+  return parts.length > 0 ? parts.join(' · ') : undefined
+})
 const summaryLoadFailed = ref(false)
 const portraitLoadFailed = ref(false)
 const philosophyLoadFailed = ref(false)
@@ -212,18 +225,47 @@ function go(path: string) {
 }
 
 usePortfolioScopedLoader(loadAll, () => targetTeacherId.value)
+
+const MasterpieceSignalMetrics = computed<SignalMetric[]>(() => {
+  if (summaryLoadFailed.value && completeness.value == null) {
+    return []
+  }
+  return applySpotlightEmphasis([
+    {
+      key: 'completeness',
+      label: '代表作完整度',
+      value: completeness.value ?? '—',
+      unit: completeness.value == null ? undefined : '%',
+      clickable: true,
+    },
+  ], { primaryKey: 'completeness', actionLabel: '刷新' })
+})
+
+function onMasterpieceSignalClick(_key: string) {
+  void loadAll()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="教学代表作预览">
+      <ContextBar show-title layout="workbench" title="教学代表作预览" :subtitle="masterpieceSubtitle">
         <template #actions>
           <UiButton size="sm" @click="go('/portfolio/teacher/home')">回工作台</UiButton>
           <UiButton size="sm" variant="outline" @click="loadAll">刷新</UiButton>
         </template>
       </ContextBar>
     </template>
+    <template v-if="MasterpieceSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="MasterpieceSignalMetrics"
+        @metric-click="onMasterpieceSignalClick"
+      />
+    </template>
+
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 

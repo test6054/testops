@@ -163,7 +163,7 @@ const props = withDefaults(
   filterModel: MarkingOrgSessionFilterModel
   pagination: SessionPaginationState
   loading?: boolean
-  canManage: boolean
+  canManage?: boolean
   /** MVR-398：关闭归档仅主考、不叠 ACTIVE */
   canCloseMarkingSessions?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
   createBlocked?: boolean
@@ -210,7 +210,7 @@ const sessionColumns: ColumnType<FormalSessionResponse>[] = [
   { title: '成绩闭环', key: 'gradeClosure', width: 120 },
   { title: '创建时间', key: 'createTime', width: 152 },
   { title: '起止时间', key: 'lifecycleTime', width: 200 },
-  { title: '操作', key: 'actions', width: 220 },
+  { title: '主行动', key: 'actions', width: 220 },
 ]
 
 const filterFields = computed(() => buildMarkingSessionFilterFields('formal', props.groupOptions))

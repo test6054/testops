@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>批阅沉浸工作台 · 设计原型</title><style>
+:root{--dp-primary:#2b67ff;--dp-primary-bg:#eef4ff;--dp-text:rgba(15,23,42,.92);--dp-text-2:rgba(15,23,42,.68);--dp-text-3:rgba(15,23,42,.48);--dp-border:#e2e8f0;--dp-split:rgba(15,23,42,.05);--dp-bg:#f6f7f9;--dp-surface:#fff;--dp-chrome:#f8fafc;--dp-success:#16a34a;--dp-warning:#d97706;--dp-error:#dc2626;--dp-radius:10px;--dp-shadow:0 1px 3px rgba(15,23,42,.05),0 4px 12px rgba(15,23,42,.03);--font:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif}
+*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:var(--font);color:var(--dp-text);background:#0b1220}
+button,input,select,textarea{font:inherit}.app-frame{min-height:100%;display:flex;flex-direction:column}
+.proto-top{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 20px;background:rgba(11,18,32,.92);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.08);color:#e5eefc}
+.proto-top h1{margin:0;font-size:15px;font-weight:600}.proto-top p{margin:0;font-size:12px;color:#93a4c3}
+.toggle{display:inline-flex;padding:3px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
+.toggle button{border:0;background:transparent;color:#93a4c3;padding:7px 14px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:500}
+.toggle button.active{background:#fff;color:#0b1220}
+.meta{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:12px;color:#93a4c3;flex-wrap:wrap}
+.badge{display:inline-flex;padding:4px 10px;border-radius:999px;background:rgba(43,103,255,.15);color:#9db7ff;border:1px solid rgba(43,103,255,.25)}
+.stage{flex:1;padding:18px}.stage-grid{display:grid;grid-template-columns:1fr;gap:16px;max-width:1480px;margin:0 auto}
+.stage-grid.compare{grid-template-columns:1fr 1fr}@media(max-width:1200px){.stage-grid.compare{grid-template-columns:1fr}}
+.panel-label{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;color:#c7d4ea;font-size:12px}
+.panel-label strong{color:#fff;font-size:13px}
+.device{border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:var(--dp-bg);box-shadow:0 20px 50px rgba(0,0,0,.35);min-height:820px;display:flex;flex-direction:column}
+.btn{height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--dp-border);background:#fff;color:var(--dp-text);font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.btn-sm{height:28px;font-size:12px;padding:0 10px}.btn-primary{background:var(--dp-primary);border-color:var(--dp-primary);color:#fff;font-weight:600}
+.btn-ghost{background:transparent}.btn-danger{background:#fff;border-color:#fecaca;color:var(--dp-error)}
+.btn-text{border:0;background:transparent;color:var(--dp-primary);height:auto;padding:0;font-weight:600}
+.tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;font-size:12px;background:#f1f5f9;color:var(--dp-text-2)}
+.tag-ok{background:#f0fdf4;color:var(--dp-success)}.tag-warn{background:#fffbeb;color:var(--dp-warning)}.tag-err{background:#fef2f2;color:var(--dp-error)}.tag-run{background:var(--dp-primary-bg);color:var(--dp-primary)}
+.note{margin:14px auto 10px;max-width:1480px;color:#9db0d0;font-size:12px;line-height:1.6}
+.diff-list{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}@media(max-width:900px){.diff-list{grid-template-columns:1fr}}
+.diff-item{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:12px 14px;color:#c7d4ea}
+.diff-item b{display:block;color:#fff;margin-bottom:4px;font-size:13px}
+.nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.nav a{color:#9db7ff;text-decoration:none;font-size:12px;padding:4px 8px;border:1px solid rgba(157,183,255,.25);border-radius:999px}
+.muted{color:var(--dp-text-3);font-size:12px}.select,.input{height:30px;border:1px solid var(--dp-border);border-radius:8px;padding:0 10px;background:#fff;color:var(--dp-text-2);font-size:12px;min-width:110px}
+
+
+.g-shell{display:flex;flex-direction:column;height:100%;min-height:820px;background:var(--dp-bg)}
+.g-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--dp-surface);border-bottom:1px solid var(--dp-border)}
+.g-top .title{font-weight:700;font-size:14px}.g-top .sub{font-size:12px;color:var(--dp-text-3)}
+.g-body{flex:1;display:grid;grid-template-columns:1fr 340px;min-height:0}.g-body.cur{grid-template-columns:220px 1fr 300px}
+@media(max-width:900px){.g-body,.g-body.cur{grid-template-columns:1fr}}
+.g-side,.g-paper,.g-score{min-height:0;overflow:auto}
+.g-side{background:var(--dp-surface);border-right:1px solid var(--dp-border);padding:10px}
+.g-side .item{padding:8px 10px;border-radius:8px;font-size:12px;color:var(--dp-text-2);margin-bottom:4px}
+.g-side .item.on{background:var(--dp-primary-bg);color:var(--dp-primary);font-weight:600}
+.g-paper{background:#e8edf5;padding:16px;display:flex;flex-direction:column;gap:12px}
+.paper-sheet{background:#fff;border-radius:8px;box-shadow:var(--dp-shadow);min-height:420px;padding:18px}
+.paper-sheet .line{height:10px;background:#eef2f7;border-radius:4px;margin:10px 0}
+.paper-sheet .block{height:86px;background:linear-gradient(180deg,#f8fafc,#eef2f7);border-radius:8px;margin-top:16px;border:1px dashed #cbd5e1;display:grid;place-items:center;color:var(--dp-text-3);font-size:12px}
+.hl{outline:2px solid rgba(43,103,255,.45);outline-offset:2px;background:rgba(43,103,255,.06);border-radius:4px;padding:6px}
+.g-score{background:var(--dp-surface);border-left:1px solid var(--dp-border);padding:12px;display:flex;flex-direction:column;gap:10px}
+.score-box{border:1px solid var(--dp-border);border-radius:10px;padding:12px;background:var(--dp-chrome)}
+.score-box .big{font-size:28px;font-weight:700;letter-spacing:-.03em}
+.score-row{display:flex;gap:8px;flex-wrap:wrap}
+.chip{height:28px;min-width:40px;padding:0 10px;border-radius:8px;border:1px solid var(--dp-border);background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+.chip.on{border-color:var(--dp-primary);color:var(--dp-primary);background:var(--dp-primary-bg);font-weight:600}
+.g-foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--dp-surface);border-top:1px solid var(--dp-border);align-items:center}
+.progress{height:6px;border-radius:999px;background:#eef2f7;overflow:hidden}.progress>i{display:block;height:100%;background:var(--dp-primary)}
+.prop-chrome{display:flex;align-items:center;gap:12px;padding:8px 14px;background:#0f172a;color:#e2e8f0;flex-wrap:wrap}
+.prop-chrome .t{font-weight:700;font-size:13px}.prop-chrome .s{font-size:12px;color:#94a3b8}
+.queue{display:flex;gap:6px;overflow:auto;padding:8px 14px;background:var(--dp-surface);border-bottom:1px solid var(--dp-border)}
+.q-item{min-width:54px;padding:6px 8px;border-radius:8px;border:1px solid var(--dp-border);text-align:center;font-size:11px;color:var(--dp-text-2);background:#fff}
+.q-item.on{border-color:var(--dp-primary);background:var(--dp-primary-bg);color:var(--dp-primary);font-weight:700}
+.q-item.warn{border-color:#fde68a;background:#fffbeb}
+.shortcut{font-size:11px;color:#94a3b8}
+.kbd{display:inline-block;padding:1px 5px;border-radius:4px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:10px;margin-right:4px}
+</style></head><body>
+<div class="app-frame"><div class="proto-top"><div>
+<h1>批阅沉浸工作台 · 设计原型</h1><p>隐藏全局侧栏 · 左卷右分 · 快捷键优先</p>
+<div class="nav">
+<a href="index.html">索引</a>
+<a href="exam-list-redesign.html">考试列表</a>
+<a href="grading-immersion-redesign.html">批阅沉浸</a>
+<a href="quality-cockpit-redesign.html">质量 cockpit</a>
+<a href="portfolio-teacher-redesign.html">教师档案袋</a>
+</div></div>
+<div class="toggle" role="group" aria-label="视图模式">
+<button type="button" class="active" data-mode="compare">并排对比</button>
+<button type="button" data-mode="current">仅现状</button>
+<button type="button" data-mode="proposed">仅原型</button>
+</div>
+<div class="meta"><span class="badge">grading immersion</span></div></div>
+<div class="stage"><div class="stage-grid compare" id="stageGrid">
+<section id="panelCurrent"><div class="panel-label"><strong>A · 现状示意</strong><span>传统后台 / 多 chrome</span></div><div class="device">
+<div class="g-shell">
+  <div class="g-top">
+    <button class="btn btn-sm btn-ghost" type="button">← 返回</button>
+    <div><div class="title">电路分析 · 期中考试</div><div class="sub">任务池 / 主观题 / 第 3 题 · 传统多栏</div></div>
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+      <span class="tag tag-run">阅卷中</span>
+      <button class="btn btn-sm" type="button">上一份</button>
+      <button class="btn btn-sm" type="button">下一份</button>
+      <button class="btn btn-sm btn-primary" type="button">提交给分</button>
+    </div>
+  </div>
+  <div class="g-body cur">
+    <div class="g-side">
+      <div class="muted" style="margin-bottom:8px">题目列表</div>
+      <div class="item">1 选择题 4'</div><div class="item">2 填空 6'</div><div class="item on">3 计算题 12'</div><div class="item">4 综合 18'</div>
+      <div class="muted" style="margin:12px 0 8px">考生队列</div>
+      <div class="item">20240101 张三</div><div class="item on">20240118 李四</div><div class="item">20240122 王五</div><div class="item">… 共 186 份</div>
+    </div>
+    <div class="g-paper"><div class="paper-sheet">
+      <div style="font-weight:700;margin-bottom:8px">三、计算题（12 分）</div>
+      <div class="line" style="width:92%"></div><div class="line" style="width:86%"></div><div class="line" style="width:78%"></div>
+      <div class="block">答卷影像 / 手写区占位</div>
+      <div class="line" style="width:70%"></div><div class="line" style="width:64%"></div>
+    </div></div>
+    <div class="g-score">
+      <div class="score-box"><div class="muted">本题得分</div><div class="big">8 / 12</div></div>
+      <div class="muted">快捷分值</div>
+      <div class="score-row"><span class="chip">0</span><span class="chip">4</span><span class="chip on">8</span><span class="chip">10</span><span class="chip">12</span></div>
+      <div class="muted">评语模板</div>
+      <button class="btn btn-sm" type="button" style="width:100%;justify-content:flex-start">过程正确，结果有误</button>
+      <button class="btn btn-sm" type="button" style="width:100%;justify-content:flex-start">公式引用错误</button>
+      <textarea style="width:100%;min-height:90px;border:1px solid var(--dp-border);border-radius:8px;padding:8px" placeholder="自定义评语"></textarea>
+      <button class="btn btn-primary" type="button">保存并下一题</button>
+      <button class="btn" type="button">仅保存</button>
+    </div>
+  </div>
+  <div class="g-foot">
+    <div class="muted">进度 48% · 已评 89 / 186</div>
+    <div style="width:180px" class="progress"><i style="width:48%"></i></div>
+    <div style="display:flex;gap:8px"><button class="btn btn-sm" type="button">标记存疑</button><button class="btn btn-sm btn-danger" type="button">回退</button></div>
+  </div>
+</div>
+</div></section>
+<section id="panelProposed"><div class="panel-label"><strong>B · 优化原型</strong><span>任务沉浸 / 叙事更强</span></div><div class="device">
+<div class="g-shell">
+  <div class="prop-chrome">
+    <button class="btn btn-sm" type="button" style="background:#1e293b;border-color:#334155;color:#e2e8f0">← 任务池</button>
+    <div><div class="t">电路分析 · 期中 · 计算题 3</div><div class="s">李四 20240118 · 匿名场次 · 本卷 2/4 题</div></div>
+    <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span class="shortcut"><span class="kbd">A</span>上一份</span>
+      <span class="shortcut"><span class="kbd">D</span>下一份</span>
+      <span class="shortcut"><span class="kbd">S</span>保存</span>
+      <span class="tag tag-run">沉浸批阅</span>
+      <button class="btn btn-sm btn-primary" type="button">提交本题 · 下一份</button>
+    </div>
+  </div>
+  <div class="queue">
+    <div class="q-item">题1</div><div class="q-item">题2</div><div class="q-item on">题3</div><div class="q-item">题4</div>
+    <div style="width:1px;background:var(--dp-border);margin:0 4px"></div>
+    <div class="q-item">上份</div><div class="q-item on">当前</div><div class="q-item warn">存疑</div><div class="q-item">下份</div>
+    <div class="muted" style="margin-left:auto;align-self:center">会话 89/186 · 今日目标 120</div>
+  </div>
+  <div class="g-body">
+    <div class="g-paper" style="padding:12px"><div class="paper-sheet">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:10px">
+        <div style="font-weight:700">三、计算题（12 分）· 按步骤给分</div><span class="tag tag-warn">AI 建议 7–9 分</span>
+      </div>
+      <div class="hl"><div style="font-size:12px;color:var(--dp-primary);font-weight:600;margin-bottom:4px">当前焦点 · 第 2 小步</div>
+        <div class="line" style="width:90%;background:#dbe7ff"></div><div class="line" style="width:80%;background:#dbe7ff"></div></div>
+      <div class="block">答卷高清区 · 滚轮缩放 / 空格拖拽（示意）</div>
+      <div class="line" style="width:72%"></div><div class="line" style="width:60%"></div>
+      <div class="muted">涉密水印在真页启用；原型强调沉浸构图</div>
+    </div></div>
+    <div class="g-score">
+      <div class="score-box" style="background:linear-gradient(180deg,#eef4ff,#fff);border-color:#c7d7ff">
+        <div class="muted">本题得分</div>
+        <div class="big" style="color:var(--dp-primary)">8 <span style="font-size:14px;color:var(--dp-text-3);font-weight:500">/ 12</span></div>
+        <div class="progress" style="margin-top:8px"><i style="width:67%"></i></div>
+      </div>
+      <div class="muted">一步一档</div>
+      <div class="score-row"><span class="chip">0</span><span class="chip">4</span><span class="chip on">8</span><span class="chip">10</span><span class="chip">12</span></div>
+      <div class="muted">扣分点</div>
+      <button class="btn btn-sm" type="button" style="width:100%;justify-content:flex-start">□ 公式引用错误 (−2)</button>
+      <button class="btn btn-sm" type="button" style="width:100%;justify-content:flex-start;background:var(--dp-primary-bg);border-color:#c7d7ff;color:var(--dp-primary)">✓ 结果未化简 (−2)</button>
+      <button class="btn btn-sm" type="button" style="width:100%;justify-content:flex-start">□ 单位缺失 (−1)</button>
+      <textarea style="width:100%;min-height:72px;border:1px solid var(--dp-border);border-radius:8px;padding:8px" placeholder="补充评语（可选）"></textarea>
+      <div style="display:flex;gap:8px"><button class="btn btn-primary" type="button" style="flex:1">确认 8 分</button><button class="btn" type="button">存疑</button></div>
+    </div>
+  </div>
+  <div class="g-foot">
+    <div><strong>89</strong> / 186 已评 · 预计剩余 52 分钟</div>
+    <div style="flex:1;max-width:260px" class="progress"><i style="width:48%"></i></div>
+    <div class="shortcut"><span class="kbd">?</span>快捷键</div>
+  </div>
+</div>
+</div></section>
+</div>
+<div class="note"><div><strong style="color:#fff">对比要点</strong></div><div class="diff-list">
+<div class="diff-item"><b>1. Chrome</b>A 后台顶栏。B 深色沉浸顶栏 + 快捷键。</div>
+<div class="diff-item"><b>2. 栏数</b>A 三栏。B 双栏左卷右分，队列顶置。</div>
+<div class="diff-item"><b>3. 给分</b>A 平铺。B 焦点步骤 + 扣分点 + 主确认。</div>
+<div class="diff-item"><b>4. 节奏</b>A 多按钮同级。B 一次一个主行动。</div>
+<div class="diff-item"><b>5. 合规</b>真页保留涉密水印；原型不弱化合规。</div>
+<div class="diff-item"><b>6. 对标</b>对齐 GradingWorkspaceLayout 能力升级体验。</div>
+</div>
+<p style="margin:12px 0 0">文件：<code style="color:#c9d7f5">edu-practice-mark-vue/prototypes/grading-immersion-redesign.html</code></p></div>
+</div></div>
+<script>
+const grid=document.getElementById('stageGrid');
+const current=document.getElementById('panelCurrent');
+const proposed=document.getElementById('panelProposed');
+document.querySelectorAll('.toggle button').forEach((btn)=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.toggle button').forEach((b)=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const mode=btn.dataset.mode;
+    current.style.display=mode==='proposed'?'none':'';
+    proposed.style.display=mode==='current'?'none':'';
+    grid.classList.toggle('compare', mode==='compare');
+  });
+});
+</script></body></html>

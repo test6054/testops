@@ -1,6 +1,6 @@
 <template>
   <DualDomainSideNav
-    v-if="isDualTeacherQualityMenu"
+    v-if="isShellProductSideNav"
     :collapsed="!isDesktop ? false : appStore.menuCollapse"
     :marking-grouped="markingGroupedMenus"
     :platform-grouped="platformGroupedMenus"
@@ -63,7 +63,6 @@ import { useDevice } from '@/hooks'
 import { useAppStore, useAuthStore, useQualityStore, useRouteStore, useUserStore } from '@/stores'
 import { RoleEnum } from '@/utils/permission'
 import {
-  isQualityEvaluationRoute,
   PORTFOLIO_ROUTE_PREFIX,
   QUALITY_ADMIN_MENU_GROUP,
 } from '@/utils/portfolio-route'
@@ -72,6 +71,7 @@ import {
   QUALITY_PLAN_GATE_REASON_NO_PLAN,
   QUALITY_PLAN_GATE_REASON_UNCONFIRMED,
 } from '@/utils/quality-plan-guard'
+import { isShellProductDomainPath } from '@/utils/shell-domain'
 import { isExternal } from '@/utils/validate'
 import DualDomainSideNav from './DualDomainSideNav.vue'
 import MenuCollapsedTooltip from './MenuCollapsedTooltip.vue'
@@ -246,18 +246,21 @@ const hasQualityDomain = computed(() =>
 const hasPortfolioDomain = computed(() =>
   layoutRouteSource.value.some((entry) => entry.path === PORTFOLIO_ROUTE_PREFIX),
 )
-const isDualTeacherQualityMenu = computed(() => {
+/**
+ * 产品壳侧栏：任意产品域路径都走 DualDomainSideNav，按当前域只渲染本域任务。
+ * 不再要求三域齐全；单域/两域同样避免回退到「整棵前缀树」混装菜单。
+ * 路径判定与顶栏 DomainSwitch 共用 isShellProductDomainPath。
+ */
+const isShellProductSideNav = computed(() => {
   if (props.menus) {
     return false
   }
-  if (!hasMarkingDomain.value || !hasQualityDomain.value || !hasPortfolioDomain.value) {
+  const hasAnyProductDomain
+    = hasMarkingDomain.value || hasQualityDomain.value || hasPortfolioDomain.value
+  if (!hasAnyProductDomain) {
     return false
   }
-  return (
-    route.path.startsWith('/teacher')
-    || isQualityEvaluationRoute(route.path)
-    || route.path.startsWith(PORTFOLIO_ROUTE_PREFIX)
-  )
+  return isShellProductDomainPath(route.path)
 })
 
 const activeLayoutPrefix = computed(() => {
@@ -265,7 +268,7 @@ const activeLayoutPrefix = computed(() => {
 })
 
 const isRoleLayoutRoute = computed(() => {
-  if (isDualTeacherQualityMenu.value) {
+  if (isShellProductSideNav.value) {
     return false
   }
   return activeLayoutPrefix.value !== null
@@ -309,7 +312,7 @@ const sidebarRoutes = computed(() => {
   if (props.menus) {
     return props.menus
   }
-  if (isDualTeacherQualityMenu.value) {
+  if (isShellProductSideNav.value) {
     return [
       ...markingSidebarRoutesForMenu.value,
       ...qualitySidebarRoutesForMenu.value,
@@ -325,10 +328,10 @@ const sidebarRoutes = computed(() => {
 })
 
 const groupedMenus = computed(() => {
-  if (!isRoleLayoutRoute.value && !isDualTeacherQualityMenu.value) {
+  if (!isRoleLayoutRoute.value && !isShellProductSideNav.value) {
     return emptyMenuGroups()
   }
-  if (isDualTeacherQualityMenu.value) {
+  if (isShellProductSideNav.value) {
     return emptyMenuGroups()
   }
   return groupRoutes(sidebarRoutes.value)
@@ -471,7 +474,7 @@ const currentGroupKey = computed<Key | null>(() => {
 watch(
   currentGroupKey,
   (key) => {
-    if (isDualTeacherQualityMenu.value) {
+    if (isShellProductSideNav.value) {
       return
     }
     if (!key) {

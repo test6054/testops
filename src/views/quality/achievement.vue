@@ -463,7 +463,7 @@ const columns: ColumnsType = [
   { title: '达成结论', dataIndex: 'achievementStatus', key: 'achievementStatus', width: 120 },
   { title: '结果有效性', key: 'validity', width: 150 },
   { title: '审核', dataIndex: 'auditStatus', key: 'auditStatus', width: 110 },
-  { title: '操作', key: 'actions', width: 320 },
+  { title: '主行动', key: 'actions', width: 320 },
 ]
 
 function resetQuery() {
@@ -862,44 +862,18 @@ const signals = computed<SignalMetric[]>(() => {
   const partial = countAchievementStatus(summary, AchievementStatusCode.PARTIALLY_ACHIEVED)
   const notAchieved = countAchievementStatus(summary, AchievementStatusCode.NOT_ACHIEVED)
   const stale = summary.staleCount
-  return [
+  const pendingAudit = b[AchievementAuditStatusCode.DRAFT] + b[AchievementAuditStatusCode.CALCULATED]
+  const returned = b[AchievementAuditStatusCode.RETURNED]
+  const pool: SignalMetric[] = [
     {
-      key: 'total',
-      label: '结果总数',
-      value: summary.totalCount,
-      tone: 'blue',
-      trendPolarity: 'neutral',
-    },
-    {
-      key: 'achieved',
-      label: '已达成',
-      value: achieved,
-      tone: achieved > 0 ? 'green' : 'gray',
-      trendPolarity: 'positive',
-    },
-    {
-      key: 'partial',
-      label: '部分达成',
-      value: partial,
-      tone: partial > 0 ? 'orange' : 'gray',
+      key: 'returned',
+      label: '已驳回',
+      value: returned,
+      tone: returned > 0 ? 'red' : 'gray',
       trendPolarity: 'negative',
-    },
-    {
-      key: 'not-achieved',
-      label: '未达成',
-      value: notAchieved,
-      tone: notAchieved > 0 ? 'red' : 'gray',
-      trendPolarity: 'negative',
-    },
-    {
-      key: 'pending-audit',
-      label: '待提交',
-      value: b[AchievementAuditStatusCode.DRAFT] + b[AchievementAuditStatusCode.CALCULATED],
-      tone:
-        b[AchievementAuditStatusCode.DRAFT] + b[AchievementAuditStatusCode.CALCULATED] > 0
-          ? 'orange'
-          : 'gray',
-      trendPolarity: 'negative',
+      emphasis: 'secondary',
+      actionLabel: returned > 0 ? '处理驳回' : undefined,
+      helper: returned > 0 ? '驳回结果待修订' : undefined,
     },
     {
       key: 'stale',
@@ -907,15 +881,63 @@ const signals = computed<SignalMetric[]>(() => {
       value: stale,
       tone: stale > 0 ? 'red' : 'gray',
       trendPolarity: 'negative',
+      emphasis: 'secondary',
+      actionLabel: stale > 0 ? '查看过期' : undefined,
     },
     {
-      key: 'returned',
-      label: '已驳回',
-      value: b[AchievementAuditStatusCode.RETURNED],
-      tone: b[AchievementAuditStatusCode.RETURNED] > 0 ? 'red' : 'gray',
+      key: 'not-achieved',
+      label: '未达成',
+      value: notAchieved,
+      tone: notAchieved > 0 ? 'red' : 'gray',
       trendPolarity: 'negative',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'pending-audit',
+      label: '待提交',
+      value: pendingAudit,
+      tone: pendingAudit > 0 ? 'orange' : 'gray',
+      trendPolarity: 'negative',
+      emphasis: 'secondary',
+      actionLabel: pendingAudit > 0 ? '推进提交' : undefined,
+    },
+    {
+      key: 'partial',
+      label: '部分达成',
+      value: partial,
+      tone: partial > 0 ? 'orange' : 'gray',
+      trendPolarity: 'negative',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'total',
+      label: '结果总数',
+      value: summary.totalCount,
+      tone: 'blue',
+      trendPolarity: 'neutral',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'achieved',
+      label: '已达成',
+      value: achieved,
+      tone: achieved > 0 ? 'green' : 'gray',
+      trendPolarity: 'positive',
+      emphasis: 'secondary',
     },
   ]
+  const primaryBase
+    = returned > 0
+      ? pool.find((item) => item.key === 'returned')!
+      : stale > 0
+        ? pool.find((item) => item.key === 'stale')!
+        : notAchieved > 0
+          ? pool.find((item) => item.key === 'not-achieved')!
+          : pendingAudit > 0
+            ? pool.find((item) => item.key === 'pending-audit')!
+            : pool.find((item) => item.key === 'total')!
+  const primary: SignalMetric = { ...primaryBase, emphasis: 'primary' }
+  return [primary, ...pool.filter((item) => item.key !== primary.key).slice(0, 3)]
 })
 
 /* ========== 触发计算抽屉 ========== */
@@ -1125,20 +1147,27 @@ function goDetail(record: AchievementResultVO) {
   })
 }
 
+/** 达成度行主行动：唯一 primary 置顶（重算 > 推进审核 > 详情）。 */
 function buildAchievementActions(record: AchievementResultVO): UiTableRowActionItem[] {
-  const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
+  const actions: UiTableRowActionItem[] = []
   if (canRecomputeRecord(record)) {
     actions.push({ key: 'recompute', label: '重新计算', tone: 'primary' })
   }
   if (!isResultStale(record)) {
     for (const to of nextStatuses(record.auditStatus)) {
+      const isReturn = to === AchievementAuditStatusCode.RETURNED
       actions.push({
         key: to,
         label: `→ ${auditStatusLabel(to)}`,
-        tone: to === AchievementAuditStatusCode.RETURNED ? 'danger' : 'primary',
+        tone: isReturn ? 'danger' : (actions.some((item) => item.tone === 'primary') ? undefined : 'primary'),
       })
     }
   }
+  actions.push({
+    key: 'detail',
+    label: '详情',
+    tone: actions.some((item) => item.tone === 'primary') ? undefined : 'primary',
+  })
   actions.push({ key: 'audit', label: '审计' })
   return actions
 }
@@ -1262,12 +1291,22 @@ watch(
     query.qualityCourseId = ''
   },
 )
+/** 任务工作台副标题：结果队列规模 / 门禁。 */
+const achievementWorkbenchSubtitle = computed(() => {
+  if (trainingPlanRequired.value) {
+    return '需先确认培养方案'
+  }
+  if (signalSummaryLoadFailed.value) {
+    return '指标加载失败'
+  }
+  return `结果队列 ${total.value} 条`
+})
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar show-title title="达成度结果">
+      <QualityPageContextBar show-title title="达成度结果" :subtitle="achievementWorkbenchSubtitle">
         <template #actions>
           <UiButton
             variant="outline"
@@ -1277,6 +1316,14 @@ watch(
             @click="handleScopeChange"
           >
             刷新
+          </UiButton>
+          <UiButton
+            size="sm"
+            variant="primary"
+            :disabled="trainingPlanRequired"
+            @click="openTriggerDrawer"
+          >
+            触发达成度计算
           </UiButton>
         </template>
       </QualityPageContextBar>
@@ -1295,6 +1342,7 @@ watch(
       <SignalBand
         v-else
         :metrics="signals"
+        layout="spotlight"
         variant="panel"
         compact
         class="achievement__signals"
@@ -1309,28 +1357,18 @@ watch(
       />
 
       <UiCard class="detail-table-card achievement__table-card">
-        <template #title>达成度结果</template>
+        <template #title>结果队列</template>
         <template #extra>
-          <div class="dp-space dp-space--tight">
-            <UiButton
-              variant="outline"
-              size="sm"
-              :loading="achievementExporting"
-              :disabled="trainingPlanRequired"
-              @click="handleExportAchievement"
-            >
-              <template #icon><DownloadOutlined /></template>
-              导出 Excel
-            </UiButton>
-            <UiButton
-              size="sm"
-              variant="primary"
-              :disabled="trainingPlanRequired"
-              @click="openTriggerDrawer"
-            >
-              触发达成度计算
-            </UiButton>
-          </div>
+          <UiButton
+            variant="outline"
+            size="sm"
+            :loading="achievementExporting"
+            :disabled="trainingPlanRequired"
+            @click="handleExportAchievement"
+          >
+            <template #icon><DownloadOutlined /></template>
+            导出 Excel
+          </UiButton>
         </template>
 
         <UiFilterBar
@@ -1446,6 +1484,7 @@ watch(
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildAchievementActions(record)"
                 split
                 @action="(key) => handleAchievementAction(key, record)"

@@ -5,6 +5,7 @@ import type {
   ArchivePlatformTemplateSetResponse,
   ArchivePlatformTemplateSetSaveRequest,
 } from '@/apis/mark/archive-platform-template'
+import type { SignalMetric } from '@/types/workbench'
 import type {
   ArchiveTemplateMaterialEditRow,
   ArchiveTemplateSelfCheckEditRow,
@@ -31,12 +32,14 @@ import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useAuthStore } from '@/stores/modules/auth'
 import { ArchiveExamFormCode } from '@/types/enums/archive-exam-form-enum'
 import { ArchiveMaterialDeliveryModeCode } from '@/types/enums/archive-material-delivery-mode-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ArchiveTemplateSetEditorDrawer from '@/views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue'
 import ArchiveVolumeTemplateSetsPanel from '@/views/teacher/archive-volume/components/ArchiveVolumeTemplateSetsPanel.vue'
@@ -80,7 +83,7 @@ const platformColumns: ColumnsType<ArchivePlatformTemplateSetResponse> = [
   { title: '考核形式', key: 'examForm', width: 100 },
   { title: '保管期限', key: 'retention', width: 100 },
   { title: '发版标签', key: 'releaseTag', width: 120 },
-  { title: '操作', key: 'actions', width: 100, align: 'center' },
+  { title: '主行动', key: 'actions', width: 100, align: 'center' },
 ]
 
 function examFormLabel(code?: ArchiveExamFormCode) {
@@ -277,16 +280,66 @@ async function submitSave() {
 }
 
 onMounted(loadPlatformSets)
+
+const ArchivePlatformTemplateSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadFailed.value && platformSets.value.length === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'sets',
+      label: '模板集',
+      value: platformSets.value.length,
+      clickable: true,
+    },
+  ]
+  if (editorDrawerOpen.value) {
+    metrics.push({
+      key: 'materials',
+      label: '材料项',
+      value: materialRows.value.length,
+      helper: '当前编辑集',
+    })
+    metrics.push({
+      key: 'selfcheck',
+      label: '自检项',
+      value: selfCheckRows.value.length,
+      helper: '当前编辑集',
+    })
+  }
+  return applySpotlightEmphasis(metrics, { primaryKey: 'sets', actionLabel: '刷新' })
+})
+
+const ArchivePlatformTemplateWorkbenchSubtitle = computed(() => {
+  if (loadFailed.value) return '加载失败'
+  if (editorDrawerOpen.value) {
+    return `${materialRows.value.length} 材料 · ${selfCheckRows.value.length} 自检`
+  }
+  return `${platformSets.value.length} 个模板集`
+})
+
+function onArchivePlatformTemplateSignalClick(_key: string) {
+  void loadPlatformSets()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar :title="pageTitle">
+      <ContextBar :title="pageTitle" :subtitle="ArchivePlatformTemplateWorkbenchSubtitle">
         <template v-if="isSuperAdmin === true" #status>
           <UiTag tone="blue" size="sm">平台模板</UiTag>
         </template>
       </ContextBar>
+    </template>
+    <template v-if="ArchivePlatformTemplateSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="ArchivePlatformTemplateSignalMetrics"
+        @metric-click="onArchivePlatformTemplateSignalClick"
+      />
     </template>
 
     <ArchiveVolumeTemplateSetsPanel v-if="isSuperAdmin !== true" />
@@ -350,6 +403,7 @@ onMounted(loadPlatformSets)
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[{ key: 'edit', label: '编辑' }]"
                 split
                 @action="() => openEditEditor(record.setCode)"

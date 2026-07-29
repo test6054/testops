@@ -177,10 +177,6 @@ function shouldCacheRoute(childRoute: RouteLocationNormalized): boolean {
       padding: 0;
     }
 
-    // 为底部TabBar留出空间
-    &.with-tabbar {
-      padding-bottom: 68px;
-    }
   }
 
   // 平板适配

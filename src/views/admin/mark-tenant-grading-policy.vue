@@ -5,7 +5,16 @@
         layout="workbench"
         show-title
         title="租户阅卷策略"
-        subtitle="经验辅助评阅开关、定标阈值与成绩确认工作台策略"
+        :subtitle="TenantGradingPolicyWorkbenchSubtitle"
+      />
+    </template>
+    <template v-if="TenantGradingPolicySignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TenantGradingPolicySignalMetrics"
+        @metric-click="onTenantGradingPolicySignalClick"
       />
     </template>
 
@@ -163,6 +172,7 @@ import type {
   MarkTenantGradingPolicyResponse,
   MarkTenantGradingPolicySaveRequest,
 } from '@/apis/mark/grading-experience-assist'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
@@ -178,6 +188,7 @@ import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -188,6 +199,7 @@ import {
   ExamKindDescription,
 } from '@/types/enums/exam-kind-enum'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminMarkTenantGradingPolicy' })
@@ -274,6 +286,49 @@ function applyPolicy(policy: MarkTenantGradingPolicyResponse): void {
   form.requireEffectivenessEval = policy.requireEffectivenessEval === true
   form.manualFinalScoreConfirmRequired = policy.manualFinalScoreConfirmRequired === true
   form.delayedFinalScoreConfirmMinutes = policy.delayedFinalScoreConfirmMinutes ?? 10
+}
+
+
+const TenantGradingPolicySignalMetrics = computed<SignalMetric[]>(() => {
+  if (canManage.value !== true) {
+    return []
+  }
+  if (loading.value && !form.delayedFinalScoreConfirmMinutes) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'assist',
+      label: '经验辅助',
+      value: form.experienceAssistEnabled ? '开' : '关',
+      clickable: true,
+    },
+    {
+      key: 'confirm',
+      label: '人工确认成绩',
+      value: form.manualFinalScoreConfirmRequired ? '必须' : '可自动',
+    },
+    {
+      key: 'window',
+      label: '撤回窗口',
+      value: form.delayedFinalScoreConfirmMinutes,
+      unit: '分钟',
+    },
+  ]
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'assist',
+    actionLabel: '刷新策略',
+  })
+})
+
+const TenantGradingPolicyWorkbenchSubtitle = computed(() => {
+  if (canManage.value !== true) return '无管理权限'
+  if (loading.value) return '加载中'
+  return form.experienceAssistEnabled ? '经验辅助已开启' : '经验辅助已关闭'
+})
+
+function onTenantGradingPolicySignalClick(_key: string) {
+  void loadPolicy()
 }
 
 async function loadPolicy(): Promise<void> {

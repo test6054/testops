@@ -7,6 +7,7 @@ import type {
   PortfolioDeptTeacherSegmentItemVO,
 } from '@/apis/portfolio/teacher'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -36,6 +37,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { useUserStore } from '@/stores/modules/user'
@@ -48,6 +50,7 @@ import {
   formatPortfolioNullableCountPair,
   formatPortfolioNullablePercent,
 } from '@/utils/portfolio-nullable-count'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioHrMetricDistributionSection from '@/views/portfolio/components/PortfolioHrMetricDistributionSection.vue'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -164,7 +167,7 @@ const teacherColumns: ColumnsType = [
   { title: '荣誉', dataIndex: 'honorCount', key: 'honorCount', width: 64 },
   { title: '规划状态', key: 'developmentPlanStatus', width: 88 },
   { title: '明细完成度', key: 'developmentPlanItemCompletionPercent', width: 96 },
-  { title: '操作', key: 'actions', width: 200, fixed: 'right' },
+  { title: '主行动', key: 'actions', width: 200, fixed: 'right' },
 ]
 
 const titleChartOption = computed(() => {
@@ -485,6 +488,21 @@ watch(
     }
   },
 )
+
+const DeptOneTableSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'teachers',
+      label: '部门教师',
+      value: teacherTotal.value,
+      clickable: true,
+    },
+  ], { primaryKey: 'teachers', actionLabel: '刷新' })
+})
+
+function onDeptOneTableSignalClick(_key: string) {
+  void loadTeachers()
+}
 </script>
 
 <template>
@@ -494,7 +512,7 @@ watch(
         layout="workbench"
         show-title
         title="部门一张表"
-        subtitle="院系师资结构 · 教师明细 · 职称分布"
+        :subtitle="teacherTotal > 0 ? `${teacherTotal} 名教师` : undefined"
       >
         <template #actions>
           <UiButton
@@ -509,6 +527,16 @@ watch(
         </template>
       </ContextBar>
     </template>
+    <template v-if="DeptOneTableSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="DeptOneTableSignalMetrics"
+        @metric-click="onDeptOneTableSignalClick"
+      />
+    </template>
+
     <UiCard>
       <div class="filter-row">
         <UiSelect
@@ -765,6 +793,7 @@ watch(
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
+                    :max-visible="2"
                     :items="[
                       { key: 'home', label: '档案首页' },
                       { key: 'one-table', label: '一张表' },

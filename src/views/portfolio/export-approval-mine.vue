@@ -3,6 +3,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExportApprovalVO } from '@/apis/portfolio/governance'
 import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -21,6 +22,7 @@ import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -36,6 +38,7 @@ import {
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -80,7 +83,7 @@ const columns: ColumnsType = [
   { title: '审批时间', dataIndex: 'approvedTime', key: 'approvedTime', width: 170 },
   { title: '过期时间', dataIndex: 'expireTime', key: 'expireTime', width: 170 },
   { title: '文件', key: 'fileName', width: 140, ellipsis: true },
-  { title: '操作', key: 'actions', width: 100 },
+  { title: '主行动', key: 'actions', width: 112 },
 ]
 
 const pagination = computed(() => ({
@@ -132,6 +135,68 @@ function canRevoke(row: PortfolioExportApprovalVO): boolean {
     row.approvalStatus === PortfolioExportApprovalStatusCode.APPROVED
     || row.approvalStatus === PortfolioExportApprovalStatusCode.DOWNLOADED
   )
+}
+
+const pagePendingExportCount = computed(() =>
+  rows.value.filter((row) => row.approvalStatus === PortfolioExportApprovalStatusCode.PENDING).length,
+)
+
+const pageDownloadableCount = computed(() => rows.value.filter((row) => canDownload(row)).length)
+
+const exportSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && total.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '导出申请',
+      value: total.value,
+      clickable: true,
+    },
+  ]
+  if (rows.value.length > 0) {
+    metrics.push({
+      key: 'page-pending',
+      label: '本页待审',
+      value: pagePendingExportCount.value,
+      tone: pagePendingExportCount.value > 0 ? 'orange' : undefined,
+      helper: '仅当前页',
+    })
+    metrics.push({
+      key: 'page-ready',
+      label: '本页可下载',
+      value: pageDownloadableCount.value,
+      helper: '仅当前页',
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey:
+      pagePendingExportCount.value > 0
+        ? 'page-pending'
+        : pageDownloadableCount.value > 0
+          ? 'page-ready'
+          : 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const exportWorkbenchSubtitle = computed(() => {
+  if (loadError.value) {
+    return '列表加载失败'
+  }
+  const parts = [`${total.value} 条`]
+  if (pagePendingExportCount.value > 0) {
+    parts.push(`本页待审 ${pagePendingExportCount.value}`)
+  }
+  if (pageDownloadableCount.value > 0) {
+    parts.push(`可下载 ${pageDownloadableCount.value}`)
+  }
+  return parts.join(' · ')
+})
+
+function onExportSignalClick(_key: string) {
+  void loadPage()
 }
 
 function openRevoke(row: PortfolioExportApprovalVO) {
@@ -356,7 +421,7 @@ watch(
         layout="workbench"
         show-title
         title="我的导出申请"
-        subtitle="审批通过后可在此下载导出文件"
+        :subtitle="exportWorkbenchSubtitle"
       >
         <template #actions>
           <UiButton
@@ -370,6 +435,17 @@ watch(
         </template>
       </ContextBar>
     </template>
+
+    <template v-if="exportSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="exportSignalMetrics"
+        @metric-click="onExportSignalClick"
+      />
+    </template>
+
     <UiCard>
       <UiDataTable
         row-key="id"
@@ -406,8 +482,9 @@ watch(
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
               v-if="canDownload(record) || canRevoke(record)"
+              :max-visible="2"
               :items="[
-                { key: 'download', label: '下载', hidden: !canDownload(record) },
+                { key: 'download', label: '下载', tone: 'primary', hidden: !canDownload(record) },
                 { key: 'revoke', label: '撤销', tone: 'danger', hidden: !canRevoke(record) },
               ]"
               @action="(key) => (key === 'download' ? downloadRow(record) : openRevoke(record))"

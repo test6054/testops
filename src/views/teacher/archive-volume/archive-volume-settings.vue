@@ -5,7 +5,7 @@
         layout="workbench"
         show-title
         title="归档配置"
-        subtitle="租户级模板母版、档案岗位与密级矩阵（任务级设置在详情「任务设置」）"
+        :subtitle="`岗位 ${dutyRows.length} · 模板 ${tenantTemplateSetCount} · 密级 ${policyRows.length}`"
       >
         <template #actions>
           <UiButton variant="ghost" size="sm" @click="goArchiveList"> 返回归档列表 </UiButton>
@@ -41,7 +41,7 @@
             <UiButton
               v-if="s1PrimaryActionLabel"
               size="sm"
-              variant="primary"
+              variant="outline"
               @click="goS1PrimaryAction"
             >
               {{ s1PrimaryActionLabel }}
@@ -65,7 +65,7 @@
             </UiButton>
           </template>
         </UiAlertStrip>
-        <SignalBand variant="panel" :metrics="settingsSignalMetrics" />
+        <SignalBand layout="spotlight" variant="panel" :metrics="settingsSignalMetrics" />
       </div>
     </template>
 
@@ -118,7 +118,7 @@
                   >
                     新增授权
                   </UiButton>
-                  <UiButton size="sm" variant="primary" :loading="saving === true" @click="saveDutyGrants">
+                  <UiButton size="sm" variant="outline" :loading="saving === true" @click="saveDutyGrants">
                     保存职责授权
                   </UiButton>
                 </div>
@@ -171,6 +171,7 @@
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
+                    :max-visible="2"
                     v-if="canManageArchiveConfig === true"
                     :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
                     split
@@ -213,7 +214,7 @@
                   </UiButton>
                   <UiButton
                     size="sm"
-                    variant="primary"
+                    variant="outline"
                     :loading="saving === true"
                     @click="saveSecurityPolicyRows"
                   >
@@ -252,6 +253,7 @@
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
+                    :max-visible="2"
                     v-if="canManageArchiveConfig === true"
                     :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
                     split
@@ -284,7 +286,7 @@
                 </span>
                 <UiButton
                   size="sm"
-                  variant="primary"
+                  variant="outline"
                   :loading="saving === true"
                   @click="saveCollaborationPolicyForm"
                 >
@@ -429,6 +431,7 @@
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
+                    :max-visible="2"
                     v-if="canManageArchiveConfig === true"
                     :items="[
                       {
@@ -618,20 +621,30 @@ function goCreateHistorySupplement() {
 
 const settingsSignalMetrics = computed((): SignalMetric[] => [
   {
+    key: 'duty',
+    label: '档案岗位',
+    value: dutyRows.value.length,
+    unit: '条',
+    helper: '职责授权',
+    emphasis: 'primary',
+    actionLabel: '维护岗位',
+  },
+  {
     key: 'templateSets',
     label: '模板母版',
     value: tenantTemplateSetCount.value,
     unit: '套',
     iconTone: 'blue',
     helper: '平台母版 + 本校副本',
+    emphasis: 'secondary',
   },
-  { key: 'duty', label: '档案岗位', value: dutyRows.value.length, unit: '条', helper: '职责授权' },
   {
     key: 'policy',
     label: '密级矩阵',
     value: policyRows.value.length,
     unit: '条',
     helper: '按职责限制最高密级',
+    emphasis: 'secondary',
   },
   {
     key: 'deadline',
@@ -639,6 +652,7 @@ const settingsSignalMetrics = computed((): SignalMetric[] => [
     value: deadlineRows.value.length,
     unit: '条',
     helper: '租户默认 + 院系覆盖',
+    emphasis: 'secondary',
   },
 ])
 
@@ -714,13 +728,13 @@ const dutyColumns: ColumnsType<DutyRow> = [
   { title: '职责类型', key: 'dutyType', width: 160 },
   { title: '院系', key: 'scopeDepartmentId', width: 180 },
   { title: '全校', key: 'tenantWide', width: 80 },
-  { title: '操作', key: 'actions', width: 80 },
+  { title: '主行动', key: 'actions', width: 80 },
 ]
 
 const policyColumns: ColumnsType<PolicyRow> = [
   { title: '职责类型', key: 'dutyType', width: 180 },
   { title: '最高密级', key: 'maxSecurityLevel', width: 160 },
-  { title: '操作', key: 'actions', width: 80 },
+  { title: '主行动', key: 'actions', width: 80 },
 ]
 
 const deadlineColumns: ColumnsType<DeadlineRow> = [
@@ -730,7 +744,7 @@ const deadlineColumns: ColumnsType<DeadlineRow> = [
   { title: '临期提醒(天)', key: 'leadDays', width: 120 },
   { title: '逾期硬截止', key: 'overdueSubmitBlock', width: 120 },
   { title: '院系审核', key: 'departmentReviewEnabled', width: 110 },
-  { title: '操作', key: 'actions', width: 80 },
+  { title: '主行动', key: 'actions', width: 80 },
 ]
 
 function newRowKey() {

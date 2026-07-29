@@ -4,8 +4,8 @@
       v-for="item in tabBarItems"
       :key="item.path"
       class="tab-bar-item"
-      :class="[{ active: isActive(item.path) }]"
-      @click="handleNavigate(item.path)"
+      :class="[{ active: isActive(item) }]"
+      @click="handleNavigate(item)"
     >
       <component :is="item.icon" class="tab-bar-icon" />
       <span class="tab-bar-label">{{ item.label }}</span>
@@ -16,6 +16,7 @@
 
 <script lang="ts" setup>
 import type { Component } from 'vue'
+import type { ShellProductDomain } from '@/utils/shell-domain'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import FolderOutlined from '@ant-design/icons-vue/FolderOutlined'
 import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
@@ -25,9 +26,16 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UiCountBadge from '@/components/ui-guide/ui/UiCountBadge.vue'
 import { useDevice } from '@/hooks'
-import { useAuthStore } from '@/stores'
+import { useAuthStore, useRouteStore } from '@/stores'
 import { isValidRole, RoleEnum } from '@/utils/permission'
-import { isQualityEvaluationRoute, PORTFOLIO_ROUTE_PREFIX } from '@/utils/portfolio-route'
+import {
+  listAvailableShellProductDomains,
+  rememberShellDomainPath,
+  resolveShellDomainNavigateTo,
+  resolveShellProductDomain,
+  SHELL_PRODUCT_DOMAIN_FULL_LABEL,
+  SHELL_PRODUCT_DOMAIN_HOME,
+} from '@/utils/shell-domain'
 
 defineOptions({ name: 'TabBar' })
 
@@ -35,6 +43,7 @@ const router = useRouter()
 const route = useRoute()
 const { isMobile } = useDevice()
 const authStore = useAuthStore()
+const routeStore = useRouteStore()
 
 interface TabBarItem {
   path: string
@@ -42,11 +51,18 @@ interface TabBarItem {
   icon: Component
   badge?: number
   roles: RoleEnum[]
+  /** 教师三域 Tab：与顶栏 DomainSwitch / 侧栏单域同源 */
+  domain?: ShellProductDomain
 }
 
-// TabBar菜单项配置（根据角色动态显示）
-const allTabBarItems: TabBarItem[] = [
-  // 学生端菜单
+const DOMAIN_TAB_ICON: Record<ShellProductDomain, Component> = {
+  marking: DashboardOutlined,
+  quality: ReconciliationOutlined,
+  portfolio: FolderOutlined,
+}
+
+// 学生端菜单（叶子与桌面侧栏 student 路由对齐）
+const studentTabItems: TabBarItem[] = [
   {
     path: '/student/score',
     label: '我的成绩',
@@ -65,27 +81,22 @@ const allTabBarItems: TabBarItem[] = [
     icon: MailOutlined,
     roles: [RoleEnum.SCH_STU],
   },
-
-  // 教师端菜单（移动端 TabBar：阅卷概览为入口，子页与工作台仍归属同一域）
-  {
-    path: '/teacher/dashboard',
-    label: '考试阅卷',
-    icon: DashboardOutlined,
-    roles: [RoleEnum.SUPER_ADMIN, RoleEnum.SCH_TECH],
-  },
-  {
-    path: '/quality/dashboard',
-    label: '质量评价',
-    icon: ReconciliationOutlined,
-    roles: [RoleEnum.SCH_TECH, RoleEnum.SUPER_ADMIN],
-  },
-  {
-    path: `${PORTFOLIO_ROUTE_PREFIX}/teacher/home`,
-    label: '教学档案袋',
-    icon: FolderOutlined,
-    roles: [RoleEnum.SCH_TECH, RoleEnum.SUPER_ADMIN],
-  },
 ]
+
+const layoutRouteSource = computed(() => {
+  return routeStore.routes.length > 0 ? routeStore.routes : routeStore.getMenuRoutes()
+})
+
+const teacherDomainTabItems = computed<TabBarItem[]>(() => {
+  const domains = listAvailableShellProductDomains(layoutRouteSource.value)
+  return domains.map((domain) => ({
+    path: SHELL_PRODUCT_DOMAIN_HOME[domain],
+    label: SHELL_PRODUCT_DOMAIN_FULL_LABEL[domain],
+    icon: DOMAIN_TAB_ICON[domain],
+    roles: [RoleEnum.SUPER_ADMIN, RoleEnum.SCH_TECH],
+    domain,
+  }))
+})
 
 // 是否显示TabBar（仅移动端显示）
 const showTabBar = computed(() => isMobile.value)
@@ -100,36 +111,49 @@ const tabBarItems = computed(() => {
     return []
   }
 
-  return allTabBarItems.filter((item) => item.roles.includes(currentRole))
+  if (currentRole === RoleEnum.SCH_STU) {
+    return studentTabItems.filter((item) => item.roles.includes(currentRole))
+  }
+
+  return teacherDomainTabItems.value.filter((item) => item.roles.includes(currentRole))
 })
 
 /**
- * 判断当前路由是否激活
+ * 判断当前路由是否激活。
+ * 系统管理（quality-admin）不算产品域，三域 Tab 均不高亮，与顶栏 DomainSwitch 一致。
  */
-function isActive(path: string): boolean {
-  if (path === '/teacher/dashboard') {
-    return (
-      route.path.startsWith('/teacher/dashboard')
-      || route.path.startsWith('/teacher/exam-list')
-      || route.path.startsWith('/teacher/exam-workspace/')
-      || route.path.startsWith('/teacher/archive-volumes')
-    )
+function isActive(item: TabBarItem): boolean {
+  if (item.domain) {
+    return resolveShellProductDomain(route.path, route.meta?.menuGroup) === item.domain
   }
-  if (path === '/quality/dashboard') {
-    return isQualityEvaluationRoute(route.path)
-  }
-  if (path === `${PORTFOLIO_ROUTE_PREFIX}/teacher/home`) {
-    return route.path.startsWith(PORTFOLIO_ROUTE_PREFIX)
-  }
-  return route.path.startsWith(path)
+  return route.path.startsWith(item.path)
 }
 
 /**
- * 处理导航点击
+ * 处理导航点击：教师三域与顶栏 DomainSwitch 相同，恢复域内上次路径。
  */
-function handleNavigate(path: string) {
-  if (route.path !== path) {
-    router.push(path)
+function handleNavigate(item: TabBarItem) {
+  if (item.domain) {
+    const current = resolveShellProductDomain(route.path, route.meta?.menuGroup)
+    if (current && current !== item.domain) {
+      rememberShellDomainPath(current, route.fullPath)
+    }
+    if (current === item.domain) {
+      // 已在本域：回到域首页（任务入口），避免 Tab 无反馈
+      const home = SHELL_PRODUCT_DOMAIN_HOME[item.domain]
+      if (route.path !== home) {
+        void router.push(home)
+      }
+      return
+    }
+    const target = resolveShellDomainNavigateTo(router, item.domain)
+    if (target !== route.fullPath) {
+      void router.push(target)
+    }
+    return
+  }
+  if (route.path !== item.path) {
+    void router.push(item.path)
   }
 }
 </script>

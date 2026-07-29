@@ -54,7 +54,7 @@
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand compact variant="panel" :metrics="syncSignalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="syncSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" class="sync-page__empty" />
@@ -132,6 +132,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildSyncTaskActions(syncTasks[index])"
                 split
                 @action="(key) => handleSyncTaskAction(key, syncTasks[index])"
@@ -203,6 +204,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildPassbackActions(passbackRecords[index])"
                 @action="(key) => handlePassbackAction(key, passbackRecords[index])"
               />
@@ -533,7 +535,7 @@ const syncColumns: ColumnType<ExamTeachingAffairsSyncTask>[] = [
   { title: '外部课程', key: 'externalCourseId', dataIndex: 'externalCourseId', width: 140 },
   { title: '最后同步', key: 'lastSyncTime', dataIndex: 'lastSyncTime', width: 160 },
   { title: '处理说明', key: 'lastError', width: 120 },
-  { title: '操作', key: 'actions', width: 280 },
+  { title: '主行动', key: 'actions', width: 280 },
 ]
 
 async function loadSyncTasks(options?: { quiet?: boolean }): Promise<void> {
@@ -966,7 +968,7 @@ const passbackColumns: ColumnType<PassbackRecordResponse>[] = [
   { title: '对账状态', key: 'reconcileStatus', width: 100 },
   { title: '回写时间', key: 'passbackTime', dataIndex: 'passbackTime', width: 160 },
   { title: '处理说明', key: 'errorMessage', width: 220 },
-  { title: '操作', key: 'actions', width: 180 },
+  { title: '主行动', key: 'actions', width: 180 },
 ]
 
 async function loadPassbackRecords(options?: { quiet?: boolean }): Promise<void> {

@@ -58,6 +58,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { validateRequiredDirectIndirectWeights } from '@/utils/weight-sum-health'
 
@@ -69,7 +70,7 @@ const columns: ColumnsType = [
   { title: '学科', dataIndex: 'disciplineCategory', key: 'disciplineCategory', width: 120 },
   { title: '直接/间接默认权重', key: 'weights', width: 160 },
   { title: '状态', dataIndex: 'enabled', key: 'enabled', width: 100 },
-  { title: '操作', key: 'actions', width: 280 },
+  { title: '主行动', key: 'actions', width: 280 },
 ]
 
 function accreditationTypeLabel(value: AccreditationTypeCode): string {
@@ -194,7 +195,7 @@ const signals = computed<SignalMetric[]>(() => {
   const disabled = summary.disabledCount ?? 0
   const aiSupport = summary.aiLiteracySupportedCount ?? 0
   const civic = summary.civicDimensionsSupportedCount ?? 0
-  return [
+  return applySpotlightEmphasis([
     { key: 'all-total', label: '模板总数', value: summary.totalCount ?? 0, tone: 'blue' },
     { key: 'shared', label: '平台共享', value: shared, tone: shared > 0 ? 'blue' : 'gray' },
     { key: 'tenant', label: '租户自定义', value: tenant, tone: tenant > 0 ? 'green' : 'gray' },
@@ -202,7 +203,7 @@ const signals = computed<SignalMetric[]>(() => {
     { key: 'disabled', label: '停用', value: disabled, tone: disabled > 0 ? 'orange' : 'gray' },
     { key: 'ai-support', label: '支持 AI 素养', value: aiSupport, tone: 'blue' },
     { key: 'civic', label: '支持五育维度', value: civic, tone: 'blue' },
-  ]
+  ])
 })
 
 function assignEditor(
@@ -429,20 +430,22 @@ async function submitEditor() {
 function buildAlgorithmTemplateActions(
   record: ProfessionAlgorithmTemplateVO,
 ): UiTableRowActionItem[] {
-  const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
   if (isSharedTemplate(record)) {
-    actions.push({
-      key: 'copy',
-      label: '复制为租户模板',
-      tone: 'primary',
-      disabled: copyingTemplateId.value === record.id,
-    })
+    return [
+      {
+        key: 'copy',
+        label: '复制为租户模板',
+        tone: 'primary',
+        disabled: copyingTemplateId.value === record.id,
+      },
+      { key: 'detail', label: '详情' },
+    ]
   }
-  if (!isSharedTemplate(record)) {
-    actions.push({ key: 'edit', label: '编辑' })
-    actions.push({ key: 'delete', label: '删除', tone: 'danger' })
-  }
-  return actions
+  return [
+    { key: 'edit', label: '编辑', tone: 'primary' },
+    { key: 'detail', label: '详情' },
+    { key: 'delete', label: '删除', tone: 'danger' },
+  ]
 }
 
 function handleAlgorithmTemplateAction(key: string, record: ProfessionAlgorithmTemplateVO): void {
@@ -490,10 +493,10 @@ onActivated(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="专业算法模板" />
+      <ContextBar layout="workbench" show-title title="专业算法模板" :subtitle="`${total} 条`" />
     </template>
 
-    <SignalBand :metrics="signals" variant="panel" compact class="pat__signals" />
+    <SignalBand layout="spotlight" :metrics="signals" variant="panel" compact class="pat__signals" />
 
     <UiCard class="detail-table-card pat__table-card">
       <template #title>模板台账</template>
@@ -548,6 +551,7 @@ onActivated(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildAlgorithmTemplateActions(record)"
               split
               @action="(key) => handleAlgorithmTemplateAction(key, record)"

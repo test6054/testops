@@ -97,12 +97,7 @@ const pageTitle = computed(() => {
   if (ac.wizardState.provenance === ArchiveTaskProvenanceCode.HISTORICAL_DIGITIZE) return '历史考核袋补录'
   return '新建课程考核袋'
 })
-const pageSubtitle = computed(() => {
-  if (ac.wizardState.provenance === ArchiveTaskProvenanceCode.HISTORICAL_DIGITIZE) {
-    return '历史学期手工立袋 → 创建后到详情上传与整理材料（禁止 Excel 建袋）'
-  }
-  return '本学期手工立袋 → 创建后到详情上传与整理材料（线上阅卷请走归档复盘）'
-})
+const pageSubtitle = computed(() => ac.provenanceLabel.value)
 
 provide(archiveTaskCreateBasicFormKey, ac.basicForm)
 provide(archiveTaskCreatePlanFormKey, ac.planForm)

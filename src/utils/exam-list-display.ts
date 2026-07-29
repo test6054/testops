@@ -44,6 +44,7 @@ export function examListExamSubMeta(exam: ExamWorkbenchSummaryResponse): string 
 
 /**
  * 关考 / tip 待建袋 / 阅卷已满均可进 S1 复盘。
+ * @param exam 考试工作台摘要
  * @param isAttentionExam 当前考试是否在 S1 自动建袋关注集合内
  */
 export function isExamArchiveReady(

@@ -364,6 +364,7 @@ watch(
       class="dp-mb-component"
     />
     <SignalBand
+      layout="spotlight"
       v-if="signals.length"
       :metrics="signals"
       variant="panel"

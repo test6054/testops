@@ -262,21 +262,30 @@ export function register(data: RegisterRequest): Promise<void> {
  * 发送密码重置验证码 - 对接后端 POST /api/auth/send-reset-code
  */
 export function sendResetCode(email: string): Promise<void> {
-  return http.post<void>('/api/auth/send-reset-code', {email})
+  return http.post<void>('/api/auth/send-reset-code', { email }, {
+    skipAuth: true,
+    showErrorMessage: false,
+  })
 }
 
 /**
  * 重置密码 - 对接后端 POST /api/auth/reset-password
  */
 export function resetPassword(data: ResetPasswordRequest): Promise<void> {
-  return http.post<void>('/api/auth/reset-password', data)
+  return http.post<void>('/api/auth/reset-password', data, {
+    skipAuth: true,
+    showErrorMessage: false,
+  })
 }
 
 /**
  * 验证重置验证码 - 对接后端 POST /api/auth/verify-reset-code
  */
 export function verifyResetCode(email: string, code: string): Promise<boolean> {
-  return http.post<boolean>('/api/auth/verify-reset-code', { email, code })
+  return http.post<boolean>('/api/auth/verify-reset-code', { email, code }, {
+    skipAuth: true,
+    showErrorMessage: false,
+  })
 }
 
 

@@ -119,6 +119,7 @@
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
+            :max-visible="2"
             v-if="rosterForm.scopeMode === ExamRosterScopeModeCode.BY_STUDENT"
             :items="[{ key: 'remove', label: '移除', tone: 'danger' }]"
             split
@@ -245,7 +246,7 @@ const emptyDescription = computed(() => {
 const columns: ColumnType<ExamCandidateResponse>[] = [
   { title: '考生', key: 'student', dataIndex: 'studentName' },
   { title: '班级', key: 'className', dataIndex: 'className', width: 180 },
-  { title: '操作', key: 'actions', width: 88, align: 'center' },
+  { title: '主行动', key: 'actions', width: 88, align: 'center' },
 ]
 
 /** 名册预览失败时仅在校验类错误（400）下清空已选班级；权限/服务类错误保留选择便于重试。 */

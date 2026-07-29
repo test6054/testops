@@ -114,6 +114,7 @@ import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
 import { ALL_SEMESTER_CODES, formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { isWeightSumHealthy, validateOptionalDirectIndirectWeights } from '@/utils/weight-sum-health'
 
@@ -124,7 +125,7 @@ const itemColumns: ColumnsType = [
   { title: '满分', dataIndex: 'fullScore', key: 'fullScore', width: 80 },
   { title: '过程性', dataIndex: 'isProcessOriented', key: 'isProcessOriented', width: 80 },
   { title: 'Rubric 数', key: 'rubricCount', width: 100 },
-  { title: '操作', key: 'actions', width: 280 },
+  { title: '主行动', key: 'actions', width: 280 },
 ]
 
 const goalColumns: ColumnsType = [
@@ -133,7 +134,7 @@ const goalColumns: ColumnsType = [
   { title: '阈值', dataIndex: 'thresholdValue', key: 'thresholdValue', width: 80 },
   { title: '聚合', dataIndex: 'aggregation', key: 'aggregation', width: 120 },
   { title: '标记', key: 'flags', width: 180 },
-  { title: '操作', key: 'actions', width: 180 },
+  { title: '主行动', key: 'actions', width: 180 },
 ]
 
 const rubricColumns: ColumnsType = [
@@ -141,7 +142,7 @@ const rubricColumns: ColumnsType = [
   { title: '维度', dataIndex: 'rubricName', key: 'rubricName' },
   { title: '课程目标', key: 'goalCode', width: 120 },
   { title: '满分', dataIndex: 'fullScore', key: 'fullScore', width: 80 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 const qualityStore = useQualityStore()
@@ -909,7 +910,7 @@ const signals = computed<SignalMetric[]>(() => {
   const goalsWeightConfigured = courseGoalWeightedCount > 0
   const goalsWeightHealthOk
     = goalsWeightConfigured && courseGoalHealthyCount === courseGoalWeightedCount
-  return [
+  return applySpotlightEmphasis([
     {
       key: 'goalsCovered',
       label: '已挂支撑目标',
@@ -954,7 +955,7 @@ const signals = computed<SignalMetric[]>(() => {
       clickable: true,
       active: activeTab.value === 'assess',
     },
-  ]
+  ])
 })
 
 const distributionSignals = computed<SignalMetric[]>(() => {
@@ -2064,9 +2065,10 @@ async function deleteRubric(record: RubricItemVO) {
   })
 }
 
+/** 考核环节行：编辑唯一 primary 置顶。 */
 function buildAssessmentItemActions(_record: AssessmentItemVO): UiTableRowActionItem[] {
   return [
-    { key: 'edit', label: '编辑' },
+    { key: 'edit', label: '编辑', tone: 'primary' },
     { key: 'rubric', label: 'Rubric' },
     { key: 'validate-weights', label: '校验权重' },
     { key: 'validate-rubric', label: '校验 Rubric' },
@@ -2094,9 +2096,10 @@ function handleAssessmentItemAction(key: string, record: AssessmentItemVO): void
   }
 }
 
+/** 课程目标行：编辑唯一 primary 置顶。 */
 function buildCourseGoalActions(_record: CourseGoalVO): UiTableRowActionItem[] {
   return [
-    { key: 'edit', label: '编辑' },
+    { key: 'edit', label: '编辑', tone: 'primary' },
     { key: 'rule', label: '计算规则' },
     { key: 'delete', label: '删除', tone: 'danger' },
   ]
@@ -2116,9 +2119,10 @@ function handleCourseGoalAction(key: string, record: CourseGoalVO): void {
   }
 }
 
+/** Rubric 行：编辑唯一 primary 置顶。 */
 function buildRubricActions(_record: RubricItemVO): UiTableRowActionItem[] {
   return [
-    { key: 'edit', label: '编辑' },
+    { key: 'edit', label: '编辑', tone: 'primary' },
     { key: 'delete', label: '删除', tone: 'danger' },
   ]
 }
@@ -2220,6 +2224,68 @@ const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
   return null
 })
 
+/** 任务工作台副标题：课程 + 目标/考核规模，禁止功能说明书。 */
+const matrixWorkbenchSubtitle = computed(() => {
+  if (planGateMode.value === 'need-plan') {
+    return '需先选择培养方案'
+  }
+  if (planGateMode.value === 'need-confirm') {
+    return '培养方案待确认'
+  }
+  if (!qualityStore.currentQualityCourseId) {
+    return '请选择质量评价课程'
+  }
+  if (!currentCourse.value) {
+    return '课程加载中'
+  }
+  const name = currentCourse.value.courseName || currentCourse.value.courseCode || '当前课程'
+  if (activeTab.value === 'assess' && weightMatrixDirtyCount.value > 0) {
+    return `${name} · 权重待提交 ${weightMatrixDirtyCount.value} 处`
+  }
+  return `${name} · ${courseGoals.value.length} 个目标 · ${assessmentItems.value.length} 个考核项`
+})
+
+/**
+ * 页级唯一实心主行动：权重 dirty 优先提交；否则按当前页签给出新建。
+ * 工具条/页签不得再并列实心 primary。
+ */
+const matrixPagePrimaryAction = computed(() => {
+  if (planGateMode.value || !qualityStore.currentQualityCourseId || !currentCourse.value) {
+    return null
+  }
+  if (activeTab.value === 'assess' && weightMatrixDirtyCount.value > 0) {
+    return {
+      key: 'flush-weights',
+      label: `提交权重并校验（${weightMatrixDirtyCount.value}）`,
+      loading: weightFlushing.value,
+      disabled: false,
+      run: () => {
+        void flushPendingWeights()
+      },
+    }
+  }
+  if (activeTab.value === 'assess') {
+    return {
+      key: 'create-item',
+      label: '新建考核环节',
+      loading: false,
+      disabled: false,
+      run: () => openItemCreate(),
+    }
+  }
+  if (activeTab.value === 'support' || activeTab.value === 'goals') {
+    return {
+      key: 'create-goal',
+      label: '新建课程目标',
+      loading: false,
+      disabled: false,
+      run: () => openGoalCreate(),
+    }
+  }
+  return null
+})
+
+
 async function handleScopeChange(): Promise<void> {
   clearPendingWeightPatches()
   assessEntityExpanded.value = false
@@ -2288,7 +2354,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar show-title title="课程支撑矩阵">
+      <QualityPageContextBar show-title title="课程支撑矩阵" :subtitle="matrixWorkbenchSubtitle">
         <template #status>
           <span class="qcm__context-label">质量评价课程</span>
           <CourseSelector
@@ -2312,11 +2378,21 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
           </UiTag>
         </template>
         <template #actions>
-          <UiTextAction @click="openCourseCreate">新建课程</UiTextAction>
+          <UiButton
+            v-if="matrixPagePrimaryAction"
+            variant="primary"
+            size="sm"
+            :loading="matrixPagePrimaryAction.loading"
+            :disabled="matrixPagePrimaryAction.disabled"
+            @click="matrixPagePrimaryAction.run()"
+          >
+            {{ matrixPagePrimaryAction.label }}
+          </UiButton>
+          <UiButton variant="outline" size="sm" @click="openCourseCreate">新建课程</UiButton>
           <UiButton variant="outline" size="sm" :disabled="!currentCourse" @click="openCourseEdit">
             编辑课程
           </UiButton>
-          <UiTextAction tone="danger" @click="deleteCourse">删除课程</UiTextAction>
+          <UiTextAction tone="danger" :disabled="!currentCourse" @click="deleteCourse">删除课程</UiTextAction>
         </template>
       </QualityPageContextBar>
     </template>
@@ -2376,6 +2452,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
         </template>
       </UiAlertStrip>
       <SignalBand
+        layout="spotlight"
         :metrics="signals"
         variant="panel"
         compact
@@ -2395,6 +2472,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
           {{ distributionExpanded ? '收起覆盖统计' : '展开覆盖统计' }}
         </UiButton>
         <SignalBand
+          layout="spotlight"
           v-if="distributionExpanded"
           :metrics="distributionSignals"
           variant="panel"
@@ -2403,41 +2481,54 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
         />
       </div>
 
-      <div class="qcm__tabs">
+      <div class="qcm__tabs" role="tablist" aria-label="矩阵维护步骤">
         <UiButton
-          :variant="activeTab === 'support' ? 'primary' : 'ghost'"
+          :variant="activeTab === 'support' ? 'outline' : 'ghost'"
           size="sm"
+          role="tab"
+          :aria-selected="activeTab === 'support'"
           @click="switchMatrixTab('support')"
         >
-          ① 课程目标 → 毕业要求/观测点 支撑矩阵
+          ① 支撑矩阵
         </UiButton>
         <UiButton
-          :variant="activeTab === 'assess' ? 'primary' : 'ghost'"
+          :variant="activeTab === 'assess' ? 'outline' : 'ghost'"
           size="sm"
+          role="tab"
+          :aria-selected="activeTab === 'assess'"
           @click="switchMatrixTab('assess')"
         >
-          ② 考核环节 → 课程目标 权重矩阵
+          ② 权重配平
         </UiButton>
         <UiButton
-          :variant="activeTab === 'goals' ? 'primary' : 'ghost'"
+          :variant="activeTab === 'goals' ? 'outline' : 'ghost'"
           size="sm"
+          role="tab"
+          :aria-selected="activeTab === 'goals'"
           @click="switchMatrixTab('goals')"
         >
-          ③ 课程目标实体 / 计算规则
+          ③ 目标实体
         </UiButton>
       </div>
 
       <!-- Tab 1: 课程目标 × 毕业要求/观测点 -->
       <div v-if="activeTab === 'support'" class="qcm__tab-content">
         <div class="qcm__matrix-toolbar">
-          <UiButton variant="primary" size="sm" @click="openGoalCreate"> 新建课程目标 </UiButton>
+          <UiButton
+            v-if="matrixPagePrimaryAction?.key !== 'create-goal'"
+            variant="outline"
+            size="sm"
+            @click="openGoalCreate"
+          >
+            新建课程目标
+          </UiButton>
           <span class="qcm__hint">
-            点击单元格新增/修改支撑映射；空格 = 未支撑；颜色 = 支撑度（强 H 红 / 中 M 橙 / 弱 L 蓝）
+            点击单元格维护支撑映射；空格=未支撑；颜色=支撑度（强H/中M/弱L）
           </span>
         </div>
         <MatrixWorkbench
-          title="课程目标 × 毕业要求 / 观测点 支撑矩阵"
-          subtitle="单元格 = 支撑度首字母 + 权重；列为「要求」级与「观测点」级两类"
+          title="支撑映射队列"
+          subtitle="课程目标 × 毕业要求/观测点"
           row-header-label="课程目标"
           col-header-label="毕业要求 / 观测点"
           :rows="supportMatrixRows"
@@ -2455,9 +2546,17 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
       <!-- Tab 2: 考核环节 × 课程目标 -->
       <div v-else-if="activeTab === 'assess'" class="qcm__tab-content">
         <div class="qcm__matrix-toolbar">
-          <UiButton variant="primary" size="sm" @click="openItemCreate"> 新建考核环节 </UiButton>
           <UiButton
-            variant="primary"
+            v-if="matrixPagePrimaryAction?.key !== 'create-item'"
+            variant="outline"
+            size="sm"
+            @click="openItemCreate"
+          >
+            新建考核环节
+          </UiButton>
+          <UiButton
+            v-if="matrixPagePrimaryAction?.key !== 'flush-weights'"
+            variant="outline"
             size="sm"
             :loading="weightFlushing"
             :disabled="weightMatrixDirtyCount === 0"
@@ -2467,18 +2566,18 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
             <template v-if="weightMatrixDirtyCount > 0">（{{ weightMatrixDirtyCount }}）</template>
           </UiButton>
           <UiButton
-            variant="outline"
+            variant="ghost"
             size="sm"
             :disabled="weightMatrixDirtyCount === 0"
             @click="discardPendingWeights"
           >
             放弃未提交
           </UiButton>
-          <UiButton variant="outline" size="sm" @click="validateMatrixWeights">
+          <UiButton variant="ghost" size="sm" @click="validateMatrixWeights">
             校验已保存矩阵
           </UiButton>
           <span class="qcm__hint">
-            单元格编辑先进入本地 dirty；行/列 Σw 须 = 1。提交后才会写入服务端并跑矩阵配平校验。
+            单元格先记本地 dirty；行/列 Σw=1 后提交才写服务端并配平校验。
           </span>
         </div>
         <UiAlertStrip
@@ -2492,8 +2591,8 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
           有 {{ weightMatrixDirtyCount }} 处未提交权重（橙色描边）；切换页签或离开前请提交或放弃。
         </UiAlertStrip>
         <MatrixWorkbench
-          title="考核环节 × 课程目标 权重矩阵"
-          subtitle="行/列徽标与底部合计均为配平口径（含未提交 dirty）"
+          title="权重配平队列"
+          subtitle="考核环节 × 课程目标（含未提交）"
           row-header-label="考核环节"
           col-header-label="课程目标"
           :rows="assessMatrixRows"
@@ -2557,6 +2656,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
+                    :max-visible="2"
                     :items="buildAssessmentItemActions(record)"
                     split
                     @action="(key) => handleAssessmentItemAction(key, record)"
@@ -2571,9 +2671,16 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
       <!-- Tab 3: 课程目标实体 -->
       <div v-else class="qcm__tab-content">
         <div class="qcm__matrix-toolbar">
-          <UiButton variant="primary" size="sm" @click="openGoalCreate"> 新建课程目标 </UiButton>
+          <UiButton
+            v-if="matrixPagePrimaryAction?.key !== 'create-goal'"
+            variant="outline"
+            size="sm"
+            @click="openGoalCreate"
+          >
+            新建课程目标
+          </UiButton>
           <span class="qcm__hint">
-            本页仅维护课程目标实体与计算规则；支撑映射与权重配平请回到矩阵页签。
+            本页维护目标实体与计算规则；支撑映射与权重配平请回前两步。
           </span>
         </div>
         <UiDataTable
@@ -2616,6 +2723,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildCourseGoalActions(record)"
                 split
                 @action="(key) => handleCourseGoalAction(key, record)"
@@ -2923,7 +3031,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
             删除映射
           </UiButton>
           <UiButton size="sm" variant="ghost" @click="supportEditorVisible = false">取消</UiButton>
-          <UiButton size="sm" variant="primary" @click="submitSupport">保存</UiButton>
+          <UiButton size="sm" variant="outline" @click="submitSupport">保存</UiButton>
         </div>
       </template>
     </UiDialog>
@@ -3059,7 +3167,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
             删除
           </UiButton>
           <UiButton size="sm" variant="ghost" @click="weightEditorVisible = false">取消</UiButton>
-          <UiButton size="sm" variant="primary" @click="submitWeight">保存</UiButton>
+          <UiButton size="sm" variant="outline" @click="submitWeight">保存</UiButton>
         </div>
       </template>
     </UiDialog>
@@ -3102,6 +3210,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildRubricActions(record)"
               split
               @action="(key) => handleRubricAction(key, record)"

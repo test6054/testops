@@ -28,7 +28,7 @@
                 && showAssigneeActions
                 && taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
-            variant="primary"
+            variant="outline"
             size="sm"
             :loading="updating === true"
             @click="advanceStatus(ArchiveRemediationStatusCode.RESUBMITTED)"
@@ -40,7 +40,7 @@
     </template>
 
     <template v-if="taskDetail" #signal>
-      <SignalBand :metrics="signalMetrics" variant="panel" />
+      <SignalBand layout="spotlight" :metrics="signalMetrics" variant="panel" />
     </template>
 
     <UiEmpty size="sm" v-if="loadFailed" title="加载失败" description="整改任务加载失败" />
@@ -176,6 +176,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[{ key: 'download', label: '下载' }]"
                 split
                 @action="() => downloadEvidence(record.fileId)"
@@ -505,28 +506,34 @@ const signalMetrics = computed<SignalMetric[]>(() => {
       label: '状态',
       value: remediationStatusLabel(task.taskStatus),
       tone: remediationStatusTone(task.taskStatus),
+      emphasis: 'primary',
+      actionLabel: '推进整改',
     },
     {
       key: 'priority',
       label: '优先级',
       value: remediationPriorityLabel(task.taskPriority),
       tone: remediationPriorityTone(task.taskPriority),
-    },
-    {
-      key: 'assignee',
-      label: '责任人',
-      value: remediationAssigneeLabel(task),
-    },
-    {
-      key: 'creator',
-      label: '发现人',
-      value: remediationCreatorLabel(task),
+      emphasis: 'secondary',
     },
     {
       key: 'due',
       label: '截止日',
       value: task.dueTime ? formatDateTime(task.dueTime) : '—',
       tone: remediationDueTone(task),
+      emphasis: 'secondary',
+    },
+    {
+      key: 'assignee',
+      label: '责任人',
+      value: remediationAssigneeLabel(task),
+      emphasis: 'secondary',
+    },
+    {
+      key: 'creator',
+      label: '发现人',
+      value: remediationCreatorLabel(task),
+      emphasis: 'secondary',
     },
   ]
 })
@@ -598,7 +605,7 @@ const evidenceColumns: ColumnsType<ArchiveRemediationEvidenceResponse> = [
   { title: '大小', key: 'fileSize', width: 100 },
   { title: '上传时间', key: 'createTime', width: 168 },
   { title: '状态', key: 'evidenceStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 80 },
+  { title: '主行动', key: 'actions', width: 80 },
 ]
 
 const canSaveAssigneeReassign = computed(() => {

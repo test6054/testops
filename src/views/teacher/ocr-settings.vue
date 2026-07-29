@@ -11,6 +11,7 @@ import type {
   MarkOcrPlatformProviderSaveRequest,
 } from '@/apis/mark/ocr-platform-provider'
 import type { MarkOcrPaperSliceVO, MarkOcrRecognizeResponse } from '@/apis/mark/ocr-recognition'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
 import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
@@ -62,6 +63,7 @@ import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
@@ -380,7 +382,7 @@ const platformProviderColumns: ColumnType<MarkOcrPlatformProviderResponse>[] = [
   { title: '启用', key: 'enabled', dataIndex: 'enabled', width: 90 },
   { title: '凭证 / 接口摘要', key: 'credentials', dataIndex: 'credentials', align: 'left' },
   { title: '更新时间', key: 'updateTime', dataIndex: 'updateTime', width: 170 },
-  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
+  { title: '主行动', key: 'actions', width: 180, fixed: 'right' },
 ]
 
 function isPaddleProviderType(providerType: MarkOcrProviderTypeCode): boolean {
@@ -556,6 +558,30 @@ async function loadPlatformProviders(): Promise<boolean> {
   }
 }
 
+/** 平台 OCR 供应商行：编辑为主行动 */
+function buildPlatformProviderRowActions(record: { providerType: string }): UiTableRowActionItem[] {
+  return [
+    { key: 'edit', label: '编辑', tone: 'primary' },
+    {
+      key: 'health',
+      label: '健康检查',
+      disabled: platformProviderHealthLoading.value === record.providerType,
+    },
+  ]
+}
+
+function handlePlatformProviderRowAction(
+  key: string,
+  record: MarkOcrPlatformProviderResponse,
+): void {
+  if (key === 'edit') {
+    openPlatformProviderEditor(record)
+    return
+  }
+  if (key === 'health') {
+    void handlePlatformProviderHealthCheck(record.providerType)
+  }
+}
 function openPlatformProviderEditor(record: MarkOcrPlatformProviderResponse): void {
   // MVR-316：平台供应商编辑仅超级管理员
   if (ocrPlatformProviderManageAllowed.value !== true) {
@@ -983,7 +1009,7 @@ onBeforeUnmount(() => {
 <template>
   <StageWorkbenchShell class="ocr-settings">
     <template v-if="selectedExamId && currentConfig" #context>
-      <ContextBar layout="workbench" show-title :title="ocrWorkbenchTitle">
+      <ContextBar layout="workbench" show-title :title="ocrWorkbenchTitle" :subtitle="`${paddlePagination.total} 个实例`">
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
@@ -1011,7 +1037,7 @@ onBeforeUnmount(() => {
     </template>
 
     <template v-if="selectedExamId && currentConfig" #signal>
-      <SignalBand compact variant="panel" :metrics="ocrSignalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="ocrSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" body="请先选择考试后再配置 OCR 与识别策略" />
@@ -1274,19 +1300,12 @@ onBeforeUnmount(() => {
               {{ record.updateTime || '未配置' }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="dp-space dp-space--tight">
-                <UiButton size="sm" variant="outline" @click="openPlatformProviderEditor(record)">
-                  编辑
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  variant="outline"
-                  :loading="platformProviderHealthLoading === record.providerType"
-                  @click="handlePlatformProviderHealthCheck(record.providerType)"
-                >
-                  健康检查
-                </UiButton>
-              </div>
+              <UiTableActions
+                :max-visible="2"
+                :items="buildPlatformProviderRowActions(record)"
+                split
+                @action="(key) => handlePlatformProviderRowAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>

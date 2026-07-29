@@ -4,6 +4,7 @@ import type {
   PortfolioGapTaskDetailVO,
 } from '@/apis/portfolio/types'
 import type { ScanDispatchResultPayload } from '@/components/scanner-ops/ScanDispatchResultDialog.vue'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -29,6 +30,7 @@ import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
@@ -42,6 +44,7 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { validatePortfolioArchiveFields } from '@/utils/portfolio-archive-field-validation'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { buildScanDispatchKioskUrl } from '@/utils/scan-dispatch-kiosk-url'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -188,6 +191,17 @@ async function loadTask(): Promise<void> {
     }
   }
 }
+
+
+/** 任务工作台副标题：补采缺口规模 + 状态。 */
+const gapWorkbenchSubtitle = computed(() => {
+  if (!detail.value) {
+    return loading.value ? '补采任务加载中' : undefined
+  }
+  const missing = detail.value.missingFields?.length ?? 0
+  const status = gapTaskStatusLabel(detail.value.taskStatus)
+  return missing > 0 ? `${missing} 项待补 · ${status}` : status
+})
 
 function buildFieldInputs(): PortfolioArchiveRecordFieldInput[] {
   if (!detail.value) {
@@ -396,12 +410,40 @@ watch(
   },
   { immediate: true },
 )
+
+const TeacherGapSignalMetrics = computed<SignalMetric[]>(() => {
+  if (!detail.value) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'status',
+      label: '任务状态',
+      value: gapTaskStatusLabel(detail.value.taskStatus),
+      clickable: true,
+    },
+    {
+      key: 'missing',
+      label: '待补字段',
+      value: detail.value.missingFields.length,
+      tone: detail.value.missingFields.length > 0 ? 'orange' : undefined,
+    },
+  ]
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: detail.value.missingFields.length > 0 ? 'missing' : 'status',
+    actionLabel: '刷新',
+  })
+})
+
+function onTeacherGapSignalClick(_key: string) {
+  void loadTask()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" :title="detail?.taskTitle ?? '补采任务'">
+      <ContextBar show-title layout="workbench" :title="detail?.taskTitle ?? '补采任务'" :subtitle="gapWorkbenchSubtitle">
         <template #actions>
           <UiButton size="sm" variant="ghost" @click="goBack"> 返回首页 </UiButton>
           <template v-if="!(canPickTeachers && !targetTeacherId)">
@@ -426,6 +468,15 @@ watch(
           </template>
         </template>
       </ContextBar>
+    </template>
+    <template v-if="TeacherGapSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TeacherGapSignalMetrics"
+        @metric-click="onTeacherGapSignalClick"
+      />
     </template>
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />

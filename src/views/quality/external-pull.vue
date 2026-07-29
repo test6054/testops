@@ -172,7 +172,7 @@ const sourceColumns = computed<ColumnsType>(() => {
     { title: '状态', dataIndex: 'enabled', key: 'enabled', width: 100 },
   ]
   if (canManageExternalSource.value === true) {
-    columns.push({ title: '操作', key: 'actions', width: 220 })
+    columns.push({ title: '主行动', key: 'actions', width: 220 })
   }
   return columns
 })
@@ -188,7 +188,7 @@ const taskColumns: ColumnsType = [
   { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
   { title: '失败阶段', key: 'failurePhase', width: 140 },
   { title: '开始 / 结束', key: 'taskTimeline', width: 200 },
-  { title: '操作', key: 'actions', width: 220 },
+  { title: '主行动', key: 'actions', width: 220 },
 ]
 
 const detailResultColumns: ColumnsType = [
@@ -197,7 +197,7 @@ const detailResultColumns: ColumnsType = [
   { title: '预览行数', dataIndex: 'previewRows', key: 'previewRows', width: 100 },
   { title: '确认行数', dataIndex: 'confirmedRows', key: 'confirmedRows', width: 100 },
   { title: '状态', dataIndex: 'confirmationStatus', key: 'confirmationStatus', width: 110 },
-  { title: '操作', key: 'actions', width: 180 },
+  { title: '主行动', key: 'actions', width: 180 },
 ]
 
 const sources = ref<ExternalDataSourceVO[]>([])
@@ -426,25 +426,40 @@ const signals = computed<SignalMetric[]>(() => {
   const enabledSources = summary.sourceEnabledCount ?? 0
   const runningTasks = summary.taskRunningCount ?? 0
   const failedTasks = summary.taskFailedCount ?? 0
-  return [
-    {
-      key: 'src-enabled',
-      label: '已启用数据源',
-      value: enabledSources,
-      tone: enabledSources > 0 ? 'green' : 'orange',
-    },
+  const pool: SignalMetric[] = [
     {
       key: 'task-failed',
       label: '失败',
       value: failedTasks,
       tone: failedTasks > 0 ? 'red' : 'gray',
+      emphasis: 'secondary',
+      actionLabel: failedTasks > 0 ? '处理失败' : undefined,
     },
     {
       key: 'task-running',
       label: '运行中',
       value: runningTasks,
       tone: runningTasks > 0 ? 'orange' : 'gray',
+      emphasis: 'secondary',
     },
+    {
+      key: 'src-enabled',
+      label: '已启用数据源',
+      value: enabledSources,
+      tone: enabledSources > 0 ? 'green' : 'orange',
+      emphasis: 'secondary',
+      actionLabel: enabledSources > 0 ? undefined : '配置数据源',
+    },
+  ]
+  const primaryBase
+    = failedTasks > 0
+      ? pool[0]
+      : runningTasks > 0
+        ? pool[1]
+        : pool[2]
+  return [
+    { ...primaryBase, emphasis: 'primary' },
+    ...pool.filter((item) => item.key !== primaryBase.key),
   ]
 })
 
@@ -1318,7 +1333,7 @@ function buildExternalSourceActions(_record: ExternalDataSourceVO): UiTableRowAc
     return []
   }
   return [
-    { key: 'edit', label: '编辑' },
+    { key: 'edit', label: '编辑', tone: 'primary' },
     { key: 'toggle-enabled', label: _record.enabled ? '停用' : '启用' },
     { key: 'delete', label: '删除', tone: 'danger' },
   ]
@@ -1339,7 +1354,7 @@ function handleExternalSourceAction(key: string, record: ExternalDataSourceVO): 
 }
 
 function buildExternalPullTaskActions(record: ExternalPullTaskVO): UiTableRowActionItem[] {
-  const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
+  const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情', tone: 'primary' }]
   if (canCancelTask(record.status)) {
     actions.push({ key: 'cancel', label: '取消', tone: 'danger' })
   }
@@ -1382,12 +1397,15 @@ function handleExternalPullResultAction(key: string, record: ExternalPullResultV
 onMounted(async () => {
   await reloadAll()
 })
+
+/** 任务工作台副标题：源与任务规模。 */
+const externalPullWorkbenchSubtitle = computed(() => `${sourceTotal.value} 个数据源 · ${taskTotal.value} 个任务`)
 </script>
 
 <template>
   <QualityIngestPageShell embedded>
     <template #context>
-      <QualityPageContextBar show-title title="外部成绩拉取" />
+      <QualityPageContextBar show-title title="外部成绩拉取" :subtitle="externalPullWorkbenchSubtitle" />
     </template>
 
     <UiAlertStrip
@@ -1418,7 +1436,7 @@ onMounted(async () => {
         </span>
       </template>
     </UiAlertStrip>
-    <SignalBand :metrics="signals" variant="panel" compact class="external-pull__signals" />
+    <SignalBand :metrics="signals" layout="spotlight" variant="panel" compact class="external-pull__signals" />
     <p v-if="signalLastSuccessAt" class="external-pull__sync-hint">
       指标最近同步：{{ signalLastSuccessAt }}
     </p>
@@ -1532,6 +1550,7 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildExternalSourceActions(record)"
               split
               @action="(key) => handleExternalSourceAction(key, record)"
@@ -1646,6 +1665,7 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildExternalPullTaskActions(record)"
               split
               @action="(key) => handleExternalPullTaskAction(key, record)"
@@ -2211,6 +2231,7 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildExternalPullResultActions(record)"
                 split
                 @action="(key) => handleExternalPullResultAction(key, record)"

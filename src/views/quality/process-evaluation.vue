@@ -90,7 +90,7 @@ const nodeColumns: ColumnsType = [
   { title: '已确认记录', key: 'confirmedRecordCount', width: 96 },
   { title: '未确认记录', key: 'pendingRecordCount', width: 96 },
   { title: '状态', dataIndex: 'confirmationStatus', key: 'confirmationStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 200 },
+  { title: '主行动', key: 'actions', width: 200 },
 ]
 
 const recordColumns: ColumnsType = [
@@ -100,7 +100,7 @@ const recordColumns: ColumnsType = [
   { title: '换算分', dataIndex: 'convertedScore', key: 'convertedScore', width: 80 },
   { title: '来源', dataIndex: 'sourceMode', key: 'sourceMode', width: 140 },
   { title: '状态', dataIndex: 'confirmationStatus', key: 'confirmationStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 220 },
+  { title: '主行动', key: 'actions', width: 220 },
 ]
 
 const confirmedByGoalColumns: ColumnsType = [
@@ -679,7 +679,7 @@ function buildProcessNodeActions(record: ProcessEvaluationNodeVO): UiTableRowAct
     actions.push({ key: 'edit', label: '编辑' })
   }
   const transitions = allowedConfirmationTransitions(record.confirmationStatus)
-  // 行内仅 1 个 primary：首个状态迁移为主动作
+  // 行内仅 1 个 primary：有状态迁移时首个迁移为主；否则可编辑时「编辑」为主
   transitions.forEach((target, index) => {
     const item: UiTableRowActionItem = {
       key: target,
@@ -692,6 +692,9 @@ function buildProcessNodeActions(record: ProcessEvaluationNodeVO): UiTableRowAct
   })
   if (isNodeMutable(record)) {
     actions.push({ key: 'delete', label: '删除', tone: 'danger' })
+  }
+  if (!actions.some((a) => a.tone === 'primary') && actions[0] && actions[0].tone !== 'danger') {
+    actions[0] = { ...actions[0], tone: 'primary' }
   }
   return actions
 }
@@ -718,7 +721,7 @@ function buildProcessRecordActions(record: ProcessEvaluationRecordVO): UiTableRo
     actions.push({ key: 'edit', label: '编辑' })
   }
   const transitions = allowedConfirmationTransitions(record.confirmationStatus)
-  // 行内仅 1 个 primary：首个状态迁移为主动作
+  // 行内仅 1 个 primary：有状态迁移时首个迁移为主；否则可编辑时「编辑」为主
   transitions.forEach((target, index) => {
     const item: UiTableRowActionItem = {
       key: target,
@@ -731,6 +734,9 @@ function buildProcessRecordActions(record: ProcessEvaluationRecordVO): UiTableRo
   })
   if (isRecordMutable(record)) {
     actions.push({ key: 'delete', label: '删除', tone: 'danger' })
+  }
+  if (!actions.some((a) => a.tone === 'primary') && actions[0] && actions[0].tone !== 'danger') {
+    actions[0] = { ...actions[0], tone: 'primary' }
   }
   return actions
 }
@@ -941,25 +947,36 @@ const signals = computed<SignalMetric[]>(() => {
   const nodesConfigured = summary.nodeTotal > 0
   const weightKnown = typeof totalWeight === 'number' && !Number.isNaN(totalWeight)
   const weightOk = nodesConfigured && weightKnown && Math.abs(totalWeight - 1) < 0.01
+  const returned = summary.nodeReturnedCount
+  const primaryKey = returned > 0
+    ? 'nodes-returned'
+    : (!nodesConfigured || !weightOk ? 'weight-sum' : 'coverage-avg')
 
   return [
+    {
+      key: 'nodes-returned',
+      label: '已退回',
+      value: returned,
+      tone: returned > 0 ? 'red' : 'gray',
+      emphasis: primaryKey === 'nodes-returned' ? 'primary' : 'secondary',
+      actionLabel: returned > 0 ? '处理退回' : undefined,
+      helper: returned > 0 ? '优先处理退回节点' : undefined,
+    },
     {
       key: 'weight-sum',
       label: '权重合计',
       value: !nodesConfigured ? '未配置' : weightKnown ? totalWeight : '—',
       tone: !nodesConfigured ? 'orange' : weightOk ? 'green' : 'red',
+      emphasis: primaryKey === 'weight-sum' ? 'primary' : 'secondary',
+      actionLabel: !nodesConfigured || !weightOk ? '修复权重' : undefined,
+      helper: !nodesConfigured ? '过程评价节点未配置' : weightOk ? '权重正常' : '权重合计异常',
     },
     {
       key: 'nodes-draft',
       label: '起草中',
       value: summary.nodeDraftCount,
       tone: summary.nodeDraftCount > 0 ? 'orange' : 'gray',
-    },
-    {
-      key: 'nodes-returned',
-      label: '已退回',
-      value: summary.nodeReturnedCount,
-      tone: summary.nodeReturnedCount > 0 ? 'red' : 'gray',
+      emphasis: 'secondary',
     },
     {
       key: 'coverage-avg',
@@ -968,6 +985,7 @@ const signals = computed<SignalMetric[]>(() => {
       tone: typeof avgCoverage === 'number' && !Number.isNaN(avgCoverage)
         ? (avgCoverage >= 0.8 ? 'green' : avgCoverage > 0 ? 'orange' : 'gray')
         : 'gray',
+      emphasis: primaryKey === 'coverage-avg' ? 'primary' : 'secondary',
     },
   ]
 })
@@ -1044,12 +1062,51 @@ const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
 function handleCourseChange(courseId: string | null) {
   qualityStore.setQualityCourse(courseId || '')
 }
+
+/** 任务工作台副标题：节点与记录规模。 */
+const processEvalWorkbenchSubtitle = computed(() => {
+  if (!qualityStore.currentQualityCourseId) {
+    return '请选择质量评价课程'
+  }
+  if (selectedNode.value) {
+    const pending = selectedNode.value.pendingRecordCount
+    if (typeof pending === 'number' && pending > 0) {
+      return `「${selectedNode.value.nodeName}」· 待确认记录 ${pending}`
+    }
+    return `「${selectedNode.value.nodeName}」· ${nodeTotal.value} 节点 · ${recordTotal.value} 记录`
+  }
+  return `${nodeTotal.value} 个节点 · ${recordTotal.value} 条记录`
+})
+
+/**
+ * 页级唯一实心主行动：已选确认节点优先录入；否则新建节点。
+ */
+const processEvalPagePrimaryAction = computed(() => {
+  if (planGateMode.value || !qualityStore.currentQualityCourseId) {
+    return null
+  }
+  if (
+    selectedNode.value
+    && selectedNode.value.confirmationStatus === ConfirmationStatusCode.CONFIRMED
+  ) {
+    return {
+      key: 'create-record',
+      label: '录入记录',
+      run: () => openRecordCreate(),
+    }
+  }
+  return {
+    key: 'create-node',
+    label: '新建节点',
+    run: () => openNodeCreate(),
+  }
+})
 </script>
 
 <template>
   <QualityIngestPageShell embedded>
     <template #context>
-      <QualityPageContextBar show-title title="过程性评价">
+      <QualityPageContextBar show-title title="过程性评价" :subtitle="processEvalWorkbenchSubtitle">
         <template #status>
           <span class="pe__filter-label">质量评价课程：</span>
           <CourseSelector
@@ -1058,6 +1115,16 @@ function handleCourseChange(courseId: string | null) {
             :width="320"
             @change="handleCourseChange"
           />
+        </template>
+        <template #actions>
+          <UiButton
+            v-if="processEvalPagePrimaryAction"
+            variant="primary"
+            size="sm"
+            @click="processEvalPagePrimaryAction.run()"
+          >
+            {{ processEvalPagePrimaryAction.label }}
+          </UiButton>
         </template>
       </QualityPageContextBar>
     </template>
@@ -1110,6 +1177,7 @@ function handleCourseChange(courseId: string | null) {
       </UiAlertStrip>
       <SignalBand
         :metrics="signals"
+        layout="spotlight"
         variant="panel"
         compact
         class="pe__signals"
@@ -1158,7 +1226,7 @@ function handleCourseChange(courseId: string | null) {
         <UiCard class="detail-table-card pe__node-card">
           <template #title>过程性评价节点</template>
           <template #extra>
-            <UiButton variant="primary" size="sm" @click="openNodeCreate">新建节点</UiButton>
+            <UiButton v-if="processEvalPagePrimaryAction?.key !== 'create-node'" variant="outline" size="sm" @click="openNodeCreate">新建节点</UiButton>
           </template>
 
           <UiDataTable
@@ -1218,6 +1286,7 @@ function handleCourseChange(courseId: string | null) {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
+                  :max-visible="2"
                   :items="buildProcessNodeActions(record)"
                   split
                   @action="(key) => handleProcessNodeAction(key, record)"
@@ -1251,7 +1320,8 @@ function handleCourseChange(courseId: string | null) {
           <template #extra>
             <div class="dp-space dp-space--tight">
               <UiButton
-                variant="primary"
+                v-if="processEvalPagePrimaryAction?.key !== 'create-record'"
+                variant="outline"
                 size="sm"
                 :disabled="selectedNode.confirmationStatus !== ConfirmationStatusCode.CONFIRMED"
                 @click="openRecordCreate"
@@ -1326,6 +1396,7 @@ function handleCourseChange(courseId: string | null) {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
+                  :max-visible="2"
                   :items="buildProcessRecordActions(record)"
                   split
                   @action="(key) => handleProcessRecordAction(key, record)"

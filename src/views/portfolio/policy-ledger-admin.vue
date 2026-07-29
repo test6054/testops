@@ -6,8 +6,9 @@ import type {
   PortfolioVirtualTeachingRoomActivityVO,
 } from '@/apis/portfolio/policy-ledger'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import {
   portfolioIndustryEducationProjectApi,
   portfolioVirtualTeachingRoomActivityApi,
@@ -21,6 +22,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
@@ -54,6 +56,7 @@ import {
 } from '@/types/enums/portfolio-virtual-teaching-room-role-enum'
 import { showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -107,7 +110,7 @@ const virtualColumns: ColumnsType = [
   { title: '多身份', key: 'ownerIdentityLayers', width: 220 },
   { title: '生命周期', key: 'lifecycleStatus', width: 160 },
   { title: '状态', key: 'reviewStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 200 },
+  { title: '主行动', key: 'actions', width: 200 },
 ]
 const industryColumns: ColumnsType = [
   { title: '项目', dataIndex: 'projectName', key: 'projectName' },
@@ -117,7 +120,7 @@ const industryColumns: ColumnsType = [
   { title: '多身份', key: 'ownerIdentityLayers', width: 220 },
   { title: '生命周期', key: 'lifecycleStatus', width: 160 },
   { title: '状态', key: 'reviewStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 200 },
+  { title: '主行动', key: 'actions', width: 200 },
 ]
 
 function statusTone(
@@ -444,16 +447,65 @@ usePortfolioScopedLoader(
   },
   () => targetTeacherId.value,
 )
+
+const PolicyLedgerSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && virtualTotal.value === 0 && industryTotal.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'virtual',
+      label: '虚拟教研',
+      value: virtualTotal.value,
+      clickable: true,
+      active: tab.value === 'virtual',
+    },
+    {
+      key: 'industry',
+      label: '产教项目',
+      value: industryTotal.value,
+      clickable: true,
+      active: tab.value === 'industry',
+    },
+  ]
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: tab.value === 'industry' ? 'industry' : 'virtual',
+    actionLabel: '刷新',
+  })
+})
+
+const PolicyLedgerWorkbenchSubtitle = computed(() => {
+  if (loadError.value) return '加载失败'
+  return tab.value === 'virtual'
+    ? `${virtualTotal.value} 条虚拟教研`
+    : `${industryTotal.value} 条产教项目`
+})
+
+function onPolicyLedgerSignalClick(key: string) {
+  if (key === 'virtual' || key === 'industry') {
+    tab.value = key
+  }
+  void loadPage()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="政策专项台账">
+      <ContextBar show-title layout="workbench" title="政策专项台账" :subtitle="PolicyLedgerWorkbenchSubtitle">
         <template #actions>
           <UiButton size="sm" variant="outline" :loading="loading" @click="() => void loadPage()">刷新</UiButton>
         </template>
       </ContextBar>
+    </template>
+    <template v-if="PolicyLedgerSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="PolicyLedgerSignalMetrics"
+        @metric-click="onPolicyLedgerSignalClick"
+      />
     </template>
 
     <PortfolioTeacherPickGate />
@@ -597,6 +649,7 @@ usePortfolioScopedLoader(
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="ledgerActions(record)"
               @action="(action) => handleLedgerAction('virtual', record, action)"
             />
@@ -725,6 +778,7 @@ usePortfolioScopedLoader(
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="ledgerActions(record)"
               @action="(action) => handleLedgerAction('industry', record, action)"
             />

@@ -6,6 +6,7 @@ import type {
   PortfolioNationalAchievementRequirementSaveItem,
 } from '@/apis/portfolio/national-achievement'
 import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import {
@@ -30,6 +31,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -39,6 +41,7 @@ import {
   PortfolioHonorLevelOptions,
 } from '@/types/enums/portfolio-honor-level-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -77,6 +80,34 @@ const recordTotal = ref(0)
 const refreshError = ref<string | null>(null)
 const operationKey = ref('')
 const operating = computed(() => Boolean(operationKey.value))
+
+/** 双真源指标：标准目录 + 正式成果；spotlight 1 主 1 次，主卡随 Tab */
+const achievementSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis(
+    [
+      { key: 'catalog', label: '标准目录', value: total.value, clickable: true, active: activeTab.value === 'catalog' },
+      { key: 'records', label: '正式成果', value: recordTotal.value, clickable: true, active: activeTab.value === 'records' },
+    ],
+    {
+      primaryKey: activeTab.value === 'records' ? 'records' : 'catalog',
+      actionLabel: activeTab.value === 'records' ? '查看成果' : '查看目录',
+    },
+  )
+})
+
+const workbenchSubtitle = computed(() => {
+  if (activeTab.value === 'records') {
+    return `${recordTotal.value} 条成果`
+  }
+  return `${total.value} 条目录`
+})
+
+function onAchievementSignalClick(key: string) {
+  if (key === 'catalog' || key === 'records') {
+    activeTab.value = key
+    onTabChange(key)
+  }
+}
 const editorOpen = ref(false)
 const editorLoading = ref(false)
 
@@ -108,7 +139,7 @@ const catalogColumns: ColumnsType = [
   { title: '打造周期', key: 'buildCycleMonths', width: 100 },
   { title: '要求数', key: 'requirementCount', width: 80 },
   { title: '状态', key: 'enabled', width: 80 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 const recordColumns: ColumnsType = [
   { title: '成果名称', dataIndex: 'recordTitle', key: 'recordTitle' },
@@ -389,7 +420,7 @@ void loadCatalogs()
         show-title
         layout="workbench"
         title="国家级成果"
-        subtitle="成果标准目录、正式成果实例与规划目标的统一治理"
+        :subtitle="workbenchSubtitle"
       >
         <template #actions>
           <UiButton
@@ -403,6 +434,15 @@ void loadCatalogs()
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+    <template #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="achievementSignalMetrics"
+        @metric-click="onAchievementSignalClick"
+      />
     </template>
     <UiCard>
       <UiSectionTabs
@@ -443,7 +483,7 @@ void loadCatalogs()
               { value: 'false', label: '已停用' },
             ]"
           />
-          <UiButton size="sm" variant="primary" @click="((pageNum = 1), loadCatalogs())">
+          <UiButton size="sm" variant="outline" @click="((pageNum = 1), loadCatalogs())">
             查询
           </UiButton>
         </div>
@@ -482,6 +522,7 @@ void loadCatalogs()
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[
                   { key: 'edit', label: '编辑', disabled: operating },
                   {
@@ -511,7 +552,7 @@ void loadCatalogs()
             placeholder="成果名称或教师"
           />
           <UiInput size="sm" v-model="recordFilter.categoryCode" clearable placeholder="分类编码" />
-          <UiButton size="sm" variant="primary" @click="((recordPageNum = 1), loadRecords())">
+          <UiButton size="sm" variant="outline" @click="((recordPageNum = 1), loadRecords())">
             查询
           </UiButton>
         </div>
@@ -599,7 +640,7 @@ void loadCatalogs()
             />
           </UiFormItem>
           <div class="achievement-admin__requirements-head">
-            <strong>标准要求（权重合计 100）</strong><UiButton variant="primary" size="sm" :disabled="operating" @click="addRequirement">
+            <strong>标准要求（权重合计 100）</strong><UiButton variant="outline" size="sm" :disabled="operating" @click="addRequirement">
               新增要求
             </UiButton>
           </div>

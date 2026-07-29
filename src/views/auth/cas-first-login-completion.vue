@@ -52,7 +52,7 @@
           <div class="cas-completion__summary-item">
             <span class="cas-completion__summary-label">姓名</span>
             <span class="cas-completion__summary-value">
-              {{ context?.prefillData?.nickName }}
+              {{ context?.prefillData?.nickName || '未提供' }}
             </span>
           </div>
           <div class="cas-completion__summary-item">
@@ -186,6 +186,10 @@ import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import { getDefaultRoute } from '@/router/permission'
 import { useAuthStore, useUserStore } from '@/stores'
 import { casFirstLoginLockedRoleDescription } from '@/types/enums/cas-first-login-locked-role-enum'
+import {
+  clearCasLoginRedirect,
+  consumeCasLoginRedirect,
+} from '@/utils/cas-login-redirect'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
 
@@ -325,6 +329,24 @@ async function initialize(): Promise<void> {
   clearFieldErrors()
   try {
     const nextContext = await getCasFirstLoginContext(completionToken.value)
+    if (
+      nextContext.status !== 'PROFILE_COMPLETION_REQUIRED'
+      || !nextContext.completionToken
+      || !nextContext.lockedRoleKey
+      || !Array.isArray(nextContext.missingFields)
+    ) {
+      throw new Error('统一认证补录上下文响应不完整')
+    }
+    const supportedFields: CasCompletionField[] = [
+      'studentNumber',
+      'teacherNumber',
+      'classId',
+      'department',
+      'title',
+    ]
+    if (nextContext.missingFields.some(field => !supportedFields.includes(field as CasCompletionField))) {
+      throw new Error('统一认证返回了当前页面无法处理的补录字段')
+    }
     context.value = nextContext
     hydrateForm(nextContext)
     await loadAvailableClasses()
@@ -386,13 +408,14 @@ async function finalizeLogin(
     userStore.userInfo.tenantName = result.tenantInfo.tenantName
   }
 
+  const finalPath = consumeCasLoginRedirect(getDefaultRoute(authStore.userRole))
   if (shouldEnforcePasswordChange(userStore.userInfo)) {
     void message.warning('出于安全考虑，您需要修改密码后才能继续使用系统')
-    await router.push('/change-password')
+    await router.push({ path: '/change-password', query: { redirect: finalPath } })
     return
   }
 
-  await router.push(getDefaultRoute(authStore.userRole))
+  await router.push(finalPath)
 }
 
 async function handleSubmit(): Promise<void> {
@@ -425,6 +448,7 @@ async function handleSubmit(): Promise<void> {
 }
 
 function goLogin(): void {
+  clearCasLoginRedirect()
   void router.push('/login')
 }
 

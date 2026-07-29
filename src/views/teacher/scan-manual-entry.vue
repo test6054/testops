@@ -45,6 +45,7 @@
 
     <template v-if="selectedExamId" #signal>
       <SignalBand
+        layout="spotlight"
         compact
         variant="panel"
         :metrics="signalMetrics"
@@ -312,27 +313,24 @@ const candidateFilterFields = computed((): FilterField[] => [
 
 const signalMetrics = computed((): SignalMetric[] => {
   if (workbenchLoadFailed.value) {
-    return [{ key: 'load-failed', label: '补录关键指标', value: '加载失败', tone: 'red' }]
+    return [{ key: 'load-failed', label: '补录关键指标', value: '加载失败', tone: 'red', emphasis: 'primary' }]
   }
   const data = workbench.value
   if (!data) {
-    return [{ key: 'loading', label: '补录关键指标', value: '—', tone: 'gray' }]
+    return [{ key: 'loading', label: '补录关键指标', value: '—', tone: 'gray', emphasis: 'primary' }]
   }
-  return [
+  const missingCount = data.missingPageCandidateCount
+  const pool: SignalMetric[] = [
     {
       key: 'missing-page',
       label: '缺页考生',
-      value: data.missingPageCandidateCount == null ? '—' : String(data.missingPageCandidateCount),
-      unit: data.missingPageCandidateCount == null ? '页数待推导' : '人',
-      tone: data.missingPageCandidateCount == null || data.missingPageCandidateCount > 0 ? 'orange' : 'green',
+      value: missingCount == null ? '—' : String(missingCount),
+      unit: missingCount == null ? '页数待推导' : '人',
+      tone: missingCount == null || missingCount > 0 ? 'orange' : 'green',
       clickable: true,
-    },
-    {
-      key: 'eligible-batch',
-      label: '可补扫批次',
-      value: String(data.supplementEligibleBatchCount),
-      tone: 'blue',
-      clickable: true,
+      emphasis: 'secondary',
+      actionLabel: '补录缺页',
+      helper: missingCount == null || missingCount > 0 ? '优先补齐缺页考生' : '暂无缺页',
     },
     {
       key: 'attention',
@@ -340,6 +338,16 @@ const signalMetrics = computed((): SignalMetric[] => {
       value: String(data.pendingAttentionCount),
       tone: data.pendingAttentionCount > 0 ? 'orange' : 'green',
       clickable: true,
+      emphasis: 'secondary',
+      actionLabel: data.pendingAttentionCount > 0 ? '处置异常' : undefined,
+    },
+    {
+      key: 'eligible-batch',
+      label: '可补扫批次',
+      value: String(data.supplementEligibleBatchCount),
+      tone: 'blue',
+      clickable: true,
+      emphasis: 'secondary',
     },
     {
       key: 'web-device',
@@ -347,7 +355,18 @@ const signalMetrics = computed((): SignalMetric[] => {
       value: String(data.webSupplementDeviceCount),
       tone: data.webSupplementDeviceCount > 0 ? 'blue' : 'orange',
       clickable: true,
+      emphasis: 'secondary',
     },
+  ]
+  const primaryBase
+    = missingCount == null || missingCount > 0
+      ? pool[0]
+      : data.pendingAttentionCount > 0
+        ? pool[1]
+        : pool[2]
+  return [
+    { ...primaryBase, emphasis: 'primary' },
+    ...pool.filter((item) => item.key !== primaryBase.key),
   ]
 })
 

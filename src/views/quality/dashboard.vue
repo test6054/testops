@@ -237,12 +237,87 @@ const signals = computed<SignalMetric[]>(() => {
     = improvementCounts.open + improvementCounts.inProgress + improvementCounts.submitted
   const attention = totalAttentionCount.value
   const aiFailed = aiCounts.failed
-  return [
+  // 质量任务工作台：风险/待办主卡 + 次级规模（真实汇总字段，禁止编造）
+  const primaryCandidates: SignalMetric[] = [
+    {
+      key: 'blocked',
+      label: '阻断步骤',
+      value: blockedCount,
+      tone: blockedCount > 0 ? 'red' : 'gray',
+      emphasis: 'primary',
+      actionLabel: blockedCount > 0 ? '处理阻断' : undefined,
+      helper: blockedCount > 0 ? '旅程被锁，优先解锁' : '当前无阻断',
+      clickable: blockedCount > 0,
+      active: activeSignal.value === 'blocked',
+    },
+    {
+      key: 'attention',
+      label: '待关注',
+      value: attention,
+      tone: attention > 0 ? 'orange' : 'gray',
+      emphasis: 'primary',
+      actionLabel: attention > 0 ? '查看关注' : undefined,
+      helper: '含即将到期与逾期',
+      clickable: attention > 0,
+      active: activeSignal.value === 'attention',
+    },
+    {
+      key: 'a-review',
+      label: '待审核',
+      value: pendingReview,
+      tone: pendingReview > 0 ? 'orange' : 'gray',
+      emphasis: 'primary',
+      actionLabel: pendingReview > 0 ? '去审核' : undefined,
+      helper: pendingReview > 0 ? '达成度待审' : '暂无待审',
+      clickable: pendingReview > 0,
+      active: activeSignal.value === 'a-review',
+    },
+    {
+      key: 'i-open',
+      label: '未闭环',
+      value: openImprovement,
+      tone: openImprovement > 0 ? 'orange' : 'gray',
+      emphasis: 'primary',
+      actionLabel: openImprovement > 0 ? '推进改进' : undefined,
+      helper: openImprovement > 0 ? '改进任务未闭环' : '改进已闭环',
+      clickable: openImprovement > 0,
+      active: activeSignal.value === 'i-open',
+    },
+    {
+      key: 'ai-fail',
+      label: 'AI 失败',
+      value: aiFailed,
+      tone: aiFailed > 0 ? 'red' : 'gray',
+      emphasis: 'primary',
+      actionLabel: aiFailed > 0 ? '查看失败' : undefined,
+      helper: aiFailed > 0 ? 'AI 任务失败待处理' : 'AI 无失败',
+      clickable: aiFailed > 0,
+      active: activeSignal.value === 'ai-fail',
+    },
+  ]
+  const primary
+    = primaryCandidates.find((item) => typeof item.value === 'number' && item.value > 0)
+      ?? {
+        key: 'stage',
+        label: '当前阶段',
+        value: activeStep?.title ?? '未进入',
+        tone: activeStep ? 'blue' : 'gray',
+        emphasis: 'primary' as const,
+        actionLabel: activeStep ? '进入阶段' : undefined,
+        helper: activeStep
+          ? strictEnumLabel(ObeJourneyStepStatusDescription, activeStep.status, '旅程步骤状态')
+          : '尚未进入 OBE 旅程',
+        clickable: Boolean(activeStep),
+        active: activeSignal.value === 'stage',
+      }
+
+  const secondaryPool: SignalMetric[] = [
     {
       key: 'stage',
       label: '当前阶段',
       value: activeStep?.title ?? '未进入',
       tone: activeStep ? 'blue' : 'gray',
+      emphasis: 'secondary',
       helper: activeStep
         ? strictEnumLabel(ObeJourneyStepStatusDescription, activeStep.status, '旅程步骤状态')
         : undefined,
@@ -254,6 +329,7 @@ const signals = computed<SignalMetric[]>(() => {
       label: '阻断步骤',
       value: blockedCount,
       tone: blockedCount > 0 ? 'red' : 'gray',
+      emphasis: 'secondary',
       clickable: blockedCount > 0,
       active: activeSignal.value === 'blocked',
     },
@@ -262,6 +338,7 @@ const signals = computed<SignalMetric[]>(() => {
       label: '待审核',
       value: pendingReview,
       tone: pendingReview > 0 ? 'orange' : 'gray',
+      emphasis: 'secondary',
       clickable: pendingReview > 0,
       active: activeSignal.value === 'a-review',
     },
@@ -270,6 +347,7 @@ const signals = computed<SignalMetric[]>(() => {
       label: '未闭环',
       value: openImprovement,
       tone: openImprovement > 0 ? 'orange' : 'gray',
+      emphasis: 'secondary',
       clickable: openImprovement > 0,
       active: activeSignal.value === 'i-open',
     },
@@ -278,6 +356,7 @@ const signals = computed<SignalMetric[]>(() => {
       label: '待关注',
       value: attention,
       tone: attention > 0 ? 'orange' : 'gray',
+      emphasis: 'secondary',
       helper: '含即将到期与逾期',
       clickable: attention > 0,
       active: activeSignal.value === 'attention',
@@ -287,9 +366,15 @@ const signals = computed<SignalMetric[]>(() => {
       label: 'AI 失败',
       value: aiFailed,
       tone: aiFailed > 0 ? 'red' : 'gray',
+      emphasis: 'secondary',
       clickable: aiFailed > 0,
       active: activeSignal.value === 'ai-fail',
     },
+  ]
+
+  return [
+    primary,
+    ...secondaryPool.filter((item) => item.key !== primary.key).slice(0, 3),
   ]
 })
 
@@ -684,6 +769,35 @@ function handleStageSelect(stage: WorkbenchStage) {
   void router.push({ name: step.routeName })
 }
 
+const dashboardPrimaryAction = computed(() => {
+  const first = dashboardTodos.value[0]
+  if (first) {
+    return {
+      key: first.key,
+      label: first.actionLabel,
+      run: () => handleTodoAction(first.key),
+    }
+  }
+  return {
+    key: 'achievement',
+    label: '进入达成度',
+    run: () => goAchievement(),
+  }
+})
+
+const dashboardWorkbenchSubtitle = computed(() => {
+  const n = dashboardTodos.value.length
+  if (n > 0) {
+    return `${n} 项待办`
+  }
+  if (!trainingPlanId.value) {
+    return '待选择培养方案'
+  }
+  if (planConfirmationStatus.value !== ConfirmationStatusCode.CONFIRMED) {
+    return '培养方案待确认'
+  }
+  return undefined
+})
 function handleTodoAction(key: string) {
   switch (key) {
     case 'plan-confirm':
@@ -711,7 +825,11 @@ function handleTodoAction(key: string) {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar show-title title="质量评价驾驶舱">
+      <QualityPageContextBar
+        show-title
+        title="质量评价驾驶舱"
+        :subtitle="dashboardWorkbenchSubtitle"
+      >
         <template #actions>
           <UiButton
             variant="outline"
@@ -721,7 +839,21 @@ function handleTodoAction(key: string) {
           >
             刷新
           </UiButton>
-          <UiButton variant="primary" size="sm" :disabled="!trainingPlanId" @click="goAchievement">
+          <UiButton
+            variant="primary"
+            size="sm"
+            :disabled="!trainingPlanId && dashboardPrimaryAction.key === 'achievement'"
+            @click="dashboardPrimaryAction.run()"
+          >
+            {{ dashboardPrimaryAction.label }}
+          </UiButton>
+          <UiButton
+            v-if="dashboardPrimaryAction.key !== 'achievement'"
+            variant="ghost"
+            size="sm"
+            :disabled="!trainingPlanId"
+            @click="goAchievement"
+          >
             进入达成度
           </UiButton>
         </template>
@@ -761,6 +893,7 @@ function handleTodoAction(key: string) {
         <SignalBand
           v-if="summaryLoaded || summaryHadSuccess"
           :metrics="signals"
+          layout="spotlight"
           variant="panel"
           compact
           class="quality-dashboard__signals"
@@ -791,7 +924,11 @@ function handleTodoAction(key: string) {
             <li v-for="item in dashboardTodos" :key="item.key" class="quality-dashboard__todo-item">
               <UiTag :tone="item.tone" size="sm">{{ item.tone === 'red' ? '紧急' : '待办' }}</UiTag>
               <span class="quality-dashboard__todo-label">{{ item.label }}</span>
-              <UiButton variant="ghost" size="sm" @click="handleTodoAction(item.key)">
+              <UiButton
+                :variant="item.key === dashboardTodos[0]?.key ? 'primary' : 'ghost'"
+                size="sm"
+                @click="handleTodoAction(item.key)"
+              >
                 {{ item.actionLabel }}
               </UiButton>
             </li>

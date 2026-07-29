@@ -4,6 +4,8 @@ import type {
   PortfolioTeachingExtensionActivityVO,
   PortfolioTeachingExtensionCategoryVO,
 } from '@/apis/portfolio/teaching-extension'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -25,7 +27,9 @@ import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -45,6 +49,7 @@ import {
   PortfolioTeachingExtensionKindOptions,
 } from '@/types/enums/portfolio-teaching-extension-kind-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -128,14 +133,14 @@ const activityColumns: ColumnsType = [
   { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '时间', key: 'dateRange', width: 180 },
   { title: '学时/描述', key: 'summary', width: 140 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 const categoryColumns: ColumnsType = [
   { title: '分类名称', dataIndex: 'categoryName', key: 'categoryName' },
   { title: '编码', dataIndex: 'categoryCode', key: 'categoryCode', width: 200 },
   { title: '类型', key: 'preset', width: 88 },
-  { title: '操作', key: 'actions', width: 88 },
+  { title: '主行动', key: 'actions', width: 88 },
 ]
 
 function scopeTeacherId() {
@@ -250,6 +255,93 @@ async function loadData() {
   }
 }
 
+/** 拓展活动行：编辑/查看为主行动；档案状态 Tag 仍在模板侧展示 */
+function buildExtensionRowActions(
+  record: PortfolioTeachingExtensionActivityVO,
+): UiTableRowActionItem[] {
+  return [
+    {
+      key: 'edit',
+      label: readonlyMode.value || !canEditActivity(record) ? '查看' : '编辑',
+      tone: 'primary',
+    },
+    {
+      key: 'fill-archive',
+      label: '填写档案',
+      hidden:
+        readonlyMode.value
+        || record.activityKind !== PortfolioTeachingExtensionKindCode.TRAINING
+        || Boolean(record.archiveRecordId),
+      disabled: submittingTrainingId.value === record.id,
+    },
+    {
+      key: 'open-archive',
+      label: '进入档案',
+      hidden: !(record.archiveRecordId && record.archiveCategoryId),
+    },
+    {
+      key: 'delete',
+      label: '删除',
+      tone: 'danger',
+      hidden: readonlyMode.value || Boolean(record.archiveRecordId),
+      disabled: Boolean(deletingActivityId.value) || Boolean(submittingTrainingId.value),
+    },
+  ]
+}
+
+function handleExtensionRowAction(
+  key: string,
+  record: PortfolioTeachingExtensionActivityVO,
+): void {
+  if (key === 'edit') {
+    openModal(record)
+    return
+  }
+  if (key === 'fill-archive') {
+    void prepareTrainingArchiveDraft(record)
+    return
+  }
+  if (key === 'open-archive') {
+    if (!record.archiveRecordId || !record.archiveCategoryId) {
+      return
+    }
+    void router.push({
+      name: 'PortfolioArchiveCategoryEdit',
+      params: { categoryId: record.archiveCategoryId },
+      query: {
+        recordId: record.archiveRecordId,
+        teacherId: scopeTeacherId(),
+        fromPage: 'trainingExtension',
+      },
+    })
+    return
+  }
+  if (key === 'delete') {
+    void removeActivity(record)
+  }
+}
+
+function buildExtensionCategoryRowActions(
+  record: PortfolioTeachingExtensionCategoryVO,
+): UiTableRowActionItem[] {
+  return [
+    {
+      key: 'delete',
+      label: '删除',
+      tone: 'danger',
+      hidden: readonlyMode.value || Boolean(record.preset) || !record.id,
+    },
+  ]
+}
+
+function handleExtensionCategoryRowAction(
+  key: string,
+  record: PortfolioTeachingExtensionCategoryVO,
+): void {
+  if (key === 'delete') {
+    void confirmDeleteCategory(record)
+  }
+}
 function openModal(row?: PortfolioTeachingExtensionActivityVO): void {
   if (row?.archiveRecordId && !canEditActivity(row)) {
     void message.info('该培训活动的档案正在审核或已正式归档，不可修改')
@@ -548,6 +640,39 @@ watch(
   },
 )
 usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
+
+const TeacherExtensionSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadFailed.value && rows.value.length === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '拓展活动',
+      value: rows.value.length,
+      clickable: true,
+      helper: '当前已加载',
+    },
+  ]
+  if (kindFilter.value) {
+    metrics.push({
+      key: 'filtered',
+      label: '当前筛选',
+      value: displayedRows.value.length,
+      helper: '仅当前筛选',
+    })
+  }
+  return applySpotlightEmphasis(metrics, { primaryKey: 'total', actionLabel: '刷新' })
+})
+
+const TeacherExtensionWorkbenchSubtitle = computed(() => {
+  if (loadFailed.value) return '加载失败'
+  return `${rows.value.length} 条`
+})
+
+function onTeacherExtensionSignalClick(_key: string) {
+  void loadData()
+}
 </script>
 
 <template>
@@ -557,7 +682,16 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
         layout="workbench"
         show-title
         title="教学拓展活动"
-        subtitle="培训与其他专业实践"
+        :subtitle="TeacherExtensionWorkbenchSubtitle"
+      />
+    </template>
+    <template v-if="TeacherExtensionSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TeacherExtensionSignalMetrics"
+        @metric-click="onTeacherExtensionSignalClick"
       />
     </template>
     <UiAlertStrip
@@ -615,63 +749,26 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
               {{ summaryText(record) }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiTag
-                v-if="record.archiveRecordStatus"
-                :tone="
-                  strictEnumTone(
-                    PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
-                    record.archiveRecordStatus,
-                    '档案记录状态',
-                  )
-                "
-              >
-                {{ archiveStatusLabel(record) }}
-              </UiTag>
-              <UiButton size="sm" variant="ghost" @click="openModal(record)">
-                {{ readonlyMode || !canEditActivity(record) ? '查看' : '编辑' }}
-              </UiButton>
-              <UiButton
-                size="sm"
-                v-if="
-                  !readonlyMode
-                    && record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING
-                    && !record.archiveRecordId
-                "
-                variant="ghost"
-                :loading="submittingTrainingId === record.id"
-                @click="prepareTrainingArchiveDraft(record)"
-              >
-                填写档案
-              </UiButton>
-              <UiButton
-                size="sm"
-                v-if="record.archiveRecordId && record.archiveCategoryId"
-                variant="ghost"
-                @click="
-                  router.push({
-                    name: 'PortfolioArchiveCategoryEdit',
-                    params: { categoryId: record.archiveCategoryId },
-                    query: {
-                      recordId: record.archiveRecordId,
-                      teacherId: scopeTeacherId(),
-                      fromPage: 'trainingExtension',
-                    },
-                  })
-                "
-              >
-                进入档案
-              </UiButton>
-              <UiButton
-                size="sm"
-                v-if="!readonlyMode && !record.archiveRecordId"
-                variant="ghost"
-                danger
-                :loading="deletingActivityId === record.id"
-                :disabled="Boolean(deletingActivityId) || Boolean(submittingTrainingId)"
-                @click="removeActivity(record)"
-              >
-                删除
-              </UiButton>
+              <div class="extension-activity__row-actions">
+                <UiTag
+                  v-if="record.archiveRecordStatus"
+                  :tone="
+                    strictEnumTone(
+                      PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
+                      record.archiveRecordStatus,
+                      '档案记录状态',
+                    )
+                  "
+                >
+                  {{ archiveStatusLabel(record) }}
+                </UiTag>
+                <UiTableActions
+                  :max-visible="2"
+                  :items="buildExtensionRowActions(record)"
+                  split
+                  @action="(key) => handleExtensionRowAction(key, record)"
+                />
+              </div>
             </template>
           </template>
         </UiDataTable>
@@ -679,7 +776,7 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 
       <UiCard title="活动分类" :loading="categoryLoading" style="margin-top: var(--dp-space-block)">
         <template #extra>
-          <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCategoryModal">
+          <UiButton size="sm" variant="outline" v-if="!readonlyMode" @click="openCategoryModal">
             新建分类
           </UiButton>
         </template>
@@ -700,16 +797,12 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
               {{ record.preset ? '预设' : '自建' }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton
-                size="sm"
-                v-if="!readonlyMode && !record.preset && record.id"
-                variant="ghost"
-                danger
-                :loading="deletingCategoryId === record.id"
-                @click="confirmDeleteCategory(record)"
-              >
-                删除
-              </UiButton>
+              <UiTableActions
+                :max-visible="2"
+                :items="buildExtensionCategoryRowActions(record)"
+                split
+                @action="(key) => handleExtensionCategoryRowAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -816,5 +909,11 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
   display: flex;
   align-items: center;
   gap: var(--dp-space-component-tight);
+}
+.extension-activity__row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-component-tight);
+  flex-wrap: wrap;
 }
 </style>

@@ -1,7 +1,12 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="迎评就绪度矩阵" subtitle="历史归档">
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="迎评就绪度矩阵"
+        :subtitle="matrixMeta ? `${matrixMeta.rowCount} 行 · ${matrixMeta.termColumnCount} 学期列` : '加载矩阵'"
+      >
         <template #actions>
           <UiButton variant="ghost" size="sm" @click="goList">返回列表</UiButton>
         </template>
@@ -9,7 +14,7 @@
     </template>
 
     <template v-if="canViewSupervision" #signal>
-      <SignalBand :metrics="signalMetrics" variant="panel" />
+      <SignalBand layout="spotlight" :metrics="signalMetrics" variant="panel" />
     </template>
 
     <UiSkeletonState v-if="dutyLoading" variant="card" compact />
@@ -310,8 +315,20 @@ const tableRows = computed<ReadinessTableRow[]>(() => {
 const signalMetrics = computed<SignalMetric[]>(() => {
   if (!matrixMeta.value) return []
   return [
-    { key: 'rows', label: '院系课程', value: matrixMeta.value.rowCount, unit: '行' },
-    { key: 'terms', label: '学期列', value: matrixMeta.value.termColumnCount, unit: '列' },
+    {
+      key: 'rows',
+      label: '院系课程',
+      value: matrixMeta.value.rowCount,
+      unit: '行',
+      emphasis: 'primary',
+    },
+    {
+      key: 'terms',
+      label: '学期列',
+      value: matrixMeta.value.termColumnCount,
+      unit: '列',
+      emphasis: 'secondary',
+    },
   ]
 })
 

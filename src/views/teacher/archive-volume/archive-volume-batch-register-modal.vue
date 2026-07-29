@@ -79,6 +79,7 @@
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
+            :max-visible="2"
             :items="[{ key: 'remove', label: '移除', tone: 'danger' }]"
             split
             @action="() => removeRow(record.uid)"
@@ -158,7 +159,7 @@ const columns: ColumnsType<BatchRow> = [
   { title: '文件名', key: 'fileName' },
   { title: '材料类型', key: 'materialType', width: 180 },
   { title: '标签', key: 'tags', width: 200 },
-  { title: '操作', key: 'actions', width: 72 },
+  { title: '主行动', key: 'actions', width: 72 },
 ]
 
 watch(

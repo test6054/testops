@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -17,6 +18,7 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioReviewAccess } from '@/composables/usePortfolioReviewAccess'
@@ -28,6 +30,7 @@ import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enu
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
@@ -65,6 +68,36 @@ const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange }
   = useQueryTable(portfolioTeacherSalaryApi.page)
+
+const TeacherSalarySignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && pageTotal.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '工资记录',
+      value: pageTotal.value,
+      clickable: true,
+    },
+  ]
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const TeacherSalaryWorkbenchSubtitle = computed(() => {
+  if (loadError.value) {
+    return '加载失败'
+  }
+  return `${pageTotal.value} 条`
+})
+
+function onTeacherSalarySignalClick(_key: string) {
+  void loadPage()
+}
+
 const operationKey = ref('')
 const operating = computed(() => Boolean(operationKey.value))
 
@@ -197,7 +230,16 @@ onMounted(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" :title="pageTitle" />
+      <ContextBar show-title layout="workbench" :title="pageTitle" :subtitle="TeacherSalaryWorkbenchSubtitle" />
+    </template>
+    <template v-if="TeacherSalarySignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TeacherSalarySignalMetrics"
+        @metric-click="onTeacherSalarySignalClick"
+      />
     </template>
     <UiAlertStrip
       v-if="archiveWriteForbidden"

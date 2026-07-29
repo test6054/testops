@@ -129,11 +129,11 @@ function handleClusterDataChanged(): void {
 <template>
   <StageWorkbenchShell>
     <template v-if="examLocked !== true" #context>
-      <ContextBar layout="workbench" show-title title="AI 分析中心" />
+      <ContextBar layout="workbench" show-title title="AI 分析中心" :subtitle="selectedExamLabel || undefined" />
     </template>
 
     <template #signal>
-      <SignalBand compact variant="panel" :metrics="headerSignalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="headerSignalMetrics" />
     </template>
 
     <UiAlertStrip

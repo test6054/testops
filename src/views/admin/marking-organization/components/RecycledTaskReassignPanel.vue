@@ -62,6 +62,7 @@
         </template>
         <template v-else-if="column.key === 'action'">
           <UiTableActions
+            :max-visible="2"
             v-if="canReassign === true"
             :items="buildReassignActions(record)"
             split
@@ -143,7 +144,7 @@ const columns = [
   { title: '回收时间', key: 'recycledTime', width: 170 },
   { title: '回收原因', key: 'recycleReason', dataIndex: 'recycleReason', ellipsis: true },
   { title: '目标教师', key: 'targetReviewer', width: 220 },
-  { title: '操作', key: 'action', width: 100 },
+  { title: '主行动', key: 'action', width: 100 },
 ]
 
 /** MVR-392：再分配行操作仅 canReassign 为 true 时渲染，避免关考/无权限假可点 */
@@ -152,8 +153,7 @@ function buildReassignActions(record: MarkingTaskResponse): UiTableRowActionItem
     {
       key: 'reassign',
       label: '再分配',
-      disabled: !targetReviewerByTaskId[record.id] || reassigningId.value === record.id || loadFailed.value,
-    },
+      disabled: !targetReviewerByTaskId[record.id] || reassigningId.value === record.id || loadFailed.value, tone: 'primary' },
   ]
 }
 

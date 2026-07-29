@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="absence-page">
     <template #context>
-      <ContextBar layout="workbench" show-title title="缺考确认">
+      <ContextBar layout="workbench" show-title title="缺考确认" :subtitle="(pendingAbsenceCount ?? 0) > 0 ? `${pendingAbsenceCount} 条待确认` : undefined">
         <template #status>
           <UiTag tone="blue" size="sm">阶段 缺考确认</UiTag>
           <UiTag v-if="(pendingAbsenceCount ?? 0) > 0" tone="orange" size="sm">
@@ -51,7 +51,7 @@
     </template>
 
     <template v-if="reconcileVO" #signal>
-      <SignalBand :metrics="absenceListMetrics" variant="panel" compact />
+      <SignalBand :metrics="absenceListMetrics" layout="spotlight" variant="panel" compact />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" body="请从考试列表进入工作台后再确认缺考" />
@@ -108,7 +108,7 @@
         <template #actions>
           <UiButton
             v-if="canManageReviewerWrites === true"
-            variant="primary"
+            variant="outline"
             size="sm"
             :loading="reconciling === true"
             @click="handleReconcile(true)"
@@ -136,7 +136,7 @@
         <template #actions>
           <UiButton
             v-if="canManageReviewerWrites === true"
-            variant="primary"
+            variant="outline"
             size="sm"
             :loading="reconciling === true"
             @click="handleReconcile(false)"
@@ -173,6 +173,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildAbsentStudentActions(record)"
                 split
                 @action="(key) => handleAbsentStudentAction(key, record)"
@@ -272,11 +273,12 @@
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 v-if="buildAbsenceRecordActions(records[index]).length > 0"
+                :max-visible="2"
                 :items="buildAbsenceRecordActions(records[index])"
                 split
                 @action="(key) => handleAbsenceRecordAction(key, records[index])"
               />
-              <span v-else class="hint-text">-</span>
+              <span v-else class="hint-text">—</span>
             </template>
           </template>
         </UiDataTable>
@@ -322,7 +324,7 @@
         <UiButton size="sm" variant="outline" @click="confirmModalOpen = false">取消</UiButton>
         <UiButton
           size="sm"
-          variant="primary"
+          variant="outline"
           :loading="confirming"
           :disabled="confirmValid !== true"
           @click="handleConfirm"
@@ -590,18 +592,22 @@ const absenceListMetrics = computed((): SignalMetric[] => {
   const makeupDisplay = pendingMakeupCount.value == null ? '—' : pendingMakeupCount.value
   return [
     {
-      key: 'attendance',
-      label: '出勤率',
-      value: attendancePercent,
-      unit: '%',
-      tone: attendancePercent >= 90 ? 'green' : attendancePercent >= 70 ? 'blue' : 'orange',
-    },
-    {
       key: 'absent',
       label: '缺考人数',
       value: absentTotal,
       unit: '人',
       tone: absentTotal > 0 ? 'red' : 'gray',
+      emphasis: 'primary',
+      actionLabel: absentTotal > 0 ? '确认缺考' : undefined,
+      helper: absentTotal > 0 ? '优先确认缺考名单' : '暂无缺考',
+    },
+    {
+      key: 'attendance',
+      label: '出勤率',
+      value: attendancePercent,
+      unit: '%',
+      tone: attendancePercent >= 90 ? 'green' : attendancePercent >= 70 ? 'blue' : 'orange',
+      emphasis: 'secondary',
     },
     {
       key: 'confirmed',
@@ -609,6 +615,7 @@ const absenceListMetrics = computed((): SignalMetric[] => {
       value: confirmedDisplay,
       unit: confirmedAbsenceCount.value == null ? undefined : '人',
       tone: 'green',
+      emphasis: 'secondary',
     },
     {
       key: 'makeup',
@@ -616,6 +623,7 @@ const absenceListMetrics = computed((): SignalMetric[] => {
       value: makeupDisplay,
       unit: pendingMakeupCount.value == null ? undefined : '人',
       tone: (pendingMakeupCount.value ?? 0) > 0 ? 'blue' : 'gray',
+      emphasis: 'secondary',
     },
   ]
 })
@@ -624,7 +632,7 @@ const absentColumns: ColumnType<AbsentStudentRow>[] = [
   { title: '学号', key: 'studentNo', dataIndex: 'studentNo', width: 160, fixed: 'left' },
   { title: '姓名', key: 'studentName', dataIndex: 'studentName', width: 140 },
   { title: '班级', key: 'className', dataIndex: 'className', width: 180 },
-  { title: '操作', key: 'actions', width: 100 },
+  { title: '主行动', key: 'actions', width: 100 },
 ]
 
 const recordColumns: ColumnType<AbsenceRecordResponse>[] = [
@@ -636,7 +644,7 @@ const recordColumns: ColumnType<AbsenceRecordResponse>[] = [
   { title: '确认人', key: 'confirmedBy', width: 120 },
   { title: '可补考', key: 'makeupEligible', width: 88 },
   { title: '补考场次', key: 'makeupExam', width: 220 },
-  { title: '操作', key: 'actions', width: 180 },
+  { title: '主行动', key: 'actions', width: 180 },
 ]
 
 function toAbsentStudentRow(student: AbsentStudentSnapshotResponse): AbsentStudentRow {
@@ -716,6 +724,7 @@ function willAutoWithdrawScoreOnRevoke(record: AbsenceRecordResponse): boolean {
     || status === FinalScoreStatusCode.CORRECTED
 }
 
+/** 缺考行主行动：确认/派生补考 primary 置顶。 */
 function buildAbsenceRecordActions(record: AbsenceRecordResponse): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
   if (isPendingMakeupRecord(record)) {
@@ -724,14 +733,20 @@ function buildAbsenceRecordActions(record: AbsenceRecordResponse): UiTableRowAct
     }
     return actions
   }
+  if (canManageReviewerWrites.value === true
+    && !requiresMakeupWithdrawBeforeRevoke(record)
+    && record.absenceStatus === AbsenceStatusCode.PENDING) {
+    actions.push({ key: 'confirm', label: '确认', tone: 'primary' })
+  }
   if (record.makeupExamId) {
     if (requiresMakeupWithdrawBeforeRevoke(record)) {
-      actions.push({ key: 'withdrawMakeupThenRevoke', label: '撤回补考成绩' })
+      actions.push({ key: 'withdrawMakeupThenRevoke', label: '撤回补考成绩', tone: 'primary' })
     }
     else {
       actions.push({
         key: 'openMakeupExam',
         label: record.absenceStatus === AbsenceStatusCode.REVOKED ? '查看原补考' : '进入补考',
+        tone: actions.some((item) => item.tone === 'primary') ? undefined : 'primary',
       })
     }
   }
@@ -745,9 +760,6 @@ function buildAbsenceRecordActions(record: AbsenceRecordResponse): UiTableRowAct
     || record.absenceStatus === AbsenceStatusCode.MAKEUP_ARRANGED)
   && canRevokeAbsenceRecord(record) === true) {
     actions.push({ key: 'revoke', label: '撤销' })
-  }
-  if (record.absenceStatus === AbsenceStatusCode.PENDING) {
-    actions.push({ key: 'confirm', label: '确认', tone: 'primary' })
   }
   return actions
 }

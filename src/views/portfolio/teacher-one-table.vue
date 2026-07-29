@@ -2,8 +2,9 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherIdentityTypeCode } from '@/apis/portfolio/enums'
 import type { PortfolioTeacherOneTableSummaryVO } from '@/apis/portfolio/teacher'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   PortfolioCompletenessLevelDescription,
@@ -25,6 +26,7 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import {
   usePortfolioPageScope,
@@ -35,6 +37,7 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import {
   formatPortfolioNullableCount,
 } from '@/utils/portfolio-nullable-count'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -52,7 +55,7 @@ const categoryColumns: ColumnsType = [
   { title: '档案分类', dataIndex: 'categoryName', key: 'categoryName' },
   { title: '记录数', dataIndex: 'recordCount', key: 'recordCount', width: 88, align: 'right' },
   { title: '正式档案', dataIndex: 'officialRecordId', key: 'officialRecordId', width: 120 },
-  { title: '操作', key: 'actions', width: 180 },
+  { title: '主行动', key: 'actions', width: 180 },
 ]
 
 async function loadSummary() {
@@ -211,6 +214,54 @@ async function submitExportApply() {
   }
 }
 
+
+const TeacherOneTableSignalMetrics = computed<SignalMetric[]>(() => {
+  if (!summary.value) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'completeness',
+      label: '档案完整度',
+      value: summary.value.completenessPercent == null ? '—' : summary.value.completenessPercent,
+      unit: summary.value.completenessPercent == null ? undefined : '%',
+      clickable: true,
+    },
+    {
+      key: 'achievement',
+      label: '成果',
+      value: summary.value.achievementCount ?? 0,
+    },
+    {
+      key: 'honor',
+      label: '荣誉',
+      value: summary.value.honorCount ?? 0,
+    },
+  ]
+  if (summary.value.correctionPending) {
+    metrics.push({
+      key: 'correction',
+      label: '纠错待处理',
+      value: '有',
+      tone: 'orange',
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: summary.value.correctionPending ? 'correction' : 'completeness',
+    actionLabel: '刷新',
+  })
+})
+
+const TeacherOneTableWorkbenchSubtitle = computed(() => {
+  if (loadFailed.value) return '加载失败'
+  if (!summary.value) return loading.value ? '加载中' : (canPickTeachers.value && !targetTeacherId.value ? '请先选择教师' : '暂无数据')
+  return summary.value.nickName || '教师一张表'
+})
+
+function onTeacherOneTableSignalClick(_key: string) {
+  void loadSummary()
+}
+
 usePortfolioScopedLoader(
   () => {
     void loadSummary()
@@ -222,7 +273,7 @@ usePortfolioScopedLoader(
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="教师一张表">
+      <ContextBar show-title layout="workbench" title="教师一张表" :subtitle="TeacherOneTableWorkbenchSubtitle">
         <template #actions>
           <UiButton
             size="sm"
@@ -243,6 +294,15 @@ usePortfolioScopedLoader(
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+    <template v-if="TeacherOneTableSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TeacherOneTableSignalMetrics"
+        @metric-click="onTeacherOneTableSignalClick"
+      />
     </template>
     <UiSpin :spinning="loading">
       <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
@@ -337,6 +397,7 @@ usePortfolioScopedLoader(
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[
                   { key: 'archive', label: '查看档案' },
                   { key: 'correction', label: '发起纠错' },

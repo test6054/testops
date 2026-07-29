@@ -35,7 +35,6 @@ import TeacherSelector from '@/components/platform/TeacherSelector.vue'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import { ProgramSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -55,10 +54,12 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = withDefaults(
@@ -412,9 +413,9 @@ async function submitEditor() {
 
 function buildWorkgroupActions(_record: EvaluationWorkgroupVO): UiTableRowActionItem[] {
   return [
-    { key: 'members', label: '成员', disabled: interactionLocked.value },
-    { key: 'import', label: '表格文件导入', disabled: interactionLocked.value },
+    { key: 'members', label: '成员', tone: 'primary', disabled: interactionLocked.value },
     { key: 'edit', label: '编辑', disabled: interactionLocked.value },
+    { key: 'import', label: '表格导入', disabled: interactionLocked.value },
     { key: 'delete', label: '删除', tone: 'danger', disabled: interactionLocked.value },
   ]
 }
@@ -525,14 +526,17 @@ const signals = computed<SignalMetric[]>(() => {
   for (const w of list.value) {
     byLevel[w.levelCode] = (byLevel[w.levelCode] || 0) + 1
   }
-  return [
-    { key: 'page', label: '当前页记录', value: list.value.length, tone: 'blue' },
-    { key: 'all-total', label: '工作组总数', value: total.value, tone: 'blue' },
-    { key: 'university', label: '当前页·学校级', value: byLevel.UNIVERSITY || 0, tone: 'blue' },
-    { key: 'college', label: '当前页·学院级', value: byLevel.COLLEGE || 0, tone: 'blue' },
-    { key: 'program', label: '当前页·专业级', value: byLevel.PROGRAM || 0, tone: 'blue' },
-    { key: 'industry', label: '当前页·行业专家组', value: byLevel.INDUSTRY || 0, tone: 'blue' },
-  ]
+  return applySpotlightEmphasis(
+    [
+      { key: 'all-total', label: '工作组总数', value: total.value, tone: 'blue' },
+      { key: 'page', label: '当前页', value: list.value.length, tone: 'gray' },
+      { key: 'university', label: '学校级', value: byLevel.UNIVERSITY || 0, tone: 'blue' },
+      { key: 'college', label: '学院级', value: byLevel.COLLEGE || 0, tone: 'blue' },
+      { key: 'program', label: '专业级', value: byLevel.PROGRAM || 0, tone: 'blue' },
+      { key: 'industry', label: '行业专家', value: byLevel.INDUSTRY || 0, tone: 'blue' },
+    ],
+    { primaryKey: 'all-total', actionLabel: '查看台账' },
+  )
 })
 
 if (!isPortfolioDomain.value) {
@@ -562,28 +566,41 @@ onActivated(() => {
 
 <template>
   <StageWorkbenchShell>
-    <template v-if="isPortfolioDomain" #context>
-      <ContextBar title="评价工作组" subtitle="多元评价 · 维护评价任务成员编组与职责分工">
-        <template #status>
-          <UiTag tone="blue" size="sm"> 教学档案袋 </UiTag>
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="评价工作组"
+        :subtitle="isPortfolioDomain ? '档案袋编组' : '质量评价编组'"
+      >
+        <template v-if="isPortfolioDomain" #status>
+          <UiTag tone="blue" size="sm">教学档案袋</UiTag>
         </template>
         <template #actions>
-          <UiButton variant="primary" size="sm" :disabled="interactionLocked === true" @click="openCreate">
+          <UiButton
+            variant="primary"
+            size="sm"
+            :disabled="interactionLocked === true"
+            @click="openCreate"
+          >
             新建工作组
           </UiButton>
         </template>
       </ContextBar>
     </template>
 
-    <SignalBand :metrics="signals" compact class="ewg__signals" />
+    <template #signal>
+      <SignalBand
+        layout="spotlight"
+        :metrics="signals"
+        compact
+        variant="panel"
+        class="ewg__signals"
+      />
+    </template>
 
-    <UiCard class="detail-table-card ewg__table-card">
-      <template #title>工作组台账</template>
-      <template v-if="!isPortfolioDomain" #extra>
-        <UiButton variant="primary" size="sm" :disabled="interactionLocked === true" @click="openCreate">
-          新建工作组
-        </UiButton>
-      </template>
+    <WorkbenchSurfaceCard flush class="ewg__table-card">
+      <template #head>工作组台账</template>
 
       <UiFilterBar
         v-model="filterModel"
@@ -645,7 +662,7 @@ onActivated(() => {
           </template>
         </template>
       </UiDataTable>
-    </UiCard>
+    </WorkbenchSurfaceCard>
 
     <UiDialog
       v-model:open="editorVisible"

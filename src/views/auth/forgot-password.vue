@@ -1,38 +1,5 @@
 <template>
   <AuthLayout>
-    <template #brand-content>
-      <div class="forgot-brand-steps">
-        <div
-          v-for="(step, idx) in stepLabels"
-          :key="idx"
-          class="brand-step"
-          :class="{
-            'brand-step--active': currentStep === idx,
-            'brand-step--done': currentStep > idx,
-          }"
-        >
-          <span class="brand-step__num">
-            <svg
-              v-if="currentStep > idx"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              width="14"
-              height="14"
-              aria-hidden="true"
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            <template v-else>{{ idx + 1 }}</template>
-          </span>
-          <span class="brand-step__label">{{ step }}</span>
-        </div>
-      </div>
-    </template>
-
     <div class="forgot-header">
       <h2>重置密码</h2>
       <p>通过邮箱验证重置您的账户密码</p>
@@ -47,25 +14,16 @@
         :class="{ 'step-dot--active': currentStep === idx, 'step-dot--done': currentStep > idx }"
       >
         <span class="step-dot__num">
-          <svg
-            v-if="currentStep > idx"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            width="13"
-            height="13"
-            aria-hidden="true"
-          >
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
+          <CheckOutlined v-if="currentStep > idx" />
           <template v-else>{{ idx + 1 }}</template>
         </span>
         <span class="step-dot__label">{{ step }}</span>
       </div>
     </div>
+
+    <p v-if="requestErrorMessage" class="request-error" role="alert" aria-live="polite">
+      {{ requestErrorMessage }}
+    </p>
 
     <!-- 步骤1：验证邮箱 -->
     <form v-if="currentStep === 0" class="step-form" @submit.prevent="handleIdentityVerify">
@@ -76,6 +34,8 @@
           size="lg"
           clearable
           :maxlength="255"
+          autocomplete="email"
+          inputmode="email"
           :status="errors.email ? 'error' : 'default'"
         />
       </UiFormField>
@@ -87,16 +47,7 @@
     <!-- 步骤2：验证码 -->
     <div v-if="currentStep === 1" class="step-form">
       <div class="verification-info">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          width="40"
-          height="40"
-        >
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-        </svg>
+        <SafetyCertificateOutlined class="verification-info__icon" />
         <p>验证码已发送至</p>
         <p class="contact-highlight">{{ maskEmail(identityForm.email) }}</p>
       </div>
@@ -109,6 +60,8 @@
             size="lg"
             :maxlength="6"
             clearable
+            inputmode="numeric"
+            autocomplete="one-time-code"
             :status="errors.code ? 'error' : 'default'"
           />
         </UiFormField>
@@ -116,7 +69,15 @@
           <span class="countdown-text">{{
             countdown > 0 ? `${countdown}秒后可重新发送` : ''
           }}</span>
-          <a :class="{ disabled: countdown > 0 }" @click="countdown <= 0 && resendCode()">重新发送</a>
+          <UiButton
+            variant="ghost"
+            size="sm"
+            :loading="resending"
+            :disabled="countdown > 0"
+            @click="resendCode"
+          >
+            重新发送
+          </UiButton>
         </div>
         <div class="step-buttons">
           <UiButton type="submit" variant="primary" size="lg" block :loading="loading">
@@ -134,6 +95,7 @@
           v-model="passwordForm.newPassword"
           placeholder="请输入新密码"
           size="lg"
+          autocomplete="new-password"
           :status="errors.newPassword ? 'error' : 'default'"
         />
       </UiFormField>
@@ -142,6 +104,7 @@
           v-model="passwordForm.confirmPassword"
           placeholder="请再次输入新密码"
           size="lg"
+          autocomplete="new-password"
           :status="errors.confirmPassword ? 'error' : 'default'"
         />
       </UiFormField>
@@ -171,14 +134,8 @@
     <!-- 步骤4：完成 -->
     <div v-if="currentStep === 3" class="step-form">
       <div class="success-block">
-        <svg viewBox="0 0 20 20" fill="currentColor" width="56" height="56">
-          <path
-            fill-rule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-            clip-rule="evenodd"
-          />
-        </svg>
-        <h3>密码重置成功！</h3>
+        <CheckCircleFilled class="success-block__icon" />
+        <h3>密码重置成功</h3>
         <p>您的密码已成功重置，请使用新密码登录。</p>
         <UiButton variant="primary" size="lg" block @click="goToLogin">立即登录</UiButton>
       </div>
@@ -186,31 +143,39 @@
 
     <div class="forgot-footer">
       <span>想起密码了？</span>
-      <router-link to="/login">返回登录</router-link>
+      <router-link :to="loginLocation">返回登录</router-link>
     </div>
   </AuthLayout>
 </template>
 
 <script lang="ts" setup>
+import CheckCircleFilled from '@ant-design/icons-vue/CheckCircleFilled'
+import CheckOutlined from '@ant-design/icons-vue/CheckOutlined'
+import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
 import message from 'ant-design-vue/es/message'
 import notification from 'ant-design-vue/es/notification'
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { resetPassword, sendResetCode, verifyResetCode } from '@/apis/auth'
 import AuthLayout from '@/components/AuthLayout/index.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiPasswordInput from '@/components/ui-guide/ui/PasswordInput.vue'
 import UiFormField from '@/components/ui-guide/ui/UiFormField.vue'
+import { getUserErrorMessage } from '@/utils/error-handler'
 import { evaluatePasswordStrength, getPasswordStrengthText } from '@/utils/password-policy'
+import { getSafeRedirect } from '@/utils/redirect-validator'
 
 defineOptions({ name: 'AuthForgotPassword' })
 
+const route = useRoute()
 const router = useRouter()
 
 const loading = ref(false)
 const currentStep = ref(0)
 const countdown = ref(0)
+const resending = ref(false)
+const requestErrorMessage = ref('')
 const stepLabels = ['验证邮箱', '验证码', '重置密码', '完成']
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 
@@ -228,9 +193,18 @@ const passwordStrength = computed(() => {
 })
 
 const passwordStrengthText = computed(() => getPasswordStrengthText(passwordStrength.value))
+const loginLocation = computed(() => {
+  const redirect = route.query.redirect
+  const safeRedirect = getSafeRedirect(typeof redirect === 'string' ? redirect : '', '')
+  return {
+    path: '/login',
+    query: safeRedirect ? { redirect: safeRedirect } : undefined,
+  }
+})
 
 // 身份验证 - 发送验证码
 const handleIdentityVerify = async () => {
+  requestErrorMessage.value = ''
   errors.email = ''
   const email = identityForm.value.email.trim()
   if (!email) {
@@ -248,8 +222,8 @@ const handleIdentityVerify = async () => {
     void message.success('验证码已发送到您的邮箱')
     currentStep.value = 1
     startCountdown()
-  } catch {
-    // 错误已由拦截器处理
+  } catch (error: unknown) {
+    requestErrorMessage.value = getUserErrorMessage(error, '验证码发送失败，请稍后再试')
   } finally {
     loading.value = false
   }
@@ -257,12 +231,13 @@ const handleIdentityVerify = async () => {
 
 // 验证验证码
 const handleVerificationCode = async () => {
+  requestErrorMessage.value = ''
   errors.code = ''
   if (!verificationForm.value.code.trim()) {
     errors.code = '请输入验证码'
     return
   }
-  if (verificationForm.value.code.length !== 6) {
+  if (!/^\d{6}$/.test(verificationForm.value.code)) {
     errors.code = '验证码为6位数字'
     return
   }
@@ -274,10 +249,11 @@ const handleVerificationCode = async () => {
       void message.success('验证成功')
       currentStep.value = 2
     } else {
-      notification.warning({ message: '验证失败', description: '验证码错误或已过期', duration: 3 })
+      requestErrorMessage.value = '验证码错误或已过期'
+      notification.warning({ message: '验证失败', description: requestErrorMessage.value, duration: 3 })
     }
-  } catch {
-    // 错误已由拦截器处理
+  } catch (error: unknown) {
+    requestErrorMessage.value = getUserErrorMessage(error, '验证码校验失败，请稍后再试')
   } finally {
     loading.value = false
   }
@@ -285,6 +261,7 @@ const handleVerificationCode = async () => {
 
 // 重置密码
 const handleResetPassword = async () => {
+  requestErrorMessage.value = ''
   errors.newPassword = ''
   errors.confirmPassword = ''
   let ok = true
@@ -299,6 +276,20 @@ const handleResetPassword = async () => {
     errors.confirmPassword = '两次输入的密码不一致'
     ok = false
   }
+  const strength = evaluatePasswordStrength(passwordForm.value.newPassword)
+  if (
+    passwordForm.value.newPassword
+    && (
+      !strength.minLength
+      || !strength.uppercase
+      || !strength.lowercase
+      || !strength.digit
+      || !strength.special
+    )
+  ) {
+    errors.newPassword = '新密码需满足全部强度要求'
+    ok = false
+  }
   if (!ok) return
 
   try {
@@ -311,8 +302,8 @@ const handleResetPassword = async () => {
     })
     void message.success('密码重置成功')
     currentStep.value = 3
-  } catch {
-    // 错误已由拦截器处理
+  } catch (error: unknown) {
+    requestErrorMessage.value = getUserErrorMessage(error, '密码重置失败，请检查后再试')
   } finally {
     loading.value = false
   }
@@ -320,17 +311,24 @@ const handleResetPassword = async () => {
 
 // 重新发送验证码
 const resendCode = async () => {
+  requestErrorMessage.value = ''
+  resending.value = true
   try {
     await sendResetCode(identityForm.value.email)
     void message.success('验证码已重新发送')
     startCountdown()
-  } catch {
-    // 错误已由拦截器处理
+  } catch (error: unknown) {
+    requestErrorMessage.value = getUserErrorMessage(error, '验证码重新发送失败，请稍后再试')
+  } finally {
+    resending.value = false
   }
 }
 
 // 开始倒计时
 const startCountdown = () => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+  }
   countdown.value = 60
   countdownTimer = setInterval(() => {
     countdown.value--
@@ -343,6 +341,7 @@ const startCountdown = () => {
 
 // 上一步
 const goToPreviousStep = () => {
+  requestErrorMessage.value = ''
   if (currentStep.value > 0) {
     currentStep.value--
   }
@@ -350,7 +349,7 @@ const goToPreviousStep = () => {
 
 // 跳转到登录页
 const goToLogin = () => {
-  router.push('/login')
+  void router.push(loginLocation.value)
 }
 
 // 掩码邮箱
@@ -379,64 +378,6 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
-// ─── 左侧品牌步骤 ───
-.forgot-brand-steps {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dp-space-component);
-}
-
-.brand-step {
-  display: flex;
-  align-items: center;
-  gap: var(--dp-space-component);
-  padding: var(--dp-space-component) var(--dp-space-block);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  transition: background var(--dp-duration-normal);
-}
-
-.brand-step--active {
-  background: rgba(255, 255, 255, 0.14);
-}
-
-.brand-step--done {
-  opacity: 0.6;
-}
-
-.brand-step__num {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-size: var(--dp-font-size-sm);
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.7);
-
-  .brand-step--active & {
-    background: var(--dp-text-inverse);
-    color: var(--dp-color-primary);
-  }
-
-  .brand-step--done & {
-    background: rgba(255, 255, 255, 0.2);
-    color: var(--dp-text-inverse);
-  }
-}
-
-.brand-step__label {
-  font-size: var(--dp-font-size-md);
-  color: rgba(255, 255, 255, 0.7);
-
-  .brand-step--active & {
-    color: var(--dp-text-inverse);
-    font-weight: 600;
-  }
-}
-
 // ─── 右侧面板 ───
 .forgot-header {
   margin-bottom: var(--dp-space-block);
@@ -467,7 +408,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: var(--dp-space-component-xs);
 }
 
 .step-dot__num {
@@ -536,6 +477,10 @@ onUnmounted(() => {
   }
 }
 
+.verification-info__icon {
+  font-size: 40px;
+}
+
 .contact-highlight {
   font-weight: 600;
   color: var(--dp-blue-600) !important;
@@ -546,15 +491,9 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
 
-  a {
-    color: var(--dp-blue-600);
-    cursor: pointer;
-    font-size: var(--dp-font-size-sm);
-
-    &.disabled {
-      color: var(--dp-text-muted);
-      pointer-events: none;
-    }
+  :deep(.dp-btn) {
+    min-height: var(--dp-control-height-sm);
+    padding-inline: var(--dp-space-component-tight);
   }
 }
 
@@ -634,6 +573,21 @@ onUnmounted(() => {
     font-size: var(--dp-font-size-md);
     color: var(--dp-text-muted);
   }
+}
+
+.success-block__icon {
+  font-size: 56px;
+}
+
+.request-error {
+  margin: 0 0 var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
+  border: 1px solid color-mix(in srgb, var(--dp-error) 20%, transparent);
+  border-radius: var(--dp-radius-control);
+  background: var(--dp-red-50);
+  color: var(--dp-error);
+  font-size: var(--dp-font-size-sm);
+  line-height: 1.5;
 }
 
 // ─── 页脚 ───

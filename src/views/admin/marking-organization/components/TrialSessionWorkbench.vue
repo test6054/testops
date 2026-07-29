@@ -80,6 +80,7 @@
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
+            :max-visible="2"
             :items="buildRowActions(record)"
             split
             @action="(key) => handleSessionRowAction(key, record)"
@@ -157,7 +158,7 @@ const props = withDefaults(
   filterModel: MarkingOrgSessionFilterModel
   pagination: SessionPaginationState
   loading?: boolean
-  canManage: boolean
+  canManage?: boolean
   /** MVR-398：关闭试评仅主考、不叠 ACTIVE */
   canCloseMarkingSessions?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
   createBlocked?: boolean
@@ -224,7 +225,7 @@ const sessionColumns: ColumnType<TrialSessionResponse>[] = [
   { title: '校准结论', key: 'calibrationSummary', ellipsis: true },
   { title: '创建时间', key: 'createTime', width: 160 },
   { title: '关闭时间', key: 'closeTime', width: 160 },
-  { title: '操作', key: 'actions', width: 200 },
+  { title: '主行动', key: 'actions', width: 200 },
 ]
 
 const filterFields = computed(() => buildMarkingSessionFilterFields('trial', props.groupOptions))
@@ -317,8 +318,7 @@ function buildRowActions(record: TrialSessionResponse): UiTableRowActionItem[] {
       key: 'start',
       label: '启动试评',
       hidden: canStart(record) !== true,
-      disabled: startingId.value === record.id,
-    },
+      disabled: startingId.value === record.id, tone: 'primary' },
     {
       key: 'calibrate',
       label: '提交校准',

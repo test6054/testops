@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>质量评价 Cockpit · 设计原型</title><style>
+:root{--dp-primary:#2b67ff;--dp-primary-bg:#eef4ff;--dp-text:rgba(15,23,42,.92);--dp-text-2:rgba(15,23,42,.68);--dp-text-3:rgba(15,23,42,.48);--dp-border:#e2e8f0;--dp-split:rgba(15,23,42,.05);--dp-bg:#f6f7f9;--dp-surface:#fff;--dp-chrome:#f8fafc;--dp-success:#16a34a;--dp-warning:#d97706;--dp-error:#dc2626;--dp-radius:10px;--dp-shadow:0 1px 3px rgba(15,23,42,.05),0 4px 12px rgba(15,23,42,.03);--font:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif}
+*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:var(--font);color:var(--dp-text);background:#0b1220}
+button,input,select,textarea{font:inherit}.app-frame{min-height:100%;display:flex;flex-direction:column}
+.proto-top{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 20px;background:rgba(11,18,32,.92);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.08);color:#e5eefc}
+.proto-top h1{margin:0;font-size:15px;font-weight:600}.proto-top p{margin:0;font-size:12px;color:#93a4c3}
+.toggle{display:inline-flex;padding:3px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
+.toggle button{border:0;background:transparent;color:#93a4c3;padding:7px 14px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:500}
+.toggle button.active{background:#fff;color:#0b1220}
+.meta{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:12px;color:#93a4c3;flex-wrap:wrap}
+.badge{display:inline-flex;padding:4px 10px;border-radius:999px;background:rgba(43,103,255,.15);color:#9db7ff;border:1px solid rgba(43,103,255,.25)}
+.stage{flex:1;padding:18px}.stage-grid{display:grid;grid-template-columns:1fr;gap:16px;max-width:1480px;margin:0 auto}
+.stage-grid.compare{grid-template-columns:1fr 1fr}@media(max-width:1200px){.stage-grid.compare{grid-template-columns:1fr}}
+.panel-label{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;color:#c7d4ea;font-size:12px}
+.panel-label strong{color:#fff;font-size:13px}
+.device{border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:var(--dp-bg);box-shadow:0 20px 50px rgba(0,0,0,.35);min-height:820px;display:flex;flex-direction:column}
+.btn{height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--dp-border);background:#fff;color:var(--dp-text);font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.btn-sm{height:28px;font-size:12px;padding:0 10px}.btn-primary{background:var(--dp-primary);border-color:var(--dp-primary);color:#fff;font-weight:600}
+.btn-ghost{background:transparent}.btn-danger{background:#fff;border-color:#fecaca;color:var(--dp-error)}
+.btn-text{border:0;background:transparent;color:var(--dp-primary);height:auto;padding:0;font-weight:600}
+.tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;font-size:12px;background:#f1f5f9;color:var(--dp-text-2)}
+.tag-ok{background:#f0fdf4;color:var(--dp-success)}.tag-warn{background:#fffbeb;color:var(--dp-warning)}.tag-err{background:#fef2f2;color:var(--dp-error)}.tag-run{background:var(--dp-primary-bg);color:var(--dp-primary)}
+.note{margin:14px auto 10px;max-width:1480px;color:#9db0d0;font-size:12px;line-height:1.6}
+.diff-list{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}@media(max-width:900px){.diff-list{grid-template-columns:1fr}}
+.diff-item{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:12px 14px;color:#c7d4ea}
+.diff-item b{display:block;color:#fff;margin-bottom:4px;font-size:13px}
+.nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.nav a{color:#9db7ff;text-decoration:none;font-size:12px;padding:4px 8px;border:1px solid rgba(157,183,255,.25);border-radius:999px}
+.muted{color:var(--dp-text-3);font-size:12px}.select,.input{height:30px;border:1px solid var(--dp-border);border-radius:8px;padding:0 10px;background:#fff;color:var(--dp-text-2);font-size:12px;min-width:110px}
+
+
+.q-shell{display:flex;flex-direction:column;min-height:820px;background:var(--dp-bg)}
+.q-header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--dp-surface);border-bottom:1px solid var(--dp-border);flex-wrap:wrap}
+.q-header h2{margin:0;font-size:15px}.q-body{padding:14px;display:flex;flex-direction:column;gap:12px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.card{background:#fff;border:1px solid var(--dp-border);border-radius:10px;padding:12px;box-shadow:var(--dp-shadow)}
+.card .l{font-size:12px;color:var(--dp-text-3)}.card .v{font-size:22px;font-weight:700;margin-top:4px}
+.grid2{display:grid;grid-template-columns:1.2fr .8fr;gap:12px}@media(max-width:900px){.cards,.grid2,.prop-hero{grid-template-columns:1fr}}
+.panel{background:#fff;border:1px solid var(--dp-border);border-radius:12px;overflow:hidden}
+.panel h3{margin:0;padding:12px 14px;font-size:14px;border-bottom:1px solid var(--dp-split);background:var(--dp-chrome)}
+.panel .inner{padding:14px}
+.chart{height:180px;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef2f7);border:1px dashed #cbd5e1;display:flex;align-items:flex-end;gap:8px;padding:16px}
+.bar{flex:1;background:var(--dp-primary);border-radius:6px 6px 2px 2px;opacity:.85}
+.table{width:100%;border-collapse:collapse;font-size:12px}
+.table th,.table td{padding:10px 8px;border-bottom:1px solid var(--dp-split);text-align:left}
+.table th{color:var(--dp-text-3);font-weight:600;background:var(--dp-chrome)}
+.prop-hero{display:grid;grid-template-columns:1.1fr .9fr;gap:12px}
+.focus{border:1px solid #c7d7ff;background:linear-gradient(180deg,#eef4ff,#fff);border-radius:14px;padding:14px}
+.focus .big{font-size:32px;font-weight:700;color:var(--dp-primary);letter-spacing:-.03em}
+.drill{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 0}.crumb{font-size:12px;color:var(--dp-text-3)}.crumb b{color:var(--dp-text)}
+.list-row{display:flex;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid var(--dp-split);font-size:13px}
+.list-row:last-child{border-bottom:0}
+</style></head><body>
+<div class="app-frame"><div class="proto-top"><div>
+<h1>质量评价 Cockpit · 设计原型</h1><p>OBE 达成度 · 风险下钻 · 行动队列</p>
+<div class="nav">
+<a href="index.html">索引</a>
+<a href="exam-list-redesign.html">考试列表</a>
+<a href="grading-immersion-redesign.html">批阅沉浸</a>
+<a href="quality-cockpit-redesign.html">质量 cockpit</a>
+<a href="portfolio-teacher-redesign.html">教师档案袋</a>
+</div></div>
+<div class="toggle" role="group" aria-label="视图模式">
+<button type="button" class="active" data-mode="compare">并排对比</button>
+<button type="button" data-mode="current">仅现状</button>
+<button type="button" data-mode="proposed">仅原型</button>
+</div>
+<div class="meta"><span class="badge">quality cockpit</span></div></div>
+<div class="stage"><div class="stage-grid compare" id="stageGrid">
+<section id="panelCurrent"><div class="panel-label"><strong>A · 现状示意</strong><span>传统后台 / 多 chrome</span></div><div class="device">
+<div class="q-shell">
+  <div class="q-header">
+    <h2>质量评价 / 达成度分析</h2>
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+      <select class="select"><option>2025-2026</option></select>
+      <select class="select"><option>自动化专业</option></select>
+      <select class="select"><option>全部课程</option></select>
+      <button class="btn btn-sm btn-primary" type="button">查询</button>
+      <button class="btn btn-sm" type="button">导出</button>
+    </div>
+  </div>
+  <div class="q-body">
+    <div class="cards">
+      <div class="card"><div class="l">课程数</div><div class="v">42</div></div>
+      <div class="card"><div class="l">平均达成度</div><div class="v">0.76</div></div>
+      <div class="card"><div class="l">未达标</div><div class="v">9</div></div>
+      <div class="card"><div class="l">预警</div><div class="v">4</div></div>
+    </div>
+    <div class="grid2">
+      <div class="panel"><h3>达成度趋势</h3><div class="inner"><div class="chart"><div class="bar" style="height:40%"></div><div class="bar" style="height:55%"></div><div class="bar" style="height:48%"></div><div class="bar" style="height:70%"></div><div class="bar" style="height:62%"></div><div class="bar" style="height:78%"></div></div></div></div>
+      <div class="panel"><h3>分布</h3><div class="inner"><div class="chart"><div class="bar" style="height:30%;background:#94a3b8"></div><div class="bar" style="height:60%"></div><div class="bar" style="height:45%;background:#f59e0b"></div><div class="bar" style="height:25%;background:#dc2626"></div></div></div></div>
+    </div>
+    <div class="panel"><h3>课程达成度列表</h3>
+      <table class="table"><thead><tr><th>课程</th><th>目标</th><th>达成度</th><th>状态</th><th>操作</th></tr></thead>
+      <tbody>
+        <tr><td>自动控制原理</td><td>0.70</td><td>0.61</td><td><span class="tag tag-err">未达标</span></td><td style="color:var(--dp-primary)">查看 / 导出 / 更多</td></tr>
+        <tr><td>电路分析</td><td>0.70</td><td>0.74</td><td><span class="tag tag-ok">达标</span></td><td style="color:var(--dp-primary)">查看 / 导出 / 更多</td></tr>
+        <tr><td>工程制图</td><td>0.70</td><td>0.68</td><td><span class="tag tag-warn">临界</span></td><td style="color:var(--dp-primary)">查看 / 导出 / 更多</td></tr>
+        <tr><td>C 语言</td><td>0.70</td><td>0.81</td><td><span class="tag tag-ok">达标</span></td><td style="color:var(--dp-primary)">查看 / 导出 / 更多</td></tr>
+      </tbody></table>
+    </div>
+  </div>
+</div>
+</div></section>
+<section id="panelProposed"><div class="panel-label"><strong>B · 优化原型</strong><span>任务沉浸 / 叙事更强</span></div><div class="device">
+<div class="q-shell">
+  <div class="q-header" style="gap:12px">
+    <div><div class="crumb">质量评价 / <b>专业 cockpit</b></div><h2 style="margin-top:4px">自动化专业 · 达成度驾驶舱</h2></div>
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span class="tag">2025-2026 第二学期</span>
+      <button class="btn btn-sm" type="button">切换专业</button>
+      <button class="btn btn-sm btn-primary" type="button">生成认证材料包</button>
+    </div>
+  </div>
+  <div class="q-body">
+    <div class="prop-hero">
+      <div>
+        <h2 style="font-size:22px;margin:0;letter-spacing:-.02em">先看风险，再下钻课程</h2>
+        <p class="muted" style="margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--dp-text-2)">默认不是四张等权 KPI + 大表，而是：专业健康度 → 未达标课程 → 支撑材料 / 考试证据。</p>
+        <div class="drill"><span class="tag tag-run">专业</span><span class="tag">→ 课程</span><span class="tag">→ 指标点</span><span class="tag">→ 考试证据</span></div>
+      </div>
+      <div class="focus">
+        <div style="font-size:12px;color:#3557b8;font-weight:600">需要教研活动干预</div>
+        <div class="big">9 门未达标</div>
+        <div style="font-size:12px;color:var(--dp-text-2);margin-top:6px">其中 4 门连续两学期低于 0.70；建议优先开改进会议。</div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-primary" type="button">查看未达标队列</button>
+          <button class="btn btn-sm" type="button">对比上学期</button>
+        </div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="panel"><h3>专业健康度 · 可下钻</h3><div class="inner">
+        <div class="chart"><div class="bar" style="height:42%"></div><div class="bar" style="height:58%"></div><div class="bar" style="height:51%"></div><div class="bar" style="height:73%"></div><div class="bar" style="height:66%"></div><div class="bar" style="height:80%"></div></div>
+        <div class="muted" style="margin-top:8px">点击柱体进入课程层（示意）</div>
+      </div></div>
+      <div class="panel"><h3>本周行动</h3><div class="inner">
+        <div class="list-row"><div>自动控制原理 · 0.61</div><button class="btn-text" type="button">去改进</button></div>
+        <div class="list-row"><div>传感器技术 · 材料缺失 3 项</div><button class="btn-text" type="button">补材料</button></div>
+        <div class="list-row"><div>工程制图 · 临界 0.68</div><button class="btn-text" type="button">看证据</button></div>
+        <div class="list-row"><div>指标点 3.2 波动</div><button class="btn-text" type="button">下钻</button></div>
+      </div></div>
+    </div>
+    <div class="panel"><h3>未达标课程队列</h3>
+      <table class="table"><thead><tr><th>课程</th><th>达成度</th><th>缺口</th><th>证据</th><th>主行动</th></tr></thead>
+      <tbody>
+        <tr><td>自动控制原理</td><td>0.61</td><td>指标点 2.1 / 3.3</td><td>期末考试可追溯</td><td><button class="btn-text" type="button">打开改进工作台</button></td></tr>
+        <tr><td>传感器与检测</td><td>0.63</td><td>实验支撑弱</td><td>缺 2 次过程考核</td><td><button class="btn-text" type="button">补齐过程证据</button></td></tr>
+        <tr><td>工程制图</td><td>0.68</td><td>临界</td><td>已关联课程设计</td><td><button class="btn-text" type="button">标记观察</button></td></tr>
+      </tbody></table>
+    </div>
+  </div>
+</div>
+</div></section>
+</div>
+<div class="note"><div><strong style="color:#fff">对比要点</strong></div><div class="diff-list">
+<div class="diff-item"><b>1. 心智</b>A 查询报表。B 专业驾驶舱 + 风险优先。</div>
+<div class="diff-item"><b>2. 指标</b>A 四卡等权。B 单焦点「需干预」。</div>
+<div class="diff-item"><b>3. 导航</b>A 平级图表+全表。B 专业→课程→指标点→证据。</div>
+<div class="diff-item"><b>4. 表格</b>A 全量资源表。B 未达标队列 + 主行动。</div>
+<div class="diff-item"><b>5. 产出</b>B 认证材料包 / 改进会议。</div>
+<div class="diff-item"><b>6. 视觉</b>仍用 dp 蓝白，不做金融深色默认。</div>
+</div>
+<p style="margin:12px 0 0">文件：<code style="color:#c9d7f5">edu-practice-mark-vue/prototypes/quality-cockpit-redesign.html</code></p></div>
+</div></div>
+<script>
+const grid=document.getElementById('stageGrid');
+const current=document.getElementById('panelCurrent');
+const proposed=document.getElementById('panelProposed');
+document.querySelectorAll('.toggle button').forEach((btn)=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.toggle button').forEach((b)=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const mode=btn.dataset.mode;
+    current.style.display=mode==='proposed'?'none':'';
+    proposed.style.display=mode==='current'?'none':'';
+    grid.classList.toggle('compare', mode==='compare');
+  });
+});
+</script></body></html>

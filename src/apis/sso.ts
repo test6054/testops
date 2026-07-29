@@ -152,7 +152,11 @@ export function isCasProfileCompletionResponse(
  * @param tenantId 租户ID（后端必填）
  */
 export function getSsoConfig(tenantId: string): Promise<AuthSsoConfigVO> {
-  return http.get<AuthSsoConfigVO>('/api/auth/sso-config', { params: { tenantId } })
+  return http.get<AuthSsoConfigVO>('/api/auth/sso-config', {
+    params: { tenantId },
+    skipAuth: true,
+    showErrorMessage: false,
+  })
 }
 
 
@@ -164,7 +168,9 @@ export function getSsoConfig(tenantId: string): Promise<AuthSsoConfigVO> {
  */
 export function getCasLoginUrl(tenantId: string): Promise<string> {
   return http.get<string | CasLoginUrlResponse>('/api/sso/cas/login', {
-    params: { tenantId }
+    params: { tenantId },
+    skipAuth: true,
+    showErrorMessage: false,
   }).then((res) => {
     // 后端返回 { loginUrl, service }，提取 loginUrl
     if (typeof res === 'string') return res
@@ -187,6 +193,10 @@ export function casCallback(
   return http.post<CasLoginSuccessResponse | CasProfileCompletionResponse>(
     '/api/sso/cas/callback',
     { ticket, tenantId },
+    {
+      skipAuth: true,
+      showErrorMessage: false,
+    },
   )
 }
 
@@ -200,6 +210,8 @@ export function getCasFirstLoginContext(
 ): Promise<CasProfileCompletionResponse> {
   return http.get<CasProfileCompletionResponse>('/api/sso/cas/first-login/context', {
     params: { completionToken },
+    skipAuth: true,
+    showErrorMessage: false,
   })
 }
 
@@ -213,6 +225,8 @@ export function getCasAvailableClasses(
 ): Promise<CasAvailableClassResponse[]> {
   return http.get<CasAvailableClassResponse[]>('/api/sso/cas/first-login/classes', {
     params: { completionToken },
+    skipAuth: true,
+    showErrorMessage: false,
   })
 }
 
@@ -224,5 +238,8 @@ export function getCasAvailableClasses(
 export function completeCasFirstLogin(
   data: CasFirstLoginSubmitRequest,
 ): Promise<CasLoginSuccessResponse> {
-  return http.post<CasLoginSuccessResponse>('/api/sso/cas/complete-first-login', data)
+  return http.post<CasLoginSuccessResponse>('/api/sso/cas/complete-first-login', data, {
+    skipAuth: true,
+    showErrorMessage: false,
+  })
 }

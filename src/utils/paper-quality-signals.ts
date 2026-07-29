@@ -24,12 +24,14 @@ export function buildPaperQualitySignalMetrics(
           label: 'Cronbach α',
           value: '样本不足（<30），无法计算信度',
           tone: 'gray',
+          emphasis: 'primary',
         }
       : {
           key: 'cronbachAlpha',
           label: 'Cronbach α',
           value: formatMetricValue(data.cronbachAlpha, 3),
           tone: 'blue',
+          emphasis: 'primary',
         }
   return [
     alphaMetric,
@@ -38,12 +40,14 @@ export function buildPaperQualitySignalMetrics(
       label: '平均区分度',
       value: formatMetricValue(data.paperDiscriminationIndex),
       tone: 'green',
+      emphasis: 'secondary',
     },
     {
       key: 'paperDifficultyIndex',
       label: '平均难度',
       value: formatMetricValue(data.paperDifficultyIndex),
       tone: 'orange',
+      emphasis: 'secondary',
     },
   ]
 }

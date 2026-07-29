@@ -219,7 +219,7 @@ const columns = computed((): ColumnType<CollaboratorTreeRow>[] => {
     { title: '能力 / 备注', key: 'meta', ellipsis: true },
   ]
   return props.canManageCollaborators === true
-    ? [...base, { title: '操作', key: 'actions', width: 200 }]
+    ? [...base, { title: '主行动', key: 'actions', width: 200 }]
     : base
 })
 
@@ -414,7 +414,7 @@ async function handleRemove(row: CollaboratorMemberRow) {
 
 <template>
   <WorkbenchSurfaceCard embedded class="av-collab">
-    <SignalBand :metrics="signalMetrics" variant="panel" compact class="av-collab__signal" />
+    <SignalBand layout="spotlight" :metrics="signalMetrics" variant="panel" compact class="av-collab__signal" />
 
     <UiFilterBar
       v-if="canManageCollaborators === true"
@@ -517,6 +517,7 @@ async function handleRemove(row: CollaboratorMemberRow) {
                 "
               />
               <UiTableActions
+                :max-visible="2"
                 v-if="memberActions(record).length"
                 :items="memberActions(record)"
                 split

@@ -13,6 +13,7 @@ import type {
   PortfolioTenantConfigAuditLogVO,
 } from '@/apis/portfolio/indicator-types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -43,6 +44,7 @@ import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
@@ -53,6 +55,7 @@ import { PfScoreRuleTypeCode } from '@/types/enums/pf-score-rule-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { defaultTemplateParams } from '@/utils/indicator-template-params'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function sceneCodeLabel(value: PfSceneCode): string {
@@ -150,6 +153,22 @@ const collectContextTeacherId = ref('')
 const collectSummary = ref<PortfolioIndicatorAutoCollectSummaryResponse | null>(null)
 const collectItems = ref<PortfolioIndicatorCollectedValueVO[]>([])
 const collectTotal = ref(0)
+const indicatorOpsSubtitle = computed(() => {
+  switch (activeTab.value) {
+    case 'compute-log':
+      return `${computeTotal.value} 条计分日志`
+    case 'audit-log':
+      return `${auditTotal.value} 条审计`
+    case 'eval-log':
+      return `${evalTotal.value} 条资格评估`
+    case 'impact':
+      return `${impactTotal.value} 条影响报告`
+    case 'collect':
+      return `${collectTotal.value} 条采集`
+    default:
+      return undefined
+  }
+})
 const collectPageNum = ref(1)
 const collectPageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 
@@ -176,7 +195,7 @@ const computeColumns: ColumnsType = [
   { title: '指标', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 88 },
   { title: '得分', dataIndex: 'finalScore', key: 'finalScore', width: 80 },
   { title: '时间', dataIndex: 'computedTime', key: 'computedTime', width: 160 },
-  { title: '操作', key: 'actions', width: 72 },
+  { title: '主行动', key: 'actions', width: 72 },
 ]
 
 const auditColumns: ColumnsType = [
@@ -191,7 +210,7 @@ const evalColumns: ColumnsType = [
   { title: '规则', dataIndex: 'eligibilityCode', key: 'eligibilityCode', width: 140 },
   { title: '结论', key: 'eligible', width: 80 },
   { title: '时间', dataIndex: 'evaluatedTime', key: 'evaluatedTime', width: 160 },
-  { title: '操作', key: 'actions', width: 72 },
+  { title: '主行动', key: 'actions', width: 72 },
 ]
 
 const impactColumns: ColumnsType = [
@@ -201,7 +220,7 @@ const impactColumns: ColumnsType = [
   { title: '创建人', dataIndex: 'createUser', key: 'createUser', width: 110 },
   { title: '过期', dataIndex: 'expiredTime', key: 'expiredTime', width: 160 },
   { title: '编号', dataIndex: 'id', key: 'id' },
-  { title: '操作', key: 'actions', width: 220 },
+  { title: '主行动', key: 'actions', width: 220 },
 ]
 
 function impactApprovalStatusLabel(value?: PfImpactApprovalStatusCode): string {
@@ -649,12 +668,67 @@ watch(
     syncSnapshotFromRoute()
   },
 )
+
+const IndicatorOpsSignalMetrics = computed<SignalMetric[]>(() => {
+  const metrics: SignalMetric[] = []
+  switch (activeTab.value) {
+    case 'compute-log':
+      metrics.push({ key: 'total', label: '计分日志', value: computeTotal.value, clickable: true })
+      break
+    case 'audit-log':
+      metrics.push({ key: 'total', label: '审计', value: auditTotal.value, clickable: true })
+      break
+    case 'eval-log':
+      metrics.push({ key: 'total', label: '资格评估', value: evalTotal.value, clickable: true })
+      break
+    case 'impact':
+      metrics.push({ key: 'total', label: '影响报告', value: impactTotal.value, clickable: true })
+      break
+    case 'collect':
+      metrics.push({ key: 'total', label: '自动采集', value: collectTotal.value, clickable: true })
+      break
+    default:
+      metrics.push({ key: 'total', label: '记录', value: 0, clickable: true })
+  }
+  return applySpotlightEmphasis(metrics, { primaryKey: 'total', actionLabel: '刷新' })
+})
+
+function onIndicatorOpsSignalClick(_key: string) {
+    switch (activeTab.value) {
+    case 'compute-log':
+      void loadComputeLogs()
+      break
+    case 'audit-log':
+      void loadAuditLogs()
+      break
+    case 'eval-log':
+      void loadEvalLogs()
+      break
+    case 'impact':
+      void loadImpactReports()
+      break
+    case 'collect':
+      void loadCollectPage()
+      break
+    default:
+      break
+  }
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="指标计分与审计" />
+      <ContextBar show-title layout="workbench" title="指标计分与审计" :subtitle="indicatorOpsSubtitle" />
+    </template>
+    <template v-if="IndicatorOpsSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="IndicatorOpsSignalMetrics"
+        @metric-click="onIndicatorOpsSignalClick"
+      />
     </template>
     <UiCard>
       <UiSectionTabs
@@ -753,7 +827,7 @@ watch(
         </div>
         <UiButton
           size="sm"
-          variant="primary"
+          variant="outline"
           :loading="computing"
           :disabled="operating"
           style="margin-top: var(--dp-space-component)"
@@ -778,7 +852,7 @@ watch(
           />
           <UiButton
             size="sm"
-            variant="primary"
+            variant="outline"
             :loading="operationKey.startsWith('export:diff:')"
             :disabled="operating"
             @click="exportSnapshotDiff"
@@ -808,6 +882,7 @@ watch(
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[{ key: 'explain', label: '解释' }]"
                 split
                 @action="
@@ -863,6 +938,7 @@ watch(
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[{ key: 'explain', label: '解释' }]"
                 split
                 @action="
@@ -949,6 +1025,7 @@ watch(
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[
                   ...(canReviewImpact(record)
                     ? [

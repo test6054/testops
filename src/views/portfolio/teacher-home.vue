@@ -5,6 +5,7 @@ import type {
   PortfolioTeacherWorkbenchSummaryVO,
   PortfolioTodoSummaryVO,
 } from '@/apis/portfolio/types'
+import type { PortfolioTeacherJourneyKey } from '@/constants/portfolio-teacher-journey'
 import message from 'ant-design-vue/es/message'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -19,6 +20,7 @@ import { portfolioTodoApi } from '@/apis/portfolio/todo'
 import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import PortfolioProgressCockpitBand from '@/components/portfolio/PortfolioProgressCockpitBand.vue'
 import PortfolioProgressCompareDrawer from '@/components/portfolio/PortfolioProgressCompareDrawer.vue'
+import PortfolioTeacherJourneyRail from '@/components/portfolio/PortfolioTeacherJourneyRail.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -35,7 +37,9 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
+import { usePortfolioTeacherJourneyRail } from '@/composables/usePortfolioTeacherJourneyRail'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { resolvePortfolioJourneyDefaultRoute } from '@/constants/portfolio-teacher-journey'
 import { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
 import { PortfolioTeacherLifecycleApprovalStatusCode } from '@/types/enums/portfolio-teacher-lifecycle-approval-status-enum'
 import { PortfolioTodoTypeCode } from '@/types/enums/portfolio-todo-type-enum'
@@ -52,6 +56,16 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, scopeReady, canPickTeachers, currentUserId } = usePortfolioPageScope()
+
+const activeJourneyKey: PortfolioTeacherJourneyKey = 'overview'
+const { journeyStages } = usePortfolioTeacherJourneyRail(activeJourneyKey)
+
+function navigateJourney(journeyKey: PortfolioTeacherJourneyKey) {
+  void router.push({
+    ...resolvePortfolioJourneyDefaultRoute(journeyKey),
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
 
 function optionalCount(value: number | undefined | null): string {
   return value == null ? '—' : String(value)
@@ -267,6 +281,18 @@ const primaryNextAction = computed(() => {
     label: '材料采集',
     run: goIntake,
   }
+})
+
+/** 工作台副标题：待办条数 + 完整度，禁止说明书式文案 */
+const homeWorkbenchSubtitle = computed(() => {
+  const parts: string[] = []
+  if (todos.value.length > 0) {
+    parts.push(`${todos.value.length} 条待办`)
+  }
+  if (workbenchSummary.value) {
+    parts.push(`完整度 ${workbenchSummary.value.completenessPercent}%`)
+  }
+  return parts.length > 0 ? parts.join(' · ') : undefined
 })
 
 /** 教师首页切换目标教师时必须让旧首页请求失效，避免上一位教师画像/待办回填当前首页。 */
@@ -858,10 +884,25 @@ onUnmounted(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="我的工作台" subtitle="档案袋填报进度与待办总览">
+      <ContextBar
+        show-title
+        layout="workbench"
+        title="我的工作台"
+        :subtitle="homeWorkbenchSubtitle"
+      >
         <template #actions>
           <template v-if="!(canPickTeachers && !targetTeacherId)">
-            <UiButton variant="primary" size="sm" @click="goIntake">材料采集</UiButton>
+            <UiButton variant="primary" size="sm" @click="primaryNextAction.run()">
+              {{ primaryNextAction.label }}
+            </UiButton>
+            <UiButton
+              v-if="primaryNextAction.key !== 'intake'"
+              size="sm"
+              variant="ghost"
+              @click="goIntake"
+            >
+              材料采集
+            </UiButton>
             <UiButton size="sm" variant="ghost" @click="goReviewStatus">审核进度</UiButton>
             <UiButton size="sm" variant="ghost" @click="goArchive">我的档案</UiButton>
           </template>
@@ -874,6 +915,14 @@ onUnmounted(() => {
           />
         </template>
       </ContextBar>
+    </template>
+
+    <template v-if="!(canPickTeachers && !targetTeacherId) && journeyStages.length > 0" #rail>
+      <PortfolioTeacherJourneyRail
+        :stages="journeyStages"
+        :active-key="activeJourneyKey"
+        @select="navigateJourney"
+      />
     </template>
 
     <template v-if="!(canPickTeachers && !targetTeacherId)" #signal>
@@ -927,8 +976,8 @@ onUnmounted(() => {
         <WorkbenchSurfaceCard class="teacher-home__focus">
           <template #head>
             <div class="teacher-home__panel-head">
-              <h3 class="teacher-home__panel-title">当前完成度</h3>
-              <span class="teacher-home__meta">读取总览 · 其余入口已下沉</span>
+              <h3 class="teacher-home__panel-title">完整度补齐</h3>
+              <span class="teacher-home__meta">缺口与待办优先 · 入口已下沉</span>
             </div>
           </template>
           <UiSpin :spinning="workbenchSummaryLoading || loading">
@@ -1008,7 +1057,7 @@ onUnmounted(() => {
               description="尚未生成画像快照"
             />
             <div class="teacher-home__next-action">
-              <UiButton size="sm" variant="primary" @click="primaryNextAction.run()">
+              <UiButton size="sm" variant="outline" @click="primaryNextAction.run()">
                 {{ primaryNextAction.label }}
               </UiButton>
               <UiButton
@@ -1094,7 +1143,7 @@ onUnmounted(() => {
         <WorkbenchSurfaceCard class="teacher-home__todos">
           <template #head>
             <div class="teacher-home__panel-head">
-              <h3 class="teacher-home__panel-title">待办 · 按截止时间优先</h3>
+              <h3 class="teacher-home__panel-title">待办队列 · 按截止优先</h3>
               <span v-if="workbenchSummary" class="teacher-home__todo-count">
                 未完成 {{ workbenchSummary.pendingTodoCount }} 项
               </span>

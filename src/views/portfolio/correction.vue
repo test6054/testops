@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioCorrectionRequestStatusCode } from '@/apis/portfolio/enums'
 import type {
   PortfolioCorrectionDetailVO,
   PortfolioCorrectionSubmitRequest,
@@ -9,13 +8,17 @@ import type {
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
 import type { BadgeTone, UiOptionValue } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
-import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
+import {
+  PortfolioCorrectionRequestStatusCode,
+  PortfolioCorrectionRequestStatusDescription,
+} from '@/apis/portfolio/enums'
 import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -32,11 +35,13 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -62,7 +67,7 @@ const columns: ColumnsType<PortfolioCorrectionSummaryVO> = [
   { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '原因', dataIndex: 'reason', key: 'reason' },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 170 },
-  { title: '操作', key: 'actions', width: 72 },
+  { title: '主行动', key: 'actions', width: 72 },
 ]
 
 const route = useRoute()
@@ -431,6 +436,62 @@ async function applyDeepLinkedRequest() {
   await openDetail(requestId)
 }
 
+const CORRECTION_OPEN_STATUSES: ReadonlySet<PortfolioCorrectionRequestStatusCode> = new Set([
+  PortfolioCorrectionRequestStatusCode.SUBMITTED,
+  PortfolioCorrectionRequestStatusCode.ACCEPTING,
+  PortfolioCorrectionRequestStatusCode.ARCHIVE_CORRECTING,
+  PortfolioCorrectionRequestStatusCode.SOURCE_FIXING,
+  PortfolioCorrectionRequestStatusCode.PENDING_VERIFY,
+])
+
+/** 本页未关闭工单数（helper 标明仅当前页） */
+const pageOpenCorrectionCount = computed(() =>
+  rows.value.filter((row) => CORRECTION_OPEN_STATUSES.has(row.requestStatus)).length,
+)
+
+const correctionSignalMetrics = computed<SignalMetric[]>(() => {
+  if (listLoadFailed.value && pageTotal.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '纠错申请',
+      value: pageTotal.value,
+      clickable: true,
+    },
+  ]
+  if (rows.value.length > 0) {
+    metrics.push({
+      key: 'page-open',
+      label: '本页处理中',
+      value: pageOpenCorrectionCount.value,
+      tone: pageOpenCorrectionCount.value > 0 ? 'orange' : undefined,
+      helper: '仅当前页',
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: pageOpenCorrectionCount.value > 0 ? 'page-open' : 'total',
+    actionLabel: '查看列表',
+  })
+})
+
+const correctionWorkbenchSubtitle = computed(() => {
+  if (listLoadFailed.value) {
+    return '列表加载失败'
+  }
+  if (pageOpenCorrectionCount.value > 0) {
+    return `${pageTotal.value} 条 · 本页处理中 ${pageOpenCorrectionCount.value}`
+  }
+  return `${pageTotal.value} 条`
+})
+
+function onCorrectionSignalClick(_key: string) {
+  const el = document.querySelector('.correction-page__list')
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
 usePortfolioScopedLoader(
   () => {
     scopeRequestToken.value += 1
@@ -476,7 +537,7 @@ watch(
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="我的纠错">
+      <ContextBar show-title layout="workbench" title="我的纠错" :subtitle="correctionWorkbenchSubtitle">
         <template #actions>
           <UiButton
             size="sm"
@@ -486,6 +547,19 @@ watch(
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+
+    <template
+      v-if="!(canPickTeachers && !targetTeacherId) && correctionSignalMetrics.length > 0"
+      #signal
+    >
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="correctionSignalMetrics"
+        @metric-click="onCorrectionSignalClick"
+      />
     </template>
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
@@ -604,6 +678,7 @@ watch(
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[{ key: 'detail', label: '详情' }]"
                 split
                 @action="() => openCorrectionDetail(record)"

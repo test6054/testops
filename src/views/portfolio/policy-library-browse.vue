@@ -5,8 +5,9 @@ import type {
 } from '@/apis/portfolio/policy'
 import type { PortfolioPolicyDocumentStatusCode } from '@/types/enums/portfolio-policy-document-status-enum'
 import type { PortfolioPolicyLevelCode } from '@/types/enums/portfolio-policy-level-enum'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { portfolioPolicyApi } from '@/apis/portfolio/policy'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -19,12 +20,14 @@ import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { PortfolioPolicyDocumentStatusDescription } from '@/types/enums/portfolio-policy-document-status-enum'
 import { PortfolioPolicyLevelDescription } from '@/types/enums/portfolio-policy-level-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
@@ -160,6 +163,47 @@ async function downloadPreviewAttachment() {
   }
 }
 
+
+const PolicyBrowseSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadFailed.value && query.total === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '检索结果',
+      value: query.total,
+      clickable: true,
+    },
+  ]
+  if (!loadFailed.value) {
+    metrics.push({
+      key: 'page',
+      label: '本页',
+      value: rows.value.length,
+      helper: '仅当前页',
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '重新检索',
+  })
+})
+
+const PolicyBrowseWorkbenchSubtitle = computed(() => {
+  if (loadFailed.value) {
+    return '检索失败'
+  }
+  if (!lastSuccessAt.value && query.total === 0 && !appliedKeyword.value) {
+    return '输入关键词检索'
+  }
+  return `${query.total} 条`
+})
+
+function onPolicyBrowseSignalClick(_key: string) {
+  void search(false)
+}
+
 function handlePageChange(page: number, pageSize: number) {
   query.pageNum = page
   query.pageSize = pageSize
@@ -174,7 +218,16 @@ function handlePageChange(page: number, pageSize: number) {
         layout="workbench"
         show-title
         title="政策检索"
-        subtitle="默认仅现行有效；勾选含历史可检索被替代与已废止版本"
+        :subtitle="PolicyBrowseWorkbenchSubtitle"
+      />
+    </template>
+    <template v-if="PolicyBrowseSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="PolicyBrowseSignalMetrics"
+        @metric-click="onPolicyBrowseSignalClick"
       />
     </template>
     <UiCard>

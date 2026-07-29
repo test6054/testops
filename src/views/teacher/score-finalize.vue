@@ -1,55 +1,60 @@
 <template>
   <StageWorkbenchShell class="score-finalize-page">
     <template v-if="selectedExamId" #context>
-      <ContextBar layout="workbench" show-title title="成绩确认与发布">
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="scoreFinalizeWorkbenchTitle"
+        :subtitle="scoreFinalizeWorkbenchSubtitle"
+      >
         <template #status>
           <UiTag v-if="scoresFullyPublished === true" tone="green" size="sm">已全部发布</UiTag>
-          <UiTag v-else-if="blockingRiskReasons.length > 0" tone="orange" size="sm">
-            存在阻塞风险
-          </UiTag>
           <UiTag
-            v-else-if="effectiveRiskOverview?.readyToSubmitPublishReview === true"
-            tone="green"
+            v-else-if="(effectiveRiskOverview?.pendingMyPublishReviewCount ?? 0) > 0"
+            tone="orange"
             size="sm"
           >
-            可提交发布复核
+            待我复核
           </UiTag>
-          <UiTag v-else-if="hasPendingAbsence" tone="orange" size="sm">缺考待确认</UiTag>
+          <UiTag v-else-if="blockingRiskReasons.length > 0" tone="orange" size="sm">
+            有阻塞
+          </UiTag>
         </template>
         <template #actions>
           <UiButton
-            v-if="unconfirmedQuestionGradeCount > 0"
-            size="sm"
-            variant="outline"
-            @click="goQuestionReviewBatch"
-          >
-            题目分待确认 {{ unconfirmedQuestionGradeCount }}
-          </UiButton>
-          <UiButton
-            v-if="canBatchConfirmSafe === true"
+            v-if="canBatchConfirmSafe === true && scoreFinalizePrimaryAction?.key !== 'batch-confirm'"
             variant="outline"
             size="sm"
             :loading="batchConfirming === true"
             @click="handleBatchConfirmSafe"
           >
-            批量确认无风险成绩
+            批量确认无风险
           </UiButton>
           <UiButton
-            v-if="canManageReviewerWrites === true"
-            variant="primary"
+            v-if="scoreFinalizePrimaryAction"
+            variant="outline"
             size="sm"
-            :disabled="canBulkSubmitPublishReview !== true"
-            @click="openBulkSubmitReviewModal"
+            :loading="scoreFinalizePrimaryAction.loading"
+            :disabled="scoreFinalizePrimaryAction.disabled"
+            @click="scoreFinalizePrimaryAction.run()"
           >
-            <template #icon><ThunderboltOutlined /></template>
-            全场提交发布复核
+            <template v-if="scoreFinalizePrimaryAction.key === 'bulk-submit'" #icon>
+              <ThunderboltOutlined />
+            </template>
+            {{ scoreFinalizePrimaryAction.label }}
           </UiButton>
         </template>
       </ContextBar>
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand :metrics="statMetrics" variant="panel" compact />
+      <SignalBand
+        :metrics="statMetrics"
+        layout="spotlight"
+        variant="panel"
+        compact
+        @metric-click="handleScoreFinalizeSignalClick"
+      />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" body="请从考试列表进入工作台后再确认成绩" />
@@ -140,7 +145,7 @@
       <WorkbenchSurfaceCard flush>
         <template #head>
           <div class="score-finalize__table-head">
-            <h3 class="score-finalize__table-title">考生成绩</h3>
+            <h3 class="score-finalize__table-title">发布队列</h3>
             <UiSkeletonState v-if="riskOverviewLoading" :rows="1" compact />
             <UiSectionTabs
               v-else
@@ -214,7 +219,7 @@
               </UiButton>
               <UiButton
                 v-if="selectedApproveReviewCount > 0"
-                variant="primary"
+                variant="outline"
                 size="sm"
                 :loading="batchApproveRunning === true"
                 @click="handleBatchApprovePublishReview"
@@ -358,6 +363,8 @@
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 :items="buildFinalizeActions(tableCandidates[index])"
+                :max-visible="2"
+                align="end"
                 split
                 @action="(key) => handleFinalizeRowAction(key, tableCandidates[index])"
               />
@@ -744,7 +751,7 @@
           <UiButton
             v-else-if="isQuestionConfirmRiskReason(reason.reasonCode)"
             size="sm"
-            variant="primary"
+            variant="outline"
             @click="goQuestionReviewBatch"
           >
             去题目复核确认
@@ -755,7 +762,7 @@
                 && reason.reasonCode === FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
             "
             size="sm"
-            variant="primary"
+            variant="outline"
             :loading="repairingScoreZero === true"
             @click="handleRepairScoreZero"
           >
@@ -887,7 +894,7 @@
         <div class="score-finalize__next-step-actions">
           <UiButton
             v-if="nextStep.kind === 'all-confirmed'"
-            variant="primary"
+            variant="outline"
             size="md"
             :disabled="canBulkSubmitPublishReview !== true"
             @click="handleNextStepGoSubmitReview"
@@ -989,7 +996,7 @@
           取消
         </UiButton>
         <UiButton
-          variant="primary"
+          variant="outline"
           size="md"
           :loading="bulkSubmitRunning === true"
           :disabled="canBulkSubmitPublishReview !== true"
@@ -2204,11 +2211,103 @@ async function handleBatchConfirmSafe(): Promise<void> {
   }
 }
 
+const selectedExamTitle = computed(() => examDetail.value?.examName?.trim() || '')
+
+/** 任务工作台标题：优先考试名。 */
+const scoreFinalizeWorkbenchTitle = computed(
+  () => selectedExamTitle.value || '成绩确认与发布',
+)
+
+/** 任务工作台副标题：发布流水线当前阻塞/阶段真数。 */
+const scoreFinalizeWorkbenchSubtitle = computed(() => {
+  if (unconfirmedQuestionGradeCount.value > 0) {
+    return `${unconfirmedQuestionGradeCount.value} 题待确认`
+  }
+  if (scoresFullyPublished.value === true) {
+    return '已全部发布'
+  }
+  const pendingMy = effectiveRiskOverview.value?.pendingMyPublishReviewCount ?? 0
+  if (pendingMy > 0) {
+    return `待我复核 ${pendingMy} 份`
+  }
+  if (blockingRiskReasons.value.length > 0) {
+    return `${blockingRiskReasons.value.length} 项阻塞风险`
+  }
+  if (effectiveRiskOverview.value?.readyToSubmitPublishReview === true) {
+    return '可提交发布复核'
+  }
+  if (hasPendingAbsence.value) {
+    return '缺考待确认'
+  }
+  const total = effectiveRiskOverview.value?.totalCandidateCount
+  return total != null ? `${total} 名考生` : '成绩确认工作台'
+})
+
+/**
+ * 页级唯一实心主行动：题目确认 → 待我复核 → 全场提交复核 → 批量确认无风险。
+ * 就绪面板/表工具条不再重复实心主按钮。
+ */
+const scoreFinalizePrimaryAction = computed(() => {
+  if (unconfirmedQuestionGradeCount.value > 0) {
+    return {
+      key: 'question-review',
+      label: `题目分待确认 ${unconfirmedQuestionGradeCount.value}`,
+      loading: false,
+      disabled: false,
+      run: () => goQuestionReviewBatch(),
+    }
+  }
+  const pendingMy = effectiveRiskOverview.value?.pendingMyPublishReviewCount ?? 0
+  if (pendingMy > 0) {
+    return {
+      key: 'pending-my-review',
+      label: `仅看待我复核 ${pendingMy}`,
+      loading: false,
+      disabled: false,
+      run: () => filterPendingMyPublishReviewOnly(),
+    }
+  }
+  if (canManageReviewerWrites.value === true) {
+    return {
+      key: 'bulk-submit',
+      label: '全场提交发布复核',
+      loading: bulkSubmitRunning.value === true,
+      disabled: canBulkSubmitPublishReview.value !== true,
+      run: () => openBulkSubmitReviewModal(),
+    }
+  }
+  if (canBatchConfirmSafe.value === true) {
+    return {
+      key: 'batch-confirm',
+      label: '批量确认无风险成绩',
+      loading: batchConfirming.value === true,
+      disabled: false,
+      run: () => handleBatchConfirmSafe(),
+    }
+  }
+  return null
+})
+
+/** SignalBand 主卡下钻到对应队列筛选/风险抽屉。 */
+function handleScoreFinalizeSignalClick(key: string): void {
+  if (key === 'pendingMyPublishReview') {
+    filterPendingMyPublishReviewOnly()
+    return
+  }
+  if (key === 'blocked' || key === 'pending') {
+    openRiskReviewDrawer()
+    return
+  }
+  // 规模/分布指标：滚到发布队列
+  const el = document.querySelector('.score-finalize__table-title')
+  if (el instanceof HTMLElement) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
 const statMetrics = computed((): SignalMetric[] =>
   buildScoreFinalizeSignalMetrics(scorePanel.value, effectiveRiskOverview.value),
 )
-
-const selectedExamTitle = computed(() => examDetail.value?.examName?.trim() || '')
 
 const readinessActionLoadingCode = ref<FinalScoreReadinessActionCode | null>(null)
 
@@ -2476,7 +2575,7 @@ function biasLevelTone(level: ScoreBiasLevelCode): BadgeTone {
 }
 
 function buildFinalizeActions(record: ExamScoreSummaryItemResponse): UiTableRowActionItem[] {
-  // 只渲染当前可用动作；PENDING / 待审等状态不再展示 disabled 的确认、撤回入口
+  // 只渲染当前可用动作；行内唯一 primary 置顶（maxVisible=2 → 主行动 + ⋯）
   const confirmable = canConfirm(record)
   const submittable = canSubmitPublishReview(record)
   const approvable = canApprovePublishReview(record)
@@ -2490,32 +2589,48 @@ function buildFinalizeActions(record: ExamScoreSummaryItemResponse): UiTableRowA
       : confirmable
         ? 'confirm'
         : undefined
-  const actions: UiTableRowActionItem[] = [
-    {
-      key: 'detail',
-      label: record.absenceScoreZero ? '计零说明' : '明细',
-      disabled: !record.paperInstanceId,
-    },
-  ]
-  if (confirmable) {
-    actions.push({
-      key: 'confirm',
-      label: confirmButtonLabel(record),
-      tone: primaryKey === 'confirm' ? 'primary' : undefined,
-    })
-  }
-  if (submittable) {
-    actions.push({
-      key: 'submit-review',
-      label: submitReviewButtonLabel(record),
-      tone: primaryKey === 'submit-review' ? 'primary' : undefined,
-    })
-  }
-  if (approvable) {
+  const actions: UiTableRowActionItem[] = []
+  if (primaryKey === 'approve-review') {
     actions.push({
       key: 'approve-review',
       label: '复核通过并发布',
-      tone: primaryKey === 'approve-review' ? 'primary' : undefined,
+      tone: 'primary',
+    })
+  } else if (primaryKey === 'submit-review') {
+    actions.push({
+      key: 'submit-review',
+      label: submitReviewButtonLabel(record),
+      tone: 'primary',
+    })
+  } else if (primaryKey === 'confirm') {
+    actions.push({
+      key: 'confirm',
+      label: confirmButtonLabel(record),
+      tone: 'primary',
+    })
+  }
+  actions.push({
+    key: 'detail',
+    label: record.absenceScoreZero ? '计零说明' : '明细',
+    disabled: !record.paperInstanceId,
+  })
+  // 非主路径动作：不重复挂 primary tone
+  if (confirmable && primaryKey !== 'confirm') {
+    actions.push({
+      key: 'confirm',
+      label: confirmButtonLabel(record),
+    })
+  }
+  if (submittable && primaryKey !== 'submit-review') {
+    actions.push({
+      key: 'submit-review',
+      label: submitReviewButtonLabel(record),
+    })
+  }
+  if (approvable && primaryKey !== 'approve-review') {
+    actions.push({
+      key: 'approve-review',
+      label: '复核通过并发布',
     })
   }
   if (rejectable) {
@@ -2625,7 +2740,7 @@ const paperItemColumns = computed<ColumnType<ExamQuestionScoreResponse>[]>(() =>
     { title: '状态', dataIndex: 'gradeStatus', key: 'gradeStatus', width: 110 },
   ]
   if (paperScore.value?.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN) {
-    columns.push({ title: '操作', key: 'withdrawnRescore', width: 96, fixed: 'right' })
+    columns.push({ title: '主行动', key: 'withdrawnRescore', width: 96, fixed: 'right' })
   }
   return columns
 })

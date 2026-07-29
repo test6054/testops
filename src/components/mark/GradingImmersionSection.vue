@@ -32,10 +32,16 @@ defineProps<{
   display: flex;
   flex-direction: column;
   gap: var(--dp-space-component-tight);
-  padding: var(--dp-space-component);
-  background: var(--dp-surface);
-  border: 1px solid var(--dp-border);
-  border-radius: var(--dp-radius-panel);
+  padding: var(--dp-space-component) 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--dp-border-subtle);
+  border-radius: 0;
+
+  &:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
 
   &__header {
     display: flex;
@@ -78,5 +84,11 @@ defineProps<{
   &__body {
     min-width: 0;
   }
+}
+
+/* 给分侧栏内的 section：更紧凑，避免双边框 */
+.grading-workspace__aside-inner .grading-immersion-section {
+  padding: var(--dp-space-component-tight) 0;
+  border-bottom-color: color-mix(in srgb, var(--dp-border-subtle) 80%, transparent);
 }
 </style>

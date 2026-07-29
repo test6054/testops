@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { PortfolioConfigurationCapabilityVO } from '@/apis/portfolio/configuration'
-import { onMounted, ref } from 'vue'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioConfigurationApi } from '@/apis/portfolio/configuration'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -8,6 +9,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import {
   PortfolioConfigurationCapabilityStatusDescription,
@@ -15,6 +17,7 @@ import {
 } from '@/types/enums/portfolio-configuration-capability-status-enum'
 import { PortfolioConfigurationSectionCodeDescription } from '@/types/enums/portfolio-configuration-section-code-enum'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const router = useRouter()
@@ -65,6 +68,47 @@ async function loadReadiness() {
   }
 }
 
+
+const ConfigurationWorkbenchSignalMetrics = computed<SignalMetric[]>(() => {
+  if (!readiness.value) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'attention',
+      label: '需关注',
+      value: readiness.value.attentionCount,
+      clickable: true,
+      tone: readiness.value.attentionCount > 0 ? 'orange' : undefined,
+    },
+    {
+      key: 'not-configured',
+      label: '未配置',
+      value: readiness.value.notConfiguredCount,
+      tone: readiness.value.notConfiguredCount > 0 ? 'orange' : undefined,
+    },
+    {
+      key: 'sections',
+      label: '配置分区',
+      value: readiness.value.sections.length,
+    },
+  ]
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: readiness.value.attentionCount > 0 ? 'attention' : (readiness.value.notConfiguredCount > 0 ? 'not-configured' : 'sections'),
+    actionLabel: '刷新',
+  })
+})
+
+const ConfigurationWorkbenchSubtitle = computed(() => {
+  if (loadFailed.value) return '加载失败'
+  if (!readiness.value) return loading.value ? '加载中' : '暂无 readiness'
+  return `未配置 ${readiness.value.notConfiguredCount} · 需关注 ${readiness.value.attentionCount}`
+})
+
+function onConfigurationWorkbenchSignalClick(_key: string) {
+  void loadReadiness()
+}
+
 onMounted(() => {
   void loadReadiness()
 })
@@ -73,7 +117,16 @@ onMounted(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="档案袋配置中心" />
+      <ContextBar show-title layout="workbench" title="档案袋配置中心" :subtitle="ConfigurationWorkbenchSubtitle" />
+    </template>
+    <template v-if="ConfigurationWorkbenchSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="ConfigurationWorkbenchSignalMetrics"
+        @metric-click="onConfigurationWorkbenchSignalClick"
+      />
     </template>
     <UiAlertStrip
       v-if="loadFailed"
@@ -85,7 +138,7 @@ onMounted(() => {
       v-else-if="readiness"
       tone="info"
       title="配置依赖顺序"
-      :description="`先组织/模板，再规则/指标，最后安全审计。生成于 ${readiness.generatedAt}；未配置 ${readiness.notConfiguredCount} · 需关注 ${readiness.attentionCount}`"
+      :description="`先组织/模板，再规则/指标，最后安全审计。生成于 ${readiness.generatedAt}`"
       class="dp-mb-component"
     />
     <section v-if="loading && !readiness" class="configuration-workbench__loading dp-meta">

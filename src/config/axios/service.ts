@@ -253,7 +253,7 @@ service.interceptors.request.use(
 
     // 添加租户ID
     // 登录/公共接口不强制携带，其他接口缺失则重定向到登录页
-    if (!isAuthRequest && !isPublicApi) {
+    if (!extendedConfig.skipAuth && !isAuthRequest && !isPublicApi) {
       const tenantId = getExplicitTenantId(requestConfig)
         || (onKioskPage ? getKioskTenantId() : null)
         || getTenantId()
@@ -379,9 +379,10 @@ service.interceptors.response.use(
         const url = response.config?.url || ''
         const isAuthRequest = url.includes('/login') || url.includes('/oauth2/refresh') || url.includes('/oauth2/token')
         const isScannerStationApi = isMarkScannerStationApiUrl(url)
-        const scannerStationAuthSource = runtimeRequestConfig(response.config).markScannerStationAuthSource
+        const extendedConfig = runtimeRequestConfig(response.config)
+        const scannerStationAuthSource = extendedConfig.markScannerStationAuthSource
 
-        if (isAuthRequest) {
+        if (isAuthRequest || extendedConfig.skipAuth === true) {
           const authError: InterceptorError = new Error(response.data.msg || '认证失败')
           authError.code = response.data.code
           authError.response = response
@@ -474,9 +475,10 @@ service.interceptors.response.use(
       const isLogoutRequest = url.includes('/logout')
       const isPublicApi = url.includes('/public/')
       const isScannerStationApi = isMarkScannerStationApiUrl(url)
-      const scannerStationAuthSource = runtimeRequestConfig(originalConfig).markScannerStationAuthSource
+      const extendedConfig = runtimeRequestConfig(originalConfig)
+      const scannerStationAuthSource = extendedConfig.markScannerStationAuthSource
 
-      if (isAuthRequest || isLogoutRequest || isPublicApi) {
+      if (isAuthRequest || isLogoutRequest || isPublicApi || extendedConfig.skipAuth === true) {
         const backendMsg = response?.data?.msg
         if (backendMsg) {
           const authError: InterceptorError = new Error(backendMsg)

@@ -43,6 +43,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const list = ref<AccreditationStandardVO[]>([])
@@ -97,7 +98,7 @@ const columns: ColumnsType<AccreditationStandardVO> = [
   { title: '标准年份', dataIndex: 'standardYear', key: 'standardYear', width: 100 },
   { title: '文号', dataIndex: 'documentNumber', key: 'documentNumber', width: 160 },
   { title: '状态', key: 'enabled', width: 120 },
-  { title: '操作', key: 'actions', width: 180 },
+  { title: '主行动', key: 'actions', width: 180 },
 ]
 
 const filterModel = ref<AccreditationStandardFilterModel>({
@@ -278,7 +279,7 @@ function buildAccreditationStandardActions(
   _record: AccreditationStandardVO,
 ): UiTableRowActionItem[] {
   return [
-    { key: 'edit', label: '编辑' },
+    { key: 'edit', label: '编辑', tone: 'primary' },
     { key: 'delete', label: '删除', tone: 'danger' },
   ]
 }
@@ -309,7 +310,7 @@ async function handleDelete(record: AccreditationStandardVO) {
 
 /* ========== 信号指标：认证标准库健康度 ========== */
 const signals = computed<SignalMetric[]>(() => {
-  return [
+  return applySpotlightEmphasis([
     { key: 'all-total', label: '认证标准总数', value: summary.value.totalCount, tone: 'blue' },
     {
       key: 'enabled',
@@ -335,7 +336,12 @@ const signals = computed<SignalMetric[]>(() => {
       value: summary.value.accreditationTypeCount,
       tone: 'blue',
     },
-  ]
+  ], {
+    primaryKey: summary.value.disabledCount > 0
+      ? 'disabled'
+      : (summary.value.pilotOnlyCount > 0 ? 'pilot' : 'enabled'),
+    actionLabel: '查看标准',
+  })
 })
 
 onMounted(() => {
@@ -350,10 +356,11 @@ onActivated(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="认证标准台账" />
+      <ContextBar layout="workbench" show-title title="认证标准台账" :subtitle="`${total} 条`" />
     </template>
 
     <SignalBand
+      layout="spotlight"
       :metrics="signals"
       variant="panel"
       compact
@@ -408,6 +415,7 @@ onActivated(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildAccreditationStandardActions(record)"
               split
               @action="(key) => handleAccreditationStandardAction(key, record)"

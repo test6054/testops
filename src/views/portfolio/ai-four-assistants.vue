@@ -5,6 +5,7 @@ import type {
   PortfolioAiJobContext,
 } from '@/apis/portfolio/types'
 import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
@@ -21,6 +22,7 @@ import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioAiTaskPolling } from '@/composables/usePortfolioAiTaskPolling'
@@ -45,6 +47,7 @@ import {
 } from '@/types/enums/portfolio-content-generate-scene-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 type AssistantKey = 'generate' | 'optimize' | 'effect' | 'development'
@@ -572,6 +575,27 @@ watch(
 )
 
 usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
+
+const AiFourAssistantsSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'history',
+      label: '分析记录',
+      value: historyTotal.value,
+      clickable: true,
+    },
+    {
+      key: 'pageRows',
+      label: '本页',
+      value: historyRows.value.length,
+      helper: '仅当前页',
+    },
+  ], { primaryKey: 'history', actionLabel: '刷新' })
+})
+
+function onAiFourAssistantsSignalClick(_key: string) {
+  void loadHistory()
+}
 </script>
 
 <template>
@@ -581,7 +605,16 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
         layout="workbench"
         show-title
         title="AI 四助手"
-        subtitle="AI 只出草稿 · 教师本人确认后才写入档案或发展规划"
+        :subtitle="`${historyTotal} 条分析记录`"
+      />
+    </template>
+    <template v-if="AiFourAssistantsSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="AiFourAssistantsSignalMetrics"
+        @metric-click="onAiFourAssistantsSignalClick"
       />
     </template>
     <PortfolioArchiveWriteGuardStrip

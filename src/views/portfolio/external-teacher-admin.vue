@@ -15,6 +15,7 @@ import type {
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { PortfolioExternalTeacherContractStatusCode } from '@/types/enums/portfolio-external-teacher-contract-status-enum'
 import type { PortfolioGenderCode } from '@/types/enums/portfolio-gender-enum'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -47,6 +48,7 @@ import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
@@ -55,6 +57,7 @@ import { useQueryTable } from '@/composables/useQueryTable'
 import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { PortfolioImportQualityGradeDescription } from '@/types/enums/portfolio-import-quality-grade-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -182,7 +185,7 @@ const columns: ColumnsType<PortfolioExternalTeacherVO> = [
   { title: '贡献度', key: 'contributionScore', width: 88 },
   { title: '合同状态', dataIndex: 'contractStatus', key: 'contractStatus', width: 88 },
   { title: '状态', key: 'dataStatus', width: 72 },
-  { title: '操作', key: 'actions', width: 100 },
+  { title: '主行动', key: 'actions', width: 100 },
 ]
 
 const batchColumns: ColumnsType<PortfolioExternalTeacherImportBatchVO> = [
@@ -191,7 +194,7 @@ const batchColumns: ColumnsType<PortfolioExternalTeacherImportBatchVO> = [
   { title: '失败', dataIndex: 'failedRows', key: 'failedRows', width: 64 },
   { title: '状态', key: 'batchStatus', width: 96 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 160 },
-  { title: '操作', key: 'actions', width: 72 },
+  { title: '主行动', key: 'actions', width: 72 },
 ]
 
 const batchDiagnosticColumns: ColumnsType<ExcelImportRowDiagnostic> = [
@@ -395,7 +398,7 @@ function openCreate() {
 function buildExternalTeacherRowActions(
   record: PortfolioExternalTeacherVO,
 ): UiTableRowActionItem[] {
-  const actions: UiTableRowActionItem[] = [{ key: 'edit', label: '编辑' }]
+  const actions: UiTableRowActionItem[] = [{ key: 'edit', label: '编辑', tone: 'primary' }]
   if (record.dataStatus === PortfolioExternalTeacherDataStatusCode.ACTIVE) {
     actions.push({ key: 'revoke', label: '停用', tone: 'danger' })
   }
@@ -597,21 +600,67 @@ onMounted(async () => {
   await loadStats()
   await loadImportBatches()
 })
+
+const ExternalTeacherSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && pageTotal.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '外聘教师',
+      value: pageTotal.value,
+      clickable: true,
+    },
+  ]
+  if (stats.value && !statsLoadError.value) {
+    metrics.push({
+      key: 'active',
+      label: '在册有效',
+      value: stats.value.activeCount ?? 0,
+    })
+  } else {
+    metrics.push({
+      key: 'pageRows',
+      label: '本页',
+      value: rows.value.length,
+      helper: '仅当前页',
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+function onExternalTeacherSignalClick(_key: string) {
+  void loadPage()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="外聘教师台账">
+      <ContextBar show-title layout="workbench" title="外聘教师台账" :subtitle="`${pageTotal} 条`">
         <template #actions>
           <UiButton size="sm" variant="primary" @click="openCreate"> 新增外聘教师 </UiButton>
         </template>
       </ContextBar>
     </template>
+    <template v-if="ExternalTeacherSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="ExternalTeacherSignalMetrics"
+        @metric-click="onExternalTeacherSignalClick"
+      />
+    </template>
+
     <UiSectionTabs v-model="activeTab" :items="externalTabItems" compact divided />
     <template v-if="activeTab === 'roster'">
       <UiCard title="批量导入">
-        <UiButton size="sm" variant="primary" @click="importModalOpen = true">
+        <UiButton size="sm" variant="outline" @click="importModalOpen = true">
           表格文件批量导入
         </UiButton>
       </UiCard>
@@ -712,6 +761,7 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildExternalTeacherRowActions(record)"
                 split
                 @action="(key) => handleExternalTeacherAction(key, record)"
@@ -806,6 +856,7 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[{ key: 'detail', label: '详情' }]"
                 split
                 @action="() => openBatchDetail(record.id)"
@@ -906,7 +957,7 @@ onMounted(async () => {
               @change="onAttachmentPick"
             />
             <UiButton
-              variant="primary"
+              variant="outline"
               size="sm"
               :loading="uploadingAttachment"
               @click="openAttachmentPicker"

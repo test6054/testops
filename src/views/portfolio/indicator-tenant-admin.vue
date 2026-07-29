@@ -4,6 +4,7 @@ import type {
   PortfolioIndustryPackVO,
 
   PortfolioTenantIndicatorConfigVO} from '@/apis/portfolio/indicator-types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -36,6 +37,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { PfIndicatorStatusCode } from '@/types/enums/pf-indicator-status-enum'
@@ -46,6 +48,7 @@ import {
 } from '@/types/enums/portfolio-indicator-applicability-code'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function modelStatusLabel(value: PfModelStatusCode): string {
@@ -150,7 +153,7 @@ const configColumns: ColumnsType = [
   { title: '标准分', dataIndex: 'standardScore', key: 'standardScore', width: 80 },
   { title: '封顶分', dataIndex: 'capScore', key: 'capScore', width: 80 },
   { title: '适用对象', key: 'applicableTeacherTypes', width: 220, ellipsis: true },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 const sceneWeightColumns: ColumnsType = [
@@ -572,12 +575,27 @@ watch(sceneCode, () => {
 })
 
 onMounted(loadConfig)
+
+const IndicatorTenantSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'total',
+      label: '租户指标',
+      value: configRows.value.length,
+      clickable: true,
+    },
+  ], { primaryKey: 'total', actionLabel: '刷新' })
+})
+
+function onIndicatorTenantSignalClick(_key: string) {
+  void loadConfig()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="租户指标配置">
+      <ContextBar show-title layout="workbench" title="租户指标配置" :subtitle="`${configRows.length} 条`">
         <template #actions>
           <UiButton
             size="sm"
@@ -598,6 +616,16 @@ onMounted(loadConfig)
         </template>
       </ContextBar>
     </template>
+    <template v-if="IndicatorTenantSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="IndicatorTenantSignalMetrics"
+        @metric-click="onIndicatorTenantSignalClick"
+      />
+    </template>
+
     <UiCard>
       <UiSectionTabs
         :model-value="activeTab"
@@ -618,7 +646,7 @@ onMounted(loadConfig)
           />
           <UiButton
             size="sm"
-            variant="primary"
+            variant="outline"
             :loading="enabling"
             :disabled="writing"
             @click="enableAll"
@@ -668,6 +696,7 @@ onMounted(loadConfig)
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[{ key: 'edit', label: '编辑', disabled: interactionLocked }]"
                 split
                 @action="() => openEdit(record)"
@@ -686,7 +715,7 @@ onMounted(loadConfig)
             :disabled="writing"
           />
           <UiButton
-            variant="primary"
+            variant="outline"
             size="sm"
             :loading="operationKey.startsWith('save:model:')"
             :disabled="writing || !modelEditable"
@@ -696,7 +725,7 @@ onMounted(loadConfig)
           </UiButton>
           <UiButton
             size="sm"
-            variant="primary"
+            variant="outline"
             :loading="trialing"
             :disabled="writing || !modelEditable"
             @click="trialModel"
@@ -789,7 +818,7 @@ onMounted(loadConfig)
           />
           <UiButton
             size="sm"
-            variant="primary"
+            variant="outline"
             :loading="binding"
             :disabled="writing"
             @click="bindPack"

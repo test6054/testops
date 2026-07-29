@@ -13,6 +13,7 @@ import type {
   PortfolioKeyTeacherAnalyticsVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioCockpitSummaryVO } from '@/apis/portfolio/types'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioCockpitApi } from '@/apis/portfolio/cockpit'
@@ -35,11 +36,12 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioHrMetricDistributionSection from '@/views/portfolio/components/PortfolioHrMetricDistributionSection.vue'
 
@@ -67,13 +69,23 @@ const queryCampusOrgId = computed(() => readRouteStringParam(route.query.campusO
 const queryDepartmentId = computed(() => readRouteStringParam(route.query.departmentId))
 const pageTitle = '师资分析驾驶舱'
 const pageSubtitle = computed(() => {
+  const teacherCount = deptStats.value?.totalTeacherCount
+  const externalCount = externalStats.value?.totalCount
+  const parts: string[] = []
   if (queryDepartmentId.value) {
-    return `院系范围 departmentId=${queryDepartmentId.value}`
+    parts.push('院系范围')
+  } else if (queryCampusOrgId.value) {
+    parts.push('校区范围')
+  } else {
+    parts.push('全校范围')
   }
-  if (queryCampusOrgId.value) {
-    return `校区范围 campusOrgId=${queryCampusOrgId.value}`
+  if (typeof teacherCount === 'number') {
+    parts.push(`教师 ${teacherCount}`)
   }
-  return '院系师资结构、双师与双岗、外聘教师统计'
+  if (typeof externalCount === 'number') {
+    parts.push(`外聘 ${externalCount}`)
+  }
+  return parts.join(' · ')
 })
 
 const deptStats = ref<PortfolioDeptStructureStatVO | null>(null)
@@ -386,6 +398,35 @@ watch(
     void loadAll()
   },
 )
+
+const TeacherAnalyticsSignalMetrics = computed<SignalMetric[]>(() => {
+  const summary = schoolSummary.value
+  if (!summary) {
+    return []
+  }
+  return applySpotlightEmphasis([
+    {
+      key: 'teachers',
+      label: '教师总数',
+      value: summary.teacherCount ?? deptStats.value?.totalTeacherCount ?? 0,
+      clickable: true,
+    },
+    {
+      key: 'complete',
+      label: '完整档案',
+      value: summary.completenessCompleteCount ?? 0,
+    },
+    {
+      key: 'pending',
+      label: '待补',
+      value: summary.completenessPendingCount ?? 0,
+    },
+  ], { primaryKey: 'pending', actionLabel: '刷新' })
+})
+
+function onTeacherAnalyticsSignalClick(_key: string) {
+  void loadAll()
+}
 </script>
 
 <template>
@@ -401,6 +442,15 @@ watch(
           <UiButton size="sm" :loading="loading" @click="loadAll">刷新</UiButton>
         </template>
       </ContextBar>
+    </template>
+    <template v-if="TeacherAnalyticsSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TeacherAnalyticsSignalMetrics"
+        @metric-click="onTeacherAnalyticsSignalClick"
+      />
     </template>
     <UiSpin :spinning="loading">
       <UiAlertStrip
@@ -437,8 +487,11 @@ watch(
                 {{ item.label }} {{ distributionCount(schoolSummary, item.summaryKey) }}
               </button>
             </div>
-            <UiStatPanel
-              :items="[
+            <SignalBand
+              layout="spotlight"
+              variant="inline"
+              compact
+              :metrics="[
                 ...(schoolSummary.courseArchiveFrameworkSlotTotal
                   ? [
                     {
@@ -462,9 +515,6 @@ watch(
                   ]
                   : []),
               ]"
-              :columns="2"
-              variant="grid"
-              compact
             />
           </UiCard>
           <UiCard v-if="deptStats" title="院系师资结构">
@@ -586,8 +636,11 @@ watch(
             />
           </UiCard>
           <UiCard v-if="keyTeacherStats" title="骨干 / 专业带头人">
-            <UiStatPanel
-              :items="[
+            <SignalBand
+              layout="spotlight"
+              variant="inline"
+              compact
+              :metrics="[
                 { key: 'total', label: '台账总数', value: optionalMetric(keyTeacherStats.totalCount) },
                 {
                   key: 'active',
@@ -625,9 +678,6 @@ watch(
                   tone: 'blue',
                 },
               ]"
-              :columns="3"
-              variant="grid"
-              compact
             />
             <UiDataTable
               :columns="doubleDutyStatusColumns"
@@ -681,8 +731,11 @@ watch(
             />
           </UiCard>
           <UiCard v-if="externalStats" title="外聘教师">
-            <UiStatPanel
-              :items="[
+            <SignalBand
+              layout="spotlight"
+              variant="inline"
+              compact
+              :metrics="[
                 {
                   key: 'total',
                   label: '筛选总数',
@@ -706,9 +759,6 @@ watch(
                   value: externalStats.usableForCampusTitleEvaluation === false ? '否' : '—',
                 },
               ]"
-              :columns="2"
-              variant="grid"
-              compact
             />
             <UiDataTable
               :columns="dimensionColumns"

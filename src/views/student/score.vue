@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="我的成绩">
+      <ContextBar layout="workbench" show-title title="我的成绩" :subtitle="`${pageTotal} 场`">
         <template #status>
           <UiTag v-if="(reviewOpenCount ?? 0) > 0" tone="orange" size="sm">
             复核开放 {{ reviewOpenCount }} 场
@@ -16,7 +16,7 @@
     </template>
 
     <template #signal>
-      <SignalBand v-if="!pageBootstrapping" :metrics="summarySignalMetrics" variant="panel" compact />
+      <SignalBand layout="spotlight" v-if="!pageBootstrapping" :metrics="summarySignalMetrics" variant="panel" compact />
     </template>
 
     <UiSkeletonState v-if="pageBootstrapping" :rows="4" compact />
@@ -99,6 +99,7 @@
 
       <!-- D-6 个性化洞察（基于 exams 已加载数据派生，零额外 RPC） -->
       <SignalBand
+        layout="spotlight"
         v-if="insightItems.length > 0"
         :metrics="insightSignalMetrics"
         variant="panel"
@@ -165,6 +166,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildExamScoreActions(record)"
                 split
                 @action="(key) => handleExamScoreAction(key, record)"
@@ -246,7 +248,7 @@ const examColumns: ColumnType<StudentExamItemVO>[] = [
   { title: '得分', key: 'finalScore', width: 100, align: 'right' },
   { title: '发布时间', key: 'publishedTime', width: 170 },
   { title: '复核窗口', key: 'reviewWindowStatus', width: 120 },
-  { title: '操作', key: 'actions', width: 200 },
+  { title: '主行动', key: 'actions', width: 200 },
 ]
 
 function finalScoreStatusTone(item: StudentExamItemVO): BadgeTone {
@@ -444,8 +446,7 @@ function buildExamScoreActions(record: StudentExamItemVO): UiTableRowActionItem[
     {
       key: 'detail',
       label: '查看详情',
-      disabled: record.finalScoreStatus !== StudentFacingFinalScoreStatusCode.PUBLISHED,
-    },
+      disabled: record.finalScoreStatus !== StudentFacingFinalScoreStatusCode.PUBLISHED, tone: 'primary' },
     {
       key: 'appeal',
       label: '提交复核',

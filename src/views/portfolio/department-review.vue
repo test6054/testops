@@ -16,6 +16,7 @@ import type {
   PortfolioReviewTaskSummaryVO,
 } from '@/apis/portfolio/types'
 import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -48,6 +49,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
@@ -64,6 +66,7 @@ import { portfolioAiSourceDisplay } from '@/utils/portfolio-ai-source-display'
 import { formatPortfolioArchiveEvidenceRef } from '@/utils/portfolio-archive-evidence'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -155,7 +158,7 @@ const listColumns: ColumnsType = [
   { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '提交时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
-  { title: '操作', key: 'actions', width: 200 },
+  { title: '主行动', key: 'actions', width: 200 },
 ]
 
 const fieldColumns: ColumnsType = [
@@ -251,6 +254,68 @@ const fieldRequestToken = ref(0)
 const logRequestToken = ref(0)
 const aiPreReviewRequestToken = ref(0)
 const selectedRowKeys = ref<string[]>([])
+
+const REVIEW_OPEN_STATUSES: ReadonlySet<PortfolioReviewTaskStatusCode> = new Set([
+  PortfolioReviewTaskStatusCode.PENDING,
+  PortfolioReviewTaskStatusCode.SECOND_REVIEW,
+])
+
+const pageOpenReviewCount = computed(() =>
+  rows.value.filter((row) => REVIEW_OPEN_STATUSES.has(row.reviewStatus)).length,
+)
+
+const reviewSignalMetrics = computed<SignalMetric[]>(() => {
+  if ((listLoadFailed.value || listSyncFailed.value) && pageTotal.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '审核任务',
+      value: pageTotal.value,
+      clickable: true,
+    },
+  ]
+  if (rows.value.length > 0) {
+    metrics.push({
+      key: 'page-open',
+      label: '本页待审',
+      value: pageOpenReviewCount.value,
+      tone: pageOpenReviewCount.value > 0 ? 'orange' : undefined,
+      helper: '仅当前页',
+    })
+  }
+  if (selectedRowKeys.value.length > 0) {
+    metrics.push({
+      key: 'selected',
+      label: '已勾选',
+      value: selectedRowKeys.value.length,
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: pageOpenReviewCount.value > 0 ? 'page-open' : 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const reviewWorkbenchSubtitle = computed(() => {
+  if (listLoadFailed.value) {
+    return '待办加载失败'
+  }
+  const parts = [`${pageTotal.value} 条`]
+  if (pageOpenReviewCount.value > 0) {
+    parts.push(`本页待审 ${pageOpenReviewCount.value}`)
+  }
+  if (selectedRowKeys.value.length > 0) {
+    parts.push(`已勾选 ${selectedRowKeys.value.length}`)
+  }
+  return parts.join(' · ')
+})
+
+function onReviewSignalClick(_key: string) {
+  void loadPage()
+}
+
 const batchSubmitting = ref(false)
 const batchRejectSubmitting = ref(false)
 
@@ -1036,7 +1101,38 @@ watch(
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="院系审核台" />
+      <ContextBar layout="workbench" show-title title="院系审核队列" :subtitle="reviewWorkbenchSubtitle">
+        <template v-if="selectedRowKeys.length > 0" #actions>
+          <UiButton
+            variant="primary"
+            size="sm"
+            :loading="batchSubmitting"
+            :disabled="reviewWriting"
+            @click="handleBatchApprove"
+          >
+            批量通过（{{ selectedRowKeys.length }}）
+          </UiButton>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :loading="batchRejectSubmitting"
+            :disabled="reviewWriting"
+            @click="handleBatchReject"
+          >
+            批量退回
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
+
+    <template v-if="reviewSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="reviewSignalMetrics"
+        @metric-click="onReviewSignalClick"
+      />
     </template>
 
     <UiAlertStrip v-if="deepLinkHint" tone="info" :closable="false" :title="deepLinkHint" />
@@ -1068,7 +1164,7 @@ watch(
       />
       <div class="review-toolbar">
         <UiButton
-          variant="primary"
+          variant="outline"
           size="sm"
           :loading="batchSubmitting"
           :disabled="!selectedRowKeys.length || reviewWriting"
@@ -1207,10 +1303,12 @@ watch(
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="[
                 {
                   key: 'review',
                   label: record.riskLevel === 'SENSITIVE' ? '单条复核' : '复核',
+                  tone: 'primary',
                 },
                 {
                   key: 'masterpiece',
@@ -1255,7 +1353,7 @@ watch(
         <div v-if="activeRow.teacherId" class="review-teacher-links">
           <UiButton
             size="sm"
-            variant="primary"
+            variant="outline"
             @click="goTeacherPortfolioPage('/portfolio/teacher/masterpiece', activeRow.teacherId)"
           >
             读整袋

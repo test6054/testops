@@ -2,6 +2,7 @@
 import type { PortfolioAnalysisAnnualReportVO } from '@/apis/portfolio/analysis'
 import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
@@ -18,7 +19,9 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -33,6 +36,7 @@ import {
   formatPortfolioTeacherDisplay,
   portfolioTeacherSelectOptionsFromSummaries,
 } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -259,7 +263,7 @@ const historyColumns = [
   { title: '状态', key: 'taskStatus', width: 100 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
   { title: '失败摘要', dataIndex: 'errorSummary', key: 'errorSummary', ellipsis: true },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 function taskStatusTone(status: string): 'blue' | 'green' | 'red' | 'gray' {
@@ -441,6 +445,27 @@ watch(
     void loadReportHistory()
   },
 )
+
+const AnnualReportSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'history',
+      label: '报告任务',
+      value: historyTotal.value,
+      clickable: true,
+    },
+    {
+      key: 'teachers',
+      label: '可选教师',
+      value: teachers.value.length,
+      helper: '当前已加载',
+    },
+  ], { primaryKey: 'history', actionLabel: '刷新' })
+})
+
+function onAnnualReportSignalClick(_key: string) {
+  void loadReportHistory()
+}
 </script>
 
 <template>
@@ -451,6 +476,15 @@ watch(
         show-title
         :title="pageTitle"
         :subtitle="pageSubtitle"
+      />
+    </template>
+    <template v-if="AnnualReportSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="AnnualReportSignalMetrics"
+        @metric-click="onAnnualReportSignalClick"
       />
     </template>
     <UiCard title="生成任务">
@@ -599,16 +633,20 @@ watch(
             <span>{{ formatTaskTeacher(record) }}</span>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton
-              size="sm"
-              :disabled="
-                record.taskStatus !== PortfolioAnnualReportTaskStatusCode.SUCCESS
-                  || !record.aiTaskId
-              "
-              @click="openReportDetail(record)"
-            >
-              查看报告
-            </UiButton>
+            <UiTableActions
+              :max-visible="2"
+              :items="[
+                {
+                  key: 'view',
+                  label: '查看报告',
+                  disabled:
+                    record.taskStatus !== PortfolioAnnualReportTaskStatusCode.SUCCESS
+                    || !record.aiTaskId,
+                },
+              ]"
+              split
+              @action="() => openReportDetail(record)"
+            />
           </template>
         </template>
       </UiDataTable>

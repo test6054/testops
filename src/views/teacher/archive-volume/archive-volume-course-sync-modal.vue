@@ -80,6 +80,7 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
               split
               @action="() => removeRow(index)"
@@ -160,7 +161,7 @@ const columns: ColumnsType<SyncRow> = [
   { title: '目录编码', key: 'catalogCode', width: 120 },
   { title: '文件', key: 'file', width: 200 },
   { title: '学号', key: 'studentNo', width: 120 },
-  { title: '操作', key: 'actions', width: 80 },
+  { title: '主行动', key: 'actions', width: 80 },
 ]
 
 watch(

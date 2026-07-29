@@ -2,6 +2,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanVO } from '@/apis/portfolio/teacher-platform'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -14,16 +15,9 @@ import {
 import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
-import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
@@ -31,8 +25,8 @@ import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAcce
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 interface ReviewFilterModel extends Record<string, unknown> {
   portfolioOrgId?: string
@@ -103,6 +97,28 @@ const pageNum = ref(1)
 const pageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const pageTotal = ref(0)
 const reviewRequestToken = ref(0)
+const DevPlanReviewSignalMetrics = computed<SignalMetric[]>(() => {
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '年度规划',
+      value: pageTotal.value,
+      clickable: true,
+    },
+  ]
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const DevPlanReviewWorkbenchSubtitle = computed(() => {
+  return `${pageTotal.value} 条`
+})
+
+function onDevPlanReviewSignalClick(_key: string) {
+  void loadPage()
+}
 const pendingLocatePlanId = ref('')
 const reviewModalOpen = ref(false)
 const reviewTargetId = ref('')
@@ -125,7 +141,7 @@ const columns: ColumnsType = [
   { title: '科室编号', dataIndex: 'portfolioOrgId', key: 'portfolioOrgId', width: 120 },
   { title: '状态', key: 'planStatus', width: 120 },
   { title: '身份层', key: 'identityLayers', width: 160 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 async function loadPage() {
@@ -393,7 +409,7 @@ watch(
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="年度规划审核">
+      <ContextBar show-title layout="workbench" title="年度规划审核" :subtitle="DevPlanReviewWorkbenchSubtitle">
         <template v-if="canPickTeachers" #actions>
           <UiButton
             size="sm"
@@ -407,6 +423,16 @@ watch(
         </template>
       </ContextBar>
     </template>
+    <template v-if="DevPlanReviewSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="DevPlanReviewSignalMetrics"
+        @metric-click="onDevPlanReviewSignalClick"
+      />
+    </template>
+
     <UiFilterBar
       variant="plain"
       v-model="filterModel"
@@ -441,6 +467,7 @@ watch(
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="[
                 {
                   key: 'approve',
@@ -462,6 +489,7 @@ watch(
         </template>
       </UiDataTable>
     </UiCard>
+
     <UiDialog
       v-model:open="reviewModalOpen"
       :title="reviewAction === 'approve' ? '科室审核通过' : '科室审核退回'"
@@ -499,6 +527,7 @@ watch(
         </UiButton>
       </template>
     </UiDialog>
+
     <UiDialog
       v-model:open="exportApplyOpen"
       title="申请导出发展规划台账"

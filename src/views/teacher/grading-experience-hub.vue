@@ -1,11 +1,11 @@
 <template>
   <StageWorkbenchShell class="experience-page">
     <template v-if="selectedExamId" #context>
-      <ContextBar layout="workbench" show-title title="阅卷经验库" />
+      <ContextBar layout="workbench" show-title title="阅卷经验库" :subtitle="`${experiencePageTotal} 条经验 · ${signaturePageTotal} 条签名`" />
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand compact variant="panel" :metrics="experienceSignalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="experienceSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" class="experience-page__empty" />
@@ -80,6 +80,7 @@
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
+                  :max-visible="2"
                   :items="buildSignatureRowActions(signatures[index])"
                   split
                   @action="(key) => handleSignatureRowAction(key, signatures[index])"
@@ -100,7 +101,7 @@
               <UiButton
                 v-if="canManageReviewerWrites === true"
                 size="sm"
-                variant="primary"
+                variant="outline"
                 :disabled="!experienceFilterForm.layoutQuestionId"
                 :loading="extracting === true"
                 @click="handleExtract"
@@ -179,6 +180,7 @@
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
+                  :max-visible="2"
                   :items="buildExperienceRowActions(experiences[index])"
                   split
                   @action="(key) => handleExperienceRowAction(key, experiences[index])"
@@ -205,7 +207,7 @@
               <UiButton
                 v-if="canManageReviewerWrites === true"
                 size="sm"
-                variant="primary"
+                variant="outline"
                 :disabled="!clusterFilterForm.layoutQuestionId"
                 :loading="clustering === true"
                 @click="handleGenerateCluster"
@@ -592,7 +594,7 @@ const signatureColumns: ColumnType<QuestionSignatureResponse>[] = [
   { title: '题型', key: 'questionType', width: 100 },
   { title: '经验案例', key: 'experienceCount', width: 88, align: 'right' },
   { title: '题干摘要', key: 'questionDigest', width: 320 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 const questionOptions = computed(() =>
@@ -739,7 +741,9 @@ const similarResults = ref<QuestionSignatureResponse[]>([])
 const similarSourceQuestionNo = ref<string | undefined>(undefined)
 
 function buildSignatureRowActions(_record: QuestionSignatureResponse): UiTableRowActionItem[] {
-  return [{ key: 'similar', label: '查找相似题' }]
+  return [
+    { key: 'similar', label: '查找相似题', tone: 'primary' },
+  ]
 }
 
 function handleSignatureRowAction(key: string, record: QuestionSignatureResponse): void {
@@ -749,7 +753,9 @@ function handleSignatureRowAction(key: string, record: QuestionSignatureResponse
 }
 
 function buildExperienceRowActions(_record: GradingExperienceCaseResponse): UiTableRowActionItem[] {
-  return [{ key: 'detail', label: '详情' }]
+  return [
+    { key: 'detail', label: '详情', tone: 'primary' },
+  ]
 }
 
 function handleExperienceRowAction(key: string, record: GradingExperienceCaseResponse): void {
@@ -788,27 +794,16 @@ const experienceSignalMetrics = computed((): SignalMetric[] => {
   const pendingAnalysisCount = stats?.pendingAnalysisCount ?? 0
   const assistReadyCount = stats?.assistReadyCount ?? 0
   const experienceCount = stats?.experienceCount ?? 0
-  return [
-    {
-      key: 'signatures',
-      label: '题目签名',
-      value: signatureCount,
-      unit: '条',
-      tone: signatureCount > 0 ? 'blue' : 'gray',
-    },
-    {
-      key: 'confirmed',
-      label: '已确认案例',
-      value: confirmedCount,
-      unit: '条',
-      tone: confirmedCount > 0 ? 'green' : 'gray',
-    },
+  const pool: SignalMetric[] = [
     {
       key: 'pending-analysis',
       label: '待分析',
       value: pendingAnalysisCount,
       unit: '条',
       tone: pendingAnalysisCount > 0 ? 'orange' : 'gray',
+      emphasis: 'secondary',
+      actionLabel: pendingAnalysisCount > 0 ? '去分析' : undefined,
+      helper: pendingAnalysisCount > 0 ? '经验待分析队列' : undefined,
     },
     {
       key: 'assist-ready',
@@ -816,6 +811,24 @@ const experienceSignalMetrics = computed((): SignalMetric[] => {
       value: assistReadyCount,
       unit: '条',
       tone: assistReadyCount > 0 ? 'green' : 'gray',
+      emphasis: 'secondary',
+      actionLabel: assistReadyCount > 0 ? '去定标' : undefined,
+    },
+    {
+      key: 'confirmed',
+      label: '已确认案例',
+      value: confirmedCount,
+      unit: '条',
+      tone: confirmedCount > 0 ? 'green' : 'gray',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'signatures',
+      label: '题目签名',
+      value: signatureCount,
+      unit: '条',
+      tone: signatureCount > 0 ? 'blue' : 'gray',
+      emphasis: 'secondary',
     },
     {
       key: 'experiences',
@@ -823,7 +836,18 @@ const experienceSignalMetrics = computed((): SignalMetric[] => {
       value: experienceCount,
       unit: '条',
       tone: experienceCount > 0 ? 'purple' : 'gray',
+      emphasis: 'secondary',
     },
+  ]
+  const primaryBase
+    = pendingAnalysisCount > 0
+      ? pool[0]
+      : assistReadyCount > 0
+        ? pool[1]
+        : pool[3]
+  return [
+    { ...primaryBase, emphasis: 'primary' },
+    ...pool.filter((item) => item.key !== primaryBase.key).slice(0, 3),
   ]
 })
 
@@ -836,7 +860,7 @@ const experienceColumns: ColumnType<GradingExperienceCaseResponse>[] = [
   { title: '引用', key: 'reuseCount', width: 72, align: 'right' },
   { title: '经验总结', key: 'experienceSummary', width: 300 },
   { title: '创建时间', key: 'createTime', dataIndex: 'createTime', width: 160 },
-  { title: '操作', key: 'actions', width: 90 },
+  { title: '主行动', key: 'actions', width: 90 },
 ]
 
 async function loadExperiences(): Promise<void> {

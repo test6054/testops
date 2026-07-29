@@ -19,7 +19,7 @@
     </template>
 
     <template v-if="selectedExamId && !resolving && !resolveLoadFailed" #signal>
-      <SignalBand :metrics="entrySignalMetrics" variant="panel" compact />
+      <SignalBand layout="spotlight" :metrics="entrySignalMetrics" variant="panel" compact />
     </template>
 
     <ExamWorkspaceJourneySubNav v-if="selectedExamId && !resolving && !resolveLoadFailed" />

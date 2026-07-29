@@ -7,9 +7,19 @@
         'exam-detail-layout__header--immersive': isImmersiveWorkspace,
       }"
     >
-      <div class="exam-detail-layout__logo" @click="goExamList">
+      <div class="exam-detail-layout__logo" @click="goExamList" :title="examId ? '返回考试列表' : undefined">
         <img alt="logo" class="exam-detail-layout__logo-img" src="/logo.svg" />
-        <span class="exam-detail-layout__logo-title">{{ appTitle }}</span>
+        <div class="exam-detail-layout__logo-text">
+          <span class="exam-detail-layout__logo-title">
+            {{ examId ? (snapshot?.examName || snapshot?.examNo || appTitle) : appTitle }}
+          </span>
+          <span
+            v-if="examId && mobileNavLabel"
+            class="exam-detail-layout__logo-subtitle"
+          >
+            {{ mobileNavLabel }}
+          </span>
+        </div>
       </div>
       <div v-if="examId" class="exam-detail-layout__header-toolbar">
         <UiButton
@@ -18,7 +28,7 @@
           class="exam-detail-layout__menu-toggle"
           variant="outline"
           size="sm"
-          :aria-label="mobileNavOpen ? '关闭考试导航' : '打开考试导航'"
+          :aria-label="mobileNavOpen ? '关闭本步任务导航' : '打开本步任务导航'"
           :aria-expanded="mobileNavOpen"
           aria-controls="exam-workspace-mobile-nav"
           @click="toggleMobileNav"
@@ -441,7 +451,7 @@ const mobileNavLabel = computed(() => {
     return '考试概览'
   }
   const step = EXAM_JOURNEY_STEPS.find((item) => item.key === activeJourneyKey.value)
-  return step?.title ?? '功能菜单'
+  return step?.title ?? '本步任务'
 })
 
 const examStatusLabel = computed(() => {

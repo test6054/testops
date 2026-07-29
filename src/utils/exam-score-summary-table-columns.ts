@@ -41,9 +41,11 @@ export function buildExamScoreSummaryTableColumns(
   }
 
   const actionsColumn: ColumnType<ExamScoreSummaryItemResponse> = {
-    title: '操作',
+    title: '主行动',
     key: 'actions',
-    width: variant === 'finalize' ? 320 : 280,
+    align: 'right',
+    // 行内 1 主行动 + ⋯，列宽收敛避免操作链占屏
+    width: variant === 'finalize' ? 148 : 120,
   }
 
   if (variant === 'finalize') {

@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExpertAssignmentVO } from '@/apis/portfolio/expert-assignment'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
-import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -21,6 +24,7 @@ import {
   PortfolioExpertAssignmentStatusDescription,
 } from '@/types/enums/portfolio-expert-assignment-status-enum'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 /**
@@ -34,6 +38,52 @@ const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const requestToken = ref(0)
 const rows = ref<PortfolioExpertAssignmentVO[]>([])
 const total = ref(0)
+
+const pageActiveAssignmentCount = computed(() =>
+  rows.value.filter((row) => row.assignmentStatus === PortfolioExpertAssignmentStatusCode.ACTIVE)
+    .length,
+)
+
+const expertSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && total.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '专家授权',
+      value: total.value,
+      clickable: true,
+    },
+  ]
+  if (rows.value.length > 0) {
+    metrics.push({
+      key: 'page-active',
+      label: '本页有效',
+      value: pageActiveAssignmentCount.value,
+      helper: '仅当前页',
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const expertWorkbenchSubtitle = computed(() => {
+  if (loadError.value) {
+    return '加载失败'
+  }
+  if (pageActiveAssignmentCount.value > 0) {
+    return `${total.value} 条授权 · 本页有效 ${pageActiveAssignmentCount.value}`
+  }
+  return `${total.value} 条授权`
+})
+
+function onExpertSignalClick(_key: string) {
+  void loadAssignments()
+}
+
 const focusedAssignmentId = ref('')
 const deepLinkNoticeVisible = ref(true)
 const pagination = reactive({
@@ -47,7 +97,7 @@ const columns: ColumnsType = [
   { title: '状态', key: 'assignmentStatus', width: 100 },
   { title: '过期时间', dataIndex: 'expireTime', key: 'expireTime', width: 180 },
   { title: '脱敏', key: 'maskRequired', width: 90 },
-  { title: '操作', key: 'actions', width: 220 },
+  { title: '主行动', key: 'actions', width: 220 },
 ]
 
 function readRouteStringParam(value: unknown): string {
@@ -186,6 +236,24 @@ function onPageChange(page: { current: number, pageSize: number }) {
   void loadAssignments()
 }
 
+/** 专家任务行：评价填报为主行动 */
+function buildAssignmentRowActions(record: PortfolioExpertAssignmentVO): UiTableRowActionItem[] {
+  const disabled = !canEnterReview(record)
+  return [
+    { key: 'fill', label: '评价填报', tone: 'primary', disabled },
+    { key: 'review', label: '脱敏审阅', disabled },
+  ]
+}
+
+function handleAssignmentRowAction(key: string, record: PortfolioExpertAssignmentVO): void {
+  if (key === 'fill') {
+    goFill(record)
+    return
+  }
+  if (key === 'review') {
+    goReview(record)
+  }
+}
 function goReview(row: PortfolioExpertAssignmentVO) {
   if (!canEnterReview(row)) {
     void message.warning('当前授权不可进入脱敏审阅（已吊销或已过期）')
@@ -233,9 +301,20 @@ watch(
         layout="workbench"
         show-title
         title="专家评审工作台"
-        subtitle="默认展示本人有效授权；吊销/过期站内信可深链定位对应授权"
+        :subtitle="expertWorkbenchSubtitle"
       />
     </template>
+
+    <template v-if="expertSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="expertSignalMetrics"
+        @metric-click="onExpertSignalClick"
+      />
+    </template>
+
     <UiAlertStrip
       v-if="deepLinkAlert && deepLinkNoticeVisible"
       class="expert-workbench__deeplink"
@@ -274,23 +353,13 @@ watch(
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton
-              size="sm"
-              variant="soft"
-              :disabled="!canEnterReview(record)"
-              @click="goReview(record)"
-            >
-              脱敏审阅
-            </UiButton>
-            <UiButton
-              size="sm"
-              variant="primary"
+            <UiTableActions
+              :max-visible="2"
               class="expert-workbench__fill"
-              :disabled="!canEnterReview(record)"
-              @click="goFill(record)"
-            >
-              评价填报
-            </UiButton>
+              :items="buildAssignmentRowActions(record)"
+              split
+              @action="(key) => handleAssignmentRowAction(key, record)"
+            />
           </template>
         </template>
         <template #emptyText>

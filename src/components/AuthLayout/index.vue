@@ -4,32 +4,27 @@
     <aside class="auth-brand">
       <div class="auth-brand__mark">
         <slot name="brand-mark">
-          <img src="/logo.svg" alt="实训坊" class="auth-brand__logo" />
+          <img src="/logo.svg" alt="教学质量中心" class="auth-brand__logo" />
           <div class="auth-brand__mark-text">
-            <div class="auth-brand__product">实训坊</div>
-            <div class="auth-brand__product-sub">EDU PRACTICE WEB</div>
+            <div class="auth-brand__product">教学质量中心</div>
+            <div class="auth-brand__product-sub">让每一次评价都有据可依</div>
           </div>
         </slot>
       </div>
 
       <div class="auth-brand__hero">
         <slot name="brand-header">
-          <h1 class="auth-brand__title">工科产教融合 AI 实训平台</h1>
-          <p class="auth-brand__subtitle">
-            服务课程实训、毕业设计、校企项目与阶段答辩等高校教学场景。
-          </p>
+          <h1 class="auth-brand__title">教学质量中心</h1>
+          <p class="auth-brand__subtitle">连接考试阅卷、质量评价与教学档案治理。</p>
         </slot>
       </div>
 
       <div class="auth-brand__capability-cloud">
         <slot name="brand-content">
           <div class="auth-brand__capabilities">
-            <div class="auth-brand__capability">课程组织与任务推进</div>
-            <div class="auth-brand__capability">AI 评测与答辩收口</div>
-            <div class="auth-brand__capability">达成度分析</div>
-            <div class="auth-brand__capability">教学留痕</div>
-            <div class="auth-brand__capability">OBE 达成</div>
-            <div class="auth-brand__capability">校企项目实训</div>
+            <div class="auth-brand__capability">考试阅卷</div>
+            <div class="auth-brand__capability">质量评价</div>
+            <div class="auth-brand__capability">教学档案袋</div>
           </div>
         </slot>
       </div>
@@ -60,8 +55,8 @@
 
     <!-- 移动端顶栏（< 860px 显示） -->
     <div class="auth-mobile-bar">
-      <img src="/logo.svg" alt="logo" class="auth-mobile-bar__logo" />
-      <span class="auth-mobile-bar__title">实训坊</span>
+      <img src="/logo.svg" alt="教学质量中心" class="auth-mobile-bar__logo" />
+      <span class="auth-mobile-bar__title">教学质量中心</span>
     </div>
   </div>
 </template>
@@ -133,8 +128,8 @@ const copyright = computed(() => appStore.getCopyright())
 
 .auth-brand__product-sub {
   font-size: var(--dp-font-size-xs);
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-weight: var(--dp-font-weight-body);
+  letter-spacing: 0;
   color: color-mix(in srgb, var(--dp-gray-600) 58%, transparent);
 }
 
@@ -235,10 +230,8 @@ const copyright = computed(() => appStore.getCopyright())
 }
 
 .auth-footer {
-  position: absolute;
-  bottom: 16px;
-  left: 0;
-  right: 0;
+  position: static;
+  margin-top: var(--dp-space-section);
   text-align: center;
   font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
@@ -276,6 +269,7 @@ const copyright = computed(() => appStore.getCopyright())
   }
 
   .auth-mobile-bar {
+    order: -1;
     display: flex;
     align-items: center;
     gap: var(--dp-space-component);
@@ -311,8 +305,7 @@ const copyright = computed(() => appStore.getCopyright())
   }
 
   .auth-brand__capability-cloud {
-    bottom: 74px;
-    width: calc(100vw - 32px);
+    display: none;
   }
 
   .auth-brand__capabilities {
@@ -326,8 +319,6 @@ const copyright = computed(() => appStore.getCopyright())
   }
 
   .auth-footer {
-    position: relative;
-    bottom: auto;
     margin-top: var(--dp-space-component);
   }
 }

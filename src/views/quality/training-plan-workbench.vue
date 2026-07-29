@@ -127,21 +127,21 @@ const objectiveColumns: ColumnsType = [
   { title: '编码', dataIndex: 'objectiveCode', key: 'objectiveCode', width: 80, fixed: 'left' },
   { title: '名称', key: 'objectiveName' },
   { title: '权重和', key: 'weightSum', width: 100 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 const objMappingColumns: ColumnsType = [
   { title: '毕业要求', key: 'requirement', fixed: 'left' },
   { title: '权重', dataIndex: 'weight', key: 'weight', width: 100 },
   { title: '备注', dataIndex: 'notes', key: 'notes' },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 const requirementColumns: ColumnsType = [
   { title: '编码', dataIndex: 'requirementCode', key: 'requirementCode', width: 80, fixed: 'left' },
   { title: '名称', key: 'requirementName' },
   { title: '观测点权重', key: 'indicatorWeightSum', width: 120 },
-  { title: '操作', key: 'actions', width: 160 },
+  { title: '主行动', key: 'actions', width: 160 },
 ]
 
 const indicatorColumns: ColumnsType = [
@@ -150,14 +150,14 @@ const indicatorColumns: ColumnsType = [
   { title: '权重', dataIndex: 'requirementWeight', key: 'requirementWeight', width: 80 },
   { title: '阈值', dataIndex: 'thresholdValue', key: 'thresholdValue', width: 80 },
   { title: '五育维度', dataIndex: 'civicDimensions', key: 'civicDimensions', width: 160 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 const stdMappingColumns: ColumnsType = [
   { title: '标准条目', key: 'standardItem', fixed: 'left' },
   { title: '标准条款', dataIndex: 'standardClause', key: 'standardClause', width: 180 },
   { title: '覆盖说明', dataIndex: 'coverageNote', key: 'coverageNote' },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 const qualityStore = useQualityStore()
@@ -866,52 +866,82 @@ const signals = computed<SignalMetric[]>(() => {
   const requirementsConfigured = requirementTotal > 0
   const objectiveHealthOk = objectivesConfigured && objectiveHealthyCount === objectiveTotal
   const requirementHealthOk = requirementsConfigured && requirementHealthyCount === requirementTotal
+  const planMetric: SignalMetric = {
+    key: 'plan',
+    label: '当前方案状态',
+    value: planStatus
+      ? strictEnumLabel(ConfirmationStatusDescription, planStatus, '培养方案确认状态')
+      : '未提交',
+    tone:
+      planStatus === ConfirmationStatusCode.CONFIRMED
+        ? 'green'
+        : planStatus === ConfirmationStatusCode.RETURNED
+          ? 'red'
+          : 'orange',
+    emphasis: 'secondary',
+    actionLabel:
+      planStatus === ConfirmationStatusCode.CONFIRMED
+        ? undefined
+        : planStatus === ConfirmationStatusCode.RETURNED
+          ? '处理退回'
+          : '去确认',
+    helper: '培养方案确认状态',
+  }
+  const objHealth: SignalMetric = {
+    key: 'objectivesHealth',
+    label: '目标→要求权重健康',
+    value: objectivesConfigured ? `${objectiveHealthyCount}/${objectiveTotal}` : '未配置',
+    tone: !objectivesConfigured ? 'orange' : objectiveHealthOk ? 'green' : 'red',
+    clickable: objectivesConfigured && !objectiveHealthOk,
+    active: activeTab.value === 'objective' && objectivesConfigured && !objectiveHealthOk,
+    emphasis: 'secondary',
+    actionLabel: objectivesConfigured && !objectiveHealthOk ? '修复权重' : undefined,
+  }
+  const reqHealth: SignalMetric = {
+    key: 'requirementsHealth',
+    label: '要求→观测点权重健康',
+    value: requirementsConfigured ? `${requirementHealthyCount}/${requirementTotal}` : '未配置',
+    tone: !requirementsConfigured ? 'orange' : requirementHealthOk ? 'green' : 'red',
+    clickable: requirementsConfigured && !requirementHealthOk,
+    active: activeTab.value === 'requirement' && requirementsConfigured && !requirementHealthOk,
+    emphasis: 'secondary',
+    actionLabel: requirementsConfigured && !requirementHealthOk ? '修复权重' : undefined,
+  }
+  const objectives: SignalMetric = {
+    key: 'objectives',
+    label: '培养目标数',
+    value: objectiveTotal,
+    tone: objectivesConfigured ? 'blue' : 'orange',
+    clickable: true,
+    active: activeTab.value === 'objective',
+    emphasis: 'secondary',
+  }
+  const requirements: SignalMetric = {
+    key: 'requirements',
+    label: '毕业要求数',
+    value: requirementTotal,
+    tone: requirementsConfigured ? 'blue' : 'orange',
+    clickable: true,
+    active: activeTab.value === 'requirement',
+    emphasis: 'secondary',
+  }
+
+  const primaryBase
+    = planStatus === ConfirmationStatusCode.RETURNED
+      ? planMetric
+      : objectivesConfigured && !objectiveHealthOk
+        ? objHealth
+        : requirementsConfigured && !requirementHealthOk
+          ? reqHealth
+          : planStatus !== ConfirmationStatusCode.CONFIRMED
+            ? planMetric
+            : objectives
+
   return [
-    {
-      key: 'plan',
-      label: '当前方案状态',
-      value: planStatus
-        ? strictEnumLabel(ConfirmationStatusDescription, planStatus, '培养方案确认状态')
-        : '未提交',
-      tone:
-        planStatus === ConfirmationStatusCode.CONFIRMED
-          ? 'green'
-          : planStatus === ConfirmationStatusCode.RETURNED
-            ? 'red'
-            : 'orange',
-    },
-    {
-      key: 'objectives',
-      label: '培养目标数',
-      value: objectiveTotal,
-      tone: objectivesConfigured ? 'blue' : 'orange',
-      clickable: true,
-      active: activeTab.value === 'objective',
-    },
-    {
-      key: 'objectivesHealth',
-      label: '目标→要求权重健康',
-      value: objectivesConfigured ? `${objectiveHealthyCount}/${objectiveTotal}` : '未配置',
-      tone: !objectivesConfigured ? 'orange' : objectiveHealthOk ? 'green' : 'red',
-      clickable: objectivesConfigured && !objectiveHealthOk,
-      active: activeTab.value === 'objective' && objectivesConfigured && !objectiveHealthOk,
-    },
-    {
-      key: 'requirements',
-      label: '毕业要求数',
-      value: requirementTotal,
-      tone: requirementsConfigured ? 'blue' : 'orange',
-      clickable: true,
-      active: activeTab.value === 'requirement',
-    },
-    {
-      key: 'requirementsHealth',
-      label: '要求→观测点权重健康',
-      value: requirementsConfigured ? `${requirementHealthyCount}/${requirementTotal}` : '未配置',
-      tone: !requirementsConfigured ? 'orange' : requirementHealthOk ? 'green' : 'red',
-      clickable: requirementsConfigured && !requirementHealthOk,
-      active: activeTab.value === 'requirement' && requirementsConfigured && !requirementHealthOk,
-    },
+    { ...primaryBase, emphasis: 'primary' },
+    ...[planMetric, objHealth, reqHealth, objectives, requirements]
+      .filter((item) => item.key !== primaryBase.key)
+      .slice(0, 3),
   ]
 })
 
@@ -1587,7 +1617,7 @@ async function deleteStdMapping(record: RequirementStandardMappingVO) {
 
 function buildObjectiveActions(_record: TrainingObjectiveVO): UiTableRowActionItem[] {
   return [
-    { key: 'edit', label: '编辑' },
+    { key: 'edit', label: '编辑', tone: 'primary' },
     { key: 'delete', label: '删除', tone: 'danger' },
   ]
 }
@@ -1605,7 +1635,7 @@ function handleObjectiveAction(key: string, record: TrainingObjectiveVO): void {
 
 function buildObjMappingActions(_record: TrainingObjectiveRequirementVO): UiTableRowActionItem[] {
   return [
-    { key: 'edit', label: '编辑' },
+    { key: 'edit', label: '编辑', tone: 'primary' },
     { key: 'delete', label: '删除', tone: 'danger' },
   ]
 }
@@ -1623,7 +1653,7 @@ function handleObjMappingAction(key: string, record: TrainingObjectiveRequiremen
 
 function buildRequirementActions(_record: GraduationRequirementVO): UiTableRowActionItem[] {
   return [
-    { key: 'edit', label: '编辑' },
+    { key: 'edit', label: '编辑', tone: 'primary' },
     { key: 'validate-weights', label: '校验权重' },
     { key: 'delete', label: '删除', tone: 'danger' },
   ]
@@ -1645,7 +1675,7 @@ function handleRequirementAction(key: string, record: GraduationRequirementVO): 
 
 function buildIndicatorActions(_record: RequirementIndicatorVO): UiTableRowActionItem[] {
   return [
-    { key: 'edit', label: '编辑' },
+    { key: 'edit', label: '编辑', tone: 'primary' },
     { key: 'delete', label: '删除', tone: 'danger' },
   ]
 }
@@ -1663,7 +1693,7 @@ function handleIndicatorAction(key: string, record: RequirementIndicatorVO): voi
 
 function buildStdMappingActions(_record: RequirementStandardMappingVO): UiTableRowActionItem[] {
   return [
-    { key: 'edit', label: '编辑' },
+    { key: 'edit', label: '编辑', tone: 'primary' },
     { key: 'delete', label: '删除', tone: 'danger' },
   ]
 }
@@ -1731,12 +1761,15 @@ function handlePlanProgramChange(value: string | null): void {
 function handlePlanAccreditationProfileChange(value: string | null): void {
   planEditor.accreditationProfileId = value ?? ''
 }
+
+/** 任务工作台副标题：目标/要求/观测点规模。 */
+const trainingPlanWorkbenchSubtitle = computed(() => `${objectiveTotal.value} 目标 · ${requirementTotal.value} 要求 · ${indicatorTotal.value} 观测点`)
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar show-title title="培养方案体系工作台">
+      <QualityPageContextBar show-title title="培养方案体系工作台" :subtitle="trainingPlanWorkbenchSubtitle">
         <template #status>
           <span v-if="currentPlan" class="tpw__context-meta">
             学年 {{ currentPlan.schoolYear || '未配置学年' }} · 年级
@@ -1851,6 +1884,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
     >
       <SignalBand
         :metrics="signals"
+        layout="spotlight"
         variant="panel"
         compact
         class="tpw__signals"
@@ -1879,18 +1913,18 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 
       <div class="tpw__tabs">
         <UiButton
-          :variant="activeTab === 'objective' ? 'primary' : 'ghost'"
+          :variant="activeTab === 'objective' ? 'outline' : 'ghost'"
           size="sm"
           @click="activeTab = 'objective'"
         >
-          ① 培养目标 → 毕业要求映射
+          ① 目标 → 毕业要求
         </UiButton>
         <UiButton
-          :variant="activeTab === 'requirement' ? 'primary' : 'ghost'"
+          :variant="activeTab === 'requirement' ? 'outline' : 'ghost'"
           size="sm"
           @click="activeTab = 'requirement'"
         >
-          ② 毕业要求 → 观测点 / 标准条款
+          ② 要求 → 观测点/标准
         </UiButton>
       </div>
 
@@ -1903,7 +1937,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                 <span>培养目标列表</span>
               </template>
               <template #extra>
-                <UiButton variant="primary" size="sm" @click="openObjectiveCreate">
+                <UiButton variant="outline" size="sm" @click="openObjectiveCreate">
                   新建目标
                 </UiButton>
               </template>
@@ -1947,6 +1981,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   </template>
                   <template v-else-if="column.key === 'actions'">
                     <UiTableActions
+                      :max-visible="2"
                       :items="buildObjectiveActions(record)"
                       split
                       @action="(key) => handleObjectiveAction(key, record)"
@@ -1978,7 +2013,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     权重和：{{ objectiveWeightSum.toFixed(3) }}
                     {{ objectiveWeightHealthy ? '合规' : '需=1' }}
                   </UiTag>
-                  <UiButton variant="primary" size="sm" @click="openObjMappingCreate">
+                  <UiButton variant="outline" size="sm" @click="openObjMappingCreate">
                     新增映射
                   </UiButton>
                 </div>
@@ -2020,6 +2055,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   </template>
                   <template v-else-if="column.key === 'actions'">
                     <UiTableActions
+                      :max-visible="2"
                       :items="buildObjMappingActions(record)"
                       split
                       @action="(key) => handleObjMappingAction(key, record)"
@@ -2034,7 +2070,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
         <div class="tpw__matrix-block">
           <MatrixWorkbench
             title="培养目标 × 毕业要求 权重矩阵"
-            subtitle="单元格 = 权重；空格 = 未映射；点击单元格新增/修改"
+            subtitle="权重映射"
             row-header-label="培养目标"
             col-header-label="毕业要求"
             :rows="objectiveMatrixRows"
@@ -2058,7 +2094,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                 <span>毕业要求列表</span>
               </template>
               <template #extra>
-                <UiButton variant="primary" size="sm" @click="openRequirementCreate">
+                <UiButton variant="outline" size="sm" @click="openRequirementCreate">
                   新建毕业要求
                 </UiButton>
               </template>
@@ -2104,6 +2140,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   </template>
                   <template v-else-if="column.key === 'actions'">
                     <UiTableActions
+                      :max-visible="2"
                       :items="buildRequirementActions(record)"
                       split
                       @action="(key) => handleRequirementAction(key, record)"
@@ -2141,7 +2178,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     >
                       权重和：{{ indicatorWeightSumByReq(selectedRequirement.id).toFixed(3) }}
                     </UiTag>
-                    <UiButton variant="primary" size="sm" @click="openIndicatorCreate">
+                    <UiButton variant="outline" size="sm" @click="openIndicatorCreate">
                       新增观测点
                     </UiButton>
                   </div>
@@ -2176,6 +2213,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     </template>
                     <template v-else-if="column.key === 'actions'">
                       <UiTableActions
+                        :max-visible="2"
                         :items="buildIndicatorActions(record)"
                         split
                         @action="(key) => handleIndicatorAction(key, record)"
@@ -2190,7 +2228,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   <span>「{{ selectedRequirement.requirementName }}」对应认证标准条款</span>
                 </template>
                 <template #extra>
-                  <UiButton variant="primary" size="sm" @click="openStdMappingCreate">
+                  <UiButton variant="outline" size="sm" @click="openStdMappingCreate">
                     新增标准映射
                   </UiButton>
                 </template>
@@ -2228,6 +2266,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     </template>
                     <template v-else-if="column.key === 'actions'">
                       <UiTableActions
+                        :max-visible="2"
                         :items="buildStdMappingActions(record)"
                         split
                         @action="(key) => handleStdMappingAction(key, record)"

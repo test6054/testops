@@ -2,6 +2,7 @@
 import type { PortfolioCourseArchiveCourseVO } from '@/apis/portfolio/course-archive'
 import type { PortfolioProcessSessionVO } from '@/apis/portfolio/process-session'
 import type { PortfolioArchiveCategoryTreeNodeVO } from '@/apis/portfolio/types'
+import type { SignalMetric } from '@/types/workbench'
 /**
  * 教学全过程过程记录：讲授课程锚定 + 课次三段（准备/过程/反馈）独立落库。
  */
@@ -28,6 +29,7 @@ import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
@@ -40,6 +42,7 @@ import { PortfolioProcessSessionCategoryCode } from '@/types/enums/portfolio-pro
 import { PortfolioProcessSessionStatusCode } from '@/types/enums/portfolio-process-session-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 defineOptions({ name: 'PortfolioTeacherProcessJournal' })
@@ -524,18 +527,63 @@ function segmentSummary(row: PortfolioProcessSessionVO): string {
 }
 
 usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
+
+const processJournalWorkbenchSubtitle = computed(() => {
+  if (sessionsLoadFailed.value) return '加载失败'
+  const total = sessions.value.length
+  const draftCount = sessions.value.filter(
+    (item) => item.sessionStatus === PortfolioProcessSessionStatusCode.DRAFT,
+  ).length
+  if (total === 0) return '暂无过程记录'
+  return draftCount > 0 ? `${total} 条 · ${draftCount} 草稿` : `${total} 条记录`
+})
+const ProcessJournalSignalMetrics = computed<SignalMetric[]>(() => {
+  if (sessionsLoadFailed.value && sessions.value.length === 0) {
+    return []
+  }
+  const draftCount = sessions.value.filter((item) => item.sessionStatus === PortfolioProcessSessionStatusCode.DRAFT).length
+  return applySpotlightEmphasis([
+    {
+      key: 'sessions',
+      label: '过程记录',
+      value: sessions.value.length,
+      clickable: true,
+      helper: '当前已加载',
+    },
+    {
+      key: 'draft',
+      label: '草稿',
+      value: draftCount,
+      helper: '仅当前已加载',
+    },
+  ], { primaryKey: 'sessions', actionLabel: '刷新' })
+})
+
+function onProcessJournalSignalClick(_key: string) {
+  void loadSessions()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="教学过程记录">
+      <ContextBar show-title layout="workbench" title="教学过程记录" :subtitle="processJournalWorkbenchSubtitle">
         <template #actions>
           <UiButton size="sm" @click="goMasterpiece">预览代表作</UiButton>
           <UiButton size="sm" variant="outline" @click="goCourseArchive">课程档案</UiButton>
         </template>
       </ContextBar>
     </template>
+    <template v-if="ProcessJournalSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="ProcessJournalSignalMetrics"
+        @metric-click="onProcessJournalSignalClick"
+      />
+    </template>
+
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
     <UiAlertStrip

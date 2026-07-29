@@ -86,6 +86,16 @@ export interface SignalMetric {
   progress?: number
   /** 为 true 且 progress 为 [0,100] 有限数时渲染进度条 */
   showProgress?: boolean
+  /**
+   * spotlight 布局主次：primary 独占主卡；未标注时取首项为 primary，其余 secondary。
+   * balanced 布局忽略该字段。
+   */
+  emphasis?: 'primary' | 'secondary'
+  /**
+   * 仅 primary 主卡展示的文字链文案（如「查看待办」）；禁止实心主按钮。
+   * 点击仍触发 metric-click(key)。
+   */
+  actionLabel?: string
 }
 
 // ─── 任务结果面板（TaskResultPanel）──────────────────────

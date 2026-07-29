@@ -2,7 +2,8 @@
   <SignalBand
     v-if="metrics.length"
     :metrics="metrics"
-    variant="inline"
+    layout="spotlight"
+    variant="panel"
     compact
     @metric-click="
       (key) => emit('metric-click', key, { academicYear: cockpit?.currentAcademicYear })
@@ -46,13 +47,72 @@ const metrics = computed((): SignalMetric[] => {
     return []
   }
   const row = cockpit.value
-  const items: SignalMetric[] = [
+
+  // 档案袋任务心智：缺口/退回/待审优先为主卡；否则完整度主卡
+  const gapPrimary: SignalMetric = {
+    key: 'openGap',
+    label: '补采待办',
+    value: row.openGapCount,
+    unit: '项',
+    tone: row.openGapCount > 0 ? 'orange' : 'green',
+    emphasis: 'primary',
+    actionLabel: row.openGapCount > 0 ? '去补齐' : undefined,
+    helper: row.openGapCount > 0 ? '优先关闭材料缺口' : '暂无补采待办',
+    clickable: true,
+  }
+  const returnedPrimary: SignalMetric = {
+    key: 'returned',
+    label: '退回待改',
+    value: row.returnedCount,
+    unit: '条',
+    tone: row.returnedCount > 0 ? 'orange' : 'green',
+    emphasis: 'primary',
+    actionLabel: row.returnedCount > 0 ? '处理退回' : undefined,
+    helper: row.returnedCount > 0 ? '退回材料待修订' : '暂无退回',
+    clickable: true,
+  }
+  const reviewPrimary: SignalMetric = {
+    key: 'pendingReview',
+    label: '待审档案',
+    value: row.pendingReviewCount,
+    unit: '条',
+    tone: row.pendingReviewCount > 0 ? 'blue' : 'green',
+    emphasis: 'primary',
+    actionLabel: row.pendingReviewCount > 0 ? '去审核' : undefined,
+    helper: row.pendingReviewCount > 0 ? '档案待审队列' : '暂无待审',
+    clickable: true,
+  }
+  const completenessPrimary: SignalMetric = {
+    key: 'completeness',
+    label: `${row.currentAcademicYear} 完整度`,
+    value: row.completenessPercent,
+    unit: '%',
+    tone: row.completenessPercent >= 80 ? 'green' : 'orange',
+    emphasis: 'primary',
+    actionLabel: '查看完整度',
+    helper: '本学年档案完整度',
+    clickable: true,
+    showProgress: true,
+    progress: row.completenessPercent,
+  }
+
+  const primary
+    = row.openGapCount > 0
+      ? gapPrimary
+      : row.returnedCount > 0
+        ? returnedPrimary
+        : row.pendingReviewCount > 0
+          ? reviewPrimary
+          : completenessPrimary
+
+  const secondaryPool: SignalMetric[] = [
     {
       key: 'completeness',
       label: `${row.currentAcademicYear} 完整度`,
-      value: String(row.completenessPercent),
+      value: row.completenessPercent,
       unit: '%',
       tone: row.completenessPercent >= 80 ? 'green' : 'orange',
+      emphasis: 'secondary',
       clickable: true,
       showProgress: true,
       progress: row.completenessPercent,
@@ -60,55 +120,63 @@ const metrics = computed((): SignalMetric[] => {
     {
       key: 'pendingReview',
       label: '待审档案',
-      value: String(row.pendingReviewCount),
+      value: row.pendingReviewCount,
       unit: '条',
       tone: row.pendingReviewCount > 0 ? 'blue' : 'green',
+      emphasis: 'secondary',
       clickable: true,
     },
     {
       key: 'returned',
       label: '退回待改',
-      value: String(row.returnedCount),
+      value: row.returnedCount,
       unit: '条',
       tone: row.returnedCount > 0 ? 'orange' : 'green',
+      emphasis: 'secondary',
       clickable: true,
     },
     {
       key: 'openGap',
       label: '补采待办',
-      value: String(row.openGapCount),
+      value: row.openGapCount,
       unit: '项',
       tone: row.openGapCount > 0 ? 'orange' : 'green',
+      emphasis: 'secondary',
       clickable: true,
     },
   ]
+
   if (row.courseArchiveTaughtCourseCount != null && row.courseArchiveTaughtCourseCount > 0) {
     const done = row.courseArchiveFrameworkSlotDone
     const total = row.courseArchiveFrameworkSlotTotal
-    items.push({
+    secondaryPool.push({
       key: 'courseArchive',
       label: '课程五框架',
       value: optionalCount(done),
       unit: total == null ? '' : `/${total}`,
       tone: done != null && total != null && done >= total ? 'green' : 'orange',
+      emphasis: 'secondary',
       clickable: true,
     })
   }
   if (row.completenessDeltaVsPreviousYear !== undefined) {
-    items.push({
+    secondaryPool.push({
       key: 'delta',
       label: '较上学年',
       value: `${row.completenessDeltaVsPreviousYear >= 0 ? '+' : ''}${row.completenessDeltaVsPreviousYear}`,
       unit: '%',
       tone: row.completenessDeltaVsPreviousYear >= 0 ? 'green' : 'orange',
+      emphasis: 'secondary',
       trend: row.completenessDeltaVsPreviousYear,
       trendPolarity: 'positive',
       clickable: true,
     })
   }
-  return items.filter(
-    (item) => item.key !== 'delta' || row.completenessDeltaVsPreviousYear !== undefined,
-  )
+
+  return [
+    primary,
+    ...secondaryPool.filter((item) => item.key !== primary.key).slice(0, 3),
+  ]
 })
 
 async function loadCockpit() {

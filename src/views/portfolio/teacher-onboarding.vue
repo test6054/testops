@@ -29,12 +29,26 @@ function navigateJourney(journeyKey: PortfolioTeacherJourneyKey) {
     query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
   })
 }
+
+const TeacherOnboardingWorkbenchSubtitle = computed(() => {
+  const total = journeyStages.value.length
+  if (total <= 0) {
+    return loadFailed.value ? '旅程加载失败' : '准备启用'
+  }
+  const done = journeyStages.value.filter((stage) => stage.status === 'completed').length
+  return `启用进度 ${done}/${total}`
+})
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="启用我的教学档案袋" />
+      <ContextBar
+        show-title
+        layout="workbench"
+        title="启用我的教学档案袋"
+        :subtitle="TeacherOnboardingWorkbenchSubtitle"
+      />
     </template>
     <template v-if="!needsTeacherPick" #rail>
       <PortfolioTeacherJourneyRail

@@ -5,6 +5,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherPageRequest, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
@@ -15,6 +16,7 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { flattenTeachingGroupOptions, usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioReviewAccess } from '@/composables/usePortfolioReviewAccess'
@@ -22,6 +24,7 @@ import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { usePortfolioStore } from '@/stores/modules/portfolio'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
@@ -34,6 +37,34 @@ const loading = ref(false)
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const list = ref<PortfolioTeacherSummaryVO[]>([])
 const total = ref(0)
+const ReviewerBrowseSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && total.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '档案浏览',
+      value: total.value,
+      clickable: true,
+    },
+  ]
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const ReviewerBrowseWorkbenchSubtitle = computed(() => {
+  if (loadError.value) {
+    return '加载失败'
+  }
+  return `${total.value} 条`
+})
+
+function onReviewerBrowseSignalClick(_key: string) {
+  void loadPage()
+}
 const requestToken = ref(0)
 
 const query = reactive<PortfolioTeacherPageRequest>({
@@ -114,7 +145,7 @@ const columns: ColumnsType = [
   { title: '职称', dataIndex: 'title', key: 'title', width: 120 },
   { title: '完整度', key: 'completeness', width: 120 },
   { title: '身份层', key: 'identityLayers', width: 160 },
-  { title: '操作', key: 'actions', width: 280, fixed: 'right' },
+  { title: '主行动', key: 'actions', width: 280, fixed: 'right' },
 ]
 
 async function loadPage() {
@@ -246,7 +277,16 @@ onMounted(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="评审工作台 · 档案浏览" />
+      <ContextBar layout="workbench" show-title title="评审工作台 · 档案浏览" :subtitle="ReviewerBrowseWorkbenchSubtitle" />
+    </template>
+    <template v-if="ReviewerBrowseSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="ReviewerBrowseSignalMetrics"
+        @metric-click="onReviewerBrowseSignalClick"
+      />
     </template>
 
     <UiAlertStrip tone="info" :message="scopeHint" style="margin-bottom: var(--dp-space-component)" />
@@ -285,6 +325,7 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="rowActions(record)"
               @action="(key) => handleAction(key, record)"
             />

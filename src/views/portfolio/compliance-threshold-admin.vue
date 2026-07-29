@@ -5,8 +5,9 @@ import type {
   PortfolioComplianceMetricVO,
   PortfolioComplianceThresholdVO,
 } from '@/apis/portfolio/compliance'
-import type {
-  PortfolioComplianceAlertLevelCode} from '@/types/enums/portfolio-compliance-alert-level-enum';
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { PortfolioComplianceAlertLevelCode } from '@/types/enums/portfolio-compliance-alert-level-enum'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioComplianceApi } from '@/apis/portfolio/compliance'
@@ -20,7 +21,9 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -47,6 +50,7 @@ import {
   PortfolioComplianceScopeTypeDescription,
 } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
@@ -96,7 +100,7 @@ const columns: ColumnsType = [
     width: 100,
   },
   { title: '状态', key: 'enabled', width: 80 },
-  { title: '操作', key: 'actions', width: 140 },
+  { title: '主行动', key: 'actions', width: 140 },
 ]
 
 const metricColumns: ColumnsType = [
@@ -274,6 +278,28 @@ async function openCreate() {
   editorOpen.value = true
 }
 
+/** 合规阈值行：编辑为主行动 */
+function buildThresholdRowActions(record: PortfolioComplianceThresholdVO): UiTableRowActionItem[] {
+  return [
+    { key: 'edit', label: '编辑', tone: 'primary', disabled: writing.value },
+    {
+      key: 'delete',
+      label: '删除',
+      tone: 'danger',
+      disabled: writing.value || deletingId.value === record.id,
+    },
+  ]
+}
+
+function handleThresholdRowAction(key: string, record: PortfolioComplianceThresholdVO): void {
+  if (key === 'edit') {
+    openEdit(record)
+    return
+  }
+  if (key === 'delete') {
+    void deleteRow(record)
+  }
+}
 function openEdit(row: PortfolioComplianceThresholdVO) {
   editingId.value = row.id
   form.metricCode = row.metricCode as PortfolioComplianceAlertTypeCode
@@ -398,6 +424,41 @@ async function recompute() {
   }
 }
 
+
+const ComplianceThresholdSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && rows.value.length === 0) {
+    return []
+  }
+  const enabledCount = rows.value.filter((row) => row.enabled === true).length
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '合规阈值',
+      value: rows.value.length,
+      clickable: true,
+      helper: '当前已加载',
+    },
+  ]
+  if (!loadError.value) {
+    metrics.push({
+      key: 'enabled',
+      label: '启用',
+      value: enabledCount,
+      helper: '仅当前列表',
+    })
+  }
+  return applySpotlightEmphasis(metrics, { primaryKey: 'total', actionLabel: '刷新' })
+})
+
+const ComplianceThresholdWorkbenchSubtitle = computed(() => {
+  if (loadError.value) return '加载失败'
+  return `${rows.value.length} 条`
+})
+
+function onComplianceThresholdSignalClick(_key: string) {
+  void loadList({ asRefresh: true })
+}
+
 onMounted(() => {
   void Promise.all([loadDefinitions(), loadList(), loadMetrics()])
 })
@@ -406,7 +467,7 @@ onMounted(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="结构合规阈值" subtitle="配置 C001–C006">
+      <ContextBar layout="workbench" show-title title="结构合规阈值" :subtitle="ComplianceThresholdWorkbenchSubtitle">
         <template #actions>
           <UiButton
             size="sm"
@@ -427,6 +488,15 @@ onMounted(() => {
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+    <template v-if="ComplianceThresholdSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="ComplianceThresholdSignalMetrics"
+        @metric-click="onComplianceThresholdSignalClick"
+      />
     </template>
     <UiAlertStrip
       v-if="definitionsLoadFailed"
@@ -474,18 +544,12 @@ onMounted(() => {
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton size="sm" variant="soft" :disabled="writing" @click="openEdit(record)">
-                编辑
-              </UiButton>
-              <UiButton
-                size="sm"
-                variant="soft"
-                :loading="deletingId === record.id"
-                :disabled="writing"
-                @click="deleteRow(record)"
-              >
-                删除
-              </UiButton>
+              <UiTableActions
+                :max-visible="2"
+                :items="buildThresholdRowActions(record)"
+                split
+                @action="(key) => handleThresholdRowAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>

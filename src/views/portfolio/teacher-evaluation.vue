@@ -9,6 +9,7 @@ import type {
   PortfolioEvaluationTeacherResultSummaryVO,
 } from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -47,6 +48,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
@@ -59,6 +61,7 @@ import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enu
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioIdentityTypeDisplay } from '@/utils/portfolio-identity-type'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -217,7 +220,7 @@ const noticeColumns: ColumnsType<PortfolioEvaluationTeacherNoticeVO> = [
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '状态', key: 'noticeStatus', width: 120 },
   { title: '截止', dataIndex: 'dueTime', key: 'dueTime', width: 170 },
-  { title: '操作', key: 'actions', width: 160 },
+  { title: '主行动', key: 'actions', width: 128 },
 ]
 
 function evaluationMaterialCourseScopeLabel(record: unknown): string {
@@ -308,7 +311,7 @@ const publicityColumns: ColumnsType<PortfolioEvaluationPublicityListItemVO> = [
   { title: '异议 / 复核', key: 'objectionStatus', width: 140 },
   { title: '原得分', key: 'originalScore', width: 88 },
   { title: '修正得分', key: 'correctedScore', width: 96 },
-  { title: '操作', key: 'actions', width: 180 },
+  { title: '主行动', key: 'actions', width: 128 },
 ]
 
 const resultColumns: ColumnsType<
@@ -729,14 +732,11 @@ function goArchive() {
 
 /** 组装评价待办行内操作。 */
 function buildNoticeRowActions(record: PortfolioEvaluationTeacherNoticeVO): UiTableRowActionItem[] {
-  const actions: UiTableRowActionItem[] = [
-    {
-      key: 'preview',
-      label: '预览材料',
-      disabled: previewLoading.value || confirming.value,
-    },
-  ]
-  if (record.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusEnum.CONFIRMED) {
+  // 未确认：确认参加为唯一 primary 置顶；已确认：预览为 primary
+  const actions: UiTableRowActionItem[] = []
+  const canConfirm
+    = record.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusEnum.CONFIRMED
+  if (canConfirm) {
     actions.push({
       key: 'confirm',
       label: '确认参加',
@@ -748,6 +748,12 @@ function buildNoticeRowActions(record: PortfolioEvaluationTeacherNoticeVO): UiTa
         || evaluationHeld.value,
     })
   }
+  actions.push({
+    key: 'preview',
+    label: '预览材料',
+    tone: canConfirm ? undefined : 'primary',
+    disabled: previewLoading.value || confirming.value,
+  })
   return actions
 }
 
@@ -771,6 +777,7 @@ function buildPublicityRowActions(
     {
       key: 'viewResult',
       label: '查看结果',
+      tone: 'primary',
       disabled: resultLoading.value,
     },
   ]
@@ -860,6 +867,35 @@ watch(
     void loadPublicity()
   },
 )
+
+const teacherEvaluationWorkbenchSubtitle = computed(() => {
+  const noticeCount = notices.value.length
+  const pubTotal = pageTotal.value
+  if (noticesLoadFailed.value && publicityLoadFailed.value) return '加载失败'
+  if (noticeCount === 0 && pubTotal === 0) return '暂无评价待办'
+  if (noticeCount > 0 && pubTotal > 0) return `${noticeCount} 条通知 · ${pubTotal} 条公示`
+  if (noticeCount > 0) return `${noticeCount} 条评价通知`
+  return `${pubTotal} 条公示结果`
+})
+const TeacherEvaluationSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'notices',
+      label: '参评通知',
+      value: notices.value.length,
+      clickable: true,
+    },
+    {
+      key: 'publicity',
+      label: '公示结果',
+      value: pageTotal.value,
+    },
+  ], { primaryKey: 'notices', actionLabel: '刷新' })
+})
+
+function onTeacherEvaluationSignalClick(_key: string) {
+  void loadNotices()
+}
 </script>
 
 <template>
@@ -869,7 +905,7 @@ watch(
         layout="workbench"
         show-title
         title="我的评价"
-        subtitle="参评材料确认、完整度预览与结果公示"
+        :subtitle="teacherEvaluationWorkbenchSubtitle"
       >
         <template #actions>
           <UiButton
@@ -896,6 +932,16 @@ watch(
         </template>
       </ContextBar>
     </template>
+    <template v-if="TeacherEvaluationSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TeacherEvaluationSignalMetrics"
+        @metric-click="onTeacherEvaluationSignalClick"
+      />
+    </template>
+
 
     <UiAlertStrip
       v-if="evaluationHeld"
@@ -978,6 +1024,8 @@ watch(
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 :items="buildNoticeRowActions(record)"
+                :max-visible="2"
+                align="end"
                 @action="(key) => handleNoticeRowAction(key, record)"
               />
             </template>
@@ -1177,6 +1225,8 @@ watch(
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 :items="buildPublicityRowActions(record)"
+                :max-visible="2"
+                align="end"
                 @action="(key) => handlePublicityRowAction(key, record)"
               />
             </template>

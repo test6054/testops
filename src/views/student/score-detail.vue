@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar :title="detail?.examName || '成绩明细'">
+      <ContextBar :title="detail?.examName || '成绩明细'" :subtitle="detail ? formatPublishedScoreSummary(detail) : undefined">
         <template #status>
           <UiTag v-if="detail?.finalScoreStatus" :tone="finalScoreStatusTone(detail)" size="sm">
             {{ finalScoreStatusLabel(detail) }}
@@ -42,6 +42,15 @@
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+    <template v-if="ScoreDetailSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="ScoreDetailSignalMetrics"
+        @metric-click="onScoreDetailSignalClick"
+      />
     </template>
 
     <UiSkeletonState v-if="loading" :rows="6" compact />
@@ -472,6 +481,7 @@ import type {
   StudentScoreDetailResponse,
 } from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
@@ -510,6 +520,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import {
@@ -525,6 +536,7 @@ import { formatScore } from '@/utils/format'
 import { buildHeatmapChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { buildHeatmapChartOption } from '@/utils/mark-echarts-options'
 import { scoreSheetToHeatmapCells } from '@/utils/mark-statistics-chart'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import {
   studentFacingFinalScoreStatusLabel,
@@ -991,6 +1003,25 @@ watch(filteredQuestions, (list) => {
 onBeforeUnmount(() => {
   releaseSliceImage()
 })
+
+const ScoreDetailSignalMetrics = computed<SignalMetric[]>(() => {
+  const row = detail.value
+  if (!row) {
+    return []
+  }
+  return applySpotlightEmphasis([
+    {
+      key: 'score',
+      label: '已发布成绩',
+      value: row.totalScore ?? '—',
+      clickable: true,
+    },
+  ], { primaryKey: 'score', actionLabel: '刷新' })
+})
+
+function onScoreDetailSignalClick(_key: string) {
+  void loadDetail()
+}
 </script>
 
 <style lang="scss" scoped>

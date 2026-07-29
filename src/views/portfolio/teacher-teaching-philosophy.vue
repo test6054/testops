@@ -4,6 +4,8 @@ import type {
   PortfolioTeachingPhilosophySaveRequest,
   PortfolioTeachingPhilosophyVO,
 } from '@/apis/portfolio/teaching-philosophy'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
@@ -19,7 +21,9 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
@@ -29,6 +33,7 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
@@ -67,7 +72,7 @@ const columns: ColumnsType = [
   { title: '教学理念', dataIndex: 'philosophyText', key: 'philosophyText', ellipsis: true },
   { title: '身份层', key: 'identityLayers', width: 180 },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 168 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 function scopeTeacherId() {
@@ -124,6 +129,33 @@ async function loadList() {
   }
 }
 
+/** 教学理念行：编辑/查看为主行动 */
+function buildPhilosophyRowActions(record: PortfolioTeachingPhilosophyVO): UiTableRowActionItem[] {
+  return [
+    {
+      key: 'edit',
+      label: readonlyMode.value ? '查看' : '编辑',
+      tone: 'primary',
+    },
+    {
+      key: 'delete',
+      label: '删除',
+      tone: 'danger',
+      hidden: readonlyMode.value,
+      disabled: Boolean(deletingId.value),
+    },
+  ]
+}
+
+function handlePhilosophyRowAction(key: string, record: PortfolioTeachingPhilosophyVO): void {
+  if (key === 'edit') {
+    openModal(record)
+    return
+  }
+  if (key === 'delete') {
+    void remove(record)
+  }
+}
 function openModal(row?: PortfolioTeachingPhilosophyVO) {
   if (readonlyMode.value) {
     showFormValidationMessage('管理员查看模式下不可编辑教学理念')
@@ -235,12 +267,45 @@ watch(
   },
 )
 usePortfolioScopedLoader(loadList, () => targetTeacherId.value)
+
+const TeachingPhilosophySignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadFailed.value && rows.value.length === 0) {
+    return []
+  }
+  return applySpotlightEmphasis([
+    {
+      key: 'total',
+      label: '理念记录',
+      value: rows.value.length,
+      clickable: true,
+      helper: '当前已加载',
+    },
+  ], { primaryKey: 'total', actionLabel: '刷新' })
+})
+
+const TeachingPhilosophyWorkbenchSubtitle = computed(() => {
+  if (loadFailed.value) return '加载失败'
+  return `${rows.value.length} 条`
+})
+
+function onTeachingPhilosophySignalClick(_key: string) {
+  void loadList()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="教学理念" subtitle="按学年记录与修订" />
+      <ContextBar layout="workbench" show-title title="教学理念" :subtitle="TeachingPhilosophyWorkbenchSubtitle" />
+    </template>
+    <template v-if="TeachingPhilosophySignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TeachingPhilosophySignalMetrics"
+        @metric-click="onTeachingPhilosophySignalClick"
+      />
     </template>
     <PortfolioArchiveWriteGuardStrip
       :blocked="archiveWriteForbidden"
@@ -286,20 +351,12 @@ usePortfolioScopedLoader(loadList, () => targetTeacherId.value)
               />
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton size="sm" variant="ghost" @click="openModal(record)">
-                {{ readonlyMode ? '查看' : '编辑' }}
-              </UiButton>
-              <UiButton
-                size="sm"
-                v-if="!readonlyMode"
-                variant="ghost"
-                danger
-                :loading="deletingId === record.id"
-                :disabled="Boolean(deletingId)"
-                @click="remove(record)"
-              >
-                删除
-              </UiButton>
+              <UiTableActions
+                :max-visible="2"
+                :items="buildPhilosophyRowActions(record)"
+                split
+                @action="(key) => handlePhilosophyRowAction(key, record)"
+              />
             </template>
           </template>
         </UiDataTable>

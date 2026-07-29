@@ -7,6 +7,7 @@ import type {
 } from '@/apis/portfolio/governance'
 import type { PortfolioOrgTreeNodeVO } from '@/apis/portfolio/types'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -29,8 +30,8 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -48,6 +49,7 @@ import {
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioIdentityTypeDisplay } from '@/utils/portfolio-identity-type'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -469,6 +471,41 @@ watch(
     syncPortfolioOrgFromRoute()
   },
 )
+
+const MajorGroupSignalMetrics = computed<SignalMetric[]>(() => {
+  const row = portfolio.value
+  if (!row) {
+    return []
+  }
+  return applySpotlightEmphasis([
+    {
+      key: 'teachers',
+      label: '群内教师',
+      value: row.teacherCount,
+      clickable: true,
+    },
+    {
+      key: 'dual',
+      label: '双师认定',
+      value: row.dualTeacherCount,
+    },
+    {
+      key: 'archives',
+      label: '正式档案',
+      value: row.officialArchiveCount,
+    },
+    {
+      key: 'plans',
+      label: '年度规划',
+      value: row.developmentPlanCount,
+      helper: '当前已加载',
+    },
+  ], { primaryKey: 'teachers', actionLabel: '刷新' })
+})
+
+function onMajorGroupSignalClick(_key: string) {
+  void loadPortfolio()
+}
 </script>
 
 <template>
@@ -479,6 +516,15 @@ watch(
         show-title
         title="专业群档案袋"
         :subtitle="portfolio?.majorGroupName"
+      />
+    </template>
+    <template v-if="MajorGroupSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="MajorGroupSignalMetrics"
+        @metric-click="onMajorGroupSignalClick"
       />
     </template>
     <UiCard title="专业群范围">
@@ -535,7 +581,7 @@ watch(
         description="当前专业群暂无档案袋数据"
       />
       <template v-else-if="portfolio">
-        <UiStatPanel title="群像指标" :items="summaryStats" compact />
+        <!-- 群像指标改由 SignalBand spotlight 承载，避免等权 KPI 墙 -->
         <UiCard title="建设周期对比" class="major-group-portfolio__compare">
           <div class="major-group-portfolio__compare-bar">
             <UiInput

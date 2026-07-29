@@ -1,7 +1,7 @@
 <template>
   <CreateFormPageShell
     title="新建考试"
-    subtitle="考务信息 → 阅卷队伍 → 考生范围 → 确认创建"
+    subtitle="创建考试"
     :nav-items="ec.navItems.value"
     :active-key="ec.activeSection.value"
     @back="ec.handleGoBack"

@@ -10,7 +10,7 @@
     <SignalBand
       v-else-if="remediationSignalMetrics.length > 0"
       class="archive-volume-remediation-panel__signals"
-      :metrics="remediationSignalMetrics"
+      layout="spotlight" :metrics="remediationSignalMetrics"
       variant="panel"
       @metric-click="handleSignalMetricClick"
     />
@@ -612,42 +612,65 @@ const remediationSignalMetrics = computed<SignalMetric[]>(() => {
     clickable: true,
     active: taskPriorityFilter.value === code && !taskStatusFilter.value,
   })
+  const high = priorityMetric(
+    ArchiveRemediationPriorityCode.HIGH,
+    stats.highPriorityTaskCount,
+    stats.overdueTaskCount > 0 ? `${stats.overdueTaskCount} 项已逾期` : undefined,
+  )
+  const medium = priorityMetric(
+    ArchiveRemediationPriorityCode.MEDIUM,
+    stats.mediumPriorityTaskCount,
+    stats.dueSoonTaskCount > 0 ? `本周到期 ${stats.dueSoonTaskCount}` : undefined,
+  )
+  const low = priorityMetric(
+    ArchiveRemediationPriorityCode.LOW,
+    stats.lowPriorityTaskCount,
+    stats.lowPriorityTaskCount > 0 ? '均在期限内' : undefined,
+  )
+  const awaiting: SignalMetric = {
+    key: 'awaiting-verification',
+    label: '待核验',
+    value: stats.resubmittedTaskCount,
+    unit: '项',
+    tone: remediationStatusTone(ArchiveRemediationStatusCode.RESUBMITTED),
+    helper: stats.resubmittedTaskCount > 0 ? '已提交证据' : undefined,
+    clickable: true,
+    active: taskStatusFilter.value === ArchiveRemediationStatusCode.RESUBMITTED,
+  }
+  const closed: SignalMetric = {
+    key: 'closed',
+    label: remediationStatusLabel(ArchiveRemediationStatusCode.CLOSED),
+    value: stats.closedTaskCount,
+    unit: '项',
+    tone: remediationStatusTone(ArchiveRemediationStatusCode.CLOSED),
+    helper: passRateHint,
+    clickable: true,
+    active: taskStatusFilter.value === ArchiveRemediationStatusCode.CLOSED,
+  }
+  const pool = [high, medium, low, awaiting, closed]
+  const primaryBase
+    = stats.highPriorityTaskCount > 0
+      ? high
+      : stats.resubmittedTaskCount > 0
+        ? awaiting
+        : stats.mediumPriorityTaskCount > 0
+          ? medium
+          : high
   return [
-    priorityMetric(
-      ArchiveRemediationPriorityCode.HIGH,
-      stats.highPriorityTaskCount,
-      stats.overdueTaskCount > 0 ? `${stats.overdueTaskCount} 项已逾期` : undefined,
-    ),
-    priorityMetric(
-      ArchiveRemediationPriorityCode.MEDIUM,
-      stats.mediumPriorityTaskCount,
-      stats.dueSoonTaskCount > 0 ? `本周到期 ${stats.dueSoonTaskCount}` : undefined,
-    ),
-    priorityMetric(
-      ArchiveRemediationPriorityCode.LOW,
-      stats.lowPriorityTaskCount,
-      stats.lowPriorityTaskCount > 0 ? '均在期限内' : undefined,
-    ),
     {
-      key: 'awaiting-verification',
-      label: '待核验',
-      value: stats.resubmittedTaskCount,
-      unit: '项',
-      tone: remediationStatusTone(ArchiveRemediationStatusCode.RESUBMITTED),
-      helper: stats.resubmittedTaskCount > 0 ? '已提交证据' : undefined,
-      clickable: true,
-      active: taskStatusFilter.value === ArchiveRemediationStatusCode.RESUBMITTED,
+      ...primaryBase,
+      emphasis: 'primary',
+      actionLabel:
+        primaryBase.key === 'awaiting-verification'
+          ? '去核验'
+          : primaryBase.key.startsWith('priority-')
+            ? '处理整改'
+            : '查看',
     },
-    {
-      key: 'closed',
-      label: remediationStatusLabel(ArchiveRemediationStatusCode.CLOSED),
-      value: stats.closedTaskCount,
-      unit: '项',
-      tone: remediationStatusTone(ArchiveRemediationStatusCode.CLOSED),
-      helper: passRateHint,
-      clickable: true,
-      active: taskStatusFilter.value === ArchiveRemediationStatusCode.CLOSED,
-    },
+    ...pool
+      .filter((item) => item.key !== primaryBase.key)
+      .slice(0, 3)
+      .map((item) => ({ ...item, emphasis: 'secondary' as const })),
   ]
 })
 

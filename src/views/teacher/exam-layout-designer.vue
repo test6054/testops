@@ -384,6 +384,7 @@ function openReviewDrawer(): void {
     </template>
     <template v-if="signalMetrics.length > 0" #signal>
       <SignalBand
+        layout="spotlight"
         :metrics="signalMetrics"
         variant="panel"
         compact
@@ -416,7 +417,7 @@ function openReviewDrawer(): void {
           <template v-else-if="designerStatusAlert.kind === 'detect-failed'" #actions>
             <UiButton
               size="sm"
-              variant="primary"
+              variant="outline"
               @click="goSourceAndClearDetectOutcome"
             >
               回到源文件
@@ -433,7 +434,7 @@ function openReviewDrawer(): void {
             <UiButton
               v-if="wbMutationOutcome === 'save-failed'"
               size="sm"
-              variant="primary"
+              variant="outline"
               :loading="wbSaving"
               :disabled="wbSaveButtonDisabled"
               @click="wbHandleSave()"
@@ -443,7 +444,7 @@ function openReviewDrawer(): void {
             <UiButton
               v-else
               size="sm"
-              variant="primary"
+              variant="outline"
               :loading="wbPreviewing"
               :disabled="wbPreviewDisabled"
               @click="wbHandlePreview()"

@@ -5,6 +5,7 @@ import type {
   PortfolioReportingShareFieldCodeValue,
   PortfolioReportingTaskVO,
 } from '@/apis/portfolio/reporting'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
@@ -27,6 +28,7 @@ import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -45,6 +47,7 @@ import {
 } from '@/types/enums/portfolio-reporting-task-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 interface ReportingFilterModel extends Record<string, unknown> {
@@ -134,7 +137,7 @@ const columns: ColumnsType = [
     width: 160,
     ellipsis: true,
   },
-  { title: '操作', key: 'actions', width: 240 },
+  { title: '主行动', key: 'actions', width: 240 },
 ]
 
 /** 报送任务状态写必须串行，避免预览、审批和驳回跨任务推进。 */
@@ -467,6 +470,46 @@ async function runDownload(row: PortfolioReportingTaskVO) {
   }
 }
 
+
+const ReportingAdminSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && total.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '报送任务',
+      value: total.value,
+      clickable: true,
+    },
+  ]
+  if (!loadError.value) {
+    const pendingOnPage = rows.value.filter(
+      (row) => row.taskStatus === PortfolioReportingTaskStatusCode.PENDING_APPROVAL,
+    ).length
+    metrics.push({
+      key: 'pending-page',
+      label: '本页待审',
+      value: pendingOnPage,
+      helper: '仅当前页',
+      tone: pendingOnPage > 0 ? 'orange' : undefined,
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const ReportingAdminWorkbenchSubtitle = computed(() => {
+  if (loadError.value) return '加载失败'
+  return `${total.value} 条`
+})
+
+function onReportingAdminSignalClick(_key: string) {
+  void loadPage()
+}
+
 onMounted(() => {
   void loadPage()
 })
@@ -479,7 +522,7 @@ onMounted(() => {
         layout="workbench"
         show-title
         title="上级报送共享"
-        subtitle="正式档案口径清单预览、审批与生成"
+        :subtitle="ReportingAdminWorkbenchSubtitle"
       >
         <template #actions>
           <UiButton size="sm" variant="primary" :disabled="operating" @click="openCreateModal">
@@ -487,6 +530,15 @@ onMounted(() => {
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+    <template v-if="ReportingAdminSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="ReportingAdminSignalMetrics"
+        @metric-click="onReportingAdminSignalClick"
+      />
     </template>
     <UiCard>
       <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
@@ -516,6 +568,7 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="[
                 ...(canPreview(record)
                   ? [{ key: 'preview', label: '预览', disabled: operating }]

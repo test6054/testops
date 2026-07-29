@@ -1,7 +1,12 @@
 <template>
   <StageWorkbenchShell class="ledger-page">
     <template #context>
-      <ContextBar layout="workbench" show-title title="影像账本">
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="影像账本"
+        :subtitle="imageLedgerWorkbenchSubtitle"
+      >
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
@@ -12,6 +17,7 @@
 
     <template v-if="selectedExamId && (ledger || loadFailed)" #signal>
       <SignalBand
+        layout="spotlight"
         compact
         variant="panel"
         :metrics="ledgerSignalMetrics"
@@ -120,6 +126,29 @@ let suppressSelfRefresh = false
 const canManageOwnerLedgerWrites = computed(
   () => ledger.value?.canManageOwnerLedgerWrites === true && loadFailed.value !== true,
 )
+
+/** 任务工作台副标题：扫描进度真数，避免仅考试状态标签。 */
+const imageLedgerWorkbenchSubtitle = computed(() => {
+  if (loadFailed.value) {
+    return '账本加载失败'
+  }
+  const data = ledger.value
+  if (!data) {
+    return '账本加载中'
+  }
+  const parts: string[] = []
+  if ((data.pendingDuplicateCount ?? 0) > 0) {
+    parts.push(`待消重 ${data.pendingDuplicateCount}`)
+  }
+  if ((data.missingCandidateCount ?? 0) > 0) {
+    parts.push(`缺考生 ${data.missingCandidateCount}`)
+  }
+  const scanned = data.scannedPageCount
+  const expected = data.expectedPageCount
+  parts.push(expected != null ? `已扫 ${scanned}/${expected} 页` : `已扫 ${scanned} 页`)
+  return parts.join(' · ')
+})
+
 const ledgerSignalMetrics = computed((): SignalMetric[] => {
   const failed = loadFailed.value
   const data = ledger.value
@@ -130,46 +159,64 @@ const ledgerSignalMetrics = computed((): SignalMetric[] => {
         label: '影像账本',
         value: '—',
         tone: 'gray',
+        emphasis: 'primary',
       }]
     }
     return []
   }
-  return [
-    {
-      key: 'scanned',
-      label: '已扫页数',
-      value: data.scannedPageCount,
-      unit: data.expectedPageCount == null ? '页（页数待推导）' : ` / ${data.expectedPageCount}`,
-      tone: data.expectedPageCount != null && data.scannedPageCount >= data.expectedPageCount ? 'green' : 'blue',
-      clickable: !failed && data.expectedPageCount != null && data.scannedPageCount < data.expectedPageCount,
-      helper: failed
-        ? undefined
-        : data.expectedPageCount != null && data.scannedPageCount < data.expectedPageCount
-          ? '前往手动补录'
-          : undefined,
-    },
-    {
-      key: 'bound',
-      label: '已绑定卷',
-      value: data.boundPaperCount,
-      unit: ` / ${data.reconstructedPaperCount}`,
-      tone: data.boundPaperCount >= data.reconstructedPaperCount ? 'green' : 'orange',
-    },
-    {
-      key: 'duplicate',
-      label: '待处置重复',
-      value: data.pendingDuplicateCount,
-      unit: '页',
-      tone: data.pendingDuplicateCount > 0 ? 'orange' : 'green',
-    },
-    {
-      key: 'missing',
-      label: '缺考人数',
-      value: data.missingCandidateCount,
-      unit: '人',
-      tone: data.missingCandidateCount > 0 ? 'orange' : 'gray',
-    },
-  ]
+  const scanned: SignalMetric = {
+    key: 'scanned',
+    label: '已扫页数',
+    value: data.scannedPageCount,
+    unit: data.expectedPageCount == null ? '页（页数待推导）' : ` / ${data.expectedPageCount}`,
+    tone: data.expectedPageCount != null && data.scannedPageCount >= data.expectedPageCount ? 'green' : 'blue',
+    clickable: !failed && data.expectedPageCount != null && data.scannedPageCount < data.expectedPageCount,
+    helper: failed
+      ? undefined
+      : data.expectedPageCount != null && data.scannedPageCount < data.expectedPageCount
+        ? '前往手动补录'
+        : undefined,
+  }
+  const bound: SignalMetric = {
+    key: 'bound',
+    label: '已绑定卷',
+    value: data.boundPaperCount,
+    unit: ` / ${data.reconstructedPaperCount}`,
+    tone: data.boundPaperCount >= data.reconstructedPaperCount ? 'green' : 'orange',
+  }
+  const duplicate: SignalMetric = {
+    key: 'duplicate',
+    label: '待处置重复',
+    value: data.pendingDuplicateCount,
+    unit: '页',
+    tone: data.pendingDuplicateCount > 0 ? 'orange' : 'green',
+  }
+  const missing: SignalMetric = {
+    key: 'missing',
+    label: '缺考人数',
+    value: data.missingCandidateCount,
+    unit: '人',
+    tone: data.missingCandidateCount > 0 ? 'orange' : 'gray',
+  }
+
+  const primaryBase
+    = data.pendingDuplicateCount > 0
+      ? { ...duplicate, actionLabel: '处置重复', helper: '重复影像待处置' }
+      : data.missingCandidateCount > 0
+        ? { ...missing, actionLabel: '查看缺考', helper: '缺考名单待确认' }
+        : data.boundPaperCount < data.reconstructedPaperCount
+          ? { ...bound, actionLabel: '查看绑定', helper: '卷面绑定未完成' }
+          : { ...scanned, actionLabel: scanned.clickable ? '手动补录' : undefined }
+
+  const primary: SignalMetric = {
+    ...primaryBase,
+    emphasis: 'primary',
+  }
+  const secondaryPool = [scanned, bound, duplicate, missing].map((item) => ({
+    ...item,
+    emphasis: 'secondary' as const,
+  }))
+  return [primary, ...secondaryPool.filter((item) => item.key !== primary.key).slice(0, 3)]
 })
 
 function handleLedgerMetricClick(key: string): void {

@@ -104,7 +104,7 @@
             <template v-if="showWorkbenchActions" #actions>
               <UiButton
                 v-if="detailScope.canStartCollecting === true && !isQualityTab && !isManageTab"
-                variant="primary"
+                :variant="detailScope.canSubmitVolume === true ? 'outline' : 'primary'"
                 size="sm"
                 @click="setActiveTab('start-collecting')"
               >
@@ -123,7 +123,7 @@
               </UiButton>
               <UiButton
                 v-if="detailScope.canSubmitVolume === true && !isQualityTab"
-                variant="primary"
+                variant="outline"
                 size="sm"
                 :loading="submitting === true"
                 @click="handleSubmit"
@@ -144,6 +144,7 @@
 
         <template v-if="activeTabSignalMetrics.length" #signal>
           <SignalBand
+            layout="spotlight"
             variant="panel"
             :metrics="activeTabSignalMetrics"
             class="archive-volume-detail__signal"
@@ -945,6 +946,11 @@ const materialsSignalMetrics = computed((): SignalMetric[] => {
           ? `${d.submitProgress.pendingBlockingCount} 项阻塞`
           : '清单进度',
       clickable: true,
+      emphasis: 'primary',
+      actionLabel:
+        d.submitProgress?.pendingBlockingCount && d.submitProgress.pendingBlockingCount > 0
+          ? '处理阻塞'
+          : '查看进度',
     },
     {
       key: 'catalog',
@@ -972,6 +978,8 @@ const scoresSignalMetrics = computed((): SignalMetric[] => {
       iconTone: scoreReady ? 'green' : 'gray',
       helper: '成绩单/分项成绩须提交，豁免不可替代',
       clickable: true,
+      emphasis: scoreReady ? 'secondary' : 'primary',
+      actionLabel: scoreReady ? undefined : '补齐证据',
     },
     {
       key: 'exam-gate',
@@ -1017,6 +1025,8 @@ const integritySignalMetrics = computed((): SignalMetric[] => {
           : 'gray',
       helper: missingCount > 0 ? `${missingCount} 项缺件` : '无缺件目录',
       clickable: false,
+      emphasis: 'primary',
+      actionLabel: missingCount > 0 ? '查看缺件' : undefined,
     },
   ]
 })

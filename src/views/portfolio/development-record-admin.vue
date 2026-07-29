@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentRecordStatusCode } from '@/apis/portfolio/enums'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -24,6 +25,7 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
@@ -33,6 +35,7 @@ import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enu
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -90,6 +93,7 @@ const {
     recordType: activeType.value,
   }),
 )
+
 interface DevelopmentRecordForm {
   recordTitle: string
   descriptionText: string
@@ -123,7 +127,7 @@ const columns = computed<ColumnsType>(() => {
     { title: '生命周期', key: 'lifecycleStatus', width: 100 },
     { title: '身份层', key: 'identityLayers', width: 160 },
     { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
-    { title: '操作', key: 'actions', width: 120 },
+    { title: '主行动', key: 'actions', width: 120 },
   )
   return base
 })
@@ -131,6 +135,35 @@ const columns = computed<ColumnsType>(() => {
 const tabLabel = computed(
   () => RECORD_TABS.find((item) => item.key === activeType.value)?.label ?? '',
 )
+const DevelopmentRecordSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && pageTotal.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: tabLabel.value,
+      value: pageTotal.value,
+      clickable: true,
+    },
+  ]
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const DevelopmentRecordWorkbenchSubtitle = computed(() => {
+  if (loadError.value) {
+    return '加载失败'
+  }
+  return `${pageTotal.value} 条`
+})
+
+function onDevelopmentRecordSignalClick(_key: string) {
+  void loadPage()
+}
+
 
 const importContext = computed(() => ({ defaultRecordType: activeType.value }))
 
@@ -251,7 +284,16 @@ function switchTab(type: RecordType) {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title :title="`${pageScopeTitle} · ${tabLabel}`" />
+      <ContextBar layout="workbench" show-title :title="`${pageScopeTitle} · ${tabLabel}`" :subtitle="DevelopmentRecordWorkbenchSubtitle" />
+    </template>
+    <template v-if="DevelopmentRecordSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="DevelopmentRecordSignalMetrics"
+        @metric-click="onDevelopmentRecordSignalClick"
+      />
     </template>
     <PortfolioArchiveWriteGuardStrip
       :blocked="archiveWriteForbidden"
@@ -373,6 +415,7 @@ function switchTab(type: RecordType) {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               v-if="!isDepartmentScoped"
               :items="[{ key: 'delete', label: '删除', tone: 'danger', disabled: Boolean(removingId || saving) }]"
               split

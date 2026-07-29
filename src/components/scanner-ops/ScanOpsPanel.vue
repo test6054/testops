@@ -17,6 +17,7 @@ import {
   fetchArchiveSuspectedMixedPendingTotal,
 } from '@/utils/archive-suspected-mixed-navigation'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 
 defineOptions({ name: 'ScanOpsPanel' })
 
@@ -81,37 +82,45 @@ const signalMetrics = computed<SignalMetric[]>(() => {
   }
   const failureRatePercent = toRatePercent(d.failureRate)
   const mixedRatePercent = toRatePercent(d.mixedRate)
-  return [
+  return applySpotlightEmphasis(
+    [
+      {
+        key: 'failure-rate',
+        label: '失败率',
+        value: `${failureRatePercent.toFixed(1)}%`,
+        tone: failureRatePercent > 0 ? 'red' : 'green',
+        helper: `${d.failedWorkOrders ?? 0} 个失败`,
+      },
+      {
+        key: 'mixed-rate',
+        label: '混扫率',
+        value: `${mixedRatePercent.toFixed(1)}%`,
+        tone: mixedRatePercent > 0 ? 'orange' : 'green',
+        helper:
+          archiveMixedPendingTotal.value != null
+            ? `${archiveMixedPendingTotal.value} 个待复核（归档待办）`
+            : undefined,
+      },
+      {
+        key: 'scan-pages',
+        label: '扫描页数',
+        value: String(d.totalPages ?? 0),
+        tone: 'blue',
+      },
+      {
+        key: 'work-orders',
+        label: '工单总数',
+        value: String(d.totalWorkOrders ?? 0),
+        tone: 'gray',
+      },
+    ],
     {
-      key: 'scan-pages',
-      label: '扫描页数',
-      value: String(d.totalPages ?? 0),
-      tone: 'blue',
+      primaryKey: failureRatePercent > 0
+        ? 'failure-rate'
+        : (mixedRatePercent > 0 ? 'mixed-rate' : 'scan-pages'),
+      actionLabel: failureRatePercent > 0 || mixedRatePercent > 0 ? '查看异常' : undefined,
     },
-    {
-      key: 'work-orders',
-      label: '工单总数',
-      value: String(d.totalWorkOrders ?? 0),
-      tone: 'gray',
-    },
-    {
-      key: 'failure-rate',
-      label: '失败率',
-      value: `${failureRatePercent.toFixed(1)}%`,
-      tone: failureRatePercent > 0 ? 'red' : 'green',
-      helper: `${d.failedWorkOrders ?? 0} 个失败`,
-    },
-    {
-      key: 'mixed-rate',
-      label: '混扫率',
-      value: `${mixedRatePercent.toFixed(1)}%`,
-      tone: mixedRatePercent > 0 ? 'orange' : 'green',
-      helper:
-        archiveMixedPendingTotal.value != null
-          ? `${archiveMixedPendingTotal.value} 个待复核（归档待办）`
-          : undefined,
-    },
-  ]
+  )
 })
 
 const opsConclusion = computed(() => {
@@ -285,6 +294,7 @@ onMounted(() => {
 
     <SignalBand
       v-if="signalMetrics.length"
+      layout="spotlight"
       variant="panel"
       :metrics="signalMetrics"
       compact

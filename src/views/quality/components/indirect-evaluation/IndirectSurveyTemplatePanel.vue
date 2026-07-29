@@ -780,6 +780,9 @@ function buildIndirectFormActions(record: IndirectEvaluationFormVO): UiTableRowA
     actions.push({ key: 'edit', label: '编辑' })
     actions.push({ key: 'delete', label: '删除', tone: 'danger' })
   }
+  if (actions.length > 0 && actions[0].tone !== 'danger') {
+    actions[0] = { ...actions[0], tone: 'primary' }
+  }
   return actions
 }
 
@@ -814,14 +817,14 @@ function buildIndirectItemActions(
   form: IndirectEvaluationFormVO,
 ): UiTableRowActionItem[] {
   if (isFormContentEditable(form)) {
-    return [{ key: 'edit-content', label: '编辑文案' }]
+    return [{ key: 'edit-content', label: '编辑文案', tone: 'primary' }]
   }
   if (isIndirectFormStructureLocked(form)) {
-    return [{ key: 'view', label: '查看' }]
+    return [{ key: 'view', label: '查看', tone: 'primary' }]
   }
   if (isFormStructureMutable(form)) {
     const actions: UiTableRowActionItem[] = [
-      { key: 'edit', label: '编辑' },
+      { key: 'edit', label: '编辑', tone: 'primary' },
       { key: 'delete', label: '删除', tone: 'danger' },
     ]
     if (requiresTeacherScoreConversion(record.itemType)) {
@@ -830,7 +833,7 @@ function buildIndirectItemActions(
     return actions
   }
   if (canShowWorkflowInsights(form) && requiresTeacherScoreConversion(record.itemType)) {
-    return [{ key: 'rebuild-stats', label: '重建统计' }]
+    return [{ key: 'rebuild-stats', label: '重建统计', tone: 'primary' }]
   }
   return []
 }
@@ -1014,6 +1017,7 @@ defineExpose({
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
+            :max-visible="2"
             :items="buildIndirectFormActions(record)"
             split
             @action="(key) => handleIndirectFormAction(key, record)"
@@ -1086,6 +1090,7 @@ defineExpose({
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 v-if="selectedForm && buildIndirectItemActions(record, selectedForm).length > 0"
+                :max-visible="2"
                 :items="buildIndirectItemActions(record, selectedForm)"
                 split
                 @action="(key) => handleIndirectItemAction(key, record)"

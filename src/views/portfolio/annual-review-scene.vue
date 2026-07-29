@@ -4,6 +4,7 @@ import type {
   PortfolioAiAnalysisDetailVO,
   PortfolioEvaluationTeacherNoticeVO,
 } from '@/apis/portfolio/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -24,6 +25,7 @@ import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import YearPicker from '@/components/ui-guide/ui/YearPicker.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
@@ -34,6 +36,7 @@ import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWrit
 import { PortfolioAnnualReportTaskStatusCode, PortfolioAnnualReportTaskStatusDescription } from '@/types/enums/portfolio-annual-report-task-status-enum'
 import { PortfolioEvaluationSceneCode } from '@/types/enums/portfolio-evaluation-scene-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const POLL_INTERVAL_MS = 3000
@@ -458,6 +461,21 @@ onUnmounted(() => {
   pollRequestToken.value += 1
   reportDetailToken.value += 1
 })
+
+const AnnualReviewSceneSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'year',
+      label: '考核年度',
+      value: reportYear.value,
+      clickable: true,
+    },
+  ], { primaryKey: 'year', actionLabel: '刷新' })
+})
+
+function onAnnualReviewSceneSignalClick(_key: string) {
+  void loadAnnualReport()
+}
 </script>
 
 <template>
@@ -470,7 +488,7 @@ onUnmounted(() => {
       class="dp-mb-component"
     />
     <template #context>
-      <ContextBar show-title layout="workbench" title="年度考核准备">
+      <ContextBar show-title layout="workbench" title="年度考核准备" :subtitle="`${reportYear} 年`">
         <template #actions>
           <YearPicker v-model="reportYear" size="sm" />
           <UiButton
@@ -483,6 +501,15 @@ onUnmounted(() => {
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+    <template v-if="AnnualReviewSceneSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="AnnualReviewSceneSignalMetrics"
+        @metric-click="onAnnualReviewSceneSignalClick"
+      />
     </template>
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />

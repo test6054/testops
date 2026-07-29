@@ -15,7 +15,6 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -156,7 +155,66 @@ const signals = computed<SignalMetric[]>(() => {
       },
     )
   }
-  return items
+  const priorityKeys = [
+    'reviewBacklog',
+    'gap',
+    'completenessSevere',
+    'completenessPending',
+    'training',
+    'teacher',
+  ] as const
+  function attentionValue(metric: SignalMetric): number {
+    if (typeof metric.value === 'number') {
+      return metric.value
+    }
+    if (typeof metric.value === 'string' && metric.value !== '—') {
+      const n = Number(metric.value)
+      return Number.isFinite(n) ? n : 0
+    }
+    return 0
+  }
+  const primaryBase
+    = priorityKeys
+      .map((key) => items.find((item) => item.key === key))
+      .find((item) => {
+        if (!item) {
+          return false
+        }
+        if (item.key === 'teacher') {
+          return true
+        }
+        if (item.key === 'training') {
+          return typeof item.value === 'number' && item.value < 100
+        }
+        return attentionValue(item) > 0
+      })
+      ?? items[0]
+
+  if (!primaryBase) {
+    return []
+  }
+
+  const actionByKey: Record<string, string> = {
+    reviewBacklog: '清审核积压',
+    gap: '去补采',
+    completenessSevere: '查严重缺失',
+    completenessPending: '查待补充',
+    training: '看培训',
+    teacher: '教师名单',
+  }
+
+  return [
+    {
+      ...primaryBase,
+      emphasis: 'primary',
+      actionLabel: actionByKey[primaryBase.key] ?? '查看详情',
+      clickable: primaryBase.clickable ?? true,
+    },
+    ...items
+      .filter((item) => item.key !== primaryBase.key)
+      .slice(0, 3)
+      .map((item) => ({ ...item, emphasis: 'secondary' as const })),
+  ]
 })
 
 function goDeptOneTable(completenessLevel?: string) {
@@ -197,18 +255,18 @@ function handleSignalMetricClick(key: string) {
   }
 }
 
-const portraitStats = computed(() => {
+const portraitStats = computed<SignalMetric[]>(() => {
   if (!portrait.value) {
     return []
   }
   const row = portrait.value
   return [
-    { label: '有画像教师', value: String(row.portraitTeacherCount) },
-    { label: '平均综合分', value: row.avgCompositeScore },
-    { label: '平均教学分', value: row.avgTeachingScore },
-    { label: '平均科研分', value: row.avgResearchScore },
-    { label: '平均培训分', value: row.avgTrainingScore },
-    { label: '平均实践分', value: row.avgPracticeScore },
+    { key: 'portraitTeachers', label: '有画像教师', value: row.portraitTeacherCount, tone: 'blue' },
+    { key: 'avgComposite', label: '平均综合分', value: row.avgCompositeScore, tone: 'purple' },
+    { key: 'avgTeaching', label: '平均教学分', value: row.avgTeachingScore, tone: 'green' },
+    { key: 'avgResearch', label: '平均科研分', value: row.avgResearchScore, tone: 'blue' },
+    { key: 'avgTraining', label: '平均培训分', value: row.avgTrainingScore, tone: 'orange' },
+    { key: 'avgPractice', label: '平均实践分', value: row.avgPracticeScore, tone: 'gray' },
   ]
 })
 
@@ -335,6 +393,19 @@ watch(
     void syncDepartmentContext()
   },
 )
+
+/** 院系驾驶舱副标题：当前院系与教师规模。 */
+const departmentCockpitWorkbenchSubtitle = computed(() => {
+  if (!departmentId.value) {
+    return '请选择院系'
+  }
+  const name = departmentOptions.value.find((item) => item.value === departmentId.value)?.label
+  const teachers = summary.value?.teacherCount
+  if (typeof teachers === 'number') {
+    return `${name || '当前院系'} · 教师 ${teachers}`
+  }
+  return name || '当前院系'
+})
 </script>
 
 <template>
@@ -343,8 +414,8 @@ watch(
       <ContextBar
         layout="workbench"
         show-title
-        title="院系驾驶舱"
-        :subtitle="summary?.departmentName || portrait?.departmentName"
+        title="院系完整度驾驶舱"
+        :subtitle="departmentCockpitWorkbenchSubtitle"
       >
         <template #actions>
           <UiButton size="sm" :disabled="!departmentId" @click="goDeptOneTable()">
@@ -366,6 +437,7 @@ watch(
       <SignalBand
         v-if="summary"
         :metrics="signals"
+        layout="spotlight"
         variant="panel"
         compact
         @metric-click="handleSignalMetricClick"
@@ -403,11 +475,12 @@ watch(
             · 最近计算 {{ summary.metricComputedTime }}
           </template>
         </UiAlertStrip>
-        <UiStatPanel
-          v-if="portrait"
-          title="院系画像均值"
-          :items="portraitStats"
+        <SignalBand
+          layout="spotlight"
+          variant="inline"
           compact
+          v-if="portrait"
+          :metrics="portraitStats"
           class="dept-cockpit__portrait"
         />
         <PortfolioHrMetricDistributionSection

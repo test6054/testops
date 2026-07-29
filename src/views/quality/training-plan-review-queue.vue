@@ -6,6 +6,7 @@ import type {
   TrainingPlanStatusAuditVO,
   TrainingPlanVO,
 } from '@/apis/quality/training-plan'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
 import { trainingPlanApi } from '@/apis/quality/training-plan'
@@ -19,8 +20,10 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTimeline from '@/components/ui-guide/ui/UiTimeline.vue'
 import UiTimelineItem from '@/components/ui-guide/ui/UiTimelineItem.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
@@ -28,6 +31,7 @@ import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useAuthStore } from '@/stores/modules/auth'
 import { TrainingPlanStatusActionDescription } from '@/types/enums/training-plan-status-action-enum'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TrainingPlanReviewQueue' })
@@ -41,6 +45,38 @@ const pageNum = ref(1)
 const pageSize = ref(20)
 const loading = ref(false)
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
+
+const PlanReviewSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && total.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: activeTab.value === 'pending' ? '待院审' : '已发布方案',
+      value: total.value,
+      clickable: true,
+      tone: activeTab.value === 'pending' && total.value > 0 ? 'orange' : undefined,
+    },
+  ]
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const PlanReviewWorkbenchSubtitle = computed(() => {
+  if (loadError.value) {
+    return '加载失败'
+  }
+  const scope = activeTab.value === 'pending' ? '待院审' : '已发布'
+  return `${scope} ${total.value} 条`
+})
+
+function onPlanReviewSignalClick(_key: string) {
+  void loadPage()
+}
+
 const drawerOpen = ref(false)
 const detailLoading = ref(false)
 const selectedPlan = ref<TrainingPlanVO | null>(null)
@@ -76,7 +112,7 @@ const columns: ColumnsType = [
   { title: '提交时间', dataIndex: 'submittedAt', key: 'submittedAt', width: 170 },
   { title: '滞留', key: 'overdueDays', width: 100 },
   { title: '确认时间', dataIndex: 'confirmedTime', key: 'confirmedTime', width: 170 },
-  { title: '操作', key: 'actions', width: 96, fixed: 'right' },
+  { title: '主行动', key: 'actions', width: 96, fixed: 'right' },
 ]
 
 const auditActionLabel = TrainingPlanStatusActionDescription
@@ -363,13 +399,27 @@ useQualityScopedLoader(loadPage, {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar>
+      <QualityPageContextBar
+        show-title
+        title="培养方案院审队列"
+        :subtitle="PlanReviewWorkbenchSubtitle"
+      >
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadPage">
             刷新队列
           </UiButton>
         </template>
       </QualityPageContextBar>
+    </template>
+
+    <template v-if="PlanReviewSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="PlanReviewSignalMetrics"
+        @metric-click="onPlanReviewSignalClick"
+      />
     </template>
 
     <div class="training-plan-review-queue">
@@ -428,7 +478,12 @@ useQualityScopedLoader(loadPage, {
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton variant="ghost" size="sm" @click="openReview(record)">审阅</UiButton>
+            <UiTableActions
+              :max-visible="2"
+              :items="[{ key: 'review', label: '审阅', tone: 'primary' }]"
+              split
+              @action="() => openReview(record)"
+            />
           </template>
         </template>
         <template #empty>

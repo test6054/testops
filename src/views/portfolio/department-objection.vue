@@ -7,6 +7,7 @@ import type {
   PortfolioEvaluationObjectionSummaryVO,
 } from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -37,6 +38,7 @@ import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
@@ -44,6 +46,7 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -114,6 +117,48 @@ const rows = ref<PortfolioEvaluationObjectionSummaryVO[]>([])
 const pageNum = ref(1)
 const pageSize = ref(10)
 const pageTotal = ref(0)
+
+const pageSubmittedObjectionCount = computed(() =>
+  rows.value.filter(
+    (row) => row.objectionStatus === PortfolioEvaluationObjectionStatusCode.SUBMITTED,
+  ).length,
+)
+
+const objectionSignalMetrics = computed<SignalMetric[]>(() => {
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '异议工单',
+      value: pageTotal.value,
+      clickable: true,
+    },
+  ]
+  if (rows.value.length > 0) {
+    metrics.push({
+      key: 'page-submitted',
+      label: '本页待复核',
+      value: pageSubmittedObjectionCount.value,
+      tone: pageSubmittedObjectionCount.value > 0 ? 'orange' : undefined,
+      helper: '仅当前页',
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: pageSubmittedObjectionCount.value > 0 ? 'page-submitted' : 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const objectionWorkbenchSubtitle = computed(() => {
+  if (pageSubmittedObjectionCount.value > 0) {
+    return `${pageTotal.value} 条 · 本页待复核 ${pageSubmittedObjectionCount.value}`
+  }
+  return `${pageTotal.value} 条`
+})
+
+function onObjectionSignalClick(_key: string) {
+  void loadPage()
+}
+
 const pageRequestToken = ref(0)
 const reviewContextToken = ref(0)
 const reviewDrawerOpen = ref(false)
@@ -183,7 +228,7 @@ const columns: ColumnsType<PortfolioEvaluationObjectionSummaryVO> = [
   { title: '修正得分', key: 'correctedScore', width: 96 },
   { title: '理由', dataIndex: 'objectionReason', key: 'objectionReason' },
   { title: '佐证', key: 'evidenceRef', width: 100, align: 'center' },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 /** 作废当前材料包请求并清空复核上下文，避免旧异议证据继续可写。 */
@@ -419,7 +464,7 @@ function buildEvidenceActions(row: PortfolioEvaluationObjectionSummaryVO): UiTab
   if (!row.evidenceRef) {
     return []
   }
-  return [{ key: 'download', label: '下载' }]
+  return [{ key: 'download', label: '下载', tone: 'primary' }]
 }
 
 function handleEvidenceAction(key: string, row: PortfolioEvaluationObjectionSummaryVO): void {
@@ -494,7 +539,7 @@ void loadPage()
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="公示异议">
+      <ContextBar layout="workbench" show-title title="公示异议" :subtitle="objectionWorkbenchSubtitle">
         <template #actions>
           <UiSelect
             v-model="objectionStatusFilter"
@@ -523,6 +568,16 @@ void loadPage()
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+
+    <template v-if="objectionSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="objectionSignalMetrics"
+        @metric-click="onObjectionSignalClick"
+      />
     </template>
 
     <UiCard title="异议工单">
@@ -580,6 +635,7 @@ void loadPage()
           </template>
           <template v-else-if="column.key === 'evidenceRef'">
             <UiTableActions
+              :max-visible="2"
               v-if="record.evidenceRef"
               :items="buildEvidenceActions(record)"
               :split="false"
@@ -622,6 +678,7 @@ void loadPage()
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               v-if="record.objectionStatus === PortfolioEvaluationObjectionStatusCode.SUBMITTED"
               :items="buildObjectionRowActions(record)"
               :split="false"

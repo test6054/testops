@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="print-package-page">
     <template v-if="selectedExamId" #context>
-      <ContextBar layout="workbench" show-title title="印刷包">
+      <ContextBar layout="workbench" show-title title="印刷包" :subtitle="selectedExamId ? `${pagination.total} 条` : undefined">
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
@@ -64,7 +64,7 @@
             :title="generateDisabledReason"
           >
             <UiButton
-              variant="primary"
+              variant="outline"
               size="sm"
               :loading="generating === true"
               :disabled="generateBlocked === true"
@@ -92,7 +92,7 @@
     />
 
     <template v-if="selectedExamId && printPackageApplicable === true" #signal>
-      <SignalBand compact variant="panel" :metrics="packageSignalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="packageSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" class="print-package-page__empty" />
@@ -184,6 +184,7 @@
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
+                  :max-visible="2"
                   :items="buildPackageActions(record)"
                   split
                   @action="(key) => handlePackageAction(key, record)"
@@ -907,7 +908,7 @@ const packageColumns: ColumnType<ExamPrintPackageResponse>[] = [
   { title: '印务数量', key: 'copyCount', width: 220 },
   { title: '生成时间', dataIndex: 'generatedTime', key: 'generatedTime', width: 170 },
   { title: '封装备注', key: 'sealRemark', ellipsis: true },
-  { title: '操作', key: 'actions', width: 260 },
+  { title: '主行动', key: 'actions', width: 260 },
 ]
 
 async function loadPrintPackagePanel(expectedGeneration = examLoadGeneration): Promise<void> {
@@ -1227,23 +1228,37 @@ function openPackageLedger(pkg: ExamPrintPackageResponse): void {
   packageLedgerOpen.value = true
 }
 
+/** 印务包行主行动：推进 > 预览 primary 置顶；台账/下载进次要。 */
 function buildPackageActions(pkg: ExamPrintPackageResponse): UiTableRowActionItem[] {
   const nextStatus = nextPrintStatus(pkg.status)
+  const canAdvance = Boolean(nextStatus) && canManageOwnerPrintPackageWrites.value === true
+  const canPreview = Boolean(pkg.packageFileId)
   return [
-    { key: 'ledger', label: '查看印务台账' },
-    { key: 'preview', label: '预览母版', tone: 'primary', hidden: !pkg.packageFileId },
-    { key: 'download-package', label: '下载核对包', hidden: !pkg.packageFileId },
-    { key: 'download-question', label: '下载试题卷', hidden: !pkg.questionPaperFileId },
-    { key: 'download-answer', label: '下载答题纸', hidden: !pkg.answerBookletFileId },
     {
       key: 'advance',
       label: nextStatus ? statusLabel(nextStatus) : '推进',
       tone: 'primary',
-      hidden: !nextStatus || canManageOwnerPrintPackageWrites.value !== true,
+      hidden: !canAdvance,
     },
-    { key: 'void', label: '作废', tone: 'danger', hidden: pkg.status === PrintPackageStatusCode.ISSUED_TO_EXAM_SITE
-      || pkg.status === PrintPackageStatusCode.RECONCILED || pkg.status === PrintPackageStatusCode.VOIDED
-      || canManageOwnerPrintPackageWrites.value !== true },
+    {
+      key: 'preview',
+      label: '预览母版',
+      tone: canAdvance ? undefined : 'primary',
+      hidden: !canPreview,
+    },
+    { key: 'ledger', label: '查看印务台账' },
+    { key: 'download-package', label: '下载核对包', hidden: !pkg.packageFileId },
+    { key: 'download-question', label: '下载试题卷', hidden: !pkg.questionPaperFileId },
+    { key: 'download-answer', label: '下载答题纸', hidden: !pkg.answerBookletFileId },
+    {
+      key: 'void',
+      label: '作废',
+      tone: 'danger',
+      hidden: pkg.status === PrintPackageStatusCode.ISSUED_TO_EXAM_SITE
+        || pkg.status === PrintPackageStatusCode.RECONCILED
+        || pkg.status === PrintPackageStatusCode.VOIDED
+        || canManageOwnerPrintPackageWrites.value !== true,
+    },
   ]
 }
 

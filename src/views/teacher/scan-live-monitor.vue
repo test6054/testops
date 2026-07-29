@@ -4,8 +4,8 @@
       <ContextBar
         layout="workbench"
         show-title
-        title="扫描监控"
-        :subtitle="contextBarSubtitle"
+        title="扫描异常工作台"
+        :subtitle="scanMonitorWorkbenchSubtitle"
       >
         <template #status>
           <UiTag
@@ -15,28 +15,24 @@
           >
             {{ connectionLabel }}
           </UiTag>
-          <UiTag :tone="abnormalAttentionCount > 0 ? 'red' : 'green'" size="sm">
-            {{ abnormalAttentionCount > 0 ? `${abnormalAttentionCount} 条异常` : '无阻断异常' }}
-          </UiTag>
-          <UiTag :tone="duplicateAttentionCount > 0 ? 'orange' : 'green'" size="sm">
-            {{ duplicateAttentionCount > 0 ? `${duplicateAttentionCount} 条重复` : '无重复影像' }}
-          </UiTag>
         </template>
         <template #actions>
           <UiButton
+            v-if="scanMonitorPagePrimaryAction"
             size="sm"
-            v-if="abnormalAttentionCount > 0"
             variant="primary"
-            @click="jumpToAbnormalTab"
+            :loading="scanMonitorPagePrimaryAction.loading"
+            :disabled="scanMonitorPagePrimaryAction.disabled"
+            @click="scanMonitorPagePrimaryAction.run()"
           >
-            查看异常
+            {{ scanMonitorPagePrimaryAction.label }}
           </UiButton>
-          <UiButton size="sm" variant="outline" :disabled="!selectedExamId" @click="goToScanLedger">
+          <UiButton size="sm" variant="ghost" :disabled="!selectedExamId" @click="goToScanLedger">
             影像账本
           </UiButton>
           <UiButton
             size="sm"
-            variant="outline"
+            variant="ghost"
             :disabled="!selectedExamId"
             @click="goToManualEntry"
           >
@@ -49,6 +45,7 @@
     <template v-if="selectedExamId" #signal>
       <SignalBand
         :metrics="scanMonitorSignalMetrics"
+        layout="spotlight"
         variant="panel"
         compact
         class="scan-monitor__stats"
@@ -189,6 +186,8 @@
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
                     :items="buildMonitorBatchActions(record)"
+                    :max-visible="2"
+                    align="end"
                     split
                     @action="(key) => handleMonitorBatchAction(key, record)"
                   />
@@ -223,8 +222,8 @@
             >
               <template #toolbar-right>
                 <UiButton
-                  v-if="activeTab === 'abnormal' && canManageOwnerBatchActions === true"
-                  variant="primary"
+                  v-if="activeTab === 'abnormal' && canManageOwnerBatchActions === true && scanMonitorPagePrimaryAction?.key !== 'batch-bind'"
+                  variant="outline"
                   size="sm"
                   :disabled="selectedRowKeys.length === 0"
                   :loading="batchBinding === true"
@@ -276,6 +275,8 @@
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
                     :items="buildAttentionActions(record)"
+                    :max-visible="2"
+                    align="end"
                     split
                     @action="(key) => handleAttentionAction(key, record)"
                   />
@@ -674,6 +675,7 @@ import message from 'ant-design-vue/es/message'
 import { computed, defineAsyncComponent, onActivated, onBeforeUnmount, onDeactivated, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchStoragePreviewBlobUrl } from '@/apis/edu/file-management'
+
 import {
   DUPLICATE_RESOLUTION_STATUS_TONE,
   DuplicateResolutionStatusDescription,
@@ -755,7 +757,6 @@ import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-h
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import mittBus from '@/utils/mitt'
 import { buildScanMonitorSignalMetrics } from '@/utils/scan-monitor-panel-ui'
-import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanLiveMonitor' })
@@ -1033,7 +1034,7 @@ const monitorBatchColumns: ColumnType<ExamScannerBatchResponse>[] = [
   { title: 'DPI', key: 'dpi', width: 88, align: 'right' },
   { title: '开始时间', key: 'scanStartTime', width: 168 },
   { title: '结束时间', key: 'scanEndTime', width: 168 },
-  { title: '操作', key: 'actions', width: 80 },
+  { title: '主行动', key: 'actions', width: 120, align: 'right' },
 ]
 
 function monitorBatchStatusTone(batch: ExamScannerBatchResponse): BadgeTone {
@@ -1175,6 +1176,66 @@ const paperCandidateOptions = computed<UiSelectOption[]>(() =>
 
 const abnormalAttentionCount = computed(() => scanMonitorPanel.value?.abnormalAttentionCount ?? 0)
 const duplicateAttentionCount = computed(() => scanMonitorPanel.value?.duplicateAttentionCount ?? 0)
+
+/** 任务工作台副标题：异常/重复真数，覆盖旅程 page 空 subtitle。 */
+const scanMonitorWorkbenchSubtitle = computed(() => {
+  if (!selectedExamId.value) {
+    return '请先选择考试'
+  }
+  const abnormal = abnormalAttentionCount.value
+  const dup = duplicateAttentionCount.value
+  if (abnormal > 0) {
+    return dup > 0 ? `异常 ${abnormal} · 重复 ${dup}` : `异常待处理 ${abnormal}`
+  }
+  if (dup > 0) {
+    return `重复影像 ${dup}`
+  }
+  return connectionLabel.value ? `监控中 · ${connectionLabel.value}` : '监控中 · 无阻断异常'
+})
+
+/**
+ * 页级唯一实心主行动：勾选批量绑定优先，否则异常/重复队列。
+ */
+const scanMonitorPagePrimaryAction = computed(() => {
+  if (!selectedExamId.value) {
+    return null
+  }
+  if (
+    activeTab.value === 'abnormal'
+    && canManageOwnerBatchActions.value === true
+    && selectedRowKeys.value.length > 0
+  ) {
+    return {
+      key: 'batch-bind',
+      label: `批量绑定（${selectedRowKeys.value.length}）`,
+      loading: batchBinding.value === true,
+      disabled: false,
+      run: () => {
+        void handleBatchBind()
+      },
+    }
+  }
+  if (abnormalAttentionCount.value > 0) {
+    return {
+      key: 'abnormal',
+      label: `处理异常 ${abnormalAttentionCount.value}`,
+      loading: false,
+      disabled: false,
+      run: () => jumpToAbnormalTab(),
+    }
+  }
+  if (duplicateAttentionCount.value > 0) {
+    return {
+      key: 'duplicate',
+      label: `处理重复 ${duplicateAttentionCount.value}`,
+      loading: false,
+      disabled: false,
+      run: () => jumpToDuplicateTab(),
+    }
+  }
+  return null
+})
+
 const activeAttentionRows = computed(() => attentions.value)
 
 const scanLiveStream = useScanLiveStream({
@@ -1549,7 +1610,7 @@ const columns: ColumnType<ScanAttentionItemResponse>[] = [
   { title: '状态', key: 'status', width: 120, align: 'center' },
   { title: '处理说明', key: 'diagnostic', minWidth: 280, ellipsis: true },
   { title: '更新时间', key: 'updateTime', width: 170 },
-  { title: '操作', key: 'actions', width: 200 },
+  { title: '主行动', key: 'actions', width: 148, align: 'right' },
 ]
 
 async function loadAttentions(): Promise<void> {
@@ -1821,7 +1882,10 @@ function scanAttentionStatusTone(record: ScanAttentionItemResponse): BadgeTone {
   }
 }
 
-const scanMonitorSignalMetrics = computed(() => toSignalMetrics(statPanelMetrics.value))
+const scanMonitorSignalMetrics = computed((): SignalMetric[] => {
+  // buildScanMonitorSignalMetrics 已含 emphasis/actionLabel；禁止 toSignalMetrics 剥字段
+  return statPanelMetrics.value
+})
 
 function resetFilter(): void {
   normalFilterApplied.keyword = ''
@@ -2236,7 +2300,9 @@ const detailDrawerOpen = ref(false)
 const detailRecord = ref<ScanAttentionItemResponse | null>(null)
 
 function buildMonitorBatchActions(_batch: ExamScannerBatchResponse): UiTableRowActionItem[] {
-  return [{ key: 'detail', label: '详情' }]
+  return [
+    { key: 'detail', label: '详情', tone: 'primary' },
+  ]
 }
 
 function handleMonitorBatchAction(key: string, batch: ExamScannerBatchResponse): void {
@@ -2246,8 +2312,8 @@ function handleMonitorBatchAction(key: string, batch: ExamScannerBatchResponse):
 }
 
 function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowActionItem[] {
-  const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
-  // MVR-263/952：主考写动作与 BE requireExamOwnerPermission 对齐；仅认 === true
+  // 行内唯一 primary 置顶；详情进次要/⋯。MVR-263/952 主考写动作仅认 === true
+  const actions: UiTableRowActionItem[] = []
   const canOwnerWrite = canManageOwnerBatchActions.value === true
   const primaryCode = record.primaryActionCode
   const primaryLabel
@@ -2259,8 +2325,8 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
       )
   if (primaryCode === ScanAttentionPrimaryActionCode.VIEW_DETAIL) {
     actions.push({
-      key: 'primary',
-      label: primaryLabel,
+      key: 'detail',
+      label: primaryLabel || '详情',
       tone: 'primary',
     })
   } else if (primaryCode === ScanAttentionPrimaryActionCode.BIND_IDENTITY) {
@@ -2275,9 +2341,11 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
       actions.push({
         key: 'workbench',
         label: '查看批次',
+        tone: 'primary',
         disabled: !record.scanBatchId,
       })
     }
+    actions.push({ key: 'detail', label: '详情' })
   } else if (primaryCode) {
     actions.push({
       key: 'primary',
@@ -2285,6 +2353,9 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
       tone: 'primary',
       disabled: Boolean(record.actionDisabledReason) || !record.workspaceRouteName,
     })
+    actions.push({ key: 'detail', label: '详情' })
+  } else {
+    actions.push({ key: 'detail', label: '详情', tone: 'primary' })
   }
   if (
     canOwnerWrite === true

@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import type {
+  PortfolioConflictTicketVO,
+  PortfolioIntegrationMessageInboxVO,
+  PortfolioNationalReportIssueVO,
+} from '@/apis/portfolio/integration'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { inject } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -7,6 +13,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { PortfolioConflictTicketStatusEnum } from '@/types/enums/portfolio-conflict-ticket-status-enum'
@@ -22,7 +29,7 @@ import { INTEGRATION_WRITE_WORKBENCH_CTX } from '../integration-write-workbench-
 
 defineOptions({ name: 'IntegrationWriteSecondaryPanels' })
 
-const ctx = inject(INTEGRATION_WRITE_WORKBENCH_CTX) as Record<string, any>
+const ctx = inject(INTEGRATION_WRITE_WORKBENCH_CTX)
 if (!ctx) {
   throw new Error('IntegrationWriteSecondaryPanels 必须在 IntegrationWriteWorkbench 内使用')
 }
@@ -81,6 +88,125 @@ const addEnqueuePayloadField = ctx.addEnqueuePayloadField
 const removeEnqueuePayloadField = ctx.removeEnqueuePayloadField
 const resolveIdentityUnmatched = ctx.resolveIdentityUnmatched
 const resolveConflict = ctx.resolveConflict
+function isCtxWriting(): boolean {
+  return Boolean(writing?.value ?? writing)
+}
+
+function ctxOperationKey(): string {
+  const key = operationKey?.value ?? operationKey
+  return typeof key === 'string' ? key : ''
+}
+
+/** 全国上报问题：确认已修正为主行动 */
+function buildNationalIssueRowActions(record: {
+  id: string
+  status?: string
+  syncTaskId?: string
+}): UiTableRowActionItem[] {
+  const busy = isCtxWriting()
+  return [
+    {
+      key: 'fix',
+      label: '确认已修正',
+      tone: 'primary',
+      hidden: record.status !== PortfolioNationalReportIssueStatusCode.OPEN,
+      disabled: busy || ctxOperationKey() === `national-issue:${record.id}`,
+    },
+    {
+      key: 'export',
+      label: '申请导出批次包',
+      hidden: !record.syncTaskId,
+      disabled: busy || ctxOperationKey() === `national-export:${record.syncTaskId}`,
+    },
+  ]
+}
+
+function handleNationalIssueRowAction(key: string, record: PortfolioNationalReportIssueVO): void {
+  if (key === 'fix') {
+    fixNationalReportIssue(record)
+    return
+  }
+  if (key === 'export') {
+    exportNationalReportForIssue(record)
+  }
+}
+
+/** 冲突单：保留本地为主行动 */
+function buildConflictRowActions(record: { id: string }): UiTableRowActionItem[] {
+  const busy = isCtxWriting()
+  const op = ctxOperationKey()
+  return [
+    {
+      key: 'local',
+      label: '保留本地',
+      tone: 'primary',
+      disabled:
+        busy
+        || op === `conflict:${record.id}:${PortfolioConflictTicketStatusEnum.RESOLVED_USE_LOCAL}`,
+    },
+    {
+      key: 'external',
+      label: '采用外部',
+      disabled:
+        busy
+        || op === `conflict:${record.id}:${PortfolioConflictTicketStatusEnum.RESOLVED_USE_EXTERNAL}`,
+    },
+    {
+      key: 'ignore',
+      label: '忽略',
+      disabled: busy || op === `conflict:${record.id}:${PortfolioConflictTicketStatusEnum.IGNORED}`,
+    },
+  ]
+}
+
+function handleConflictRowAction(key: string, record: PortfolioConflictTicketVO): void {
+  if (key === 'local') {
+    resolveConflict(record, PortfolioConflictTicketStatusEnum.RESOLVED_USE_LOCAL)
+    return
+  }
+  if (key === 'external') {
+    resolveConflict(record, PortfolioConflictTicketStatusEnum.RESOLVED_USE_EXTERNAL)
+    return
+  }
+  if (key === 'ignore') {
+    resolveConflict(record, PortfolioConflictTicketStatusEnum.IGNORED)
+  }
+}
+
+/** 异常消息：修正重放/整包替换为主行动 */
+function buildFailedMessageRowActions(record: {
+  id: string
+  payloadContractValid?: boolean
+}): UiTableRowActionItem[] {
+  const busy = isCtxWriting()
+  return [
+    {
+      key: 'fix',
+      label: record.payloadContractValid === false ? '整包替换' : '修正重放',
+      tone: 'primary',
+      disabled: busy,
+    },
+    {
+      key: 'requeue',
+      label: '原载荷重试',
+      disabled: busy || record.payloadContractValid === false || ctxOperationKey() === `failed-message:${record.id}`,
+    },
+  ]
+}
+
+function handleFailedMessageRowAction(
+  key: string,
+  record: PortfolioIntegrationMessageInboxVO,
+): void {
+  if (key === 'fix') {
+    openFailedMessageFix(record)
+    return
+  }
+  if (key === 'requeue') {
+    requeueFailedMessage(record)
+  }
+}
+
 const loadTeachers = ctx.loadTeachers
 const handleTeacherSearch = ctx.handleTeacherSearch
 const needsTeacherNumber = ctx.needsTeacherNumber
@@ -233,26 +359,12 @@ const needsTeacherNumber = ctx.needsTeacherNumber
           }}
         </template>
         <template v-else-if="column.key === 'actions'">
-          <UiButton
-            v-if="record.status === PortfolioNationalReportIssueStatusCode.OPEN"
-            variant="primary"
-            size="sm"
-            :loading="operationKey === `national-issue:${record.id}`"
-            :disabled="writing"
-            @click="fixNationalReportIssue(record)"
-          >
-            确认已修正
-          </UiButton>
-          <UiButton
-            v-if="record.syncTaskId"
-            size="sm"
-            variant="ghost"
-            :loading="operationKey === `national-export:${record.syncTaskId}`"
-            :disabled="writing"
-            @click="exportNationalReportForIssue(record)"
-          >
-            申请导出批次包
-          </UiButton>
+          <UiTableActions
+            :max-visible="2"
+            :items="buildNationalIssueRowActions(record)"
+            split
+            @action="(key) => handleNationalIssueRowAction(key, record)"
+          />
         </template>
       </template>
     </UiDataTable>
@@ -276,42 +388,12 @@ const needsTeacherNumber = ctx.needsTeacherNumber
               && record.ticketStatus === PortfolioConflictTicketStatusEnum.OPEN
           "
         >
-          <UiButton
-            size="sm"
-            :loading="
-              operationKey
-                === `conflict:${record.id}:${PortfolioConflictTicketStatusEnum.RESOLVED_USE_LOCAL}`
-            "
-            :disabled="writing"
-            @click="resolveConflict(record, PortfolioConflictTicketStatusEnum.RESOLVED_USE_LOCAL)"
-          >
-            保留本地
-          </UiButton>
-          <UiButton
-            size="sm"
-            :loading="
-              operationKey
-                === `conflict:${record.id}:${PortfolioConflictTicketStatusEnum.RESOLVED_USE_EXTERNAL}`
-            "
-            :disabled="writing"
-            @click="
-              resolveConflict(record, PortfolioConflictTicketStatusEnum.RESOLVED_USE_EXTERNAL)
-            "
-          >
-            采用外部
-          </UiButton>
-          <UiButton
-            size="sm"
-            variant="ghost"
-            :loading="
-              operationKey
-                === `conflict:${record.id}:${PortfolioConflictTicketStatusEnum.IGNORED}`
-            "
-            :disabled="writing"
-            @click="resolveConflict(record, PortfolioConflictTicketStatusEnum.IGNORED)"
-          >
-            忽略
-          </UiButton>
+          <UiTableActions
+            :max-visible="2"
+            :items="buildConflictRowActions(record)"
+            split
+            @action="(key) => handleConflictRowAction(key, record)"
+          />
         </template>
       </template>
     </UiDataTable>
@@ -442,23 +524,12 @@ const needsTeacherNumber = ctx.needsTeacherNumber
           </UiTag>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <UiButton
-            size="sm"
-            variant="ghost"
-            :loading="operationKey === `failed-message:${record.id}`"
-            :disabled="writing || record.payloadContractValid === false"
-            @click="requeueFailedMessage(record)"
-          >
-            原载荷重试
-          </UiButton>
-          <UiButton
-            size="sm"
-            variant="primary"
-            :disabled="writing"
-            @click="openFailedMessageFix(record)"
-          >
-            {{ record.payloadContractValid === false ? '整包替换' : '修正重放' }}
-          </UiButton>
+          <UiTableActions
+            :max-visible="2"
+            :items="buildFailedMessageRowActions(record)"
+            split
+            @action="(key) => handleFailedMessageRowAction(key, record)"
+          />
         </template>
       </template>
       <template #empty>

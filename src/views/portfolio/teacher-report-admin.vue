@@ -2,6 +2,7 @@
 import type { PortfolioAiAnalysisDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import type {
   PortfolioAiAnalysisReviewStatusCode} from '@/types/enums/portfolio-ai-analysis-review-status-enum';
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
@@ -25,6 +26,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import {
   PortfolioAiAnalysisReviewStatusDescription,
@@ -37,6 +39,7 @@ import {
   portfolioTeacherSelectOptionsFromSummaries,
   resolvePortfolioTeacherDisplayName,
 } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -79,10 +82,16 @@ const pageSubtitle = computed(() => {
     return reportDetail.value.reportPeriodLabel
   }
   if (deepLinkedTaskId.value) {
-    return '按年度报告任务查看智能草稿'
+    return '任务草稿'
   }
-  return '按教师场景生成教学档案袋文本分析草稿（非正式结论）'
+  if (reportDetail.value) {
+    return reviewStatusLabel(reportDetail.value.reviewStatus)
+  }
+  return '待生成'
 })
+
+
+
 
 function reviewStatusLabel(status?: PortfolioAiAnalysisReviewStatusCode): string {
   if (!status) {
@@ -94,6 +103,37 @@ function reviewStatusLabel(status?: PortfolioAiAnalysisReviewStatusCode): string
     'AI 分析审核状态',
   )
 }
+
+const TeacherReportSignalMetrics = computed<SignalMetric[]>(() => {
+  if (!reportDetail.value) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'review',
+      label: '审核状态',
+      value: reviewStatusLabel(reportDetail.value.reviewStatus),
+    },
+  ]
+  if (reportDetail.value.reportPeriodLabel) {
+    metrics.push({
+      key: 'period',
+      label: '报告周期',
+      value: reportDetail.value.reportPeriodLabel,
+    })
+  }
+  if (reportDetail.value.draftMarkdown) {
+    metrics.push({
+      key: 'draft',
+      label: '草稿',
+      value: '已生成',
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'review',
+    actionLabel: '查看草稿',
+  })
+})
 
 function sanitizeDraftFileName(title: string | undefined): string {
   const raw = (title || '教学报告AI草稿').trim() || '教学报告AI草稿'
@@ -399,6 +439,14 @@ watch(
   <StageWorkbenchShell>
     <template #context>
       <ContextBar show-title layout="workbench" :title="pageTitle" :subtitle="pageSubtitle" />
+    </template>
+    <template v-if="TeacherReportSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TeacherReportSignalMetrics"
+      />
     </template>
     <UiCard :title="deepLinkedResultView ? '重新生成其他报告' : '生成参数'">
       <div class="toolbar">

@@ -58,7 +58,7 @@
     <ExamSelectGateStrip v-if="!selectedExamId" class="quality-dashboard__empty" />
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand :metrics="signalMetrics" variant="panel" compact />
+      <SignalBand layout="spotlight" :metrics="signalMetrics" variant="panel" compact />
     </template>
 
     <ExamWorkspaceJourneySubNav v-if="selectedExamId && isExamWorkspaceRoute" />
@@ -322,7 +322,7 @@
                 <UiTableActions
                   :items="[{ key: 'handle', label: '去处理', tone: 'primary' }]"
                   split
-                  @action="goSpotCheckWorkbench"
+                  @action="goSpotCheckWorkbench" :max-visible="2"
                 />
               </template>
             </template>
@@ -438,6 +438,7 @@
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
+                  :max-visible="2"
                   :items="[{ key: 'progress', label: '查看进度' }]"
                   split
                   @action="() => openGroupProgress(groupSummaryRows[index].groupId)"
@@ -790,7 +791,7 @@
                 <UiTableActions
                   :items="[{ key: 'handle', label: '去处理', tone: 'primary' }]"
                   split
-                  @action="goSpotCheckWorkbench"
+                  @action="goSpotCheckWorkbench" :max-visible="2"
                 />
               </template>
             </template>
@@ -987,6 +988,7 @@ import {
   SpotCheckStatusDescription,
   takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 
 defineOptions({ name: 'AdminMarkingQualityDashboard' })
 const MarkChart = defineAsyncComponent(() => import('@/components/chart/MarkChart.vue'))
@@ -1161,7 +1163,7 @@ const groupSummaryColumns: ColumnType<GroupSummaryRow>[] = [
   { title: '完成率', key: 'completionRate', width: 88 },
   { title: '风险', key: 'riskLevel', width: 88 },
   { title: '状态', key: 'groupStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 100 },
+  { title: '主行动', key: 'actions', width: 100 },
 ]
 
 const groupSummaryLoading = ref(false)
@@ -1397,7 +1399,7 @@ const mySpotCheckColumns: ColumnType<MyPendingSpotCheckItemResponse>[] = [
   { title: '原评分', key: 'originalScore', width: 88, align: 'right' },
   { title: '状态', key: 'spotCheckStatus', width: 100 },
   { title: '分派时间', key: 'createTime', width: 160 },
-  { title: '操作', key: 'actions', width: 88 },
+  { title: '主行动', key: 'actions', width: 88 },
 ]
 
 function mySpotCheckStatusTone(status: SpotCheckStatusCode): BadgeTone {
@@ -1823,7 +1825,7 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     const summary = panel.qualitySummary
     const consistency = summary.examConsistencyRate
     const passRate = summary.spotCheckPassRate
-    return [
+    return applySpotlightEmphasis([
       {
         key: 'consistency',
         label: '平均一致性',
@@ -1859,7 +1861,14 @@ const signalMetrics = computed<SignalMetric[]>(() => {
         value: panel.openSpotCheckCount,
         tone: panel.openSpotCheckCount > 0 ? 'orange' : 'gray',
       },
-    ]
+    ], {
+      primaryKey: (summary.spotCheckAbnormalCount ?? 0) > 0
+        ? 'spotcheck-abnormal'
+        : (panel.openSpotCheckCount > 0 ? 'spotcheck-open' : 'consistency'),
+      actionLabel: (summary.spotCheckAbnormalCount ?? 0) > 0
+        ? '处理异常'
+        : (panel.openSpotCheckCount > 0 ? '去抽检' : undefined),
+    })
   }
 
   const p = progress.value
@@ -1874,7 +1883,7 @@ const signalMetrics = computed<SignalMetric[]>(() => {
 
   const completionTrend = computeTrendPointDelta(progressTrendPoints.value)
 
-  return [
+  return applySpotlightEmphasis([
     {
       key: 'completion',
       label: '完成率',
@@ -1918,7 +1927,12 @@ const signalMetrics = computed<SignalMetric[]>(() => {
       tone: reviewerSuspended > 0 ? 'red' : 'gray',
       trendPolarity: 'negative',
     },
-  ]
+  ], {
+    primaryKey: reviewerSuspended > 0
+      ? 'suspended'
+      : (reviewerWarning > 0 ? 'warning' : (recycledCount > 0 ? 'recycled' : 'completion')),
+    actionLabel: reviewerSuspended > 0 || reviewerWarning > 0 ? '处理教师状态' : undefined,
+  })
 })
 
 function formatDecimal(value: number | undefined): string {

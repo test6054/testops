@@ -44,6 +44,7 @@
         </template>
         <template v-else-if="column.key === 'action'">
           <UiTableActions
+            :max-visible="2"
             v-if="canManage === true && record.editable"
             :items="[{ key: 'edit', label: '编辑' }]"
             split
@@ -145,7 +146,7 @@ const columns: ColumnType<AssignmentRow>[] = [
     align: 'right',
   },
   { title: '匿名阅卷', key: 'anonymity', width: 96 },
-  { title: '操作', key: 'action', width: 72 },
+  { title: '主行动', key: 'action', width: 72 },
 ]
 
 const emptyDescription = computed(() =>

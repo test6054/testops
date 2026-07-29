@@ -100,12 +100,61 @@ export function buildScanMonitorSignalMetrics(
   },
 ): SignalMetric[] {
   if (loadFailed) {
-    return [{ key: 'monitor-load-failed', label: '监控 KPI', value: '加载失败', tone: 'red' }]
+    return [{
+      key: 'monitor-load-failed',
+      label: '监控 KPI',
+      value: '加载失败',
+      tone: 'red',
+      emphasis: 'primary',
+    }]
   }
   if (!panel) {
-    return [{ key: 'monitor-empty', label: '监控 KPI', value: '—', tone: 'gray' }]
+    return [{
+      key: 'monitor-empty',
+      label: '监控 KPI',
+      value: '—',
+      tone: 'gray',
+      emphasis: 'primary',
+    }]
   }
-  return [
+
+  const pool: SignalMetric[] = [
+    {
+      key: 'attention',
+      label: '扫描异常',
+      value: panel.abnormalAttentionCount,
+      unit: '条',
+      tone: panel.abnormalAttentionCount > 0 ? 'orange' : 'green',
+      clickable: panel.abnormalAttentionCount > 0,
+      active: options.activeTab === 'abnormal' && !options.attentionTypeFilterActive,
+      helper: panel.abnormalAttentionCount > 0 ? '打开异常 tab' : '扫描异常清零',
+    },
+    {
+      key: 'missing-candidate',
+      label: '缺失考生',
+      value: panel.missingCandidateCount,
+      tone: panel.missingCandidateCount > 0 ? 'red' : 'green',
+      clickable: panel.missingCandidateCount > 0,
+      helper: panel.missingCandidateCount > 0 ? '查看缺失名册异常' : undefined,
+    },
+    {
+      key: 'duplicate-page',
+      label: '重复影像',
+      value: panel.duplicateAttentionCount,
+      tone: panel.duplicateAttentionCount > 0 ? 'orange' : 'green',
+      clickable: panel.duplicateAttentionCount > 0,
+      active: options.activeTab === 'duplicate',
+      helper: panel.duplicateAttentionCount > 0 ? '打开重复 tab' : undefined,
+    },
+    {
+      key: 'orphan-event',
+      label: '游离页事件',
+      value: panel.orphanPendingEventCount,
+      unit: '条',
+      tone: panel.orphanPendingEventCount > 0 ? 'orange' : 'gray',
+      clickable: panel.orphanPendingEventCount > 0,
+      helper: panel.orphanPendingEventCount > 0 ? '前往批次工作台回收' : undefined,
+    },
     {
       key: 'batch',
       label: '扫描批次',
@@ -122,6 +171,8 @@ export function buildScanMonitorSignalMetrics(
         panel.scannedPageCount > 0 ? 'green' : 'gray',
       ),
       helper: panel.progressPercent != null ? `扫描进度 ${panel.progressPercent}%` : undefined,
+      showProgress: panel.progressPercent != null,
+      progress: panel.progressPercent ?? undefined,
     },
     {
       key: 'bound-paper',
@@ -129,41 +180,29 @@ export function buildScanMonitorSignalMetrics(
       value: panel.boundPaperCount,
       tone: panel.boundPaperCount > 0 ? 'green' : 'gray',
     },
-    {
-      key: 'missing-candidate',
-      label: '缺失考生',
-      value: panel.missingCandidateCount,
-      tone: panel.missingCandidateCount > 0 ? 'red' : 'green',
-      clickable: panel.missingCandidateCount > 0,
-      helper: panel.missingCandidateCount > 0 ? '查看缺失名册异常' : undefined,
-    },
-    {
-      key: 'duplicate-page',
-      label: '重复影像',
-      value: panel.duplicateAttentionCount,
-      tone: panel.duplicateAttentionCount > 0 ? 'orange' : 'green',
-      clickable: panel.duplicateAttentionCount > 0,
-      helper: panel.duplicateAttentionCount > 0 ? '打开重复 tab' : undefined,
-    },
-    {
-      key: 'attention',
-      label: '扫描异常',
-      value: panel.abnormalAttentionCount,
-      unit: '条',
-      tone: panel.abnormalAttentionCount > 0 ? 'orange' : 'green',
-      clickable: panel.abnormalAttentionCount > 0,
-      active: options.activeTab === 'abnormal' && !options.attentionTypeFilterActive,
-      helper: panel.abnormalAttentionCount > 0 ? '打开异常 tab' : undefined,
-    },
-    {
-      key: 'orphan-event',
-      label: '游离页事件',
-      value: panel.orphanPendingEventCount,
-      unit: '条',
-      tone: panel.orphanPendingEventCount > 0 ? 'orange' : 'gray',
-      clickable: panel.orphanPendingEventCount > 0,
-      helper: panel.orphanPendingEventCount > 0 ? '前往批次工作台回收' : undefined,
-    },
+  ]
+
+  const primaryCandidate
+    = pool.find((item) => item.key === 'attention' && Number(item.value) > 0)
+      ?? pool.find((item) => item.key === 'missing-candidate' && Number(item.value) > 0)
+      ?? pool.find((item) => item.key === 'duplicate-page' && Number(item.value) > 0)
+      ?? pool.find((item) => item.key === 'orphan-event' && Number(item.value) > 0)
+      ?? pool.find((item) => item.key === 'scanned-page')
+      ?? pool[0]
+
+  const actionLabel = resolveScanMonitorSignalActionLabel(panel) || undefined
+  const primary: SignalMetric = {
+    ...primaryCandidate,
+    emphasis: 'primary',
+    actionLabel: primaryCandidate.clickable || actionLabel ? (actionLabel || '查看详情') : undefined,
+  }
+
+  return [
+    primary,
+    ...pool
+      .filter((item) => item.key !== primary.key)
+      .slice(0, 3)
+      .map((item) => ({ ...item, emphasis: 'secondary' as const })),
   ]
 }
 

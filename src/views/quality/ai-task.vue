@@ -700,7 +700,7 @@ const columns: ColumnsType = [
   { title: '业务归属', key: 'businessAnchor', width: 240 },
   { title: '失败阶段', dataIndex: 'failurePhase', key: 'failurePhase', width: 160 },
   { title: '开始时间', dataIndex: 'startedTime', key: 'startedTime', width: 160 },
-  { title: '操作', key: 'actions', width: 260 },
+  { title: '主行动', key: 'actions', width: 260 },
 ]
 
 function resetQuery() {
@@ -1147,17 +1147,13 @@ async function openDetail(record: AiTaskVO) {
   }
 }
 
+/** 行内唯一 primary 置顶：立即执行 > 重置 > 人工处置 > 详情。 */
 function buildAiTaskActions(record: AiTaskVO): UiTableRowActionItem[] {
-  // 行内仅 1 个 primary：立即执行 > 重置 > 人工处置
-  const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
+  const actions: UiTableRowActionItem[] = []
   let primaryAssigned = false
   if (isTaskOwner(record) && record.status === AiTaskStatusCode.PENDING) {
     actions.push({ key: 'run-now', label: '立即执行', tone: 'primary' })
     primaryAssigned = true
-  }
-  if (isTaskOwner(record)
-    && (record.status === AiTaskStatusCode.PENDING || record.status === AiTaskStatusCode.PROCESSING)) {
-    actions.push({ key: 'cancel', label: '取消', tone: 'danger' })
   }
   if (isTaskOwner(record) && record.status === AiTaskStatusCode.PROCESSING) {
     actions.push(
@@ -1173,6 +1169,16 @@ function buildAiTaskActions(record: AiTaskVO): UiTableRowActionItem[] {
         ? { key: 'manual-handle', label: '人工处置' }
         : { key: 'manual-handle', label: '人工处置', tone: 'primary' },
     )
+    primaryAssigned = true
+  }
+  actions.push({
+    key: 'detail',
+    label: '详情',
+    tone: primaryAssigned ? undefined : 'primary',
+  })
+  if (isTaskOwner(record)
+    && (record.status === AiTaskStatusCode.PENDING || record.status === AiTaskStatusCode.PROCESSING)) {
+    actions.push({ key: 'cancel', label: '取消', tone: 'danger' })
   }
   actions.push({ key: 'audit', label: '审计' })
   return actions
@@ -1439,27 +1445,48 @@ const signals = computed<SignalMetric[]>(() => {
   }
   const b = statusBuckets.value
   const totalCount = taskStatusCounts.value.totalCount
-  return [
+  const pool: SignalMetric[] = [
     {
       key: 'failed',
       label: '失败待处置',
       value: b.FAILED,
       tone: b.FAILED > 0 ? 'red' : 'gray',
-    },
-    {
-      key: 'processing',
-      label: '运行中',
-      value: b.PROCESSING,
-      tone: b.PROCESSING > 0 ? 'blue' : 'gray',
+      emphasis: 'secondary',
+      actionLabel: b.FAILED > 0 ? '处理失败' : undefined,
+      helper: b.FAILED > 0 ? 'AI 任务失败队列' : undefined,
     },
     {
       key: 'pending',
       label: '待处理',
       value: b.PENDING,
       tone: b.PENDING > 0 ? 'orange' : 'gray',
+      emphasis: 'secondary',
+      actionLabel: b.PENDING > 0 ? '查看排队' : undefined,
     },
-    { key: 'total', label: '任务总数', value: totalCount, tone: 'blue' },
+    {
+      key: 'processing',
+      label: '运行中',
+      value: b.PROCESSING,
+      tone: b.PROCESSING > 0 ? 'blue' : 'gray',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'total',
+      label: '任务总数',
+      value: totalCount,
+      tone: 'blue',
+      emphasis: 'secondary',
+    },
   ]
+  const primaryBase
+    = b.FAILED > 0
+      ? pool[0]
+      : b.PENDING > 0
+        ? pool[1]
+        : b.PROCESSING > 0
+          ? pool[2]
+          : pool[3]
+  return [{ ...primaryBase, emphasis: 'primary' }, ...pool.filter((item) => item.key !== primaryBase.key)]
 })
 
 onMounted(async () => {
@@ -1467,12 +1494,15 @@ onMounted(async () => {
   await handleScopeChange()
   await applyRouteTaskDeepLink()
 })
+
+/** 任务工作台副标题：任务规模。 */
+const aiTaskWorkbenchSubtitle = computed(() => `${total.value} 个任务`)
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar show-title title="AI 任务中心">
+      <QualityPageContextBar show-title title="AI 任务中心" :subtitle="aiTaskWorkbenchSubtitle">
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="handleScopeChange">
             刷新
@@ -1491,7 +1521,7 @@ onMounted(async () => {
         class="ai-task__status-segment"
         @change="handleStatusSegmentChange"
       />
-      <SignalBand :metrics="signals" variant="panel" compact class="ai-task__signals" />
+      <SignalBand :metrics="signals" layout="spotlight" variant="panel" compact class="ai-task__signals" />
       <UiEmpty
         v-if="listSyncFailed"
         size="sm"
@@ -1679,6 +1709,7 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildAiTaskActions(record)"
                 split
                 @action="(key) => handleAiTaskAction(key, record)"

@@ -22,9 +22,11 @@ import type {
   PortfolioTargetFieldDefinition,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { PortfolioDevelopmentRecordTypeCode } from '@/types/enums/portfolio-development-record-type-enum'
 import type { PortfolioFieldMappingTransformTypeCode } from '@/types/enums/portfolio-field-mapping-transform-type-enum'
 import type { PortfolioHrEmploymentStatusCode } from '@/types/enums/portfolio-hr-employment-status-enum'
+import type { SignalMetric } from '@/types/workbench'
 import type { PortfolioIntegrationOwner } from '@/views/portfolio/integration/integration-owners'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, provide, reactive, ref } from 'vue'
@@ -50,7 +52,9 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -72,6 +76,7 @@ import {
 } from '@/types/enums/portfolio-scientific-research-fact-kind-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioTeacherSelectOptionsFromSummaries } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import {
   PORTFOLIO_INTEGRATION_COCKPIT_ROUTE,
@@ -712,7 +717,7 @@ const dictEntryColumns: ColumnsType = [
   { title: '规范值', dataIndex: 'targetValue', key: 'targetValue', width: 180 },
   { title: '状态', key: 'enabled', width: 90 },
   { title: '备注', dataIndex: 'remark', key: 'remark', ellipsis: true },
-  { title: '操作', key: 'actions', width: 140, fixed: 'right' },
+  { title: '主行动', key: 'actions', width: 140, fixed: 'right' },
 ]
 
 const nationalIssueColumns: ColumnsType = [
@@ -722,7 +727,7 @@ const nationalIssueColumns: ColumnsType = [
   { title: '明细', key: 'issueDetails', ellipsis: true },
   { title: '状态', key: 'status', width: 100 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
-  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
+  { title: '主行动', key: 'actions', width: 220, fixed: 'right' },
 ]
 
 const identityResolveTeacherId = ref('')
@@ -2021,6 +2026,103 @@ onMounted(async () => {
     await Promise.all([loadDictEntries(), loadHealth()])
   }
 })
+
+function buildDatasourceRowActions(record: PortfolioIntegrationDatasourceVO): UiTableRowActionItem[] {
+  return [
+    {
+      key: 'sync',
+      label: '触发同步',
+      tone: 'primary',
+      disabled: writing.value || operationKey.value === `sync:trigger:${record.id}`,
+    },
+    {
+      key: 'edit',
+      label: '编辑',
+      disabled: writing.value,
+    },
+  ]
+}
+
+function handleDatasourceRowAction(key: string, record: PortfolioIntegrationDatasourceVO): void {
+  if (key === 'sync') {
+    void triggerSync(record)
+    return
+  }
+  if (key === 'edit') {
+    fillDatasourceForm(record)
+  }
+}
+
+function buildCourseCodeMapRowActions(record: PortfolioCourseCodeMapVO): UiTableRowActionItem[] {
+  return [
+    { key: 'edit', label: '编辑', tone: 'primary', disabled: writing.value },
+    {
+      key: 'delete',
+      label: '删除',
+      tone: 'danger',
+      disabled: writing.value || operationKey.value === `course-code-map:delete:${record.id}`,
+    },
+  ]
+}
+
+function handleCourseCodeMapRowAction(key: string, record: PortfolioCourseCodeMapVO): void {
+  if (key === 'edit') {
+    editCourseCodeMap(record)
+    return
+  }
+  if (key === 'delete') {
+    void deleteCourseCodeMap(record)
+  }
+}
+
+function buildDictEntryRowActions(record: PortfolioIntegrationDictEntryVO): UiTableRowActionItem[] {
+  return [
+    { key: 'edit', label: '编辑', tone: 'primary', disabled: writing.value },
+    {
+      key: 'delete',
+      label: '删除',
+      tone: 'danger',
+      disabled: writing.value || operationKey.value === `dict-entry:delete:${record.id}`,
+    },
+  ]
+}
+
+function handleDictEntryRowAction(key: string, record: PortfolioIntegrationDictEntryVO): void {
+  if (key === 'edit') {
+    editDictEntry(record)
+    return
+  }
+  if (key === 'delete') {
+    void deleteDictEntry(record)
+  }
+}
+
+const IntegrationWriteSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'mappings',
+      label: '字段映射',
+      value: mappings.value.length,
+      clickable: true,
+      helper: '当前已加载',
+    },
+    {
+      key: 'sync',
+      label: '同步任务',
+      value: syncTasks.value.length,
+      helper: '当前已加载',
+    },
+    {
+      key: 'unmatched',
+      label: '身份待匹配',
+      value: unmatchedTotal.value,
+    },
+  ], { primaryKey: 'unmatched', actionLabel: '刷新映射' })
+})
+
+function onIntegrationWriteSignalClick(_key: string) {
+  void loadMappings()
+}
 </script>
 
 <template>
@@ -2036,6 +2138,15 @@ onMounted(async () => {
           <UiButton size="sm" variant="ghost" @click="backToCockpit">返回总览</UiButton>
         </template>
       </ContextBar>
+    </template>
+    <template v-if="IntegrationWriteSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="IntegrationWriteSignalMetrics"
+        @metric-click="onIntegrationWriteSignalClick"
+      />
     </template>
     <UiSectionTabs v-if="tabItems.length > 1" v-model:active-key="activeTab" :items="tabItems" />
 
@@ -2122,7 +2233,7 @@ onMounted(async () => {
         <template v-if="dsForm.syncDirection === PortfolioNationalTeacherSyncDirectionEnum.INBOUND">
           <div class="integration-dashboard__inbound-head">
             <strong>回流记录</strong>
-            <UiButton variant="primary" size="sm" :disabled="writing" @click="addInboundRecord">
+            <UiButton variant="outline" size="sm" :disabled="writing" @click="addInboundRecord">
               添加行
             </UiButton>
           </div>
@@ -2347,20 +2458,11 @@ onMounted(async () => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <div class="integration-dashboard__row-actions">
-              <UiButton size="sm" :disabled="writing" @click="fillDatasourceForm(record)">
-                编辑
-              </UiButton>
-              <UiButton
-                variant="primary"
-                size="sm"
-                :loading="operationKey === `sync:trigger:${record.id}`"
-                :disabled="writing"
-                @click="triggerSync(record)"
-              >
-                触发同步
-              </UiButton>
-            </div>
+            <UiTableActions
+              :max-visible="2"
+              :items="buildDatasourceRowActions(record)"
+              @action="(key) => handleDatasourceRowAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>
@@ -2580,24 +2682,11 @@ onMounted(async () => {
             {{ record.enabled ? '启用' : '停用' }}
           </UiTag>
           <template v-else-if="column.key === 'actions'">
-            <UiButton
-              size="sm"
-              variant="ghost"
-              :disabled="writing"
-              @click="editCourseCodeMap(record)"
-            >
-              编辑
-            </UiButton>
-            <UiButton
-              size="sm"
-              variant="ghost"
-              status="danger"
-              :loading="operationKey === `course-code-map:delete:${record.id}`"
-              :disabled="writing"
-              @click="deleteCourseCodeMap(record)"
-            >
-              删除
-            </UiButton>
+            <UiTableActions
+              :max-visible="2"
+              :items="buildCourseCodeMapRowActions(record)"
+              @action="(key) => handleCourseCodeMapRowAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>
@@ -2695,19 +2784,11 @@ onMounted(async () => {
             {{ record.enabled ? '启用' : '停用' }}
           </UiTag>
           <template v-else-if="column.key === 'actions'">
-            <UiButton size="sm" variant="ghost" :disabled="writing" @click="editDictEntry(record)">
-              编辑
-            </UiButton>
-            <UiButton
-              size="sm"
-              variant="ghost"
-              status="danger"
-              :loading="operationKey === `dict-entry:delete:${record.id}`"
-              :disabled="writing"
-              @click="deleteDictEntry(record)"
-            >
-              删除
-            </UiButton>
+            <UiTableActions
+              :max-visible="2"
+              :items="buildDictEntryRowActions(record)"
+              @action="(key) => handleDictEntryRowAction(key, record)"
+            />
           </template>
         </template>
       </UiDataTable>

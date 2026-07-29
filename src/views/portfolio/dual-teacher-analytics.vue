@@ -3,6 +3,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDualTeacherApplicationStatusCode } from '@/apis/portfolio/enums'
 import type { PortfolioDualTeacherAnalyticsVO } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioDualTeacherCertLevelCode } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { PortfolioDualTeacherApplicationStatusDescription } from '@/apis/portfolio/enums'
@@ -13,10 +14,12 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUserStore } from '@/stores/modules/user'
 import { PORTFOLIO_DUAL_TEACHER_CERT_LEVEL_LABEL } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const route = useRoute()
@@ -26,16 +29,58 @@ const isDepartmentScoped = computed(
   () => route.path.includes('/department/') || !userStore.isTenantAdmin,
 )
 const pageTitle = computed(() => (isDepartmentScoped.value ? '院系双师分析' : '双师认定分析'))
-const pageSubtitle = computed(() =>
-  isDepartmentScoped.value
-    ? '本院系双师比例 · 等级 · 年份 · 院系分布'
-    : '全校双师比例 · 等级 · 年份 · 院系分布',
-)
-
 const loading = ref(false)
 const stats = ref<PortfolioDualTeacherAnalyticsVO | null>(null)
 const loadFailed = ref(false)
 const requestToken = ref(0)
+
+const DualTeacherAnalyticsSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadFailed.value && !stats.value) {
+    return []
+  }
+  if (!stats.value) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '申请总数',
+      value: stats.value.totalCount,
+      clickable: true,
+    },
+    {
+      key: 'approved',
+      label: '认定通过',
+      value: stats.value.approvedCount,
+    },
+  ]
+  if (stats.value.dualTeacherRatioPercent != null) {
+    metrics.push({
+      key: 'ratio',
+      label: '在岗双师占比',
+      value: stats.value.dualTeacherRatioPercent,
+      unit: '%',
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const pageSubtitle = computed(() => {
+  if (loadFailed.value) {
+    return '加载失败'
+  }
+  if (!stats.value) {
+    return loading.value ? '加载中' : '暂无数据'
+  }
+  return `申请 ${stats.value.totalCount} · 通过 ${stats.value.approvedCount}`
+})
+
+function onDualTeacherAnalyticsSignalClick(_key: string) {
+  void loadStats()
+}
 
 const statusColumns: ColumnsType = [
   { title: '状态', dataIndex: 'applicationStatus', key: 'applicationStatus' },
@@ -102,6 +147,15 @@ onMounted(loadStats)
         </template>
       </ContextBar>
     </template>
+    <template v-if="DualTeacherAnalyticsSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="DualTeacherAnalyticsSignalMetrics"
+        @metric-click="onDualTeacherAnalyticsSignalClick"
+      />
+    </template>
     <UiSpin :spinning="loading">
       <UiEmpty
         size="sm"
@@ -109,10 +163,6 @@ onMounted(loadStats)
         :description="loadFailed ? '双师分析数据加载失败' : '暂无双师分析数据'"
       />
       <div v-else-if="stats" class="grid">
-        <UiCard title="流程概览">
-          <p>申请总数 {{ stats.totalCount }}</p>
-          <p>认定通过 {{ stats.approvedCount }}</p>
-        </UiCard>
         <UiCard title="在岗结构双师比例">
           <p>在岗教师 {{ stats.structureTeacherCount ?? 0 }}</p>
           <p>在岗双师 {{ stats.structureDualTeacherCount ?? 0 }}</p>

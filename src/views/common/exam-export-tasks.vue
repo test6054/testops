@@ -32,7 +32,7 @@
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand compact variant="panel" :metrics="exportSignalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="exportSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" class="export-page__empty" />
@@ -133,6 +133,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildExportTaskActions(record)"
                 split
                 @action="(key) => handleExportTaskAction(key, record)"
@@ -657,7 +658,7 @@ const columns: ColumnType<ExportTaskResponse>[] = [
   { title: '开始时间', key: 'startedTime', dataIndex: 'startedTime', width: 160 },
   { title: '完成时间', key: 'completedTime', dataIndex: 'completedTime', width: 160 },
   { title: '导出处理说明', key: 'errorMessage', width: 220 },
-  { title: '操作', key: 'actions', width: 180 },
+  { title: '主行动', key: 'actions', width: 180 },
 ]
 
 function statusTone(status: ExportTaskStatusCode): BadgeTone {

@@ -54,6 +54,7 @@
     <template v-if="activeJourneyKey !== 'overview'">
       <UiDivider v-if="!collapsed" class="exam-sub-sidebar__divider" />
       <div class="exam-sub-sidebar__menu">
+        <div v-if="!collapsed" class="exam-sub-sidebar__menu-label">本步任务</div>
         <ExamSubSidebarNav
           :active-journey-key="activeJourneyKey"
           :active-menu-key="activeMenuKey"

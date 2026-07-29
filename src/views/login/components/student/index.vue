@@ -36,18 +36,21 @@
     </UiFormField>
 
     <!-- 错误提示 -->
-    <div v-if="errorMessage" class="login-error">
-      <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
-        <path
-          fill-rule="evenodd"
-          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-          clip-rule="evenodd"
-        />
-      </svg>
+    <div v-if="errorMessage" class="login-error" role="alert" aria-live="polite">
+      <ExclamationCircleFilled />
       <span>{{ errorMessage }}</span>
     </div>
 
-    <UiButton type="submit" variant="primary" size="lg" block :loading="loading">学号登录</UiButton>
+    <UiButton
+      type="submit"
+      variant="primary"
+      size="lg"
+      block
+      :loading="loading || captchaConfigLoading"
+      :disabled="!captchaConfigReady"
+    >
+      学号登录
+    </UiButton>
   </form>
 
   <!-- AJ-Captcha 滑块验证码弹窗 -->
@@ -62,6 +65,7 @@
 <script lang="ts" setup>
 import type { TenantPublicInfo } from '@/apis/auth'
 import type { SchoolItem } from '@/components/SchoolAutocomplete.vue'
+import ExclamationCircleFilled from '@ant-design/icons-vue/ExclamationCircleFilled'
 import message from 'ant-design-vue/es/message'
 import { nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -91,6 +95,8 @@ const userStore = useUserStore()
 const authStore = useAuthStore()
 const loading = ref(false)
 const errorMessage = ref('')
+const captchaConfigLoading = ref(true)
+const captchaConfigReady = ref(false)
 
 // 选中的学校信息
 const selectedSchool = ref<SchoolItem | null>(null)
@@ -181,18 +187,29 @@ watch(
 
 // 获取验证码配置
 const fetchCaptchaConfig = async () => {
+  captchaConfigLoading.value = true
+  captchaConfigReady.value = false
   try {
     const config = await getCaptchaConfig()
+    if (typeof config.enabled !== 'boolean') {
+      throw new TypeError('安全验证配置响应不完整')
+    }
     isCaptchaEnabled.value = config.enabled === true
-  } catch (error) {
-    isCaptchaEnabled.value = false
+    captchaConfigReady.value = true
+  } catch (error: unknown) {
+    errorMessage.value = getUserErrorMessage(
+      error,
+      '安全验证配置加载失败，请刷新页面后再试',
+    )
+  } finally {
+    captchaConfigLoading.value = false
   }
 }
 
 // 验证码验证成功回调
 const onCaptchaSuccess = (verification: string) => {
   captchaVerification.value = verification
-  doLogin()
+  void doLogin()
 }
 
 // 验证码验证失败回调
@@ -213,6 +230,10 @@ const handleSchoolClear = () => {
 const handleLogin = async () => {
   errorMessage.value = ''
   if (!validate()) return
+  if (!captchaConfigReady.value) {
+    errorMessage.value = '安全验证配置尚未就绪，暂时不能登录'
+    return
+  }
   loading.value = true
 
   if (isCaptchaEnabled.value === true) {
@@ -240,6 +261,7 @@ const doLogin = async () => {
     try {
       await userStore.getInfo()
     } catch (error) {
+      await authStore.logout()
       errorMessage.value = '获取用户信息失败，请重试'
       return
     }
@@ -248,6 +270,7 @@ const doLogin = async () => {
 
     // 验证登录状态
     if (!authStore.isAuthenticated || !userStore.userInfo.userId) {
+      await authStore.logout()
       errorMessage.value = '登录状态异常，请重试'
       return
     }
@@ -255,7 +278,14 @@ const doLogin = async () => {
     // 检查是否需要强制修改密码
     if (userStore.userInfo.forcePasswordChange === true) {
       void message.warning('出于安全考虑，您需要修改密码后才能继续使用系统')
-      await router.push('/change-password')
+      const redirect = getSafeRedirect(
+        queryString(router.currentRoute.value.query.redirect),
+        '',
+      )
+      await router.push({
+        path: '/change-password',
+        query: redirect ? { redirect } : undefined,
+      })
       return
     }
 
@@ -280,7 +310,7 @@ const doLogin = async () => {
   } catch (error: unknown) {
     const stdError = standardizeError(error)
     if (stdError.type === ErrorType.NETWORK) {
-      errorMessage.value = '登录失败，请检查学号和密码后重试'
+      errorMessage.value = '登录服务暂不可用，请稍后再试'
     } else {
       errorMessage.value = getUserErrorMessage(error, '登录失败，请检查学号和密码')
     }
@@ -321,7 +351,7 @@ onMounted(() => {
   gap: var(--dp-space-component-tight);
   padding: var(--dp-space-component) var(--dp-space-block);
   background: var(--dp-red-50);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  border: 1px solid color-mix(in srgb, var(--dp-red-500) 20%, transparent);
   border-radius: var(--dp-radius-control);
   color: var(--dp-red-500);
   font-size: var(--dp-font-size-sm);

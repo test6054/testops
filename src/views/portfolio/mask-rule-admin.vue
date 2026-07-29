@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioMaskRuleVO } from '@/apis/portfolio/governance'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -11,7 +12,9 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -31,6 +34,7 @@ import {
   PortfolioMaskStrategyDescription,
 } from '@/types/enums/portfolio-mask-strategy-enum'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
@@ -63,7 +67,7 @@ const columns: ColumnsType = [
   { title: '消费者说明', dataIndex: 'consumerDescription', key: 'consumerDescription', width: 260 },
   { title: '最近应用', dataIndex: 'lastAppliedTime', key: 'lastAppliedTime', width: 170 },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 170 },
-  { title: '操作', key: 'actions', width: 88 },
+  { title: '主行动', key: 'actions', width: 88 },
 ]
 
 const STRATEGY_PROTECTION_RANK: Record<PortfolioMaskStrategyCode, number> = {
@@ -198,6 +202,44 @@ function onPageChange(page: { current: number, pageSize: number }) {
   void loadPage()
 }
 
+const MaskRuleSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && total.value === 0) {
+    return []
+  }
+  const enabledOnPage = rows.value.filter((row) => row.enabled).length
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '脱敏规则',
+      value: total.value,
+      clickable: true,
+    },
+  ]
+  if (!loadError.value) {
+    metrics.push({
+      key: 'enabled-page',
+      label: '本页启用',
+      value: enabledOnPage,
+      helper: '仅当前页',
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const MaskRuleWorkbenchSubtitle = computed(() => {
+  if (loadError.value) {
+    return '加载失败'
+  }
+  return `${total.value} 条`
+})
+
+function onMaskRuleSignalClick(_key: string) {
+  void loadPage()
+}
+
 onMounted(() => {
   void loadPage()
 })
@@ -210,7 +252,7 @@ onMounted(() => {
         layout="workbench"
         show-title
         title="脱敏规则"
-        subtitle="§8.24 导出字段脱敏策略"
+        :subtitle="MaskRuleWorkbenchSubtitle"
       >
         <template #actions>
           <UiButton size="sm" :disabled="loading || saving" @click="loadPage()">
@@ -218,6 +260,15 @@ onMounted(() => {
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+    <template v-if="MaskRuleSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="MaskRuleSignalMetrics"
+        @metric-click="onMaskRuleSignalClick"
+      />
     </template>
     <UiCard>
       <UiButton
@@ -289,9 +340,12 @@ onMounted(() => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton size="sm" variant="ghost" :disabled="saving" @click="openEditModal(record)">
-              编辑
-            </UiButton>
+            <UiTableActions
+              :max-visible="2"
+              :items="[{ key: 'edit', label: '编辑', disabled: saving }]"
+              split
+              @action="() => openEditModal(record)"
+            />
           </template>
         </template>
       </UiDataTable>

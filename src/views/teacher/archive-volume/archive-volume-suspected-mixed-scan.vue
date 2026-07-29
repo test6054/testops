@@ -5,13 +5,23 @@
         layout="workbench"
         show-title
         title="混扫复核待办"
-        subtitle="院系范围内仍待复核的疑似混扫批次"
+        :subtitle="`${pagination.total} 条待复核`"
       >
         <template #actions>
           <UiButton variant="outline" size="sm" @click="goList">返回归档工作台</UiButton>
         </template>
       </ContextBar>
     </template>
+    <template v-if="MixedScanSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="MixedScanSignalMetrics"
+        @metric-click="onMixedScanSignalClick"
+      />
+    </template>
+
 
     <WorkbenchSurfaceCard flush>
       <UiSkeletonState v-if="grantsLoading" variant="card" compact />
@@ -69,9 +79,12 @@
               {{ formatDateTime(record.scanEndTime) }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton size="sm" variant="outline" @click="goVolumeScanReview(record.volumeId)">
-                进入卷复核
-              </UiButton>
+              <UiTableActions
+                :max-visible="2"
+                :items="[{ key: 'review', label: '进入卷复核', tone: 'primary' }]"
+                split
+                @action="() => goVolumeScanReview(record.volumeId)"
+              />
             </template>
           </template>
         </UiDataTable>
@@ -84,6 +97,7 @@
 // MVR-950：残留 can* 控制流仅认 === true
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveSuspectedMixedScanBatchItemVO } from '@/apis/mark/archive-volume'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { pageSuspectedMixedScanBatches } from '@/apis/mark/archive-volume'
@@ -92,8 +106,10 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -102,6 +118,7 @@ import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { buildArchiveVolumeScanReviewRoute } from '@/utils/archive-suspected-mixed-navigation'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 
 defineOptions({ name: 'TeacherArchiveVolumeSuspectedMixedScan' })
 
@@ -133,7 +150,7 @@ const columns: ColumnsType<SuspectedMixedScanRow> = [
   { title: '扫描批次', key: 'batch', width: 160 },
   { title: '登记/页数', key: 'counts', width: 120 },
   { title: '扫描结束', key: 'scanEndTime', width: 160 },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+  { title: '主行动', key: 'actions', width: 120, fixed: 'right' },
 ]
 
 function formatMaterialPageCounts(materialCount?: number, pageCount?: number): string {
@@ -206,6 +223,27 @@ onMounted(async () => {
   await loadDepartments()
   void loadRows()
 })
+
+const MixedScanSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'total',
+      label: '混扫待办',
+      value: pagination.total,
+      clickable: true,
+    },
+    {
+      key: 'pageRows',
+      label: '本页',
+      value: rows.value.length,
+      helper: '仅当前页',
+    },
+  ], { primaryKey: 'total', actionLabel: '刷新' })
+})
+
+function onMixedScanSignalClick(_key: string) {
+  void loadRows()
+}
 </script>
 
 <style scoped lang="scss">

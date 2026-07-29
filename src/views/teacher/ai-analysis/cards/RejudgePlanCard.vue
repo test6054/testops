@@ -59,6 +59,7 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildRejudgePlanActions(rows[index])"
               split
               @action="(key) => handleRejudgePlanAction(key, rows[index])"
@@ -238,7 +239,7 @@ const columns: ColumnType<ExamRejudgePlan>[] = [
   { title: '审批时间', key: 'approvedTime', width: 160 },
   { title: '执行时间', key: 'executedTime', width: 160 },
   { title: '创建时间', key: 'createTime', width: 160 },
-  { title: '操作', key: 'actions', width: 180 },
+  { title: '主行动', key: 'actions', width: 180 },
 ]
 
 async function loadWriteCapability(): Promise<void> {
@@ -471,8 +472,7 @@ function buildRejudgePlanActions(row: ExamRejudgePlan): UiTableRowActionItem[] {
       label: '通过',
       // MVR-952：canDecide 仅认 === true
       hidden: canDecide !== true,
-      disabled: operating('approve'),
-    },
+      disabled: operating('approve'), tone: 'primary' },
     {
       key: 'reject',
       label: '驳回',

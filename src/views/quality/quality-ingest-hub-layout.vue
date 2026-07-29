@@ -2,13 +2,16 @@
 /**
  * 数据接入 Hub 布局：Tab + router-view，聚合五类接入页。
  */
+import type { SignalMetric } from '@/types/workbench'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ConfirmationStatusCode } from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useQualityStore } from '@/stores/modules/quality'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 
 const route = useRoute()
 const router = useRouter()
@@ -57,11 +60,48 @@ const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
   }
   return null
 })
+
+const IngestHubSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'channels',
+      label: '接入通道',
+      value: tabs.length,
+      clickable: true,
+    },
+    {
+      key: 'active',
+      label: '当前通道',
+      value: tabs.find((item) => item.key === activeTab.value)?.label ?? activeTab.value,
+    },
+  ], { primaryKey: 'channels', actionLabel: '定位通道' })
+})
+
+function onIngestHubSignalClick(_key: string) {
+  const current = tabs.find((item) => item.key === activeTab.value)
+  if (current && route.path !== current.path) {
+    void router.push(current.path)
+  }
+}
+
+/** 任务工作台副标题：通道规模与当前通道。 */
+const ingestHubWorkbenchSubtitle = computed(() => {
+  const current = tabs.find((item) => item.key === activeTab.value)?.label ?? activeTab.value
+  return `${tabs.length} 个接入通道 · 当前 ${current}`
+})
 </script>
 
 <template>
   <div class="ingest-hub-layout">
-    <QualityPageContextBar show-title title="数据接入" />
+    <QualityPageContextBar show-title title="数据接入" :subtitle="ingestHubWorkbenchSubtitle" />
+    <SignalBand
+      v-if="IngestHubSignalMetrics.length > 0"
+      layout="spotlight"
+      variant="inline"
+      compact
+      :metrics="IngestHubSignalMetrics"
+      @metric-click="onIngestHubSignalClick"
+    />
     <UiSectionTabs
       :model-value="activeTab"
       :items="tabs"

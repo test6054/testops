@@ -9,7 +9,7 @@ import type {
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -35,14 +35,15 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
-import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { loadAllPages } from '@/utils/load-all-pages'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -73,21 +74,40 @@ const filter = reactive<PortfolioEvaluationComprehensiveFilter>({
   selectedTaskIds: [],
 })
 
-const kpiItems = computed<UiStatPanelItem[]>(() => {
+const EvaluationComprehensiveSignalMetrics = computed<SignalMetric[]>(() => {
   if (!analysis.value) {
     return []
   }
-  return [
+  const metrics: SignalMetric[] = [
     {
       key: 'tasks',
       label: '纳入任务',
-      value: String(analysis.value.taskCount),
-      tone: 'blue',
+      value: analysis.value.taskCount,
+      clickable: true,
     },
-    { key: 'entries', label: '填报条目', value: String(analysis.value.totalEntryCount) },
-    { key: 'avg', label: '总体均分', value: analysis.value.overallAverageScore, unit: '分' },
+    {
+      key: 'entries',
+      label: '填报条目',
+      value: analysis.value.totalEntryCount,
+    },
+    {
+      key: 'avg',
+      label: '总体均分',
+      value: analysis.value.overallAverageScore,
+      unit: '分',
+    },
   ]
+  return applySpotlightEmphasis(metrics, { primaryKey: 'tasks', actionLabel: '刷新分析' })
 })
+
+const EvaluationComprehensiveWorkbenchSubtitle = computed(() => {
+  if (!analysis.value) return '选择任务后分析'
+  return `任务 ${analysis.value.taskCount} · 条目 ${analysis.value.totalEntryCount}`
+})
+
+function onEvaluationComprehensiveSignalClick(_key: string) {
+  void runAnalysis()
+}
 
 const filteredTasks = computed(() => {
   let pool = tasks.value
@@ -341,7 +361,16 @@ onMounted(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar title="评价综合分析" subtitle="多任务数据采集 · 跨任务汇总 · 表格文件导出" />
+      <ContextBar show-title layout="workbench" title="评价综合分析" :subtitle="EvaluationComprehensiveWorkbenchSubtitle" />
+    </template>
+    <template v-if="EvaluationComprehensiveSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="EvaluationComprehensiveSignalMetrics"
+        @metric-click="onEvaluationComprehensiveSignalClick"
+      />
     </template>
     <UiAlertStrip
       v-if="workgroupsLoadFailed"
@@ -406,7 +435,6 @@ onMounted(async () => {
         description="按评价组、年度或任务范围筛选后，点击工具栏「分析」生成跨任务汇总"
       />
       <template v-else-if="analysis">
-        <UiStatPanel :items="kpiItems" compact style="margin-top: var(--dp-space-block)" />
         <h3 class="section-title">任务汇总</h3>
         <UiDataTable
           pagination-mode="none"

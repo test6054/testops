@@ -5,7 +5,7 @@
         layout="workbench"
         show-title
         title="本科教学评估准备"
-        subtitle="归档全链路 · 迎评批次与卷就绪度"
+        :subtitle="campaignStats ? `进行中 ${campaignStats.activeCampaignCount} · 批次 ${campaignStats.campaignCount}` : '加载迎评批次'"
       >
         <template #actions>
           <UiButton variant="ghost" size="sm" @click="goList">
@@ -16,7 +16,7 @@
     </template>
 
     <template #signal>
-      <SignalBand variant="panel" :metrics="evalCampaignSignalMetrics" />
+      <SignalBand layout="spotlight" variant="panel" :metrics="evalCampaignSignalMetrics" />
     </template>
 
     <WorkbenchSurfaceCard flush>
@@ -85,6 +85,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 v-if="
                   record.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
                     && canExportCampaign === true
@@ -225,6 +226,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildReadinessActions(record)"
                 split
                 @action="(key) => handleReadinessAction(key, record)"
@@ -460,22 +462,26 @@ const evalCampaignSignalMetrics = computed((): SignalMetric[] => {
   if (!stats) return []
   return [
     {
-      key: 'campaigns',
-      label: '迎评批次',
-      value: stats.campaignCount,
-      tone: 'blue',
-    },
-    {
       key: 'active',
       label: '进行中',
       value: stats.activeCampaignCount,
       tone: stats.activeCampaignCount > 0 ? 'orange' : 'gray',
+      emphasis: 'primary',
+      actionLabel: stats.activeCampaignCount > 0 ? '查看进行中' : undefined,
+    },
+    {
+      key: 'campaigns',
+      label: '迎评批次',
+      value: stats.campaignCount,
+      tone: 'blue',
+      emphasis: 'secondary',
     },
     {
       key: 'ready',
       label: '就绪卷',
       value: stats.readyVolumeCount,
       tone: stats.readyVolumeCount > 0 ? 'green' : 'gray',
+      emphasis: 'secondary',
       helper:
         stats.totalVolumeCount > 0
           ? `去重卷 ${stats.totalVolumeCount} · 就绪率 ${stats.readinessRatePercent}%（多批次重叠按卷编号只计一次）`
@@ -510,7 +516,7 @@ const campaignColumns: ColumnsType<ArchiveEvaluationCampaignResponse> = [
   { title: '我的待整改', key: 'openRemediationTaskCount', width: 88, align: 'right' },
   { title: '就绪率', key: 'readinessRatePercent', width: 140 },
   { title: '截止日', key: 'endTime', width: 150 },
-  { title: '操作', key: 'actions', width: 200 },
+  { title: '主行动', key: 'actions', width: 200 },
 ]
 
 const readinessColumns: ColumnsType<ArchiveEvaluationVolumeReadinessResponse> = [
@@ -521,7 +527,7 @@ const readinessColumns: ColumnsType<ArchiveEvaluationVolumeReadinessResponse> = 
   { title: '四性', key: 'fourPropertyReady', width: 64, align: 'center' },
   { title: '移交', key: 'transferReady', width: 64, align: 'center' },
   { title: '整体', key: 'overallReady', width: 88 },
-  { title: '操作', key: 'actions', width: 88 },
+  { title: '主行动', key: 'actions', width: 88 },
 ]
 
 const mixedColumns: ColumnsType<ArchiveSuspectedMixedScanBatchItemVO> = [

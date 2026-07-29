@@ -1,0 +1,78 @@
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Progress: resolved 35, reused 34, downloaded 0, added 0
+Progress: resolved 35, reused 34, downloaded 1, added 0
+Progress: resolved 36, reused 34, downloaded 1, added 0
+Progress: resolved 59, reused 48, downloaded 1, added 0
+Progress: resolved 118, reused 79, downloaded 19, added 0
+Progress: resolved 135, reused 84, downloaded 37, added 0
+[WARN] Tarball download average speed 8 KiB/s (size 14 KiB) is below 50 KiB/s: https://registry.npmjs.org/exsolve/-/exsolve-1.1.0.tgz (GET)
+Progress: resolved 136, reused 84, downloaded 47, added 0
+Progress: resolved 137, reused 84, downloaded 50, added 0
+Progress: resolved 138, reused 84, downloaded 52, added 0
+Progress: resolved 139, reused 84, downloaded 52, added 0
+C:\Users\qingzhi\AppData\Local\pnpm-cache\dlx\0979f4dcb260a22545f55843f4bf065d\ms4ogcm9-3ph4:
+[ERR_PNPM_TRUST_DOWNGRADE] High-risk trust downgrade for "semver@6.3.1" (possible package takeover)
+
+This error happened while installing the dependencies of shadcn-vue@2.8.0
+ at @unovue/detypes@0.8.5
+ at @babel/core@7.29.7
+
+Trust checks are based solely on publish date, not semver. A package cannot be installed if any earlier-published version had stronger trust evidence. Earlier versions had provenance attestation, but this version has no trust evidence. A trust downgrade may indicate a supply chain incident.
+[WARN] GET https://registry.npmjs.org/espree error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/debug error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/tslib error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/fast-deep-equal error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@vueuse/metadata/-/metadata-14.3.0.tgz error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/he/-/he-1.2.0.tgz error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/fast-uri error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/esquery error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/eslint-visitor-keys error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/braces error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/fast-diff error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/eslint-scope error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/source-map error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/minimatch error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/slice-ansi error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/strip-ansi error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/merge2 error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@nodelib%2Ffs.stat error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@nodelib%2Ffs.walk error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/glob-parent error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/convert-source-map error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@babel%2Fplugin-transform-typescript error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@babel%2Fhelper-plugin-utils error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@babel%2Fhelper-module-transforms error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@babel%2Fhelper-compilation-targets error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@babel%2Fhelper-validator-option error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@jridgewell%2Fremapping error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/prettier/-/prettier-3.9.6.tgz error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@babel%2Fplugin-syntax-jsx error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@babel%2Ftraverse error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@babel%2Fcode-frame error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@babel%2Ftypes error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@babel%2Ftemplate error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@babel%2Fhelpers error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@babel%2Fgenerator error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/gensync error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/vue-demi error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/json5 error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@types%2Fweb-bluetooth error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@tanstack%2Fvirtual-core error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@swc%2Fhelpers error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@floating-ui%2Futils error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/css-select error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/stylus error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/lodash.sortedlastindex error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/gonzales-pe error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/lodash.truncate error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/tiny-invariant error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/path-scurry error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/package-json-from-dist error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/foreground-child error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/minipass error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/jackspeak error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@babel%2Fplugin-transform-modules-commonjs error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@floating-ui%2Fcore error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@ts-morph/common/-/common-0.29.0.tgz error (UND_ERR_DESTROYED). Will retry in 10 seconds. 2 retries left.

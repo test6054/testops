@@ -849,6 +849,15 @@ function buildArchiveActions(record: ArchiveVO): UiTableRowActionItem[] {
     actions.push({ key: 'destruction-flow', label: '销毁审计' })
   }
   actions.push({ key: 'audit', label: '操作日志' })
+  // 唯一 primary：确认归档 > 编辑 > 下载 > 详情
+  const primaryOrder = ['confirm', 'edit', 'download', 'detail']
+  for (const key of primaryOrder) {
+    const hit = actions.find((a) => a.key === key && a.hidden !== true && a.tone !== 'danger' && a.disabled !== true)
+    if (hit) {
+      hit.tone = 'primary'
+      break
+    }
+  }
   return actions
 }
 
@@ -1203,16 +1212,8 @@ const signals = computed<SignalMetric[]>(() => {
   const pending = summary.pendingCount
   const expertCount = summary.expertPackageCount
   const reportCount = summary.reportCount
-  return [
-    { key: 'total', label: '归档总数', value: summary.totalCount, tone: 'blue' },
-    {
-      key: 'confirmed',
-      label: '已确认',
-      value: confirmed,
-      tone: confirmed > 0 ? 'green' : 'gray',
-      clickable: confirmed > 0,
-      active: query.archiveOfficeConfirmed === true,
-    },
+  const primaryKey = pending > 0 ? 'pending' : 'total'
+  const metrics: SignalMetric[] = [
     {
       key: 'pending',
       label: '待确认',
@@ -1220,6 +1221,25 @@ const signals = computed<SignalMetric[]>(() => {
       tone: pending > 0 ? 'orange' : 'gray',
       clickable: pending > 0,
       active: query.archiveOfficeConfirmed === false,
+      emphasis: primaryKey === 'pending' ? 'primary' : 'secondary',
+      actionLabel: pending > 0 ? '去确认' : undefined,
+      helper: pending > 0 ? '归档办待确认' : undefined,
+    },
+    {
+      key: 'total',
+      label: '归档总数',
+      value: summary.totalCount,
+      tone: 'blue',
+      emphasis: primaryKey === 'total' ? 'primary' : 'secondary',
+    },
+    {
+      key: 'confirmed',
+      label: '已确认',
+      value: confirmed,
+      tone: confirmed > 0 ? 'green' : 'gray',
+      clickable: confirmed > 0,
+      active: query.archiveOfficeConfirmed === true,
+      emphasis: 'secondary',
     },
     {
       key: 'expert',
@@ -1228,14 +1248,17 @@ const signals = computed<SignalMetric[]>(() => {
       tone: expertCount > 0 ? 'yellow' : 'gray',
       clickable: expertCount > 0,
       active: archiveListTab.value === 'expert',
+      emphasis: 'secondary',
     },
     {
       key: 'report',
       label: '报告归档',
       value: reportCount,
       tone: reportCount > 0 ? 'blue' : 'gray',
+      emphasis: 'secondary',
     },
   ]
+  return metrics
 })
 
 function handleSignalMetricClick(key: string): void {
@@ -1270,7 +1293,7 @@ const columns: ColumnsType = [
   },
   { title: '销毁状态', dataIndex: 'destructionStatus', key: 'destructionStatus', width: 120 },
   { title: '归档时间', dataIndex: 'archivedTime', key: 'archivedTime', width: 170 },
-  { title: '操作', key: 'actions', width: 320 },
+  { title: '主行动', key: 'actions', width: 320 },
 ]
 
 const auditDrawerOpen = ref(false)
@@ -1343,12 +1366,21 @@ onMounted(async () => {
   applyArchiveListTab('expert')
   await loadList()
 })
+
+/** 任务工作台副标题：优先待确认，其次材料规模。 */
+const archiveWorkbenchSubtitle = computed(() => {
+  const pending = signalSummary.value?.pendingCount
+  if (typeof pending === 'number' && pending > 0) {
+    return `待确认 ${pending} · 台帐 ${total.value} 条`
+  }
+  return `台帐 ${total.value} 条材料`
+})
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar show-title title="质量评价 - 材料归档">
+      <QualityPageContextBar show-title title="质量评价 - 材料归档" :subtitle="archiveWorkbenchSubtitle">
         <template #actions>
           <UiButton variant="primary" size="sm" @click="openCreate"> 补登台帐 </UiButton>
           <UiButton variant="outline" size="sm" @click="openExport"> 导出专家材料包 </UiButton>
@@ -1376,6 +1408,7 @@ onMounted(async () => {
 
       <SignalBand
         :metrics="signals"
+        layout="spotlight"
         variant="panel"
         compact
         class="archive__signals"
@@ -1472,6 +1505,7 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildArchiveActions(record)"
                 split
                 @action="(key) => handleArchiveAction(key, record)"
@@ -1668,7 +1702,7 @@ onMounted(async () => {
         </UiButton>
         <UiButton
           v-else-if="exportTask"
-          variant="primary"
+          variant="outline"
           size="sm"
           @click="resetExpertPackageExportTask"
         >

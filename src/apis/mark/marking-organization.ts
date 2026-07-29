@@ -1,6 +1,4 @@
 import type { QualityDecisionCode } from './exam-scan'
-import type { DualMarkRoleCode } from '@/types/enums/dual-mark-role-enum'
-import type { GradeStatusCode } from '@/types/enums/grade-status-enum'
 import type { PaperInstanceDisplayVO } from './exam-score'
 import type { ObjectiveComparePolicyCode } from './exam-standard-answer'
 import type { QuestionTypeCode } from './question-type'
@@ -10,7 +8,9 @@ import type { PageResult, QueryDto } from '@/types'
 import type { AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
 import type { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
 import type { AnonymousTokenPolicyCode } from '@/types/enums/anonymous-token-policy-enum'
+import type { DualMarkRoleCode } from '@/types/enums/dual-mark-role-enum'
 import type { EffectiveStatusCode } from '@/types/enums/effective-status-enum'
+import type { GradeStatusCode } from '@/types/enums/grade-status-enum'
 import type { MarkingAllocationModeCode } from '@/types/enums/marking-allocation-mode-enum'
 import type { MarkingReassignModeCode } from '@/types/enums/marking-reassign-mode-enum'
 import type { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
@@ -60,6 +60,11 @@ export {
 } from '@/types/enums/anonymous-token-policy-enum'
 export { AnonymousTokenPolicyDescription } from '@/types/enums/anonymous-token-policy-enum'
 export {
+  ALL_DUAL_MARK_ROLE_CODES,
+  DualMarkRoleCode,
+  DualMarkRoleDescription,
+} from '@/types/enums/dual-mark-role-enum'
+export {
   ALL_FORMAL_SESSION_STATUS_CODES,
   FormalSessionStatusCode,
 } from '@/types/enums/formal-session-status-enum'
@@ -73,8 +78,8 @@ export {
   ALL_MARKING_ORGANIZATION_STATUS_CODES,
   MarkingOrganizationStatusCode,
 } from '@/types/enums/marking-organization-status-enum'
-export { MarkingOrganizationStatusDescription } from '@/types/enums/marking-organization-status-enum'
 
+export { MarkingOrganizationStatusDescription } from '@/types/enums/marking-organization-status-enum'
 export {
   ALL_MARKING_REASSIGN_MODE_CODES,
   MarkingReassignModeCode,
@@ -90,11 +95,6 @@ export {
   MarkingTaskStatusCode,
 } from '@/types/enums/marking-task-status-enum'
 export { MarkingTaskStatusDescription } from '@/types/enums/marking-task-status-enum'
-export {
-  ALL_DUAL_MARK_ROLE_CODES,
-  DualMarkRoleCode,
-  DualMarkRoleDescription,
-} from '@/types/enums/dual-mark-role-enum'
 
 export {
   ALL_QUESTION_MARKING_GROUP_STATUS_CODES,

@@ -28,7 +28,6 @@
         </template>
       </ContextBar>
     </template>
-
     <UiAlertStrip
       v-if="detailError"
       tone="error"
@@ -69,6 +68,7 @@
 
 <script lang="ts" setup>
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import type { ExamWorkbenchPrepStepResponse } from '@/apis/mark/exam-progress'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -84,6 +84,7 @@ import { isExamConfidentialFlag } from '@/composables/useConfidentialWatermark'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useExamWorkbenchRecommendedActions } from '@/composables/useExamWorkbenchRecommendedActions'
 import { useMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
+import { resolvePrepStepRouteLocation } from '@/utils/exam-prep-step-ui'
 import { navigateExamWorkspaceRoute } from '@/utils/exam-workspace-navigation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ExamWorkbenchOverviewDashboard from '@/views/teacher/exam-workspace/ExamWorkbenchOverviewDashboard.vue'
@@ -159,17 +160,28 @@ function examKindLabel(exam: ExamDetailResponse): string {
   return strictEnumLabel(ExamKindDescription, exam.examKind, '考试性质')
 }
 
-function goPrepWorkbench(): void {
+function handlePrepStepNavigate(step: ExamWorkbenchPrepStepResponse): void {
+  const routeName = step.workspaceRouteName?.trim()
+  if (!detail.value || routeName !== 'TeacherExamWorkspaceLayoutDesigner') {
+    navigateExamWorkspaceRoute(
+      router,
+      routeName,
+      { examId: examId.value },
+      `准备步骤「${step.title}」入口`,
+    )
+    return
+  }
+  const location = resolvePrepStepRouteLocation(
+    { key: step.key, routeName },
+    detail.value,
+  )
   navigateExamWorkspaceRoute(
     router,
-    'TeacherExamWorkspacePrep',
+    location.name,
     { examId: examId.value },
-    '准备工作台入口',
+    `准备步骤「${step.title}」入口`,
+    location.query,
   )
-}
-
-function handlePrepStepNavigate(_stepKey: string): void {
-  goPrepWorkbench()
 }
 
 function goMarkQuality(): void {

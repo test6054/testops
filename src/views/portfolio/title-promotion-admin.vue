@@ -10,6 +10,8 @@ import type {
   PortfolioTitleTaskCriteriaVO,
 } from '@/apis/portfolio/title-promotion'
 import type { PortfolioArchiveCategoryTreeNodeVO } from '@/apis/portfolio/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import type { TitlePromotionSurface } from '@/views/portfolio/title-promotion/title-promotion-surface'
 import message from 'ant-design-vue/es/message'
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
@@ -30,7 +32,9 @@ import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -77,6 +81,7 @@ import { createClientSnowflakeId } from '@/utils/client-snowflake'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import TitlePromotionSurfaceNav from '@/views/portfolio/title-promotion/TitlePromotionSurfaceNav.vue'
@@ -156,6 +161,28 @@ const tasks = ref<PortfolioTitlePromotionTaskVO[]>([])
 const apps = ref<PortfolioTitlePromotionApplicationVO[]>([])
 const taskTotal = ref(0)
 const appTotal = ref(0)
+
+const promotionSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis(
+    [
+      {
+        key: 'task',
+        label: '职称任务',
+        value: taskTotal.value,
+        active: showTaskSurface.value,
+      },
+      {
+        key: 'app',
+        label: showPublicitySurface.value ? '公示队列' : '申请',
+        value: appTotal.value,
+        active: !showTaskSurface.value,
+      },
+    ],
+    {
+      primaryKey: showTaskSurface.value ? 'task' : 'app',
+    },
+  )
+})
 const editorOpen = ref(false)
 const reviewOpen = ref(false)
 const expertOpen = ref(false)
@@ -263,7 +290,7 @@ const taskColumns: ColumnsType = [
     width: 90,
   },
   { title: '状态', key: 'taskStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 260 },
+  { title: '主行动', key: 'actions', width: 148 },
 ]
 
 const appColumns: ColumnsType = [
@@ -275,10 +302,118 @@ const appColumns: ColumnsType = [
   { title: '匹配度', dataIndex: 'matchScore', key: 'matchScore', width: 90 },
   { title: '红线', key: 'redlineBlocked', width: 80 },
   { title: '状态', key: 'applicationStatus', width: 120 },
-  { title: '操作', key: 'actions', width: 280 },
+  { title: '主行动', key: 'actions', width: 148 },
 ]
 
 
+/** 任务行操作：发布为主行动，编辑/条件/关闭进 ⋯ */
+function buildTaskRowActions(record: PortfolioTitlePromotionTaskVO): UiTableRowActionItem[] {
+  const draft = record.taskStatus === PortfolioTitlePromotionTaskStatusCode.DRAFT
+  const published = record.taskStatus === PortfolioTitlePromotionTaskStatusCode.PUBLISHED
+  return [
+    {
+      key: 'publish',
+      label: '发布',
+      tone: 'primary',
+      hidden: !draft,
+      disabled: writing.value,
+    },
+    {
+      key: 'edit',
+      label: published ? '调整窗口' : '编辑',
+      hidden: !draft && !published,
+      disabled: writing.value,
+    },
+    {
+      key: 'criteria',
+      label: '条件',
+      disabled: writing.value,
+    },
+    {
+      key: 'close',
+      label: '关闭',
+      hidden: !published,
+      disabled: writing.value,
+    },
+  ]
+}
+
+/** 申请/公示行操作：审核/专家/公示为主行动，读整袋与归档次之 */
+function buildAppRowActions(record: PortfolioTitlePromotionApplicationVO): UiTableRowActionItem[] {
+  const status = record.applicationStatus
+  const collegePending = status === PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING
+  const hrPending = status === PortfolioTitlePromotionApplicationStatusCode.HR_PENDING
+  const expertPending = status === PortfolioTitlePromotionApplicationStatusCode.EXPERT_PENDING
+  const publicity = status === PortfolioTitlePromotionApplicationStatusCode.PUBLICITY
+  const canReview
+    = showApplicationSurface.value
+      && (collegePending || (canManageSchoolWorkflow.value && hrPending))
+  const canExpert
+    = showApplicationSurface.value && canManageSchoolWorkflow.value && expertPending
+  const canPublicity
+    = showPublicitySurface.value && publicity && !record.publicityStartTime
+  const canArchive = showPublicitySurface.value && canArchivePublicity(record)
+
+  const items: UiTableRowActionItem[] = []
+  if (canReview) {
+    items.push({ key: 'review', label: '审核', tone: 'primary', disabled: writing.value })
+  }
+  if (canExpert) {
+    items.push({ key: 'expert', label: '专家评审', tone: 'primary', disabled: writing.value })
+  }
+  if (canPublicity) {
+    items.push({ key: 'publicity', label: '发布公示', tone: 'primary', disabled: writing.value })
+  }
+  items.push({
+    key: 'portfolio',
+    label: '读整袋',
+    disabled: !record.teacherUserId,
+  })
+  if (canArchive) {
+    items.push({ key: 'archive', label: '归档', disabled: writing.value })
+  }
+  return items
+}
+
+function handleTaskRowAction(key: string, record: PortfolioTitlePromotionTaskVO): void {
+  if (key === 'publish') {
+    void publishTask(record)
+    return
+  }
+  if (key === 'edit') {
+    openEdit(record)
+    return
+  }
+  if (key === 'criteria') {
+    openCriteria(record)
+    return
+  }
+  if (key === 'close') {
+    void closeTask(record)
+  }
+}
+
+function handleAppRowAction(key: string, record: PortfolioTitlePromotionApplicationVO): void {
+  if (key === 'review') {
+    openReview(record)
+    return
+  }
+  if (key === 'expert') {
+    openExpertReview(record)
+    return
+  }
+  if (key === 'publicity') {
+    openPublicity(record)
+    return
+  }
+  if (key === 'portfolio') {
+    goTeacherPortfolioPage('/portfolio/teacher/masterpiece', record.teacherUserId)
+    return
+  }
+  if (key === 'archive') {
+    void runArchivePublicity(record)
+  }
+}
 /** 匹配度按阈值着色：<60% 红、60-80% 橙、>80% 绿，便于审核台快速识别风险申报。
  *  后端 matchScore 可能返回 0-1 比率或百分比文本，统一归一到百分制再比阈值。 */
 function matchScoreToneClass(score?: string | number): string {
@@ -1338,10 +1473,10 @@ onMounted(() => {
         "
         :subtitle="
           showTaskSurface
-            ? '任务发布 · 资格条件'
+            ? `${taskTotal} 个任务`
             : showPublicitySurface
-              ? '公示发布 · 到期归档'
-              : '院审 · 人事复审 · 专家评审'
+              ? `${appTotal} 条公示队列`
+              : `${appTotal} 条申请`
         "
       >
         <template #actions>
@@ -1356,6 +1491,14 @@ onMounted(() => {
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+    <template #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="promotionSignalMetrics"
+      />
     </template>
     <UiAlertStrip
       v-if="archiveWriteForbidden"
@@ -1409,48 +1552,12 @@ onMounted(() => {
                 {{ (record.taskCriteria || []).length }}
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiButton
-                  v-if="
-                    record.taskStatus === PortfolioTitlePromotionTaskStatusCode.DRAFT
-                      || record.taskStatus === PortfolioTitlePromotionTaskStatusCode.PUBLISHED
-                  "
-                  size="sm"
-                  variant="soft"
-                  :disabled="writing"
-                  @click="openEdit(record)"
-                >
-                  {{
-                    record.taskStatus === PortfolioTitlePromotionTaskStatusCode.PUBLISHED
-                      ? '调整窗口'
-                      : '编辑'
-                  }}
-                </UiButton>
-                <UiButton
-                  v-if="record.taskStatus === PortfolioTitlePromotionTaskStatusCode.DRAFT"
-                  variant="primary"
-                  size="sm"
-                  :disabled="writing"
-                  @click="publishTask(record)"
-                >
-                  发布
-                </UiButton>
-                <UiButton
-                  v-if="record.taskStatus === PortfolioTitlePromotionTaskStatusCode.PUBLISHED"
-                  size="sm"
-                  variant="soft"
-                  :disabled="writing"
-                  @click="closeTask(record)"
-                >
-                  关闭
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  variant="soft"
-                  :disabled="writing"
-                  @click="openCriteria(record)"
-                >
-                  条件
-                </UiButton>
+                <UiTableActions
+                  :max-visible="2"
+                  :items="buildTaskRowActions(record)"
+                  split
+                  @action="(key) => handleTaskRowAction(key, record)"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -1526,70 +1633,12 @@ onMounted(() => {
                 <UiTag>{{ appStatusLabel(record.applicationStatus) }}</UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiButton
-                  size="sm"
-                  variant="soft"
-                  :disabled="!record.teacherUserId"
-                  @click="
-                    goTeacherPortfolioPage('/portfolio/teacher/masterpiece', record.teacherUserId)
-                  "
-                >
-                  读整袋
-                </UiButton>
-                <template v-if="showApplicationSurface">
-                  <UiButton
-                    v-if="
-                      record.applicationStatus
-                        === PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING
-                        || (canManageSchoolWorkflow
-                          && record.applicationStatus
-                            === PortfolioTitlePromotionApplicationStatusCode.HR_PENDING)
-                    "
-                    size="sm"
-                    variant="primary"
-                    :disabled="writing"
-                    @click="openReview(record)"
-                  >
-                    审核
-                  </UiButton>
-                  <UiButton
-                    v-if="
-                      canManageSchoolWorkflow
-                        && record.applicationStatus
-                          === PortfolioTitlePromotionApplicationStatusCode.EXPERT_PENDING
-                    "
-                    size="sm"
-                    variant="primary"
-                    :disabled="writing"
-                    @click="openExpertReview(record)"
-                  >
-                    专家评审
-                  </UiButton>
-                </template>
-                <template v-else-if="showPublicitySurface">
-                  <UiButton
-                    v-if="
-                      record.applicationStatus
-                        === PortfolioTitlePromotionApplicationStatusCode.PUBLICITY
-                        && !record.publicityStartTime
-                    "
-                    variant="primary"
-                    size="sm"
-                    :disabled="writing"
-                    @click="openPublicity(record)"
-                  >
-                    发布公示
-                  </UiButton>
-                  <UiButton
-                    v-if="canArchivePublicity(record)"
-                    size="sm"
-                    variant="soft"
-                    :disabled="writing"
-                    @click="runArchivePublicity(record)"
-                  >
-                    归档
-                  </UiButton>
-                </template>
+                <UiTableActions
+                  :max-visible="2"
+                  :items="buildAppRowActions(record)"
+                  split
+                  @action="(key) => handleAppRowAction(key, record)"
+                />
               </template>
             </template>
           </UiDataTable>
@@ -1644,7 +1693,7 @@ onMounted(() => {
       </div>
       <template #footer>
         <UiButton size="sm" variant="soft" @click="editorOpen = false"> 取消 </UiButton>
-        <UiButton size="sm" variant="primary" :loading="saving" @click="saveTask"> 保存 </UiButton>
+        <UiButton size="sm" variant="outline" :loading="saving" @click="saveTask"> 保存 </UiButton>
       </template>
     </UiDrawer>
 
@@ -1716,7 +1765,7 @@ onMounted(() => {
           >
             <UiButton
               size="sm"
-              variant="primary"
+              variant="outline"
               :disabled="writing || archiveWriteForbidden"
               @click="runReview('collegeApprove')"
             >
@@ -1740,7 +1789,7 @@ onMounted(() => {
           >
             <UiButton
               size="sm"
-              variant="primary"
+              variant="outline"
               :disabled="writing || archiveWriteForbidden"
               @click="runReview('hrApprove')"
             >
@@ -1829,7 +1878,7 @@ onMounted(() => {
         <div class="title-promo__actions">
           <UiButton
             size="sm"
-            variant="primary"
+            variant="outline"
             :disabled="writing || archiveWriteForbidden"
             @click="runExpertReview(true)"
           >
@@ -1857,7 +1906,7 @@ onMounted(() => {
         <div class="title-promo__actions">
           <UiButton
             size="sm"
-            variant="primary"
+            variant="outline"
             :disabled="writing || archiveWriteForbidden"
             :loading="operationKey.startsWith('publicity:')"
             @click="runStartPublicity"
@@ -1923,29 +1972,29 @@ onMounted(() => {
             />
             <div class="title-promo__actions">
               <UiButton
-                variant="primary"
-                size="sm"
-                :loading="criteriaSaving"
-                @click="importTemplates"
-              >
-                导入模板
-              </UiButton>
-              <UiButton variant="primary" size="sm" @click="addCriteriaRow"> 新增条件行 </UiButton>
-              <UiButton
-                variant="primary"
+                variant="outline"
                 size="sm"
                 :loading="criteriaSaving"
                 @click="saveDraftCriteriaReplace"
               >
                 保存整表条件
               </UiButton>
+              <UiButton
+                variant="outline"
+                size="sm"
+                :loading="criteriaSaving"
+                @click="importTemplates"
+              >
+                导入模板
+              </UiButton>
+              <UiButton variant="outline" size="sm" @click="addCriteriaRow">新增条件行</UiButton>
             </div>
           </div>
           <div
             v-else-if="criteriaTask.taskStatus === PortfolioTitlePromotionTaskStatusCode.PUBLISHED"
             class="title-promo__criteria-import title-promo__criteria-import--row"
           >
-            <UiButton variant="primary" size="sm" @click="addCriteriaRow"> 新增条件行 </UiButton>
+            <UiButton variant="outline" size="sm" @click="addCriteriaRow">新增条件行</UiButton>
           </div>
           <div class="title-promo__criteria-list">
             <div

@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="复核任务中心">
+      <ContextBar layout="workbench" show-title title="复核任务中心" :subtitle="examId ? `${pagination.total} 条` : undefined">
         <template #actions>
           <UiButton
             v-if="canManageReviewerWrites === true"
@@ -18,6 +18,7 @@
     <template v-if="examId" #signal>
       <SignalBand
         :metrics="hubSignalMetrics"
+        layout="spotlight"
         variant="panel"
         compact
         @metric-click="handleHubSignalClick"
@@ -115,6 +116,8 @@
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 :items="buildReviewTaskRowActions(record)"
+                :max-visible="2"
+                align="end"
                 split
                 @action="() => enterReview(record)"
               />
@@ -140,6 +143,7 @@ import message from 'ant-design-vue/es/message'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
+
 import {
   GRADE_SOURCE_TONE,
   GradeSourceDescription,
@@ -220,19 +224,13 @@ const hubSignalMetrics = computed((): SignalMetric[] => {
   const inProgress = progress?.inProgressReviewTaskCount ?? 0
   return [
     {
-      key: 'filtered',
-      label: '筛选结果',
-      value: pagination.total,
-      unit: '条',
-      tone: 'blue',
-      helper: statusFilterLabel.value,
-    },
-    {
       key: 'pending',
       label: '待复核',
       value: pending,
       unit: '条',
       tone: pending > 0 ? 'orange' : 'green',
+      emphasis: 'primary',
+      actionLabel: pending > 0 ? '处理待复核' : undefined,
       clickable: pending > 0,
       helper: pending > 0 ? '点击切换待复核' : '暂无待复核',
     },
@@ -242,8 +240,18 @@ const hubSignalMetrics = computed((): SignalMetric[] => {
       value: inProgress,
       unit: '条',
       tone: inProgress > 0 ? 'blue' : 'gray',
+      emphasis: 'secondary',
       clickable: inProgress > 0,
       helper: inProgress > 0 ? '点击切换复核中' : '暂无进行中',
+    },
+    {
+      key: 'filtered',
+      label: '筛选结果',
+      value: pagination.total,
+      unit: '条',
+      tone: 'blue',
+      emphasis: 'secondary',
+      helper: statusFilterLabel.value,
     },
   ]
 })
@@ -277,7 +285,7 @@ const columns: ColumnType<ReviewTaskItemResponse>[] = [
   { title: '状态', key: 'status', width: 96 },
   { title: '指派教师', key: 'assignedTeacherName', width: 120 },
   { title: '更新时间', key: 'updateTime', width: 160 },
-  { title: '操作', key: 'actions', width: 100 },
+  { title: '主行动', key: 'actions', width: 120, align: 'right' },
 ]
 
 const statusFilterLabel = computed(() => reviewStatusLabel(statusFilter.value))

@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="归档复盘">
+      <ContextBar layout="workbench" show-title title="归档复盘" :subtitle="`${volumePagination.total} 卷`">
         <template #status>
           <UiTag v-if="reviewStatusLabel" :tone="reviewStatusTone" size="sm">
             {{ reviewStatusLabel }}
@@ -38,7 +38,7 @@
     </template>
 
     <template v-if="examId && reviewSignals.length > 0" #signal>
-      <SignalBand variant="panel" :metrics="reviewSignals" />
+      <SignalBand layout="spotlight" variant="panel" :metrics="reviewSignals" />
     </template>
 
     <ExamSelectGateStrip v-if="!examId" body="请从考试列表进入工作台后再查看归档复盘" />
@@ -158,6 +158,7 @@
                   </template>
                   <template v-else-if="column.key === 'action'">
                     <UiTableActions
+                      :max-visible="2"
                       :items="[{ key: 'detail', label: '打开详情' }]"
                       split
                       @action="() => goDetail(record.volumeId)"
@@ -472,12 +473,15 @@ const reviewSignals = computed<SignalMetric[]>(() => {
           ? strictEnumLabel(ArchivePackageStatusDescription, pkg.archiveStatus, 'archiveStatus')
           : '未创建'),
       tone: reviewStatusTone.value,
+      emphasis: 'primary',
+      actionLabel: '查看复盘',
     },
     {
       key: 'archive-items',
       label: '归档项',
       value: pkg?.itemCount != null && pkg.itemCount > 0 ? String(pkg.itemCount) : '—',
       tone: 'blue',
+      emphasis: 'secondary',
     },
     {
       key: 'archive-size',
@@ -487,12 +491,14 @@ const reviewSignals = computed<SignalMetric[]>(() => {
           ? formatFileSize(pkg.archiveFileSize)
           : '—',
       tone: 'gray',
+      emphasis: 'secondary',
     },
     {
       key: 'retention',
       label: '保存期限',
       value: retentionLabel,
       tone: 'gray',
+      emphasis: 'secondary',
     },
   ]
 })
@@ -532,7 +538,7 @@ const volumeTableColumns = computed(() => {
     { title: '归档号', dataIndex: 'archiveNo', key: 'archiveNo' },
     { title: '完整性', key: 'integrityStatus' },
     { title: '卷状态', key: 'volumeStatus' },
-    { title: '操作', key: 'action', width: 96 },
+    { title: '主行动', key: 'action', width: 96 },
   ]
   if ((expectedAutoCreateVolumeCount.value ?? 0) > 1 || volumePagination.total > 1) {
     columns.splice(2, 0, { title: '主链进度', key: 'lifecycleProgress', width: 96 })

@@ -4,6 +4,8 @@ import type {
   PortfolioTeacherLifecycleEventVO,
 } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -31,6 +33,9 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
@@ -153,7 +158,7 @@ const columns: ColumnsType = [
   { title: '来源', key: 'sourceType', width: 100 },
   { title: '审批', key: 'approvalStatus', width: 100 },
   { title: '原因', dataIndex: 'reasonText', key: 'reasonText', ellipsis: true },
-  { title: '操作', key: 'actions', width: 280 },
+  { title: '主行动', key: 'actions', width: 280 },
 ]
 
 function statusLabel(code?: PortfolioTeacherLifecycleStatusCode) {
@@ -251,6 +256,43 @@ function readRouteStringParam(value: unknown): string {
 function isPendingSelfDeclare(record: PortfolioTeacherLifecycleEventVO): boolean {
   return record.approvalStatus === 'PENDING'
 }
+
+
+/** 任务工作台副标题：生命周期事件规模。 */
+const lifecycleWorkbenchSubtitle = computed(() => `${total.value} 条事件`)
+
+/** 生命周期台 SignalBand：事件总量为主信号。 */
+const lifecycleSignalMetrics = computed((): SignalMetric[] => {
+  const pending = rows.value.filter((row) => isPendingSelfDeclare(row)).length
+  return [
+    {
+      key: 'total',
+      label: '事件',
+      value: total.value,
+      unit: '条',
+      tone: 'blue',
+      emphasis: 'primary',
+      helper: '当前筛选范围内生命周期事件',
+    },
+    {
+      key: 'pending',
+      label: '待审自评',
+      value: pending,
+      unit: '条',
+      tone: pending > 0 ? 'orange' : 'gray',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'page-rows',
+      label: '本页',
+      value: rows.value.length,
+      unit: '条',
+      tone: 'gray',
+      emphasis: 'secondary',
+    },
+  ]
+})
+
 
 function eventRowClassName(record: PortfolioTeacherLifecycleEventVO): string {
   if (focusedEventId.value && String(record.id) === focusedEventId.value) {
@@ -488,6 +530,44 @@ async function selfDeclareLifecycle() {
   await refreshEventsAfterWrite('自助申报已提交')
 }
 
+/** 生命周期行操作：待审自报时「通过」为主行动 */
+function buildLifecycleRowActions(record: PortfolioTeacherLifecycleEventVO): UiTableRowActionItem[] {
+  const pending = isPendingSelfDeclare(record)
+  const busy = Boolean(operationKey.value)
+  return [
+    {
+      key: 'approve',
+      label: '通过',
+      tone: 'primary',
+      hidden: !pending,
+      disabled: busy && operationKey.value !== `approve:${record.id}`,
+    },
+    {
+      key: 'reject',
+      label: '驳回',
+      hidden: !pending,
+      disabled: busy && operationKey.value !== `reject:${record.id}`,
+    },
+    {
+      key: 'directory',
+      label: '名册',
+    },
+  ]
+}
+
+function handleLifecycleRowAction(key: string, record: PortfolioTeacherLifecycleEventVO): void {
+  if (key === 'approve') {
+    void approveDeclare(record)
+    return
+  }
+  if (key === 'reject') {
+    void rejectDeclare(record)
+    return
+  }
+  if (key === 'directory') {
+    openTeacherDirectory(record.teacherUserId)
+  }
+}
 async function approveDeclare(record: PortfolioTeacherLifecycleEventVO) {
   if (!record.id) return
   const key = `approve:${record.id}`
@@ -554,15 +634,28 @@ watch(
 
 <template>
   <StageWorkbenchShell>
-    <div class="teacher-lifecycle-admin">
-      <header class="teacher-lifecycle-admin__header">
-        <div>
-          <h2>教师生命周期管理</h2>
-          <p>登记在职状态变更、查看院系/全校事件、导出/导入迁出数据包（§6.21 / §7.26.15）。</p>
-        </div>
-        <UiButton size="sm" @click="openTeacherDirectory()">打开教师名册</UiButton>
-      </header>
+    <template #context>
+      <ContextBar
+        show-title
+        layout="workbench"
+        title="教师生命周期管理"
+        :subtitle="lifecycleWorkbenchSubtitle"
+      >
+        <template #actions>
+          <UiButton size="sm" variant="outline" @click="openTeacherDirectory()">打开教师名册</UiButton>
+        </template>
+      </ContextBar>
+    </template>
+    <template v-if="lifecycleSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="lifecycleSignalMetrics"
+      />
+    </template>
 
+    <div class="teacher-lifecycle-admin">
       <UiCard class="teacher-lifecycle-admin__card" title="登记生命周期变更">
         <UiForm layout="inline" class="teacher-lifecycle-admin__form">
           <UiFormItem label="教师">
@@ -599,7 +692,7 @@ watch(
           </UiButton>
           <label class="teacher-lifecycle-admin__import">
             <span class="teacher-lifecycle-admin__import-btn">
-              <UiButton variant="primary" size="sm" :loading="operationKey.startsWith('import:')">导入迁出包</UiButton>
+              <UiButton variant="outline" size="sm" :loading="operationKey.startsWith('import:')">导入迁出包</UiButton>
             </span>
             <input
               class="teacher-lifecycle-admin__import-input"
@@ -740,35 +833,12 @@ watch(
               <span v-else>{{ approvalStatusLabel(record.approvalStatus) }}</span>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <div class="teacher-lifecycle-admin__actions">
-                <UiButton
-                  v-if="isPendingSelfDeclare(record)"
-                  size="sm"
-                  variant="primary"
-                  :loading="operationKey === `approve:${record.id}`"
-                  :disabled="!!operationKey && operationKey !== `approve:${record.id}`"
-                  @click="approveDeclare(record)"
-                >
-                  通过
-                </UiButton>
-                <UiButton
-                  v-if="isPendingSelfDeclare(record)"
-                  size="sm"
-                  variant="outline"
-                  :loading="operationKey === `reject:${record.id}`"
-                  :disabled="!!operationKey && operationKey !== `reject:${record.id}`"
-                  @click="rejectDeclare(record)"
-                >
-                  驳回
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  variant="ghost"
-                  @click="openTeacherDirectory(record.teacherUserId)"
-                >
-                  名册
-                </UiButton>
-              </div>
+              <UiTableActions
+                :max-visible="2"
+                :items="buildLifecycleRowActions(record)"
+                split
+                @action="(key) => handleLifecycleRowAction(key, record)"
+              />
             </template>
           </template>
           <template #emptyText>

@@ -170,10 +170,10 @@ const ariaLabel = computed(() => {
   display: flex;
   flex-direction: column;
   gap: var(--dp-space-component-tight);
-  padding: var(--dp-space-component) var(--dp-space-block);
-  border: 1px solid var(--dp-border);
-  border-radius: var(--dp-radius-panel);
-  background: var(--dp-fill-secondary);
+  padding: var(--dp-space-component-tight) 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .grading-session-progress__head {

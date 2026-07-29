@@ -26,6 +26,7 @@
     <template v-if="showSignalBand" #signal>
       <SignalBand
         :metrics="activeSignalMetrics"
+        layout="spotlight"
         variant="panel"
         @metric-click="handleSignalMetricClick"
       />
@@ -230,6 +231,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildVolumeActions(record)"
                 split
                 @action="(key) => handleVolumeAction(key, record)"
@@ -837,7 +839,7 @@ const listOverviewSignalMetrics = computed<SignalMetric[]>(() => {
     active: false,
   })
 
-  return metrics.map((metric) => {
+  const mapped = metrics.map((metric) => {
     if (metric.key === 'missing') {
       return { ...metric, unit: '项' }
     }
@@ -846,6 +848,68 @@ const listOverviewSignalMetrics = computed<SignalMetric[]>(() => {
     }
     return metric
   })
+
+  function metricAttentionCount(metric: SignalMetric): number {
+    if (typeof metric.value === 'number') {
+      return metric.value
+    }
+    if (typeof metric.value === 'string' && metric.value !== '—') {
+      const n = Number(metric.value)
+      return Number.isFinite(n) ? n : 0
+    }
+    return 0
+  }
+
+  const priorityKeys = [
+    'overdue',
+    'missing',
+    's1AutoCreate',
+    'dueAppraisal',
+    'pending',
+    'collecting',
+    'total',
+  ] as const
+  const primaryBase
+    = priorityKeys
+      .map((key) => mapped.find((item) => item.key === key))
+      .find((item) => {
+        if (!item) {
+          return false
+        }
+        if (item.key === 'total') {
+          return true
+        }
+        return metricAttentionCount(item) > 0 || item.value === '—'
+      })
+      ?? mapped[0]
+
+  if (!primaryBase) {
+    return []
+  }
+
+  const actionByKey: Record<string, string> = {
+    overdue: '处理逾期',
+    missing: '补缺项',
+    s1AutoCreate: '去建袋',
+    dueAppraisal: '去鉴定',
+    pending: '验收移交',
+    collecting: '推进收集',
+    total: '查看全部',
+  }
+
+  return [
+    {
+      ...primaryBase,
+      emphasis: 'primary',
+      actionLabel: primaryBase.clickable
+        ? (actionByKey[primaryBase.key] ?? '查看详情')
+        : undefined,
+    },
+    ...mapped
+      .filter((item) => item.key !== primaryBase.key)
+      .slice(0, 3)
+      .map((item) => ({ ...item, emphasis: 'secondary' as const })),
+  ]
 })
 
 const activeSignalMetrics = computed(() => listOverviewSignalMetrics.value)
@@ -943,7 +1007,7 @@ const tableColumns = computed<ColumnsType<ArchiveVolumeResponse>>(() => [
   { title: '关键状态', key: 'statusGroup', width: 280 },
   { title: '保管期限', key: 'retentionYears', width: 90 },
   { title: '到期日', key: 'archiveDueTime', width: 160 },
-  { title: '操作', key: 'actions', width: 180 },
+  { title: '主行动', key: 'actions', width: 180 },
 ])
 
 function sourceTypeTone(code: ArchiveVolumeSourceTypeCode): BadgeTone {

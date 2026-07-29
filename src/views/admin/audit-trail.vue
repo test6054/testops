@@ -43,7 +43,7 @@
     <ExamSelectGateStrip v-if="!selectedExamId" class="audit-trail__empty" />
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand compact variant="panel" :metrics="auditSignalMetrics" />
+      <SignalBand layout="spotlight" compact variant="panel" :metrics="auditSignalMetrics" />
     </template>
 
     <ExamWorkspaceJourneySubNav v-if="selectedExamId && isExamWorkspaceRoute" />
@@ -181,6 +181,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 v-if="!incidents[index].resolved"
                 :items="buildIncidentActions(incidents[index])"
                 split
@@ -536,7 +537,7 @@ const incidentColumns: ColumnsType<ExamIncidentRecord> = [
   { title: '状态', key: 'resolved', dataIndex: 'resolved', width: 100 },
   { title: '创建时间', key: 'createTime', dataIndex: 'createTime', width: 170 },
   { title: '解决时间', key: 'resolvedTime', dataIndex: 'resolvedTime', width: 170 },
-  { title: '操作', key: 'actions', width: 110 },
+  { title: '主行动', key: 'actions', width: 110 },
 ]
 
 async function loadIncidents() {

@@ -5,7 +5,7 @@
         layout="workbench"
         show-title
         title="归档统计与清册"
-        subtitle="迎评统计与销毁治理按岗位职责分别授权"
+        :subtitle="statisticsWorkbenchSubtitle"
       >
         <template #actions>
           <UiButton variant="ghost" size="sm" @click="goList">返回列表</UiButton>
@@ -15,6 +15,7 @@
 
     <template #signal>
       <SignalBand
+        layout="spotlight"
         :metrics="signalMetrics"
         variant="panel"
         @metric-click="handleSignalMetricClick"
@@ -383,13 +384,33 @@ const destructionColumns: ColumnsType<ArchiveVolumeDestructionLedgerRowResponse>
   { title: '执行时间', key: 'executedTime', width: 160 },
 ]
 
+const statisticsWorkbenchSubtitle = computed(() => {
+  if (statsTab.value === 'destruction') {
+    return `${destructionPagination.total} 条清册记录`
+  }
+  const summary = statisticsSummary.value
+  if (!summary) {
+    return '迎评统计'
+  }
+  return `归档卷 ${summary.totalVolumeCount} · 已入库 ${summary.storedVolumeCount}`
+})
+
 const signalMetrics = computed<SignalMetric[]>(() => {
   if (statsTab.value === 'destruction') {
     return destructionPagination.total > 0
-      ? [{ key: 'rows', label: '清册记录', value: destructionPagination.total, unit: '条' }]
+      ? [{
+          key: 'rows',
+          label: '清册记录',
+          value: destructionPagination.total,
+          unit: '条',
+          emphasis: 'primary' as const,
+        }]
       : []
   }
-  return overviewAnalyticsCards.value.map((card) => ({
+  const cards = overviewAnalyticsCards.value
+  const primaryIndex = cards.findIndex((card) => card.clickable || card.badgeTone === 'orange' || card.badgeTone === 'red')
+  const primaryAt = primaryIndex >= 0 ? primaryIndex : 0
+  return cards.map((card, index) => ({
     key: card.key,
     label: card.label,
     value: card.signalValue,
@@ -398,6 +419,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     clickable: card.clickable,
     trend: card.trend,
     helper: card.helper,
+    emphasis: (index === primaryAt ? 'primary' : 'secondary') as 'primary' | 'secondary',
+    actionLabel: index === primaryAt && card.clickable ? '查看明细' : undefined,
   }))
 })
 

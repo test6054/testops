@@ -66,6 +66,10 @@
               <span class="strength-text">{{ passwordStrengthText }}</span>
             </div>
 
+            <p v-if="changeErrorMessage" class="form-error" role="alert" aria-live="polite">
+              {{ changeErrorMessage }}
+            </p>
+
             <div class="form-actions">
               <UiButton v-if="!isForceMode" size="lg" variant="outline" @click="handleCancel">
                 取消
@@ -121,7 +125,16 @@
           </div>
         </template>
 
+        <UiStateBlock
+          v-if="historyErrorMessage"
+          state="error"
+          title="密码修改记录加载失败"
+          :description="historyErrorMessage"
+          helper="当前仍可修改密码；也可使用标题栏刷新工具重新获取记录。"
+          compact
+        />
         <UiDataTable
+          v-else
           pagination-mode="none"
           :columns="historyColumns"
           :data-source="passwordHistory"
@@ -158,7 +171,7 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onActivated, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { changePassword } from '@/apis/auth'
 import { getPasswordHistory } from '@/apis/edu/user-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -170,14 +183,17 @@ import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiFormSection from '@/components/ui-guide/ui/UiFormSection.vue'
 import UiPageHeader from '@/components/ui-guide/ui/UiPageHeader.vue'
+import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAuthStore, useUserStore } from '@/stores'
-import { showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage } from '@/utils/error-handler'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
 import { evaluatePasswordStrength, getPasswordStrengthText } from '@/utils/password-policy'
+import { getSafeRedirect } from '@/utils/redirect-validator'
 
 defineOptions({ name: 'AuthChangePassword' })
 
+const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const authStore = useAuthStore()
@@ -189,6 +205,12 @@ const isForceMode = computed(() => shouldEnforcePasswordChange(userStore.userInf
 const loading = ref(false)
 const historyLoading = ref(false)
 const passwordHistory = ref<PasswordHistoryDto[]>([])
+const historyErrorMessage = ref('')
+const changeErrorMessage = ref('')
+const postLoginRedirect = computed(() => {
+  const redirect = route.query.redirect
+  return getSafeRedirect(typeof redirect === 'string' ? redirect : '', '')
+})
 
 // 表单引用
 const passwordFormRef = ref()
@@ -223,6 +245,17 @@ const passwordRules = {
           return Promise.reject(new Error('新密码不能与当前密码相同'))
         }
 
+        const strength = evaluatePasswordStrength(value)
+        if (
+          !strength.minLength
+          || !strength.uppercase
+          || !strength.lowercase
+          || !strength.digit
+          || !strength.special
+        ) {
+          return Promise.reject(new Error('新密码需满足右侧全部强度要求'))
+        }
+
         return Promise.resolve()
       },
     },
@@ -254,13 +287,14 @@ const passwordStrengthText = computed(() => getPasswordStrengthText(passwordStre
 
 // 获取密码修改历史
 const fetchPasswordHistory = async () => {
+  historyErrorMessage.value = ''
   try {
     historyLoading.value = true
 
     passwordHistory.value = await getPasswordHistory()
-  } catch (error) {
+  } catch (error: unknown) {
     passwordHistory.value = []
-    showUserError(error, '密码修改记录加载失败')
+    historyErrorMessage.value = getUserErrorMessage(error, '密码修改记录加载失败')
   } finally {
     historyLoading.value = false
   }
@@ -268,6 +302,7 @@ const fetchPasswordHistory = async () => {
 
 // 修改密码
 const handleChangePassword = async () => {
+  changeErrorMessage.value = ''
   try {
     loading.value = true
 
@@ -286,20 +321,21 @@ const handleChangePassword = async () => {
 
     void confirmAsync({
       title: '密码修改成功',
-      content: isForceMode.value
-        ? '您的密码已成功修改，请使用新密码重新登录。'
-        : '您的密码已成功修改，请使用新密码重新登录。',
+      content: '您的密码已成功修改，请使用新密码重新登录。',
       okText: '重新登录',
       type: 'success',
       hideCancel: true,
       onOk: async () => {
         // 清除登录状态并跳转到登录页
         await authStore.logout()
-        await router.push('/login')
+        await router.push({
+          path: '/login',
+          query: postLoginRedirect.value ? { redirect: postLoginRedirect.value } : undefined,
+        })
       },
     })
-  } catch {
-    // 拦截器已处理错误提示，此处仅需确保 loading 状态重置
+  } catch (error: unknown) {
+    changeErrorMessage.value = getUserErrorMessage(error, '密码修改失败，请检查后再试')
   } finally {
     loading.value = false
   }
@@ -467,6 +503,17 @@ onActivated(() => {
   .ant-btn {
     min-width: 100px;
   }
+}
+
+.form-error {
+  margin: 0 0 var(--dp-space-component);
+  padding: var(--dp-space-component) var(--dp-space-block);
+  border: 1px solid color-mix(in srgb, var(--dp-danger) 20%, transparent);
+  border-radius: var(--dp-radius-control);
+  background: var(--dp-red-50);
+  color: var(--dp-danger);
+  font-size: var(--dp-font-size-sm);
+  line-height: 1.5;
 }
 
 .requirements-list {

@@ -1,8 +1,16 @@
 <template>
   <StageWorkbenchShell class="stats-page">
+    <template v-if="currentExamId" #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="考试统计分析"
+        :subtitle="statisticsWorkbenchSubtitle"
+      />
+    </template>
     <template v-if="currentExamId" #signal>
       <UiSkeletonState v-if="paperAnalysisLoading" variant="card" :card-count="3" compact />
-      <SignalBand v-else compact variant="panel" :metrics="statsSignalMetrics" />
+      <SignalBand layout="spotlight" v-else compact variant="panel" :metrics="statsSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!currentExamId" class="stats-page__empty" />
@@ -174,6 +182,7 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -335,6 +344,27 @@ const activeStudentText = computed(() => {
 const statsSignalMetrics = computed((): SignalMetric[] => {
   const metrics = buildPaperQualitySignalMetrics(paperAnalysis.value)
   return metrics.length > 0 ? metrics : PAPER_QUALITY_SIGNAL_PLACEHOLDERS
+})
+
+
+/** 任务工作台副标题：主分析信号摘要。 */
+const statisticsWorkbenchSubtitle = computed(() => {
+  if (!currentExamId.value) {
+    return '请先选择考试'
+  }
+  if (paperAnalysisLoading.value) {
+    return '分析加载中'
+  }
+  if (paperAnalysisNotice.value) {
+    return '分析暂不可用'
+  }
+  const metrics = statsSignalMetrics.value
+  if (!metrics.length) {
+    return '暂无分析指标'
+  }
+  const primary = metrics.find((m) => m.emphasis === 'primary') || metrics[0]
+  const unit = primary.unit || ''
+  return `${primary.label} ${primary.value}${unit}`
 })
 
 async function loadPaperAnalysis(): Promise<void> {

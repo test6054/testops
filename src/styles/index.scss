@@ -24,6 +24,7 @@
   @include meta.load-css('global/print');
   @include meta.load-css('global/workbench');
   @include meta.load-css('global/prototype-workbench');
+  @include meta.load-css('workbench/grading-shell');
   @include meta.load-css('workbench/exam-workspace-shell');
   @include meta.load-css('workbench/analysis-center');
   @include meta.load-css('workbench/scan-ops');

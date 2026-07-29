@@ -131,6 +131,6 @@ onUnmounted(() => {
 
 // Main区域移动端适配
 :deep(.with-tabbar) {
-  padding-bottom: 56px; // 为TabBar留出空间
+  padding-bottom: calc(var(--dp-shell-tabbar-height) + env(safe-area-inset-bottom));
 }
 </style>

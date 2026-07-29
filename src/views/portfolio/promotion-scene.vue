@@ -8,6 +8,7 @@ import type {
   PortfolioTitleTaskCriteriaVO,
 } from '@/apis/portfolio/title-promotion'
 import type { PortfolioTitleJobCategoryCode } from '@/types/enums/portfolio-title-job-category-enum'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -23,6 +24,7 @@ import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
@@ -47,6 +49,7 @@ import {
 import { PortfolioTitlePromotionTaskStatusCode } from '@/types/enums/portfolio-title-promotion-task-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -854,6 +857,28 @@ usePortfolioScopedLoader(
   },
   () => targetTeacherId.value,
 )
+
+const PromotionSceneSignalMetrics = computed<SignalMetric[]>(() => {
+  const task = selectedTask.value
+  const criteriaCount = task?.taskCriteria?.length ?? 0
+  return applySpotlightEmphasis([
+    {
+      key: 'criteria',
+      label: '任务条件',
+      value: criteriaCount,
+      clickable: true,
+    },
+    {
+      key: 'task',
+      label: '当前任务',
+      value: task?.taskName ?? '未选择',
+    },
+  ], { primaryKey: 'criteria', actionLabel: '刷新' })
+})
+
+function onPromotionSceneSignalClick(_key: string) {
+  void loadFlowView()
+}
 </script>
 
 <template>
@@ -864,6 +889,15 @@ usePortfolioScopedLoader(
         show-title
         title="职称申报"
         :subtitle="selectedTask ? selectedTask.taskName : undefined"
+      />
+    </template>
+    <template v-if="PromotionSceneSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="PromotionSceneSignalMetrics"
+        @metric-click="onPromotionSceneSignalClick"
       />
     </template>
     <UiAlertStrip

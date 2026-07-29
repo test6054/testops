@@ -22,6 +22,16 @@
         </template>
       </ContextBar>
     </template>
+    <template v-if="UserProfileSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="UserProfileSignalMetrics"
+        @metric-click="onUserProfileSignalClick"
+      />
+    </template>
+
 
     <div class="profile-page__layout">
       <!-- 基础信息 -->
@@ -143,6 +153,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { SignalMetric } from '@/types/workbench'
 import LogoutOutlined from '@ant-design/icons-vue/LogoutOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SafetyOutlined from '@ant-design/icons-vue/SafetyOutlined'
@@ -156,6 +167,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAuthStore, useUserStore } from '@/stores'
@@ -163,6 +175,7 @@ import { useNotificationStore } from '@/stores/modules/notification'
 import { getUserStatusLabel, getUserStatusTone } from '@/types/enums/user-status'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 
 defineOptions({ name: 'UserProfile' })
 
@@ -236,6 +249,21 @@ onActivated(() => {
     showUserError(error, '未读消息数加载失败')
   })
 })
+
+const UserProfileSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'account',
+      label: '账号',
+      value: userInfo.value.userName || userInfo.value.nickName || '—',
+      clickable: true,
+    },
+  ], { primaryKey: 'account', actionLabel: '刷新' })
+})
+
+function onUserProfileSignalClick(_key: string) {
+  void userStore.getInfo(true)
+}
 </script>
 
 <style lang="scss" scoped>

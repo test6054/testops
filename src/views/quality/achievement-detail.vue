@@ -67,6 +67,7 @@ import {
 import { AchievementComputeKindCode } from '@/types/enums/achievement-compute-kind-enum'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
 const detailColumns: ColumnsType = [
@@ -822,7 +823,7 @@ const signals = computed<SignalMetric[]>(() => {
       tone: reviewsLoadFailed.value ? 'red' : reviewTotal.value > 0 ? 'green' : 'gray',
     },
   )
-  return metrics
+  return applySpotlightEmphasis(metrics)
 })
 
 const reviewVisible = ref(false)
@@ -872,7 +873,7 @@ onActivated(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title :title="result?.targetLabel || '达成度结果详情'">
+      <ContextBar show-title :title="result?.targetLabel || '达成度结果详情'" :subtitle="result ? auditStatusLabel(result.auditStatus) : undefined">
         <template #status>
           <UiButton variant="outline" size="sm" @click="router.back()">返回</UiButton>
           <UiTag v-if="result" :tone="auditStatusColor(result.auditStatus)" size="sm">
@@ -934,7 +935,7 @@ onActivated(() => {
         title="达成度结果刷新失败"
         class="achievement-detail__stale-banner"
       />
-      <SignalBand :metrics="signals" variant="panel" compact class="achievement-detail__signals" />
+      <SignalBand layout="spotlight" :metrics="signals" variant="panel" compact class="achievement-detail__signals" />
 
       <UiCard v-if="showDirectIndirectSynthesisPanel" class="achievement-detail__synthesis-card">
         <template #title>直间接合成</template>

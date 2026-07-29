@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar show-title title="考核评价依据合理性审核">
+      <QualityPageContextBar show-title title="考核评价依据合理性审核" :subtitle="rationalityAuditWorkbenchSubtitle">
         <template #status>
           <UiTag tone="blue" size="sm">覆盖率 {{ coverageRate }}%</UiTag>
           <UiTag :tone="coverageRate >= 100 ? 'green' : 'orange'" size="sm">
@@ -9,6 +9,15 @@
           </UiTag>
         </template>
       </QualityPageContextBar>
+    </template>
+    <template v-if="RationalityAuditSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="RationalityAuditSignalMetrics"
+        @metric-click="onRationalityAuditSignalClick"
+      />
     </template>
 
     <QualityPlanGateStrip
@@ -83,6 +92,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 v-if="isCourseAuditMutable(record)"
                 :items="[{ key: 'edit', label: record.hasAuditRecord ? '编辑审核' : '新建审核' }]"
                 split
@@ -160,6 +170,7 @@ import type {
 } from '@/apis/quality/rationality-audit'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
 import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
@@ -191,12 +202,14 @@ import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { ALL_SEMESTER_CODES, SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'QualityRationalityAudit' })
@@ -266,7 +279,7 @@ const columns = [
   { title: '审核项', key: 'checks', width: 280 },
   { title: '审核意见', key: 'auditOpinion', dataIndex: 'auditOpinion', ellipsis: true },
   { title: '审核时间', key: 'auditedTime', dataIndex: 'auditedTime', width: 160 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 function auditStatusTone(s: AssessmentRationalityAuditStatusCode) {
@@ -483,6 +496,24 @@ async function submitAudit(
     editing.value = false
   }
 }
+
+const RationalityAuditSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'total',
+      label: '课程审核',
+      value: listTotal.value,
+      clickable: true,
+    },
+  ], { primaryKey: 'total', actionLabel: '刷新' })
+})
+
+function onRationalityAuditSignalClick(_key: string) {
+  void loadList()
+}
+
+/** 任务工作台副标题：待审与总量。 */
+const rationalityAuditWorkbenchSubtitle = computed(() => `待审 ${pendingCount.value} · 共 ${listTotal.value} 条`)
 </script>
 
 <style scoped lang="scss">

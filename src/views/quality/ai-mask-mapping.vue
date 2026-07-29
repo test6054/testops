@@ -14,6 +14,7 @@ import type { AiMaskMappingVO } from '@/apis/quality/ai-mask-mapping'
 import type { AiTaskVO } from '@/apis/quality/ai-task'
 import type { AiTaskBusinessTypeCode, AiTaskStatusCode, AiTaskTypeCode } from '@/apis/quality/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { aiMaskMappingApi } from '@/apis/quality/ai-mask-mapping'
@@ -24,6 +25,7 @@ import {
   AiTaskStatusDescription,
   AiTaskTypeDescription,
 } from '@/apis/quality/types'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -31,6 +33,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
 import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -94,6 +97,57 @@ const selectedTaskSelectValue = computed(() =>
     ? selectedAiTaskId.value
     : undefined,
 )
+
+
+/** 任务工作台副标题：当前任务脱敏态。 */
+const aiMaskWorkbenchSubtitle = computed(() => {
+  if (!selectedAiTaskId.value) {
+    return '请选择 AI 任务'
+  }
+  if (loading.value) {
+    return '映射加载中'
+  }
+  if (mappingVO.value) {
+    return `已生成映射 · ${mappingVO.value.businessLabel || mappingVO.value.businessId}`
+  }
+  if (taskVO.value) {
+    return taskVO.value.maskMappingId ? '任务已标记脱敏，映射明细未返回' : '尚未生成脱敏映射'
+  }
+  return '任务未加载'
+})
+
+/** 脱敏审计 SignalBand：映射是否就绪为主信号。 */
+const aiMaskSignalMetrics = computed((): SignalMetric[] => {
+  if (!selectedAiTaskId.value) {
+    return []
+  }
+  const hasMapping = Boolean(mappingVO.value)
+  return [
+    {
+      key: 'mapping',
+      label: '脱敏映射',
+      value: hasMapping ? '已生成' : '未生成',
+      tone: hasMapping ? 'green' : 'orange',
+      emphasis: 'primary',
+      helper: hasMapping ? '可审计业务匿名映射' : '选择任务后查询或等待任务完成脱敏',
+    },
+    {
+      key: 'task',
+      label: '任务状态',
+      value: taskVO.value ? aiTaskStatusLabel(taskVO.value.status) : '—',
+      tone: 'blue',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'options',
+      label: '可选任务',
+      value: taskOptions.value.length,
+      unit: '个',
+      tone: 'gray',
+      emphasis: 'secondary',
+    },
+  ]
+})
 
 async function loadTaskOptions() {
   taskLoading.value = true
@@ -206,9 +260,23 @@ onActivated(() => {
 
 <template>
   <StageWorkbenchShell>
-    <UiCard class="detail-table-card ai-mask__main-card">
-      <template #title>脱敏映射审计</template>
+    <template #context>
+      <QualityPageContextBar
+        show-title
+        title="脱敏映射审计"
+        :subtitle="aiMaskWorkbenchSubtitle"
+      />
+    </template>
+    <template v-if="aiMaskSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="aiMaskSignalMetrics"
+      />
+    </template>
 
+    <UiCard class="detail-table-card ai-mask__main-card">
       <UiFilterBar
         variant="plain"
         v-model="filterModel"

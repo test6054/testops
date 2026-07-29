@@ -44,6 +44,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildPlatformTemplateRowActions(record)"
                 split
                 @action="(key) => handlePlatformTemplateRowAction(key, record)"
@@ -113,6 +114,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildTenantTemplateRowActions(record)"
                 split
                 @action="(key) => handleTenantTemplateRowAction(key, record)"
@@ -430,7 +432,7 @@ const platformColumns: ColumnsType<ArchiveTenantTemplateSetResponse> = [
   { title: '考核形式', key: 'examForm', width: 100 },
   { title: '保管期限', key: 'retention', width: 100 },
   { title: '发版标签', key: 'releaseTag', width: 120 },
-  { title: '操作', key: 'actions', width: 140 },
+  { title: '主行动', key: 'actions', width: 140 },
 ]
 
 const tenantColumns: ColumnsType<ArchiveTenantTemplateSetResponse> = [
@@ -441,14 +443,14 @@ const tenantColumns: ColumnsType<ArchiveTenantTemplateSetResponse> = [
   { title: '保管期限', key: 'retention', width: 100 },
   { title: '来源模板', dataIndex: 'forkSourceSetCode', key: 'forkSourceSetCode', width: 160 },
   { title: '发版标签', key: 'release', width: 180 },
-  { title: '操作', key: 'actions', width: 200 },
+  { title: '主行动', key: 'actions', width: 200 },
 ]
 
 const auditColumns: ColumnsType<ArchiveTenantTemplateAuditItemVO> = [
   { title: '操作类型', key: 'operationType', width: 120 },
   { title: '操作人', dataIndex: 'operatorUserId', key: 'operatorUserId', width: 120 },
   { title: '时间', key: 'createTime', width: 160 },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+  { title: '主行动', key: 'actions', width: 120, fixed: 'right' },
 ]
 
 const editorDrawerTitle = computed(() =>
@@ -784,8 +786,7 @@ function buildPlatformTemplateRowActions(
   return [
     {
       key: 'open',
-      label: tenantSet && canManage === true ? '编辑' : '预览',
-    },
+      label: tenantSet && canManage === true ? '编辑' : '预览', tone: 'primary' },
     {
       key: 'copy',
       label: '复制到本校',
@@ -804,7 +805,7 @@ function buildTenantTemplateRowActions(
 ): UiTableRowActionItem[] {
   const canManage = canManageArchiveConfig.value === true
   return [
-    { key: 'edit', label: '编辑', hidden: canManage !== true },
+    { key: 'edit', label: '编辑', hidden: canManage !== true, tone: 'primary' },
     { key: 'history', label: '版本历史' },
     {
       key: 'resync',

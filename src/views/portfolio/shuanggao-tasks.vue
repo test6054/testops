@@ -5,6 +5,7 @@ import type {
   PortfolioDoubleHighTaskVO,
 } from '@/apis/portfolio/double-high'
 import type { PortfolioDoubleHighStageReviewStatusCode } from '@/types/enums/portfolio-double-high-stage-review-status-enum'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -26,6 +27,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -49,6 +51,7 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { portfolioIdentityTypeDisplay } from '@/utils/portfolio-identity-type'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 interface TaskFilterModel extends Record<string, unknown> {
@@ -96,6 +99,78 @@ const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const actionLoading = ref(false)
 const rows = ref<PortfolioDoubleHighTaskVO[]>([])
 const total = ref(0)
+
+const SHUANGGAO_ACTIVE_STATUSES: ReadonlySet<PortfolioDoubleHighTaskStatusCode> = new Set([
+  PortfolioDoubleHighTaskStatusCode.PUBLISHED,
+  PortfolioDoubleHighTaskStatusCode.CLAIMED,
+  PortfolioDoubleHighTaskStatusCode.IN_PROGRESS,
+  PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED,
+  PortfolioDoubleHighTaskStatusCode.STAGE_REVIEWING,
+  PortfolioDoubleHighTaskStatusCode.ACCEPTANCE,
+])
+
+const pageActiveShuanggaoCount = computed(() =>
+  rows.value.filter((row) => SHUANGGAO_ACTIVE_STATUSES.has(row.taskStatus)).length,
+)
+
+const pageReviewingShuanggaoCount = computed(() =>
+  rows.value.filter(
+    (row) => row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_REVIEWING,
+  ).length,
+)
+
+const shuanggaoSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && total.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: isImplementShell.value ? '我的任务' : '双高任务',
+      value: total.value,
+      clickable: true,
+    },
+  ]
+  if (rows.value.length > 0) {
+    metrics.push({
+      key: 'page-active',
+      label: '本页进行中',
+      value: pageActiveShuanggaoCount.value,
+      helper: '仅当前页',
+    })
+    if (pageReviewingShuanggaoCount.value > 0) {
+      metrics.push({
+        key: 'page-review',
+        label: '本页审核中',
+        value: pageReviewingShuanggaoCount.value,
+        tone: 'orange',
+        helper: '仅当前页',
+      })
+    }
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: pageReviewingShuanggaoCount.value > 0 ? 'page-review' : 'total',
+    actionLabel: '刷新',
+  })
+})
+
+const shuanggaoWorkbenchSubtitle = computed(() => {
+  if (loadError.value) {
+    return '列表加载失败'
+  }
+  const parts = [`${total.value} 条`]
+  if (pageReviewingShuanggaoCount.value > 0) {
+    parts.push(`本页审核中 ${pageReviewingShuanggaoCount.value}`)
+  } else if (pageActiveShuanggaoCount.value > 0) {
+    parts.push(`本页进行中 ${pageActiveShuanggaoCount.value}`)
+  }
+  return parts.join(' · ')
+})
+
+function onShuanggaoSignalClick(_key: string) {
+  void loadPage()
+}
+
 const createOpen = ref(false)
 const actionOpen = ref(false)
 const actionMode = ref<'submit' | 'review' | 'void'>('submit')
@@ -248,7 +323,7 @@ const columns: ColumnsType = [
   { title: '责任人身份', key: 'responsibleIdentity', width: 180 },
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
-  { title: '操作', key: 'actions', width: 220 },
+  { title: '主行动', key: 'actions', width: 220 },
 ]
 
 function taskStatusLabel(code: PortfolioDoubleHighTaskStatusCode): string {
@@ -859,13 +934,20 @@ watch(
         layout="workbench"
         show-title
         :title="isImplementShell ? '双高任务实施' : '双高建设任务'"
-        :subtitle="
-          isImplementShell
-            ? '认领→实施→阶段提交→查看审核结果'
-            : '发布→认领→实施→阶段提交→审核→验收归档'
-        "
+        :subtitle="shuanggaoWorkbenchSubtitle"
       />
     </template>
+
+    <template v-if="shuanggaoSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="shuanggaoSignalMetrics"
+        @metric-click="onShuanggaoSignalClick"
+      />
+    </template>
+
     <UiCard>
       <div v-if="isGovernanceShell" class="shuanggao-tasks__toolbar">
         <UiButton size="sm" variant="primary" :disabled="busy" @click="openCreateModal">
@@ -933,6 +1015,7 @@ watch(
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               v-if="rowActions(record).length"
               :items="rowActions(record)"
               @action="(key) => handleAction(key, record)"
@@ -1100,6 +1183,7 @@ watch(
             class="shuanggao-tasks__detail-actions"
           >
             <UiTableActions
+              :max-visible="2"
               :items="detailSecondaryActions(detailTask)"
               split
               @action="(key) => handleAction(key, detailTask!)"

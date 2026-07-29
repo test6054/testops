@@ -51,18 +51,7 @@
       <template v-else-if="resolvedTenantId">
         <div v-if="casEnabled" class="cas-description">
           <div class="cas-icon" aria-hidden="true">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              width="48"
-              height="48"
-            >
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
+            <SafetyCertificateOutlined />
           </div>
           <h3>{{ displayName }}</h3>
           <p>使用学校统一身份认证系统登录</p>
@@ -89,22 +78,32 @@
       </div>
     </div>
 
-    <div v-if="errorMessage && !configLoadFailed && !tenantListLoadFailed" class="cas-error">
-      <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
-        <path
-          fill-rule="evenodd"
-          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-          clip-rule="evenodd"
-        />
-      </svg>
+    <div
+      v-if="errorMessage && !configLoadFailed && !tenantListLoadFailed"
+      class="cas-error"
+      role="alert"
+      aria-live="polite"
+    >
+      <ExclamationCircleFilled />
       <span>{{ errorMessage }}</span>
-      <button type="button" class="cas-error__close" @click="errorMessage = ''">×</button>
+      <button
+        type="button"
+        class="cas-error__close"
+        aria-label="关闭错误提示"
+        title="关闭错误提示"
+        @click="errorMessage = ''"
+      >
+        <CloseOutlined />
+      </button>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
 import type { TenantPublicInfo } from '@/apis/auth'
+import CloseOutlined from '@ant-design/icons-vue/CloseOutlined'
+import ExclamationCircleFilled from '@ant-design/icons-vue/ExclamationCircleFilled'
+import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -122,6 +121,10 @@ import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import { STORAGE_LAST_STUDENT_SCHOOL } from '@/constants/storage-keys'
 import { getDefaultRoute } from '@/router/permission'
 import { useAuthStore, useUserStore } from '@/stores'
+import {
+  consumeCasLoginRedirect,
+  rememberCasLoginRedirect,
+} from '@/utils/cas-login-redirect'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
 
@@ -196,7 +199,10 @@ async function ensureTenantCache(force = false): Promise<TenantPublicInfo[]> {
   tenantListLoadFailed.value = false
   try {
     const list = await getTenantList()
-    tenantCache.value = list || []
+    if (!Array.isArray(list)) {
+      throw new TypeError('学校列表响应格式不正确')
+    }
+    tenantCache.value = list
     return tenantCache.value
   } catch (error: unknown) {
     tenantListLoadFailed.value = true
@@ -227,8 +233,11 @@ async function loadSsoForTenant(tenantId: string) {
   selectedTenantId.value = tenantId
   try {
     const config = await getSsoConfig(tenantId)
+    if (typeof config.enabled !== 'boolean') {
+      throw new TypeError('统一认证配置响应不完整')
+    }
     resolvedTenantId.value = tenantId
-    casEnabled.value = Boolean(config.enabled)
+    casEnabled.value = config.enabled
     casDisplayName.value = config.casDisplayName || '统一认证'
     const tenant = findTenant(tenantId)
     if (tenant?.tenantName) {
@@ -236,7 +245,7 @@ async function loadSsoForTenant(tenantId: string) {
     }
     emit('tenant-ready', {
       tenantId,
-      casEnabled: Boolean(config.enabled),
+      casEnabled: config.enabled,
       displayName: casDisplayName.value,
     })
   } catch (error: unknown) {
@@ -310,6 +319,7 @@ const handleCasLogin = async () => {
       emit('login-error', msg)
       return
     }
+    rememberCasLoginRedirect(route.query.redirect)
     window.location.href = loginUrl
   } catch (error: unknown) {
     const msg = getUserErrorMessage(error, '获取统一认证登录地址失败')
@@ -329,7 +339,11 @@ const handleCasCallback = async (ticket: string, tenantId: string) => {
     cleanUrl.searchParams.delete('ticket')
     cleanUrl.searchParams.delete('from')
     cleanUrl.searchParams.delete('tenantId')
-    window.history.replaceState({}, '', cleanUrl.pathname)
+    window.history.replaceState(
+      {},
+      '',
+      `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`,
+    )
 
     if (isCasProfileCompletionResponse(result)) {
       await router.push({
@@ -350,13 +364,14 @@ const handleCasCallback = async (ticket: string, tenantId: string) => {
       userStore.userInfo.tenantName = result.tenantInfo.tenantName
     }
 
+    const finalPath = consumeCasLoginRedirect(getDefaultRoute(authStore.userRole))
     if (shouldEnforcePasswordChange(userStore.userInfo)) {
       void message.warning('出于安全考虑，您需要修改密码后才能继续使用系统')
-      await router.push('/change-password')
+      await router.push({ path: '/change-password', query: { redirect: finalPath } })
       return
     }
 
-    await router.push(getDefaultRoute(authStore.userRole))
+    await router.push(finalPath)
     void message.success('统一认证登录成功')
     emit('login-success')
   } catch (error: unknown) {
@@ -375,13 +390,19 @@ function queryString(value: unknown): string {
 
 const checkCasCallback = (): boolean => {
   const ticket = queryString(route.query.ticket)
-  const from = queryString(route.query.from)
   const tenantId = queryString(route.query.tenantId) || props.tenantId || resolvedTenantId.value
-  if (ticket && (from === 'cas' || tenantId)) {
-    handleCasCallback(ticket, tenantId)
+  if (!ticket) {
+    return false
+  }
+  if (!tenantId) {
+    errorMessage.value = '统一认证回调缺少学校信息，请返回登录页重新发起认证'
     return true
   }
-  return false
+  if (route.query.redirect) {
+    rememberCasLoginRedirect(route.query.redirect)
+  }
+  void handleCasCallback(ticket, tenantId)
+  return true
 }
 
 watch(
@@ -491,6 +512,8 @@ defineExpose({
   .cas-icon {
     color: var(--dp-blue-600);
     opacity: 0.85;
+    font-size: 48px;
+    line-height: 1;
   }
 
   h3 {
@@ -558,7 +581,7 @@ defineExpose({
   width: 100%;
   padding: var(--dp-space-component) var(--dp-space-block);
   background: var(--dp-red-50);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  border: 1px solid color-mix(in srgb, var(--dp-red-500) 20%, transparent);
   border-radius: var(--dp-radius-control);
   color: var(--dp-red-500);
   font-size: var(--dp-font-size-sm);
@@ -573,16 +596,27 @@ defineExpose({
 }
 
 .cas-error__close {
+  display: inline-flex;
+  width: var(--dp-control-height-sm);
+  min-width: var(--dp-control-height-sm);
+  height: var(--dp-control-height-sm);
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   border: none;
   background: none;
   color: inherit;
   cursor: pointer;
-  font-size: var(--dp-font-size-lg);
-  padding: 0 var(--dp-space-component-xs);
+  font-size: var(--dp-font-size-md);
   opacity: 0.6;
 
   &:hover {
     opacity: 1;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--dp-focus-ring);
+    outline-offset: 2px;
   }
 }
 </style>

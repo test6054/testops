@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar>
+      <ContextBar title="成绩复核申请" :subtitle="examStats ? `${examStats.appealableCount} 场可申请` : undefined">
         <template #status>
           <UiTag tone="blue" size="sm">
             {{
@@ -45,6 +45,16 @@
         </template>
       </ContextBar>
     </template>
+    <template v-if="StudentAppealSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="StudentAppealSignalMetrics"
+        @metric-click="onStudentAppealSignalClick"
+      />
+    </template>
+
 
     <!-- 选择考试 -->
     <WorkbenchSurfaceCard class="appeal-page__select-card">
@@ -295,6 +305,7 @@ import type {
   StudentQuestionScoreVO,
 } from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
@@ -339,6 +350,7 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
@@ -349,6 +361,7 @@ import {
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTime, formatScore } from '@/utils/format'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import {
   studentFacingFinalScoreStatusLabel,
@@ -944,6 +957,22 @@ async function loadSelectedExamQuestions(): Promise<void> {
   } finally {
     scoreDetailLoading.value = false
   }
+}
+
+const StudentAppealSignalMetrics = computed<SignalMetric[]>(() => {
+  const appealable = examStats.value?.appealableCount ?? appealableExams.value.length
+  return applySpotlightEmphasis([
+    {
+      key: 'appealable',
+      label: '可申请考试',
+      value: appealable,
+      clickable: true,
+    },
+  ], { primaryKey: 'appealable', actionLabel: '刷新' })
+})
+
+function onStudentAppealSignalClick(_key: string) {
+  void reloadAll()
 }
 </script>
 

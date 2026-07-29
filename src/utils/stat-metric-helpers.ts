@@ -66,17 +66,38 @@ export function toShareStatPanelItems<T extends { code?: string | number, label:
 
 /** 将通用统计项映射为 SignalBand 指标（key 缺省时用 label）。 */
 export function toSignalMetrics(items: SignalMetricSource[]): SignalMetric[] {
-  return items.map((item, index) => ({
-    key: String(item.key ?? item.label ?? index),
-    label: item.label,
-    value: item.value,
-    unit: item.unit,
-    tone: item.tone,
-    helper: item.helper,
-    trend: typeof item.trend === 'number' ? item.trend : undefined,
-    trendPolarity: 'trendPolarity' in item ? item.trendPolarity : undefined,
-    clickable: item.clickable,
-  }))
+  return items.map((item, index) => {
+    const metric: SignalMetric = {
+      key: String(item.key ?? item.label ?? index),
+      label: item.label,
+      value: item.value,
+      unit: item.unit,
+      tone: item.tone,
+      helper: item.helper,
+      trend: typeof item.trend === 'number' ? item.trend : undefined,
+      trendPolarity: 'trendPolarity' in item ? item.trendPolarity : undefined,
+      clickable: item.clickable,
+    }
+    if ('emphasis' in item) {
+      const emphasis = (item as { emphasis?: SignalMetric['emphasis'] }).emphasis
+      if (emphasis === 'primary' || emphasis === 'secondary') {
+        metric.emphasis = emphasis
+      }
+    }
+    if ('actionLabel' in item && typeof item.actionLabel === 'string') {
+      metric.actionLabel = item.actionLabel
+    }
+    if ('active' in item && typeof item.active === 'boolean') {
+      metric.active = item.active
+    }
+    if ('showProgress' in item && item.showProgress === true) {
+      metric.showProgress = true
+    }
+    if ('progress' in item && typeof item.progress === 'number') {
+      metric.progress = item.progress
+    }
+    return metric
+  })
 }
 
 /** 相邻趋势点差值（百分制百分点），不足两点时返回 undefined。 */

@@ -3,8 +3,9 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTitleCriteriaTemplateVO } from '@/apis/portfolio/title-promotion'
 import type { PortfolioArchiveCategoryTreeNodeVO } from '@/apis/portfolio/types'
 import type { PortfolioTitleJobCategoryCode } from '@/types/enums/portfolio-title-job-category-enum'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioTitlePromotionApi } from '@/apis/portfolio/title-promotion'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -18,6 +19,7 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -47,6 +49,7 @@ import {
   PortfolioTitleJobCategoryDescription,
 } from '@/types/enums/portfolio-title-job-category-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
@@ -111,7 +114,7 @@ const columns: ColumnsType = [
   { title: '期望值', dataIndex: 'expectedValue', key: 'expectedValue', width: 100 },
   { title: '任务引用', dataIndex: 'openTaskRefCount', key: 'openTaskRefCount', width: 100 },
   { title: '启用', dataIndex: 'enabled', key: 'enabled', width: 80 },
-  { title: '操作', key: 'action', width: 180 },
+  { title: '主行动', key: 'action', width: 180 },
 ]
 
 async function loadData() {
@@ -352,6 +355,30 @@ async function toggleEnabled(row: PortfolioTitleCriteriaTemplateVO, enabled: boo
   }
 }
 
+
+const TitleCriteriaSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && total.value === 0) {
+    return []
+  }
+  return applySpotlightEmphasis([
+    {
+      key: 'total',
+      label: '资格条件模板',
+      value: total.value,
+      clickable: true,
+    },
+  ], { primaryKey: 'total', actionLabel: '查询' })
+})
+
+const TitleCriteriaWorkbenchSubtitle = computed(() => {
+  if (loadError.value) return '加载失败'
+  return `${total.value} 条`
+})
+
+function onTitleCriteriaSignalClick(_key: string) {
+  void loadData()
+}
+
 onMounted(() => {
   void loadData()
   void loadCategoryOptions().catch((error) => showUserError(error, '加载档案分类失败'))
@@ -361,7 +388,16 @@ onMounted(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="职称资格条件模板" />
+      <ContextBar layout="workbench" show-title title="职称资格条件模板" :subtitle="TitleCriteriaWorkbenchSubtitle" />
+    </template>
+    <template v-if="TitleCriteriaSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TitleCriteriaSignalMetrics"
+        @metric-click="onTitleCriteriaSignalClick"
+      />
     </template>
     <UiCard>
       <div class="title-criteria__toolbar">

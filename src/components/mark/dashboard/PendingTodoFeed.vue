@@ -235,4 +235,22 @@ function resolveRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string 
   min-width: 72px;
   justify-content: center;
 }
+
+@media (max-width: 600px) {
+  .todo-feed__row {
+    grid-template-columns: 8px minmax(0, 1fr);
+    align-items: start;
+    row-gap: var(--dp-space-component-tight);
+  }
+
+  .todo-feed__title,
+  .todo-feed__context {
+    white-space: normal;
+  }
+
+  .todo-feed__action {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
 </style>

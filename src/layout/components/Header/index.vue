@@ -4,8 +4,8 @@
       <MenuFoldBtn></MenuFoldBtn>
     </section>
     <UiFlex align="center" class="h-full header-right">
-      <div class="header-brand" aria-hidden="true">
-        <!-- 页标题由 ContextBar 承载；顶栏仅保留右侧通知/用户操作，避免与侧栏重复面包屑 -->
+      <div class="header-left">
+        <DomainSwitch />
       </div>
       <div class="header-right-bar-wrapper">
         <HeaderRightBar></HeaderRightBar>
@@ -20,6 +20,7 @@ import UiLayoutHeader from '@/components/ui-guide/ui/UiLayoutHeader.vue'
 import { useDevice } from '@/hooks'
 import HeaderRightBar from '../HeaderRightBar/index.vue'
 import MenuFoldBtn from '../MenuFoldBtn.vue'
+import DomainSwitch from './DomainSwitch.vue'
 
 defineOptions({ name: 'LayoutHeader' })
 const { isMobile } = useDevice()
@@ -35,11 +36,14 @@ const { isMobile } = useDevice()
     flex: 1;
     overflow: hidden;
     margin-left: var(--dp-space-block);
+    gap: var(--dp-space-component);
   }
 
-  .header-brand {
+  .header-left {
     flex: 1;
     min-width: 0;
+    display: flex;
+    align-items: center;
   }
 
   .header-right-bar-wrapper {

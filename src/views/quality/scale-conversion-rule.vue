@@ -38,6 +38,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const list = ref<ScaleConversionRuleVO[]>([])
@@ -116,7 +117,7 @@ const columns: ColumnsType = [
   { title: '换算条目', dataIndex: 'items', key: 'items', width: 360 },
   { title: '说明', dataIndex: 'description', key: 'description' },
   { title: '状态', dataIndex: 'enabled', key: 'enabled', width: 90 },
-  { title: '操作', key: 'actions', width: 180 },
+  { title: '主行动', key: 'actions', width: 180 },
 ]
 
 function defaultItemsByScaleType(scaleType: ScaleTypeCode): ScaleConversionRuleItemSaveRequest[] {
@@ -374,7 +375,7 @@ async function submitEditor() {
 
 function buildScaleConversionRuleActions(_record: ScaleConversionRuleVO): UiTableRowActionItem[] {
   return [
-    { key: 'edit', label: '编辑' },
+    { key: 'edit', label: '编辑', tone: 'primary' },
     { key: 'delete', label: '删除', tone: 'danger' },
   ]
 }
@@ -411,7 +412,7 @@ const signals = computed<SignalMetric[]>(() => {
   }
   const enabled = summary.enabledCount ?? 0
   const disabled = summary.disabledCount ?? 0
-  return [
+  return applySpotlightEmphasis([
     { key: 'all-total', label: '规则总数', value: summary.totalCount ?? 0, tone: 'blue' },
     { key: 'enabled', label: '启用', value: enabled, tone: enabled > 0 ? 'green' : 'gray' },
     { key: 'disabled', label: '停用', value: disabled, tone: disabled > 0 ? 'orange' : 'gray' },
@@ -421,7 +422,7 @@ const signals = computed<SignalMetric[]>(() => {
       value: summary.scaleTypeCoverageCount ?? 0,
       tone: 'blue',
     },
-  ]
+  ], { primaryKey: disabled > 0 ? 'disabled' : 'enabled', actionLabel: disabled > 0 ? '查看停用' : '查看启用' })
 })
 
 onMounted(() => {
@@ -436,10 +437,10 @@ onActivated(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title title="量表换算规则库" />
+      <ContextBar show-title title="量表换算规则库" :subtitle="`${total} 条`" />
     </template>
 
-    <SignalBand :metrics="signals" variant="panel" compact class="scr__signals" />
+    <SignalBand layout="spotlight" :metrics="signals" variant="panel" compact class="scr__signals" />
 
     <UiCard class="detail-table-card scr__table-card">
       <template #title>换算规则台账</template>
@@ -491,6 +492,7 @@ onActivated(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildScaleConversionRuleActions(record)"
               split
               @action="(key) => handleScaleConversionRuleAction(key, record)"

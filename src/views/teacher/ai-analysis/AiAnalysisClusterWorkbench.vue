@@ -55,7 +55,7 @@ function handleClusterDataChanged(): void {
 
 <template>
   <div class="ai-analysis-cluster-workbench">
-    <SignalBand :metrics="clusterSignalMetrics" compact variant="inline" />
+    <SignalBand layout="spotlight" :metrics="clusterSignalMetrics" compact variant="inline" />
 
     <WorkflowReadinessPanel
       v-if="showReadinessPanel"

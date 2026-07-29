@@ -10,7 +10,7 @@ export interface ExamWorkspaceMenuItem {
   label: string
   routeName: string
   markStageKey: MarkStageKey
-  /** primary=当前步主路径；secondary=次要入口（侧栏仍全量展示，不折叠为「更多」） */
+  /** primary=当前步主路径；secondary=收进侧栏「本步更多」，激活项会提升到主列表 */
   tier?: 'primary' | 'secondary'
 }
 
@@ -467,7 +467,38 @@ export function findExamWorkspaceMenuItem(menuKey: string): ExamWorkspaceMenuIte
 export type ExamWorkspaceMenuKey
   = (typeof EXAM_WORKSPACE_MENU_GROUPS)[number]['items'][number]['key']
 
-/** 主路径菜单项（历史分层标记；导航层不再据此隐藏） */
+/** 主路径菜单项：未声明 tier 视为 primary。 */
 export function isPrimaryMenuItem(item: ExamWorkspaceMenuItem): boolean {
   return item.tier !== 'secondary'
+}
+
+/** 当前激活的 secondary 提升到主列表，避免选中项被折叠藏住。 */
+export function visiblePrimaryExamMenuItems(
+  items: readonly ExamWorkspaceMenuItem[],
+  activeMenuKey: string,
+): ExamWorkspaceMenuItem[] {
+  const primary = items.filter((item) => isPrimaryMenuItem(item))
+  const activeSecondary = items.filter(
+    (item) => !isPrimaryMenuItem(item) && item.key === activeMenuKey,
+  )
+  if (activeSecondary.length === 0) {
+    return [...primary]
+  }
+  const seen = new Set(primary.map((item) => item.key))
+  const merged = [...primary]
+  for (const item of activeSecondary) {
+    if (!seen.has(item.key)) {
+      merged.push(item)
+      seen.add(item.key)
+    }
+  }
+  return merged
+}
+
+/** 未激活的 secondary，供「本步更多」折叠区展示。 */
+export function visibleSecondaryExamMenuItems(
+  items: readonly ExamWorkspaceMenuItem[],
+  activeMenuKey: string,
+): ExamWorkspaceMenuItem[] {
+  return items.filter((item) => !isPrimaryMenuItem(item) && item.key !== activeMenuKey)
 }

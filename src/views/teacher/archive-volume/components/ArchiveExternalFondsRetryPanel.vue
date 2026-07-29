@@ -70,18 +70,23 @@
           <span class="archive-ext-fonds-retry__error">{{ record.lastError || '—' }}</span>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <UiButton
+          <UiTableActions
+            :max-visible="2"
             v-if="
               canManageExternalFondsRetry === true
                 && record.pendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
             "
-            variant="primary"
-            size="sm"
-            :loading="retryingKey === rowRetryKey(record)"
-            @click="retryRow(record)"
-          >
-            重新触发
-          </UiButton>
+            :items="[
+              {
+                key: 'retry',
+                label: '重新触发',
+                tone: 'primary',
+                disabled: retryingKey === rowRetryKey(record),
+              },
+            ]"
+            split
+            @action="() => retryRow(record)"
+          />
           <span
             v-else-if="
               canManageExternalFondsRetry !== true
@@ -147,6 +152,7 @@ import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { ArchiveVolumeAutoCreateFailureCategoryDescription } from '@/constants/archive-volume-auto-create-failure-category'
@@ -219,7 +225,7 @@ const columns: ColumnsType<ArchiveExternalFondsPendingResponse> = [
   { title: '失败类别', key: 'failureCategory', dataIndex: 'failureCategory', width: 140 },
   { title: '失败原因', key: 'lastError', dataIndex: 'lastError' },
   { title: '更新时间', key: 'updateTime', dataIndex: 'updateTime', width: 170 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 function rowRetryKey(record: ArchiveExternalFondsPendingResponse): string {

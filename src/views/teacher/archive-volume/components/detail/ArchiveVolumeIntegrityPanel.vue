@@ -40,7 +40,7 @@
           <UiButton
             v-if="canApproveIntegrityWaive === true"
             size="sm"
-            variant="primary"
+            variant="outline"
             :loading="approvingIntegrityWaive === true"
             @click="submitApproveIntegrityWaive"
           >
@@ -385,7 +385,7 @@ const delayAllowForm = reactive<ArchiveIntegrityDelayAllowForm>({
 const missingColumns: ColumnsType<ArchiveIntegrityMissingItemVO> = [
   { title: '缺项材料', key: 'materialType' },
   { title: '目录', dataIndex: 'catalogName' },
-  { title: '操作', key: 'missingActions', width: 220 },
+  { title: '主行动', key: 'missingActions', width: 220 },
 ]
 
 function isArchiveIntegrityMissingItem(record: unknown): record is ArchiveIntegrityMissingItemVO {

@@ -6,6 +6,7 @@ import type {
   PortfolioTeacherRecommendRuleVO,
   PortfolioTeacherRecommendRunVO,
 } from '@/apis/portfolio/teacher-platform'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -35,6 +36,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -43,6 +45,7 @@ import {
   formatPortfolioTeacherDisplay,
   formatPortfolioTeacherPkDisplay,
 } from '@/utils/portfolio-teacher-display'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -98,7 +101,7 @@ const runColumns: ColumnsType = [
   { title: '操作人', dataIndex: 'operatorUserId', key: 'operatorUserId', width: 100 },
   { title: '候选数', dataIndex: 'candidateCount', key: 'candidateCount', width: 72 },
   { title: '智能解释', key: 'explainStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 const explainDrawerOpen = ref(false)
@@ -502,12 +505,54 @@ watch(
     void applyRouteDeepLink()
   },
 )
+
+const TeacherRecommendSignalMetrics = computed<SignalMetric[]>(() => {
+  if (candidatesLoadError.value && pageTotal.value === 0) {
+    return []
+  }
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '推荐候选',
+      value: pageTotal.value,
+      clickable: true,
+    },
+  ]
+  metrics.push({
+    key: 'runs',
+    label: '历史运行',
+    value: runsPageTotal.value,
+  })
+  metrics.push({
+    key: 'pageRows',
+    label: '本页候选',
+    value: candidates.value.length,
+    helper: '仅当前页',
+  })
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: 'total',
+    actionLabel: '刷新',
+  })
+})
+
+function onTeacherRecommendSignalClick(_key: string) {
+  void loadCandidates()
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="优秀教师推荐" />
+      <ContextBar show-title layout="workbench" title="优秀教师推荐" :subtitle="`${pageTotal} 条`" />
+    </template>
+    <template v-if="TeacherRecommendSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TeacherRecommendSignalMetrics"
+        @metric-click="onTeacherRecommendSignalClick"
+      />
     </template>
     <UiCard title="规则配置">
       <div class="form-row">
@@ -667,6 +712,7 @@ watch(
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[{ key: 'candidates', label: '查看候选' }]"
                 split
                 @action="() => viewRunCandidates(record.id)"

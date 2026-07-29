@@ -6,7 +6,7 @@ import DevelopmentRecordLibraryView from '@/views/portfolio/development-record-l
 <template>
   <DevelopmentRecordLibraryView
     title="教学资源库"
-    subtitle="成果库 · 教学类档案分类 TEACHING"
+    subtitle="教学成果库"
     :record-type="PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT"
     category-code="TEACHING"
   />

@@ -3,6 +3,7 @@ import type {
   PortfolioPortraitTemplateStatusCode,
   PortfolioPortraitTemplateVO,
 } from '@/apis/portfolio/teacher-platform'
+import type { SignalMetric } from '@/types/workbench'
 import type { PortfolioPortraitLayoutWidget } from '@/utils/portrait-layout'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
@@ -17,6 +18,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -28,6 +30,7 @@ import {
   toPortraitChartConfigPayload,
   toPortraitLayoutPayload,
 } from '@/utils/portrait-layout'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
@@ -222,13 +225,55 @@ async function changeTemplateStatus(targetStatus: PortfolioPortraitTemplateStatu
   await loadList()
 }
 
+
+const PortraitTemplateSignalMetrics = computed<SignalMetric[]>(() => {
+  if (templates.value.length === 0 && !loading.value) {
+    // still show zero total after load
+  }
+  const activeCount = templates.value.filter(
+    (item) => item.templateStatus === PortraitTemplateStatus.ACTIVE,
+  ).length
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '画像模板',
+      value: templates.value.length,
+      clickable: true,
+    },
+  ]
+  if (templates.value.length > 0) {
+    metrics.push({
+      key: 'active',
+      label: '已启用',
+      value: activeCount,
+      helper: '仅当前列表',
+    })
+  }
+  return applySpotlightEmphasis(metrics, { primaryKey: 'total', actionLabel: '刷新' })
+})
+
+const PortraitTemplateWorkbenchSubtitle = computed(() => `${templates.value.length} 个模板`)
+
+function onPortraitTemplateSignalClick(_key: string) {
+  void loadList()
+}
+
 onMounted(loadList)
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="画像模板设置" />
+      <ContextBar show-title layout="workbench" title="画像模板设置" :subtitle="PortraitTemplateWorkbenchSubtitle" />
+    </template>
+    <template v-if="PortraitTemplateSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="PortraitTemplateSignalMetrics"
+        @metric-click="onPortraitTemplateSignalClick"
+      />
     </template>
     <div class="layout">
       <UiCard title="模板列表" class="list">

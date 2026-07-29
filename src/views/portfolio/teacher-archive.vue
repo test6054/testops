@@ -18,6 +18,7 @@ import type {
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { PortfolioMaterialTypeCode } from '@/types/enums/portfolio-material-type-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -57,6 +58,7 @@ import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
@@ -72,6 +74,7 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { portfolioAiSourceDisplay } from '@/utils/portfolio-ai-source-display'
 import { formatPortfolioArchiveEvidenceRef } from '@/utils/portfolio-archive-evidence'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -141,12 +144,6 @@ function bagCourseArchiveLabel(preview: PortfolioArchiveBagPreviewVO): string {
   return `${preview.currentAcademicYear ?? '本学年'} 五框架 ${slot} · 齐备 ${complete} 门`
 }
 
-function bagAssembleCompletenessHeadline(summary: PortfolioArchiveBagAssembleVO): string {
-  if (summary.preview) {
-    return bagCompletenessHeadline(summary.preview)
-  }
-  return `${summary.completenessPercent ?? '—'}%`
-}
 
 const bagFilterFields: FilterField[] = [
   { key: 'academicYear', label: '学年', placeholder: '如 2025-2026', width: 140 },
@@ -172,20 +169,20 @@ const recordColumns: ColumnsType = [
   { title: '来源', key: 'sourceType', width: 100 },
   { title: '参与评价', key: 'evaluationIncluded', width: 96 },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 170 },
-  { title: '操作', key: 'actions', width: 80 },
+  { title: '主行动', key: 'actions', width: 80 },
 ]
 
 const fieldColumns: ColumnsType = [
   { title: '字段', key: 'fieldLabel', width: 160, fixed: 'left' },
   { title: '值', dataIndex: 'fieldValue', key: 'fieldValue' },
   { title: '证据', key: 'evidenceRef', width: 180 },
-  { title: '操作', key: 'actions', width: 88 },
+  { title: '主行动', key: 'actions', width: 88 },
 ]
 
 const materialLibraryColumns: ColumnsType<PortfolioMaterialVO> = [
   { title: '材料标题', dataIndex: 'materialTitle', key: 'materialTitle' },
   { title: '分类编码', dataIndex: 'categoryCode', key: 'categoryCode', width: 130 },
-  { title: '操作', key: 'actions', width: 88 },
+  { title: '主行动', key: 'actions', width: 88 },
 ]
 
 const route = useRoute()
@@ -294,6 +291,169 @@ const selectedCategory = computed(() =>
 const canLoadTeacherArchive = computed(
   () => Boolean(targetTeacherId.value) || !canPickTeachers.value,
 )
+
+/** 记录定位：分类与材料条数真源（一表） */
+const archiveRecordMaterialTotal = computed(() =>
+  categories.value.reduce((sum, item) => sum + (item.recordCount ?? 0), 0),
+)
+
+/**
+ * 任务工作台指标：记录面用一表；输出面用汇聚/评分真源。
+ * 有开放补采时主卡落到补采，否则完整度或分类覆盖。
+ */
+const archiveSignalMetrics = computed<SignalMetric[]>(() => {
+  if (archiveSurface.value === 'records') {
+    if (categories.value.length === 0 && !oneTableLoadFailed.value) {
+      return []
+    }
+    const metrics: SignalMetric[] = [
+      {
+        key: 'categories',
+        label: '档案分类',
+        value: categories.value.length,
+        clickable: categories.value.length > 0,
+      },
+      {
+        key: 'materials',
+        label: '材料条目',
+        value: archiveRecordMaterialTotal.value,
+      },
+    ]
+    if (selectedCategory.value) {
+      metrics.push({
+        key: 'category-records',
+        label: '当前分类',
+        value: pageTotal.value,
+        helper: selectedCategory.value.categoryName,
+      })
+    }
+    return applySpotlightEmphasis(metrics, {
+      primaryKey: 'categories',
+      actionLabel: selectedCategoryId.value ? '去填报' : '选分类',
+    })
+  }
+
+  const metrics: SignalMetric[] = []
+  if (bagSummary.value) {
+    const openGaps = bagSummary.value.openGapTaskCount ?? 0
+    metrics.push({
+      key: 'completeness',
+      label: '完整度',
+      value: bagSummary.value.completenessPercent ?? 0,
+      unit: '%',
+      progress: bagSummary.value.completenessPercent ?? 0,
+      showProgress: true,
+      clickable: true,
+    })
+    metrics.push({
+      key: 'gaps',
+      label: '开放补采',
+      value: openGaps,
+      tone: openGaps > 0 ? 'orange' : undefined,
+      clickable: openGaps > 0,
+    })
+    metrics.push({
+      key: 'archived',
+      label: '已归档类',
+      value: bagSummary.value.archivedCategoryCount ?? 0,
+    })
+  }
+  if (scoreResult.value) {
+    metrics.push({
+      key: 'score',
+      label: '档案评分',
+      value: scoreResult.value.totalScore,
+    })
+  }
+  if (metrics.length === 0) {
+    return []
+  }
+  const openGaps = bagSummary.value?.openGapTaskCount ?? 0
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: openGaps > 0 ? 'gaps' : bagSummary.value ? 'completeness' : 'score',
+    actionLabel: openGaps > 0 ? '去补采' : '查看汇聚',
+  })
+})
+
+/** ContextBar 副标题：真 total / 完整度，禁止说明书 */
+/** 任务工作台副标题：完整度/补采优先，分类规模次之。 */
+const archiveWorkbenchSubtitle = computed(() => {
+  if (archiveSurface.value === 'records') {
+    if (oneTableLoadFailed.value) {
+      return '分类加载失败'
+    }
+    if (categories.value.length === 0) {
+      return canLoadTeacherArchive.value ? '暂无分类' : undefined
+    }
+    const parts: string[] = []
+    const gaps = bagSummary.value?.openGapTaskCount ?? 0
+    if (gaps > 0) {
+      parts.push(`待补采 ${gaps}`)
+    }
+    if (bagSummary.value?.completenessPercent != null) {
+      parts.push(`完整度 ${bagSummary.value.completenessPercent}%`)
+    }
+    parts.push(`${categories.value.length} 个分类`)
+    parts.push(`${archiveRecordMaterialTotal.value} 条材料`)
+    if (selectedCategory.value) {
+      parts.push(`${selectedCategory.value.categoryName} ${pageTotal.value} 条`)
+    }
+    return parts.join(' · ')
+  }
+  if (bagSummary.value) {
+    const parts = [
+      `完整度 ${bagSummary.value.completenessPercent ?? '—'}%`,
+      `已归档 ${bagSummary.value.archivedCategoryCount ?? 0} 类`,
+    ]
+    const gaps = bagSummary.value.openGapTaskCount ?? 0
+    if (gaps > 0) {
+      parts.push(`待补采 ${gaps}`)
+    }
+    if (scoreResult.value) {
+      parts.push(`评分 ${scoreResult.value.totalScore}`)
+    }
+    return parts.join(' · ')
+  }
+  if (scoreResult.value) {
+    return `评分 ${scoreResult.value.totalScore}`
+  }
+  return canLoadTeacherArchive.value ? '汇聚后显示完整度' : undefined
+})
+
+const bagDetailCardVisible = computed(() => {
+  if (!bagSummary.value) {
+    return false
+  }
+  const courseLabel = bagSummary.value.preview
+    ? bagCourseArchiveLabel(bagSummary.value.preview)
+    : ''
+  return (
+    Boolean(courseLabel)
+    || bagSummary.value.missingCategoryNames.length > 0
+    || Boolean(bagSummary.value.ownerMultiIdentityNote)
+  )
+})
+
+function onArchiveSignalClick(key: string) {
+  if (key === 'categories' || key === 'materials') {
+    archiveSurface.value = 'records'
+    return
+  }
+  if (key === 'category-records' && selectedCategoryId.value) {
+    goCategoryEdit(selectedCategoryId.value)
+    return
+  }
+  if (key === 'gaps') {
+    void router.push({
+      path: '/portfolio/teacher/intake',
+      query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : undefined,
+    })
+    return
+  }
+  if (key === 'completeness' || key === 'archived' || key === 'score') {
+    archiveSurface.value = 'output'
+  }
+}
 
 /** 教师范围变化后必须清空旧档案袋派生结果，避免继续展示上一位教师的评分/预览。 */
 function resetArchiveDerivedContext() {
@@ -910,7 +1070,7 @@ async function computeArchiveScore() {
   await refreshBagScore(false)
 }
 
-async function assembleBag() {
+async function assembleBag(silent = false) {
   const currentToken = requestToken.value
   if (!canLoadTeacherArchive.value) {
     return
@@ -923,7 +1083,9 @@ async function assembleBag() {
     }
     bagSummary.value = result
     bagPreview.value = result.preview ?? null
-    void message.success(`档案袋完整度 ${result.completenessPercent}%`)
+    if (!silent) {
+      void message.success(`档案袋完整度 ${result.completenessPercent}%`)
+    }
     await refreshBagScore(true)
   } catch (error) {
     if (requestToken.value !== currentToken) {
@@ -1116,12 +1278,31 @@ watch(
     void openRecordFromRouteQuery()
   },
 )
+
+/** 进入输出面且尚无汇聚结果时静默拉真源，供 SignalBand 与副标题使用 */
+watch(
+  archiveSurface,
+  (surface) => {
+    if (surface !== 'output') {
+      return
+    }
+    if (!canLoadTeacherArchive.value || bagLoading.value || bagSummary.value) {
+      return
+    }
+    void assembleBag(true)
+  },
+)
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="我的档案">
+      <ContextBar
+        show-title
+        layout="workbench"
+        :title="archiveSurface === 'records' ? '档案完整度' : '档案袋输出'"
+        :subtitle="archiveWorkbenchSubtitle"
+      >
         <template #actions>
           <template v-if="archiveSurface === 'records'">
             <UiButton
@@ -1199,6 +1380,16 @@ watch(
       </ContextBar>
     </template>
 
+    <template v-if="!(canPickTeachers && !targetTeacherId) && archiveSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="archiveSignalMetrics"
+        @metric-click="onArchiveSignalClick"
+      />
+    </template>
+
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
     <template v-else>
@@ -1222,36 +1413,26 @@ watch(
           />
         </UiCard>
 
-        <div v-if="bagSummary || scoreResult" class="teacher-archive__bag-grid">
-          <UiCard v-if="bagSummary" title="档案袋汇聚" class="teacher-archive__bag">
-            <div class="teacher-archive__completeness-head">
-              <span>{{ bagAssembleCompletenessHeadline(bagSummary) }}</span>
-              <UiTag
-                v-if="bagSummary.preview?.completenessLevel"
-                :tone="completenessLevelTone(bagSummary.preview.completenessLevel)"
-                size="sm"
-              >
-                {{ completenessLevelLabel(bagSummary.preview.completenessLevel) }}
-              </UiTag>
-            </div>
-            <p>
-              已归档 {{ bagSummary.archivedCategoryCount }} 类 · 开放补采
-              {{ bagSummary.openGapTaskCount }} 项
-              <template v-if="bagSummary.preview && bagCourseArchiveLabel(bagSummary.preview)">
-                · {{ bagCourseArchiveLabel(bagSummary.preview) }}
-              </template>
+        <div v-if="bagDetailCardVisible || scoreResult" class="teacher-archive__bag-grid">
+          <UiCard
+            v-if="bagDetailCardVisible"
+            title="缺口与说明"
+            class="teacher-archive__bag"
+          >
+            <p v-if="bagSummary && bagSummary.preview && bagCourseArchiveLabel(bagSummary.preview)">
+              {{ bagCourseArchiveLabel(bagSummary.preview) }}
             </p>
-            <p v-if="bagSummary.missingCategoryNames.length">
+            <p v-if="bagSummary && bagSummary.missingCategoryNames.length">
               缺失：{{ bagSummary.missingCategoryNames.join('、') }}
+            </p>
+            <p v-if="bagSummary?.ownerMultiIdentityNote">
+              {{ bagSummary.ownerMultiIdentityNote }}
             </p>
           </UiCard>
 
-          <UiCard v-if="scoreResult" title="档案袋评分" class="teacher-archive__bag">
-            <p>
-              总分 {{ scoreResult.totalScore
-              }}<template v-if="scoreResult.computedTime">
-                · 计算于 {{ scoreResult.computedTime }}
-              </template>
+          <UiCard v-if="scoreResult" title="评分明细" class="teacher-archive__bag">
+            <p v-if="scoreResult.computedTime" class="teacher-archive__score-meta">
+              计算于 {{ scoreResult.computedTime }}
             </p>
             <ul v-if="scoreResult.breakdown.length" class="teacher-archive__score-list">
               <li
@@ -1429,6 +1610,7 @@ watch(
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
+                  :max-visible="2"
                   :items="[{ key: 'detail', label: '详情' }]"
                   split
                   @action="() => openRecord(record)"
@@ -1501,8 +1683,9 @@ watch(
           </p>
           <div v-if="canCreateRevision" class="teacher-archive__detail-actions">
             <UiButton
+              v-if="archiveSurface === 'records'"
               size="sm"
-              variant="primary"
+              variant="outline"
               :loading="revisionLoading"
               @click="createRevision"
             >
@@ -1576,6 +1759,7 @@ watch(
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
+                  :max-visible="2"
                   v-if="recordDetail.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL"
                   :items="[{ key: 'correct', label: '发起纠错' }]"
                   split
@@ -1603,7 +1787,8 @@ watch(
                   关联材料库
                 </UiButton>
                 <UiButton
-                  variant="primary"
+                  v-if="archiveSurface === 'records'"
+                  variant="outline"
                   size="sm"
                   :disabled="supportMaterialWriting"
                   @click="openLocalMaterialModal"

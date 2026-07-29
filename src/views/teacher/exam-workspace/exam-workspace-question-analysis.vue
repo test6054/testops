@@ -1,5 +1,24 @@
 <template>
   <StageWorkbenchShell class="exam-question-analysis">
+    <template v-if="currentExamId" #context>
+      <ContextBar layout="workbench" show-title title="题目分析" :subtitle="contextBarSubtitle">
+        <template #actions>
+          <UiButton variant="outline" size="sm" @click="goFullStatistics">
+            完整成绩统计
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
+    <template v-if="QuestionAnalysisSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="QuestionAnalysisSignalMetrics"
+        @metric-click="onQuestionAnalysisSignalClick"
+      />
+    </template>
+
     <ExamSelectGateStrip v-if="!currentExamId" body="缺少考试上下文，请先进入考试工作台" />
 
     <template v-else>
@@ -7,25 +26,12 @@
 
       <WorkbenchSurfaceCard class="exam-question-analysis__section" flush>
         <template #head>
-          <header class="exam-question-analysis__header">
-            <div class="exam-question-analysis__header-copy">
-              <h3 class="exam-question-analysis__title">题目分析</h3>
-              <p class="exam-question-analysis__desc">
-                聚焦本场考试题目得分率、区分度与命题质量，支撑考后命题校准。
-              </p>
-            </div>
-            <UiSectionTabs
-              :model-value="activeTab"
-              :items="tabItems"
-              compact
-              @update:model-value="handleTabChange"
-            />
-          </header>
-        </template>
-        <template #toolbar>
-          <UiButton variant="ghost" size="sm" @click="goFullStatistics">
-            查看完整成绩统计
-          </UiButton>
+          <UiSectionTabs
+            :model-value="activeTab"
+            :items="tabItems"
+            compact
+            @update:model-value="handleTabChange"
+          />
         </template>
 
         <div class="exam-question-analysis__tab-panel">
@@ -53,16 +59,20 @@
 
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import ExamQuestionCourseGoalMappingCard from '@/views/teacher/ai-analysis/cards/ExamQuestionCourseGoalMappingCard.vue'
 import PaperQualityCard from '@/views/teacher/ai-analysis/cards/PaperQualityCard.vue'
 import QuestionAnalysisCard from '@/views/teacher/ai-analysis/cards/QuestionAnalysisCard.vue'
@@ -74,7 +84,7 @@ type QuestionAnalysisTab = 'paper' | 'question' | 'goal'
 const route = useRoute()
 const router = useRouter()
 const { examId } = useWorkspaceExamId()
-useExamJourneyContextBar('题目分析')
+const { contextBarSubtitle } = useExamJourneyContextBar('题目分析')
 
 const reloadToken = ref(0)
 const goalMappingReloadToken = ref(0)
@@ -120,6 +130,21 @@ function goFullStatistics(): void {
     name: 'TeacherExamWorkspaceArchiveStatistics',
     params: { examId: examId.value },
   })
+}
+
+const QuestionAnalysisSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'analysis',
+      label: '题目分析',
+      value: contextBarSubtitle.value || '当前考试',
+      clickable: true,
+    },
+  ], { primaryKey: 'analysis', actionLabel: '查看' })
+})
+
+function onQuestionAnalysisSignalClick(_key: string) {
+  // 分析页由 exam workspace 上下文驱动
 }
 </script>
 

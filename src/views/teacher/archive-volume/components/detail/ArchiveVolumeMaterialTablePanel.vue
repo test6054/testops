@@ -505,7 +505,7 @@ const materialColumns: ColumnsType<ArchiveVolumeMaterialResponse> = [
   { title: '标签', key: 'tags', width: 160 },
   { title: '状态', key: 'submissionStatus', width: 120 },
   { title: '文字识别状态', key: 'ocrStatus', width: 160 },
-  { title: '操作', key: 'materialActions', width: 280 },
+  { title: '主行动', key: 'materialActions', width: 280 },
 ]
 
 const sharedRefColumns: ColumnsType<ArchiveVolumeSharedMaterialRefResponse> = [
@@ -513,7 +513,7 @@ const sharedRefColumns: ColumnsType<ArchiveVolumeSharedMaterialRefResponse> = [
   { title: '目标卷编号', dataIndex: 'targetVolumeId' },
   { title: '目标材料编号', dataIndex: 'targetMaterialId' },
   { title: '目录备注', dataIndex: 'catalogNote' },
-  { title: '操作', key: 'sharedRefActions', width: 100 },
+  { title: '主行动', key: 'sharedRefActions', width: 100 },
 ]
 
 const filePreview = useFilePreview()

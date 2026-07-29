@@ -64,6 +64,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { validateRequiredDirectIndirectWeights } from '@/utils/weight-sum-health'
 
@@ -75,7 +76,7 @@ const columns: ColumnsType = [
   { title: '级别', dataIndex: 'accreditationLevel', key: 'accreditationLevel', width: 100 },
   { title: '状态', dataIndex: 'confirmationStatus', key: 'confirmationStatus', width: 100 },
   { title: '启用', dataIndex: 'enabled', key: 'enabled', width: 80 },
-  { title: '操作', key: 'actions', width: 260 },
+  { title: '主行动', key: 'actions', width: 260 },
 ]
 
 function accreditationTypeLabel(value: AccreditationTypeCode): string {
@@ -504,14 +505,17 @@ function buildAlgorithmProfileActions(
   record: ProfessionAlgorithmProfileVO,
 ): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
-  if (canEditProfile(record)) {
-    actions.push({ key: 'edit', label: '编辑' })
-  }
-  if (
-    record.confirmationStatus === ConfirmationStatusCode.DRAFT
+  const canConfirm = record.confirmationStatus === ConfirmationStatusCode.DRAFT
     || record.confirmationStatus === ConfirmationStatusCode.RETURNED
-  ) {
+  if (canConfirm) {
     actions.push({ key: 'confirm', label: '确认', tone: 'primary' })
+  }
+  if (canEditProfile(record)) {
+    actions.push({
+      key: 'edit',
+      label: '编辑',
+      ...(canConfirm ? {} : { tone: 'primary' as const }),
+    })
   }
   if (record.confirmationStatus === ConfirmationStatusCode.CONFIRMED) {
     actions.push({ key: 'revoke', label: '退回', tone: 'danger' })
@@ -593,7 +597,7 @@ const signals = computed<SignalMetric[]>(() => {
   if (!summary) {
     return []
   }
-  return [
+  return applySpotlightEmphasis([
     { key: 'all-total', label: '实例总数', value: summary.totalCount ?? 0, tone: 'blue' },
     {
       key: 'usable',
@@ -637,7 +641,7 @@ const signals = computed<SignalMetric[]>(() => {
       value: summary.disabledCount ?? 0,
       tone: (summary.disabledCount ?? 0) > 0 ? 'orange' : 'gray',
     },
-  ]
+  ])
 })
 
 useQualityScopedLoader(
@@ -659,10 +663,10 @@ onActivated(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="专业算法实例" />
+      <ContextBar layout="workbench" show-title title="专业算法实例" :subtitle="`${total} 条`" />
     </template>
 
-    <SignalBand :metrics="signals" variant="panel" compact class="pap__signals" />
+    <SignalBand layout="spotlight" :metrics="signals" variant="panel" compact class="pap__signals" />
 
     <UiCard class="detail-table-card pap__table-card">
       <template #title>实例台账</template>
@@ -730,6 +734,7 @@ onActivated(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               :items="buildAlgorithmProfileActions(record)"
               split
               @action="(key) => handleAlgorithmProfileAction(key, record)"

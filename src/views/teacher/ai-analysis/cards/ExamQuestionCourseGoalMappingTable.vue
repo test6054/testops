@@ -161,7 +161,7 @@ const columns: UiDataTableColumn<MappingEditableRow>[] = [
     meta: { hideBelow: 'lg' },
   }),
   { title: '更新时间', key: 'updateTime', width: 152, meta: { hideBelow: 'lg' } },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+  { title: '主行动', key: 'actions', width: 120, fixed: 'right' },
 ]
 
 const qualityGoalSteps = [
@@ -288,6 +288,7 @@ function handleFilterReset(): void {
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
+            :max-visible="2"
             v-if="canManageOwnerWrites === true"
             :items="[
               { key: 'save', label: '保存', tone: 'primary', disabled: record.saving },

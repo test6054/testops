@@ -5,7 +5,8 @@ import type {
   PortfolioIndicatorReferenceSceneVO,
   PortfolioIndicatorReferenceStatusVO,
 } from '@/apis/portfolio/indicator-types'
-import { onMounted, ref } from 'vue'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, ref } from 'vue'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PfIndicatorDataSourceChannelDescription,
@@ -17,8 +18,10 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function dataSourceLabel(
@@ -78,13 +81,57 @@ async function loadList() {
   }
 }
 
+
+const IndicatorReferenceSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadError.value && rows.value.length === 0) {
+    return []
+  }
+  const enabledCount = rows.value.filter((row) => row.tenantEnabled === true).length
+  const metrics: SignalMetric[] = [
+    {
+      key: 'total',
+      label: '指标引用',
+      value: rows.value.length,
+      clickable: true,
+      helper: '当前已加载',
+    },
+  ]
+  if (!loadError.value && rows.value.length > 0) {
+    metrics.push({
+      key: 'enabled',
+      label: '租户启用',
+      value: enabledCount,
+      helper: '仅当前列表',
+    })
+  }
+  return applySpotlightEmphasis(metrics, { primaryKey: 'total', actionLabel: '刷新' })
+})
+
+const IndicatorReferenceWorkbenchSubtitle = computed(() => {
+  if (loadError.value) return '加载失败'
+  return `${rows.value.length} 条`
+})
+
+function onIndicatorReferenceSignalClick(_key: string) {
+  void loadList()
+}
+
 onMounted(loadList)
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="指标引用状态" />
+      <ContextBar show-title layout="workbench" title="指标引用状态" :subtitle="IndicatorReferenceWorkbenchSubtitle" />
+    </template>
+    <template v-if="IndicatorReferenceSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="IndicatorReferenceSignalMetrics"
+        @metric-click="onIndicatorReferenceSignalClick"
+      />
     </template>
     <UiCard>
       <UiAlertStrip

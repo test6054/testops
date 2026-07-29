@@ -150,6 +150,7 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              :max-visible="2"
               v-if="canViewMaterialOcrMaterial(record) === true || canTriggerMaterialOcr(record) === true"
               :items="[
                 { key: 'view', label: '查看文本', hidden: canViewMaterialOcrMaterial(record) !== true },
@@ -222,7 +223,7 @@ defineOptions({ name: 'ArchiveVolumeOcrSearchPanel' })
 const props = withDefaults(
   defineProps<{
   volumeId: string
-  canRegisterMaterial: boolean
+  canRegisterMaterial?: boolean
   /** MVR-185：批量 OCR 可不在收材窗口 */
   canMaintainMaterial?: boolean // MVR-940: optional BE 能力位写路径仅认 === true
 }>(),
@@ -266,7 +267,7 @@ const overviewColumns: ColumnsType<ArchiveVolumeMaterialResponse> = [
   { title: '材料', dataIndex: 'fileName', key: 'fileName', width: 220, fixed: 'left' },
   { title: '类型', key: 'materialType', width: 120 },
   { title: '文字识别状态', key: 'ocrStatus', width: 120 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 const pendingOcrCount = computed(() => materialStats.value?.ocrOverview.pendingOcrCount ?? 0)

@@ -8,6 +8,7 @@ import type {
   PortfolioMaterialVO,
 } from '@/apis/portfolio/types'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -40,6 +41,7 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
@@ -57,6 +59,7 @@ import {
   buildPortfolioIntakeReassignQuery,
   canReassignPortfolioMaterial,
 } from '@/utils/portfolio-material-reassign'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -136,7 +139,7 @@ const listColumns: ColumnsType<PortfolioMaterialVO> = [
   { title: '版本', key: 'currentVersionNo', width: 80 },
   { title: '冻结引用', key: 'activeFreezeRefCount', width: 90 },
   { title: '身份层', key: 'identityLayers', width: 160 },
-  { title: '操作', key: 'actions', width: 300 },
+  { title: '主行动', key: 'actions', width: 128 },
 ]
 
 const searchColumns: ColumnsType<PortfolioMaterialSearchResponse> = [
@@ -144,7 +147,7 @@ const searchColumns: ColumnsType<PortfolioMaterialSearchResponse> = [
   { title: '类型', key: 'materialType', width: 120 },
   { title: '命中摘要', dataIndex: 'snippet', key: 'snippet' },
   { title: '身份层', key: 'identityLayers', width: 160 },
-  { title: '操作', key: 'actions', width: 240 },
+  { title: '主行动', key: 'actions', width: 128 },
 ]
 
 const loading = ref(false)
@@ -181,6 +184,52 @@ const versionRequestToken = ref(0)
 
 const modalTitle = computed(() => (editingId.value ? '编辑材料' : '登记材料'))
 const showSearchResults = computed(() => searchKeyword.value.trim().length > 0)
+
+/** 材料补齐 Signal：已登记规模为主，检索为次；禁止「资源库」等权墙。 */
+const materialSignalMetrics = computed<SignalMetric[]>(() => {
+  const metrics: SignalMetric[] = [
+    {
+      key: 'registered',
+      label: '已登记',
+      value: pageTotal.value,
+      unit: '条',
+      clickable: true,
+      helper: '支撑档案完整度的佐证材料',
+    },
+  ]
+  if (showSearchResults.value) {
+    metrics.push({
+      key: 'search',
+      label: '检索命中',
+      value: searchPageTotal.value,
+      unit: '条',
+      helper: searchKeyword.value.trim() || undefined,
+    })
+  }
+  return applySpotlightEmphasis(metrics, {
+    primaryKey: showSearchResults.value ? 'search' : 'registered',
+    actionLabel: showSearchResults.value ? '查看命中' : '刷新台账',
+  })
+})
+
+/** 任务工作台副标题：登记规模，非说明书。 */
+const materialWorkbenchSubtitle = computed(() => {
+  if (archiveWriteForbidden.value) {
+    return '档案写禁 · 仅可查阅'
+  }
+  if (showSearchResults.value) {
+    return `已登记 ${pageTotal.value} · 命中 ${searchPageTotal.value}`
+  }
+  return `已登记 ${pageTotal.value} 条佐证`
+})
+
+function onMaterialSignalClick(key: string) {
+  if (key === 'search') {
+    void searchOcr()
+    return
+  }
+  void loadPage()
+}
 
 /** 教师作用域切换或关闭弹窗时必须清空旧材料编辑态，避免跨教师保存到错误对象。 */
 function resetFormContext() {
@@ -261,6 +310,15 @@ function handleSearch() {
   if (searchKeyword.value.trim()) {
     void searchOcr()
   }
+}
+
+
+/** 从材料补齐台跳转档案完整度主表面。 */
+function goTeacherArchive() {
+  void router.push({
+    name: 'PortfolioTeacherArchive',
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
 }
 
 function openCreateModal() {
@@ -539,9 +597,11 @@ function openIntakeReassign(row: PortfolioMaterialVO) {
   })
 }
 
-/** 组装材料行内操作：重分类与 AI 链路收入「更多」。 */
+/** 组装材料行内操作：编辑唯一 primary 置顶；重分类/AI/版本/作废收入「更多」。 */
 function buildMaterialRowActions(row: PortfolioMaterialVO): UiTableRowActionItem[] {
-  const actions: UiTableRowActionItem[] = []
+  const actions: UiTableRowActionItem[] = [
+    { key: 'edit', label: '编辑', tone: 'primary', disabled: writing.value },
+  ]
   if (canReassignPortfolioMaterial(row)) {
     actions.push({ key: 'reassign', label: '重分类', disabled: writing.value })
   }
@@ -549,7 +609,6 @@ function buildMaterialRowActions(row: PortfolioMaterialVO): UiTableRowActionItem
     { key: 'aiExtract', label: '智能抽取', disabled: writing.value },
     { key: 'aiAsk', label: '智能问数', disabled: writing.value },
     { key: 'aiPolicy', label: '政策核验', disabled: writing.value },
-    { key: 'edit', label: '编辑', disabled: writing.value },
     { key: 'versions', label: '版本历史', disabled: writing.value },
     {
       key: 'void',
@@ -625,8 +684,8 @@ watch(
       <ContextBar
         layout="workbench"
         show-title
-        title="佐证材料库"
-        subtitle="佐证材料登记、版本与检索；日常采集请走「材料采集」"
+        title="佐证材料补齐"
+        :subtitle="materialWorkbenchSubtitle"
       >
         <template #actions>
           <UiButton
@@ -637,11 +696,32 @@ watch(
           >
             登记材料
           </UiButton>
-          <UiButton size="sm" :loading="loading" :disabled="writing" @click="() => void loadPage()">
+          <UiButton
+            size="sm"
+            variant="ghost"
+            :disabled="writing"
+            @click="goTeacherArchive"
+          >
+            我的档案
+          </UiButton>
+          <UiButton size="sm" variant="ghost" :loading="loading" :disabled="writing" @click="() => void loadPage()">
             刷新
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+
+    <template
+      v-if="!(canPickTeachers && !targetTeacherId) && materialSignalMetrics.length > 0"
+      #signal
+    >
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="materialSignalMetrics"
+        @metric-click="onMaterialSignalClick"
+      />
     </template>
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
@@ -687,8 +767,9 @@ watch(
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[
-                  { key: 'aiExtract', label: '智能抽取' },
+                  { key: 'aiExtract', label: '智能抽取', tone: 'primary' },
                   { key: 'aiAsk', label: '智能问数' },
                   { key: 'aiPolicy', label: '政策核验' },
                 ]"
@@ -752,6 +833,7 @@ watch(
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 :items="buildMaterialRowActions(record)"
+                :max-visible="2"
                 @action="(key) => handleMaterialRowAction(key, record)"
               />
             </template>

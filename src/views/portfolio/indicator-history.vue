@@ -6,8 +6,9 @@ import type {
   PortfolioPublishImpactReportVO,
   PortfolioRulePublishSnapshotVO,
 } from '@/apis/portfolio/indicator-types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
@@ -29,10 +30,12 @@ import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function modelStatusLabel(value: PfModelStatusCode): string {
@@ -73,6 +76,43 @@ const historyTotal = ref(0)
 const historyQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 const impactRows = ref<PortfolioPublishImpactReportVO[]>([])
 const impactTotal = ref(0)
+const historySignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis(
+    [
+      {
+        key: 'history',
+        label: '快照历史',
+        value: historyTotal.value,
+        clickable: true,
+        active: activeTab.value === 'history',
+      },
+      {
+        key: 'impact',
+        label: '影响报告',
+        value: impactTotal.value,
+        clickable: true,
+        active: activeTab.value === 'impact',
+      },
+    ],
+    {
+      primaryKey: activeTab.value === 'impact' ? 'impact' : 'history',
+      actionLabel: activeTab.value === 'impact' ? '查看报告' : '查看快照',
+    },
+  )
+})
+
+const historyWorkbenchSubtitle = computed(() => {
+  if (activeTab.value === 'impact') {
+    return `${impactTotal.value} 条影响报告`
+  }
+  return `${historyTotal.value} 条快照`
+})
+
+function onHistorySignalClick(key: string) {
+  if (key === 'history' || key === 'impact') {
+    onTabChange(key)
+  }
+}
 const retroactive = ref<PortfolioRulePublishSnapshotVO | null>(null)
 const impactDetail = ref<PortfolioPublishImpactReportVO | null>(null)
 const selectedSnapshotId = ref('')
@@ -86,7 +126,7 @@ const columns: ColumnsType = [
   { title: '状态', dataIndex: 'modelStatus', key: 'modelStatus', width: 100 },
   { title: '发布时间', dataIndex: 'publishedTime', key: 'publishedTime', width: 180 },
   { title: '快照编号', dataIndex: 'id', key: 'id' },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 const impactColumns: ColumnsType = [
@@ -94,7 +134,7 @@ const impactColumns: ColumnsType = [
   { title: '状态', dataIndex: 'reportStatus', key: 'reportStatus', width: 100 },
   { title: '过期', dataIndex: 'expiredTime', key: 'expiredTime', width: 160 },
   { title: '编号', dataIndex: 'id', key: 'id' },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '主行动', key: 'actions', width: 120 },
 ]
 
 /** 切换场景或页签后，必须清空旧快照/旧影响报告详情，避免把上一上下文内容展示到当前页。 */
@@ -307,13 +347,22 @@ onMounted(loadHistory)
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="规则快照与影响报告">
+      <ContextBar show-title layout="workbench" title="规则快照与影响报告" :subtitle="historyWorkbenchSubtitle">
         <template #actions>
           <UiButton size="sm" @click="router.push({ name: 'PortfolioIndicatorOps' })">
             计分与审计
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+    <template #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="historySignalMetrics"
+        @metric-click="onHistorySignalClick"
+      />
     </template>
     <UiCard>
       <UiSectionTabs
@@ -380,6 +429,7 @@ onMounted(loadHistory)
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[
                   { key: 'view', label: '查看' },
                   { key: 'export-diff', label: '导出差异' },
@@ -443,6 +493,7 @@ onMounted(loadHistory)
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="[
                   { key: 'detail', label: '详情' },
                   { key: 'export', label: '导出' },

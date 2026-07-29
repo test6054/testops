@@ -18,8 +18,11 @@
     <UiEmpty
       size="sm"
       v-else-if="!loading && !detail"
+      title="复核任务不可用"
       description="复核任务加载失败或不存在"
+      action-label="返回复核任务"
       class="review-workspace__empty"
+      @action="goBack"
     />
 
     <template v-else-if="detail">
@@ -86,18 +89,12 @@
             @back="goBack"
           >
             <template #status>
-              <UiTag v-if="detail.paperDisplay" tone="gray" size="sm">
-                {{ detail.paperDisplay.primaryText }}
-              </UiTag>
-              <UiTag v-if="detail.questionNo" tone="blue" size="sm">
-                题 {{ detail.questionNo }}
-              </UiTag>
               <UiTag :tone="reviewStatusTone(detail.status)" size="sm">
                 {{ reviewStatusLabel(detail.status) }}
               </UiTag>
-              <UiTag v-if="queueTotal > 0 && currentQueueIndex > 0" tone="blue" size="sm">
-                当前队列位置 {{ currentQueueIndex }} / {{ queueTotal }}
-              </UiTag>
+              <span v-if="queueTotal > 0 && currentQueueIndex > 0" class="review-workspace__keyboard-hint">
+                Space/←/→ · 0-9 给分
+              </span>
             </template>
           </GradingImmersionChrome>
 
@@ -106,30 +103,29 @@
             class="review-workspace__queue-progress"
           >
             <div class="review-workspace__queue-progress-meta">
-              <span class="review-workspace__queue-progress-title">本题复核队列</span>
               <span class="review-workspace__queue-progress-text">
-                当前位置第 {{ currentQueueIndex }} 份（共 {{ queueTotal }} 份可继续），
-                后方还有 {{ Math.max(0, queueTotal - currentQueueIndex) }} 份
+                队列进度 {{ currentQueueIndex }}/{{ queueTotal }} · 后方
+                {{ Math.max(0, queueTotal - currentQueueIndex) }} 份
               </span>
-              <span class="review-workspace__keyboard-hint">Space/←/→（J/K 别名）· 0-9 快捷给分</span>
-            </div>
-            <div class="review-workspace__queue-jump dp-space dp-space--tight">
-              <span class="review-workspace__jump-label">跳转到第</span>
-              <UiInputNumber
-                :value="jumpTarget ?? undefined"
-                :min="1"
-                :max="queueTotal"
-                size="sm"
-                style="width: 80px"
-                @update:value="
-                  (value: number | string | null) => {
-                    jumpTarget = typeof value === 'number' ? value : null
-                  }
-                "
-                @keydown.enter="handleQueueJump"
-              />
-              <span class="review-workspace__jump-label">份</span>
-              <UiButton size="sm" :disabled="!jumpTarget" @click="handleQueueJump">跳转</UiButton>
+              <div class="review-workspace__queue-jump dp-space dp-space--tight">
+                <span class="review-workspace__jump-label">跳至</span>
+                <UiInputNumber
+                  :value="jumpTarget ?? undefined"
+                  :min="1"
+                  :max="queueTotal"
+                  size="sm"
+                  style="width: 72px"
+                  @update:value="
+                    (value: number | string | null) => {
+                      jumpTarget = typeof value === 'number' ? value : null
+                    }
+                  "
+                  @keydown.enter="handleQueueJump"
+                />
+                <UiButton size="sm" variant="ghost" :disabled="!jumpTarget" @click="handleQueueJump">
+                  跳转
+                </UiButton>
+              </div>
             </div>
           </div>
         </template>
@@ -404,13 +400,13 @@
           </div>
           <div class="review-workspace__sticky-actions">
             <UiButton
-              variant="outline"
+              :variant="queueTotal > 1 ? 'outline' : 'primary'"
               size="md"
               :disabled="canConfirm !== true"
               :loading="submitting === true"
               @click="openSubmitConfirm(false)"
             >
-              仅提交
+              {{ queueTotal > 1 ? '仅提交' : '提交复核' }}
             </UiButton>
             <UiButton
               v-if="canReject === true"
@@ -422,9 +418,10 @@
               驳回
             </UiButton>
             <UiButton
+              v-if="queueTotal > 1"
               variant="primary"
               size="md"
-              :disabled="canConfirm !== true || !detail.gradeResultId || queueTotal <= 1"
+              :disabled="canConfirm !== true || !detail.gradeResultId"
               :loading="submitting === true"
               @click="openSubmitConfirm(true)"
             >
@@ -630,12 +627,16 @@ const claiming = ref(false)
 /** 丢弃过期的复核任务加载，避免 J/K 导航与 claim 并发覆盖 detail。 */
 let loadTaskGeneration = 0
 
+/** 沉浸顶栏副标题：队列位次 + 试卷/题号/状态，避免 status 槽重复堆 Tag。 */
 const immersionSubtitle = computed(() => {
   const task = detail.value
   if (!task) {
     return ''
   }
   const parts: string[] = []
+  if (queueTotal.value > 0 && currentQueueIndex.value > 0) {
+    parts.push(`第 ${currentQueueIndex.value}/${queueTotal.value} 份`)
+  }
   if (task.paperDisplay?.primaryText) {
     parts.push(task.paperDisplay.primaryText)
   }
@@ -1701,15 +1702,16 @@ onDeactivated(unbindReviewWorkspaceKeyboard)
   min-width: 0;
 
   &__section--standard {
-    border-color: var(--dp-success-border);
+    box-shadow: inset 3px 0 0 var(--dp-success-border);
+    padding-inline-start: var(--dp-space-component-tight);
   }
 
   &__queue-progress {
-    margin-bottom: var(--dp-space-component);
-    padding: var(--dp-space-component-tight) var(--dp-space-component);
-    background: var(--dp-surface);
-    border: 1px solid var(--dp-border);
-    border-radius: var(--dp-radius-panel);
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
     display: flex;
     flex-direction: column;
     gap: var(--dp-space-component-tight);

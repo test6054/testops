@@ -1,15 +1,28 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="阅卷任务池">
+      <ContextBar layout="workbench" show-title title="阅卷任务池" :subtitle="markingTaskPoolSubtitle">
         <template #status>
           <UiTag v-if="isTrialTaskPool" tone="orange" size="sm">试评阶段</UiTag>
+        </template>
+        <template #actions>
+          <UiButton
+            v-if="markingTaskPoolPrimaryAction"
+            variant="primary"
+            size="sm"
+            :loading="markingTaskPoolPrimaryAction.loading"
+            :disabled="markingTaskPoolPrimaryAction.disabled"
+            @click="markingTaskPoolPrimaryAction.run()"
+          >
+            <template v-if="markingTaskPoolPrimaryAction.key === 'claim'" #icon><PlusOutlined /></template>
+            {{ markingTaskPoolPrimaryAction.label }}
+          </UiButton>
         </template>
       </ContextBar>
     </template>
 
     <template v-if="selectedExamId && pageSignalMetrics.length > 0" #signal>
-      <SignalBand :metrics="pageSignalMetrics" variant="panel" compact />
+      <SignalBand :metrics="pageSignalMetrics" layout="spotlight" variant="panel" compact />
     </template>
 
     <ExamSelectGateStrip
@@ -85,7 +98,8 @@
               <UiFormItem>
                 <div class="dp-space dp-space--tight">
                   <UiButton
-                    variant="primary"
+                    v-if="markingTaskPoolPrimaryAction?.key !== 'claim'"
+                    variant="outline"
                     size="sm"
                     :disabled="canClaim !== true"
                     :loading="claiming"
@@ -116,7 +130,7 @@
             <header class="marking-task-pool-page__task-header">
               <h3 class="marking-task-pool-page__task-title">
                 <TableOutlined />
-                任务列表
+                任务队列
               </h3>
               <UiButton
                 v-if="canManageReviewerTaskWrites === true"
@@ -134,7 +148,7 @@
             <UiAlertStrip
               v-if="tasksLoadError"
               tone="error"
-              title="任务列表加载失败"
+              title="任务队列加载失败"
               :description="tasksLoadError"
               dense
             />
@@ -145,7 +159,14 @@
               selection-label="份已选"
               description="须同题组 · 同题目 · 待批阅状态"
             >
-              <UiButton variant="primary" size="sm" @click="openBatchDrawer"> 批量给分 </UiButton>
+              <UiButton
+                v-if="markingTaskPoolPrimaryAction?.key !== 'batch-score'"
+                variant="outline"
+                size="sm"
+                @click="openBatchDrawer"
+              >
+                批量给分
+              </UiButton>
               <UiButton variant="outline" size="sm" @click="clearBatchSelection"> 清空 </UiButton>
             </UiBatchActionBar>
 
@@ -285,6 +306,8 @@
                 <UiTableActions
                   v-if="buildMarkingTaskRowActions(record).length"
                   :items="buildMarkingTaskRowActions(record)"
+                  :max-visible="2"
+                  align="end"
                   split
                   @action="() => goDetail(record)"
                 />
@@ -319,8 +342,6 @@ import type {
   TeacherClaimContextResponse,
   TrialSessionResponse,
 } from '@/apis/mark/marking-organization'
-import { dualMarkRoleLabel } from '@/apis/mark/dual-mark-role'
-import { GradeStatusCode } from '@/types/enums/grade-status-enum'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -331,6 +352,7 @@ import { storeToRefs } from 'pinia'
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
+import { dualMarkRoleLabel } from '@/apis/mark/dual-mark-role'
 import {
   AllocationUnitCode,
   FormalSessionStatusDescription,
@@ -376,6 +398,7 @@ import { usePolling } from '@/composables/usePolling'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
 import { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
+import { GradeStatusCode } from '@/types/enums/grade-status-enum'
 import { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
 import { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
 import { MarkingTaskStatusCode } from '@/types/enums/marking-task-status-enum'
@@ -407,7 +430,7 @@ const claimEmptyDescription = computed(() =>
 
 const taskTableEmptyDescription = computed(() => {
   if (tasksLoadError.value) {
-    return '任务列表加载失败；已禁止把失败显示为「暂无任务」'
+    return '任务队列加载失败；已禁止把失败显示为「暂无任务」'
   }
   return isTrialTaskPool.value
     ? '暂无待处理试评任务，领取后将在此展示'
@@ -540,7 +563,7 @@ function handleSelectionChange(keys: (string | number)[]): void {
 
 function toggleBatchMode(): void {
   if (tasksLoadError.value) {
-    void message.warning('任务列表加载失败，禁止进入批量给分')
+    void message.warning('任务队列加载失败，禁止进入批量给分')
     return
   }
   if (canManageReviewerTaskWrites.value !== true) {
@@ -683,10 +706,36 @@ const pageSignalMetrics = computed((): SignalMetric[] => {
     return []
   }
   return [
-    { key: 'total', label: '我的任务', value: summary.totalTaskCount, tone: 'blue' },
-    { key: 'allocated', label: '待领取', value: summary.allocatedTaskCount, tone: 'gray' },
-    { key: 'inProgress', label: '批阅中', value: summary.inProgressTaskCount, tone: 'blue' },
-    { key: 'done', label: '已完成', value: completedTaskCount.value, tone: 'green' },
+    {
+      key: 'allocated',
+      label: '待领取',
+      value: summary.allocatedTaskCount,
+      tone: summary.allocatedTaskCount > 0 ? 'orange' : 'gray',
+      emphasis: 'primary',
+      actionLabel: summary.allocatedTaskCount > 0 ? '领取任务' : undefined,
+      helper: summary.allocatedTaskCount > 0 ? '可领取的批阅任务' : '暂无待领取',
+    },
+    {
+      key: 'inProgress',
+      label: '批阅中',
+      value: summary.inProgressTaskCount,
+      tone: 'blue',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'total',
+      label: '我的任务',
+      value: summary.totalTaskCount,
+      tone: 'blue',
+      emphasis: 'secondary',
+    },
+    {
+      key: 'done',
+      label: '已完成',
+      value: completedTaskCount.value,
+      tone: 'green',
+      emphasis: 'secondary',
+    },
   ]
 })
 
@@ -702,7 +751,7 @@ const columns = computed<ColumnType<MarkingTaskResponse>[]>(() => [
   { title: '给分', key: 'score', width: 80 },
   { title: '分配时间', key: 'allocatedTime', width: 170 },
   { title: '提交时间', key: 'submittedTime', width: 170 },
-  { title: '操作', key: 'actions', width: 140 },
+  { title: '主行动', key: 'actions', width: 140 },
 ])
 
 async function loadTasks(options?: { silent?: boolean, resetPage?: boolean }): Promise<void> {
@@ -752,10 +801,10 @@ async function loadTasks(options?: { silent?: boolean, resetPage?: boolean }): P
     taskListPolling.syncPolling()
   } catch (error) {
     // 失败保真：保留上次成功列表，禁止 clear 成「暂无任务」
-    const errorMessage = getUserErrorMessage(error, '阅卷任务列表加载失败')
+    const errorMessage = getUserErrorMessage(error, '阅卷任务队列加载失败')
     if (!options?.silent) {
       tasksLoadError.value = errorMessage
-      showUserError(error, '阅卷任务列表加载失败')
+      showUserError(error, '阅卷任务队列加载失败')
       batchMode.value = false
       clearBatchSelection()
     }
@@ -1109,6 +1158,41 @@ async function submitClaim(): Promise<void> {
   }
 }
 
+/** 任务池副标题：队列规模，试评阶段附加提示。 */
+const markingTaskPoolSubtitle = computed(() => {
+  const base = `待办队列 ${taskPageTotal.value} 条`
+  return isTrialTaskPool.value ? `${base} · 试评` : base
+})
+
+/**
+ * 页级唯一实心主行动：批量勾选给分优先，否则批量领取。
+ */
+const markingTaskPoolPrimaryAction = computed(() => {
+  if (!selectedExamId.value) {
+    return null
+  }
+  if (batchMode.value && selectedRowKeys.value.length > 0) {
+    return {
+      key: 'batch-score',
+      label: `批量给分（${selectedRowKeys.value.length}）`,
+      loading: false,
+      disabled: false,
+      run: () => openBatchDrawer(),
+    }
+  }
+  if (canClaim.value === true) {
+    return {
+      key: 'claim',
+      label: '批量领取一批',
+      loading: claiming.value,
+      disabled: false,
+      run: () => {
+        void submitClaim()
+      },
+    }
+  }
+  return null
+})
 function buildMarkingTaskRowActions(task: MarkingTaskResponse): UiTableRowActionItem[] {
   if (
     [MarkingTaskStatusCode.ALLOCATED, MarkingTaskStatusCode.IN_PROGRESS].includes(task.taskStatus)
@@ -1116,7 +1200,7 @@ function buildMarkingTaskRowActions(task: MarkingTaskResponse): UiTableRowAction
     return [{ key: 'enter', label: '进入批阅', tone: 'primary' }]
   }
   if (task.taskStatus === MarkingTaskStatusCode.FINALIZED) {
-    return [{ key: 'view', label: '查看阅卷' }]
+    return [{ key: 'view', label: '查看阅卷', tone: 'primary' }]
   }
   return []
 }

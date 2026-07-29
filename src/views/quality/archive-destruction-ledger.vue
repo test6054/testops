@@ -34,6 +34,7 @@ import {
 import { downloadArchiveExcelBase64 } from '@/utils/archive-excel-export'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'QualityArchiveDestructionLedger' })
@@ -101,9 +102,11 @@ const columns: ColumnsType<ArchiveDestructionLedgerRowVO> = [
 ]
 
 const signals = computed<SignalMetric[]>(() =>
-  pagination.total > 0
-    ? [{ key: 'rows', label: '清册记录', value: pagination.total, unit: '条' }]
-    : [],
+  applySpotlightEmphasis(
+    pagination.total > 0
+      ? [{ key: 'rows', label: '清册记录', value: pagination.total, unit: '条' }]
+      : [],
+  ),
 )
 
 function destructionStatusLabel(value: QualityArchiveDestructionStatusCode): string {
@@ -187,12 +190,15 @@ async function exportExcel() {
 onMounted(() => {
   void loadLedger()
 })
+
+/** 任务工作台副标题：销毁清册条数。 */
+const destructionLedgerWorkbenchSubtitle = computed(() => `${pagination.total} 条清册记录`)
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar show-title title="质量评价 - 销毁清册">
+      <QualityPageContextBar show-title title="质量评价 - 销毁清册" :subtitle="destructionLedgerWorkbenchSubtitle">
         <template #actions>
           <UiButton variant="outline" size="sm" @click="router.push({ name: 'QualityArchive' })">
             返回材料归档
@@ -214,7 +220,7 @@ onMounted(() => {
     </template>
 
     <template #signal>
-      <SignalBand :metrics="signals" variant="panel" compact />
+      <SignalBand layout="spotlight" :metrics="signals" variant="panel" compact />
     </template>
 
     <UiCard>

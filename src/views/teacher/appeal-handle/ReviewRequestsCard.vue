@@ -58,6 +58,7 @@
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
               v-if="buildReviewRequestActions(rows[index]).length > 0"
+              :max-visible="2"
               :items="buildReviewRequestActions(rows[index])"
               split
               @action="(key) => void handleReviewRequestAction(key, rows[index])"
@@ -252,7 +253,7 @@ const columns: ColumnType<GradeReviewRequestItemResponse>[] = [
   { title: '申请原因', dataIndex: 'requestReason', key: 'requestReason', ellipsis: true },
   { title: '状态', key: 'requestStatus', width: 96 },
   { title: '处理结果', key: 'handleResult', width: 140, ellipsis: true },
-  { title: '操作', key: 'actions', width: 140 },
+  { title: '主行动', key: 'actions', width: 140 },
 ]
 
 const handleOpen = ref(false)

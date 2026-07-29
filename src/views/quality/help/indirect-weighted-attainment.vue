@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import type { SignalMetric } from '@/types/workbench'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 
 const route = useRoute()
 const router = useRouter()
@@ -47,12 +50,27 @@ function handleReturn() {
   }
   void router.push({ name: 'QualityIngestIndirectEvaluation' })
 }
+
+const IndirectHelpSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'help',
+      label: '说明文档',
+      value: '题项加权',
+      clickable: true,
+    },
+  ], { primaryKey: 'help', actionLabel: '定位正文' })
+})
+
+function onIndirectHelpSignalClick(_key: string) {
+  // 帮助页无列表刷新
+}
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar title="间接达成度题项加权说明">
+      <ContextBar title="间接达成度题项加权说明" subtitle="帮助说明">
         <template #status>
           <UiButton variant="outline" size="sm" @click="handleReturn">
             {{
@@ -65,6 +83,15 @@ function handleReturn() {
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+    <template v-if="IndirectHelpSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="IndirectHelpSignalMetrics"
+        @metric-click="onIndirectHelpSignalClick"
+      />
     </template>
 
     <UiCard title="计算口径与示例">

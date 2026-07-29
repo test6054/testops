@@ -11,6 +11,7 @@ import type {
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { TeacherTaughtCourseSourceTypeCode } from '@/types/enums/teacher-taught-course-source-type-enum'
+import type { SignalMetric } from '@/types/workbench'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
@@ -33,6 +34,7 @@ import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
@@ -46,6 +48,7 @@ import { SemesterOptions } from '@/types/enums/semester-enum'
 import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioLifecycleStatusDisplay, portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -176,7 +179,7 @@ const courseColumns: ColumnsType = [
   { title: '总学时', dataIndex: 'totalHours', key: 'totalHours', width: 80, align: 'right' },
   { title: '人数', dataIndex: 'studentCount', key: 'studentCount', width: 72, align: 'right' },
   { title: '来源', dataIndex: 'sourceType', key: 'sourceType', width: 96 },
-  { title: '操作', key: 'actions', width: 88 },
+  { title: '主行动', key: 'actions', width: 96 },
 ]
 
 const educationColumns: ColumnsType = [
@@ -185,7 +188,7 @@ const educationColumns: ColumnsType = [
   { title: '学位', dataIndex: 'degreeName', key: 'degreeName', width: 120 },
   { title: '起止年月', key: 'period', width: 160 },
   { title: '来源', dataIndex: 'sourceType', key: 'sourceType', width: 96 },
-  { title: '操作', key: 'actions', width: 112 },
+  { title: '主行动', key: 'actions', width: 96 },
 ]
 const academicExperienceColumns: ColumnsType = [
   { title: '单位', dataIndex: 'organizationUnit', key: 'organizationUnit' },
@@ -193,14 +196,14 @@ const academicExperienceColumns: ColumnsType = [
   { title: '职称', dataIndex: 'professionalTitle', key: 'professionalTitle', width: 140 },
   { title: '起止年月', key: 'period', width: 160 },
   { title: '来源', dataIndex: 'sourceType', key: 'sourceType', width: 96 },
-  { title: '操作', key: 'actions', width: 112 },
+  { title: '主行动', key: 'actions', width: 96 },
 ]
 const academicAppointmentColumns: ColumnsType = [
   { title: '单位', dataIndex: 'organizationUnit', key: 'organizationUnit' },
   { title: '职务', dataIndex: 'positionTitle', key: 'positionTitle' },
   { title: '起止年月', key: 'period', width: 160 },
   { title: '来源', dataIndex: 'sourceType', key: 'sourceType', width: 96 },
-  { title: '操作', key: 'actions', width: 112 },
+  { title: '主行动', key: 'actions', width: 96 },
 ]
 
 function sourceLabel(sourceType: TeacherTaughtCourseSourceTypeCode) {
@@ -502,10 +505,17 @@ async function saveCvRecord() {
   }
 }
 
+/** 履历行主行动：编辑唯一 primary 置顶；删除进溢出。 */
 function buildCvActions(row: CvRecord): UiTableRowActionItem[] {
   const editable = row.sourceType === 'MANUAL' && !readonlyProfile.value
   return [
-    { key: 'edit', label: '编辑', hidden: !editable, disabled: cvWriteBusy.value },
+    {
+      key: 'edit',
+      label: '编辑',
+      tone: 'primary',
+      hidden: !editable,
+      disabled: cvWriteBusy.value,
+    },
     {
       key: 'delete',
       label: '删除',
@@ -722,6 +732,24 @@ watch(
   },
 )
 usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
+
+const TeacherProfileSignalMetrics = computed<SignalMetric[]>(() => {
+  if (loadFailed.value && !profile.value) {
+    return []
+  }
+  return applySpotlightEmphasis([
+    {
+      key: 'courses',
+      label: '任课记录',
+      value: courseTotal.value,
+      clickable: true,
+    },
+  ], { primaryKey: 'courses', actionLabel: '刷新' })
+})
+
+function onTeacherProfileSignalClick(_key: string) {
+  void loadProfile()
+}
 </script>
 
 <template>
@@ -732,6 +760,15 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
         show-title
         title="个人资料"
         :subtitle="profile?.nickName || profile?.teacherNumber"
+      />
+    </template>
+    <template v-if="TeacherProfileSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="TeacherProfileSignalMetrics"
+        @metric-click="onTeacherProfileSignalClick"
       />
     </template>
     <UiAlertStrip
@@ -835,7 +872,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
             />
           </UiFormItem>
           <UiButton
-            variant="primary"
+            variant="outline"
             size="sm"
             v-if="!readonlyProfile"
             :loading="savingProfile"
@@ -898,7 +935,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
         <template v-if="profileActiveTab === 'education'">
           <div v-if="!readonlyProfile" class="cv-actions">
             <UiButton
-              variant="primary"
+              variant="outline"
               size="sm"
               :disabled="cvWriteBusy"
               @click="openCvModal('education')"
@@ -924,6 +961,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
                   :items="buildCvActions(record)"
+                  :max-visible="2"
                   @action="(key) => handleCvAction(key, 'education', record)"
                 />
               </template>
@@ -933,7 +971,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
         <template v-else-if="profileActiveTab === 'academic-experience'">
           <div v-if="!readonlyProfile" class="cv-actions">
             <UiButton
-              variant="primary"
+              variant="outline"
               size="sm"
               :disabled="cvWriteBusy"
               @click="openCvModal('academicExperience')"
@@ -959,6 +997,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
                   :items="buildCvActions(record)"
+                  :max-visible="2"
                   @action="(key) => handleCvAction(key, 'academicExperience', record)"
                 />
               </template>
@@ -994,6 +1033,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
                   :items="buildCvActions(record)"
+                  :max-visible="2"
                   @action="(key) => handleCvAction(key, 'academicAppointment', record)"
                 />
               </template>

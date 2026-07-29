@@ -1,13 +1,22 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title :title="phaseLabel">
+      <ContextBar layout="workbench" show-title :title="phaseLabel" :subtitle="examStatusLabel || undefined">
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
           </UiTag>
         </template>
       </ContextBar>
+    </template>
+    <template v-if="MarkingOrgHubSignalMetrics.length > 0" #signal>
+      <SignalBand
+        layout="spotlight"
+        variant="inline"
+        compact
+        :metrics="MarkingOrgHubSignalMetrics"
+        @metric-click="onMarkingOrgHubSignalClick"
+      />
     </template>
 
     <ExamWorkspaceJourneySubNav v-if="selectedExamId && !resolving && !resolveLoadFailed" />
@@ -48,6 +57,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onActivated, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOrganization } from '@/apis/mark/marking-organization'
@@ -58,6 +68,7 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
@@ -67,6 +78,7 @@ import {
   resolveMarkingOrganizationFormalSessionsRoute,
   resolveMarkingOrganizationTrialSessionsRoute,
 } from '@/utils/marking-organization-navigation'
+import { applySpotlightEmphasis } from '@/utils/signal-spotlight'
 
 defineOptions({ name: 'MarkingOrgSessionHub' })
 
@@ -157,6 +169,26 @@ onActivated(() => {
     void redirectToSessionPage()
   }
 })
+
+const MarkingOrgHubSignalMetrics = computed<SignalMetric[]>(() => {
+  return applySpotlightEmphasis([
+    {
+      key: 'phase',
+      label: '当前阶段',
+      value: phaseLabel.value || '—',
+      clickable: true,
+    },
+    {
+      key: 'examStatus',
+      label: '考试状态',
+      value: examStatusLabel.value || '—',
+    },
+  ], { primaryKey: 'phase', actionLabel: '刷新' })
+})
+
+function onMarkingOrgHubSignalClick(_key: string) {
+  // hub 由路由参数驱动
+}
 </script>
 
 <style scoped lang="scss">

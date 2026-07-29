@@ -35,13 +35,25 @@
       </template>
     </UiPopover>
 
-    <UiDropdown trigger="hover">
-      <div v-if="variant === 'workbench'" class="user-chip">
+    <UiDropdown trigger="click">
+      <button
+        v-if="variant === 'workbench'"
+        type="button"
+        class="user-chip"
+        :aria-label="accountMenuLabel"
+        aria-haspopup="menu"
+      >
         <div class="user-avatar">{{ avatarInitial }}</div>
         <span class="user-name">{{ userStore.nickname }}</span>
         <DownOutlined class="user-chevron" />
-      </div>
-      <div v-else class="user">
+      </button>
+      <button
+        v-else
+        type="button"
+        class="user"
+        :aria-label="accountMenuLabel"
+        aria-haspopup="menu"
+      >
         <GiCellAvatar
           :name="userStore.nickname"
           :size="32"
@@ -50,7 +62,7 @@
         />
         <span class="username">{{ userStore.nickname }}</span>
         <DownOutlined />
-      </div>
+      </button>
       <template #overlay>
         <UiMenu>
           <UiMenuItem key="profile" @click="router.push('/profile')">
@@ -152,6 +164,11 @@ const unreadBadgeLabel = computed(() => {
 const avatarInitial = computed(() => {
   const name = userStore.nickname?.trim()
   return name ? name.charAt(0) : '?'
+})
+
+const accountMenuLabel = computed(() => {
+  const nickname = userStore.nickname?.trim()
+  return nickname ? `打开${nickname}的账号菜单` : '打开账号菜单'
 })
 
 const getMessageCount = async () => {
@@ -350,12 +367,20 @@ const openExportTaskCenter = () => {
   align-items: center;
   gap: var(--dp-space-component-tight);
   padding: 3px var(--dp-space-component) 3px var(--dp-space-component-xs);
+  border: 0;
   border-radius: 6px;
+  background: transparent;
+  font: inherit;
   cursor: pointer;
   transition: background var(--dp-duration-fast) var(--dp-ease-default);
 
   &:hover {
     background: var(--dp-fill-tertiary);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--dp-focus-ring-strong);
   }
 }
 
@@ -390,6 +415,11 @@ const openExportTaskCenter = () => {
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
   cursor: pointer;
   color: var(--dp-text-primary);
 
@@ -399,17 +429,30 @@ const openExportTaskCenter = () => {
     font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 12em;
   }
 
   .anticon-down {
     transition: transform var(--dp-duration-slow);
     margin-left: 2px;
   }
+
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--dp-focus-ring-strong);
+  }
 }
 
 @media (max-width: bp.$layout-mobile-max) {
   .tenant-info {
     display: none;
+  }
+
+  .user .username {
+    max-width: 7em;
   }
 }
 </style>

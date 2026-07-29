@@ -395,13 +395,16 @@ const configStatusStrip = computed(() => {
 
 const signals = computed<SignalMetric[]>(() => {
   const b = statusBuckets.value
-  return [
+  const pool: SignalMetric[] = [
     {
       key: 'failed',
       label: '失败',
       value: b.FAILED,
       tone: b.FAILED > 0 ? 'red' : 'gray',
       clickable: b.FAILED > 0,
+      emphasis: 'secondary',
+      actionLabel: b.FAILED > 0 ? '处理失败' : undefined,
+      helper: b.FAILED > 0 ? '导入/解析失败批次' : undefined,
     },
     {
       key: 'previewReady',
@@ -409,13 +412,8 @@ const signals = computed<SignalMetric[]>(() => {
       value: b.PREVIEW_READY,
       tone: b.PREVIEW_READY > 0 ? 'orange' : 'gray',
       clickable: b.PREVIEW_READY > 0,
-    },
-    {
-      key: 'validated',
-      label: '已校验',
-      value: b.VALIDATED,
-      tone: b.VALIDATED > 0 ? 'blue' : 'gray',
-      clickable: b.VALIDATED > 0,
+      emphasis: 'secondary',
+      actionLabel: b.PREVIEW_READY > 0 ? '去预览' : undefined,
     },
     {
       key: 'parsing',
@@ -423,8 +421,26 @@ const signals = computed<SignalMetric[]>(() => {
       value: b.PARSING,
       tone: b.PARSING > 0 ? 'orange' : 'gray',
       clickable: b.PARSING > 0,
+      emphasis: 'secondary',
+    },
+    {
+      key: 'validated',
+      label: '已校验',
+      value: b.VALIDATED,
+      tone: b.VALIDATED > 0 ? 'blue' : 'gray',
+      clickable: b.VALIDATED > 0,
+      emphasis: 'secondary',
     },
   ]
+  const primaryBase
+    = b.FAILED > 0
+      ? pool[0]
+      : b.PREVIEW_READY > 0
+        ? pool[1]
+        : b.PARSING > 0
+          ? pool[2]
+          : pool[3]
+  return [{ ...primaryBase, emphasis: 'primary' }, ...pool.filter((item) => item.key !== primaryBase.key)]
 })
 
 const distributionSignals = computed<SignalMetric[]>(() => {
@@ -697,7 +713,7 @@ const batchListColumns: ColumnsType = [
   { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
   { title: '失败阶段', key: 'failurePhase', width: 140 },
   { title: '最近更新', dataIndex: 'updateTime', key: 'updateTime', width: 170 },
-  { title: '操作', key: 'actions', width: 360 },
+  { title: '主行动', key: 'actions', width: 360 },
 ]
 
 const diagnosticsColumns: ColumnsType = [
@@ -1093,24 +1109,28 @@ function canReParse(status: ScoreBatchStatusCode) {
   return status === ScoreBatchStatusCode.PENDING || status === ScoreBatchStatusCode.FAILED
 }
 
+/** 成绩批次行主行动：确认/重解析 primary 置顶；预览校验进次要。 */
 function buildScoreBatchActions(record: ScoreBatchVO): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
-  if (canPreview(record.status)) {
-    actions.push({ key: 'preview', label: '预览' })
-  }
-  if (canValidate(record)) {
-    actions.push({ key: 'validate', label: '校验' })
-  }
   if (canConfirm(record.status)) {
     actions.push({ key: 'confirm', label: '确认', tone: 'primary' })
   }
   if (canReParse(record.status)) {
-    // 与确认并存时仅确认保留 primary
     actions.push(
       canConfirm(record.status)
         ? { key: 'reparse', label: '重新解析' }
         : { key: 'reparse', label: '重新解析', tone: 'primary' },
     )
+  }
+  if (canPreview(record.status)) {
+    actions.push({
+      key: 'preview',
+      label: '预览',
+      tone: actions.some((item) => item.tone === 'primary') ? undefined : 'primary',
+    })
+  }
+  if (canValidate(record)) {
+    actions.push({ key: 'validate', label: '校验' })
   }
   if (canEdit(record.status)) {
     actions.push({ key: 'edit', label: '编辑' })
@@ -1190,12 +1210,15 @@ onMounted(async () => {
     await loadBatches()
   }
 })
+
+/** 任务工作台副标题：导入批次规模。 */
+const scoreBatchWorkbenchSubtitle = computed(() => `${total.value} 个导入批次`)
 </script>
 
 <template>
   <QualityIngestPageShell embedded>
     <template #context>
-      <QualityPageContextBar show-title title="成绩 Excel 导入">
+      <QualityPageContextBar show-title title="成绩 Excel 导入" :subtitle="scoreBatchWorkbenchSubtitle">
         <template #actions>
           <UiButton
             variant="outline"
@@ -1243,6 +1266,7 @@ onMounted(async () => {
       </UiAlertStrip>
       <SignalBand
         :metrics="signals"
+        layout="spotlight"
         variant="panel"
         compact
         class="score-batch__signals"
@@ -1489,6 +1513,7 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
+                :max-visible="2"
                 :items="buildScoreBatchActions(record)"
                 split
                 @action="(key) => handleScoreBatchAction(key, record)"
