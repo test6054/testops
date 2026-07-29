@@ -98,6 +98,15 @@
         class="scan-batch-detail-workbench__signal-alert"
       />
       <UiAlertStrip
+        v-if="inspectorLoadFailed"
+        tone="warning"
+        :closable="false"
+        dense
+        title="页检视面板加载失败"
+        description="当前选中页的归卷证据与写操作不可用，请重新选择页轨条目。"
+        class="scan-batch-detail-workbench__signal-alert"
+      />
+      <UiAlertStrip
         v-if="workbench?.signalBandMessage"
         :tone="workbenchSignalTone"
         :title="workbenchProgressTitle"
@@ -304,10 +313,12 @@
               empty-text="预览加载失败"
               class="scan-batch-detail-workbench__image"
             />
-            <UiEmpty
-              size="sm"
+            <UiStateBlock
               v-else-if="previewLoadFailed"
-              description="影像预览加载失败"
+              state="error"
+              size="sm"
+              title="影像预览加载失败"
+              description="当前选中页的影像不可用；可重新选择该页，或切换登记页与身份切片后再试。"
               class="scan-batch-detail-workbench__preview-empty"
             />
             <UiEmpty
@@ -327,7 +338,7 @@
               :attribution-items="workbench?.attributionItems ?? []"
               :preferred-target-paper-instance-id="preferredTargetPaperInstanceId"
               :can-manage-owner-writes="canManageOwnerPageWrites"
-              @bound="handleInspectorBound"
+              @bound="handleInspectorReassigned"
               @reassigned="handleInspectorReassigned"
             />
           </aside>
@@ -411,7 +422,7 @@
         :attribution-items="workbench?.attributionItems ?? []"
         :preferred-target-paper-instance-id="preferredTargetPaperInstanceId"
         :can-manage-owner-writes="canManageOwnerPageWrites"
-        @bound="handleInspectorBound"
+        @bound="handleInspectorReassigned"
         @reassigned="handleInspectorReassigned"
       />
     </UiDrawer>
@@ -436,9 +447,16 @@
       width="560"
       hide-footer
     >
+      <UiStateBlock
+        v-if="orderAuditLoadFailed"
+        state="error"
+        size="sm"
+        title="顺序诊断加载失败"
+        description="当前无法判断批次是否存在顺序异常，请关闭后重新打开诊断。"
+      />
       <UiEmpty
         size="sm"
-        v-if="!orderAuditLoading && !orderAuditDetail?.issues?.length"
+        v-else-if="!orderAuditLoading && !orderAuditDetail?.issues?.length"
         description="暂无顺序审计异常"
       />
       <UiDataTable
@@ -513,6 +531,7 @@ import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -550,6 +569,7 @@ const pageStatusFilter = ref<ScanBatchWorkbenchPageStatusFilterCode>(
   ScanBatchWorkbenchPageStatusFilterCode.ALL,
 )
 const pageKeyword = ref('')
+const appliedPageKeyword = ref('')
 const pageRailCounts = ref<{
   total: number | null
   pending: number | null
@@ -606,12 +626,12 @@ const pageRailEmptyDescription = computed(() => {
   if (!batch) {
     return '暂无页轨数据'
   }
-  if ((batch.receivedPageCount ?? 0) === 0 && (batch.sourceFileCount ?? 0) > 0) {
+  if (batch.receivedPageCount === 0 && batch.sourceFileCount > 0) {
     return '原件待自动登记与身份识别'
   }
   if (
     pageStatusFilter.value !== ScanBatchWorkbenchPageStatusFilterCode.ALL
-    || pageKeyword.value.trim()
+    || appliedPageKeyword.value
   ) {
     return '当前筛选条件下无匹配页轨'
   }
@@ -634,6 +654,7 @@ const browseAllPages = ref(false)
 const pageInspector = ref<ExamScannerBatchPageInspectorVO | null>(null)
 const preferredTargetPaperInstanceId = ref<string | undefined>(undefined)
 const inspectorLoading = ref(false)
+const inspectorLoadFailed = ref(false)
 const previewTab = ref<'page' | 'identity'>('page')
 const previewImageUrl = ref('')
 const previewLoading = ref(false)
@@ -641,6 +662,8 @@ const previewLoadFailed = ref(false)
 const previewingOriginal = ref(false)
 let previewRequestSeq = 0
 let workbenchLoadGeneration = 0
+/** 当前页轨筛选窗口请求序号；筛选、搜索或工作台刷新后拒绝旧响应写回。 */
+let pageWindowRequestGeneration = 0
 let pageSelectionGeneration = 0
 const actionLoading = ref<ScanBatchWorkbenchTopActionCode | ''>('')
 const discardModalOpen = ref(false)
@@ -650,6 +673,8 @@ const rightDrawerOpen = ref(false)
 const collateAttentionDismissing = ref(false)
 const orderAuditDrawerOpen = ref(false)
 const orderAuditLoading = ref(false)
+const orderAuditLoadFailed = ref(false)
+let orderAuditRequestGeneration = 0
 const orderAuditDetail = ref<ScanBatchOrderAuditResponse | null>(null)
 
 const contextSubtitle = computed(() => {
@@ -774,22 +799,22 @@ const workbenchSignalMetrics = computed((): SignalMetric[] => {
   const received: SignalMetric = {
     key: 'received',
     label: '已收件',
-    value: data.sourceReceivedCount ?? 0,
-    unit: '份',
+    value: data.sourceReceivedCount ?? '—',
+    unit: data.sourceReceivedCount == null ? undefined : '份',
     tone: 'blue',
   }
   const registered: SignalMetric = {
     key: 'registered',
     label: '已登记',
-    value: data.pageRegisteredCount ?? 0,
-    unit: '页',
+    value: data.pageRegisteredCount ?? '—',
+    unit: data.pageRegisteredCount == null ? undefined : '页',
     tone: 'purple',
   }
   const bound: SignalMetric = {
     key: 'bound',
     label: '已绑定',
-    value: data.paperBoundCount ?? 0,
-    unit: '卷',
+    value: data.paperBoundCount ?? '—',
+    unit: data.paperBoundCount == null ? undefined : '卷',
     tone: 'green',
   }
   const regProgress: SignalMetric = {
@@ -1088,7 +1113,10 @@ function clearPageSelectionState(): void {
   previewTab.value = 'page'
   releasePreviewUrl()
   previewLoadFailed.value = false
+  previewLoading.value = false
   previewingOriginal.value = false
+  inspectorLoading.value = false
+  inspectorLoadFailed.value = false
   pageItems.value = []
   pagesNextCursor.value = undefined
   pageRailCounts.value = {
@@ -1243,7 +1271,7 @@ function buildPageQuery(cursor?: string) {
     examId: selectedExamId.value!,
     scanBatchId: scanBatchId.value,
     pageStatusFilter: pageStatusFilter.value,
-    keyword: pageKeyword.value.trim() || undefined,
+    keyword: appliedPageKeyword.value || undefined,
     pageSize: 50,
     cursor,
   }
@@ -1256,6 +1284,7 @@ async function handlePageStatusFilterChange(): Promise<void> {
 }
 
 async function handlePageKeywordSearch(): Promise<void> {
+  appliedPageKeyword.value = pageKeyword.value.trim()
   pagesNextCursor.value = undefined
   beginPageSelection('')
   await refreshPagesWindow()
@@ -1269,11 +1298,15 @@ async function refreshPagesWindow(
   }
   const examId = selectedExamId.value
   const batchId = scanBatchId.value
+  const requestGeneration = ++pageWindowRequestGeneration
+  pagesLoadMoreInFlight.value = false
+  pagesLoadingMore.value = false
   pagesLoading.value = true
   try {
     const response = await pageScannerBatchWorkbenchPages(buildPageQuery())
     if (
-      expectedWorkbenchGeneration !== workbenchLoadGeneration
+      requestGeneration !== pageWindowRequestGeneration
+      || expectedWorkbenchGeneration !== workbenchLoadGeneration
       || selectedExamId.value !== examId
       || scanBatchId.value !== batchId
     ) {
@@ -1288,7 +1321,8 @@ async function refreshPagesWindow(
     }
   } catch (error) {
     if (
-      expectedWorkbenchGeneration !== workbenchLoadGeneration
+      requestGeneration !== pageWindowRequestGeneration
+      || expectedWorkbenchGeneration !== workbenchLoadGeneration
       || selectedExamId.value !== examId
       || scanBatchId.value !== batchId
     ) {
@@ -1298,7 +1332,8 @@ async function refreshPagesWindow(
     showUserError(error, '页轨加载失败')
   } finally {
     if (
-      expectedWorkbenchGeneration === workbenchLoadGeneration
+      requestGeneration === pageWindowRequestGeneration
+      && expectedWorkbenchGeneration === workbenchLoadGeneration
       && selectedExamId.value === examId
       && scanBatchId.value === batchId
     ) {
@@ -1322,12 +1357,14 @@ async function loadMorePages(): Promise<void> {
   const examId = selectedExamId.value
   const batchId = scanBatchId.value
   const expectedWorkbenchGeneration = workbenchLoadGeneration
+  const expectedPageWindowGeneration = pageWindowRequestGeneration
   pagesLoadMoreInFlight.value = true
   pagesLoadingMore.value = true
   try {
     const response = await pageScannerBatchWorkbenchPages(buildPageQuery(pagesNextCursor.value))
     if (
-      expectedWorkbenchGeneration !== workbenchLoadGeneration
+      expectedPageWindowGeneration !== pageWindowRequestGeneration
+      || expectedWorkbenchGeneration !== workbenchLoadGeneration
       || selectedExamId.value !== examId
       || scanBatchId.value !== batchId
     ) {
@@ -1338,7 +1375,8 @@ async function loadMorePages(): Promise<void> {
     syncPageRailCounts(response)
   } catch (error) {
     if (
-      expectedWorkbenchGeneration !== workbenchLoadGeneration
+      expectedPageWindowGeneration !== pageWindowRequestGeneration
+      || expectedWorkbenchGeneration !== workbenchLoadGeneration
       || selectedExamId.value !== examId
       || scanBatchId.value !== batchId
     ) {
@@ -1348,7 +1386,8 @@ async function loadMorePages(): Promise<void> {
     showUserError(error, '页轨翻页加载失败')
   } finally {
     if (
-      expectedWorkbenchGeneration === workbenchLoadGeneration
+      expectedPageWindowGeneration === pageWindowRequestGeneration
+      && expectedWorkbenchGeneration === workbenchLoadGeneration
       && selectedExamId.value === examId
       && scanBatchId.value === batchId
     ) {
@@ -1367,10 +1406,6 @@ function formatPageRegisterRetryMessage(response: ExamScanBatchPageRegisterRetry
   return '页登记重试成功'
 }
 
-async function handleInspectorBound(): Promise<void> {
-  await handleInspectorReassigned()
-}
-
 async function handleInspectorReassigned(): Promise<void> {
   const pageKey = selectedPageKey.value
   await afterSuccessfulWriteRefresh({ pageKey: pageKey || undefined })
@@ -1382,7 +1417,10 @@ function beginPageSelection(pageKey: string): void {
   preferredTargetPaperInstanceId.value = undefined
   if (!pageKey) {
     pageInspector.value = null
+    inspectorLoading.value = false
+    inspectorLoadFailed.value = false
     releasePreviewUrl()
+    previewLoading.value = false
     previewLoadFailed.value = false
     previewingOriginal.value = false
     return
@@ -1402,6 +1440,7 @@ async function loadInspector(
   }
   const examId = selectedExamId.value
   const batchId = scanBatchId.value
+  inspectorLoadFailed.value = false
   inspectorLoading.value = true
   try {
     const inspector = await getScannerBatchPageInspector({
@@ -1421,6 +1460,7 @@ async function loadInspector(
       return
     }
     pageInspector.value = inspector
+    inspectorLoadFailed.value = false
   } catch (error) {
     if (
       expectedGeneration !== pageSelectionGeneration
@@ -1431,6 +1471,7 @@ async function loadInspector(
       return
     }
     pageInspector.value = null
+    inspectorLoadFailed.value = true
     showUserError(error, '页检视面板加载失败')
   } finally {
     if (
@@ -1447,6 +1488,7 @@ async function loadPreview(): Promise<void> {
   const expectedPageGeneration = pageSelectionGeneration
   const expectedPageKey = selectedPageKey.value
   releasePreviewUrl()
+  previewLoading.value = false
   previewLoadFailed.value = false
   previewingOriginal.value = false
   const page = selectedPage.value
@@ -1636,18 +1678,40 @@ async function openOrderAudit(): Promise<void> {
   if (!batch?.scanBatchId || !selectedExamId.value) {
     return
   }
+  const examId = selectedExamId.value
+  const batchId = batch.scanBatchId
+  const requestGeneration = ++orderAuditRequestGeneration
   orderAuditDrawerOpen.value = true
   orderAuditLoading.value = true
+  orderAuditLoadFailed.value = false
   orderAuditDetail.value = null
   try {
-    orderAuditDetail.value = await getScanBatchOrderAudit({
-      examId: selectedExamId.value,
-      scanBatchId: batch.scanBatchId,
+    const detail = await getScanBatchOrderAudit({
+      examId,
+      scanBatchId: batchId,
     })
+    if (
+      requestGeneration !== orderAuditRequestGeneration
+      || selectedExamId.value !== examId
+      || scanBatchId.value !== batchId
+    ) {
+      return
+    }
+    orderAuditDetail.value = detail
   } catch (error) {
+    if (
+      requestGeneration !== orderAuditRequestGeneration
+      || selectedExamId.value !== examId
+      || scanBatchId.value !== batchId
+    ) {
+      return
+    }
+    orderAuditLoadFailed.value = true
     showUserError(error, '加载顺序诊断失败')
   } finally {
-    orderAuditLoading.value = false
+    if (requestGeneration === orderAuditRequestGeneration) {
+      orderAuditLoading.value = false
+    }
   }
 }
 
@@ -1902,10 +1966,19 @@ watch(
   () => [selectedExamId.value, scanBatchId.value] as const,
   ([examId, batchId]) => {
     const generation = ++workbenchLoadGeneration
+    pageWindowRequestGeneration += 1
     pageSelectionGeneration += 1
+    orderAuditRequestGeneration += 1
     workbench.value = null
     workbenchLoadFailed.value = false
     workbenchLoading.value = Boolean(examId && batchId)
+    pageStatusFilter.value = ScanBatchWorkbenchPageStatusFilterCode.ALL
+    pageKeyword.value = ''
+    appliedPageKeyword.value = ''
+    orderAuditDrawerOpen.value = false
+    orderAuditLoading.value = false
+    orderAuditLoadFailed.value = false
+    orderAuditDetail.value = null
     clearPageSelectionState()
     if (examId && batchId) {
       void loadWorkbench(generation)

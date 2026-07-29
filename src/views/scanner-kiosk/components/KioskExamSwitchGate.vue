@@ -2,7 +2,7 @@
 /**
  * 已绑定考试后切换工位考试；医院挂号式磁贴页，单击卡片即切换。
  */
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 import KioskExamPickPanel from './KioskExamPickPanel.vue'
 import '../styles/exam-pick-gate.scss'
@@ -10,7 +10,6 @@ import '../styles/exam-pick-gate.scss'
 const { workflow } = useKioskCtx()
 
 const visible = computed(() => workflow.examSwitchGateOpen.value)
-const selectedExamId = ref<string>()
 const switching = ref(false)
 
 const currentExamLabel = computed(() => {
@@ -42,17 +41,10 @@ async function onConfirmSwitch(examId: string) {
   switching.value = true
   try {
     await workflow.bindKioskExam(examId)
-    selectedExamId.value = undefined
   } finally {
     switching.value = false
   }
 }
-
-watch(visible, (show) => {
-  if (!show) {
-    selectedExamId.value = undefined
-  }
-})
 </script>
 
 <template>
@@ -88,18 +80,18 @@ watch(visible, (show) => {
       </header>
 
       <main class="exam-gate__main">
-        <h1 class="exam-gate__heading">切换扫描考试</h1>
-        <p class="exam-gate__heading-sub">当前：{{ currentExamLabel }}</p>
+        <div class="exam-gate__context">
+          <h1 class="exam-gate__heading">切换扫描考试</h1>
+          <p class="exam-gate__heading-sub">当前：{{ currentExamLabel }}。触碰考试卡片后立即切换。</p>
+        </div>
 
         <KioskExamPickPanel
-          v-model:selected-exam-id="selectedExamId"
           :exclude-exam-id="workflow.examId.value"
           class="exam-gate__panel"
           :class="{
             'exam-gate__panel--busy': switching === true || workflow.bindExamCandidateLoading.value === true,
           }"
           :interaction-locked="switching === true"
-          :instant-bind="true"
           @confirm="onConfirmSwitch"
         />
 

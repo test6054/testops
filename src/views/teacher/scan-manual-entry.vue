@@ -85,6 +85,7 @@
         v-if="candidatesLoadFailed && activeTab === 'candidates'"
         tone="error"
         title="待补名单加载失败"
+        description="当前名单结果不可用；可调整筛选条件后重新查询，或离开页面后重新进入。"
         dense
         class="scan-manual-entry__alert"
       />
@@ -93,6 +94,7 @@
         v-if="recordsLoadFailed && activeTab === 'records'"
         tone="error"
         title="补录记录加载失败"
+        description="当前补录记录不可用；可切换分页后重新加载，或离开页面后重新进入。"
         dense
         class="scan-manual-entry__alert"
       />
@@ -250,6 +252,9 @@ const examDetailLoadFailed = ref(false)
 const candidatesLoadFailed = ref(false)
 const recordsLoadFailed = ref(false)
 let examLoadGeneration = 0
+let workbenchRequestGeneration = 0
+let candidateRequestGeneration = 0
+let recordRequestGeneration = 0
 const classOptions = ref<Array<{ value: string, label: string }>>([])
 
 const candidateFilterModel = reactive({
@@ -329,8 +334,13 @@ const signalMetrics = computed((): SignalMetric[] => {
       tone: missingCount == null || missingCount > 0 ? 'orange' : 'green',
       clickable: true,
       emphasis: 'secondary',
-      actionLabel: '补录缺页',
-      helper: missingCount == null || missingCount > 0 ? '优先补齐缺页考生' : '暂无缺页',
+      actionLabel: missingCount == null ? '核对卷面' : missingCount > 0 ? '补录缺页' : undefined,
+      helper:
+        missingCount == null
+          ? '单卷页数真源尚未形成'
+          : missingCount > 0
+            ? '优先补齐缺页考生'
+            : '暂无缺页',
     },
     {
       key: 'attention',
@@ -452,6 +462,7 @@ function handleTabChange(tab: Key): void {
   }
 }
 
+/** 加载考试班级范围；合同缺失时显式失败，不伪装成未维护班级。 */
 async function loadExamContext(expectedGeneration = examLoadGeneration): Promise<void> {
   const examId = selectedExamId.value
   if (!examId) {
@@ -464,7 +475,10 @@ async function loadExamContext(expectedGeneration = examLoadGeneration): Promise
     if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
       return
     }
-    classOptions.value = (detail.classRefs ?? []).map((item) => ({
+    if (!Array.isArray(detail.classRefs)) {
+      throw new TypeError('考试详情合同异常：班级范围不可用')
+    }
+    classOptions.value = detail.classRefs.map((item) => ({
       value: item.classId,
       label: item.className || item.classId,
     }))
@@ -478,7 +492,9 @@ async function loadExamContext(expectedGeneration = examLoadGeneration): Promise
   }
 }
 
+/** 加载当前考试补录总览，拒绝同考试内旧刷新覆盖最新写后状态。 */
 async function loadWorkbench(expectedGeneration = examLoadGeneration): Promise<void> {
+  const requestGeneration = ++workbenchRequestGeneration
   const examId = selectedExamId.value
   if (!examId) {
     workbench.value = null
@@ -488,13 +504,21 @@ async function loadWorkbench(expectedGeneration = examLoadGeneration): Promise<v
   const hadWorkbench = workbench.value != null
   try {
     const next = await getManualSupplementWorkbench(examId)
-    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    if (
+      requestGeneration !== workbenchRequestGeneration
+      || expectedGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
     workbench.value = next
     workbenchLoadFailed.value = false
   } catch (error) {
-    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    if (
+      requestGeneration !== workbenchRequestGeneration
+      || expectedGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
     if (!hadWorkbench) {
@@ -505,7 +529,9 @@ async function loadWorkbench(expectedGeneration = examLoadGeneration): Promise<v
   }
 }
 
+/** 按已提交筛选加载待补名单，分页与筛选仅允许最后一次请求写回。 */
 async function loadCandidates(expectedGeneration = examLoadGeneration): Promise<void> {
+  const requestGeneration = ++candidateRequestGeneration
   const examId = selectedExamId.value
   if (!examId) {
     candidates.value = []
@@ -522,14 +548,22 @@ async function loadCandidates(expectedGeneration = examLoadGeneration): Promise<
       classId: candidateQuery.classId,
       keyword: candidateQuery.keyword,
     })
-    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    if (
+      requestGeneration !== candidateRequestGeneration
+      || expectedGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
     candidates.value = result.list
     candidateQuery.total = result.total
     candidatesLoadFailed.value = false
   } catch (error) {
-    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    if (
+      requestGeneration !== candidateRequestGeneration
+      || expectedGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
     if (!hadCandidates) {
@@ -539,13 +573,19 @@ async function loadCandidates(expectedGeneration = examLoadGeneration): Promise<
     candidatesLoadFailed.value = true
     showUserError(error, '待补名单加载失败')
   } finally {
-    if (expectedGeneration === examLoadGeneration && selectedExamId.value === examId) {
+    if (
+      requestGeneration === candidateRequestGeneration
+      && expectedGeneration === examLoadGeneration
+      && selectedExamId.value === examId
+    ) {
       candidatesLoading.value = false
     }
   }
 }
 
+/** 加载补录审计记录，隔离快速翻页产生的过期响应。 */
 async function loadRecords(expectedGeneration = examLoadGeneration): Promise<void> {
+  const requestGeneration = ++recordRequestGeneration
   const examId = selectedExamId.value
   if (!examId) {
     records.value = []
@@ -560,7 +600,11 @@ async function loadRecords(expectedGeneration = examLoadGeneration): Promise<voi
       pageNum: recordPagination.current,
       pageSize: recordPagination.pageSize,
     })
-    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    if (
+      requestGeneration !== recordRequestGeneration
+      || expectedGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
     records.value = result.list.map((item, index) => ({
@@ -570,7 +614,11 @@ async function loadRecords(expectedGeneration = examLoadGeneration): Promise<voi
     recordPagination.total = result.total
     recordsLoadFailed.value = false
   } catch (error) {
-    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    if (
+      requestGeneration !== recordRequestGeneration
+      || expectedGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
     if (!hadRecords) {
@@ -580,7 +628,11 @@ async function loadRecords(expectedGeneration = examLoadGeneration): Promise<voi
     recordsLoadFailed.value = true
     showUserError(error, '补录记录加载失败')
   } finally {
-    if (expectedGeneration === examLoadGeneration && selectedExamId.value === examId) {
+    if (
+      requestGeneration === recordRequestGeneration
+      && expectedGeneration === examLoadGeneration
+      && selectedExamId.value === examId
+    ) {
       recordsLoading.value = false
     }
   }
@@ -640,9 +692,11 @@ function openMissingPageWizard(
   targetPageNo?: number,
 ): void {
   if (canManageOwnerSupplementWrites.value !== true) {
+    void message.warning('仅本场主考可执行缺页补扫')
     return
   }
   if (record.supplementEligible !== true) {
+    void message.warning(record.blockReason || '当前考生不满足缺页补扫条件')
     return
   }
   wizardContext.value = buildWizardContext('missing-page', {
@@ -654,9 +708,11 @@ function openMissingPageWizard(
 
 function openReplaceWizard(record: ExamManualSupplementCandidateItemResponse): void {
   if (canManageOwnerSupplementWrites.value !== true) {
+    void message.warning('仅本场主考可执行污损页替换')
     return
   }
   if (record.replaceEligible !== true) {
+    void message.warning(record.replaceBlockReason || '当前答卷不满足污损页替换条件')
     return
   }
   wizardContext.value = buildWizardContext('replace', { ...record, targetPageNo: undefined })
@@ -665,6 +721,7 @@ function openReplaceWizard(record: ExamManualSupplementCandidateItemResponse): v
 
 function openFileImportWizard(): void {
   if (canManageOwnerSupplementWrites.value !== true) {
+    void message.warning('仅本场主考可执行文件补入')
     return
   }
   if (!selectedExamId.value) return
@@ -705,7 +762,7 @@ async function handleContinueNext(): Promise<void> {
 
   const nextTarget = resolveNextSupplementTarget(previous)
   if (!nextTarget) {
-    void message.info('待补名单已无下一项，请从列表继续')
+    void message.info('当前列表页无下一项，请从待补名单继续选择')
     return
   }
   if (nextTarget.kind === 'missing-page') {
@@ -788,11 +845,13 @@ function parseScenario(value: unknown): ManualSupplementScenario | null {
   return null
 }
 
+/** 解析受权限约束的补录深链，并拒绝非法目标页号。 */
 function applyRouteDeepLink(): void {
   const scenario = parseScenario(route.query.scenario)
   if (!scenario || !selectedExamId.value) return
   // MVR-265：写场景 deep link 非主考不打开向导
   if (canManageOwnerSupplementWrites.value !== true) {
+    void message.warning('当前账号无本场考试补录写权限')
     return
   }
   pendingDeepLink.value = true
@@ -802,7 +861,12 @@ function applyRouteDeepLink(): void {
     pendingDeepLink.value = false
     return
   }
-  const targetPageNo = route.query.targetPageNo ? Number(route.query.targetPageNo) : undefined
+  const parsedTargetPageNo
+    = typeof route.query.targetPageNo === 'string' ? Number(route.query.targetPageNo) : undefined
+  const targetPageNo
+    = parsedTargetPageNo != null && Number.isInteger(parsedTargetPageNo) && parsedTargetPageNo > 0
+      ? parsedTargetPageNo
+      : undefined
   wizardContext.value = {
     scenario,
     examId: selectedExamId.value,
@@ -811,7 +875,7 @@ function applyRouteDeepLink(): void {
     scanBatchId: typeof route.query.scanBatchId === 'string' ? route.query.scanBatchId : undefined,
     candidateRosterId:
       typeof route.query.candidateRosterId === 'string' ? route.query.candidateRosterId : undefined,
-    targetPageNo: Number.isFinite(targetPageNo) ? targetPageNo : undefined,
+    targetPageNo,
   }
   wizardOpen.value = true
   pendingDeepLink.value = false
@@ -839,6 +903,9 @@ watch(
   selectedExamId,
   (examId) => {
     const generation = ++examLoadGeneration
+    workbenchRequestGeneration += 1
+    candidateRequestGeneration += 1
+    recordRequestGeneration += 1
     workbenchLoadFailed.value = false
     examDetailLoadFailed.value = false
     candidatesLoadFailed.value = false
@@ -847,6 +914,19 @@ watch(
     candidates.value = []
     records.value = []
     classOptions.value = []
+    candidatesLoading.value = false
+    recordsLoading.value = false
+    wizardOpen.value = false
+    wizardContext.value = null
+    pendingDeepLink.value = false
+    candidateFilterModel.classId = undefined
+    candidateFilterModel.keyword = ''
+    candidateQuery.pageNum = 1
+    candidateQuery.total = 0
+    candidateQuery.classId = undefined
+    candidateQuery.keyword = undefined
+    recordPagination.current = 1
+    recordPagination.total = 0
     if (!examId) {
       return
     }

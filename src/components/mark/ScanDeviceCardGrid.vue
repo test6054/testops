@@ -5,6 +5,7 @@ import { ScannerEndpointOnlineStatusCode } from '@/apis/mark/exam-mark-scanner'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { ScanBatchStatusDescription } from '@/types/enums/scan-batch-status-enum'
+import { ScannerEndpointOnlineStatusDescription } from '@/types/enums/scanner-endpoint-online-status-enum'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -24,6 +25,17 @@ const emit = defineEmits<{
 
 function deviceOnline(device: ExamScanMonitorDeviceResponse): boolean {
   return device.endpointOnlineStatus === ScannerEndpointOnlineStatusCode.ONLINE
+}
+
+function deviceOnlineStatusLabel(device: ExamScanMonitorDeviceResponse): string {
+  if (device.endpointOnlineStatus == null) {
+    return '状态不可用'
+  }
+  return strictEnumLabel(
+    ScannerEndpointOnlineStatusDescription,
+    device.endpointOnlineStatus,
+    '扫描端在线状态',
+  )
 }
 
 /** 离线与有在途批次优先，便于监控页先处置风险端。 */
@@ -93,7 +105,8 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
           type="button"
           class="scan-device-grid__row"
           :class="{
-            'scan-device-grid__row--offline': !deviceOnline(device),
+            'scan-device-grid__row--offline':
+              device.endpointOnlineStatus === ScannerEndpointOnlineStatusCode.OFFLINE,
             'scan-device-grid__row--selected': selectedDeviceId === device.scannerDeviceId,
           }"
           :aria-pressed="selectedDeviceId === device.scannerDeviceId"
@@ -115,10 +128,10 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
           </span>
           <UiTag
             class="scan-device-grid__status"
-            :tone="deviceOnline(device) ? 'green' : 'orange'"
+            :tone="deviceOnline(device) ? 'green' : device.endpointOnlineStatus ? 'orange' : 'gray'"
             size="sm"
           >
-            {{ deviceOnline(device) ? '在线' : '离线' }}
+            {{ deviceOnlineStatusLabel(device) }}
           </UiTag>
           <span class="scan-device-grid__batch" :title="activeBatchLabel(device)">
             {{ activeBatchLabel(device) }}
@@ -192,7 +205,6 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
 
     &--selected {
       border-color: var(--dp-color-primary);
-      box-shadow: inset 0 0 0 1px var(--dp-color-primary);
     }
 
     &--offline {

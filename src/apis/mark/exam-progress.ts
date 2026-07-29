@@ -27,6 +27,7 @@ import { isExamScanMonitorSignalActionKeyCode } from '@/types/enums/exam-scan-mo
 import { isExamScanMonitorSignalCode } from '@/types/enums/exam-scan-monitor-signal-code-enum'
 import { isExamScanMonitorSignalToneCode } from '@/types/enums/exam-scan-monitor-signal-tone-enum'
 import { ALL_LEDGER_STATUS_CODES } from '@/types/enums/ledger-status-enum'
+import { ALL_SCANNER_ENDPOINT_ONLINE_STATUS_CODES } from '@/types/enums/scanner-endpoint-online-status-enum'
 
 export {
   ALL_EXAM_SCAN_MONITOR_SIGNAL_ACTION_KEY_CODES,
@@ -483,7 +484,34 @@ function parseScanMonitorSignalActionKey(
 /** 校验扫描监控看板枚举契约，非空无效枚举值显式失败。 */
 export function normalizeScanMonitorPanel(
   panel: ExamWorkbenchScanMonitorPanelResponse,
+  examId?: string,
 ): ExamWorkbenchScanMonitorPanelResponse {
+  const requiredCounts = [
+    panel.batchTotal,
+    panel.settledBatchCount,
+    panel.inProgressCount,
+    panel.blockedCount,
+    panel.scannedPageCount,
+    panel.boundPaperCount,
+    panel.missingCandidateCount,
+    panel.duplicatePageCount,
+    panel.attentionCount,
+    panel.abnormalAttentionCount,
+    panel.duplicateAttentionCount,
+    panel.orphanPendingEventCount,
+  ]
+  if (
+    (examId != null && panel.examId !== examId)
+    || requiredCounts.some((count) => !Number.isInteger(count) || count < 0)
+    || (panel.expectedPageCount != null
+      && (!Number.isInteger(panel.expectedPageCount) || panel.expectedPageCount < 0))
+    || (panel.progressPercent != null
+      && (!Number.isFinite(panel.progressPercent)
+        || panel.progressPercent < 0
+        || panel.progressPercent > 100))
+  ) {
+    throw new Error('扫描监控面板合同异常：考试身份、计数或进度不可用')
+  }
   return {
     ...panel,
     ledgerStatus: parseScanMonitorLedgerStatus(panel.ledgerStatus),
@@ -502,7 +530,7 @@ export async function getScanMonitorPanel(
     '/api/mark/exams/scan-monitor-panel',
     { examId },
   )
-  return normalizeScanMonitorPanel(panel)
+  return normalizeScanMonitorPanel(panel, examId)
 }
 
 /** 考试扫描监控在线设备 - 对应 ExamScanMonitorDeviceResponse */
@@ -540,12 +568,30 @@ export interface ExamScanMonitorDeviceListResponse {
 }
 
 /** 查询与当前考试关联且 Agent 在线的扫描监控设备。 */
-export function listExamScanMonitorDevices(
+export async function listExamScanMonitorDevices(
   examId: string,
 ): Promise<ExamScanMonitorDeviceListResponse> {
-  return http.post<ExamScanMonitorDeviceListResponse>('/api/mark/exams/scan-monitor-devices/list', {
+  const response = await http.post<ExamScanMonitorDeviceListResponse>('/api/mark/exams/scan-monitor-devices/list', {
     examId,
   })
+  if (
+    response.examId !== examId
+    || !Array.isArray(response.items)
+    || response.items.some(
+      (item) =>
+        !item.scannerDeviceId
+        || (item.endpointOnlineStatus != null
+          && !ALL_SCANNER_ENDPOINT_ONLINE_STATUS_CODES.includes(item.endpointOnlineStatus))
+        || (item.pendingJobCount != null
+          && (!Number.isInteger(item.pendingJobCount) || item.pendingJobCount < 0))
+        || (item.pendingUploadPageCount != null
+          && (!Number.isInteger(item.pendingUploadPageCount)
+            || item.pendingUploadPageCount < 0)),
+    )
+  ) {
+    throw new Error('扫描监控设备合同异常：考试身份或设备标识不可用')
+  }
+  return response
 }
 
 /** 题型分布单项 - 对应 ExamQuestionTypeDistributionItemResponse */

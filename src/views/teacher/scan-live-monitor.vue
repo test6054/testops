@@ -117,6 +117,21 @@
             </template>
           </UiFilterBar>
 
+          <UiAlertStrip
+            v-if="activeTab !== 'normal' && scanBatchesLoadFailed"
+            tone="error"
+            title="扫描批次筛选项加载失败"
+            description="当前无法可靠选择扫描批次，已保留其他筛选条件。"
+            dense
+          />
+          <UiAlertStrip
+            v-if="activeTab !== 'normal' && paperCandidatesLoadFailed"
+            tone="error"
+            title="答卷筛选项加载失败"
+            description="当前无法可靠选择答卷，已保留其他筛选条件。"
+            dense
+          />
+
           <UiSectionTabs
             :model-value="activeTab"
             :items="monitorTabs"
@@ -160,13 +175,13 @@
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'pageCount'">
-                  {{ record.pageCount ?? 0 }}
+                  {{ record.pageCount }}
                 </template>
                 <template v-else-if="column.key === 'boundPaperCount'">
-                  {{ record.boundPaperCount ?? 0 }}
+                  {{ record.boundPaperCount ?? '不可用' }}
                 </template>
                 <template v-else-if="column.key === 'pageProgress'">
-                  {{ record.receivedPageCount ?? 0 }} / {{ record.pageCount ?? 0 }}
+                  {{ record.receivedPageCount ?? '不可用' }} / {{ record.pageCount }}
                 </template>
                 <template v-else-if="column.key === 'scannerDevice'">
                   {{ formatMonitorBatchDeviceLabel(record.scannerDeviceId) }}
@@ -330,9 +345,17 @@
                   caption="手写身份区切片"
                   empty-text="暂无手写身份区切片"
                 />
-                <UiEmpty
+                <UiStateBlock
+                  v-else-if="bindIdentitySliceLoadFailed"
+                  state="error"
                   size="sm"
+                  title="手写身份区切片加载失败"
+                  description="身份切片证据不可用，已禁止提交身份绑定。"
+                  class="scan-monitor__identity-empty"
+                />
+                <UiEmpty
                   v-else
+                  size="sm"
                   description="暂无手写身份区切片"
                   class="scan-monitor__identity-empty"
                 />
@@ -355,9 +378,17 @@
                   caption="原始扫描页"
                   empty-text="暂无源页影像"
                 />
-                <UiEmpty
+                <UiStateBlock
+                  v-else-if="bindSourcePageLoadFailed"
+                  state="error"
                   size="sm"
+                  title="原始扫描页加载失败"
+                  description="原页证据不可用，已禁止提交身份绑定。"
+                  class="scan-monitor__identity-empty"
+                />
+                <UiEmpty
                   v-else
+                  size="sm"
                   description="暂无源页影像"
                   class="scan-monitor__identity-empty"
                 />
@@ -391,6 +422,13 @@
               @search="searchBindCandidates"
             />
           </UiFormItem>
+          <UiAlertStrip
+            v-if="candidateSearchLoadFailed"
+            tone="error"
+            title="考生名册搜索失败"
+            description="当前候选结果不可用，请重新输入姓名或学号搜索。"
+            dense
+          />
           <UiRow :gutter="16">
             <UiCol :span="12">
               <UiFormItem label="答卷状态" name="attemptStatus">
@@ -427,6 +465,13 @@
         @close="closeBatchBindDrawer"
         @confirm="submitBatchBind"
       >
+        <UiAlertStrip
+          v-if="candidateSearchLoadFailed"
+          tone="error"
+          title="考生名册搜索失败"
+          description="当前候选结果不可用，请重新搜索后再提交批量绑定。"
+          dense
+        />
         <div v-if="batchBindResult" class="scan-monitor__batch-result" aria-live="polite">
           <div v-if="batchBindFailedItems.length > 0" class="scan-monitor__batch-failures" role="alert">
             <div
@@ -598,10 +643,12 @@
             empty-text="影像加载失败"
             class="scan-monitor__discard-image"
           />
-          <UiEmpty
+          <UiStateBlock
             v-else-if="pageDiscardPreviewFailed"
+            state="error"
             size="sm"
-            description="当前页影像加载失败；确认废弃前请先核验页号与答卷锚点"
+            title="待废弃页影像加载失败"
+            description="当前证据不可用；请关闭后重新打开，并在影像可见后确认废弃。"
           />
           <UiEmpty v-else size="sm" description="无可用页影像；请核验页号与答卷锚点后再确认废弃" />
         </div>
@@ -722,6 +769,7 @@ import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -792,12 +840,21 @@ const { isExamConfidential, examConfidentialLabel, watermarkLines }
 
 /** 扫描链写操作后同步 StageRail 与本页数据。 */
 async function syncScanWorkbenchState(): Promise<void> {
-  await refreshSnapshot()
+  let snapshotRefreshFailed = false
+  try {
+    await refreshSnapshot()
+  } catch (error) {
+    snapshotRefreshFailed = true
+    showUserError(error, '阶段快照刷新失败')
+  }
   suppressSelfRefresh = true
   try {
     mittBus.emit('scan-workbench:refresh')
   } finally {
     suppressSelfRefresh = false
+  }
+  if (snapshotRefreshFailed) {
+    void message.warning('操作已成功、阶段状态刷新失败；请离开页面后重新进入核对')
   }
 }
 
@@ -826,6 +883,18 @@ const attentionLoadFailed = ref(false)
 const monitorBatchesLoadFailed = ref(false)
 /** 切考试时递增，丢弃过期 panel/设备/批次/关注列表响应 */
 let examLoadGeneration = 0
+let overviewRequestGeneration = 0
+let deviceRequestGeneration = 0
+let monitorBatchRequestGeneration = 0
+let scanBatchOptionRequestGeneration = 0
+let paperOptionRequestGeneration = 0
+let candidateSearchRequestGeneration = 0
+let bindIdentityRequestGeneration = 0
+let bindSourceRequestGeneration = 0
+let discardPreviewRequestGeneration = 0
+let bindWriteGeneration = 0
+let batchBindWriteGeneration = 0
+let discardWriteGeneration = 0
 let refreshListenerActive = false
 /** 本页写后本地刷新时抑制 mitt 自回调，避免双载。 */
 let suppressSelfRefresh = false
@@ -844,12 +913,10 @@ function formatMonitorDeviceLabel(device: ExamScanMonitorDeviceResponse): string
 
 const normalFilterApplied = reactive<{
   keyword: string
-  scanBatchId: string
   batchStatus?: ScanBatchStatusCode
   scannerDeviceId: string
 }>({
   keyword: '',
-  scanBatchId: '',
   batchStatus: undefined,
   scannerDeviceId: '',
 })
@@ -913,7 +980,6 @@ const normalTableEmptyDescription = computed(() => {
 const hasActiveNormalFilters = computed(() =>
   Boolean(
     normalFilterApplied.keyword
-    || normalFilterApplied.scanBatchId
     || normalFilterApplied.batchStatus
     || normalFilterApplied.scannerDeviceId,
   ),
@@ -1018,6 +1084,7 @@ const hasMonitorScanBatchFilter = computed(() =>
 
 const monitorBatches = ref<ExamScannerBatchResponse[]>([])
 const monitorBatchLoading = ref(false)
+const monitorBatchesLoaded = ref(false)
 const monitorBatchPagination = reactive({
   current: 1,
   pageSize: DEFAULT_LIST_PAGE_SIZE,
@@ -1081,7 +1148,9 @@ function handleMonitorBatchPageChange(pageEvent: { current: number, pageSize: nu
   void loadMonitorBatches()
 }
 
+/** 按当前考试、设备与批次筛选读取正常扫描批次，并隔离过期分页请求。 */
 async function loadMonitorBatches(): Promise<void> {
+  const requestGeneration = ++monitorBatchRequestGeneration
   const examId = selectedExamId.value
   const loadGeneration = examLoadGeneration
   if (!examId || activeTab.value !== 'normal') {
@@ -1101,20 +1170,32 @@ async function loadMonitorBatches(): Promise<void> {
       status: normalFilterApplied.batchStatus,
       includeDiscarded: false,
     })
-    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    if (
+      requestGeneration !== monitorBatchRequestGeneration
+      || loadGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
     monitorBatchesLoadFailed.value = false
+    monitorBatchesLoaded.value = true
     monitorBatches.value = result.list
     monitorBatchPagination.total = result.total
   } catch (error) {
-    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    if (
+      requestGeneration !== monitorBatchRequestGeneration
+      || loadGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
     monitorBatchesLoadFailed.value = true
     showUserError(error, '扫描批次加载失败')
   } finally {
-    if (loadGeneration === examLoadGeneration) {
+    if (
+      requestGeneration === monitorBatchRequestGeneration
+      && loadGeneration === examLoadGeneration
+    ) {
       monitorBatchLoading.value = false
     }
   }
@@ -1122,7 +1203,6 @@ async function loadMonitorBatches(): Promise<void> {
 
 function applyNormalFilters(): void {
   normalFilterApplied.keyword = filterForm.eventKeyword.trim()
-  normalFilterApplied.scanBatchId = filterForm.scanBatchId || ''
   normalFilterApplied.batchStatus = filterForm.batchStatus
   normalFilterApplied.scannerDeviceId = filterForm.monitorDeviceId || ''
   monitorBatchPagination.current = 1
@@ -1138,9 +1218,11 @@ const attentionPagination = reactive({
 })
 const scanBatches = ref<ExamScannerBatchResponse[]>([])
 const scanBatchesLoading = ref(false)
+const scanBatchesLoadFailed = ref(false)
 const scanBatchKeyword = ref('')
 const paperCandidates = ref<ExamScoreSummaryItemResponse[]>([])
 const paperCandidatesLoading = ref(false)
+const paperCandidatesLoadFailed = ref(false)
 const paperCandidateKeyword = ref('')
 const scanBatchOptions = computed<UiSelectOption[]>(() =>
   scanBatches.value
@@ -1152,7 +1234,7 @@ const scanBatchOptions = computed<UiSelectOption[]>(() =>
       label: [
         item.batchNo || item.batchExternalNo || item.statusMessage,
         scanBatchStatusLabel(item),
-        `${item.pageCount ?? 0} 页`,
+        `${item.pageCount} 页`,
       ].join(' · '),
     })),
 )
@@ -1174,20 +1256,26 @@ const paperCandidateOptions = computed<UiSelectOption[]>(() =>
     })),
 )
 
-const abnormalAttentionCount = computed(() => scanMonitorPanel.value?.abnormalAttentionCount ?? 0)
-const duplicateAttentionCount = computed(() => scanMonitorPanel.value?.duplicateAttentionCount ?? 0)
+const abnormalAttentionCount = computed(() => scanMonitorPanel.value?.abnormalAttentionCount ?? null)
+const duplicateAttentionCount = computed(() => scanMonitorPanel.value?.duplicateAttentionCount ?? null)
 
 /** 任务工作台副标题：异常/重复真数，覆盖旅程 page 空 subtitle。 */
 const scanMonitorWorkbenchSubtitle = computed(() => {
   if (!selectedExamId.value) {
     return '请先选择考试'
   }
+  if (scanMonitorPanelLoadFailed.value) {
+    return '监控指标不可用'
+  }
+  if (!scanMonitorPanel.value) {
+    return '监控指标加载中'
+  }
   const abnormal = abnormalAttentionCount.value
   const dup = duplicateAttentionCount.value
-  if (abnormal > 0) {
-    return dup > 0 ? `异常 ${abnormal} · 重复 ${dup}` : `异常待处理 ${abnormal}`
+  if (abnormal != null && abnormal > 0) {
+    return dup != null && dup > 0 ? `异常 ${abnormal} · 重复 ${dup}` : `异常待处理 ${abnormal}`
   }
-  if (dup > 0) {
+  if (dup != null && dup > 0) {
     return `重复影像 ${dup}`
   }
   return connectionLabel.value ? `监控中 · ${connectionLabel.value}` : '监控中 · 无阻断异常'
@@ -1215,7 +1303,7 @@ const scanMonitorPagePrimaryAction = computed(() => {
       },
     }
   }
-  if (abnormalAttentionCount.value > 0) {
+  if (abnormalAttentionCount.value != null && abnormalAttentionCount.value > 0) {
     return {
       key: 'abnormal',
       label: `处理异常 ${abnormalAttentionCount.value}`,
@@ -1224,7 +1312,7 @@ const scanMonitorPagePrimaryAction = computed(() => {
       run: () => jumpToAbnormalTab(),
     }
   }
-  if (duplicateAttentionCount.value > 0) {
+  if (duplicateAttentionCount.value != null && duplicateAttentionCount.value > 0) {
     return {
       key: 'duplicate',
       label: `处理重复 ${duplicateAttentionCount.value}`,
@@ -1291,6 +1379,9 @@ const connectionLabel = computed(() => {
       ? `连接中 · ${scannerDevices.value.length} 台在线`
       : '连接中'
   }
+  if (scannerDevicesLoading.value && scannerDevices.value.length === 0) {
+    return '扫描端加载中'
+  }
   return scannerDevices.value.length > 0
     ? `${scannerDevices.value.length} 台在线（轮询）`
     : '无在线扫描端'
@@ -1310,22 +1401,29 @@ watch(
 
 function handleMonitorDeviceSelect(device: ExamScanMonitorDeviceResponse): void {
   filterForm.monitorDeviceId = device.scannerDeviceId
-  if (activeTab.value === 'normal') {
-    applyNormalFilters()
-  }
 }
 
+/** 读取当前考试扫描驾驶舱快照，并拒绝回写已切换考试的响应。 */
 async function loadScanOverview(examId: string): Promise<void> {
+  const requestGeneration = ++overviewRequestGeneration
   const loadGeneration = examLoadGeneration
   scanMonitorPanelLoadFailed.value = false
   try {
     const panel = await getScanMonitorPanel(examId)
-    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    if (
+      requestGeneration !== overviewRequestGeneration
+      || loadGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
     scanMonitorPanel.value = panel
   } catch (error) {
-    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    if (
+      requestGeneration !== overviewRequestGeneration
+      || loadGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
     scanMonitorPanel.value = null
@@ -1429,31 +1527,42 @@ function handleScanMonitorMetricClick(key: string): void {
 }
 
 const monitorBatchTabCount = computed(
-  () => scanMonitorPanel.value?.batchTotal ?? monitorBatchPagination.total ?? 0,
+  () =>
+    scanMonitorPanel.value?.batchTotal
+    ?? (monitorBatchesLoaded.value && !monitorBatchesLoadFailed.value
+      ? monitorBatchPagination.total
+      : null),
 )
 
 const monitorTabs = computed<UiSectionTabItem[]>(() => [
   {
     key: 'normal',
     label: '扫描批次',
-    count: monitorBatchTabCount.value,
-    badgeTone: monitorBatchTabCount.value > 0 ? 'blue' : 'gray',
+    count: monitorBatchTabCount.value ?? '—',
+    badgeTone:
+      monitorBatchTabCount.value != null && monitorBatchTabCount.value > 0 ? 'blue' : 'gray',
   },
   {
     key: 'abnormal',
     label: '异常',
-    count: abnormalAttentionCount.value,
-    badgeTone: abnormalAttentionCount.value > 0 ? 'red' : 'gray',
+    count: abnormalAttentionCount.value ?? '—',
+    badgeTone:
+      abnormalAttentionCount.value != null && abnormalAttentionCount.value > 0 ? 'red' : 'gray',
   },
   {
     key: 'duplicate',
     label: '重复',
-    count: duplicateAttentionCount.value,
-    badgeTone: duplicateAttentionCount.value > 0 ? 'purple' : 'gray',
+    count: duplicateAttentionCount.value ?? '—',
+    badgeTone:
+      duplicateAttentionCount.value != null && duplicateAttentionCount.value > 0
+        ? 'purple'
+        : 'gray',
   },
 ])
 
+/** 读取当前考试已连接扫描端，保留缺失在线状态与加载失败的真实语义。 */
 async function loadConnectedScannerDevices(): Promise<void> {
+  const requestGeneration = ++deviceRequestGeneration
   const examId = selectedExamId.value
   const loadGeneration = examLoadGeneration
   if (!examId) {
@@ -1465,11 +1574,15 @@ async function loadConnectedScannerDevices(): Promise<void> {
   scannerDevicesLoading.value = true
   try {
     const response = await listExamScanMonitorDevices(examId)
-    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    if (
+      requestGeneration !== deviceRequestGeneration
+      || loadGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
     scannerDevicesLoadFailed.value = false
-    scannerDevices.value = response.items ?? []
+    scannerDevices.value = response.items
     if (scannerDevices.value.length === 0) {
       filterForm.monitorDeviceId = ''
       return
@@ -1481,13 +1594,20 @@ async function loadConnectedScannerDevices(): Promise<void> {
       filterForm.monitorDeviceId = ''
     }
   } catch (error) {
-    if (loadGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    if (
+      requestGeneration !== deviceRequestGeneration
+      || loadGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
     scannerDevicesLoadFailed.value = true
     showUserError(error, '在线扫描仪加载失败')
   } finally {
-    if (loadGeneration === examLoadGeneration) {
+    if (
+      requestGeneration === deviceRequestGeneration
+      && loadGeneration === examLoadGeneration
+    ) {
       scannerDevicesLoading.value = false
     }
   }
@@ -1613,27 +1733,32 @@ const columns: ColumnType<ScanAttentionItemResponse>[] = [
   { title: '主行动', key: 'actions', width: 148, align: 'right' },
 ]
 
+/** 按当前异常分组和深链筛选分页读取待处理项，并回退空尾页。 */
 async function loadAttentions(): Promise<void> {
   if (!selectedExamId.value) {
     attentions.value = []
     attentionPagination.total = 0
     attentionLoadFailed.value = false
+    loading.value = false
     return
   }
+  const queryGroup = currentAttentionQueryGroup()
+  if (!queryGroup) {
+    attentionLoadGeneration += 1
+    attentions.value = []
+    attentionPagination.total = 0
+    attentionLoadFailed.value = false
+    loading.value = false
+    return
+  }
+  const expectedLoadGeneration = attentionLoadGeneration + 1
+  const examId = selectedExamId.value
   loading.value = true
-  try {
-    const queryGroup = currentAttentionQueryGroup()
-    if (!queryGroup) {
-      attentions.value = []
-      attentionPagination.total = 0
-      attentionLoadFailed.value = false
-      return
-    }
-    await loadAttentionPage(queryGroup)
-  } catch (error) {
-    attentionLoadFailed.value = true
-    showUserError(error, '扫描异常列表加载失败')
-  } finally {
+  await loadAttentionPage(queryGroup)
+  if (
+    expectedLoadGeneration === attentionLoadGeneration
+    && selectedExamId.value === examId
+  ) {
     loading.value = false
   }
 }
@@ -1682,7 +1807,7 @@ async function loadAttentionPage(queryGroup: ScanAttentionQueryGroupCode): Promi
     const rows = result.list
     if (rows.length === 0 && total > 0 && attentionPagination.current > 1) {
       attentionPagination.current = Math.ceil(total / attentionPagination.pageSize)
-      await loadAttentionPage(queryGroup)
+      void loadAttentions()
       return
     }
     attentionLoadFailed.value = false
@@ -1720,13 +1845,16 @@ function handleAttentionPageChange(pageEvent: { current: number, pageSize: numbe
   void loadAttentions()
 }
 
+/** 按当前考试远程检索扫描批次选项，并隔离旧关键词响应。 */
 async function loadScanBatches(keyword = scanBatchKeyword.value): Promise<void> {
+  const requestGeneration = ++scanBatchOptionRequestGeneration
   const examId = selectedExamId.value
   if (!examId) {
     scanBatches.value = []
     return
   }
   const normalizedKeyword = keyword.trim()
+  scanBatchesLoadFailed.value = false
   scanBatchesLoading.value = true
   try {
     const page = await pageScannerBatches({
@@ -1736,22 +1864,40 @@ async function loadScanBatches(keyword = scanBatchKeyword.value): Promise<void> 
       keyword: normalizedKeyword || undefined,
       includeDiscarded: false,
     })
+    if (
+      requestGeneration !== scanBatchOptionRequestGeneration
+      || selectedExamId.value !== examId
+    ) {
+      return
+    }
     scanBatches.value = page.list
   } catch (error) {
+    if (
+      requestGeneration !== scanBatchOptionRequestGeneration
+      || selectedExamId.value !== examId
+    ) {
+      return
+    }
     scanBatches.value = []
+    scanBatchesLoadFailed.value = true
     showUserError(error, '扫描批次加载失败')
   } finally {
-    scanBatchesLoading.value = false
+    if (requestGeneration === scanBatchOptionRequestGeneration) {
+      scanBatchesLoading.value = false
+    }
   }
 }
 
+/** 按当前考试远程检索答卷选项，并隔离旧关键词响应。 */
 async function loadPaperCandidates(keyword = paperCandidateKeyword.value): Promise<void> {
+  const requestGeneration = ++paperOptionRequestGeneration
   const examId = selectedExamId.value
   if (!examId) {
     paperCandidates.value = []
     return
   }
   const normalizedKeyword = keyword.trim()
+  paperCandidatesLoadFailed.value = false
   paperCandidatesLoading.value = true
   try {
     const page = await pageExamScoreSummary({
@@ -1760,12 +1906,27 @@ async function loadPaperCandidates(keyword = paperCandidateKeyword.value): Promi
       pageSize: REMOTE_SEARCH_PAGE_SIZE,
       keyword: normalizedKeyword || undefined,
     })
+    if (
+      requestGeneration !== paperOptionRequestGeneration
+      || selectedExamId.value !== examId
+    ) {
+      return
+    }
     paperCandidates.value = page.list.filter((item) => item.paperInstanceId)
   } catch (error) {
+    if (
+      requestGeneration !== paperOptionRequestGeneration
+      || selectedExamId.value !== examId
+    ) {
+      return
+    }
     paperCandidates.value = []
+    paperCandidatesLoadFailed.value = true
     showUserError(error, '答卷列表加载失败')
   } finally {
-    paperCandidatesLoading.value = false
+    if (requestGeneration === paperOptionRequestGeneration) {
+      paperCandidatesLoading.value = false
+    }
   }
 }
 
@@ -1889,7 +2050,6 @@ const scanMonitorSignalMetrics = computed((): SignalMetric[] => {
 
 function resetFilter(): void {
   normalFilterApplied.keyword = ''
-  normalFilterApplied.scanBatchId = ''
   normalFilterApplied.batchStatus = undefined
   normalFilterApplied.scannerDeviceId = ''
   filterForm.eventKeyword = ''
@@ -1937,21 +2097,46 @@ function releasePageDiscardPreview(): void {
   }
 }
 
+/** 加载待废弃扫描页证据，并确保影像只归属当前考试与异常对象。 */
 async function loadPageDiscardPreview(record: ScanAttentionItemResponse): Promise<void> {
+  const requestGeneration = ++discardPreviewRequestGeneration
   releasePageDiscardPreview()
+  pageDiscardPreviewLoading.value = false
   pageDiscardPreviewFailed.value = false
   if (!selectedExamId.value || !record.pageId) {
     return
   }
+  const examId = selectedExamId.value
+  const pageId = String(record.pageId)
   pageDiscardPreviewLoading.value = true
   try {
-    const previewPath = `/api/mark/exams/scanner-batches/pages/original-image?examId=${selectedExamId.value}&pageId=${record.pageId}`
-    pageDiscardPreviewUrl.value = await fetchStoragePreviewBlobUrl(previewPath)
+    const previewPath = `/api/mark/exams/scanner-batches/pages/original-image?examId=${examId}&pageId=${pageId}`
+    const blobUrl = await fetchStoragePreviewBlobUrl(previewPath)
+    if (
+      requestGeneration !== discardPreviewRequestGeneration
+      || selectedExamId.value !== examId
+      || pageDiscardTarget.value?.pageId !== pageId
+      || !pageDiscardModalOpen.value
+    ) {
+      URL.revokeObjectURL(blobUrl)
+      return
+    }
+    pageDiscardPreviewUrl.value = blobUrl
   } catch (error) {
+    if (
+      requestGeneration !== discardPreviewRequestGeneration
+      || selectedExamId.value !== examId
+      || pageDiscardTarget.value?.pageId !== pageId
+      || !pageDiscardModalOpen.value
+    ) {
+      return
+    }
     pageDiscardPreviewFailed.value = true
     showUserError(error, '废弃页影像加载失败')
   } finally {
-    pageDiscardPreviewLoading.value = false
+    if (requestGeneration === discardPreviewRequestGeneration) {
+      pageDiscardPreviewLoading.value = false
+    }
   }
 }
 
@@ -1968,6 +2153,7 @@ async function onDiscardPage(record: ScanAttentionItemResponse): Promise<void> {
   if (pageDiscarding.value) {
     return
   }
+  discardWriteGeneration += 1
   pageDiscardTarget.value = record
   pageDiscardReason.value = ''
   pageDiscardReasonError.value = ''
@@ -1977,16 +2163,19 @@ async function onDiscardPage(record: ScanAttentionItemResponse): Promise<void> {
 
 function closePageDiscardModal(): void {
   if (pageDiscarding.value) return
+  discardPreviewRequestGeneration += 1
   pageDiscardModalOpen.value = false
   pageDiscardTarget.value = null
   pageDiscardReason.value = ''
   pageDiscardReasonError.value = ''
   releasePageDiscardPreview()
+  pageDiscardPreviewLoading.value = false
   pageDiscardPreviewFailed.value = false
 }
 
 async function confirmDiscardPage(): Promise<void> {
   if (canManageOwnerBatchActions.value !== true) {
+    void message.warning('当前账号非本场主考，无法废弃扫描页')
     return
   }
   const record = pageDiscardTarget.value
@@ -1995,6 +2184,14 @@ async function confirmDiscardPage(): Promise<void> {
     return
   }
   if (pageDiscarding.value) {
+    return
+  }
+  if (pageDiscardPreviewLoading.value) {
+    void message.warning('待废弃页影像仍在加载，请确认影像后再提交')
+    return
+  }
+  if (pageDiscardPreviewFailed.value || !pageDiscardPreviewUrl.value) {
+    void message.warning('待废弃页影像不可用，不能提交废弃')
     return
   }
   const trimmed = pageDiscardReason.value.trim()
@@ -2007,16 +2204,24 @@ async function confirmDiscardPage(): Promise<void> {
     return
   }
   pageDiscardReasonError.value = ''
+  const examId = selectedExamId.value
+  const writeGeneration = discardWriteGeneration
   pageDiscarding.value = record.pageId
   try {
     await discardScannedPageByTeacher({ scannedPageId: record.pageId, discardReason: trimmed })
     void message.success('扫描页已废弃')
-    pageDiscardModalOpen.value = false
-    pageDiscardTarget.value = null
-    pageDiscardReason.value = ''
-    releasePageDiscardPreview()
-    await loadAttentions()
-    await syncScanWorkbenchState()
+    if (
+      writeGeneration === discardWriteGeneration
+      && selectedExamId.value === examId
+      && pageDiscardTarget.value?.pageId === record.pageId
+    ) {
+      pageDiscardModalOpen.value = false
+      pageDiscardTarget.value = null
+      pageDiscardReason.value = ''
+      releasePageDiscardPreview()
+      await loadAttentions()
+      await syncScanWorkbenchState()
+    }
   } catch (error) {
     showUserError(error, '扫描页废弃失败')
   } finally {
@@ -2061,6 +2266,7 @@ const CANDIDATE_BIND_SEARCH_PAGE_SIZE = 20
 const candidateCache = ref<Map<string, ExamCandidateResponse>>(new Map())
 const candidateOptions = ref<DefaultOptionType[]>([])
 const candidatesLoading = ref(false)
+const candidateSearchLoadFailed = ref(false)
 const bindPageId = ref('')
 const bindShowIdentitySliceEvidence = ref(false)
 const bindShowSourcePageEvidence = ref(false)
@@ -2120,24 +2326,42 @@ function mapCandidateOption(item: ExamCandidateResponse): DefaultOptionType {
 
 /** 按姓名或学号 remote 搜索可绑定考生。 */
 async function searchBindCandidates(keyword?: string): Promise<void> {
+  const requestGeneration = ++candidateSearchRequestGeneration
   if (!selectedExamId.value) {
     candidateOptions.value = []
     return
   }
+  const examId = selectedExamId.value
+  candidateSearchLoadFailed.value = false
   candidatesLoading.value = true
   try {
     const page = await pageExamCandidates({
-      examId: selectedExamId.value,
+      examId,
       keyword: keyword?.trim() || undefined,
       pageNum: 1,
       pageSize: CANDIDATE_BIND_SEARCH_PAGE_SIZE,
     })
+    if (
+      requestGeneration !== candidateSearchRequestGeneration
+      || selectedExamId.value !== examId
+    ) {
+      return
+    }
     candidateOptions.value = page.list.map(mapCandidateOption)
   } catch (error) {
+    if (
+      requestGeneration !== candidateSearchRequestGeneration
+      || selectedExamId.value !== examId
+    ) {
+      return
+    }
     candidateOptions.value = []
+    candidateSearchLoadFailed.value = true
     showUserError(error, '考生名册搜索失败')
   } finally {
-    candidatesLoading.value = false
+    if (requestGeneration === candidateSearchRequestGeneration) {
+      candidatesLoading.value = false
+    }
   }
 }
 
@@ -2183,50 +2407,102 @@ function releaseBindSourcePageImage(): void {
   }
 }
 
+/** 加载身份绑定手写切片，并确保对象 URL 只归属当前绑定对象。 */
 async function loadBindIdentitySliceImage(): Promise<void> {
+  const requestGeneration = ++bindIdentityRequestGeneration
   releaseBindIdentitySliceImage()
+  bindIdentitySliceLoading.value = false
   bindIdentitySliceLoadFailed.value = false
   if (bindShowIdentitySliceEvidence.value !== true || !bindPageId.value || !selectedExamId.value) {
     return
   }
+  const examId = selectedExamId.value
+  const pageId = bindPageId.value
   bindIdentitySliceLoading.value = true
   try {
-    const previewPath = `/api/mark/exams/scanner-batches/pages/identity-slice?examId=${selectedExamId.value}&pageId=${bindPageId.value}`
-    bindIdentitySliceImageUrl.value = await fetchStoragePreviewBlobUrl(previewPath)
+    const previewPath = `/api/mark/exams/scanner-batches/pages/identity-slice?examId=${examId}&pageId=${pageId}`
+    const blobUrl = await fetchStoragePreviewBlobUrl(previewPath)
+    if (
+      requestGeneration !== bindIdentityRequestGeneration
+      || selectedExamId.value !== examId
+      || bindPageId.value !== pageId
+      || !bindDrawerOpen.value
+    ) {
+      URL.revokeObjectURL(blobUrl)
+      return
+    }
+    bindIdentitySliceImageUrl.value = blobUrl
   } catch (error) {
+    if (
+      requestGeneration !== bindIdentityRequestGeneration
+      || selectedExamId.value !== examId
+      || bindPageId.value !== pageId
+      || !bindDrawerOpen.value
+    ) {
+      return
+    }
     bindIdentitySliceLoadFailed.value = true
     showUserError(error, '手写身份切片加载失败')
   } finally {
-    bindIdentitySliceLoading.value = false
+    if (requestGeneration === bindIdentityRequestGeneration) {
+      bindIdentitySliceLoading.value = false
+    }
   }
 }
 
+/** 加载身份绑定原始扫描页，并确保对象 URL 只归属当前绑定对象。 */
 async function loadBindSourcePageImage(): Promise<void> {
+  const requestGeneration = ++bindSourceRequestGeneration
   releaseBindSourcePageImage()
+  bindSourcePageLoading.value = false
   bindSourcePageLoadFailed.value = false
   if (bindShowSourcePageEvidence.value !== true || !bindPageId.value || !selectedExamId.value) {
     return
   }
+  const examId = selectedExamId.value
+  const pageId = bindPageId.value
   bindSourcePageLoading.value = true
   try {
-    const previewPath = `/api/mark/exams/scanner-batches/pages/original-image?examId=${selectedExamId.value}&pageId=${bindPageId.value}`
-    bindSourcePageImageUrl.value = await fetchStoragePreviewBlobUrl(previewPath)
+    const previewPath = `/api/mark/exams/scanner-batches/pages/original-image?examId=${examId}&pageId=${pageId}`
+    const blobUrl = await fetchStoragePreviewBlobUrl(previewPath)
+    if (
+      requestGeneration !== bindSourceRequestGeneration
+      || selectedExamId.value !== examId
+      || bindPageId.value !== pageId
+      || !bindDrawerOpen.value
+    ) {
+      URL.revokeObjectURL(blobUrl)
+      return
+    }
+    bindSourcePageImageUrl.value = blobUrl
   } catch (error) {
+    if (
+      requestGeneration !== bindSourceRequestGeneration
+      || selectedExamId.value !== examId
+      || bindPageId.value !== pageId
+      || !bindDrawerOpen.value
+    ) {
+      return
+    }
     bindSourcePageLoadFailed.value = true
     showUserError(error, '原始扫描页加载失败')
   } finally {
-    bindSourcePageLoading.value = false
+    if (requestGeneration === bindSourceRequestGeneration) {
+      bindSourcePageLoading.value = false
+    }
   }
 }
 
 function openBindDrawer(record: ScanAttentionItemResponse): void {
   if (canManageOwnerBatchActions.value !== true) {
+    void message.warning('当前账号非本场主考，无法进行身份绑定')
     return
   }
   if (!record.paperInstanceId || !record.scanBatchId) {
     void message.warning('该异常缺少答卷或扫描批次信息，无法进行身份绑定')
     return
   }
+  bindWriteGeneration += 1
   bindForm.scanBatchId = record.scanBatchId
   bindForm.scanBatchDisplayName = record.scanBatchDisplayName ?? ''
   bindForm.paperInstanceId = record.paperInstanceId
@@ -2265,6 +2541,10 @@ async function handleBind(): Promise<void> {
     return
   }
   const attemptStatus = bindForm.attemptStatus
+  const examId = selectedExamId.value
+  const scanBatchId = bindForm.scanBatchId
+  const paperInstanceId = bindForm.paperInstanceId
+  const writeGeneration = bindWriteGeneration
   const confirmedCandidateRosterId = bindForm.confirmedCandidateRosterId ?? ''
   const candidateBlockReason = candidateBindingBlockReason(confirmedCandidateRosterId)
   if (candidateBlockReason) {
@@ -2274,20 +2554,27 @@ async function handleBind(): Promise<void> {
   binding.value = true
   try {
     await bindPaper({
-      examId: selectedExamId.value,
-      scanBatchId: bindForm.scanBatchId,
-      paperInstanceId: bindForm.paperInstanceId,
+      examId,
+      scanBatchId,
+      paperInstanceId,
       recognizedStudentNo: bindForm.recognizedStudentNo?.trim() || undefined,
       confirmedCandidateRosterId,
       attemptStatus,
       attemptNo: bindForm.attemptNo?.trim() || undefined,
     })
     void message.success('试卷身份绑定成功')
-    bindDrawerOpen.value = false
-    releaseBindIdentitySliceImage()
-    releaseBindSourcePageImage()
-    await loadAttentions()
-    await syncScanWorkbenchState()
+    if (
+      writeGeneration === bindWriteGeneration
+      && selectedExamId.value === examId
+      && bindForm.scanBatchId === scanBatchId
+      && bindForm.paperInstanceId === paperInstanceId
+    ) {
+      bindDrawerOpen.value = false
+      releaseBindIdentitySliceImage()
+      releaseBindSourcePageImage()
+      await loadAttentions()
+      await syncScanWorkbenchState()
+    }
   } catch (error) {
     showUserError(error, '试卷身份绑定失败')
   } finally {
@@ -2552,6 +2839,7 @@ async function handleBatchBind(): Promise<void> {
     return
   }
   batchBindResult.value = null
+  batchBindWriteGeneration += 1
   batchBindRows.value = selected.map((item) => ({
     attentionId: item.id,
     scanBatchId: item.scanBatchId!,
@@ -2610,12 +2898,16 @@ async function submitBatchBind(): Promise<void> {
     void message.error('批量绑定必须选择同一扫描批次内的试卷')
     return
   }
+  const examId = selectedExamId.value
+  const scanBatchId = batchBindRows.value[0].scanBatchId
+  const writeGeneration = batchBindWriteGeneration
+  const submittedPaperIds = batchBindRows.value.map((item) => item.paperInstanceId)
   batchBinding.value = true
   batchBindResult.value = null
   try {
     const result = await batchBindPapers({
-      examId: selectedExamId.value,
-      scanBatchId: batchBindRows.value[0].scanBatchId,
+      examId,
+      scanBatchId,
       items: batchBindRows.value.map((item) => ({
         paperInstanceId: item.paperInstanceId,
         recognizedStudentNo: item.recognizedStudentNo?.trim() || undefined,
@@ -2624,6 +2916,19 @@ async function submitBatchBind(): Promise<void> {
         attemptNo: item.attemptNo?.trim() || undefined,
       })),
     })
+    if (
+      writeGeneration !== batchBindWriteGeneration
+      || selectedExamId.value !== examId
+      || batchBindRows.value.length !== submittedPaperIds.length
+      || batchBindRows.value.some(
+        (row, index) => row.paperInstanceId !== submittedPaperIds[index],
+      )
+    ) {
+      void message.success(
+        `上一批身份绑定已完成：成功 ${result.successCount} 条，失败 ${result.failureCount} 条`,
+      )
+      return
+    }
     batchBindResult.value = result
     if (result.failureCount > 0) {
       void message.warning(
@@ -2657,15 +2962,34 @@ watch(
   (value) => {
     examLoadGeneration += 1
     attentionLoadGeneration += 1
+    overviewRequestGeneration += 1
+    deviceRequestGeneration += 1
+    monitorBatchRequestGeneration += 1
+    scanBatchOptionRequestGeneration += 1
+    paperOptionRequestGeneration += 1
+    candidateSearchRequestGeneration += 1
+    bindIdentityRequestGeneration += 1
+    bindSourceRequestGeneration += 1
+    discardPreviewRequestGeneration += 1
+    bindWriteGeneration += 1
+    batchBindWriteGeneration += 1
+    discardWriteGeneration += 1
     // 切换考试需要重置名册绑定搜索缓存
     candidateCache.value = new Map()
     candidateOptions.value = []
+    candidateSearchLoadFailed.value = false
+    candidatesLoading.value = false
     scanBatches.value = []
     scanBatchKeyword.value = ''
+    scanBatchesLoadFailed.value = false
+    scanBatchesLoading.value = false
     paperCandidates.value = []
     paperCandidateKeyword.value = ''
+    paperCandidatesLoadFailed.value = false
+    paperCandidatesLoading.value = false
     attentions.value = []
     attentionLoadFailed.value = false
+    loading.value = false
     selectedRowKeys.value = []
     attentionPagination.current = 1
     attentionPagination.total = 0
@@ -2675,21 +2999,41 @@ watch(
     filterForm.eventKeyword = ''
     filterForm.batchStatus = undefined
     filterForm.monitorDeviceId = ''
+    normalFilterApplied.keyword = ''
+    normalFilterApplied.batchStatus = undefined
+    normalFilterApplied.scannerDeviceId = ''
     monitorBatches.value = []
+    monitorBatchesLoaded.value = false
     monitorBatchesLoadFailed.value = false
+    monitorBatchLoading.value = false
     monitorBatchPagination.current = 1
     monitorBatchPagination.total = 0
     bindPageId.value = ''
+    bindDrawerOpen.value = false
+    detailDrawerOpen.value = false
+    detailRecord.value = null
+    batchBindDrawerOpen.value = false
+    batchBindRows.value = []
     bindShowIdentitySliceEvidence.value = false
     bindShowSourcePageEvidence.value = false
     releaseBindIdentitySliceImage()
     releaseBindSourcePageImage()
     bindIdentitySliceLoadFailed.value = false
     bindSourcePageLoadFailed.value = false
+    bindIdentitySliceLoading.value = false
+    bindSourcePageLoading.value = false
+    pageDiscardModalOpen.value = false
+    pageDiscardTarget.value = null
+    pageDiscardReason.value = ''
+    pageDiscardReasonError.value = ''
+    pageDiscardPreviewLoading.value = false
+    pageDiscardPreviewFailed.value = false
+    releasePageDiscardPreview()
     batchBindResult.value = null
     scanMonitorPanel.value = null
     scanMonitorPanelLoadFailed.value = false
     scannerDevicesLoadFailed.value = false
+    scannerDevicesLoading.value = false
     if (value) {
       syncAttentionFiltersFromRoute()
       syncActiveTabFromRoute()
@@ -2770,11 +3114,15 @@ watch(
 
 watch(bindDrawerOpen, (open) => {
   if (!open) {
+    bindIdentityRequestGeneration += 1
+    bindSourceRequestGeneration += 1
     bindPageId.value = ''
     bindShowIdentitySliceEvidence.value = false
     bindShowSourcePageEvidence.value = false
     bindIdentitySliceLoadFailed.value = false
     bindSourcePageLoadFailed.value = false
+    bindIdentitySliceLoading.value = false
+    bindSourcePageLoading.value = false
     releaseBindIdentitySliceImage()
     releaseBindSourcePageImage()
   }

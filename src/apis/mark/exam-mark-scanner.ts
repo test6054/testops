@@ -390,10 +390,52 @@ export function createScannerActivationCode(
  * 批量确认试卷和考生身份绑定关系
  * POST /api/mark/exams/papers/batch-bind
  */
-export function batchBindPapers(
+export async function batchBindPapers(
   request: ExamPaperBatchBindRequest,
 ): Promise<ExamPaperBatchBindResponse> {
-  return http.post<ExamPaperBatchBindResponse>('/api/mark/exams/papers/batch-bind', request)
+  const requestedPaperIds = new Set(request.items.map((item) => item.paperInstanceId))
+  if (
+    requestedPaperIds.size !== request.items.length
+    || request.items.some((item) => !item.paperInstanceId)
+  ) {
+    throw new Error('批量身份绑定请求异常：答卷标识必须存在且不可重复')
+  }
+  const response = await http.post<ExamPaperBatchBindResponse>(
+    '/api/mark/exams/papers/batch-bind',
+    request,
+  )
+  const responsePaperIds = Array.isArray(response.items)
+    ? new Set(response.items.map((item) => item.paperInstanceId))
+    : new Set<string>()
+  const actualSuccessCount = Array.isArray(response.items)
+    ? response.items.filter((item) => item.success === true).length
+    : 0
+  const actualFailureCount = Array.isArray(response.items)
+    ? response.items.filter((item) => item.success === false).length
+    : 0
+  if (
+    !Array.isArray(response.items)
+    || !Number.isInteger(response.successCount)
+    || response.successCount < 0
+    || !Number.isInteger(response.failureCount)
+    || response.failureCount < 0
+    || response.items.length !== request.items.length
+    || response.successCount + response.failureCount !== response.items.length
+    || response.successCount !== actualSuccessCount
+    || response.failureCount !== actualFailureCount
+    || responsePaperIds.size !== response.items.length
+    || responsePaperIds.size !== requestedPaperIds.size
+    || [...requestedPaperIds].some((paperInstanceId) => !responsePaperIds.has(paperInstanceId))
+    || response.items.some(
+      (item) =>
+        !item.paperInstanceId
+        || typeof item.success !== 'boolean'
+        || (item.success === false && !item.errorMessage?.trim()),
+    )
+  ) {
+    throw new Error('批量身份绑定合同异常：结果计数或逐项回执不可用')
+  }
+  return response
 }
 
 const ACTIVE_SCANNER_DEVICE_PAGE_SIZE = 100

@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import type { Key } from 'ant-design-vue/es/_util/type'
-import type {ScanOpsOverviewResponse} from '@/apis/mark/scan-ops';
+import type { ScanOpsOverviewResponse } from '@/apis/mark/scan-ops'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   loadArchiveScanOpsOverview,
-  loadExamScanOpsOverview
-  
+  loadExamScanOpsOverview,
 } from '@/apis/mark/scan-ops'
 import {
   ALL_SCAN_DISPATCH_TICKET_STATUS_CODES,
@@ -67,6 +66,7 @@ const route = useRoute()
 const router = useRouter()
 const overviewLoading = ref(false)
 const overviewLoadFailed = ref(false)
+let overviewRequestGeneration = 0
 const failedTicketCount = ref<number | null>(null)
 const failedWorkOrderCount = ref<number | null>(null)
 const archiveMixedPendingTotal = ref<number | null>(null)
@@ -76,6 +76,8 @@ const pendingDispatchCount = ref<number | null>(null)
 const processingDispatchCount = ref<number | null>(null)
 const suspendedDispatchCount = ref<number | null>(null)
 const committingWorkOrderCount = ref<number | null>(null)
+const archiveMixedOverviewLoaded = ref(false)
+const archiveMixedOverviewLoadFailed = ref(false)
 
 const tabItems = computed(() => {
   if (props.domain === 'exam') {
@@ -292,10 +294,6 @@ function isExceptionKindActive(kind: ScannerExceptionItemKindCode): boolean {
   return activeTab.value === 'exception' && exceptionKind.value === kind
 }
 
-function metricValue(count: number | null): string {
-  return count == null ? '—' : String(count)
-}
-
 function metricTone(count: number | null, activeTone: SignalMetric['tone']): SignalMetric['tone'] {
   if (count == null) {
     return 'gray'
@@ -418,12 +416,14 @@ const headerSignalMetrics = computed<SignalMetric[]>(() =>
     dutyBoardMetrics.value.map((metric) => ({
       key: metric.key,
       label: metric.label,
-      value: metricValue(metric.count),
+      value: metric.count == null ? '—' : String(metric.count),
       unit: '条',
       tone: metric.tone,
       clickable: metric.count != null && metric.count > 0,
       active: metric.active,
-      helper: metric.count != null && metric.count > 0 ? metric.helper : '正常',
+      helper: metric.count == null
+        ? (overviewLoading.value ? '加载中' : '数据不可用')
+        : metric.count > 0 ? metric.helper : '正常',
     })),
     {
       // 积压优先：有 clickable 的红/橙项；否则首项
@@ -436,12 +436,38 @@ const totalBacklogCount = computed(() =>
   backlogDutyMetrics.value.reduce((sum, metric) => sum + (metric.count ?? 0), 0),
 )
 
+const overviewMetricsAvailable = computed(() => {
+  if (props.domain === 'exam') {
+    return pageRegisterBlockedCount.value != null && partialTailPendingCount.value != null
+  }
+  const sharedMetricsAvailable = [
+    failedTicketCount.value,
+    failedWorkOrderCount.value,
+    committingWorkOrderCount.value,
+    pendingDispatchCount.value,
+    processingDispatchCount.value,
+    suspendedDispatchCount.value,
+  ].every((count) => count != null)
+  if (props.domain === 'archive') {
+    return sharedMetricsAvailable
+      && archiveMixedOverviewLoaded.value
+      && !archiveMixedOverviewLoadFailed.value
+  }
+  return sharedMetricsAvailable
+})
+
+const overviewDataIncomplete = computed(() => {
+  return !overviewLoading.value && !overviewLoadFailed.value && !overviewMetricsAvailable.value
+})
 
 const recommendedDutyAction = computed(() => {
   if (overviewLoading.value === true) {
     return null
   }
   if (overviewLoadFailed.value) {
+    return null
+  }
+  if (!overviewMetricsAvailable.value) {
     return null
   }
 
@@ -530,8 +556,14 @@ const recommendedDutyAction = computed(() => {
 })
 
 const dutyContextSubtitle = computed(() => {
+  if (overviewLoading.value) {
+    return '正在加载概览'
+  }
   if (overviewLoadFailed.value) {
     return '概览不可用'
+  }
+  if (!overviewMetricsAvailable.value) {
+    return '概览数据不完整'
   }
   if (totalBacklogCount.value > 0) {
     return `待处置 ${totalBacklogCount.value} 项`
@@ -539,7 +571,11 @@ const dutyContextSubtitle = computed(() => {
   return '当前无积压'
 })
 
-function resetOverviewMetrics() {
+/** 按当前业务域加载扫描运营概览，并隔离切域或切换考试后的过期响应。 */
+async function loadOverview() {
+  const requestGeneration = ++overviewRequestGeneration
+  overviewLoading.value = true
+  overviewLoadFailed.value = false
   failedTicketCount.value = null
   failedWorkOrderCount.value = null
   pageRegisterBlockedCount.value = null
@@ -549,17 +585,13 @@ function resetOverviewMetrics() {
   processingDispatchCount.value = null
   suspendedDispatchCount.value = null
   archiveMixedPendingTotal.value = null
-}
-
-async function loadOverview() {
-  overviewLoading.value = true
-  overviewLoadFailed.value = false
+  archiveMixedOverviewLoaded.value = false
+  archiveMixedOverviewLoadFailed.value = false
   try {
     let overview: ScanOpsOverviewResponse | Awaited<ReturnType<typeof loadPortfolioScanOpsOverview>>
     if (props.domain === 'exam') {
       const examId = props.examId?.trim()
       if (!examId) {
-        resetOverviewMetrics()
         overviewLoadFailed.value = true
         showUserError(null, '考试信息缺失，无法加载扫描运营概览')
         return
@@ -569,6 +601,9 @@ async function loadOverview() {
       overview = await loadArchiveScanOpsOverview()
     } else {
       overview = await loadPortfolioScanOpsOverview()
+    }
+    if (requestGeneration !== overviewRequestGeneration) {
+      return
     }
     failedTicketCount.value = overview.failedTicketCount ?? null
     failedWorkOrderCount.value = overview.failedWorkOrderCount ?? null
@@ -585,33 +620,42 @@ async function loadOverview() {
       pageRegisterBlockedCount.value = null
       partialTailPendingCount.value = null
     }
+
+    if (props.domain === 'archive') {
+      try {
+        const mixedPendingTotal = await fetchArchiveSuspectedMixedPendingTotal()
+        if (requestGeneration !== overviewRequestGeneration) {
+          return
+        }
+        archiveMixedPendingTotal.value = Math.max(0, mixedPendingTotal)
+        archiveMixedOverviewLoaded.value = true
+      } catch (mixedError) {
+        if (requestGeneration !== overviewRequestGeneration) {
+          return
+        }
+        archiveMixedPendingTotal.value = null
+        archiveMixedOverviewLoadFailed.value = true
+        showUserError(mixedError, '混扫复核待办加载失败')
+      }
+    } else {
+      archiveMixedPendingTotal.value = null
+      archiveMixedOverviewLoaded.value = false
+    }
   } catch (error) {
-    resetOverviewMetrics()
+    if (requestGeneration !== overviewRequestGeneration) {
+      return
+    }
     overviewLoadFailed.value = true
     showUserError(error, '扫描运营概览加载失败')
-    return
   } finally {
-    overviewLoading.value = false
-  }
-  if (props.domain === 'archive') {
-    try {
-      const mixedPendingTotal = await fetchArchiveSuspectedMixedPendingTotal()
-      archiveMixedPendingTotal.value = mixedPendingTotal > 0 ? mixedPendingTotal : null
-    } catch (mixedError) {
-      archiveMixedPendingTotal.value = null
-      showUserError(mixedError, '混扫复核待办加载失败')
+    if (requestGeneration === overviewRequestGeneration) {
+      overviewLoading.value = false
     }
-  } else {
-    archiveMixedPendingTotal.value = null
   }
 }
 
 function handleTabChange(key: Key) {
   void router.replace({ query: buildTabQuery(parseTab(key)) })
-}
-
-function switchTab(tab: ScanOpsTab) {
-  void router.replace({ query: buildTabQuery(tab) })
 }
 
 async function navigateMixedBatchScanReview(): Promise<void> {
@@ -670,7 +714,7 @@ function handleRecommendedAction() {
     return
   }
   if (action.key === 'healthy' && 'tab' in action && action.tab) {
-    switchTab(action.tab)
+    void router.replace({ query: buildTabQuery(action.tab) })
     return
   }
   handleHeaderMetricClick(action.key)
@@ -726,7 +770,7 @@ watch(
             size="sm"
             variant="outline"
             :loading="overviewLoading"
-            @click="() => loadOverview()"
+            @click="loadOverview"
           >
             刷新队列
           </UiButton>
@@ -735,6 +779,13 @@ watch(
     </template>
 
     <template #signal>
+      <UiAlertStrip
+        v-if="overviewLoadFailed || overviewDataIncomplete"
+        dense
+        tone="error"
+        :title="overviewLoadFailed ? '扫描运营概览加载失败' : '扫描运营概览数据不完整'"
+        description="概览指标当前不可用于判断积压状态；异常处置与日志列表仍按各自接口独立加载，可使用页头刷新工具重新获取概览。"
+      />
       <UiAlertStrip
         v-if="recommendedDutyAction"
         dense
@@ -782,7 +833,7 @@ watch(
       <ScanOpsPanel
         v-else-if="activeTab === 'ops' && dispatchTaskKind"
         :task-kind="dispatchTaskKind"
-        @switch-tab="switchTab"
+        @switch-tab="(tab) => void router.replace({ query: buildTabQuery(tab) })"
       />
       <ScanOperationLogPanel
         v-else-if="activeTab === 'log'"

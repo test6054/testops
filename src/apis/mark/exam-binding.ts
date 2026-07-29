@@ -33,8 +33,12 @@ export interface ExamPaperBindRequest {
 }
 
 /** 确认试卷和考生身份绑定关系。 */
-export function bindPaper(request: ExamPaperBindRequest): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/papers/bind', request)
+export async function bindPaper(request: ExamPaperBindRequest): Promise<boolean> {
+  const response = await http.post<boolean>('/api/mark/exams/papers/bind', request)
+  if (response !== true) {
+    throw new Error('试卷身份绑定合同异常：服务端未确认写入成功')
+  }
+  return response
 }
 
 /** 扫描现场创建或复用学生、补入考试名册并立即绑定当前答卷。 */

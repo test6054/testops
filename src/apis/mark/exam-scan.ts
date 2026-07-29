@@ -32,11 +32,15 @@ import {
   ScanAttentionTypeCode,
   ScanAttentionTypeDescription,
 } from '@/types/enums/scan-attention-type-enum'
+import { ALL_SCAN_BATCH_ATTRIBUTION_REVIEW_STATUS_CODES } from '@/types/enums/scan-batch-attribution-review-status-enum'
 import {
   ALL_SCAN_BATCH_STATUS_CODES,
   ScanBatchStatusCode,
   ScanBatchStatusDescription,
 } from '@/types/enums/scan-batch-status-enum'
+import { ALL_SCAN_BATCH_WORKBENCH_BINDING_STATUS_CODES } from '@/types/enums/scan-batch-workbench-binding-status-enum'
+import { ALL_SCAN_BATCH_WORKBENCH_REGISTER_STATUS_CODES } from '@/types/enums/scan-batch-workbench-register-status-enum'
+import { ALL_SCAN_BATCH_WORKBENCH_TOP_ACTION_CODES } from '@/types/enums/scan-batch-workbench-top-action-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
@@ -398,10 +402,17 @@ export function getScannerBatchWorkbenchSummary(
 }
 
 /** 查询扫描批次详情。 */
-export function getScannerBatchDetail(
+export async function getScannerBatchDetail(
   request: ExamScannerBatchDetailRequest,
 ): Promise<ExamScannerBatchResponse> {
-  return http.post<ExamScannerBatchResponse>('/api/mark/exams/scanner-batches/detail', request)
+  const response = await http.post<ExamScannerBatchResponse>(
+    '/api/mark/exams/scanner-batches/detail',
+    request,
+  )
+  if (response.examId !== request.examId || response.scanBatchId !== request.scanBatchId) {
+    throw new Error('扫描批次详情合同异常：返回对象不属于当前考试或批次')
+  }
+  return response
 }
 
 /** 按设备分组一键补救 orphan PENDING 扫描事件。 */
@@ -441,20 +452,32 @@ export interface ExamScannedPageDiscardByTeacherRequest {
 }
 
 /** 教师在 Web 端废弃单张扫描页（主考权限，非一体机 push_token）。 */
-export function discardScannedPageByTeacher(
+export async function discardScannedPageByTeacher(
   request: ExamScannedPageDiscardByTeacherRequest,
 ): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/scanned-pages/discard', request)
+  const response = await http.post<boolean>('/api/mark/exams/scanned-pages/discard', request)
+  if (response !== true) {
+    throw new Error('扫描页废弃合同异常：服务端未确认写入成功')
+  }
+  return response
 }
 
 /** 查询扫描批次顺序审计结果。 */
-export function getScanBatchOrderAudit(
+export async function getScanBatchOrderAudit(
   request: ScanBatchOrderAuditQueryRequest,
 ): Promise<ScanBatchOrderAuditResponse> {
-  return http.post<ScanBatchOrderAuditResponse>(
+  const response = await http.post<ScanBatchOrderAuditResponse>(
     '/api/mark/exams/scanner-batches/order-audit',
     request,
   )
+  if (
+    response.examId !== request.examId
+    || response.scanBatchId !== request.scanBatchId
+    || !Array.isArray(response.issues)
+  ) {
+    throw new Error('扫描批次顺序审计合同异常：对象身份或异常列表不可用')
+  }
+  return response
 }
 
 /** 忽略 D2 collate attention 请求 */
@@ -474,13 +497,33 @@ export function dismissScanBatchCollateAttention(
 }
 
 /** 分页查询扫描批次。 */
-export function pageScannerBatches(
+export async function pageScannerBatches(
   request: ExamScannerBatchQueryRequest,
 ): Promise<PageResult<ExamScannerBatchResponse>> {
-  return http.post<PageResult<ExamScannerBatchResponse>>(
+  const response = await http.post<PageResult<ExamScannerBatchResponse>>(
     '/api/mark/exams/scanner-batches/page',
     request,
   )
+  if (
+    !Array.isArray(response.list)
+    || !Number.isInteger(response.total)
+    || response.total < 0
+    || response.list.some(
+      (batch) =>
+        !batch.scanBatchId
+        || batch.examId !== request.examId
+        || !batch.batchNo
+        || !Number.isInteger(batch.pageCount)
+        || batch.pageCount < 0
+        || !Number.isInteger(batch.eventCount)
+        || batch.eventCount < 0
+        || !Number.isInteger(batch.sourceFileCount)
+        || batch.sourceFileCount < 0,
+    )
+  ) {
+    throw new Error('扫描批次分页合同异常：列表、对象身份或必需计数不可用')
+  }
+  return response
 }
 
 /** 扫描批次自动页登记重试请求 - 对应 ExamScanBatchPageRegisterRetryRequest */
@@ -724,7 +767,53 @@ function parseScanBatchWorkbenchSignalBandTone(
 /** 校验扫描批次工作台 Signal 枚举契约。 */
 export function normalizeScannerBatchWorkbench(
   workbench: ExamScannerBatchWorkbenchResponse,
+  request: ExamScannerBatchWorkbenchRequest,
 ): ExamScannerBatchWorkbenchResponse {
+  if (
+    !workbench?.batch
+    || workbench.batch.examId !== request.examId
+    || workbench.batch.scanBatchId !== request.scanBatchId
+    || !Array.isArray(workbench.initialPageItems)
+    || !Array.isArray(workbench.attributionItems)
+    || !Array.isArray(workbench.topActions)
+  ) {
+    throw new Error('扫描批次工作台合同异常：对象身份或核心集合不可用')
+  }
+  const optionalCounts = [
+    workbench.sourceReceivedCount,
+    workbench.pageRegisteredCount,
+    workbench.paperBoundCount,
+  ]
+  const optionalPercents = [workbench.progressPercent, workbench.registrationProgressPercent]
+  if (optionalCounts.some((count) => count != null && (!Number.isFinite(count) || count < 0))) {
+    throw new Error('扫描批次工作台合同异常：关键计数无效')
+  }
+  if (
+    optionalPercents.some(
+      (percent) => percent != null && (!Number.isFinite(percent) || percent < 0 || percent > 100),
+    )
+  ) {
+    throw new Error('扫描批次工作台合同异常：进度百分比无效')
+  }
+  if (
+    workbench.topActions.some(
+      (action) => !ALL_SCAN_BATCH_WORKBENCH_TOP_ACTION_CODES.includes(action),
+    )
+    || workbench.initialPageItems.some(
+      (page) =>
+        !page.pageKey
+        || !ALL_SCAN_BATCH_WORKBENCH_REGISTER_STATUS_CODES.includes(page.registerStatus)
+        || !ALL_SCAN_BATCH_WORKBENCH_BINDING_STATUS_CODES.includes(page.bindingStatus),
+    )
+    || workbench.attributionItems.some(
+      (item) =>
+        !item.bucketKey
+        || !Array.isArray(item.pages)
+        || !ALL_SCAN_BATCH_ATTRIBUTION_REVIEW_STATUS_CODES.includes(item.reviewStatus),
+    )
+  ) {
+    throw new Error('扫描批次工作台合同异常：动作、页轨或归卷状态不同步')
+  }
   return {
     ...workbench,
     signalBandTone: parseScanBatchWorkbenchSignalBandTone(workbench.signalBandTone),
@@ -739,27 +828,55 @@ export async function getScannerBatchWorkbench(
     '/api/mark/exams/scanner-batches/workbench',
     request,
   )
-  return normalizeScannerBatchWorkbench(workbench)
+  return normalizeScannerBatchWorkbench(workbench, request)
 }
 
 /** 游标分页查询扫描批次页轨。 */
-export function pageScannerBatchWorkbenchPages(
+export async function pageScannerBatchWorkbenchPages(
   request: ScannerBatchWorkbenchPageQueryRequest,
 ): Promise<ScannerBatchWorkbenchPageQueryResponse> {
-  return http.post<ScannerBatchWorkbenchPageQueryResponse>(
+  const response = await http.post<ScannerBatchWorkbenchPageQueryResponse>(
     '/api/mark/exams/scanner-batches/workbench/pages',
     request,
   )
+  const counts = [
+    response.totalCount,
+    response.pendingCount,
+    response.registeredCount,
+    response.exceptionCount,
+  ]
+  if (
+    !Array.isArray(response.items)
+    || counts.some((count) => count != null && (!Number.isFinite(count) || count < 0))
+    || response.items.some(
+      (page) =>
+        !page.pageKey
+        || !ALL_SCAN_BATCH_WORKBENCH_REGISTER_STATUS_CODES.includes(page.registerStatus)
+        || !ALL_SCAN_BATCH_WORKBENCH_BINDING_STATUS_CODES.includes(page.bindingStatus),
+    )
+  ) {
+    throw new Error('扫描批次页轨合同异常：列表、计数或状态不可用')
+  }
+  return response
 }
 
 /** 查询扫描批次单页 Inspector。 */
-export function getScannerBatchPageInspector(
+export async function getScannerBatchPageInspector(
   request: ExamScannerBatchPageInspectorRequest,
 ): Promise<ExamScannerBatchPageInspectorVO> {
-  return http.post<ExamScannerBatchPageInspectorVO>(
+  const response = await http.post<ExamScannerBatchPageInspectorVO>(
     '/api/mark/exams/scanner-batches/workbench/page-inspector',
     request,
   )
+  if (
+    !response?.page
+    || response.page.pageKey !== request.pageKey
+    || !ALL_SCAN_BATCH_WORKBENCH_REGISTER_STATUS_CODES.includes(response.page.registerStatus)
+    || !ALL_SCAN_BATCH_WORKBENCH_BINDING_STATUS_CODES.includes(response.page.bindingStatus)
+  ) {
+    throw new Error('扫描批次页检视合同异常：页身份或状态不同步')
+  }
+  return response
 }
 
 /** 人工调整扫描页归卷。 */
@@ -773,11 +890,28 @@ export function reassignScannerBatchPage(
 }
 
 /** 查询扫描异常待办列表。 */
-export function listScanAttentions(
+export async function listScanAttentions(
   request: ScanAttentionQueryRequest,
 ): Promise<PageResult<ScanAttentionItemResponse>> {
-  return http.post<PageResult<ScanAttentionItemResponse>>(
+  const response = await http.post<PageResult<ScanAttentionItemResponse>>(
     '/api/mark/exams/scan-attentions',
     request,
   )
+  if (
+    !Array.isArray(response.list)
+    || !Number.isInteger(response.total)
+    || response.total < 0
+    || response.list.some(
+      (item) =>
+        !item.id
+        || item.examId !== request.examId
+        || !item.sourceId
+        || !item.sourceDisplayName
+        || !item.paperDisplay
+        || !item.primaryActionCode,
+    )
+  ) {
+    throw new Error('扫描异常分页合同异常：列表、对象身份或主操作不可用')
+  }
+  return response
 }

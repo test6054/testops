@@ -92,6 +92,14 @@
           title="扫描设备列表加载失败"
           dense
         />
+
+        <UiAlertStrip
+          v-if="markingProgressLoadFailed"
+          tone="warning"
+          title="卷面绑定率加载失败"
+          description="批次列表与扫描异常仍可继续处理，当前绑定率不参与工作台判断。"
+          dense
+        />
       </div>
 
       <WorkbenchSurfaceCard flush>
@@ -146,12 +154,14 @@
           @page-change="onBatchPageChange"
         >
           <template #empty>
-            <UiEmpty
-              size="sm"
+            <UiStateBlock
               v-if="batchListLoadFailed"
-              description="扫描批次列表加载失败"
+              state="error"
+              size="sm"
+              title="扫描批次列表加载失败"
+              description="当前列表结果不可用；可调整筛选条件后重新查询，或离开页面后重新进入。"
             />
-            <UiEmpty size="sm" v-else description="暂无扫描批次" />
+            <UiEmpty size="sm" v-else :description="batchEmptyDescription" />
           </template>
 
           <template #bodyCell="{ column, record }">
@@ -188,12 +198,19 @@
               <div class="dp-text-muted-xs">至 {{ formatDateTimeWithSeconds(record.scanEndTime) }}</div>
             </template>
             <template v-else-if="column.key === 'pageProgress'">
-              <span :class="{ 'scan-batch-workbench__warn': (record.pendingUploadCount ?? 0) > 0 }">
-                {{ record.receivedPageCount ?? 0 }} / {{ record.pageCount }}
+              <span
+                :class="{
+                  'scan-batch-workbench__warn':
+                    record.pendingUploadCount != null && record.pendingUploadCount > 0,
+                }"
+              >
+                {{ record.receivedPageCount == null ? '不可用' : record.receivedPageCount }} /
+                {{ record.pageCount }}
               </span>
             </template>
             <template v-else-if="column.key === 'attentionCount'">
-              <UiTag v-if="(record.attentionItemCount ?? 0) > 0" tone="orange" size="sm">
+              <span v-if="record.attentionItemCount == null" class="dp-text-muted-xs">不可用</span>
+              <UiTag v-else-if="record.attentionItemCount > 0" tone="orange" size="sm">
                 {{ record.attentionItemCount }} 项
               </UiTag>
               <span v-else class="dp-text-muted-xs">0</span>
@@ -203,7 +220,11 @@
                 余页待确认
               </UiTag>
               <UiTag v-else-if="record.orderAuditPassed === false" tone="red" size="sm">
-                {{ record.orderAuditIssueCount ?? 0 }} 项异常
+                {{
+                  record.orderAuditIssueCount == null
+                    ? '异常数量不可用'
+                    : `${record.orderAuditIssueCount} 项异常`
+                }}
               </UiTag>
               <UiTag v-else-if="record.orderAuditPassed" tone="green" size="sm">
                 {{ record.orderAuditIssueCount ? `通过·${record.orderAuditIssueCount}项` : '通过' }}
@@ -259,6 +280,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -297,10 +319,13 @@ const canManageOwnerBatchActions = computed(
 )
 const batchListLoadFailed = ref(false)
 const devicesLoadFailed = ref(false)
+const markingProgressLoadFailed = ref(false)
 const markingProgress = ref<MarkingProgressResponse | null>(null)
 const orphanAlertRef = ref<InstanceType<typeof ScanOrphanRecoveryAlert> | null>(null)
 /** 考试切换与并发请求代际；失活页不得写回当前考试面。 */
 let examLoadGeneration = 0
+/** 同一考试内筛选、Tab 与分页请求序号；只允许最后一次列表查询写回。 */
+let batchRequestGeneration = 0
 let refreshListenerActive = false
 /** 本页写后本地刷新时抑制 mitt 自回调，避免双载。 */
 let suppressSelfRefresh = false
@@ -333,6 +358,21 @@ const filterForm = reactive<ScanBatchWorkbenchFilterForm>({
   keyword: '',
   scannerDeviceId: undefined,
   scanWindow: undefined,
+})
+
+const appliedFilter = reactive<ScanBatchWorkbenchFilterForm>({
+  keyword: '',
+  scannerDeviceId: undefined,
+  scanWindow: undefined,
+})
+
+const batchEmptyDescription = computed(() => {
+  const hasFilter
+    = statusTab.value !== 'ALL'
+      || Boolean(appliedFilter.keyword)
+      || Boolean(appliedFilter.scannerDeviceId)
+      || appliedFilter.scanWindow != null
+  return hasFilter ? '当前筛选条件下无匹配扫描批次' : '暂无扫描批次'
 })
 
 const pageRegisterRetryingBatchId = ref<string | null>(null)
@@ -719,11 +759,11 @@ function buildBatchQuery(): ExamScannerBatchQueryRequest {
     examId: selectedExamId.value!,
     pageNum: batchQuery.pageNum,
     pageSize: batchQuery.pageSize,
-    keyword: filterForm.keyword.trim() || undefined,
-    scannerDeviceId: filterForm.scannerDeviceId,
+    keyword: appliedFilter.keyword || undefined,
+    scannerDeviceId: appliedFilter.scannerDeviceId,
     status: statusTab.value === 'ALL' ? undefined : statusTab.value,
-    scanStartTimeFrom: filterForm.scanWindow?.[0],
-    scanStartTimeTo: filterForm.scanWindow?.[1],
+    scanStartTimeFrom: appliedFilter.scanWindow?.[0],
+    scanStartTimeTo: appliedFilter.scanWindow?.[1],
   }
 }
 
@@ -731,19 +771,31 @@ async function loadMarkingProgress(expectedGeneration = examLoadGeneration): Pro
   const examId = selectedExamId.value
   if (!examId) {
     markingProgress.value = null
+    markingProgressLoadFailed.value = false
     return
   }
+  markingProgressLoadFailed.value = false
   try {
     const progress = await getMarkingProgress(examId)
     if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
       return
     }
+    if (
+      !Number.isFinite(progress.paperCount)
+      || progress.paperCount < 0
+      || !Number.isFinite(progress.gradablePaperCount)
+      || progress.gradablePaperCount < 0
+    ) {
+      throw new Error('卷面绑定率合同异常：试卷总数或可批阅试卷数不可用')
+    }
     markingProgress.value = progress
+    markingProgressLoadFailed.value = false
   } catch (error) {
     if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
       return
     }
     markingProgress.value = null
+    markingProgressLoadFailed.value = true
     showUserError(error, '卷面绑定率加载失败')
   }
 }
@@ -761,6 +813,17 @@ async function loadSummary(expectedGeneration = examLoadGeneration): Promise<voi
     if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
       return
     }
+    const requiredCounts = [
+      next.batchTotal,
+      next.inProgressCount,
+      next.blockedCount,
+      next.orphanPendingEventCount,
+      next.orphanPendingPageCount,
+      next.attentionCount,
+    ]
+    if (requiredCounts.some((count) => !Number.isFinite(count) || count < 0)) {
+      throw new Error('扫描批次指标合同异常：关键计数缺失或无效')
+    }
     summary.value = next
   } catch (error) {
     if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
@@ -773,6 +836,7 @@ async function loadSummary(expectedGeneration = examLoadGeneration): Promise<voi
 }
 
 async function loadBatches(pageNum?: number, expectedGeneration = examLoadGeneration): Promise<void> {
+  const requestGeneration = ++batchRequestGeneration
   const examId = selectedExamId.value
   if (!examId) {
     batches.value = []
@@ -786,13 +850,24 @@ async function loadBatches(pageNum?: number, expectedGeneration = examLoadGenera
   batchListLoadFailed.value = false
   try {
     const result = await pageScannerBatches(buildBatchQuery())
-    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    if (
+      requestGeneration !== batchRequestGeneration
+      || expectedGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
+    }
+    if (!Array.isArray(result.list) || !Number.isFinite(result.total) || result.total < 0) {
+      throw new Error('扫描批次分页合同异常：列表或总数不可用')
     }
     batches.value = result.list
     batchTotal.value = result.total
   } catch (error) {
-    if (expectedGeneration !== examLoadGeneration || selectedExamId.value !== examId) {
+    if (
+      requestGeneration !== batchRequestGeneration
+      || expectedGeneration !== examLoadGeneration
+      || selectedExamId.value !== examId
+    ) {
       return
     }
     batches.value = []
@@ -800,7 +875,11 @@ async function loadBatches(pageNum?: number, expectedGeneration = examLoadGenera
     batchListLoadFailed.value = true
     showUserError(error, '扫描批次列表加载失败')
   } finally {
-    if (expectedGeneration === examLoadGeneration && selectedExamId.value === examId) {
+    if (
+      requestGeneration === batchRequestGeneration
+      && expectedGeneration === examLoadGeneration
+      && selectedExamId.value === examId
+    ) {
       batchLoading.value = false
     }
   }
@@ -814,11 +893,19 @@ async function loadDevices(expectedGeneration = examLoadGeneration): Promise<voi
     }
     devicesLoadFailed.value = false
     devices.value = next
-    if (
-      filterForm.scannerDeviceId
-      && !next.some((device) => device.scannerDeviceId === filterForm.scannerDeviceId)
-    ) {
+    const selectedDeviceUnavailable
+      = Boolean(filterForm.scannerDeviceId)
+        && !next.some((device) => device.scannerDeviceId === filterForm.scannerDeviceId)
+    const appliedDeviceUnavailable
+      = Boolean(appliedFilter.scannerDeviceId)
+        && !next.some((device) => device.scannerDeviceId === appliedFilter.scannerDeviceId)
+    if (selectedDeviceUnavailable) {
       filterForm.scannerDeviceId = undefined
+    }
+    if (appliedDeviceUnavailable) {
+      appliedFilter.scannerDeviceId = undefined
+      batchQuery.pageNum = 1
+      void loadBatches(1, expectedGeneration)
     }
   } catch (error) {
     if (expectedGeneration !== examLoadGeneration) {
@@ -855,6 +942,9 @@ function notifyPeerScanWorkbenchPages(): void {
 }
 
 function handleSearch(): void {
+  appliedFilter.keyword = filterForm.keyword.trim()
+  appliedFilter.scannerDeviceId = filterForm.scannerDeviceId
+  appliedFilter.scanWindow = filterForm.scanWindow ? [...filterForm.scanWindow] : undefined
   batchQuery.pageNum = 1
   void loadBatches()
 }
@@ -863,6 +953,9 @@ function handleReset(): void {
   filterForm.keyword = ''
   filterForm.scannerDeviceId = undefined
   filterForm.scanWindow = undefined
+  appliedFilter.keyword = ''
+  appliedFilter.scannerDeviceId = undefined
+  appliedFilter.scanWindow = undefined
   batchQuery.pageNum = 1
   void loadBatches()
 }
@@ -1036,10 +1129,17 @@ watch(
   (examId) => {
     const generation = ++examLoadGeneration
     statusTab.value = 'ALL'
+    filterForm.keyword = ''
+    filterForm.scannerDeviceId = undefined
+    filterForm.scanWindow = undefined
+    appliedFilter.keyword = ''
+    appliedFilter.scannerDeviceId = undefined
+    appliedFilter.scanWindow = undefined
     summary.value = null
     summaryLoadFailed.value = false
     batchListLoadFailed.value = false
     devicesLoadFailed.value = false
+    markingProgressLoadFailed.value = false
     markingProgress.value = null
     batches.value = []
     batchTotal.value = 0

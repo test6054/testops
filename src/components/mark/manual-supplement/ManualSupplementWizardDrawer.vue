@@ -17,7 +17,14 @@
     <div v-if="currentStep === 0" class="manual-supplement-wizard__panel">
       <template v-if="scenario === 'file-import'">
         <UiAlertStrip
-          v-if="webDevices.length === 0"
+          v-if="deviceLoadFailed"
+          tone="error"
+          title="网页补录工位加载失败"
+          description="当前无法确认可用工位，不得按未登记工位处理；请关闭后重新打开向导。"
+          dense
+        />
+        <UiAlertStrip
+          v-else-if="webDevices.length === 0 && !deviceLoading"
           tone="warning"
           title="未登记网页补录工位"
           description="请先在扫描设备管理页为补录工位开启「网页补录」开关。"
@@ -78,10 +85,12 @@
               :min-height="200"
               empty-text="旧页影像加载失败"
             />
-            <UiEmpty
+            <UiStateBlock
               v-else-if="oldPagePreviewFailed"
+              state="error"
               size="sm"
-              description="旧页影像加载失败"
+              title="旧页影像加载失败"
+              description="当前无法核对将被替换的生效页，不能提交替换。"
             />
             <UiEmpty v-else size="sm" description="请先选择目标页以加载旧页证据" />
           </article>
@@ -95,15 +104,26 @@
               :min-height="200"
               empty-text="新图预览失败"
             />
-            <UiEmpty
+            <UiStateBlock
               v-else-if="newPagePreviewFailed"
+              state="error"
               size="sm"
-              description="新图预览失败，禁止提交"
+              title="新图预览失败"
+              description="待提交影像不可核对，已禁止提交替换。"
             />
             <UiEmpty v-else size="sm" description="上传补扫文件后显示新图预览" />
           </article>
         </div>
       </div>
+      <UiAlertStrip
+        v-if="prepareLoadFailed"
+        tone="error"
+        :closable="false"
+        dense
+        title="补录预检失败"
+        description="当前设备、批次与考试写入条件尚未确认，不能提交补录。"
+        class="manual-supplement-wizard__evidence-alert"
+      />
       <ManualSupplementFormCore
         ref="formCoreRef"
         :mode="scenario === 'file-import' ? 'direct' : 'supplement'"
@@ -146,7 +166,7 @@
         size="sm"
         v-if="currentStep < 2"
         variant="primary"
-        :loading="submitting"
+        :loading="submitting || (currentStep === 0 && (contextLoading || deviceLoading))"
         @click="goNext"
       >
         {{ currentStep === 1 ? '提交补录' : '下一步' }}
@@ -194,6 +214,7 @@ import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
 import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import UiStep from '@/components/ui-guide/ui/UiStep.vue'
 import UiSteps from '@/components/ui-guide/ui/UiSteps.vue'
 import { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
@@ -237,6 +258,7 @@ const emit = defineEmits<{
 const resolvedContext = ref<ManualSupplementWizardContext | null>(null)
 const paperPageStatus = ref<ExamManualSupplementPaperPageStatusResponse | null>(null)
 const paperPageStatusLoadFailed = ref(false)
+const contextLoading = ref(false)
 const oldPagePreviewUrl = ref('')
 const oldPagePreviewLoading = ref(false)
 const oldPagePreviewFailed = ref(false)
@@ -248,11 +270,18 @@ const router = useRouter()
 const currentStep = ref(0)
 const submitting = ref(false)
 const prepareLoading = ref(false)
+const prepareLoadFailed = ref(false)
 const deviceLoading = ref(false)
+const deviceLoadFailed = ref(false)
 const prepareContext = ref<ExamTeacherScanSupplementPrepareResponse | null>(null)
 const submitResult = ref<ExamTeacherScanSupplementResponse | null>(null)
 const webDevices = ref<ExamManualSupplementDeviceItemResponse[]>([])
 const formCoreRef = ref<InstanceType<typeof ManualSupplementFormCore> | null>(null)
+let wizardContextGeneration = 0
+let prepareRequestGeneration = 0
+let oldPreviewRequestGeneration = 0
+let newPreviewRequestGeneration = 0
+let submitInFlight = false
 
 const DEFAULT_SCAN_CONFIG: ExamScannerScanConfigVO = {
   dpi: 300,
@@ -335,7 +364,23 @@ const scenarioBlockReason = computed(() => {
     return '卷面页状态尚未确认，不能继续'
   }
   if (scenario.value === 'replace') {
+    if (
+      ctx.targetPageNo != null
+      && paperPageStatus.value
+      && !paperPageStatus.value.occupiedPages.some(
+        (page) => page.templatePageNo === ctx.targetPageNo,
+      )
+    ) {
+      return '目标页已不属于当前答卷的生效页，请从待补名单重新发起替换'
+    }
     return ctx.replaceEligible === false ? (ctx.replaceBlockReason ?? '当前不可执行污损页替换') : ''
+  }
+  if (
+    ctx.targetPageNo != null
+    && paperPageStatus.value
+    && !paperPageStatus.value.missingTemplatePageNos.includes(ctx.targetPageNo)
+  ) {
+    return '目标页已不再缺失，请从待补名单重新选择缺页'
   }
   return ctx.supplementEligible === false ? (ctx.blockReason ?? '当前不可执行缺页补扫') : ''
 })
@@ -343,10 +388,16 @@ const scenarioBlockReason = computed(() => {
 const submitDisabled = computed(
   () =>
     prepareLoading.value
+    || prepareLoadFailed.value
+    || (scenario.value === 'file-import' && deviceLoadFailed.value)
     || prepareContext.value?.canSubmitManualSupplement !== true
     || (scenario.value === 'file-import' && webDevices.value.length === 0)
     || (scenario.value === 'replace'
-      && (newPagePreviewFailed.value || !newPagePreviewUrl.value || !supplementForm.sourceFileId)),
+      && (oldPagePreviewFailed.value
+        || !oldPagePreviewUrl.value
+        || newPagePreviewFailed.value
+        || !newPagePreviewUrl.value
+        || !supplementForm.sourceFileId)),
 )
 
 const boundPaperOptions = computed(() =>
@@ -394,7 +445,15 @@ function resetWizardState(): void {
   resolvedContext.value = null
   paperPageStatus.value = null
   paperPageStatusLoadFailed.value = false
+  contextLoading.value = false
+  oldPagePreviewLoading.value = false
+  newPagePreviewLoading.value = false
+  prepareLoading.value = false
+  deviceLoading.value = false
   prepareContext.value = null
+  prepareLoadFailed.value = false
+  deviceLoadFailed.value = false
+  webDevices.value = []
   submitResult.value = null
   releaseOldPagePreview()
   releaseNewPagePreview()
@@ -408,6 +467,15 @@ function resetWizardState(): void {
   directForm.startTemplatePageNo = 1
   directForm.sourceFileId = undefined
   directForm.sourceFileName = undefined
+}
+
+/** 校验异步结果仍属于当前打开的考试补录上下文。 */
+function isCurrentWizardContext(generation: number, examId: string): boolean {
+  return (
+    generation === wizardContextGeneration
+    && props.open
+    && activeContext.value?.examId === examId
+  )
 }
 
 function releaseOldPagePreview(): void {
@@ -426,8 +494,13 @@ function releaseNewPagePreview(): void {
   newPagePreviewFailed.value = false
 }
 
-async function loadOldPagePreview(): Promise<void> {
+/** 加载当前替换目标的旧页证据，并拒绝过期目标或过期向导响应。 */
+async function loadOldPagePreview(
+  expectedContextGeneration = wizardContextGeneration,
+): Promise<void> {
+  const requestGeneration = ++oldPreviewRequestGeneration
   releaseOldPagePreview()
+  oldPagePreviewLoading.value = false
   if (scenario.value !== 'replace') {
     return
   }
@@ -435,40 +508,90 @@ async function loadOldPagePreview(): Promise<void> {
   const targetPageNo = supplementForm.targetPageNo ?? activeContext.value?.targetPageNo
   const occupied = paperPageStatus.value?.occupiedPages ?? []
   const page = occupied.find((item) => item.templatePageNo === targetPageNo)
-  if (!examId || !page?.pageId) {
+  if (!examId) {
+    return
+  }
+  if (!page?.pageId) {
+    if (targetPageNo != null) {
+      oldPagePreviewFailed.value = true
+    }
     return
   }
   oldPagePreviewLoading.value = true
   try {
     const previewPath = `/api/mark/exams/scanner-batches/pages/original-image?examId=${examId}&pageId=${page.pageId}`
-    oldPagePreviewUrl.value = await fetchStoragePreviewBlobUrl(previewPath)
+    const blobUrl = await fetchStoragePreviewBlobUrl(previewPath)
+    if (
+      requestGeneration !== oldPreviewRequestGeneration
+      || !isCurrentWizardContext(expectedContextGeneration, examId)
+      || supplementForm.targetPageNo !== targetPageNo
+    ) {
+      URL.revokeObjectURL(blobUrl)
+      return
+    }
+    oldPagePreviewUrl.value = blobUrl
   } catch (error) {
+    if (
+      requestGeneration !== oldPreviewRequestGeneration
+      || !isCurrentWizardContext(expectedContextGeneration, examId)
+    ) {
+      return
+    }
     oldPagePreviewFailed.value = true
     showUserError(error, '旧页影像加载失败')
   } finally {
-    oldPagePreviewLoading.value = false
+    if (requestGeneration === oldPreviewRequestGeneration) {
+      oldPagePreviewLoading.value = false
+    }
   }
 }
 
-async function loadNewPagePreview(): Promise<void> {
+/** 加载待提交新页证据，并确保文件切换后的旧预览不能写回。 */
+async function loadNewPagePreview(
+  expectedContextGeneration = wizardContextGeneration,
+): Promise<void> {
+  const requestGeneration = ++newPreviewRequestGeneration
   releaseNewPagePreview()
+  newPagePreviewLoading.value = false
   if (scenario.value !== 'replace' || !supplementForm.sourceFileId) {
     return
   }
   newPagePreviewLoading.value = true
   try {
     const previewPath = `/api/storage/filesystem/download?nodeId=${supplementForm.sourceFileId}`
-    newPagePreviewUrl.value = await fetchStoragePreviewBlobUrl(previewPath)
+    const sourceFileId = supplementForm.sourceFileId
+    const blobUrl = await fetchStoragePreviewBlobUrl(previewPath)
+    if (
+      requestGeneration !== newPreviewRequestGeneration
+      || expectedContextGeneration !== wizardContextGeneration
+      || !props.open
+      || supplementForm.sourceFileId !== sourceFileId
+    ) {
+      URL.revokeObjectURL(blobUrl)
+      return
+    }
+    newPagePreviewUrl.value = blobUrl
   } catch (error) {
+    if (
+      requestGeneration !== newPreviewRequestGeneration
+      || expectedContextGeneration !== wizardContextGeneration
+      || !props.open
+    ) {
+      return
+    }
     newPagePreviewFailed.value = true
     showUserError(error, '新图预览加载失败')
   } finally {
-    newPagePreviewLoading.value = false
+    if (requestGeneration === newPreviewRequestGeneration) {
+      newPagePreviewLoading.value = false
+    }
   }
 }
 
+/** 以后端卷面状态补全补录资格与页集合，保持考试和答卷身份一致。 */
 async function enrichContextFromPaperStatus(
   baseContext: ManualSupplementWizardContext,
+  expectedGeneration: number,
 ): Promise<ManualSupplementWizardContext> {
   if (!baseContext.paperInstanceId) {
     paperPageStatusLoadFailed.value = false
@@ -482,22 +605,28 @@ async function enrichContextFromPaperStatus(
       examId: baseContext.examId,
       paperInstanceId: baseContext.paperInstanceId,
     })
+    if (!isCurrentWizardContext(expectedGeneration, baseContext.examId)) {
+      return { ...baseContext }
+    }
     paperPageStatus.value = status
     paperPageStatusLoadFailed.value = false
     resolvedContext.value = {
       ...baseContext,
-      scanBatchId: baseContext.scanBatchId ?? status.scanBatchId,
-      candidateRosterId: baseContext.candidateRosterId ?? status.candidateRosterId,
-      studentNo: baseContext.studentNo ?? status.studentNo,
-      studentName: baseContext.studentName ?? status.studentName,
-      className: baseContext.className ?? status.className,
-      missingTemplatePageNos: baseContext.missingTemplatePageNos ?? status.missingTemplatePageNos,
+      scanBatchId: status.scanBatchId ?? baseContext.scanBatchId,
+      candidateRosterId: status.candidateRosterId ?? baseContext.candidateRosterId,
+      studentNo: status.studentNo ?? baseContext.studentNo,
+      studentName: status.studentName ?? baseContext.studentName,
+      className: status.className ?? baseContext.className,
+      missingTemplatePageNos: status.missingTemplatePageNos,
       supplementEligible: status.supplementEligible,
       blockReason: status.supplementBlockReason,
       replaceEligible: status.replaceEligible,
       replaceBlockReason: status.replaceBlockReason,
     }
   } catch (error) {
+    if (!isCurrentWizardContext(expectedGeneration, baseContext.examId)) {
+      return { ...baseContext }
+    }
     paperPageStatus.value = null
     paperPageStatusLoadFailed.value = true
     resolvedContext.value = { ...baseContext }
@@ -506,29 +635,44 @@ async function enrichContextFromPaperStatus(
   return resolvedContext.value
 }
 
-async function loadWebDevices(): Promise<void> {
+/** 加载当前考试允许网页直扫的补录工位，失败与合法空工位严格区分。 */
+async function loadWebDevices(expectedGeneration = wizardContextGeneration): Promise<void> {
   const examId = activeContext.value?.examId
   if (!examId) {
     webDevices.value = []
     return
   }
+  deviceLoadFailed.value = false
   deviceLoading.value = true
   try {
     const response = await listManualSupplementDevices({ examId, directOnly: true })
+    if (!isCurrentWizardContext(expectedGeneration, examId)) {
+      return
+    }
     webDevices.value = response.items.filter((item) => item.webSupplementEnabled)
   } catch (error) {
+    if (!isCurrentWizardContext(expectedGeneration, examId)) {
+      return
+    }
     webDevices.value = []
+    deviceLoadFailed.value = true
     showUserError(error, '网页补录工位加载失败')
   } finally {
-    deviceLoading.value = false
+    if (isCurrentWizardContext(expectedGeneration, examId)) {
+      deviceLoading.value = false
+    }
   }
 }
 
-async function resolveBatchDeviceIds(): Promise<{
+/** 从当前批次解析补扫设备身份，并隔离切换向导后的旧批次响应。 */
+async function resolveBatchDeviceIds(
+  expectedGeneration: number,
+  context: ManualSupplementWizardContext,
+): Promise<{
   scannerDeviceId: string
   scannerStationId: string
 } | null> {
-  const ctx = activeContext.value
+  const ctx = context
   if (ctx?.scannerDeviceId && ctx.scannerStationId) {
     return {
       scannerDeviceId: ctx.scannerDeviceId,
@@ -541,19 +685,30 @@ async function resolveBatchDeviceIds(): Promise<{
       examId: ctx.examId,
       scanBatchId: ctx.scanBatchId,
     })
+    if (!isCurrentWizardContext(expectedGeneration, ctx.examId)) {
+      return null
+    }
     if (!batch.scannerDeviceId || !batch.scannerStationId) return null
     return {
       scannerDeviceId: batch.scannerDeviceId,
       scannerStationId: batch.scannerStationId,
     }
   } catch (error) {
+    if (!isCurrentWizardContext(expectedGeneration, ctx.examId)) {
+      return null
+    }
     showUserError(error, '扫描批次加载失败')
     return null
   }
 }
 
-async function loadPrepareContext(): Promise<void> {
+/** 按当前场景和设备执行服务端补录预检，只有最新请求可开放提交。 */
+async function loadPrepareContext(
+  expectedContextGeneration = wizardContextGeneration,
+): Promise<void> {
+  const requestGeneration = ++prepareRequestGeneration
   prepareContext.value = null
+  prepareLoadFailed.value = false
   const ctx = activeContext.value
   if (!ctx?.examId) return
 
@@ -562,37 +717,78 @@ async function loadPrepareContext(): Promise<void> {
     if (!device) return
     prepareLoading.value = true
     try {
-      prepareContext.value = await prepareTeacherScanSupplement({
+      const response = await prepareTeacherScanSupplement({
         examId: ctx.examId,
         scannerDeviceId: device.scannerDeviceId,
         scannerStationId: device.scannerStationId,
         scanMode: ScannerKioskScanModeCode.DIRECT,
       })
+      if (
+        requestGeneration !== prepareRequestGeneration
+        || !isCurrentWizardContext(expectedContextGeneration, ctx.examId)
+      ) {
+        return
+      }
+      prepareContext.value = response
     } catch (error) {
+      if (
+        requestGeneration !== prepareRequestGeneration
+        || !isCurrentWizardContext(expectedContextGeneration, ctx.examId)
+      ) {
+        return
+      }
       prepareContext.value = null
+      prepareLoadFailed.value = true
       showUserError(error, '文件补入预检失败')
     } finally {
-      prepareLoading.value = false
+      if (requestGeneration === prepareRequestGeneration) {
+        prepareLoading.value = false
+      }
     }
     return
   }
 
-  const device = await resolveBatchDeviceIds()
-  if (!device || !ctx.scanBatchId) return
+  const device = await resolveBatchDeviceIds(expectedContextGeneration, ctx)
+  if (
+    requestGeneration !== prepareRequestGeneration
+    || !isCurrentWizardContext(expectedContextGeneration, ctx.examId)
+  ) {
+    return
+  }
+  if (!device || !ctx.scanBatchId) {
+    prepareLoadFailed.value = true
+    return
+  }
   prepareLoading.value = true
   try {
-    prepareContext.value = await prepareTeacherScanSupplement({
+    const response = await prepareTeacherScanSupplement({
       examId: ctx.examId,
       scannerDeviceId: device.scannerDeviceId,
       scannerStationId: device.scannerStationId,
       scanMode: ScannerKioskScanModeCode.SUPPLEMENT,
       scanBatchId: ctx.scanBatchId,
     })
+    if (
+      requestGeneration !== prepareRequestGeneration
+      || !isCurrentWizardContext(expectedContextGeneration, ctx.examId)
+    ) {
+      return
+    }
+    prepareContext.value = response
   } catch (error) {
+    if (
+      requestGeneration !== prepareRequestGeneration
+      || !isCurrentWizardContext(expectedContextGeneration, ctx.examId)
+    ) {
+      return
+    }
     prepareContext.value = null
+    prepareLoadFailed.value = true
     showUserError(error, '补扫预检失败')
   } finally {
-    prepareLoading.value = false
+    if (requestGeneration === prepareRequestGeneration) {
+      prepareLoading.value = false
+    }
   }
 }
 
@@ -621,7 +817,7 @@ function applyContextDefaults(): void {
 }
 
 function handleDeviceChange(): void {
-  void loadPrepareContext()
+  void loadPrepareContext(wizardContextGeneration)
 }
 
 function goPrev(): void {
@@ -630,8 +826,17 @@ function goPrev(): void {
   }
 }
 
+/** 推进补录步骤并在最终提交前复核上下文、预检与影像证据。 */
 async function goNext(): Promise<void> {
   if (currentStep.value === 0) {
+    if (contextLoading.value || deviceLoading.value) {
+      void message.warning('补录上下文仍在加载，请稍候')
+      return
+    }
+    if (scenario.value === 'file-import' && deviceLoadFailed.value) {
+      void message.warning('网页补录工位加载失败，请关闭后重新打开向导')
+      return
+    }
     if (scenario.value === 'file-import' && webDevices.value.length === 0) {
       showFormValidationMessage('请先登记网页补录工位')
       return
@@ -641,11 +846,7 @@ async function goNext(): Promise<void> {
       return
     }
     currentStep.value = 1
-    if (scenario.value === 'file-import' && directForm.deviceKey) {
-      await loadPrepareContext()
-    } else {
-      await loadPrepareContext()
-    }
+    await loadPrepareContext(wizardContextGeneration)
     return
   }
 
@@ -659,16 +860,29 @@ async function goNext(): Promise<void> {
     return
   }
 
-  await formCoreRef.value?.validate()
+  try {
+    await formCoreRef.value?.validate()
+  } catch {
+    return
+  }
   const ctx = activeContext.value
   if (!ctx?.examId) return
+  if (submitInFlight) {
+    void message.warning('已有补录提交正在处理中，请等待完成')
+    return
+  }
 
+  const submitContextGeneration = wizardContextGeneration
+  submitInFlight = true
   submitting.value = true
   try {
     if (scenario.value === 'file-import') {
       const device = resolveDeviceFromKey(directForm.deviceKey)
-      if (!device || !directForm.sourceFileId) return
-      submitResult.value = await teacherSupplementScanSource({
+      if (!device || !directForm.sourceFileId) {
+        showFormValidationMessage('请选择补录工位并上传来源文件')
+        return
+      }
+      const result = await teacherSupplementScanSource({
         examId: ctx.examId,
         scannerDeviceId: device.scannerDeviceId,
         scannerStationId: device.scannerStationId,
@@ -678,10 +892,19 @@ async function goNext(): Promise<void> {
         sourceFileId: directForm.sourceFileId,
         startTemplatePageNo: directForm.startTemplatePageNo,
       })
+      if (isCurrentWizardContext(submitContextGeneration, ctx.examId)) {
+        submitResult.value = result
+        currentStep.value = 2
+      }
     } else {
-      const device = await resolveBatchDeviceIds()
-      if (!device || !ctx.scanBatchId || !supplementForm.sourceFileId) return
-      submitResult.value = await teacherSupplementScanSource({
+      const device = await resolveBatchDeviceIds(submitContextGeneration, ctx)
+      if (!device || !ctx.scanBatchId || !supplementForm.sourceFileId) {
+        if (isCurrentWizardContext(submitContextGeneration, ctx.examId)) {
+          showFormValidationMessage('补扫批次、设备或来源文件不完整，不能提交')
+        }
+        return
+      }
+      const result = await teacherSupplementScanSource({
         examId: ctx.examId,
         scannerDeviceId: device.scannerDeviceId,
         scannerStationId: device.scannerStationId,
@@ -694,12 +917,18 @@ async function goNext(): Promise<void> {
         sourceFileId: supplementForm.sourceFileId,
         paperInstanceId: supplementForm.paperInstanceId,
       })
+      if (isCurrentWizardContext(submitContextGeneration, ctx.examId)) {
+        submitResult.value = result
+        currentStep.value = 2
+      }
     }
-    currentStep.value = 2
     emit('success')
   } catch (error) {
-    showUserError(error, '补录提交失败')
+    if (isCurrentWizardContext(submitContextGeneration, ctx.examId)) {
+      showUserError(error, '补录提交失败')
+    }
   } finally {
+    submitInFlight = false
     submitting.value = false
   }
 }
@@ -722,13 +951,25 @@ function handleViewImages(): void {
 watch(
   () => ({ open: props.open, context: props.context }),
   async ({ open, context }) => {
-    if (!open || !context) return
+    const generation = ++wizardContextGeneration
+    prepareRequestGeneration += 1
+    oldPreviewRequestGeneration += 1
+    newPreviewRequestGeneration += 1
     resetWizardState()
-    await enrichContextFromPaperStatus(context)
-    await loadWebDevices()
+    if (!open || !context) return
+    contextLoading.value = true
+    await enrichContextFromPaperStatus(context, generation)
+    if (!isCurrentWizardContext(generation, context.examId)) return
+    if (scenario.value === 'file-import') {
+      await loadWebDevices(generation)
+      if (!isCurrentWizardContext(generation, context.examId)) return
+    }
     applyContextDefaults()
     if (scenario.value === 'replace') {
-      await loadOldPagePreview()
+      await loadOldPagePreview(generation)
+    }
+    if (isCurrentWizardContext(generation, context.examId)) {
+      contextLoading.value = false
     }
   },
   { deep: true },

@@ -63,24 +63,44 @@ export interface ExamTeacherScanSupplementResponse {
  * 教师 Web 端人工补录准备查询：设备阻塞诊断与本设备已绑定试卷列表
  * POST /api/mark/exams/scan-supplement/prepare
  */
-export function prepareTeacherScanSupplement(
+export async function prepareTeacherScanSupplement(
   request: ExamTeacherScanSupplementPrepareRequest,
 ): Promise<ExamTeacherScanSupplementPrepareResponse> {
-  return http.post<ExamTeacherScanSupplementPrepareResponse>(
+  const response = await http.post<ExamTeacherScanSupplementPrepareResponse>(
     '/api/mark/exams/scan-supplement/prepare',
     request,
   )
+  if (
+    typeof response.canSubmitManualSupplement !== 'boolean'
+    || typeof response.hasActiveScanSession !== 'boolean'
+    || !Array.isArray(response.boundPapers)
+  ) {
+    throw new TypeError('教师补录预检合同异常：能力位、扫描会话或已绑定试卷不可用')
+  }
+  return response
 }
 
 /**
  * 教师 Web 端人工补录：开启批次锚点 → commit → 登记扫描页
  * POST /api/mark/exams/scan-sources/teacher-supplement
  */
-export function teacherSupplementScanSource(
+export async function teacherSupplementScanSource(
   request: ExamTeacherScanSupplementRequest,
 ): Promise<ExamTeacherScanSupplementResponse> {
-  return http.post<ExamTeacherScanSupplementResponse>(
+  const response = await http.post<ExamTeacherScanSupplementResponse>(
     '/api/mark/exams/scan-sources/teacher-supplement',
     request,
   )
+  if (
+    !response.scanBatchId
+    || !response.batchExternalNo
+    || !Number.isInteger(response.registeredPageCount)
+    || response.registeredPageCount <= 0
+    || !Array.isArray(response.pageIds)
+    || response.pageIds.length !== response.registeredPageCount
+    || response.pageIds.some((pageId) => !pageId)
+  ) {
+    throw new Error('教师补录提交合同异常：批次、登记页数或页标识不可用')
+  }
+  return response
 }

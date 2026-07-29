@@ -12,24 +12,19 @@ import { useKioskCtx } from '../composables/kioskInjection'
 
 const props = withDefaults(
   defineProps<{
-    selectedExamId?: string
     /** 切换考试时排除当前已绑定考试 */
     excludeExamId?: string
     /** 父级提交中（绑定/切换），勿与全局 workflow.loading 混用 */
     interactionLocked?: boolean
-    /** true=点磁贴即绑定；false=仅选中，由父级确认按钮提交 */
-    instantBind?: boolean
   }>(),
   {
     interactionLocked: false,
-    instantBind: false,
   },
 )
 
 const emit = defineEmits<{
-  'update:selected-exam-id': [value: string | undefined]
-  /** 单击选中并立即绑定/切换 */
-  "confirm": [examId: string]
+  /** 触碰考试磁贴后立即执行绑定或切换。 */
+  confirm: [examId: string]
 }>()
 
 const { workflow } = useKioskCtx()
@@ -75,12 +70,9 @@ watch(
   { immediate: true },
 )
 
-function activateExam(examId: string) {
+function bindExam(examId: string) {
   if (props.interactionLocked === true || workflow.bindExamCandidateLoading.value === true) return
-  emit('update:selected-exam-id', examId)
-  if (props.instantBind === true) {
-    emit('confirm', examId)
-  }
+  emit('confirm', examId)
 }
 
 function onSearchInput() {
@@ -134,6 +126,7 @@ function goNextPage() {
           type="search"
           class="exam-pick__search-input"
           placeholder="搜索考试名称或编号"
+          aria-label="搜索考试名称或编号"
           enterkeyhint="search"
           @input="onSearchInput"
           @keydown.enter.prevent="onSearchSubmit"
@@ -174,34 +167,24 @@ function goNextPage() {
           />
         </svg>
       </div>
-      <p v-if="workflow.bindExamCandidateLoadIssue.value" class="exam-pick__issue">
+      <p v-if="workflow.bindExamCandidateLoadIssue.value" class="exam-pick__issue" role="alert">
         {{ workflow.bindExamCandidateLoadIssue.value }}
       </p>
       <p v-else>{{ emptyHint }}</p>
-      <button
-        v-if="workflow.bindExamCandidateLoadIssue.value"
-        type="button"
-        class="exam-pick__retry"
-        :disabled="!!workflow.bindExamCandidateLoading.value"
-        @click="workflow.refreshBindExamCandidatesByUser"
-      >
-        重新加载
-      </button>
     </div>
-    <div v-else class="exam-pick__grid" role="listbox" aria-label="可绑定考试列表">
+    <div v-else class="exam-pick__grid" role="list" aria-label="可绑定考试列表">
       <button
         v-for="exam in visibleExams"
         :key="exam.examId"
         type="button"
-        role="option"
+        role="listitem"
         class="exam-tile"
         :class="{
           'exam-tile--resume': exam.hasActiveScanSession === true,
-          'exam-tile--selected': selectedExamId === exam.examId,
         }"
-        :aria-selected="selectedExamId === exam.examId"
+        :aria-label="`${exam.hasActiveScanSession === true ? '继续扫描' : '绑定并进入扫描'}：${exam.examName}`"
         :disabled="interactionLocked || workflow.bindExamCandidateLoading.value"
-        @click="activateExam(exam.examId)"
+        @click="bindExam(exam.examId)"
       >
         <span class="exam-tile__icon" aria-hidden="true">
           <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
@@ -240,6 +223,10 @@ function goNextPage() {
             class="exam-tile__badge"
             :class="{ 'exam-tile__badge--active': exam.hasActiveScanSession === true }"
           >{{ formatBatchBadge(exam) }}</span>
+          <span class="exam-tile__action">
+            {{ exam.hasActiveScanSession === true ? '继续扫描' : '进入扫描' }}
+            <RightOutlined aria-hidden="true" />
+          </span>
         </div>
       </button>
     </div>
@@ -369,20 +356,6 @@ function goNextPage() {
   line-height: 1.5;
 }
 
-.exam-pick__retry {
-  min-width: 148px;
-  min-height: var(--kiosk-h-action-md);
-  padding: 0 var(--kiosk-space-5);
-  border: 1px solid var(--kiosk-divider-strong);
-  border-radius: var(--kiosk-radius-md);
-  background: var(--kiosk-surface);
-  font-family: inherit;
-  font-size: var(--dp-font-size-xl);
-  font-weight: var(--kiosk-fw-medium);
-  color: var(--kiosk-ink-primary);
-  cursor: pointer;
-}
-
 .exam-pick__empty-icon {
   color: var(--kiosk-ink-tertiary);
 }
@@ -391,12 +364,14 @@ function goNextPage() {
   display: grid;
   flex: 1;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  grid-auto-rows: minmax(196px, auto);
+  grid-auto-rows: minmax(180px, 1fr);
   gap: var(--kiosk-space-4);
   min-height: 0;
-  overflow: auto;
-  padding: 2px;
-  align-content: start;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: var(--kiosk-space-1);
+  align-content: stretch;
+  overscroll-behavior: contain;
 }
 
 .exam-tile {
@@ -406,8 +381,8 @@ function goNextPage() {
   align-items: center;
   justify-content: flex-start;
   gap: var(--kiosk-space-2);
-  min-height: 196px;
-  padding: var(--kiosk-space-4) var(--kiosk-space-3) var(--kiosk-space-3);
+  min-height: 180px;
+  padding: var(--kiosk-space-3);
   border: 2px solid var(--kiosk-divider);
   border-radius: var(--kiosk-radius-lg);
   background: var(--kiosk-surface);
@@ -455,6 +430,7 @@ function goNextPage() {
 .exam-tile__title {
   margin: 0;
   width: 100%;
+  flex-shrink: 0;
   max-height: calc(17px * 1.35 * 2);
   font-size: 17px;
   font-weight: var(--kiosk-fw-semibold);
@@ -505,12 +481,6 @@ function goNextPage() {
   border-color: var(--kiosk-warning);
 }
 
-.exam-tile--selected {
-  border-color: var(--kiosk-primary);
-  background: var(--kiosk-primary-soft);
-  box-shadow: 0 0 0 3px var(--dp-focus-ring);
-}
-
 .exam-tile__foot {
   display: flex;
   flex-shrink: 0;
@@ -536,6 +506,15 @@ function goNextPage() {
 .exam-tile__badge--active {
   background: var(--kiosk-warning-soft);
   color: var(--kiosk-warning);
+  font-weight: var(--kiosk-fw-semibold);
+}
+
+.exam-tile__action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kiosk-space-1);
+  color: var(--kiosk-primary);
+  font-size: var(--kiosk-fz-label);
   font-weight: var(--kiosk-fw-semibold);
 }
 
@@ -582,5 +561,31 @@ function goNextPage() {
   font-variant-numeric: tabular-nums;
   color: var(--kiosk-ink-secondary);
   text-align: center;
+}
+
+@media (max-width: 1280px) {
+  .exam-pick__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .exam-pick__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .exam-pick__toolbar {
+    flex-direction: column;
+  }
+
+  .exam-pick__refresh {
+    width: 100%;
+  }
+
+  .exam-pick__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 </style>

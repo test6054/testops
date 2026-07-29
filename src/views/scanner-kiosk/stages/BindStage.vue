@@ -3,7 +3,7 @@
 /**
  * 独立路由：考试绑定（全屏，非 Teleport 遮罩）。
  */
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import KioskExamPickPanel from '../components/KioskExamPickPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
@@ -13,7 +13,6 @@ import '../styles/exam-pick-gate.scss'
 const { workflow } = useKioskCtx()
 const router = useRouter()
 
-const selectedExamId = ref<string>()
 const binding = ref(false)
 
 const scanReadyCount = computed(() => workflow.bindExamCandidateTotal.value)
@@ -32,28 +31,15 @@ const endpointLabel = computed(() => {
 
 const bindErrorMessage = computed(() => workflow.errorMessage.value.trim())
 
-const selectedExamStillVisible = computed(() => {
-  const examId = selectedExamId.value?.trim()
-  if (!examId) return false
-  return workflow.bindExamCandidates.value.some((item) => item.examId === examId)
-})
-
-const canConfirmBind = computed(
-  () =>
-    selectedExamStillVisible.value
-    && binding.value !== true
-    && workflow.bindExamCandidateLoading.value !== true
-    && !workflow.bindExamCandidateLoadIssue.value,
-)
-
 function goHub() {
   if (binding.value) return
   void router.push('/scanner-kiosk')
 }
 
-async function submitBind() {
-  const targetExamId = selectedExamId.value?.trim()
-  if (!targetExamId || binding.value === true || canConfirmBind.value !== true) return
+/** 触碰考试磁贴后立即绑定，并在成功后进入扫描准备阶段。 */
+async function bindExam(examId: string) {
+  const targetExamId = examId.trim()
+  if (!targetExamId || binding.value === true) return
   binding.value = true
   workflow.errorMessage.value = ''
   try {
@@ -66,37 +52,9 @@ async function submitBind() {
   }
 }
 
-function applyBindPrefill() {
-  if (selectedExamId.value?.trim()) return
-  const prefillExamId = workflow.resolveBindExamPrefillExamId()
-  if (!prefillExamId) return
-  if (workflow.bindExamCandidates.value.some((item) => item.examId === prefillExamId)) {
-    selectedExamId.value = prefillExamId
-  }
-}
-
-watch(
-  () => [workflow.bindExamCandidates.value, workflow.bindExamCandidateLoadIssue.value] as const,
-  ([, loadIssue]) => {
-    if (loadIssue) {
-      if (selectedExamId.value) {
-        selectedExamId.value = undefined
-      }
-      return
-    }
-    applyBindPrefill()
-    if (!selectedExamId.value) return
-    if (!selectedExamStillVisible.value) {
-      selectedExamId.value = undefined
-    }
-  },
-)
-
 onMounted(() => {
   workflow.resetBindExamCandidateFilter()
-  void workflow.loadBindExamCandidates().then(() => {
-    applyBindPrefill()
-  })
+  void workflow.loadBindExamCandidates()
 })
 </script>
 
@@ -139,31 +97,21 @@ onMounted(() => {
     </header>
 
     <main class="exam-gate__main">
-      <h1 class="exam-gate__heading">绑定扫描考试</h1>
-      <p class="exam-gate__heading-sub">请先点选本场考试，确认后再进入扫描工作台</p>
+      <div class="exam-gate__context">
+        <h1 class="exam-gate__heading">选择扫描考试</h1>
+        <p class="exam-gate__heading-sub">触碰考试卡片后立即进入扫描工作台</p>
+      </div>
 
       <KioskExamPickPanel
-        v-model:selected-exam-id="selectedExamId"
         class="exam-gate__panel"
         :class="{ 'exam-gate__panel--busy': binding === true || workflow.bindExamCandidateLoading.value === true }"
         :interaction-locked="binding === true"
-        :instant-bind="false"
+        @confirm="bindExam"
       />
 
       <p v-if="bindErrorMessage" class="exam-gate__bind-error" role="alert">
         {{ bindErrorMessage }}
       </p>
-
-      <div class="exam-gate__footer">
-        <button
-          type="button"
-          class="exam-gate__confirm-btn"
-          :disabled="canConfirmBind !== true"
-          @click="submitBind"
-        >
-          {{ binding ? '绑定中…' : '确认绑定并进入' }}
-        </button>
-      </div>
     </main>
   </div>
 </template>
@@ -184,31 +132,6 @@ onMounted(() => {
   color: var(--kiosk-danger);
   font-size: var(--kiosk-fz-body);
   line-height: 1.5;
-}
-
-.exam-gate__footer {
-  display: flex;
-  justify-content: flex-end;
-  flex-shrink: 0;
-}
-
-.exam-gate__confirm-btn {
-  min-width: 220px;
-  min-height: var(--kiosk-h-action-lg, 52px);
-  padding: 0 var(--kiosk-space-6);
-  border: none;
-  border-radius: var(--kiosk-radius-md);
-  background: var(--kiosk-primary);
-  color: var(--kiosk-primary-on);
-  font-family: inherit;
-  font-size: var(--dp-font-size-xl);
-  font-weight: var(--kiosk-fw-semibold);
-  cursor: pointer;
-}
-
-.exam-gate__confirm-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .exam-gate__ghost-btn:disabled {
